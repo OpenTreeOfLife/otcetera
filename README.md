@@ -11,7 +11,18 @@ as a prerequisite. Download it from https://github.com/miloyip/rapidjson
 and put the path to its include subdir in a "-I" CPPFLAGS or CXXFLAGS
 when you configure.
 
+# Installation
 
+if you are using clang:
+
+    $ sh bootstrap.sh
+    $ mkdir buildclang
+    $ cd buildclang
+    $ sh ../reconf-clang.sh
+    $ make
+    $ make check
+    $ make install
+    $ make installcheck
 
 
 ## NCL credits
