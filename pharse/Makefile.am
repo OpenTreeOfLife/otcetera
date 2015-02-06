@@ -4,7 +4,9 @@ libpharse_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 
 libpharse_la_HEADERS = \
-	pharse.h
+	pharse.h \
+	tree.h
 
 libpharse_la_SOURCES = \
-	pharse.cpp
+	pharse.cpp \
+	tree.cpp
