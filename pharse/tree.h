@@ -113,7 +113,6 @@ class TreeNode {
 			otuID(INT_MAX) {
 			edgeToPar.child = this;
 		}
-
 		void AddSib(TreeNode<T> *n) {
 			if (rSib) {
 				rSib->AddSib(n);
@@ -169,8 +168,56 @@ class TreeNode {
 		std::string name; // non-empty only for internals that are labelled with names that are NOT taxLabels
 		unsigned otuID; // present for every leaf. UINT_MAX for internals labeled with taxlabels
 		T data;
-		//friend class NxsSimpleTree;
+	private:
+		TreeNode<T>(const TreeNode<T> &); //not defined.  Not copyable
+		TreeNode<T> & operator=(const TreeNode<T> &); //not defined.  Not copyable
+		friend class TreeNode<T>;
 };
+
+template<typename T>
+class Tree {
+	public:
+		~Tree<T>() {
+			Clear();
+		}
+		std::vector<const TreeNode<T> *> GetPreorderTraversal() const;
+		const std::vector<const TreeNode<T> *> & GetLeavesRef() {
+			return leaves;
+		}
+		void WriteAsNewick(std::ostream &out,
+						   bool nhx,
+						   bool useLeafNames,
+						   const std::map<TreeNode<T> *, std::string> *nd2name=0L) const {
+			if (root) {
+				root->WriteAsNewick(out, nhx, useLeafNames, nd2name);
+			}
+		}
+		const TreeNode<T> * GetRoot() const {
+			return root;
+		}
+	protected:
+		std::vector<TreeNode<T> *> allNodes;
+		std::vector<TreeNode<T> *> leaves;
+		TreeNode<T> * root;
+	public:
+		TreeNode<T> * AllocNewNode(TreeNode<T> *p) {
+			TreeNode<T> * nd = new TreeNode<T>(p);
+			allNodes.push_back(nd);
+			return nd;
+		}
+		void Clear() {
+			root = NULL;
+			leaves.clear();
+			for (auto nIt : allNodes) {
+				delete *nIt;
+			}
+			allNodes.clear();
+		}
+	private:
+		Tree<T>(const Tree<T> &); //not defined.  Not copyable
+		Tree<T> & operator=(const Tree<T> &); //not defined.  Not copyable
+};
+
 
 } // namespace pharse
 #endif
