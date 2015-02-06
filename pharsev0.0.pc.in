@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: pharse
+Description: pharse is a C++ library for parsing some formats used in phylogenetics
+Version: 2.1
+Libs: -L${libdir}/pharse -llibpharse.la
+Cflags: -I${includedir}/pharse
+
+
