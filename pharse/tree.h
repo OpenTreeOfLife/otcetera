@@ -7,60 +7,30 @@
 #include <climits>
 
 namespace pharse {
-template<typename T> class TreeNode;
-template<typename T>
-class TreeEdge {
-	public:
-		typedef class TreeNode<T> Node_t;
-		const Node_t * GetParent() const {
-			return parent;
-		}
-		const Node_t * GetChild() const {
-			return child;
-		}
-		T & GetData() const {
-			return child->GetData();
-		}
-	private:
-		void SetParent(Node_t * p) {
-			this->parent = p;
-		}
-		void WriteAsNewick(std::ostream &out, bool nhx) const;
-		TreeEdge<T>(Node_t * par, Node_t  * des)
-			:parent(par),
-			child(des) {
-		}
-		Node_t * parent;
-		Node_t * child;
-		friend class TreeNode<T>;
-};
+template<typename> class RootedTree;
 
 template<typename T>
-class TreeNode {
+class RootedTreeNode {
 	public:
-		typedef class TreeEdge<T> Edge_t;
-		const Edge_t & GetEdgeToParent() const {
-			return edgeToPar;
-		}
-		const TreeNode<T> * GetParent() const {
-			return edgeToPar.GetParent;
+		const RootedTreeNode<T> * GetParent() const {
+			return parent;
 		}
 		bool IsTip() const {
 			return (lChild == nullptr);
 		}
-		const TreeNode<T> * GetFirstChild() const {
+		const RootedTreeNode<T> * GetFirstChild() const {
 			return lChild;
 		}
-		TreeNode<T> * GetNextSib() const {
+		RootedTreeNode<T> * GetNextSib() const {
 			return rSib;
 		}
-		TreeNode<T> * GetLastChild() const {
+		RootedTreeNode<T> * GetLastChild() const {
 			auto currNode = this->GetFirstChild();
 			if (currNode == nullptr)
 				return nullptr;
 			return currNode->GetLastSib();
 		}
-		TreeNode<T> * GetLastSib() const {
+		RootedTreeNode<T> * GetLastSib() const {
 			auto currNode = this->GetNextSib();
 			if (currNode == nullptr) {
 				return nullptr;
@@ -72,8 +42,8 @@ class TreeNode {
 			}
 			return currNode;
 		}
-		std::vector<const TreeNode<T> *> GetChildren() const {
-			std::vector<const TreeNode<T> *> children;
+		std::vector<const RootedTreeNode<T> *> GetChildren() const {
+			std::vector<const RootedTreeNode<T> *> children;
 			auto * currNode = GetFirstChild();
 			while(currNode) {
 				children.push_back(currNode);
@@ -106,29 +76,27 @@ class TreeNode {
 		T & GetData() const {
 			return &data;
 		}
-		TreeNode<T>(TreeNode<T> *par)
-			:lChild(0L),
-			rSib(0L),
-			edgeToPar(par, 0L),
+		RootedTreeNode<T>(RootedTreeNode<T> *par)
+			:lChild(nullptr),
+			rSib(nullptr),
+			parent(par),
 			otuID(INT_MAX) {
-			edgeToPar.child = this;
 		}
-		void AddSib(TreeNode<T> *n) {
+		void AddSib(RootedTreeNode<T> *n) {
 			if (rSib) {
 				rSib->AddSib(n);
 			} else {
 				rSib = n;
 			}
 		}
-		void AddChild(TreeNode<T> *n) {
+		void AddChild(RootedTreeNode<T> *n) {
 			if (lChild)
 				lChild->AddSib(n);
 			else
 				lChild = n;
 		}
-
-		bool RemoveChild(TreeNode<T> *n) {
-			if (n == 0L || lChild == 0L) {
+		bool RemoveChild(RootedTreeNode<T> *n) {
+			if (n == nullptr || lChild == nullptr) {
 				return false;
 			}
 			if (lChild == n) {
@@ -140,68 +108,67 @@ class TreeNode {
 						c->rSib = n->rSib;
 						break;
 					}
-					if (c->rSib == 0L) {
+					if (c->rSib == nullptr) {
 						return false;
 					}
 				}
 			}
-			n->edgeToPar.parent = 0L;
+			n->parent = nullptr;
 			return true;
 		}
-
 	public:
 		void WriteAsNewick(std::ostream &out,
 						   bool useLeafNames,
-						   const std::map<TreeNode<T> *, std::string> *nd2name=0L) const;
-		void AddSelfAndDesToPreorder(std::vector<const TreeNode<T> *> &p) const;
+						   const std::map<RootedTreeNode<T> *, std::string> *nd2name=nullptr) const;
+		void AddSelfAndDesToPreorder(std::vector<const RootedTreeNode<T> *> &p) const;
 
-		void LowLevelSetFirstChild(TreeNode<T> *nd) {
+		void LowLevelSetFirstChild(RootedTreeNode<T> *nd) {
 			lChild = nd;
 		}
-		void LowLevelSetNextSib(TreeNode<T> *nd) {
+		void LowLevelSetNextSib(RootedTreeNode<T> *nd) {
 			rSib = nd;
 		}
 	private:
-		TreeNode<T> * lChild;
-		TreeNode<T> * rSib;
-		TreeEdge<T> edgeToPar;
+		RootedTreeNode<T> * lChild;
+		RootedTreeNode<T> * rSib;
+		RootedTreeNode<T> * parent;
 		std::string name; // non-empty only for internals that are labelled with names that are NOT taxLabels
 		unsigned otuID; // present for every leaf. UINT_MAX for internals labeled with taxlabels
 		T data;
 	private:
-		TreeNode<T>(const TreeNode<T> &); //not defined.  Not copyable
-		TreeNode<T> & operator=(const TreeNode<T> &); //not defined.  Not copyable
-		friend class TreeNode<T>;
+		RootedTreeNode<T>(const RootedTreeNode<T> &); //not defined.  Not copyable
+		RootedTreeNode<T> & operator=(const RootedTreeNode<T> &); //not defined.  Not copyable
+		friend class RootedTree<T>;
 };
 
 template<typename T>
-class Tree {
+class RootedTree {
 	public:
-		~Tree<T>() {
+		~RootedTree<T>() {
 			Clear();
 		}
-		std::vector<const TreeNode<T> *> GetPreorderTraversal() const;
-		const std::vector<const TreeNode<T> *> & GetLeavesRef() {
+		std::vector<const RootedTreeNode<T> *> GetPreorderTraversal() const;
+		const std::vector<const RootedTreeNode<T> *> & GetLeavesRef() {
 			return leaves;
 		}
 		void WriteAsNewick(std::ostream &out,
 						   bool nhx,
 						   bool useLeafNames,
-						   const std::map<TreeNode<T> *, std::string> *nd2name=0L) const {
+						   const std::map<RootedTreeNode<T> *, std::string> *nd2name=nullptr) const {
 			if (root) {
 				root->WriteAsNewick(out, nhx, useLeafNames, nd2name);
 			}
 		}
-		const TreeNode<T> * GetRoot() const {
+		const RootedTreeNode<T> * GetRoot() const {
 			return root;
 		}
 	protected:
-		std::vector<TreeNode<T> *> allNodes;
-		std::vector<TreeNode<T> *> leaves;
-		TreeNode<T> * root;
+		std::vector<RootedTreeNode<T> *> allNodes;
+		std::vector<RootedTreeNode<T> *> leaves;
+		RootedTreeNode<T> * root;
 	public:
-		TreeNode<T> * AllocNewNode(TreeNode<T> *p) {
-			TreeNode<T> * nd = new TreeNode<T>(p);
+		RootedTreeNode<T> * AllocNewNode(RootedTreeNode<T> *p) {
+			RootedTreeNode<T> * nd = new RootedTreeNode<T>(p);
 			allNodes.push_back(nd);
 			return nd;
 		}
@@ -214,8 +181,8 @@ class Tree {
 			allNodes.clear();
 		}
 	private:
-		Tree<T>(const Tree<T> &); //not defined.  Not copyable
-		Tree<T> & operator=(const Tree<T> &); //not defined.  Not copyable
+		RootedTree<T>(const RootedTree<T> &); //not defined.  Not copyable
+		RootedTree<T> & operator=(const RootedTree<T> &); //not defined.  Not copyable
 };
 
 
