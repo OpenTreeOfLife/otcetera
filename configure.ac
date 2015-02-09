@@ -1,4 +1,4 @@
-AC_INIT(PHARSE, 0.0.01-dev, mtholder@gmail.com)
+AC_INIT(OTCETERA, 0.0.01-dev, mtholder@gmail.com)
 AC_CONFIG_HEADERS([config.h])
 AC_PREREQ(2.57)
 AC_CONFIG_AUX_DIR([config])
@@ -63,9 +63,9 @@ AC_SUBST(MAYBE_TEST_DIR)
 AC_PROG_MAKE_SET
 AC_CONFIG_FILES([					\
 	Makefile 						\
-	pharse/Makefile					\
+	otcetera/Makefile					\
 	test/Makefile \
 	tools/Makefile \
-	pharsev0.0.pc \
+	otceterav0.0.pc \
 	])
 AC_OUTPUT

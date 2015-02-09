@@ -1,12 +1,12 @@
-pkglib_LTLIBRARIES = libpharse.la
-libpharse_ladir = $(includedir)/pharse
-libpharse_la_LDFLAGS = -release @PACKAGE_VERSION@
+pkglib_LTLIBRARIES = libotcetera.la
+libotcetera_ladir = $(includedir)/otc
+libotcetera_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 
-libpharse_la_HEADERS = \
-	pharse.h \
+libotcetera_la_HEADERS = \
+	otcetera.h \
 	tree.h
 
-libpharse_la_SOURCES = \
-	pharse.cpp \
+libotcetera_la_SOURCES = \
+	otcetera.cpp \
 	tree.cpp

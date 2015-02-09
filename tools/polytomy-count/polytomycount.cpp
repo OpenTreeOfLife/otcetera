@@ -1,4 +1,4 @@
-#include "pharse.h"
+#include "otcetera.h"
 OTCLI gOTCli("polytomycount",
 			 "takes a filepath to a newick file and reports the number of polytomies in each tree (one line per tree)",
 			 {"some.tre"});

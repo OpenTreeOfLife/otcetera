@@ -1,5 +1,5 @@
-# pharse - phylogenetic file format parser in C++ 
-[![Build Status](https://secure.travis-ci.org/OpenTreeOfLife/pharse.png)](http://travis-ci.org/OpenTreeOfLife/pharse)
+# otcetera - phylogenetic file format parser in C++ 
+[![Build Status](https://secure.travis-ci.org/OpenTreeOfLife/otcetera.png)](http://travis-ci.org/OpenTreeOfLife/otcetera)
 
 pharce owes a lot of code and ideas to Paul Lewis' Nexus Class Library.
   See http://hydrodictyon.eeb.uconn.edu/ncl/ and 

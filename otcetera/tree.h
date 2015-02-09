@@ -1,12 +1,12 @@
-#ifndef PHARSE_TREE_H
-#define PHARSE_TREE_H
+#ifndef OTCETERA_TREE_H
+#define OTCETERA_TREE_H
 #include <iostream>
 #include <vector>
 #include <map>
 #include <string>
 #include <climits>
 
-namespace pharse {
+namespace otc {
 template<typename> class RootedTree;
 
 template<typename T>
@@ -186,6 +186,6 @@ class RootedTree {
 };
 
 
-} // namespace pharse
+} // namespace otc
 #endif
 

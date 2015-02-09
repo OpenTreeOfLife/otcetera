@@ -1,10 +1,10 @@
-#if !defined PHARSE_H
-#define PHARSE_H
+#if !defined OTCETERA_H
+#define OTCETERA_H
 #include <memory>
 #include <iostream>
 
-#include "pharse/tree.h"
-namespace pharse {
+#include "otcetera/tree.h"
+namespace otc {
 
 template<typename T>
 std::unique_ptr<RootedTree<T> > readNextNewick(std::iostream &inp);
