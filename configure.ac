@@ -63,7 +63,7 @@ AC_SUBST(MAYBE_TEST_DIR)
 AC_PROG_MAKE_SET
 AC_CONFIG_FILES([					\
 	Makefile 						\
-	otcetera/Makefile					\
+	otc/Makefile					\
 	test/Makefile \
 	tools/Makefile \
 	otceterav0.0.pc \

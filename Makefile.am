@@ -1,4 +1,4 @@
-SUBDIRS = otcetera $(MAYBE_TEST_DIR)
+SUBDIRS = otc $(MAYBE_TEST_DIR)
 
 pkgconfigdir= $(libdir)/pkgconfig
 pkgconfig_DATA= otceterav0.0.pc

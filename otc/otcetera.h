@@ -3,7 +3,7 @@
 #include <memory>
 #include <iostream>
 
-#include "otcetera/tree.h"
+#include "otc/tree.h"
 namespace otc {
 
 template<typename T>
