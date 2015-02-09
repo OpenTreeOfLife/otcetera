@@ -66,6 +66,7 @@ AC_CONFIG_FILES([					\
 	otc/Makefile					\
 	test/Makefile \
 	tools/Makefile \
+	tools/polytomy-count/Makefile \
 	otceterav0.0.pc \
 	])
 AC_OUTPUT

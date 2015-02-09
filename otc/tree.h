@@ -1,10 +1,13 @@
 #ifndef OTCETERA_TREE_H
 #define OTCETERA_TREE_H
-#include <iostream>
-#include <vector>
-#include <map>
-#include <string>
+
 #include <climits>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+#include "otc/otcetera.h"
 
 namespace otc {
 template<typename> class RootedTree;
@@ -144,6 +147,8 @@ class RootedTreeNode {
 template<typename T>
 class RootedTree {
 	public:
+		RootedTree<T>():root(nullptr) {
+		}
 		~RootedTree<T>() {
 			Clear();
 		}
@@ -176,7 +181,7 @@ class RootedTree {
 			root = NULL;
 			leaves.clear();
 			for (auto nIt : allNodes) {
-				delete *nIt;
+				delete nIt;
 			}
 			allNodes.clear();
 		}
@@ -184,6 +189,15 @@ class RootedTree {
 		RootedTree<T>(const RootedTree<T> &); //not defined.  Not copyable
 		RootedTree<T> & operator=(const RootedTree<T> &); //not defined.  Not copyable
 };
+
+/** simple phylo functions */
+
+template<typename T>
+unsigned int countPolytomies(RootedTree<T> & tree);
+template<typename T>
+unsigned int countPolytomies(RootedTree<T> & tree) {
+	return 0;
+}
 
 
 } // namespace otc

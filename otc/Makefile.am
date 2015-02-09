@@ -4,9 +4,15 @@ libotcetera_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 
 libotcetera_la_HEADERS = \
+	error.h \
+	newick.h \
 	otcetera.h \
-	tree.h
+	otcli.h \
+	tree.h \
+	util.h
 
 libotcetera_la_SOURCES = \
 	otcetera.cpp \
-	tree.cpp
+	otcli.cpp \
+	tree.cpp \
+	util.cpp

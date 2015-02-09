@@ -1,6 +1,12 @@
 #include "otc/tree.h"
+using namespace otc;
 
-
+/*
+template<typename T>
+std::unique_ptr<RootedTree<T> > readNextNewick(std::iostream &inp) {
+	return nullptr;
+}
+*/
 
 /*
 template<typename T> class TreeNode;
