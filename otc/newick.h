@@ -4,6 +4,7 @@
 #include <fstream>
 #include "otc/otcetera.h"
 #include "otc/tree.h"
+#include "otc/error.h"
 
 namespace otc {
 
@@ -60,14 +61,14 @@ struct FilePosStruct {
 	std::string describe() const {
 		std::string message;
 		message = "At line ";
-		message += 1 + this->lineNumber;
+		message += std::to_string(1 + this->lineNumber);
 		message += ", column ";
-		message += 1 + this->colNumber;
+		message += std::to_string(1 + this->colNumber);
 		message += ", filepos ";
-		message += 1 + this->pos;
+		message += std::to_string(1 + this->pos);
 		if (filepath) {
 			message += " of \"";
-			message += filepath
+			message += *filepath;
 			message += "\"";
 		} else {
 			message += " of <UNKNOWN FILENAME>";
@@ -84,28 +85,29 @@ struct FilePosStruct {
 class OTCParsingError: public OTCError {
 	public:
 		OTCParsingError(const char * msg, char offending, const FilePosStruct &position)
-			:message(msg),
+			:OTCError(msg),
+			frag(msg),
 			offendingChar(offending),
 			pos(position) {
+				message = this->generate_message();
 			}
-		const char * what () const noexcept {
+		std::string generate_message() const noexcept {
 			try {
-				m = "Error found \"";
-				m += offendingChar;
+				std::string m = "Error found \"";
+				m += this->offendingChar;
 				m += "\" ";
-				m += this.message;
+				m += this->frag;
 				m += this->pos.describe();
-				return m.c_str();
-			} catch (...) { // to guarantee noexcept...
+				return m;
+			} catch (...) {// to guarantee noexcept...
 			}
-			return message.c_str();
+			return frag;
 		}
 
 	private:
-		const std::string message;
+		const std::string frag;
 		const char offendingChar;
 		const FilePosStruct pos;
-		const m;
 };
 class NewickTokenizer {
 	public:
@@ -177,6 +179,11 @@ class NewickTokenizer {
 				}
 			private:
 				void consumeNextToken();
+				bool advanceToNextNonWhitespace(char &);
+				void finishReadingComment();
+				void finishReadingUnquoted();
+				void finishReadingQuotedStr();
+				void throwSCCErr(char c) const;
 				//deals with \r\n as \n Hence "LogicalChar"
 				bool advanceReaderOneLogicalChar(char & c) {
 					c = (char) (this->inputStream.rdbuf())->sbumpc();
@@ -186,7 +193,7 @@ class NewickTokenizer {
 						this->currentPos->pos += 1;
 						if (13 == c || 10 == c) {
 							if (13 == c ) { // deal with \r\n as a newline
-								if (this->inputStream.rdbuf())->sgetc() == 10) {//peeks at the next char
+								if (this->inputStream.rdbuf()->sgetc() == 10) {//peeks at the next char
 									(inputStream.rdbuf())->sbumpc();
 									this->currentPos->pos += 1;
 								}
@@ -198,6 +205,7 @@ class NewickTokenizer {
 							this->currentPos->colNumber += 1;
 						}
 					}
+					return !this->atEnd;
 				}
 				void resetToken() {
 					this->currWord.clear();
