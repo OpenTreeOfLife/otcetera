@@ -8,6 +8,8 @@
 namespace otc {
 
 /* TREE IO */
+#if 0
+// non wide string versions
 template<typename T>
 std::unique_ptr<RootedTree<T> > readNextNewick(std::istream &inp);
 template<typename T>
@@ -18,8 +20,8 @@ inline std::unique_ptr<RootedTree<T> > readNextNewick(std::istream &inp) {
 	return std::unique_ptr<RootedTree<T> > (new RootedTree<T>());
 }
 
-
-
+template<typename T>
+std::unique_ptr<RootedTree<T> > readNextWNewick(std::wistream &inp);
 template<typename T>
 inline unsigned int readNewickStream(std::istream &inp, bool (*callback)(std::unique_ptr<RootedTree<T> >)) {
 	auto c = 0U;
@@ -35,6 +37,14 @@ inline unsigned int readNewickStream(std::istream &inp, bool (*callback)(std::un
 		}
 	}
 }
+#endif
+
+template<typename T>
+inline std::unique_ptr<RootedTree<T> > readNextWNewick(std::wistream &inp) {
+	return std::unique_ptr<RootedTree<T> > (new RootedTree<T>());
+}
+
+
 
 }// namespace otc
 #endif

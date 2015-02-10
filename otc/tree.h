@@ -12,6 +12,8 @@
 namespace otc {
 template<typename> class RootedTree;
 
+typedef std::string namestring_t;
+
 template<typename T>
 class RootedTreeNode {
 	public:
@@ -70,10 +72,10 @@ class RootedTreeNode {
 			otuID = i;
 		}
 		// non-empty only for internals that are labelled with names that are NOT taxLabels
-		const std::string & GetName() const {
+		const namestring_t & GetName() const {
 			return name;
 		}
-		void SetName(const std::string &n) {
+		void SetName(const namestring_t &n) {
 			name = n;
 		}
 		T & GetData() const {
@@ -122,7 +124,7 @@ class RootedTreeNode {
 	public:
 		void WriteAsNewick(std::ostream &out,
 						   bool useLeafNames,
-						   const std::map<RootedTreeNode<T> *, std::string> *nd2name=nullptr) const;
+						   const std::map<RootedTreeNode<T> *, namestring_t> *nd2name=nullptr) const;
 		void AddSelfAndDesToPreorder(std::vector<const RootedTreeNode<T> *> &p) const;
 
 		void LowLevelSetFirstChild(RootedTreeNode<T> *nd) {
@@ -135,7 +137,7 @@ class RootedTreeNode {
 		RootedTreeNode<T> * lChild;
 		RootedTreeNode<T> * rSib;
 		RootedTreeNode<T> * parent;
-		std::string name; // non-empty only for internals that are labelled with names that are NOT taxLabels
+		namestring_t name; // non-empty only for internals that are labelled with names that are NOT taxLabels
 		unsigned otuID; // present for every leaf. UINT_MAX for internals labeled with taxlabels
 		T data;
 	private:
@@ -159,7 +161,7 @@ class RootedTree {
 		void WriteAsNewick(std::ostream &out,
 						   bool nhx,
 						   bool useLeafNames,
-						   const std::map<RootedTreeNode<T> *, std::string> *nd2name=nullptr) const {
+						   const std::map<RootedTreeNode<T> *, namestring_t> *nd2name=nullptr) const {
 			if (root) {
 				root->WriteAsNewick(out, nhx, useLeafNames, nd2name);
 			}

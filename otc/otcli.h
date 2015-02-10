@@ -72,10 +72,12 @@ inline int treeProcessingMain(OTCLI & otCLI,
 	try {
 		if (treePtr) {
 			for (auto filename : filenameVec) {
-				auto newickContent = readStrContentOfUTF8File(filename);
-				std::istringstream inp(newickContent);
+				std::wifstream inp;
+				if (!openUTF8File(filename, inp)) {
+					throw OTCError("Could not open \"" + filename + "\"");
+				}
 				for (;;) {
-					std::unique_ptr<RootedTree<T> > nt = readNextNewick<T>(inp);
+					std::unique_ptr<RootedTree<T> > nt = readNextWNewick<T>(inp);
 					if (nt == nullptr) {
 						break;
 					}
