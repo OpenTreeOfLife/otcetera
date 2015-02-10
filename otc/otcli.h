@@ -77,7 +77,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 					throw OTCError("Could not open \"" + filename + "\"");
 				}
 				for (;;) {
-					std::unique_ptr<RootedTree<T> > nt = readNextWNewick<T>(inp);
+					std::unique_ptr<RootedTree<T> > nt = readNextWNewick<T>(inp, filename);
 					if (nt == nullptr) {
 						break;
 					}

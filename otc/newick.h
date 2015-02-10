@@ -89,6 +89,7 @@ class NewickTokenizer {
 					} else {
 						currWord.assign(1, c);
 					}
+					return *this;
 				}
 			private:
 				iterator(std::wistream &inp, const std::string & filepath)
@@ -129,7 +130,7 @@ template<typename T>
 inline std::unique_ptr<RootedTree<T> > readNextWNewick(std::wistream &inp, const std::string & filepath) {
 	NewickTokenizer tokenizer(inp, filepath);
 	for (auto token : tokenizer) {
-		std::cout << "token = \"" << token->content() << "\"\n"; 
+		std::wcout << "token = \"" << token.content() << "\"\n"; 
 	}
 	return std::unique_ptr<RootedTree<T> > (new RootedTree<T>());
 }
