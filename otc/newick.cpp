@@ -3,15 +3,15 @@
 #include <string>
 namespace otc {
 
-static const char * _EARLY_SEMICOLON = "Unexpected ; with open parentheses not balanced";
+static const char * _EARLY_SEMICOLON = "Unexpected ; with open parentheses not balanced.";
 static const char * _ILL_AFTER_CLOSE = "Illegal character after \")\" character. Expecting \",\" or a label or a colon.";
-static const char * _ILL_AFTER_LABEL = "Illegal character after label. Expecting ( or a label";
-static const char * _ILL_AFTER_BRANCH_INFO = "Illegal character after branch info. Expecting ( or a label";
-static const char * _ILL_AFTER_OPEN = "Illegal character after \"(\" character. Expecting ( or a label";
+static const char * _ILL_AFTER_LABEL = "Illegal character after label. Expecting ( or a label.";
+static const char * _ILL_AFTER_BRANCH_INFO = "Illegal character after branch info. Expecting ( or a label.";
+static const char * _ILL_AFTER_OPEN = "Illegal character after \"(\" character. Expecting ( or a label.";
 static const char * _ILL_AFTER_COMMA = "Illegal character after \",\" character. Expecting ( or a label.";
 static const char * _ILL_AFTER_COLON = "Illegal character after \":\" character. Expecting a branch length.";
 static const char * _ILL_NO_SEMICOLON = "Expecting ; after a newick description.";
-static const char * _ILL_FIRST_CHAR = "Expecting a newick tree to start with \"(\"";
+static const char * _ILL_FIRST_CHAR = "Expecting a newick tree to start with \"(\".";
 
 
 void NewickTokenizer::iterator::onLabelExit(char n) {
@@ -71,21 +71,25 @@ void NewickTokenizer::iterator::finishReadingUnquoted(bool continuingLabel){
 	for (;;) {
 		char c;
 		if(!advanceReaderOneLogicalChar(c)) {
-			throw OTCParsingError("Unexpected EOF in label. Expecting a ; to end a newick", '\0', (*this->currentPos));
+			throw OTCParsingError("Unexpected EOF in label. Expecting a ; to end a newick.", '\0', (*this->currentPos));
 		}
 		if (!isgraph(c)) {
 			if (!advanceToNextNonWhitespace(c)) {
-				throw OTCParsingError("Unexpected EOF in label. Expecting a ; to end a newick", '\0', (*this->currentPos));
+				throw OTCParsingError("Unexpected EOF in label. Expecting a ; to end a newick.", '\0', (*this->currentPos));
 			}
 			if (continuingLabel) {
-				LOG(WARNING) << "Whitespace found in unquoted label - will be converted to a single space";
+				LOG(WARNING) << "Whitespace found in unquoted label - will be converted to a single space.";
 			}
 			this->push(c);
 			this->onLabelExit(c);
 			return;
 		}
+		if (std::strchr("(),:;", c) != nullptr) {
+			this->push(c);
+			return;
+		}
 		if (c == '\'') {
-			LOG(WARNING) << "single-quoted string found in unquoted label";
+			LOG(WARNING) << "single-quoted string found in unquoted label.";
 			this->finishReadingQuotedStr();
 			return;
 		} else if (c == '[') {
@@ -148,7 +152,17 @@ void NewickTokenizer::iterator::consumeNextToken() {
 	char n;
 	// a loop to accumulate comments
 	while (true) {
-		if (advanceToNextNonWhitespace(n)) {
+		if (!advanceToNextNonWhitespace(n)) {
+			LOG(TRACE) << "in false consumeNextToken with n =\"" << n << "\"";
+			if (this->currTokenState == NWK_NOT_IN_TREE || this->currTokenState == NWK_SEMICOLON) {
+				return;
+			}
+			if (this->numUnclosedParens > 0) {
+				throw OTCParsingError("Unexpected EOF while tree was still being read more open parentheses than closed parentheses read.", '\0', *this->currentPos);
+			}
+			throw OTCParsingError("Unexpected EOF. Semicolon expected at the end of the newick.", '\0', *this->currentPos);
+		} else {
+			LOG(TRACE) << "in consumeNextToken with n =\"" << n << "\"";
 			if (this->prevTokenState == NWK_NOT_IN_TREE) {
 				if (n == '(') {
 					this->currTokenState = NWK_OPEN;
@@ -235,8 +249,8 @@ void NewickTokenizer::iterator::consumeNextToken() {
 						if (this->prevTokenState == NWK_COLON) {
 							throw OTCParsingError(_ILL_AFTER_COLON, n, *this->currentPos);
 						}
-						if (this->prevTokenState == NWK_LABEL || this->prevTokenState == NWK_CLOSE) {
-							this->currTokenState = NWK_NOT_IN_TREE;
+						if (this->prevTokenState == NWK_LABEL || this->prevTokenState == NWK_BRANCH_INFO || this->prevTokenState == NWK_CLOSE) {
+							this->currTokenState = NWK_SEMICOLON;
 							this->currWord.assign(1, ';');
 							return;
 						}

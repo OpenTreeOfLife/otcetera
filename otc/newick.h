@@ -45,7 +45,7 @@ struct FilePosStruct {
 		:pos(0U),
 		lineNumber(0U),
 		colNumber(0U),
-		filepath(nullptr) {
+		filepath(ConstStrPtr(nullptr)) {
 	}
 	FilePosStruct(const ConstStrPtr fp)
 		:pos(0U),
@@ -67,12 +67,15 @@ struct FilePosStruct {
 		message += std::to_string(1 + this->colNumber);
 		message += ", filepos ";
 		message += std::to_string(1 + this->pos);
-		if (filepath) {
-			message += " of \"";
-			message += *filepath;
-			message += "\"";
-		} else {
-			message += " of <UNKNOWN FILENAME>";
+		try {
+			if (filepath) {
+				message += " of \"";
+				message += *filepath;
+				message += "\"";
+			} else {
+				message += " of <UNKNOWN FILENAME>";
+			}
+		} catch (...) {
 		}
 		return message;
 	}
@@ -100,6 +103,7 @@ class OTCParsingError: public OTCError {
 				}
 				m += "\" ";
 				m += this->frag;
+				m += " ";
 				m += this->pos.describe();
 				return m;
 			} catch (...) {// to guarantee noexcept...
@@ -140,6 +144,7 @@ class NewickTokenizer {
 					startPos(startPosition),
 					endPos(endPosition),
 					comments(embeddedComments) {
+					LOG(TRACE) << "created token for \"" << content << "\"";
 				}
 				const std::string tokenContent;
 				const FilePosStruct startPos;
@@ -157,11 +162,12 @@ class NewickTokenizer {
 				NWK_COMMA, // token was ,
 				NWK_COLON, // token was :
 				NWK_BRANCH_INFO, // token was text after :
-				NWK_LABEL // token was text (but not after a :) 
+				NWK_LABEL, // token was text (but not after a :)
+				NWK_SEMICOLON
 			};
 			public:
 				bool operator==(const iterator & other) const {
-					LOG(TRACE) << "Equality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd << '\n';
+					//LOG(TRACE) << "Equality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd;
 					if (other.atEnd) {
 						return this->atEnd;
 					}
@@ -171,20 +177,25 @@ class NewickTokenizer {
 					return (this->currentPos == other.currentPos) && (&(this->inputStream) == &(other.inputStream));
 				}
 				bool operator!=(const iterator & other) const {
-						LOG(TRACE) << "Inequality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd << '\n';
-						return !(*this == other);
-					}
+					//LOG(TRACE) << "Inequality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd << '\n';
+					return !(*this == other);
+				}
 				Token operator*() const {
-					LOG(TRACE) << "* operator\n";
+					LOG(TRACE) << "* operator";
 					return Token(currWord, *prevPos, *currentPos, comments);
 				}
 				iterator & operator++() {
-					LOG(TRACE) << "increment\n";
+					LOG(TRACE) << "increment";
 					if (this->atEnd) {
 						throw std::out_of_range("Incremented a dead NewickTokenizer::iterator");
 					}
-					this->resetToken();
-					this->consumeNextToken();
+					if (this->currTokenState == NWK_SEMICOLON) {
+						this->atEnd = true;
+						this->resetToken();
+					} else {
+						this->resetToken();
+						this->consumeNextToken();
+					}
 					return *this;
 				}
 			private:
@@ -202,6 +213,13 @@ class NewickTokenizer {
 				}
 				void push(char c) {
 					this->pushed.push(c);
+					if (c == '\n') {
+						this->currentPos->colNumber = lastLineInd;
+						this->currentPos->lineNumber -= 1;
+					} else {
+						this->currentPos->colNumber -= 1;
+					}
+					this->currentPos->pos -= 1;
 				}
 				void throwSCCErr(char c) const __attribute__ ((noreturn));
 				//deals with \r\n as \n Hence "LogicalChar"
@@ -210,6 +228,10 @@ class NewickTokenizer {
 						c = pushed.top();
 						pushed.pop();
 					} else {
+						if (this->atEnd) {
+							c = EOF;
+							return false;
+						}
 						c = (char) (this->inputStream.rdbuf())->sbumpc();
 					}
 					if (c == EOF) {
@@ -224,6 +246,7 @@ class NewickTokenizer {
 								}
 							}
 							c = '\n';
+							this->lastLineInd = this->currentPos->colNumber;
 							this->currentPos->colNumber = 0;
 							this->currentPos->lineNumber += 1;
 						} else {
@@ -252,7 +275,7 @@ class NewickTokenizer {
 					numUnclosedParens(0) {
 					currentPos = &firstPosSlot;
 					prevPos = &secondPosSlot;
-					LOG(TRACE) << "create live\n";
+					LOG(TRACE) << "create live";
 					++(*this);
 				}
 				iterator(std::istream &inp) // USE in end() ONLY!
@@ -264,7 +287,7 @@ class NewickTokenizer {
 					currTokenState(NWK_NOT_IN_TREE),
 					prevTokenState(NWK_NOT_IN_TREE),
 					numUnclosedParens(0) {
-					LOG(TRACE) << "create dead\n";
+					LOG(TRACE) << "create dead";
 					
 				}
 				std::istream & inputStream;
@@ -280,6 +303,7 @@ class NewickTokenizer {
 				long numUnclosedParens;
 				std::stack<char> pushed;
 				std::vector<std::string> comments;
+				std::size_t lastLineInd;
 				friend class NewickTokenizer;
 		};
 		iterator begin() {
@@ -287,6 +311,7 @@ class NewickTokenizer {
 			return b;
 		}
 		iterator end() {
+			LOG(TRACE) << "NewickTokenizer.end()";
 			return iterator(this->inputStream);
 		}
 
@@ -303,14 +328,11 @@ template<typename T>
 inline std::unique_ptr<RootedTree<T> > readNextNewick(std::istream &inp, const std::string & filepath) {
 	assert(inp.good());
 	NewickTokenizer tokenizer(inp, filepath);
-	auto i = 0U;
+	bool foundToken = false;
 	for (auto token : tokenizer) {
-		std::cout << "token = \"" << token.content() << "\"\n"; 
-		if (i > 1000U) {
-			break;
-		}
+		std::cout << "token = \"" << token.content() << "\"\n";
 	}
-	return std::unique_ptr<RootedTree<T> > (new RootedTree<T>());
+	return (foundToken ? std::unique_ptr<RootedTree<T> > (new RootedTree<T>()) : std::unique_ptr<RootedTree<T> >(nullptr));
 }
 
 

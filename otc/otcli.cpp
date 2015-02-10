@@ -44,7 +44,8 @@ void OTCLI::printHelp(std::ostream & outStream) {
 	outStream << this->titleStr << " " << this->usageStr << "\n";
 	outStream << "\nCommand-line flags:\n\n";
 	outStream << "    -h on the command line shows this help message\n\n";
-	outStream << "    -v verbose outStreamput\n\n";
+	outStream << "    -t TRACE level debugging (very noisy)\n\n";
+	outStream << "    -v verbose\n\n";
 }
 
 bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
@@ -59,6 +60,15 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 		}
 		this->verbose = true;
 		defaultConf.set(el::Level::Debug, 
+					el::ConfigurationType::Enabled, "true");
+		el::Loggers::reconfigureLogger("default", defaultConf);
+	}
+	 else if (flagWithoutDash[0] == 't') {
+		if (flagWithoutDash.length() > 1) {
+			recursionNeeded = true;
+		}
+		this->verbose = true;
+		defaultConf.set(el::Level::Trace, 
 					el::ConfigurationType::Enabled, "true");
 		el::Loggers::reconfigureLogger("default", defaultConf);
 	}
