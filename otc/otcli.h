@@ -14,17 +14,7 @@ class OTCLI {
 	public:
 		OTCLI(const char *title,
 			  const char *descrip,
-			  const char *usage)
-			:exitCode(0),
-			verbose(false),
-			currReadingDotTxtFile(false),
-			blob(nullptr),
-			titleStr(title),
-			descriptionStr(descrip),
-			usageStr(usage),
-			out(std::cout),
-			err(std::cerr) {
-			}
+			  const char *usage);
 		int exitCode;
 		bool verbose;
 		bool currReadingDotTxtFile;
@@ -72,12 +62,12 @@ inline int treeProcessingMain(OTCLI & otCLI,
 	try {
 		if (treePtr) {
 			for (auto filename : filenameVec) {
-				std::wifstream inp;
+				std::ifstream inp;
 				if (!openUTF8File(filename, inp)) {
 					throw OTCError("Could not open \"" + filename + "\"");
 				}
 				for (;;) {
-					std::unique_ptr<RootedTree<T> > nt = readNextWNewick<T>(inp, filename);
+					std::unique_ptr<RootedTree<T> > nt = readNextNewick<T>(inp, filename);
 					if (nt == nullptr) {
 						break;
 					}

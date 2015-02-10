@@ -10,11 +10,12 @@ namespace otc {
 
 const std::string readStrContentOfUTF8File(const std::string &filepath);
 const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
-bool openUTF8File(const std::string &filepath, std::wifstream & inp);
+bool openUTF8File(const std::string &filepath, std::ifstream & inp);
+bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
 
 inline const std::wstring readWStrContentOfUTF8File(const std::string &filepath) {
 	std::wifstream inp;
-	if (!openUTF8File(filepath, inp)) {
+	if (!openUTF8WideFile(filepath, inp)) {
 		throw OTCError("Could not open \"" + filepath + "\"");
 	}
 	const std::wstring utf8content((std::istreambuf_iterator<wchar_t>(inp) ), (std::istreambuf_iterator<wchar_t>()));

@@ -35,7 +35,11 @@ const std::string readStrContentOfUTF8File(const std::string &filepath) {
 	throw OTCError("Error reading the contents of filepath as UTF-8");
 }
 
-bool openUTF8File(const std::string &filepath, std::wifstream & inp) {
+bool openUTF8File(const std::string &filepath, std::ifstream & inp) {
+	inp.open(filepath);
+	return inp.good();
+}
+bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp) {
 	std::setlocale(LC_ALL, "");
 	const std::locale empty_locale("");
 	typedef std::codecvt<wchar_t, char, std::mbstate_t> converter_type;

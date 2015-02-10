@@ -39,23 +39,23 @@ inline unsigned int readNewickStream(std::istream &inp, bool (*callback)(std::un
 
 class NewickTokenizer {
 	public:
-		NewickTokenizer(std::wistream &inp, const std::string & filepath)
+		NewickTokenizer(std::istream &inp, const std::string & filepath)
 			:inputStream(inp),
 			inpFilepath(filepath) {
 		}
 		class iterator;
 		class Token {
 			public:
-				const std::wstring & content() const {
+				const std::string & content() const {
 					return this->tokenContent;
 				}
 			private:
-				Token(const std::wstring &content, const std::string & fn, std::size_t p)
+				Token(const std::string &content, const std::string & fn, std::size_t p)
 					:tokenContent(content), 
 					inpFilepath(fn),
 					pos(p) {
 				}
-				const std::wstring tokenContent;
+				const std::string tokenContent;
 				const std::string inpFilepath;
 				const std::size_t pos;
 				friend class NewickTokenizer::iterator;
@@ -64,6 +64,7 @@ class NewickTokenizer {
 		class iterator : std::forward_iterator_tag {
 			public:
 				bool operator==(const iterator & other) const {
+					LOG(TRACE) << "Equality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd << '\n';
 					if (other.atEnd) {
 						return this->atEnd;
 					}
@@ -73,16 +74,19 @@ class NewickTokenizer {
 					return (&(this->inputStream) == &(other.inputStream)) && (this->pos == other.pos);
 				}
 				bool operator!=(const iterator & other) const {
+						LOG(TRACE) << "Inequality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd << '\n';
 						return !(*this == other);
 					}
 				Token operator*() const {
+					LOG(TRACE) << "* operator\n";
 					return Token(currWord, inpFilepath, pos);
 				}
 				iterator & operator++() {
+					LOG(TRACE) << "increment\n";
 					if (this->atEnd) {
 						throw std::out_of_range("Incremented a dead NewickTokenizer::iterator");
 					}
-					wchar_t c;
+					char c;
 					this->inputStream.get(c);
 					if (this->inputStream.eof()) {
 						this->atEnd = true;
@@ -92,45 +96,55 @@ class NewickTokenizer {
 					return *this;
 				}
 			private:
-				iterator(std::wistream &inp, const std::string & filepath)
+				iterator(std::istream &inp, const std::string & filepath)
 					:inputStream(inp),
 					inpFilepath(filepath),
-					atEnd(inp.good()),
+					atEnd(!inp.good()),
 					pos(0) {
+					LOG(TRACE) << "create live\n";
+					++(*this);
 				}
-				iterator(std::wistream &inp) // USE in end() ONLY!
+				iterator(std::istream &inp) // USE in end() ONLY!
 					:inputStream(inp),
 					atEnd(true),
 					pos(0) {
+					LOG(TRACE) << "create dead\n";
+					
 				}
-				std::wistream & inputStream;
+				std::istream & inputStream;
 				const std::string inpFilepath;
 				bool atEnd;
 				size_t pos;
-				std::wstring currWord;
+				std::string currWord;
 				friend class NewickTokenizer;
 		};
 		iterator begin() {
-			return iterator(this->inputStream, this->inpFilepath);
+			iterator b(this->inputStream, this->inpFilepath);
+			return b;
 		}
 		iterator end() {
-			return iterator(this->inputStream, this->inpFilepath);
+			return iterator(this->inputStream);
 		}
 
 	private:
-		std::wistream & inputStream;
+		std::istream & inputStream;
 		std::string inpFilepath;
 };
 
 //Takes wide istream and (optional) filepath (just used for error reporting if not empty)
 template<typename T>
-std::unique_ptr<RootedTree<T> > readNextWNewick(std::wistream &inp, const std::string & filepath);
+std::unique_ptr<RootedTree<T> > readNextNewick(std::istream &inp, const std::string & filepath);
 
 template<typename T>
-inline std::unique_ptr<RootedTree<T> > readNextWNewick(std::wistream &inp, const std::string & filepath) {
+inline std::unique_ptr<RootedTree<T> > readNextNewick(std::istream &inp, const std::string & filepath) {
+	assert(inp.good());
 	NewickTokenizer tokenizer(inp, filepath);
+	auto i = 0U;
 	for (auto token : tokenizer) {
-		std::wcout << "token = \"" << token.content() << "\"\n"; 
+		std::cout << "token = \"" << token.content() << "\"\n"; 
+		if (i > 1000U) {
+			break;
+		}
 	}
 	return std::unique_ptr<RootedTree<T> > (new RootedTree<T>());
 }

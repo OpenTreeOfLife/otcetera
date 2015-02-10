@@ -1,9 +1,14 @@
 # otcetera - phylogenetic file format parser in C++ 
 [![Build Status](https://secure.travis-ci.org/OpenTreeOfLife/otcetera.png)](http://travis-ci.org/OpenTreeOfLife/otcetera)
 
-pharce owes a lot of code and ideas to Paul Lewis' Nexus Class Library.
+otcetera owes a lot of code and ideas to Paul Lewis' Nexus Class Library.
   See http://hydrodictyon.eeb.uconn.edu/ncl/ and 
   https://github.com/mtholder/ncl
+
+It also uses easylogginpp which is distributed under an MIT License. See
+  http://github.com/easylogging/ for info on that project. The file from
+  that project is otc/easylogging++.h
+  
 
 ## prerequesites
 To facilitate parsing of NexSON, this version of NCL has rapidjson

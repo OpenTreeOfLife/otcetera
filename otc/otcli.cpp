@@ -2,7 +2,42 @@
 #include <cstring>
 #include <string>
 
+///////////////////////////////////////////////////////////////
+// pragmas are MTH mods to silence clang
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored  "-Wglobal-constructors"
+#pragma clang diagnostic ignored  "-Wexit-time-destructors"
+INITIALIZE_EASYLOGGINGPP
+
+static el::Configurations defaultConf;
+
+#pragma clang diagnostic pop
+///////////////////////////////////////////////////////////////
+
 namespace otc {
+
+
+OTCLI::OTCLI(const char *title,
+		  const char *descrip,
+		  const char *usage)
+		:exitCode(0),
+		verbose(false),
+		currReadingDotTxtFile(false),
+		blob(nullptr),
+		titleStr(title),
+		descriptionStr(descrip),
+		usageStr(usage),
+		out(std::cout),
+		err(std::cerr) {
+	defaultConf.setToDefault();
+	defaultConf.set(el::Level::Trace, 
+					el::ConfigurationType::Enabled, "false");
+	defaultConf.set(el::Level::Debug, 
+					el::ConfigurationType::Enabled, "false");
+	el::Loggers::reconfigureLogger("default", defaultConf);
+}
+
+
 void OTCLI::printHelp(std::ostream & outStream) {
 	outStream << this->titleStr << ": " << this->descriptionStr << ".\n";
 	outStream << "\nThe most common usage is simply:\n";
@@ -23,6 +58,9 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 			recursionNeeded = true;
 		}
 		this->verbose = true;
+		defaultConf.set(el::Level::Debug, 
+					el::ConfigurationType::Enabled, "true");
+		el::Loggers::reconfigureLogger("default", defaultConf);
 	}
 	// this is where, we'd insert a procedure for generic flag handling...
 	// IF WE HAD ONE!
