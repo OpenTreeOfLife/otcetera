@@ -20,7 +20,7 @@ class OTCLI {
 			currReadingDotTxtFile(false),
 			blob(nullptr),
 			titleStr(title),
-			descripStr(descrip),
+			descriptionStr(descrip),
 			usageStr(usage),
 			out(std::cout),
 			err(std::cerr) {
@@ -32,8 +32,9 @@ class OTCLI {
 		std::string currTmpFilepath;
 		void * blob;
 
+		bool handleFlag(const std::string & flagWithoutDash);
 		bool parseArgs(int argc, char *argv[], std::vector<std::string> & args);
-		void printHelp(std::ostream & out);
+		void printHelp(std::ostream & outStream);
 		
 		/*int readFilepath(const std::string &fp,
 						  ProcessedTreeValidationFunction func=0L,
@@ -43,7 +44,7 @@ class OTCLI {
 		bool isDotTxtFile(const std::string &fp);
 	private:
 		std::string titleStr;
-		std::string descripStr;
+		std::string descriptionStr;
 		std::string usageStr;
 	public:
 		std::ostream & out;
