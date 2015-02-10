@@ -12,6 +12,7 @@ libotcetera_la_HEADERS = \
 	util.h
 
 libotcetera_la_SOURCES = \
+	newick.cpp \
 	otcetera.cpp \
 	otcli.cpp \
 	tree.cpp \
