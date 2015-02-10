@@ -2,6 +2,7 @@
 #define OTCETERA_NEWICK_H
 #include <iostream>
 #include <fstream>
+#include <stack>
 #include "otc/otcetera.h"
 #include "otc/tree.h"
 #include "otc/error.h"
@@ -94,7 +95,9 @@ class OTCParsingError: public OTCError {
 		std::string generate_message() const noexcept {
 			try {
 				std::string m = "Error found \"";
-				m += this->offendingChar;
+				if (this->offendingChar != '\0') {
+					m += this->offendingChar;
+				}
 				m += "\" ";
 				m += this->frag;
 				m += this->pos.describe();
@@ -125,17 +128,24 @@ class NewickTokenizer {
 				const std::string & content() const {
 					return this->tokenContent;
 				}
+				const std::vector<std::string> & commentVec() const {
+					return this->comments;
+				}
 			private:
 				Token(const std::string &content,
 					  const FilePosStruct & startPosition,
-					  const FilePosStruct & endPosition)
+					  const FilePosStruct & endPosition,
+					  const std::vector<std::string> &embeddedComments)
 					:tokenContent(content), 
 					startPos(startPosition),
-					endPos(endPosition) {
+					endPos(endPosition),
+					comments(embeddedComments) {
 				}
 				const std::string tokenContent;
 				const FilePosStruct startPos;
 				const FilePosStruct endPos;
+				const std::vector<std::string> comments;
+				
 				friend class NewickTokenizer::iterator;
 		};
 
@@ -166,7 +176,7 @@ class NewickTokenizer {
 					}
 				Token operator*() const {
 					LOG(TRACE) << "* operator\n";
-					return Token(currWord, *prevPos, *currentPos);
+					return Token(currWord, *prevPos, *currentPos, comments);
 				}
 				iterator & operator++() {
 					LOG(TRACE) << "increment\n";
@@ -181,12 +191,27 @@ class NewickTokenizer {
 				void consumeNextToken();
 				bool advanceToNextNonWhitespace(char &);
 				void finishReadingComment();
-				void finishReadingUnquoted();
+				void finishReadingUnquoted(bool continuingLabel);
 				void finishReadingQuotedStr();
-				void throwSCCErr(char c) const;
+				void onLabelExit(char nextChar);
+				char peek() {
+					if (!pushed.empty()) {
+						return pushed.top();
+					}
+					return (char) this->inputStream.rdbuf()->sgetc();
+				}
+				void push(char c) {
+					this->pushed.push(c);
+				}
+				void throwSCCErr(char c) const __attribute__ ((noreturn));
 				//deals with \r\n as \n Hence "LogicalChar"
 				bool advanceReaderOneLogicalChar(char & c) {
-					c = (char) (this->inputStream.rdbuf())->sbumpc();
+					if (!pushed.empty()) {
+						c = pushed.top();
+						pushed.pop();
+					} else {
+						c = (char) (this->inputStream.rdbuf())->sbumpc();
+					}
 					if (c == EOF) {
 						this->atEnd = true;
 					} else {
@@ -214,6 +239,7 @@ class NewickTokenizer {
 					currentPos->pos = prevPos->pos;
 					currentPos->lineNumber = prevPos->lineNumber;
 					currentPos->colNumber = prevPos->colNumber;
+					comments.clear();
 				}
 				iterator(std::istream &inp, ConstStrPtr filepath)
 					:inputStream(inp),
@@ -252,6 +278,8 @@ class NewickTokenizer {
 				newick_token_state_t currTokenState;
 				newick_token_state_t prevTokenState;
 				long numUnclosedParens;
+				std::stack<char> pushed;
+				std::vector<std::string> comments;
 				friend class NewickTokenizer;
 		};
 		iterator begin() {
