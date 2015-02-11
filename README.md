@@ -16,11 +16,17 @@ Download it from https://github.com/miloyip/rapidjson
 and put the path to its include subdir in a "-I" CPPFLAGS or CXXFLAGS
 when you run configure.
 
+You also need the whole autotools stack including libtool.
+
 # Installation
 
-if you are using clang:
+To run the whole autoreconf stuff in a manner that will add missing bits as needed,
+run:
 
     $ sh bootstrap.sh
+
+Then to configure and build with clang use:
+
     $ mkdir buildclang
     $ cd buildclang
     $ sh ../reconf-clang.sh
