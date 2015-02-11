@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <stack>
+#include <stdexcept>
 #include "otc/otc_base_includes.h"
 #include "otc/tree.h"
 #include "otc/error.h"
