@@ -29,11 +29,13 @@ Then to configure and build with clang use:
 
     $ mkdir buildclang
     $ cd buildclang
-    $ sh ../reconf-clang.sh
+    $ bash ../reconf-clang.sh
     $ make
     $ make check
     $ make install
     $ make installcheck
+
+To use g++, substitute `reconf-gcc.sh` for `reconf-clang.sh` in that work flow.
 
 
 ## NCL credits

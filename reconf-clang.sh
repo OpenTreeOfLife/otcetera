@@ -5,7 +5,7 @@ then
     exit 1
 fi
 set -x
-CPPFLAGS="-I$RAPID_JSON_INC" CXX=/usr/bin/clang++ CC=/usr/bin/clang \
+CPPFLAGS="-I$RAPID_JSON_INC" CXX=$(which clang++) CC=$(which clang) \
     CXXFLAGS="-Wno-c++98-compat -Weverything -Wpadded -pedantic -g -O0 -std=c++11" \
     ../configure --prefix=$PWD/installed
 
