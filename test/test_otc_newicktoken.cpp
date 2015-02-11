@@ -8,6 +8,8 @@ char testWordLabelPoly(const TestHarness &);
 char testQuotedWordLabelPoly(const TestHarness &);
 char testCommentPoly(const TestHarness &);
 char testUnbalanced(const TestHarness &);
+char testUnbalancedToManyClose(const TestHarness &);
+
 
 char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected);
 char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn);
@@ -64,8 +66,10 @@ char testCommentPoly(const TestHarness &th) {
 	return genericTokenTest(th, "polytomy-with-comments.tre", expected);
 }
 char testUnbalanced(const TestHarness &th) {
-	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
 	return genericOTCParsingErrorTest(th, "unbalanced.tre");
+}
+char testUnbalancedToManyClose(const TestHarness &th) {
+	return genericOTCParsingErrorTest(th, "unbalanced-too-many-closed.tre");
 }
 
 int main(int argc, char *argv[]) {
@@ -75,6 +79,7 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
 				   , TestFn("testCommentPoly", testCommentPoly)
 				   , TestFn("testUnbalanced", testUnbalanced)
+				   , TestFn("testUnbalancedToManyClose", testUnbalancedToManyClose)
 				  };
 	return th.runTests(tests);
 }
