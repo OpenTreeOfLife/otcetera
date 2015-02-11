@@ -16,6 +16,7 @@ char testUnbalanced(const TestHarness &);
 char testUnbalancedToManyClose(const TestHarness &);
 char testEmptyClade(const TestHarness &);
 char testEmptySib(const TestHarness &);
+char testEmptyBranchLength(const TestHarness &);
 
 
 
@@ -164,6 +165,19 @@ char testEmptySib(const TestHarness &th) {
 	}
 	return r;
 }
+char testEmptyBranchLength(const TestHarness &th) {
+	char r = '.';
+	for (auto i : {"1", "2", "3", "4", "5"} ) {
+		std::string fn = "empty-branch-length";
+		fn += i;
+		fn += ".tre";
+		auto c = genericOTCParsingErrorTest(th, fn);
+		if (c != '.') {
+			r = c;
+		}
+	}
+	return r;
+}
 
 int main(int argc, char *argv[]) {
 	TestHarness th(argc, argv);
@@ -180,6 +194,7 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testBranchLengths", testBranchLengths)
 				   , TestFn("testEmptyClade", testEmptyClade)
 				   , TestFn("testEmptySib", testEmptySib)
+				   , TestFn("testEmptyBranchLength", testEmptyBranchLength)
 				   
 				  };
 	return th.runTests(tests);
