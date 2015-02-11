@@ -180,7 +180,9 @@ class NewickTokenizer {
 					if (!pushed.empty()) {
 						return pushed.top();
 					}
-					return (char) this->inputStream.rdbuf()->sgetc();
+					char c = (char) this->inputStream.rdbuf()->sgetc();
+					pushed.push(c);
+					return c;
 				}
 				void push(char c) {
 					this->pushed.push(c);

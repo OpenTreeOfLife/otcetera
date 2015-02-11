@@ -59,10 +59,14 @@ void NewickTokenizer::iterator::finishReadingQuotedStr(){
 			throw OTCParsingError("Unexpected EOF in quoted string", '\0', (*this->currentPos));
 		}
 		if (c == '\'') {
-			auto n = this->peek();
+			char n;
+			if (!advanceReaderOneLogicalChar(n)) {
+					throw OTCParsingError("Unexpected EOF at the end of a quoted string. Expecting ; if this is the end of the tree.", '\0', (*this->currentPos));
+			}
 			if (n == '\'') {
 				this->currWord += c;
 			} else {
+				this->push(n);
 				this->onLabelExit(n, false);
 				return;
 			}

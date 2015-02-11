@@ -59,7 +59,12 @@ char testWordLabelPoly(const TestHarness &th) {
 }
 
 char testQuotedWordLabelPoly(const TestHarness &th) {
-	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
+	const std::vector<std::string> expected = {"(", "AB",
+											   ",", "BC",
+											   ",", "CD",
+											   ",", "E \'H",
+											   ",", "\'",
+											   ")", ";"};
 	return genericTokenTest(th, "quotedwords-polytomy.tre", expected);
 }
 
@@ -93,9 +98,9 @@ int main(int argc, char *argv[]) {
 	TestHarness th(argc, argv);
 	TestsVec tests{TestFn("testSingleCharLabelPoly", testSingleCharLabelPoly)
 				   , TestFn("testWordLabelPoly", testWordLabelPoly)
+				   , TestFn("testUnderscores", testUnderscores)
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
 				   , TestFn("testCommentPoly", testCommentPoly)
-				   , TestFn("testUnderscores", testUnderscores)
 				   , TestFn("testUnbalanced", testUnbalanced)
 				   , TestFn("testUnbalancedToManyClose", testUnbalancedToManyClose)
 				   , TestFn("testWhitespaceHandling", testWhitespaceHandling)
