@@ -190,10 +190,6 @@ void NewickTokenizer::iterator::consumeNextToken() {
 					this->finishReadingUnquoted(false);
 					return;
 				} else {
-					if (n != ';' && this->numUnclosedParens <= 0) {
-						assert(this->numUnclosedParens == 0);
-						throw OTCParsingError(_ILL_NO_SEMICOLON, n, *this->currentPos);
-					}
 					switch (n) {
 					case '(':
 						if (this->prevTokenState == NWK_LABEL) {
@@ -207,6 +203,10 @@ void NewickTokenizer::iterator::consumeNextToken() {
 						}
 						if (this->prevTokenState == NWK_COLON) {
 							throw OTCParsingError(_ILL_AFTER_COLON, n, *this->currentPos);
+						}
+						if (this->numUnclosedParens <= 0) {
+							assert(this->numUnclosedParens == 0);
+							throw OTCParsingError(_ILL_NO_SEMICOLON, n, *this->currentPos);
 						}
 						this->numUnclosedParens += 1;
 						this->currTokenState = NWK_OPEN;
@@ -236,6 +236,10 @@ void NewickTokenizer::iterator::consumeNextToken() {
 						}
 						if (this->prevTokenState == NWK_COLON) {
 							throw OTCParsingError(_ILL_AFTER_COLON, n, *this->currentPos);
+						}
+						if (this->numUnclosedParens <= 0) {
+							assert(this->numUnclosedParens == 0);
+							throw OTCParsingError(_ILL_NO_SEMICOLON, n, *this->currentPos);
 						}
 						this->currTokenState = NWK_COMMA;
 						this->currWord.assign(1, ',');

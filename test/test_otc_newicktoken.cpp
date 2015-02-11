@@ -11,7 +11,7 @@ char testUnderscores(const TestHarness &);
 char testWhitespaceHandling(const TestHarness &);
 char testQuotedWordLabelPoly(const TestHarness &);
 char testCommentPoly(const TestHarness &);
-//char testBranchLengths(const TestHarness &);
+char testBranchLengths(const TestHarness &);
 char testUnbalanced(const TestHarness &);
 char testUnbalancedToManyClose(const TestHarness &);
 
@@ -87,6 +87,19 @@ char testMonotypic(const TestHarness &th) {
 	return genericTokenTest(th, "monotypic.tre", expected);
 }
 
+char testBranchLengths(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "AB", ":", "0.1",
+											   ",", "BC", ":", "2",
+											   ",", "CD", ":", "7E-8",
+											   ",", "(",
+													"E 'H", ":", "75.246",
+													",", "\'", ":", "7.315E-20",
+											   ")", "label for 5", ":", "5",
+												")", "some label", ":", "3", ";"};
+	return genericTokenTest(th, "branch-lengths.tre", expected);
+}
+
+
 char testQuotedWordLabelPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "AB",
 											   ",", "BC",
@@ -135,6 +148,7 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testUnbalanced", testUnbalanced)
 				   , TestFn("testUnbalancedToManyClose", testUnbalancedToManyClose)
 				   , TestFn("testWhitespaceHandling", testWhitespaceHandling)
+				   , TestFn("testBranchLengths", testBranchLengths)
 				   
 				  };
 	return th.runTests(tests);
