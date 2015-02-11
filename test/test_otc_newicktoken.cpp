@@ -75,8 +75,8 @@ char testWhitespaceHandling(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "A B",
 		                                       ",", "B C",
 		                                       ",", "C_D",
-		                                       ",", "E F", //warn but tolerate unquoted..
-		                                       ",", "G H", //warn but normalize unquoted..
+		                                       ",", "EX FZ", //warn but tolerate unquoted..
+		                                       ",", "G HY", //warn but normalize unquoted..
 		                                       ",", "I J", //warn but normalize unquoted even with newlines, I guess...
 		                                       ")", ";"};
 	return genericTokenTest(th, "whitespace-handling.tre", expected);
@@ -95,9 +95,10 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
 				   , TestFn("testCommentPoly", testCommentPoly)
 				   , TestFn("testUnderscores", testUnderscores)
-				   , TestFn("testWhitespaceHandling", testWhitespaceHandling)
 				   , TestFn("testUnbalanced", testUnbalanced)
 				   , TestFn("testUnbalancedToManyClose", testUnbalancedToManyClose)
+				   , TestFn("testWhitespaceHandling", testWhitespaceHandling)
+				   
 				  };
 	return th.runTests(tests);
 }

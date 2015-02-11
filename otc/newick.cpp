@@ -37,12 +37,14 @@ void NewickTokenizer::iterator::onLabelExit(char n) {
 			return;
 		}
 		LOG(WARNING) << "Unexpected continuation of a label after a quoted string in newick. Next character is: \"" << n << "\"";
+		this->currWord += ' ';
 		if (n == '\'') {
 			this->advanceReaderOneLogicalChar(n);
 			assert(n == '\'');
 			finishReadingQuotedStr();
 			return;
 		}
+		this->currWord += n;
 		this->advanceReaderOneLogicalChar(n);
 		this->finishReadingUnquoted(true);
 		return;
