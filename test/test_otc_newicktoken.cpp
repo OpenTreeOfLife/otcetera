@@ -6,6 +6,7 @@ using namespace otc;
 char testSingleCharLabelPoly(const TestHarness &);
 char testWordLabelPoly(const TestHarness &);
 char testUnderscores(const TestHarness &);
+char testWhitespaceHandling(const TestHarness &);
 char testQuotedWordLabelPoly(const TestHarness &);
 char testCommentPoly(const TestHarness &);
 char testUnbalanced(const TestHarness &);
@@ -70,6 +71,16 @@ char testUnderscores(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "A B", ",", "B C", ",", "C_D", ")", ";"};
 	return genericTokenTest(th, "underscore-handling.tre", expected);
 }
+char testWhitespaceHandling(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "A B",
+		                                       ",", "B C",
+		                                       ",", "C_D",
+		                                       ",", "E F", //warn but tolerate unquoted..
+		                                       ",", "G H", //warn but normalize unquoted..
+		                                       ",", "I J", //warn but normalize unquoted even with newlines, I guess...
+		                                       ")", ";"};
+	return genericTokenTest(th, "whitespace-handling.tre", expected);
+}
 char testUnbalanced(const TestHarness &th) {
 	return genericOTCParsingErrorTest(th, "unbalanced.tre");
 }
@@ -84,6 +95,7 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
 				   , TestFn("testCommentPoly", testCommentPoly)
 				   , TestFn("testUnderscores", testUnderscores)
+				   , TestFn("testWhitespaceHandling", testWhitespaceHandling)
 				   , TestFn("testUnbalanced", testUnbalanced)
 				   , TestFn("testUnbalancedToManyClose", testUnbalancedToManyClose)
 				  };
