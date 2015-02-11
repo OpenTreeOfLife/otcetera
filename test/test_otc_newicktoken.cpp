@@ -14,6 +14,9 @@ char testCommentPoly(const TestHarness &);
 char testBranchLengths(const TestHarness &);
 char testUnbalanced(const TestHarness &);
 char testUnbalancedToManyClose(const TestHarness &);
+char testEmptyClade(const TestHarness &);
+char testEmptySib(const TestHarness &);
+
 
 
 char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected);
@@ -135,6 +138,32 @@ char testUnbalanced(const TestHarness &th) {
 char testUnbalancedToManyClose(const TestHarness &th) {
 	return genericOTCParsingErrorTest(th, "unbalanced-too-many-closed.tre");
 }
+char testEmptyClade(const TestHarness &th) {
+	char r = '.';
+	for (auto i : {"1", "2", "3", "4"} ) {
+		std::string fn = "empty-clade";
+		fn += i;
+		fn += ".tre";
+		auto c = genericOTCParsingErrorTest(th, fn);
+		if (c != '.') {
+			r = c;
+		}
+	}
+	return r;
+}
+char testEmptySib(const TestHarness &th) {
+	char r = '.';
+	for (auto i : {"1", "2", "3", "4"} ) {
+		std::string fn = "empty-sib";
+		fn += i;
+		fn += ".tre";
+		auto c = genericOTCParsingErrorTest(th, fn);
+		if (c != '.') {
+			r = c;
+		}
+	}
+	return r;
+}
 
 int main(int argc, char *argv[]) {
 	TestHarness th(argc, argv);
@@ -149,6 +178,8 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testUnbalancedToManyClose", testUnbalancedToManyClose)
 				   , TestFn("testWhitespaceHandling", testWhitespaceHandling)
 				   , TestFn("testBranchLengths", testBranchLengths)
+				   , TestFn("testEmptyClade", testEmptyClade)
+				   , TestFn("testEmptySib", testEmptySib)
 				   
 				  };
 	return th.runTests(tests);

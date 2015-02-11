@@ -241,12 +241,15 @@ void NewickTokenizer::iterator::consumeNextToken() {
 							assert(this->numUnclosedParens == 0);
 							throw OTCParsingError(_ILL_NO_SEMICOLON, n, *this->currentPos);
 						}
+						if (this->prevTokenState == NWK_COMMA) {
+							throw OTCParsingError(_ILL_AFTER_COMMA, n, *this->currentPos);
+						}
 						this->currTokenState = NWK_COMMA;
 						this->currWord.assign(1, ',');
 						return;
 					case ':':
 						if (this->prevTokenState == NWK_LABEL || this->prevTokenState == NWK_CLOSE) {
-							this->currTokenState = NWK_COMMA;
+							this->currTokenState = NWK_COLON;
 							this->currWord.assign(1, ':');
 							return;
 						}
