@@ -5,6 +5,7 @@ using namespace otc;
 
 char testSingleCharLabelPoly(const TestHarness &);
 char testWordLabelPoly(const TestHarness &);
+char testUnderscores(const TestHarness &);
 char testQuotedWordLabelPoly(const TestHarness &);
 char testCommentPoly(const TestHarness &);
 char testUnbalanced(const TestHarness &);
@@ -65,6 +66,10 @@ char testCommentPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
 	return genericTokenTest(th, "polytomy-with-comments.tre", expected);
 }
+char testUnderscores(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "A B", ",", "B C", ",", "C_D", ")", ";"};
+	return genericTokenTest(th, "underscore-handling.tre", expected);
+}
 char testUnbalanced(const TestHarness &th) {
 	return genericOTCParsingErrorTest(th, "unbalanced.tre");
 }
@@ -78,6 +83,7 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testWordLabelPoly", testWordLabelPoly)
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
 				   , TestFn("testCommentPoly", testCommentPoly)
+				   , TestFn("testUnderscores", testUnderscores)
 				   , TestFn("testUnbalanced", testUnbalanced)
 				   , TestFn("testUnbalancedToManyClose", testUnbalancedToManyClose)
 				  };
