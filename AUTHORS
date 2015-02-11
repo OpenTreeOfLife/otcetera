@@ -1,3 +1,12 @@
+otcetera has been written by:
+  Mark T. Holder http://orcid.org/0000-0001-5575-0536
+
+otceteraincludes: http://github.com/easylogging
+
+otcetera depends on https://github.com/miloyip/rapidjson
+
+otcetera has borrowed many ideas/snippets from NCL (see author list for NCL below)
+
 NCL AUTHORS -- the author of the NEXUS Class Library (NCL) version 2.0 is
 
   Paul O. Lewis, Ph.D.
