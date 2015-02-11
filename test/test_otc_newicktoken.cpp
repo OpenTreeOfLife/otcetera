@@ -6,6 +6,7 @@ using namespace otc;
 char testSingleCharLabelPoly(const TestHarness &);
 char testWordLabelPoly(const TestHarness &);
 char testQuotedWordLabelPoly(const TestHarness &);
+char testCommentPoly(const TestHarness &);
 
 char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected);
 
@@ -34,10 +35,14 @@ char testWordLabelPoly(const TestHarness &th) {
 	return genericTokenTest(th, "words-polytomy.tre", expected);
 }
 
-
 char testQuotedWordLabelPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
 	return genericTokenTest(th, "quotedwords-polytomy.tre", expected);
+}
+
+char testCommentPoly(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
+	return genericTokenTest(th, "polytomy-with-comments.tre", expected);
 }
 
 int main(int argc, char *argv[]) {
@@ -45,6 +50,7 @@ int main(int argc, char *argv[]) {
 	TestsVec tests{TestFn("testSingleCharLabelPoly", testSingleCharLabelPoly)
 				   , TestFn("testWordLabelPoly", testWordLabelPoly)
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
+				   , TestFn("testCommentPoly", testCommentPoly)
 				  };
 	return th.runTests(tests);
 }
