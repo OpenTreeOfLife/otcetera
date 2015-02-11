@@ -259,6 +259,11 @@ void NewickTokenizer::iterator::consumeNextToken() {
 						this->finishReadingComment();
 						break;
 					case '\'':
+						// setting of the currTokenState here assumes that the quoted token will
+						// 		be a label not a part of the newick tree syntax.
+						// One could argue that we should allow all tokens to be quoted. 
+						// 		in practice, no one seems to quote their () , : or ; characters.
+						this->currTokenState = (this->prevTokenState == NWK_COLON ? NWK_BRANCH_INFO : NWK_LABEL);
 						this->finishReadingQuotedStr();
 						return;
 					default:

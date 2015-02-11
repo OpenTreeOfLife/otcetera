@@ -28,7 +28,11 @@ int TestHarness::runTests(const TestsVec & tests) {
 		char resp;
 		try {
 			resp = fn(*this);
+		} catch (std::exception & x) {
+			std::cerr << "exception in test: " << x.what() << '\n';
+			resp = 'E';
 		} catch (...) {
+			std::cerr << "unrecognized exception in test.\n";
 			resp = 'E';
 		}
 		std::cerr << resp;
@@ -41,7 +45,7 @@ int TestHarness::runTests(const TestsVec & tests) {
 		std::cerr << f << '\n';
 	}
 	if (!failures.empty()) {
-		std::cerr << "FAILED " << failures.size() << " out of " << tests.size() << "tests.\n";
+		std::cerr << "FAILED " << failures.size() << "/" << tests.size() << " tests.\n";
 	}
 	return (int) failures.size();
 }
