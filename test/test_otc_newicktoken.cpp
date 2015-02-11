@@ -78,6 +78,7 @@ char testWhitespaceHandling(const TestHarness &th) {
 		                                       ",", "EX FZ", //warn but tolerate unquoted..
 		                                       ",", "G HY", //warn but normalize unquoted..
 		                                       ",", "I J", //warn but normalize unquoted even with newlines, I guess...
+		                                       ",", "Aembedded quoteJ", // ugh. I'll allowit
 		                                       ")", ";"};
 	return genericTokenTest(th, "whitespace-handling.tre", expected);
 }

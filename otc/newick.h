@@ -175,7 +175,7 @@ class NewickTokenizer {
 				void finishReadingComment();
 				void finishReadingUnquoted(bool continuingLabel);
 				void finishReadingQuotedStr();
-				void onLabelExit(char nextChar);
+				void onLabelExit(char nextChar, bool enteringFromWhitespace);
 				char peek() {
 					if (!pushed.empty()) {
 						return pushed.top();

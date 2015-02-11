@@ -14,8 +14,8 @@ static const char * _ILL_NO_SEMICOLON = "Expecting ; after a newick description.
 static const char * _ILL_FIRST_CHAR = "Expecting a newick tree to start with \"(\".";
 
 
-void NewickTokenizer::iterator::onLabelExit(char n) {
-	bool whitespaceFound = false;
+void NewickTokenizer::iterator::onLabelExit(char n, bool fromWS) {
+	bool whitespaceFound = fromWS;
 	if (std::strchr("(),:;", n) == nullptr) {
 		if (!std::isgraph(n)) {
 			whitespaceFound = true;
@@ -33,11 +33,13 @@ void NewickTokenizer::iterator::onLabelExit(char n) {
 			assert(n == '[');
 			finishReadingComment();
 			n = this->peek();
-			onLabelExit(n);
+			onLabelExit(n, false);
 			return;
 		}
 		LOG(WARNING) << "Unexpected continuation of a label after a quoted string in newick. Next character is: \"" << n << "\"";
-		this->currWord += ' ';
+		if (whitespaceFound) {
+			this->currWord += ' ';
+		}
 		if (n == '\'') {
 			this->advanceReaderOneLogicalChar(n);
 			assert(n == '\'');
@@ -61,7 +63,7 @@ void NewickTokenizer::iterator::finishReadingQuotedStr(){
 			if (n == '\'') {
 				this->currWord += c;
 			} else {
-				this->onLabelExit(n);
+				this->onLabelExit(n, false);
 				return;
 			}
 		} else {
@@ -83,7 +85,7 @@ void NewickTokenizer::iterator::finishReadingUnquoted(bool continuingLabel){
 				LOG(WARNING) << "Whitespace found in unquoted label - will be converted to a single space.";
 			}
 			this->push(c);
-			this->onLabelExit(c);
+			this->onLabelExit(c, true);
 			return;
 		}
 		if (std::strchr("(),:;", c) != nullptr) {
