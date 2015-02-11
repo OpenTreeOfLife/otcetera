@@ -7,8 +7,10 @@ char testSingleCharLabelPoly(const TestHarness &);
 char testWordLabelPoly(const TestHarness &);
 char testQuotedWordLabelPoly(const TestHarness &);
 char testCommentPoly(const TestHarness &);
+char testUnbalanced(const TestHarness &);
 
 char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected);
+char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn);
 
 char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected){
 	std::ifstream inp;
@@ -25,6 +27,23 @@ char genericTokenTest(const TestHarness &th, const std::string &fn, const std::v
 	}
 	return 'F';
 }
+
+char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn) {
+	std::ifstream inp;
+	if (!th.openTestFile(fn, inp)) {
+		return 'U';
+	}
+	NewickTokenizer tokenizer(inp, th.getFilePath(fn));
+	try {
+		for (auto token : tokenizer) {
+		}
+	} catch (const OTCParsingError &) {
+		return '.';
+	}
+	std::cerr << "No OTCParsingError was raised!\n";
+	return 'F';
+}
+
 char testSingleCharLabelPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "A", ",", "B", ",", "C", ")", ";"};
 	return genericTokenTest(th, "abc-newick.tre", expected);
@@ -44,6 +63,10 @@ char testCommentPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
 	return genericTokenTest(th, "polytomy-with-comments.tre", expected);
 }
+char testUnbalanced(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
+	return genericOTCParsingErrorTest(th, "unbalanced.tre");
+}
 
 int main(int argc, char *argv[]) {
 	TestHarness th(argc, argv);
@@ -51,6 +74,7 @@ int main(int argc, char *argv[]) {
 				   , TestFn("testWordLabelPoly", testWordLabelPoly)
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
 				   , TestFn("testCommentPoly", testCommentPoly)
+				   , TestFn("testUnbalanced", testUnbalanced)
 				  };
 	return th.runTests(tests);
 }
