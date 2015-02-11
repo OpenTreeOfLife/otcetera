@@ -10,7 +10,7 @@
 #include "otc/otc_base_includes.h"
 
 namespace otc {
-template<typename> class RootedTree;
+template<typename, typename> class RootedTree;
 
 typedef std::string namestring_t;
 
@@ -78,8 +78,11 @@ class RootedTreeNode {
 		void SetName(const namestring_t &n) {
 			name = n;
 		}
-		T & GetData() const {
-			return &data;
+		const T & GetData() const {
+			return data;
+		}
+		T & GetData() {
+			return data;
 		}
 		RootedTreeNode<T>(RootedTreeNode<T> *par)
 			:lChild(nullptr),
@@ -143,15 +146,18 @@ class RootedTreeNode {
 	private:
 		RootedTreeNode<T>(const RootedTreeNode<T> &); //not defined.  Not copyable
 		RootedTreeNode<T> & operator=(const RootedTreeNode<T> &); //not defined.  Not copyable
-		friend class RootedTree<T>;
+
+		template<typename Y, typename Z>
+		friend class RootedTree;
 };
 
-template<typename T>
+template<typename T, typename U>
 class RootedTree {
 	public:
-		RootedTree<T>():root(nullptr) {
+		RootedTree<T, U>()
+			:root(nullptr) {
 		}
-		~RootedTree<T>() {
+		~RootedTree<T, U>() {
 			Clear();
 		}
 		std::vector<const RootedTreeNode<T> *> GetPreorderTraversal() const;
@@ -169,10 +175,35 @@ class RootedTree {
 		const RootedTreeNode<T> * GetRoot() const {
 			return root;
 		}
+		RootedTreeNode<T> * CreateRoot() {
+			if (root != nullptr) {
+				Clear();
+			}
+			this->root = this->AllocNewNode(nullptr);
+			return this->root;
+		}
+		RootedTreeNode<T> * CreateChild(RootedTreeNode<T> *par) {
+			auto c = this->AllocNewNode(par);
+			par->AddChild(c);
+			return c;
+		}
+		RootedTreeNode<T> * CreateSib(RootedTreeNode<T> *leftSib) {
+			assert(leftSib->parent != nullptr);
+			auto s = this->AllocNewNode(leftSib->parent);
+			leftSib->AddSib(s);
+			return s;
+		}
+		U & GetData() {
+			return this->data;
+		}
+		const U & GetData() const {
+			return this->data;
+		}
 	protected:
 		std::vector<RootedTreeNode<T> *> allNodes;
 		std::vector<RootedTreeNode<T> *> leaves;
 		RootedTreeNode<T> * root;
+		U data;
 	public:
 		RootedTreeNode<T> * AllocNewNode(RootedTreeNode<T> *p) {
 			RootedTreeNode<T> * nd = new RootedTreeNode<T>(p);
@@ -188,19 +219,22 @@ class RootedTree {
 			allNodes.clear();
 		}
 	private:
-		RootedTree<T>(const RootedTree<T> &); //not defined.  Not copyable
-		RootedTree<T> & operator=(const RootedTree<T> &); //not defined.  Not copyable
+		RootedTree<T, U>(const RootedTree<T, U> &); //not defined.  Not copyable
+		RootedTree<T, U> & operator=(const RootedTree<T, U> &); //not defined.  Not copyable
 };
 
 /** simple phylo functions */
 
-template<typename T>
-unsigned int countPolytomies(RootedTree<T> & tree);
-template<typename T>
-unsigned int countPolytomies(RootedTree<T> & tree) {
+template<typename T, typename U>
+unsigned int countPolytomies(RootedTree<T, U> & tree);
+
+template<typename T, typename U>
+unsigned int countPolytomies(RootedTree<T, U> & tree) {
 	return 0;
 }
 
+struct RTNodeNoData{};
+struct RTreeNoData{};
 
 } // namespace otc
 #endif

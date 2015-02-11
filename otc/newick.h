@@ -89,6 +89,16 @@ class OTCParsingError: public OTCError {
 };
 class NewickTokenizer {
 	public:
+		enum newick_token_state_t {
+				NWK_NOT_IN_TREE, // before first open-parens
+				NWK_OPEN, // token was open-parens
+				NWK_CLOSE, // token was close-parens
+				NWK_COMMA, // token was ,
+				NWK_COLON, // token was :
+				NWK_BRANCH_INFO, // token was text after :
+				NWK_LABEL, // token was text (but not after a :)
+				NWK_SEMICOLON
+			};
 		NewickTokenizer(std::istream &inp, const std::string & filepath)
 			:inputStream(inp),
 			inpFilepath(nullptr) {
@@ -110,32 +120,26 @@ class NewickTokenizer {
 				Token(const std::string &content,
 					  const FilePosStruct & startPosition,
 					  const FilePosStruct & endPosition,
-					  const std::vector<std::string> &embeddedComments)
+					  const std::vector<std::string> &embeddedComments,
+					  newick_token_state_t tokenState)
 					:tokenContent(content), 
 					startPos(startPosition),
 					endPos(endPosition),
-					comments(embeddedComments) {
+					comments(embeddedComments),
+					state(tokenState) {
 					LOG(TRACE) << "created token for \"" << content << "\"";
 				}
+			public:
 				const std::string tokenContent;
 				const FilePosStruct startPos;
 				const FilePosStruct endPos;
 				const std::vector<std::string> comments;
+				const newick_token_state_t state;
 				
 				friend class NewickTokenizer::iterator;
 		};
 
 		class iterator : std::forward_iterator_tag {
-			enum newick_token_state_t {
-				NWK_NOT_IN_TREE, // before first open-parens
-				NWK_OPEN, // token was open-parens
-				NWK_CLOSE, // token was close-parens
-				NWK_COMMA, // token was ,
-				NWK_COLON, // token was :
-				NWK_BRANCH_INFO, // token was text after :
-				NWK_LABEL, // token was text (but not after a :)
-				NWK_SEMICOLON
-			};
 			public:
 				bool operator==(const iterator & other) const {
 					//LOG(TRACE) << "Equality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd;
@@ -153,7 +157,7 @@ class NewickTokenizer {
 				}
 				Token operator*() const {
 					LOG(TRACE) << "* operator";
-					return Token(currWord, *prevPos, *currentPos, comments);
+					return Token(currWord, *prevPos, *currentPos, comments, currTokenState);
 				}
 				iterator & operator++() {
 					LOG(TRACE) << "increment";
@@ -294,18 +298,86 @@ class NewickTokenizer {
 };
 
 //Takes wide istream and (optional) filepath (just used for error reporting if not empty)
-template<typename T>
-std::unique_ptr<RootedTree<T> > readNextNewick(std::istream &inp, const std::string & filepath);
+template<typename T, typename U>
+std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, const std::string & filepath);
 
-template<typename T>
-inline std::unique_ptr<RootedTree<T> > readNextNewick(std::istream &inp, const std::string & filepath) {
+
+void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
+						 RootedTreeNode<RTNodeNoData> &,
+						 const NewickTokenizer::Token * labelToken,
+						 const NewickTokenizer::Token * colonToken, // used for comment
+						 const NewickTokenizer::Token * branchLenToken);
+void newickCloseNodeHook(RootedTree<RTNodeNoData, RTreeNoData> & ,
+						 RootedTreeNode<RTNodeNoData> &,
+						 const NewickTokenizer::Token & closeToken);
+
+inline void newickCloseNodeHook(RootedTree<RTNodeNoData, RTreeNoData> & ,
+								RootedTreeNode<RTNodeNoData> & ,
+								const NewickTokenizer::Token & ) {
+}
+
+inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
+								RootedTreeNode<RTNodeNoData> & node,
+								const NewickTokenizer::Token * labelToken,
+								const NewickTokenizer::Token * , // used for comment
+								const NewickTokenizer::Token * ) {
+	if (labelToken) {
+		node.SetName(labelToken->content());
+	}
+}
+
+template<typename T, typename U>
+inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, const std::string & filepath) {
 	assert(inp.good());
 	NewickTokenizer tokenizer(inp, filepath);
-	bool foundToken = false;
-	for (auto token : tokenizer) {
-		std::cout << "token = \"" << token.content() << "\"\n";
+	auto tokenIt = tokenizer.begin();
+	if (tokenIt == tokenizer.end()) {
+		return std::unique_ptr<RootedTree<T, U> >(nullptr);
 	}
-	return (foundToken ? std::unique_ptr<RootedTree<T> > (new RootedTree<T>()) : std::unique_ptr<RootedTree<T> >(nullptr));
+	std::stack<RootedTreeNode<T> *> nodeStack;
+	RootedTree<T, U> * rawTreePtr = new RootedTree<T, U>();
+	std::unique_ptr<RootedTree<T, U> > treePtr(rawTreePtr);
+	RootedTreeNode<T> * currNode = rawTreePtr->CreateRoot();
+	// If we read a label or colon, we might consume multiple tokens;
+	for (;tokenIt != tokenizer.end(); ) {
+		const NewickTokenizer::Token topOfLoopToken = *tokenIt;
+		if (topOfLoopToken.state == NewickTokenizer::NWK_OPEN) {
+			nodeStack.push(currNode);
+			currNode = rawTreePtr->CreateChild(currNode);
+			++tokenIt;
+		} else if (topOfLoopToken.state == NewickTokenizer::NWK_CLOSE) {
+			assert(!nodeStack.empty()); // NewickTokenizer should thrown an exception if unbalanced
+			newickCloseNodeHook(*rawTreePtr, *currNode, topOfLoopToken);
+			currNode = nodeStack.top();
+			nodeStack.pop();
+			++tokenIt;
+		} else if (topOfLoopToken.state == NewickTokenizer::NWK_COMMA) {
+			assert(!nodeStack.empty()); // NewickTokenizer should thrown an exception if unbalanced
+			currNode = rawTreePtr->CreateSib(currNode);
+			++tokenIt;
+		} else if (topOfLoopToken.state == NewickTokenizer::NWK_LABEL) {
+			++tokenIt;
+			const NewickTokenizer::Token colonToken = *tokenIt;
+			if (colonToken.state == NewickTokenizer::NWK_COLON) {
+				++tokenIt;
+				const NewickTokenizer::Token brLenToken = *tokenIt;
+				assert(brLenToken.state == NewickTokenizer::NWK_BRANCH_INFO);
+				newickParseNodeInfo(*rawTreePtr, *currNode, &topOfLoopToken, &colonToken, &brLenToken);
+				++tokenIt;
+			} else {
+				newickParseNodeInfo(*rawTreePtr, *currNode, &topOfLoopToken, nullptr, nullptr);
+			}
+		} else if (topOfLoopToken.state == NewickTokenizer::NWK_COLON) {
+			++tokenIt;
+			const NewickTokenizer::Token brLenToken = *tokenIt;
+			assert(brLenToken.state == NewickTokenizer::NWK_BRANCH_INFO);
+			newickParseNodeInfo(*rawTreePtr, *currNode, nullptr, &topOfLoopToken, &brLenToken);
+		} else {
+			assert(topOfLoopToken.state == NewickTokenizer::NWK_SEMICOLON);
+			break;
+		}
+	}
+	return treePtr;
 }
 
 

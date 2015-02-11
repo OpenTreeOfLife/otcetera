@@ -42,18 +42,18 @@ class OTCLI {
 		std::ostream & err;
 };
 
-template<typename T>
+template<typename T, typename U>
 int treeProcessingMain(OTCLI & otCLI,
 						  int argc,
 						  char * argv[],
-						  bool (*treePtr)(OTCLI &, std::unique_ptr<RootedTree<T> >),
+						  bool (*treePtr)(OTCLI &, std::unique_ptr<RootedTree<T, U> >),
 						  int (*summarizePtr)(OTCLI &));
 
-template<typename T>
+template<typename T, typename U>
 inline int treeProcessingMain(OTCLI & otCLI,
 								 int argc,
 								 char * argv[],
-								 bool (*treePtr)(OTCLI &, std::unique_ptr<RootedTree<T> >),
+								 bool (*treePtr)(OTCLI &, std::unique_ptr<RootedTree<T, U> >),
 								 int (*summarizePtr)(OTCLI &)) {
 	std::vector<std::string> filenameVec;
 	if (!otCLI.parseArgs(argc, argv, filenameVec)) {
@@ -68,7 +68,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 					throw OTCError("Could not open \"" + filename + "\"");
 				}
 				for (;;) {
-					std::unique_ptr<RootedTree<T> > nt = readNextNewick<T>(inp, filename);
+					std::unique_ptr<RootedTree<T, U> > nt = readNextNewick<T, U>(inp, filename);
 					if (nt == nullptr) {
 						break;
 					}
