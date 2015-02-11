@@ -19,7 +19,8 @@ namespace otc {
 
 OTCLI::OTCLI(const char *title,
 		  const char *descrip,
-		  const char *usage)
+		  const char *usage,
+		  bool quietExecution)
 		:exitCode(0),
 		verbose(false),
 		currReadingDotTxtFile(false),
@@ -30,10 +31,12 @@ OTCLI::OTCLI(const char *title,
 		out(std::cout),
 		err(std::cerr) {
 	defaultConf.setToDefault();
-	defaultConf.set(el::Level::Trace, 
-					el::ConfigurationType::Enabled, "false");
-	defaultConf.set(el::Level::Debug, 
-					el::ConfigurationType::Enabled, "false");
+	if (quietExecution) {
+		defaultConf.set(el::Level::Global, el::ConfigurationType::Enabled, "false");
+	} else {
+		defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
+		defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+	}
 	el::Loggers::reconfigureLogger("default", defaultConf);
 }
 
@@ -44,6 +47,7 @@ void OTCLI::printHelp(std::ostream & outStream) {
 	outStream << this->titleStr << " " << this->usageStr << "\n";
 	outStream << "\nCommand-line flags:\n\n";
 	outStream << "    -h on the command line shows this help message\n\n";
+	outStream << "    -q QUIET mode (all logging disabled)\n\n";
 	outStream << "    -t TRACE level debugging (very noisy)\n\n";
 	outStream << "    -v verbose\n\n";
 }
@@ -59,17 +63,21 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 			recursionNeeded = true;
 		}
 		this->verbose = true;
-		defaultConf.set(el::Level::Debug, 
-					el::ConfigurationType::Enabled, "true");
+		defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
 		el::Loggers::reconfigureLogger("default", defaultConf);
-	}
-	 else if (flagWithoutDash[0] == 't') {
+	} else if (flagWithoutDash[0] == 't') {
 		if (flagWithoutDash.length() > 1) {
 			recursionNeeded = true;
 		}
 		this->verbose = true;
-		defaultConf.set(el::Level::Trace, 
-					el::ConfigurationType::Enabled, "true");
+		defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
+		el::Loggers::reconfigureLogger("default", defaultConf);
+	} else if (flagWithoutDash[0] == 'q') {
+		if (flagWithoutDash.length() > 1) {
+			recursionNeeded = true;
+		}
+		this->verbose = false;
+		defaultConf.set(el::Level::Global, el::ConfigurationType::Enabled, "false");
 		el::Loggers::reconfigureLogger("default", defaultConf);
 	}
 	// this is where, we'd insert a procedure for generic flag handling...

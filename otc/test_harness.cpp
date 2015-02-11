@@ -4,7 +4,7 @@ namespace otc {
 
 TestHarness::TestHarness(int argc, char *argv[])
 	:initFailed(true) {
-	OTCLI otCLI(argv[0], "a test harness", "path/to/a/data/dir");
+	OTCLI otCLI(argv[0], "a test harness", "path/to/a/data/dir", true);
 	std::vector<std::string> dataDirArgVec;
 	if (otCLI.parseArgs(argc, argv, dataDirArgVec)) {
 		if (dataDirArgVec.size() != 1) {
@@ -19,7 +19,7 @@ TestHarness::TestHarness(int argc, char *argv[])
 
 int TestHarness::runTests(const TestsVec & tests) {
 	if (this->initFailed) {
-		LOG(ERROR) << tests.size() << " unavaible due to incorrect initializaion of the TestHarness.\n";
+		std::cerr << "ERROR: " << tests.size() << " unavaible due to incorrect initializaion of the TestHarness.\n";
 		return (int)tests.size();
 	}
 	std::vector<std::string> failures;

@@ -14,7 +14,8 @@ class OTCLI {
 	public:
 		OTCLI(const char *title,
 			  const char *descrip,
-			  const char *usage);
+			  const char *usage,
+			  bool silentExecution=false);
 		int exitCode;
 		bool verbose;
 		bool currReadingDotTxtFile;
