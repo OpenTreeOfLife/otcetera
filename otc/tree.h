@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "otc/otcetera.h"
+#include "otc/otc_base_includes.h"
 
 namespace otc {
 template<typename> class RootedTree;

@@ -230,7 +230,7 @@ void NewickTokenizer::iterator::consumeNextToken() {
 							throw OTCParsingError(_ILL_AFTER_COLON, n, *this->currentPos);
 						}
 						this->currTokenState = NWK_COMMA;
-						this->currWord.assign(1, ':');
+						this->currWord.assign(1, ',');
 						return;
 					case ':':
 						if (this->prevTokenState == NWK_LABEL || this->prevTokenState == NWK_CLOSE) {

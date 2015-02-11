@@ -7,7 +7,9 @@ libotcetera_la_HEADERS = \
 	error.h \
 	newick.h \
 	otcetera.h \
+	otc_base_includes.h \
 	otcli.h \
+	test_harness.h \
 	tree.h \
 	util.h
 
@@ -15,5 +17,6 @@ libotcetera_la_SOURCES = \
 	newick.cpp \
 	otcetera.cpp \
 	otcli.cpp \
+	test_harness.cpp \
 	tree.cpp \
 	util.cpp

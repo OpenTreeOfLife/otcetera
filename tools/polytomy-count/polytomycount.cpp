@@ -1,4 +1,4 @@
-#include "otcli.h"
+#include "otc/otcli.h"
 using namespace otc;
 bool countPolytomies(OTCLI & otCLI, std::unique_ptr<RootedTree<bool> > tree);
 

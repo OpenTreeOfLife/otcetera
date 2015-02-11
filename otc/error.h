@@ -2,7 +2,7 @@
 #define OTCETERA_ERROR_H
 #include <string>
 #include <exception>
-#include "otc/otcetera.h"
+#include "otc/otc_base_includes.h"
 namespace otc {
 
 struct OTCError : public std::exception {
