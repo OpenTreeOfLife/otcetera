@@ -10,11 +10,11 @@ It also uses easylogginpp which is distributed under an MIT License. See
   that project is otc/easylogging++.h
   
 
-## prerequesites
-To facilitate parsing of NexSON, this version of NCL has rapidjson
-as a prerequisite. Download it from https://github.com/miloyip/rapidjson
+## prerequisites
+To facilitate parsing of NexSON, this version of requires rapidjson.
+Download it from https://github.com/miloyip/rapidjson
 and put the path to its include subdir in a "-I" CPPFLAGS or CXXFLAGS
-when you configure.
+when you run configure.
 
 # Installation
 
