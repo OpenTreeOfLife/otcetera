@@ -5,10 +5,13 @@ using namespace otc;
 
 char testSingleCharLabelPoly(const TestHarness &);
 char testWordLabelPoly(const TestHarness &);
+char testBifurcating(const TestHarness &);
+char testMonotypic(const TestHarness &);
 char testUnderscores(const TestHarness &);
 char testWhitespaceHandling(const TestHarness &);
 char testQuotedWordLabelPoly(const TestHarness &);
 char testCommentPoly(const TestHarness &);
+//char testBranchLengths(const TestHarness &);
 char testUnbalanced(const TestHarness &);
 char testUnbalancedToManyClose(const TestHarness &);
 
@@ -57,6 +60,32 @@ char testWordLabelPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
 	return genericTokenTest(th, "words-polytomy.tre", expected);
 }
+char testBifurcating(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "AB",
+												",",
+													"(", 
+														"(", "BC", 
+															 ",", "EF", 
+														")",
+														 ",",
+														 "CD",
+													 ")",
+												")", ";"};
+	return genericTokenTest(th, "bifurcating.tre", expected);
+}
+char testMonotypic(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "(", "AB", ")",
+												",",
+													"(", "(", 
+														"(", "(", "BC", ")", 
+															 ",", "EF", 
+														")",
+														 ",",
+														 "CD",
+													 ")",")",
+												")", ";"};
+	return genericTokenTest(th, "monotypic.tre", expected);
+}
 
 char testQuotedWordLabelPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "AB",
@@ -98,6 +127,8 @@ int main(int argc, char *argv[]) {
 	TestHarness th(argc, argv);
 	TestsVec tests{TestFn("testSingleCharLabelPoly", testSingleCharLabelPoly)
 				   , TestFn("testWordLabelPoly", testWordLabelPoly)
+				   , TestFn("testBifurcating", testBifurcating)
+				   , TestFn("testMonotypic", testMonotypic)
 				   , TestFn("testUnderscores", testUnderscores)
 				   , TestFn("testQuotedWordLabelPoly", testQuotedWordLabelPoly)
 				   , TestFn("testCommentPoly", testCommentPoly)
