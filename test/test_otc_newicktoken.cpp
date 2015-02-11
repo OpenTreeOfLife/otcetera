@@ -4,13 +4,15 @@ using namespace otc;
 
 
 char testSingleCharLabelPoly(const TestHarness &);
-char testSingleCharLabelPoly(const TestHarness &th) {
-	const std::string fn = "abc-newick.tre";
+char testWordLabelPoly(const TestHarness &);
+
+char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected);
+
+char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected){
 	std::ifstream inp;
 	if (!th.openTestFile(fn, inp)) {
 		return 'U';
 	}
-	const std::vector<std::string> expected = {"(", "A", ",", "B", ",", "C", ")", ";"};
 	std::vector<std::string> obtained;
 	NewickTokenizer tokenizer(inp, th.getFilePath(fn));
 	for (auto token : tokenizer) {
@@ -21,10 +23,20 @@ char testSingleCharLabelPoly(const TestHarness &th) {
 	}
 	return 'F';
 }
+char testSingleCharLabelPoly(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "A", ",", "B", ",", "C", ")", ";"};
+	return genericTokenTest(th, "abc-newick.tre", expected);
+}
+
+char testWordLabelPoly(const TestHarness &th) {
+	const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
+	return genericTokenTest(th, "words-polytomy.tre", expected);
+}
 
 int main(int argc, char *argv[]) {
 	TestHarness th(argc, argv);
-	TestsVec tests{TestFn("testSingleCharLabelPoly", testSingleCharLabelPoly)
+	TestsVec tests{TestFn("testSingleCharLabelPoly", testSingleCharLabelPoly),
+				   TestFn("testWordLabelPoly", testWordLabelPoly)
 				  };
 	return th.runTests(tests);
 }
