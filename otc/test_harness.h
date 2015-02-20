@@ -1,5 +1,6 @@
 #if !defined (TEST_HARNESS_H)
 #define TEST_HARNESS_H
+#include <functional>
 #include "otc/otc_base_includes.h"
 namespace otc {
 
@@ -45,7 +46,8 @@ bool testVecElementEquality(const std::vector<T> & expected, const std::vector<T
 }
 
 class TestHarness;
-typedef std::pair<const std::string, char (*)(const TestHarness &)> TestFn;
+typedef std::function<char(const TestHarness &)> TestCallBack;
+typedef std::pair<const std::string, TestCallBack> TestFn;
 typedef std::vector<TestFn> TestsVec;
 
 class TestHarness {

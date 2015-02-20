@@ -235,6 +235,7 @@ unsigned int countPolytomies(RootedTree<T, U> & tree) {
 
 struct RTNodeNoData{};
 struct RTreeNoData{};
+typedef RootedTree<RTNodeNoData, RTreeNoData> RootedTreeTopologyNoData;
 
 } // namespace otc
 #endif
