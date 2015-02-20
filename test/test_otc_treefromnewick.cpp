@@ -9,9 +9,11 @@ class TestValidTreeStruct {
 		TestValidTreeStruct(const std::string & fn)
 			:filename(fn) {
 		}
-		char runTest(const TestHarness &) const {
+		char runTest(const TestHarness &h) const {
+			auto fp = h.getFilePath(filename);
+			//std::cerr << "fn = " << fp<< '\n';
 			std::ifstream inp;
-			if (!openUTF8File(filename, inp)) {
+			if (!openUTF8File(fp, inp)) {
 				return 'U';
 			}
 			for (;;) {
