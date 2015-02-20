@@ -33,6 +33,9 @@ class OTCLI {
 		// reads a NexSON v1.2 at filepath and returns a NxsSimpleTree with the associated treeID
 		NxsSimpleTree * readTreeFromNexSONv_1_2(const std::string &filepath, const std::string & tree_id); */
 		bool isDotTxtFile(const std::string &fp);
+		auto GetTitle() const {
+			return this->titleStr;
+		}
 	private:
 		std::string titleStr;
 		std::string descriptionStr;
@@ -57,6 +60,11 @@ inline int treeProcessingMain(OTCLI & otCLI,
 								 int (*summarizePtr)(OTCLI &)) {
 	std::vector<std::string> filenameVec;
 	if (!otCLI.parseArgs(argc, argv, filenameVec)) {
+		otCLI.exitCode = 1;
+		return otCLI.exitCode;
+	}
+	if (filenameVec.empty()) {
+		otCLI.err << otCLI.GetTitle() << ": Expecting a tree filepath.\n";
 		otCLI.exitCode = 1;
 		return otCLI.exitCode;
 	}

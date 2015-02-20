@@ -223,14 +223,102 @@ class RootedTree {
 		RootedTree<T, U> & operator=(const RootedTree<T, U> &); //not defined.  Not copyable
 };
 
+template<typename T>
+inline bool IsInternalNode(const RootedTreeNode<T> & nd) {
+	return !nd.IsTip();
+}
+
+template<typename T, typename U>
+class ConstPreorderInternalNode {
+	public:
+	explicit ConstPreorderInternalNode(const RootedTree<T, U> &t)
+		:tree(t){
+	}
+	class iterator : std::forward_iterator_tag {
+		private:
+			std::function<bool(const RootedTreeNode<T> &)> filterFn;
+			const RootedTreeNode<T> * curr;
+			bool movingDown;
+			iterator(const RootedTreeNode<T> *c)
+				:filterFn{IsInternalNode<T>},
+				curr(c),
+				movingDown(false) {
+				if (c != nullptr) {
+				}
+			}
+
+			void _advance() {
+				do {
+					assert(curr != nullptr);
+					if (movingDown) {
+						while (movingDown) {
+							if (curr->GetNextSib()) {
+								curr = curr->GetNextSib();
+								movingDown = false;
+							} else {
+								curr = curr->GetParent();
+								if (curr == nullptr) {
+									return;
+								}
+							}
+						}
+					} else if (curr->IsTip()) {
+						if (curr->GetNextSib()) {
+							curr = curr->GetNextSib();
+						} else {
+							movingDown = true;
+							_advance();
+							if (curr == nullptr) {
+								return;
+							}
+						}
+					} else {
+						curr = curr->GetFirstChild();
+					}
+				} while (!filterFn(*curr));
+			}
+			friend class ConstPreorderInternalNode<T, U>;
+		public:
+			bool operator==(const iterator &other) {
+				return this->curr == other.curr;
+			}
+			bool operator!=(const iterator &other) {
+				return this->curr != other.curr;
+			}
+			const RootedTreeNode<T> * operator*() const {
+				return curr;
+			}
+			iterator & operator++() {
+				if (curr == nullptr) {
+					throw std::out_of_range("Incremented a dead PreorderInternalNode::iterator");
+				}
+				_advance();
+				return *this;
+			}
+	};
+	iterator begin() const {
+		return std::move(iterator{tree.GetRoot()});
+	}
+	iterator end() const {
+		return iterator{nullptr};
+	}
+	private:
+		const RootedTree<T, U> & tree;
+};
 /** simple phylo functions */
 
 template<typename T, typename U>
-unsigned int countPolytomies(RootedTree<T, U> & tree);
+unsigned int countPolytomies(const RootedTree<T, U> & tree);
 
 template<typename T, typename U>
-unsigned int countPolytomies(RootedTree<T, U> & tree) {
-	return 0;
+unsigned int countPolytomies(const RootedTree<T, U> & tree) {
+	unsigned int n = 0U;
+	for (auto node : ConstPreorderInternalNode<T, U>{tree}) {
+		if (node->GetOutDegree() > 2) {
+			n += 1;
+		}
+	}
+	return n;
 }
 
 struct RTNodeNoData{};
