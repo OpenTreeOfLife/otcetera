@@ -1,9 +1,10 @@
+#include <set>
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
 #include "otc/tree_data.h"
 using namespace otc;
-typedef RTreeOttIDMapping<RTNodeNoData> RootedTreeForNodeType;
-typedef RootedTree<RTNodeNoData, RootedTreeForNodeType> Tree_t;
+typedef RTreeOttIDMapping<RTSplits> RootedTreeForNodeType;
+typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
 
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 
@@ -18,18 +19,29 @@ struct CheckTaxonState {
 		 numErrors(0) {
 		}
 	void summarize(const OTCLI &otCLI) {
-
 	}
 };
 
-
-
+void processRefTree(Tree_t & tree) {
+	for (auto node : PostorderInternalNode<RTSplits, RootedTreeForNodeType>(tree)) {
+		std::set<long> & mrca = node->GetData().mrca;
+		if (node->IsTip()) {
+			mrca.insert(node->GetOTUId());
+		} else {
+			for (auto child : ChildIterator<RTSplits, RootedTreeForNodeType>(*node)) {
+				std::set<long> & cmrca = child->GetData().mrca;
+				mrca.insert(cmrca.begin(), cmrca.end());
+			}
+		}
+	}
+}
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 	CheckTaxonState * ctsp = static_cast<CheckTaxonState *>(otCLI.blob);
 	assert(ctsp != nullptr);
 	assert(tree != nullptr);
 	if (ctsp->toCheck == nullptr) {
 		ctsp->toCheck = std::move(tree);
+		processRefTree(*tree);
 	} else if (ctsp->taxonomy == nullptr) {
 		ctsp->taxonomy = std::move(tree);
 	} else {
@@ -45,7 +57,7 @@ int main(int argc, char *argv[]) {
 				"some.tre taxonomy.tre");
 	CheckTaxonState cts;
 	otCLI.blob = static_cast<void *>(&cts);
-	auto rc = treeProcessingMain<RTNodeNoData, RootedTreeForNodeType>(otCLI,
+	auto rc = treeProcessingMain<RTSplits, RootedTreeForNodeType>(otCLI,
 																	  argc,
 																	  argv,
 																	  processNextTree,

@@ -59,6 +59,29 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNod
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// tree-level mapping of ottID to Node data
+inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
+								RootedTreeNode<RTSplits> & ,
+								const NewickTokenizer::Token & ) {
+}
+
+inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree,
+								RootedTreeNode<RTSplits> & node,
+								const NewickTokenizer::Token * labelToken,
+								const NewickTokenizer::Token * , // used for comment
+								const NewickTokenizer::Token * ) {
+	if (labelToken) {
+		long ottID = ottIDFromName(labelToken->content());
+		if (ottID >= 0) {
+			node.SetOTUId(ottID);
+			RTreeOttIDMapping<RTSplits> & treeData = tree.GetData();
+			treeData.ottIdToNode[ottID] = &node;
+		}
+	}
+}
+
+
 } // namespace otc
 
 #endif

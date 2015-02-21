@@ -20,10 +20,16 @@ class RootedTreeNode {
 		const RootedTreeNode<T> * GetParent() const {
 			return parent;
 		}
+		RootedTreeNode<T> * GetParent() {
+			return parent;
+		}
 		bool IsTip() const {
 			return (lChild == nullptr);
 		}
 		const RootedTreeNode<T> * GetFirstChild() const {
+			return lChild;
+		}
+		RootedTreeNode<T> * GetFirstChild() {
 			return lChild;
 		}
 		RootedTreeNode<T> * GetNextSib() const {
@@ -173,6 +179,9 @@ class RootedTree {
 			}
 		}
 		const RootedTreeNode<T> * GetRoot() const {
+			return root;
+		}
+		RootedTreeNode<T> * GetRoot() {
 			return root;
 		}
 		RootedTreeNode<T> * CreateRoot() {
