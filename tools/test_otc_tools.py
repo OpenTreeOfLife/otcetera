@@ -14,7 +14,6 @@ def error(m):
 
 def test_invoc(tag, invocation, result_dir):
     global NUM_TESTS, FAILED_TESTS
-    print invocation, result_dir
     obt_outf = os.path.join(result_dir, 'obtained-output')
     obt_errf = os.path.join(result_dir, 'obtained-error')
     obt_exitf = os.path.join(result_dir, 'obtained-exit')
@@ -22,7 +21,7 @@ def test_invoc(tag, invocation, result_dir):
     with codecs.open(obt_outf, 'w', encoding='utf-8') as ob_o:
         with codecs.open(obt_errf, 'w', encoding='utf-8') as ob_e:
             invoc = '"{}"'.format('" "'.join(invocation))
-            debug('Running:\n    ' + invoc + '>"' + obt_outf + '" 2>"' + obt_errf + '" ; echo $? >"' + obt_exitf + '"')
+            debug('Running:\n    ' + invoc + ' >"' + obt_outf + '" 2>"' + obt_errf + '" ; echo $? >"' + obt_exitf + '"')
             p = subprocess.Popen(invocation, cwd=result_dir, stdout=ob_o, stderr=ob_e)
             exit_code = p.wait()
             with codecs.open(obt_exitf, 'w', encoding='utf-8') as ob_ex:
