@@ -9,4 +9,4 @@ compiler:
 install:
     - sh travis-build-and-test.sh
 script:
-    - cd buildclang/test && make check && ../tools && make check
+    - cd buildclang/test && make check && cd ../tools && make check
