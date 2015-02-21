@@ -12,11 +12,26 @@ namespace otc {
 
 template<typename T>
 bool isInternalNode(const RootedTreeNode<T> & nd);
+template<typename T>
+T * findLeftmostInSubtree(T * nd);
 
 
 template<typename T>
 inline bool isInternalNode(const RootedTreeNode<T> & nd) {
 	return !nd.IsTip();
+}
+
+template<typename T>
+T * findLeftmostInSubtree(T * nd) {
+	if (nd == nullptr) {
+		return nullptr;
+	}
+	auto next = nd->GetFirstChild();
+	while (next != nullptr) {
+		nd = next;
+		next = nd->GetFirstChild();
+	}
+	return nd;
 }
 
 } // namespace otc

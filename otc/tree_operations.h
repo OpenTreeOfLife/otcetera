@@ -17,7 +17,7 @@ unsigned int countPolytomies(const RootedTree<T, U> & tree);
 template<typename T, typename U>
 unsigned int countPolytomies(const RootedTree<T, U> & tree) {
 	unsigned int n = 0U;
-	for (auto node : ConstPreorderInternalNode<T, U>{tree}) {
+	for (auto node : ConstPostorderInternalNode<T, U>{tree}) {
 		if (node->GetOutDegree() > 2) {
 			n += 1;
 		}
