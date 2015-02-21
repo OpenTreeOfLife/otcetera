@@ -1,0 +1,6 @@
+[
+  {
+    "invocation" : ["polytomycount", "<INFILE>"],
+    "expected": "polytomycount-expected"
+  }
+]
