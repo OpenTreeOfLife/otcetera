@@ -68,7 +68,7 @@ class RootedTreeNode {
 		long GetOTUId() const {
 			return otuID;
 		}
-		void GetOTUId(long i) {
+		void SetOTUId(long i) {
 			otuID = i;
 		}
 		// non-empty only for internals that are labelled with names that are NOT taxLabels
@@ -141,7 +141,7 @@ class RootedTreeNode {
 		RootedTreeNode<T> * rSib;
 		RootedTreeNode<T> * parent;
 		namestring_t name; // non-empty only for internals that are labelled with names that are NOT taxLabels
-		unsigned otuID; // present for every leaf. UINT_MAX for internals labeled with taxlabels
+		long otuID; // present for every leaf. UINT_MAX for internals labeled with taxlabels
 		T data;
 	private:
 		RootedTreeNode<T>(const RootedTreeNode<T> &); //not defined.  Not copyable
@@ -225,6 +225,7 @@ class RootedTree {
 
 struct RTNodeNoData{};
 struct RTreeNoData{};
+
 typedef RootedTree<RTNodeNoData, RTreeNoData> RootedTreeTopologyNoData;
 
 } // namespace otc

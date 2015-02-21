@@ -13,6 +13,10 @@ namespace otc {
 template<typename T>
 using NdFilterFn = std::function<bool(const RootedTreeNode<T> &)>;
 
+/// visits ancestors before descendants
+/// if filterFn is supplied, then only the nodes associated with a true
+///		response will be returned (but the descendants of a "false" node
+///		will still be visited.
 template<typename T>
 class const_preorder_iterator : std::forward_iterator_tag {
 	private:
@@ -82,7 +86,7 @@ class const_preorder_iterator : std::forward_iterator_tag {
 		}
 };
 
-
+/// descendants before ancestors, but not guaranteed to be the reverse of const_preorder_iterator
 template<typename T>
 class const_postorder_iterator : std::forward_iterator_tag {
 	private:

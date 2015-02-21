@@ -1,4 +1,5 @@
 SUBDIRS = \
+	check-taxonomic-nodes \
 	polytomy-count
 
 check:

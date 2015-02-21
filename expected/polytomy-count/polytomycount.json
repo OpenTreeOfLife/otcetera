@@ -1,6 +1,6 @@
 [
   {
-    "invocation" : ["polytomycount", "<INFILE>"],
+    "invocation" : ["otcpolytomycount", "<INFILE>"],
     "expected": "polytomycount-expected"
   }
 ]
