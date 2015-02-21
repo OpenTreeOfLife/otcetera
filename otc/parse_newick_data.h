@@ -5,11 +5,9 @@
 #include "otc/tree.h"
 #include "otc/tree_data.h"
 #include "otc/newick_tokenizer.h"
+#include "otc/tree_iter.h"
 
 namespace otc {
-
-
-
 
 void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
 						 RootedTreeNode<RTNodeNoData> &,
@@ -19,6 +17,7 @@ void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
 void newickCloseNodeHook(RootedTree<RTNodeNoData, RTreeNoData> & ,
 						 RootedTreeNode<RTNodeNoData> &,
 						 const NewickTokenizer::Token & closeToken);
+void postParseHook(RootedTree<RTNodeNoData, RTreeNoData> & );
 
 ////////////////////////////////////////////////////////////////////////////////
 // no ops for no data
@@ -36,7 +35,8 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
 		node.SetName(labelToken->content());
 	}
 }
-
+inline void postParseHook(RootedTree<RTNodeNoData, RTreeNoData> & ) {
+}
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
 inline void newickCloseNodeHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & ,
@@ -58,7 +58,8 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNod
 		}
 	}
 }
-
+inline void postParseHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & ) {
+}
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
 inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
@@ -81,6 +82,19 @@ inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
 	}
 }
 
+inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree) {
+	for (auto node : PostorderInternalNode<RTSplits, RTreeOttIDMapping<RTSplits> >(tree)) {
+		std::set<long> & mrca = node->GetData().mrca;
+		if (node->IsTip()) {
+			mrca.insert(node->GetOTUId());
+		} else {
+			for (auto child : ChildIterator<RTSplits, RTreeOttIDMapping<RTSplits> >(*node)) {
+				std::set<long> & cmrca = child->GetData().mrca;
+				mrca.insert(cmrca.begin(), cmrca.end());
+			}
+		}
+	}
+}
 
 } // namespace otc
 

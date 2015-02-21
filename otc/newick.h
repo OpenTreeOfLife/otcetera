@@ -68,6 +68,7 @@ inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, cons
 			break;
 		}
 	}
+	postParseHook(*treePtr);
 	return treePtr;
 }
 

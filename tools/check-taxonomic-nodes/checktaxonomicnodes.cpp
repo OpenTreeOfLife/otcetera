@@ -22,26 +22,12 @@ struct CheckTaxonState {
 	}
 };
 
-void processRefTree(Tree_t & tree) {
-	for (auto node : PostorderInternalNode<RTSplits, RootedTreeForNodeType>(tree)) {
-		std::set<long> & mrca = node->GetData().mrca;
-		if (node->IsTip()) {
-			mrca.insert(node->GetOTUId());
-		} else {
-			for (auto child : ChildIterator<RTSplits, RootedTreeForNodeType>(*node)) {
-				std::set<long> & cmrca = child->GetData().mrca;
-				mrca.insert(cmrca.begin(), cmrca.end());
-			}
-		}
-	}
-}
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 	CheckTaxonState * ctsp = static_cast<CheckTaxonState *>(otCLI.blob);
 	assert(ctsp != nullptr);
 	assert(tree != nullptr);
 	if (ctsp->toCheck == nullptr) {
 		ctsp->toCheck = std::move(tree);
-		processRefTree(*tree);
 	} else if (ctsp->taxonomy == nullptr) {
 		ctsp->taxonomy = std::move(tree);
 	} else {
