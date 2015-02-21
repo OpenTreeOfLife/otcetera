@@ -1,4 +1,5 @@
 #include "otc/otcli.h"
+#include "otc/tree_operations.h"
 using namespace otc;
 template<typename T, typename U>
 bool writeNumPolytomies(OTCLI & otCLI, std::unique_ptr<RootedTree<T, U> > tree);

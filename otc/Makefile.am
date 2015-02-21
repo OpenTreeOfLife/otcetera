@@ -11,6 +11,9 @@ libotcetera_la_HEADERS = \
 	otcli.h \
 	test_harness.h \
 	tree.h \
+	tree_iter.h \
+	tree_operations.h \
+	tree_util.h \
 	util.h
 
 libotcetera_la_SOURCES = \
