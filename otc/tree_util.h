@@ -26,10 +26,10 @@ T * findLeftmostInSubtree(T * nd) {
 	if (nd == nullptr) {
 		return nullptr;
 	}
-	auto next = nd->GetFirstChild();
+	auto next = nd->getFirstChild();
 	while (next != nullptr) {
 		nd = next;
-		next = nd->GetFirstChild();
+		next = nd->getFirstChild();
 	}
 	return nd;
 }

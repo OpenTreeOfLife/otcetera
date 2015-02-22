@@ -18,13 +18,28 @@ template<typename T, typename U>
 unsigned int countPolytomies(const RootedTree<T, U> & tree) {
 	unsigned int n = 0U;
 	for (auto node : ConstPostorderInternalNode<T, U>{tree}) {
-		if (node->GetOutDegree() > 2) {
+		if (node->getOutDegree() > 2) {
 			n += 1;
 		}
 	}
 	return n;
 }
 
+template<typename T, typename U>
+void fillDesIdSets(RootedTree<T, U> & tree) {
+	// assumes OttId is set for each tip
+	for (auto node : PostorderInternalNode<T, U>(tree)) {
+		std::set<long> & desIds = node->getData().desIds;
+		if (node->IsTip()) {
+			desIds.insert(node->getOttId());
+		} else {
+			for (auto child : ChildIterator<T, U>(*node)) {
+				std::set<long> & cDesIds = child->getData().desIds;
+				desIds.insert(cDesIds.begin(), cDesIds.end());
+			}
+		}
+	}
+}
 } // namespace otc
 #endif
 

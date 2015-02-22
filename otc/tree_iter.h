@@ -29,19 +29,19 @@ class const_preorder_iterator : std::forward_iterator_tag {
 				assert(curr != nullptr);
 				if (movingDown) {
 					while (movingDown) {
-						if (curr->GetNextSib()) {
-							curr = curr->GetNextSib();
+						if (curr->getNextSib()) {
+							curr = curr->getNextSib();
 							movingDown = false;
 						} else {
-							curr = curr->GetParent();
+							curr = curr->getParent();
 							if (curr == nullptr) {
 								return;
 							}
 						}
 					}
 				} else if (curr->IsTip()) {
-					if (curr->GetNextSib()) {
-						curr = curr->GetNextSib();
+					if (curr->getNextSib()) {
+						curr = curr->getNextSib();
 					} else {
 						movingDown = true;
 						_advance();
@@ -50,7 +50,7 @@ class const_preorder_iterator : std::forward_iterator_tag {
 						}
 					}
 				} else {
-					curr = curr->GetFirstChild();
+					curr = curr->getFirstChild();
 				}
 			} while ((filterFn != nullptr && !filterFn(*curr)));
 		}
@@ -97,21 +97,21 @@ class child_iterator : std::forward_iterator_tag {
 
 		void _advance() {
 			assert(curr != nullptr);
-			curr = curr->GetNextSib();
+			curr = curr->getNextSib();
 		}
 	public:
 		child_iterator(RootedTreeNode<T> *c)
 			:filterFn{nullptr},
 			curr(nullptr) {
 			if (c != nullptr) {
-				curr = c->GetFirstChild();
+				curr = c->getFirstChild();
 			}
 		}
 		child_iterator(RootedTreeNode<T> *c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(nullptr) {
 			if (c != nullptr) {
-				curr = c->GetFirstChild();
+				curr = c->getFirstChild();
 			}
 			if (c != nullptr && filterFn && !filterFn(*c)) {
 				_advance();
@@ -148,8 +148,8 @@ class const_postorder_iterator : std::forward_iterator_tag {
 			if (curr == lastNode) {
 				curr = nullptr;
 			} else {
-				auto n = curr->GetNextSib();
-				curr = (n == nullptr ? curr->GetParent() : findLeftmostInSubtree<NodeType>(n));
+				auto n = curr->getNextSib();
+				curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
 			}
 		}
 	public:
@@ -203,8 +203,8 @@ class postorder_iterator : std::forward_iterator_tag {
 			if (curr == lastNode) {
 				curr = nullptr;
 			} else {
-				auto n = curr->GetNextSib();
-				curr = (n == nullptr ? curr->GetParent() : findLeftmostInSubtree<NodeType>(n));
+				auto n = curr->getNextSib();
+				curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
 			}
 		}
 	public:
@@ -268,7 +268,7 @@ class ConstPreorderInternalNode {
 		:tree(t){
 	}
 	const_preorder_iterator<T> begin() const {
-		return std::move(const_preorder_iterator<T>{tree.GetRoot(), isInternalNode<T>});
+		return std::move(const_preorder_iterator<T>{tree.getRoot(), isInternalNode<T>});
 	}
 	const_preorder_iterator<T> end() const {
 		return const_preorder_iterator<T>{nullptr};
@@ -284,7 +284,7 @@ class ConstPostorderInternalNode {
 		:tree(t){
 	}
 	const_postorder_iterator<T> begin() const {
-		return std::move(const_postorder_iterator<T>{tree.GetRoot(), isInternalNode<T>});
+		return std::move(const_postorder_iterator<T>{tree.getRoot(), isInternalNode<T>});
 	}
 	const_postorder_iterator<T> end() const {
 		return const_postorder_iterator<T>{nullptr};
@@ -300,7 +300,7 @@ class PostorderInternalNode {
 		:tree(t){
 	}
 	postorder_iterator<T> begin() const {
-		return std::move(postorder_iterator<T>{tree.GetRoot(), isInternalNode<T>});
+		return std::move(postorder_iterator<T>{tree.getRoot(), isInternalNode<T>});
 	}
 	postorder_iterator<T> end() const {
 		return postorder_iterator<T>{nullptr};

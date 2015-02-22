@@ -18,7 +18,7 @@ class RTreeOttIDMapping {
 
 class RTSplits {
 	public:
-		std::set<long> mrca;
+		std::set<long> desIds;
 };
 
 } // namespace otc

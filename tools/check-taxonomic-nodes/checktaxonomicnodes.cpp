@@ -56,30 +56,17 @@ int main(int argc, char *argv[]) {
 }
 
 #if 0
-/* use some globals, because I'm being lazy... */
-NxsSimpleTree * gRefTree = 0;
-NxsSimpleTree * gTaxonTree = 0;
-std::map<long, const NxsSimpleNode *> gOttID2RefNode;
-std::map<long, const NxsSimpleNode *> gOttID2TaxNode;
-std::map<const NxsSimpleNode *, long> gTaxNode2ottID;
-std::set<const NxsSimpleNode *> gSupportedNodes;
-
-std::map<const NxsSimpleNode *, std::set<long> > gRefNdp2mrca;
-std::map<const NxsSimpleNode *, std::set<long> > gTaxNdp2mrca;
-set<long> gRefLeafSet;
-set<long> gTaxLeafSet;
-map<const NxsSimpleNode *, long> gRefNamedNodes;
 
 
 void processRefTree(const NxsTaxaBlockAPI * tb, const NxsSimpleTree * tree) {
-	std::vector<const NxsSimpleNode *> nodes =  tree->GetPreorderTraversal();
+	std::vector<const NxsSimpleNode *> nodes =  tree->getPreorderTraversal();
 	for (std::vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
 		const NxsSimpleNode * nd = *nIt;
 		long ottID = getOTTIndex(tb, *nd);
 		if (nd->IsTip()) {
-			const unsigned ind = nd->GetTaxonIndex();
-			assert(ind < tb->GetNumTaxonLabels());
-			const std::string tn = tb->GetTaxonLabel(ind);
+			const unsigned ind = nd->getTaxonIndex();
+			assert(ind < tb->getNumTaxonLabels());
+			const std::string tn = tb->getTaxonLabel(ind);
 			assert(ottID >= 0);
 			gRefNdp2mrca[nd].insert(ottID);
 			gRefLeafSet.insert(ottID);
@@ -97,7 +84,7 @@ void processRefTree(const NxsTaxaBlockAPI * tb, const NxsSimpleTree * tree) {
 }
 
 void processTaxonomyTree(const NxsTaxaBlockAPI * tb, const NxsSimpleTree * tree) {
-	std::vector<const NxsSimpleNode *> nodes =  tree->GetPreorderTraversal();
+	std::vector<const NxsSimpleNode *> nodes =  tree->getPreorderTraversal();
 	for (std::vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
 		const NxsSimpleNode * nd = *nIt;
 		long ottID = getOTTIndex(tb, **nIt);
@@ -145,14 +132,14 @@ bool doCheckEquivalent(std::ostream &out, long ottID, const NxsSimpleNode * snod
 			writeOttSetDiff(out, "    ", streeMRCA, "synth", taxtreeMRCA, "taxonomy");
 		}
 		if (climbSynth && isProperSubset(streeMRCA, taxtreeMRCA)) {
-			return doCheckEquivalent(out, ottID, snode->GetEdgeToParent().GetParent(), srcLookup, tnode, taxLookup, false, true, false);
+			return doCheckEquivalent(out, ottID, snode->getEdgeToParent().getParent(), srcLookup, tnode, taxLookup, false, true, false);
 		} else if (climbTax && isProperSubset(taxtreeMRCA, streeMRCA)) {
-			return doCheckEquivalent(out, ottID, snode, srcLookup, tnode->GetEdgeToParent().GetParent(), taxLookup, false, false, true);
+			return doCheckEquivalent(out, ottID, snode, srcLookup, tnode->getEdgeToParent().getParent(), taxLookup, false, false, true);
 		} else {
 			return false;
 		}
 	} else if (!topLevel) {
-		out << "        Found identical leaf sets for the synthetic tree \"" << snode->GetName() << "\" and the taxonomic node \"" << tnode->GetName() << "\".\n";
+		out << "        Found identical leaf sets for the synthetic tree \"" << snode->getName() << "\" and the taxonomic node \"" << tnode->getName() << "\".\n";
 	}
 	return true;
 }
@@ -165,7 +152,7 @@ void summarize(std::ostream & out) {
 		assert(tID2nd != gOttID2TaxNode.end());
 		const NxsSimpleNode *taxNd = tID2nd->second;
 		if (!doCheckEquivalent(out, ottID, nd, gRefNdp2mrca, taxNd, gTaxNdp2mrca, true, true, true)) {
-			out << "        Could not find this set of leaves in the synth \"" << nd->GetName() <<"\" in any taxonomic node.\n";
+			out << "        Could not find this set of leaves in the synth \"" << nd->getName() <<"\" in any taxonomic node.\n";
 		}
 	}
 	if (gTaxLeafSet != gRefLeafSet) {
@@ -174,7 +161,7 @@ void summarize(std::ostream & out) {
 }
 
 bool newTreeHook(NxsFullTreeDescription &ftd, void * arg, NxsTreesBlock *treesB) {
-	const NxsTaxaBlockAPI * taxa = treesB->GetTaxaBlockPtr();
+	const NxsTaxaBlockAPI * taxa = treesB->getTaxaBlockPtr();
 	NxsSimpleTree * nst = new NxsSimpleTree(ftd, 0.0, 0, true);
 	if (gRefTree == 0) {
 		gRefTree = nst;

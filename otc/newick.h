@@ -28,13 +28,13 @@ inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, cons
 	std::stack<RootedTreeNode<T> *> nodeStack;
 	RootedTree<T, U> * rawTreePtr = new RootedTree<T, U>();
 	std::unique_ptr<RootedTree<T, U> > treePtr(rawTreePtr);
-	RootedTreeNode<T> * currNode = rawTreePtr->CreateRoot();
+	RootedTreeNode<T> * currNode = rawTreePtr->createRoot();
 	// If we read a label or colon, we might consume multiple tokens;
 	for (;tokenIt != tokenizer.end(); ) {
 		const NewickTokenizer::Token topOfLoopToken = *tokenIt;
 		if (topOfLoopToken.state == NewickTokenizer::NWK_OPEN) {
 			nodeStack.push(currNode);
-			currNode = rawTreePtr->CreateChild(currNode);
+			currNode = rawTreePtr->createChild(currNode);
 			++tokenIt;
 		} else if (topOfLoopToken.state == NewickTokenizer::NWK_CLOSE) {
 			assert(!nodeStack.empty()); // NewickTokenizer should thrown an exception if unbalanced
@@ -44,7 +44,8 @@ inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, cons
 			++tokenIt;
 		} else if (topOfLoopToken.state == NewickTokenizer::NWK_COMMA) {
 			assert(!nodeStack.empty()); // NewickTokenizer should thrown an exception if unbalanced
-			currNode = rawTreePtr->CreateSib(currNode);
+			newickCloseNodeHook(*rawTreePtr, *currNode, topOfLoopToken);
+			currNode = rawTreePtr->createSib(currNode);
 			++tokenIt;
 		} else if (topOfLoopToken.state == NewickTokenizer::NWK_LABEL) {
 			++tokenIt;

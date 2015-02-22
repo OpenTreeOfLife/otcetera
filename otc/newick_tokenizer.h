@@ -58,19 +58,26 @@ struct FilePosStruct {
 
 class OTCParsingError: public OTCError {
 	public:
-		OTCParsingError(const char * msg, char offending, const FilePosStruct &position)
+		OTCParsingError(const char * msg, char offending, const FilePosStruct & position)
 			:OTCError(msg),
 			frag(msg),
-			offendingChar(offending),
+			pos(position) {
+				if (offending != '\0') {
+					offendingStr.assign(1, offending);
+				}
+				message = this->generate_message();
+			}
+		OTCParsingError(const char * msg, const std::string & offending, const FilePosStruct & position)
+			:OTCError(msg),
+			frag(msg),
+			offendingStr(offending),
 			pos(position) {
 				message = this->generate_message();
 			}
 		std::string generate_message() const noexcept {
 			try {
 				std::string m = "Error found \"";
-				if (this->offendingChar != '\0') {
-					m += this->offendingChar;
-				}
+				m += this->offendingStr;
 				m += "\" ";
 				m += this->frag;
 				m += " ";
@@ -83,9 +90,37 @@ class OTCParsingError: public OTCError {
 
 	private:
 		const std::string frag;
-		const char offendingChar;
+		std::string offendingStr;
 		const FilePosStruct pos;
 };
+
+class OTCParsingContentError: public OTCError {
+	public:
+		OTCParsingContentError(const char * msg, const FilePosStruct & position)
+			:OTCError(msg),
+			pos(position) {
+				message = this->generate_message(msg);
+			}
+		std::string generate_message(const char *frag) const noexcept {
+			try {
+				std::string m = "Error found: ";
+				m += frag;
+				m += " ";
+				m += this->pos.describe();
+				return m;
+			} catch (...) {// to guarantee noexcept...
+			}
+			try {
+				return std::string{frag};
+			} catch (...) {
+				return std::string{};
+			}
+		}
+	private:
+		const FilePosStruct pos;
+};
+
+
 class NewickTokenizer {
 	public:
 		enum newick_token_state_t {
@@ -114,6 +149,9 @@ class NewickTokenizer {
 				}
 				const std::vector<std::string> & commentVec() const {
 					return this->comments;
+				}
+				const FilePosStruct & getStartPos() const {
+					return this->startPos;
 				}
 			private:
 				Token(const std::string &content,

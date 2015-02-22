@@ -17,99 +17,102 @@ typedef std::string namestring_t;
 template<typename T>
 class RootedTreeNode {
 	public:
-		const RootedTreeNode<T> * GetParent() const {
+		const RootedTreeNode<T> * getParent() const {
 			return parent;
 		}
-		RootedTreeNode<T> * GetParent() {
+		RootedTreeNode<T> * getParent() {
 			return parent;
 		}
 		bool IsTip() const {
 			return (lChild == nullptr);
 		}
-		const RootedTreeNode<T> * GetFirstChild() const {
+		const RootedTreeNode<T> * getFirstChild() const {
 			return lChild;
 		}
-		RootedTreeNode<T> * GetFirstChild() {
+		RootedTreeNode<T> * getFirstChild() {
 			return lChild;
 		}
-		RootedTreeNode<T> * GetNextSib() const {
+		RootedTreeNode<T> * getNextSib() const {
 			return rSib;
 		}
-		RootedTreeNode<T> * GetLastChild() const {
-			auto currNode = this->GetFirstChild();
+		RootedTreeNode<T> * getLastChild() const {
+			auto currNode = this->getFirstChild();
 			if (currNode == nullptr)
 				return nullptr;
-			return currNode->GetLastSib();
+			return currNode->getLastSib();
 		}
-		RootedTreeNode<T> * GetLastSib() const {
-			auto currNode = this->GetNextSib();
+		RootedTreeNode<T> * getLastSib() const {
+			auto currNode = this->getNextSib();
 			if (currNode == nullptr) {
 				return nullptr;
 			}
-			auto nextNd = currNode->GetNextSib();
+			auto nextNd = currNode->getNextSib();
 			while (nextNd != nullptr) {
 				currNode = nextNd;
-				nextNd = currNode->GetNextSib();
+				nextNd = currNode->getNextSib();
 			}
 			return currNode;
 		}
-		std::vector<const RootedTreeNode<T> *> GetChildren() const {
+		std::vector<const RootedTreeNode<T> *> getChildren() const {
 			std::vector<const RootedTreeNode<T> *> children;
-			auto * currNode = GetFirstChild();
+			auto * currNode = getFirstChild();
 			while(currNode) {
 				children.push_back(currNode);
-				currNode = currNode->GetNextSib();
+				currNode = currNode->getNextSib();
 			}
 			return children;
 		}
-		unsigned GetOutDegree() const {
+		unsigned getOutDegree() const {
 			unsigned n = 0;
-			auto currNode = GetFirstChild();
+			auto currNode = getFirstChild();
 			while(currNode) {
 				n += 1;
-				currNode = currNode->GetNextSib();
+				currNode = currNode->getNextSib();
 			}
 			return n;
 		}
-		long GetOTUId() const {
-			return otuID;
+		bool hasOttId() const {
+			return ottId != LONG_MAX;
 		}
-		void SetOTUId(long i) {
-			otuID = i;
+		long getOttId() const {
+			return ottId;
+		}
+		void setOttId(long i) {
+			ottId = i;
 		}
 		// non-empty only for internals that are labelled with names that are NOT taxLabels
-		const namestring_t & GetName() const {
+		const namestring_t & getName() const {
 			return name;
 		}
-		void SetName(const namestring_t &n) {
+		void setName(const namestring_t &n) {
 			name = n;
 		}
-		const T & GetData() const {
+		const T & getData() const {
 			return data;
 		}
-		T & GetData() {
+		T & getData() {
 			return data;
 		}
 		RootedTreeNode<T>(RootedTreeNode<T> *par)
 			:lChild(nullptr),
 			rSib(nullptr),
 			parent(par),
-			otuID(INT_MAX) {
+			ottId(LONG_MAX) {
 		}
-		void AddSib(RootedTreeNode<T> *n) {
+		void addSib(RootedTreeNode<T> *n) {
 			if (rSib) {
-				rSib->AddSib(n);
+				rSib->addSib(n);
 			} else {
 				rSib = n;
 			}
 		}
-		void AddChild(RootedTreeNode<T> *n) {
+		void addChild(RootedTreeNode<T> *n) {
 			if (lChild)
-				lChild->AddSib(n);
+				lChild->addSib(n);
 			else
 				lChild = n;
 		}
-		bool RemoveChild(RootedTreeNode<T> *n) {
+		bool removeChild(RootedTreeNode<T> *n) {
 			if (n == nullptr || lChild == nullptr) {
 				return false;
 			}
@@ -131,15 +134,15 @@ class RootedTreeNode {
 			return true;
 		}
 	public:
-		void WriteAsNewick(std::ostream &out,
+		void writeAsNewick(std::ostream &out,
 						   bool useLeafNames,
 						   const std::map<RootedTreeNode<T> *, namestring_t> *nd2name=nullptr) const;
-		void AddSelfAndDesToPreorder(std::vector<const RootedTreeNode<T> *> &p) const;
+		void addSelfAndDesToPreorder(std::vector<const RootedTreeNode<T> *> &p) const;
 
-		void LowLevelSetFirstChild(RootedTreeNode<T> *nd) {
+		void lowLevelSetFirstChild(RootedTreeNode<T> *nd) {
 			lChild = nd;
 		}
-		void LowLevelSetNextSib(RootedTreeNode<T> *nd) {
+		void lowLevelSetNextSib(RootedTreeNode<T> *nd) {
 			rSib = nd;
 		}
 	private:
@@ -147,7 +150,7 @@ class RootedTreeNode {
 		RootedTreeNode<T> * rSib;
 		RootedTreeNode<T> * parent;
 		namestring_t name; // non-empty only for internals that are labelled with names that are NOT taxLabels
-		long otuID; // present for every leaf. UINT_MAX for internals labeled with taxlabels
+		long ottId; // present for every leaf. UINT_MAX for internals labeled with taxlabels
 		T data;
 	private:
 		RootedTreeNode<T>(const RootedTreeNode<T> &); //not defined.  Not copyable
@@ -164,48 +167,48 @@ class RootedTree {
 			:root(nullptr) {
 		}
 		~RootedTree<T, U>() {
-			Clear();
+			clear();
 		}
-		std::vector<const RootedTreeNode<T> *> GetPreorderTraversal() const;
-		const std::vector<const RootedTreeNode<T> *> & GetLeavesRef() {
+		std::vector<const RootedTreeNode<T> *> getPreorderTraversal() const;
+		const std::vector<const RootedTreeNode<T> *> & getLeavesRef() {
 			return leaves;
 		}
-		void WriteAsNewick(std::ostream &out,
+		void writeAsNewick(std::ostream &out,
 						   bool nhx,
 						   bool useLeafNames,
 						   const std::map<RootedTreeNode<T> *, namestring_t> *nd2name=nullptr) const {
 			if (root) {
-				root->WriteAsNewick(out, nhx, useLeafNames, nd2name);
+				root->writeAsNewick(out, nhx, useLeafNames, nd2name);
 			}
 		}
-		const RootedTreeNode<T> * GetRoot() const {
+		const RootedTreeNode<T> * getRoot() const {
 			return root;
 		}
-		RootedTreeNode<T> * GetRoot() {
+		RootedTreeNode<T> * getRoot() {
 			return root;
 		}
-		RootedTreeNode<T> * CreateRoot() {
+		RootedTreeNode<T> * createRoot() {
 			if (root != nullptr) {
-				Clear();
+				clear();
 			}
-			this->root = this->AllocNewNode(nullptr);
+			this->root = this->allocNewNode(nullptr);
 			return this->root;
 		}
-		RootedTreeNode<T> * CreateChild(RootedTreeNode<T> *par) {
-			auto c = this->AllocNewNode(par);
-			par->AddChild(c);
+		RootedTreeNode<T> * createChild(RootedTreeNode<T> *par) {
+			auto c = this->allocNewNode(par);
+			par->addChild(c);
 			return c;
 		}
-		RootedTreeNode<T> * CreateSib(RootedTreeNode<T> *leftSib) {
+		RootedTreeNode<T> * createSib(RootedTreeNode<T> *leftSib) {
 			assert(leftSib->parent != nullptr);
-			auto s = this->AllocNewNode(leftSib->parent);
-			leftSib->AddSib(s);
+			auto s = this->allocNewNode(leftSib->parent);
+			leftSib->addSib(s);
 			return s;
 		}
-		U & GetData() {
+		U & getData() {
 			return this->data;
 		}
-		const U & GetData() const {
+		const U & getData() const {
 			return this->data;
 		}
 	protected:
@@ -214,12 +217,12 @@ class RootedTree {
 		RootedTreeNode<T> * root;
 		U data;
 	public:
-		RootedTreeNode<T> * AllocNewNode(RootedTreeNode<T> *p) {
+		RootedTreeNode<T> * allocNewNode(RootedTreeNode<T> *p) {
 			RootedTreeNode<T> * nd = new RootedTreeNode<T>(p);
 			allNodes.push_back(nd);
 			return nd;
 		}
-		void Clear() {
+		void clear() {
 			root = NULL;
 			leaves.clear();
 			for (auto nIt : allNodes) {
