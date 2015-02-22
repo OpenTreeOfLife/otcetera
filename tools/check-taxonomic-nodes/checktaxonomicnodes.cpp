@@ -59,8 +59,8 @@ struct CheckTaxonState {
 			return;
 		}
 		auto taxOttIdToNode = taxonomy->getData().ottIdToNode;
-		const std::set<long> taxOttIds = keys(taxOttIdToNode);
-		const std::set<long> toCheckOttIds = keys(toCheck->getData().ottIdToNode);
+		const std::set<long> taxOttIds = taxonomy->getRoot()->getData().desIds;
+		const std::set<long> toCheckOttIds = toCheck->getRoot()->getData().desIds;
 		auto extras = set_difference_as_set(toCheckOttIds, taxOttIds);
 		if (!extras.empty()) {
 			otCLI.err << "OTT Ids found in the tree to check but not in the taxonomy:\n";
@@ -82,6 +82,13 @@ struct CheckTaxonState {
 		}
 		if (toCheckOttIds != taxOttIds) {
 			writeOttSetDiff(otCLI.out, "", toCheckOttIds, "toCheck", taxOttIds, "taxonomy");
+			auto omitted = set_difference_as_set(taxOttIds, toCheckOttIds);
+			otCLI.err << "OTT Ids found in the taxonomy but not the tree toCheck:\n";
+			writeOttSet(otCLI.err, "  ", omitted, "\n");
+			for (auto oid: omitted) {
+				otCLI.err << "id = " << oid << " name = \"" << taxOttIdToNode.find(oid)->second->getName() << "\"\n";
+			}
+			return;
 		}
 	}
 
