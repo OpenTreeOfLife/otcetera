@@ -28,7 +28,7 @@ unsigned int countPolytomies(const RootedTree<T, U> & tree) {
 template<typename T, typename U>
 void fillDesIdSets(RootedTree<T, U> & tree) {
 	// assumes OttId is set for each tip
-	for (auto node : PostorderInternalNode<T, U>(tree)) {
+	for (auto node : PostorderNode<T, U>(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
 		if (node->isTip()) {
 			desIds.insert(node->getOttId());

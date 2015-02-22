@@ -2,6 +2,7 @@
 #define OTCETERA_PARSE_NEWICK_DATA_H
 
 #include "otc/otc_base_includes.h"
+#include "otc/util.h"
 #include "otc/tree.h"
 #include "otc/tree_data.h"
 #include "otc/newick_tokenizer.h"
@@ -51,13 +52,17 @@ template <typename T, typename U>
 inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
 						 RootedTreeNode<T> & node,
 						 const NewickTokenizer::Token * labelToken) {
-	LOG(TRACE) << "in setOttIdAndAddToMap";
 	if (labelToken) {
+		node.setName(labelToken->content());
 		long ottID = ottIDFromName(labelToken->content());
-		LOG(TRACE) << "Found ottID = " << ottID;
 		if (ottID >= 0) {
 			node.setOttId(ottID);
 			U & treeData = tree.getData();
+			if (contains(treeData.ottIdToNode, ottID)) {
+				throw OTCParsingError("Expecting an OTT Id to only occur one time in a tree.",
+								  labelToken->content(),
+								  labelToken->getStartPos());
+			}
 			treeData.ottIdToNode[ottID] = &node;
 		} else {
 			throw OTCParsingError("Expecting a name for a taxon to end with an ott##### where the numbers are the OTT Id.",

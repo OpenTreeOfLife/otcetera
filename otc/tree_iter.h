@@ -309,6 +309,22 @@ class PostorderInternalNode {
 		RootedTree<T, U> & tree;
 };
 
+template<typename T, typename U>
+class PostorderNode {
+	public:
+	explicit PostorderNode(RootedTree<T, U> & t)
+		:tree(t){
+	}
+	postorder_iterator<T> begin() const {
+		return std::move(postorder_iterator<T>{tree.getRoot()});
+	}
+	postorder_iterator<T> end() const {
+		return postorder_iterator<T>{nullptr};
+	}
+	private:
+		RootedTree<T, U> & tree;
+};
+
 } // namespace otc
 #endif
 

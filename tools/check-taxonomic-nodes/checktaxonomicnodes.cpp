@@ -3,6 +3,8 @@
 #include "otc/tree_operations.h"
 #include "otc/tree_data.h"
 using namespace otc;
+
+typedef otc::RootedTreeNode<RTSplits> TaxoCheckNodeType;
 typedef RTreeOttIDMapping<RTSplits> RootedTreeForNodeType;
 typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
 
@@ -21,12 +23,65 @@ struct CheckTaxonState {
 		 taxonomy(nullptr),
 		 numErrors(0) {
 		}
+	bool doCheckEquivalent(std::ostream &out,
+						   long ottID,
+						   const TaxoCheckNodeType * snode,
+						   const TaxoCheckNodeType * tnode,
+						   bool topLevel,
+						   bool climbSynth,
+						   bool climbTax) {
+		const std::set<long> & streeDes = snode->getData().desIds;
+		const std::set<long> & taxTreeDes = tnode->getData().desIds;
+		if (streeDes != taxTreeDes) {
+			if (topLevel) {
+				numErrors += 1;
+				out << "ottID " << ottID << " incorrect:\n";
+				writeOttSetDiff(out, "    ", streeDes, "toCheck", taxTreeDes, "taxonomy");
+			}
+			if (climbSynth && isProperSubset(streeDes, taxTreeDes)) {
+				return doCheckEquivalent(out, ottID, snode->getParent(), tnode, false, true, false);
+			} else if (climbTax && isProperSubset(taxTreeDes, streeDes)) {
+				return doCheckEquivalent(out, ottID, snode, tnode->getParent(), false, false, true);
+			} else {
+				return false;
+			}
+		} else if (!topLevel) {
+			out << "        Found identical leaf sets for the synthetic tree \"" << snode->getName() << "\" and the taxonomic node \"" << tnode->getName() << "\".\n";
+		}
+		return true;
+	}
+
+
 	void summarize(const OTCLI &otCLI) {
 		if (taxonomy == nullptr) {
 			numErrors = 1;
 			otCLI.err << badNTreesMessage;
+			return;
+		}
+		auto taxOttIdToNode = taxonomy->getData().ottIdToNode;
+		const std::set<long> taxOttIds = keys(taxOttIdToNode);
+		const std::set<long> toCheckOttIds = keys(toCheck->getData().ottIdToNode);
+		auto extras = set_difference_as_set(toCheckOttIds, taxOttIds);
+		if (!extras.empty()) {
+			otCLI.err << "OTT Ids found in the tree to check but not in the taxonomy:\n";
+			writeOttSet(otCLI.err, "  ", extras, "\n");
+			numErrors = (extras.size() > INT_MAX ? INT_MAX : (int) extras.size());
+			return;
+		}
+		// now check for taxonomic identity
+		for (auto toCheckNd: ConstPostorderInternalNode<RTSplits, RootedTreeForNodeType>(*toCheck)) {
+			auto toCheckId = toCheckNd->getOttId();
+			assert(contains(taxOttIdToNode, toCheckId));
+			auto taxNd = taxOttIdToNode.find(toCheckId)->second;
+			if (!doCheckEquivalent(otCLI.out, toCheckId, toCheckNd, taxNd, true, true, true)) {
+				otCLI.out << "        Could not find this set of leaves named \"" << toCheckNd->getName() <<"\" in the tree to check when searching through the taxonomic node.\n";
+			}
+		}
+		if (toCheckOttIds != taxOttIds) {
+			writeOttSetDiff(otCLI.out, "", toCheckOttIds, "toCheck", taxOttIds, "taxonomy");
 		}
 	}
+
 };
 
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
@@ -65,91 +120,6 @@ int main(int argc, char *argv[]) {
 #if 0
 
 
-void processRefTree(const NxsTaxaBlockAPI * tb, const NxsSimpleTree * tree) {
-	std::vector<const NxsSimpleNode *> nodes =  tree->getPreorderTraversal();
-	for (std::vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
-		const NxsSimpleNode * nd = *nIt;
-		long ottID = getOTTIndex(tb, *nd);
-		if (nd->isTip()) {
-			const unsigned ind = nd->getTaxonIndex();
-			assert(ind < tb->getNumTaxonLabels());
-			const std::string tn = tb->getTaxonLabel(ind);
-			assert(ottID >= 0);
-			gRefNdp2mrca[nd].insert(ottID);
-			gRefLeafSet.insert(ottID);
-		} else {
-			useChildrenToFillMRCASet(nd, gRefNdp2mrca);
-			if (ottID > 0) {
-				gRefNamedNodes[nd] = ottID;
-			}
-		}
-		if (ottID >= 0) {
-			assert(gOttID2RefNode.find(ottID) == gOttID2RefNode.end());
-			gOttID2RefNode[ottID] = nd;
-		}
-	}
-}
-
-void processTaxonomyTree(const NxsTaxaBlockAPI * tb, const NxsSimpleTree * tree) {
-	std::vector<const NxsSimpleNode *> nodes =  tree->getPreorderTraversal();
-	for (std::vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
-		const NxsSimpleNode * nd = *nIt;
-		long ottID = getOTTIndex(tb, **nIt);
-		assert(ottID >= 0);
-		assert(gOttID2TaxNode.find(ottID) == gOttID2TaxNode.end());
-		if (nd->isTip()) {
-			assert(gOttID2RefNode.find(ottID) != gOttID2RefNode.end());
-			gTaxLeafSet.insert(ottID);
-			gTaxNdp2mrca[nd].insert(ottID);
-		} else {
-			useChildrenToFillMRCASet(nd, gTaxNdp2mrca);
-		}
-		gOttID2TaxNode[ottID] = *nIt;
-		gTaxNode2ottID[*nIt] = ottID;
-	}
-	for (std::map<long, const NxsSimpleNode *>::const_iterator nit = gOttID2RefNode.begin(); nit != gOttID2RefNode.end(); ++nit) {
-		assert(gOttID2TaxNode.find(nit->first) != gOttID2TaxNode.end());
-	}
-}
-
-bool isProperSubset(const set<long> & small, const set<long> & big) {
-	if (big.size() <= small.size()) {
-		return false;
-	}
-	for (set<long>::const_iterator rIt = small.begin(); rIt != small.end(); ++rIt) {
-		if (big.find(*rIt) == big.end()) {
-			return false;
-		}
-	}
-	return true;
-}
-
-bool doCheckEquivalent(std::ostream &out, long ottID, const NxsSimpleNode * snode, std::map<const NxsSimpleNode *, std::set<long> > & srcLookup,
-										  const NxsSimpleNode * tnode, std::map<const NxsSimpleNode *, std::set<long> > & taxLookup,
-										  bool topLevel, bool climbSynth, bool climbTax) {
-	std::map<const NxsSimpleNode *, std::set<long> >::const_iterator streeLSIt = srcLookup.find(snode);
-	assert(streeLSIt != srcLookup.end());
-	std::map<const NxsSimpleNode *, std::set<long> >::const_iterator taxtreeLSIt = taxLookup.find(tnode);
-	assert(taxtreeLSIt != taxLookup.end());
-	const std::set<long> & streeMRCA = streeLSIt->second;
-	const std::set<long> & taxtreeMRCA = taxtreeLSIt->second;
-	if (streeMRCA != taxtreeMRCA) {
-		if (topLevel) {
-			out << "ottID " << ottID << " incorrect:\n";
-			writeOttSetDiff(out, "    ", streeMRCA, "synth", taxtreeMRCA, "taxonomy");
-		}
-		if (climbSynth && isProperSubset(streeMRCA, taxtreeMRCA)) {
-			return doCheckEquivalent(out, ottID, snode->getEdgeToParent().getParent(), srcLookup, tnode, taxLookup, false, true, false);
-		} else if (climbTax && isProperSubset(taxtreeMRCA, streeMRCA)) {
-			return doCheckEquivalent(out, ottID, snode, srcLookup, tnode->getEdgeToParent().getParent(), taxLookup, false, false, true);
-		} else {
-			return false;
-		}
-	} else if (!topLevel) {
-		out << "        Found identical leaf sets for the synthetic tree \"" << snode->getName() << "\" and the taxonomic node \"" << tnode->getName() << "\".\n";
-	}
-	return true;
-}
 
 void summarize(std::ostream & out) {
 	for (map<const NxsSimpleNode *, long>::const_iterator rnit = gRefNamedNodes.begin(); rnit != gRefNamedNodes.end(); ++rnit) {
@@ -167,46 +137,5 @@ void summarize(std::ostream & out) {
 	}
 }
 
-bool newTreeHook(NxsFullTreeDescription &ftd, void * arg, NxsTreesBlock *treesB) {
-	const NxsTaxaBlockAPI * taxa = treesB->getTaxaBlockPtr();
-	NxsSimpleTree * nst = new NxsSimpleTree(ftd, 0.0, 0, true);
-	if (gRefTree == 0) {
-		gRefTree = nst;
-		processRefTree(taxa, nst);
-	} else if (gTaxonTree == 0) {
-		gTaxonTree = nst;
-		processTaxonomyTree(taxa, nst);
-	} else {
-		const char * msg = "Exepting only 2 files: the tree file, and then the taxonomy\n";
-		std::cerr << msg;
-		throw NxsException(msg);
-	}
-	if (gRefTree != nst && gTaxonTree != nst) {
-		delete nst;
-	}
-	return false;
-}
-
-int main(int argc, char *argv[]) {
-	std::vector<std::string> args;
-	if (!gOTCli.parseArgs(argc, argv, args)) {
-		return 1;
-	}
-	if (args.size() != 2) {
-		cerr << "Expecting a tree file and taxonomy tree.\n";
-		return 1;
-	}
-	try{
-		gOTCli.readFilepath(args[0], newTreeHook);
-		gOTCli.readFilepath(args[1], newTreeHook);
-	} catch (NxsException &x) {
-		std::cerr << x.what() << "\n";
-		return 1;
-	}
-	if (gOTCli.exitCode == 0) {
-		summarize(std::cout);
-	}
-	return gOTCli.exitCode;
-}
 
 #endif
