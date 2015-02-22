@@ -43,7 +43,7 @@ def test_invoc(tag, invocation, result_dir):
         m = 'EXIT CODE differed for {t}: Expected {e:d} Obtained {o:d}\n'
         error(m.format(t=tag, e=expected_exit, o=exit_code))
         if tag not in FAILED_TESTS:
-            FAILED_TESTS.appedn(tag)
+            FAILED_TESTS.append(tag)
 
 
 
@@ -54,8 +54,17 @@ def run_tests_for_invocation(descrip, data_dir, expected_par, executable_par):
     expected_results_path = os.path.join(expected_par, descrip['expected'])
     if 'infile_list' in descrip:
         # tests that need multiple input files
-        assert False
-        infile_list = descrip['infile_list']
+        assert '<INFILELIST>' in invoc
+        infile_list = [os.path.join(data_dir, i) for i in descrip['infile_list']]
+        ind = invoc.index('<INFILELIST>')
+        p = invoc[:ind]
+        if len(invoc) > ind + 1:
+            s = invoc[(1 + ind):]
+        else:
+            s = []
+        invoc = p + infile_list + s
+        tag = descrip['expected']
+        test_invoc(tag, invoc, expected_results_path)
     elif '<INFILE>' in invoc:
         ind = invoc.index('<INFILE>')
         inp_file_names = os.listdir(expected_results_path)
