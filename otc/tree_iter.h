@@ -39,7 +39,7 @@ class const_preorder_iterator : std::forward_iterator_tag {
 							}
 						}
 					}
-				} else if (curr->IsTip()) {
+				} else if (curr->isTip()) {
 					if (curr->getNextSib()) {
 						curr = curr->getNextSib();
 					} else {

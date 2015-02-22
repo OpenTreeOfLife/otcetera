@@ -7,6 +7,9 @@ typedef RTreeOttIDMapping<RTSplits> RootedTreeForNodeType;
 typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
 
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
+extern const char * badNTreesMessage;
+
+const char * badNTreesMessage = "Expecting only 2 trees a tree to check and the taxonomy!\n";
 
 struct CheckTaxonState {
 	std::unique_ptr<Tree_t> toCheck;
@@ -19,6 +22,10 @@ struct CheckTaxonState {
 		 numErrors(0) {
 		}
 	void summarize(const OTCLI &otCLI) {
+		if (taxonomy == nullptr) {
+			numErrors = 1;
+			otCLI.err << badNTreesMessage;
+		}
 	}
 };
 
@@ -31,7 +38,7 @@ inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 	} else if (ctsp->taxonomy == nullptr) {
 		ctsp->taxonomy = std::move(tree);
 	} else {
-		otCLI.err << "Expecting only 2 trees a tree to check and the taxonomy!\n";
+		otCLI.err << badNTreesMessage;
 		return false;
 	}
 	return true;
@@ -63,7 +70,7 @@ void processRefTree(const NxsTaxaBlockAPI * tb, const NxsSimpleTree * tree) {
 	for (std::vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
 		const NxsSimpleNode * nd = *nIt;
 		long ottID = getOTTIndex(tb, *nd);
-		if (nd->IsTip()) {
+		if (nd->isTip()) {
 			const unsigned ind = nd->getTaxonIndex();
 			assert(ind < tb->getNumTaxonLabels());
 			const std::string tn = tb->getTaxonLabel(ind);
@@ -90,7 +97,7 @@ void processTaxonomyTree(const NxsTaxaBlockAPI * tb, const NxsSimpleTree * tree)
 		long ottID = getOTTIndex(tb, **nIt);
 		assert(ottID >= 0);
 		assert(gOttID2TaxNode.find(ottID) == gOttID2TaxNode.end());
-		if (nd->IsTip()) {
+		if (nd->isTip()) {
 			assert(gOttID2RefNode.find(ottID) != gOttID2RefNode.end());
 			gTaxLeafSet.insert(ottID);
 			gTaxNdp2mrca[nd].insert(ottID);

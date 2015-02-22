@@ -42,19 +42,37 @@ inline void newickCloseNodeHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNod
 								const NewickTokenizer::Token & ) {
 }
 
+template <typename T, typename U>
+void setOttIdAndAddToMap(RootedTree<T, U> & tree,
+						 RootedTreeNode<T> & node,
+						 const NewickTokenizer::Token * labelToken);
+
+template <typename T, typename U>
+inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
+						 RootedTreeNode<T> & node,
+						 const NewickTokenizer::Token * labelToken) {
+	LOG(TRACE) << "in setOttIdAndAddToMap";
+	if (labelToken) {
+		long ottID = ottIDFromName(labelToken->content());
+		LOG(TRACE) << "Found ottID = " << ottID;
+		if (ottID >= 0) {
+			node.setOttId(ottID);
+			U & treeData = tree.getData();
+			treeData.ottIdToNode[ottID] = &node;
+		} else {
+			throw OTCParsingError("Expecting a name for a taxon to end with an ott##### where the numbers are the OTT Id.",
+								  labelToken->content(),
+								  labelToken->getStartPos());
+		}
+	}
+}
+
 inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & tree,
 								RootedTreeNode<RTNodeNoData> & node,
 								const NewickTokenizer::Token * labelToken,
 								const NewickTokenizer::Token * , // used for comment
 								const NewickTokenizer::Token * ) {
-	if (labelToken) {
-		long ottID = ottIDFromName(labelToken->content());
-		if (ottID >= 0) {
-			node.setOttId(ottID);
-			RTreeOttIDMapping<RTNodeNoData> & treeData = tree.getData();
-			treeData.ottIdToNode[ottID] = &node;
-		}
-	}
+	setOttIdAndAddToMap(tree, node, labelToken);
 }
 inline void postParseHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & ) {
 }
@@ -63,7 +81,7 @@ inline void postParseHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoDat
 inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
 								RootedTreeNode<RTSplits> & node,
 								const NewickTokenizer::Token & token) {
-	if (!node.hasOttId()) {
+	if (node.isTip() && !node.hasOttId()) {
 		throw OTCParsingContentError("Expecting each tip to have an ID.", token.getStartPos());
 	}
 }
@@ -73,14 +91,7 @@ inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
 								const NewickTokenizer::Token * labelToken,
 								const NewickTokenizer::Token * , // used for comment
 								const NewickTokenizer::Token * ) {
-	if (labelToken) {
-		long ottID = ottIDFromName(labelToken->content());
-		if (ottID >= 0) {
-			node.setOttId(ottID);
-			RTreeOttIDMapping<RTSplits> & treeData = tree.getData();
-			treeData.ottIdToNode[ottID] = &node;
-		}
-	}
+	setOttIdAndAddToMap(tree, node, labelToken);
 }
 
 inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree) {

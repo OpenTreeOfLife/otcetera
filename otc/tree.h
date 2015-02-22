@@ -23,7 +23,7 @@ class RootedTreeNode {
 		RootedTreeNode<T> * getParent() {
 			return parent;
 		}
-		bool IsTip() const {
+		bool isTip() const {
 			return (lChild == nullptr);
 		}
 		const RootedTreeNode<T> * getFirstChild() const {

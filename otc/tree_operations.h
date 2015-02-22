@@ -30,7 +30,7 @@ void fillDesIdSets(RootedTree<T, U> & tree) {
 	// assumes OttId is set for each tip
 	for (auto node : PostorderInternalNode<T, U>(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
-		if (node->IsTip()) {
+		if (node->isTip()) {
 			desIds.insert(node->getOttId());
 		} else {
 			for (auto child : ChildIterator<T, U>(*node)) {
