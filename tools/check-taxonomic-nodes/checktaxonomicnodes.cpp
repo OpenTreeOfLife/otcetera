@@ -70,6 +70,9 @@ struct CheckTaxonState {
 		}
 		// now check for taxonomic identity
 		for (auto toCheckNd: ConstPostorderInternalNode<RTSplits, RootedTreeForNodeType>(*toCheck)) {
+			if (!toCheckNd->hasOttId()) {
+				continue;
+			}
 			auto toCheckId = toCheckNd->getOttId();
 			assert(contains(taxOttIdToNode, toCheckId));
 			auto taxNd = taxOttIdToNode.find(toCheckId)->second;
