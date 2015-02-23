@@ -17,6 +17,9 @@ std::size_t checkForUnknownTaxa(std::ostream & err, const RootedTree<T, U> & toC
 template<typename T, typename U>
 RootedTreeNode<T> * findMRCAFromIDSet(RootedTree<T, U> & tree, const std::set<long> & idSet, long trigger);
 
+
+std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd);
+
 //// impl
 
 template<typename T, typename U>
@@ -104,6 +107,59 @@ std::size_t checkForUnknownTaxa(std::ostream & err, const RootedTree<T, U> & toC
 	}
 	return 0U;
 }
+
+template<typename T, typename U>
+inline RootedTreeNode<T> * addChildForOttId(RootedTreeNode<T> & nd, long ottId, RootedTree<T, U> & tree) {
+	auto nn = tree.createChild(&nd);
+	nn->setOttId(ottId);
+	return nn;
+}
+
+
+
+
+inline std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd) {
+	return nd.getData().desIds;
+}
+
+inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> & ls) {
+	const std::set<long> toRemove = nd.getData().desIds;
+	nd.getData().desIds = ls;
+	for (auto anc : AncNodeIter<RTSplits>(&nd)) {
+		anc->getData().desIds.erase(begin(toRemove), end(toRemove));
+		anc->getData().desIds.insert(begin(ls), end(ls));
+	}
+}
+
+template<typename T, typename U>
+std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, U> & toExpand, const RootedTree<T, U> & taxonomy) {
+	const U & taxData = taxonomy.getData();
+	std::map<RootedTreeNode<T> *, std::set<long> > replaceNodes;
+	for (auto nd : LeafNodeIter<T, U>(toExpand)) {
+		assert(nd->hasOttId());
+		auto ottId = nd->getOttId();
+		auto taxNd = taxData.getNodeForOttId(ottId);
+		assert(taxNd != nullptr);
+		if (!taxNd->isTip()) {
+			auto leafSet = getDesOttIds(*taxNd);
+			replaceNodes[nd] = leafSet;
+		}
+	}
+	std::vector<RootedTreeNode<T> *> expanded;
+	expanded.reserve(replaceNodes.size());
+	for (auto r : replaceNodes) {
+		auto oldNode = r.first;
+		auto ls = r.second;
+		assert(ls.size() > 0);
+		expanded.push_back(oldNode);
+		for (auto loid : ls) {
+			addChildForOttId<T>(*oldNode, loid, toExpand);
+		}
+		fixDesIdFields(*oldNode, ls);
+	}
+	return expanded;
+}
+
 
 } // namespace otc
 #endif

@@ -245,6 +245,54 @@ class postorder_iterator : std::forward_iterator_tag {
 		}
 };
 
+/// descendants before ancestors, but not guaranteed to be the reverse of const_preorder_iterator
+template<typename T>
+class anc_iterator : std::forward_iterator_tag {
+	private:
+		typedef RootedTreeNode<T> NodeType;
+		const NdFilterFn<T> filterFn;
+		NodeType * curr;
+		
+		void _advance() {
+			assert(curr != nullptr);
+			do {
+				curr = curr->getParent();
+			} while(curr != nullptr && filterFn != nullptr && !filterFn(curr));
+		}
+	public:
+		anc_iterator(RootedTreeNode<T> *c)
+			:filterFn{nullptr},
+			curr(c) {
+			if (curr != nullptr) {
+				_advance();
+			}
+		}
+		anc_iterator(RootedTreeNode<T> *c, NdFilterFn<T> f)
+			:filterFn{f},
+			curr(c) {
+			if (curr != nullptr) {
+				_advance();
+			}
+		}
+		bool operator==(const anc_iterator &other) {
+			return this->curr == other.curr;
+		}
+		bool operator!=(const anc_iterator &other) {
+			return this->curr != other.curr;
+		}
+		RootedTreeNode<T> * operator*() const {
+			return curr;
+		}
+		anc_iterator & operator++() {
+			if (curr == nullptr) {
+				throw std::out_of_range("Incremented a dead anc_iterator");
+			}
+			_advance();
+			return *this;
+		}
+};
+
+
 template<typename T, typename U>
 class ChildIterator {
 	public:
@@ -308,6 +356,40 @@ class PostorderInternalNode {
 	private:
 		RootedTree<T, U> & tree;
 };
+
+template<typename T, typename U>
+class LeafNodeIter {
+	public:
+	explicit LeafNodeIter(RootedTree<T, U> & t)
+		:tree(t){
+	}
+	postorder_iterator<T> begin() const {
+		return std::move(postorder_iterator<T>{tree.getRoot(), isLeaf<T>});
+	}
+	postorder_iterator<T> end() const {
+		return postorder_iterator<T>{nullptr};
+	}
+	private:
+		RootedTree<T, U> & tree;
+};
+
+template<typename T>
+class AncNodeIter {
+	public:
+	explicit AncNodeIter(RootedTreeNode<T> * n)
+		:des(n){
+	}
+	anc_iterator<T> begin() const {
+		return std::move(anc_iterator<T>{des});
+	}
+	anc_iterator<T> end() const {
+		return anc_iterator<T>{nullptr};
+	}
+	private:
+		RootedTreeNode<T> * des;
+};
+
+
 
 template<typename T, typename U>
 class PostorderNode {

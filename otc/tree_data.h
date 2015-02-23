@@ -14,6 +14,10 @@ class RTreeOttIDMapping {
 	public:
 		typedef RootedTreeNode<T> NodeType;
 		std::map<long, NodeType *> ottIdToNode;
+		NodeType * getNodeForOttId(long ottId) const {
+			auto it = ottIdToNode.find(ottId);
+			return (it == ottIdToNode.end() ? nullptr : it->second);
+		}
 };
 
 class RTSplits {

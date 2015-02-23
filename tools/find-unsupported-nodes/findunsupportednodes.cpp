@@ -49,8 +49,66 @@ struct FindUnsupportedState {
 		return true;
 	}
 	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
+	expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
+	/*
+	map<const NxsSimpleNode *, set<long> > ndp2mrca;
+	map<const NxsSimpleNode *, set<long> > refNdp2mrca;
+	set<long> leafSet;
+
+	vector<const NxsSimpleNode *> nodes =  tree->GetPreorderTraversal();
+	for (vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
+		const NxsSimpleNode & nd = **nIt;
+		vector<NxsSimpleNode *> children = nd.GetChildren();
+		const unsigned outDegree = children.size();
+		if (outDegree > 0) {
+			set<long> & mrca = ndp2mrca[&nd];
+			for (vector<NxsSimpleNode *>::const_iterator cIt = children.begin(); cIt != children.end(); ++cIt) {
+				const NxsSimpleNode * c = *cIt;
+				assert(ndp2mrca.find(c) != ndp2mrca.end());
+				set<long> & csl = ndp2mrca[c];
+				mrca.insert(csl.begin(), csl.end());
+			}
+		} else if (outDegree == 0) {
+			long ottID = getOTTIndex(tb, **nIt);
+			map<long, const NxsSimpleNode *>::const_iterator tlIt = gTabooLeaf.find(ottID);
+			if (tlIt != gTabooLeaf.end()) {
+				assert(tlIt->second == *nIt);
+			}
+			assert(ottID >= 0);
+			assert(gOttID2TaxNode.find(ottID) != gOttID2TaxNode.end());
+			ndp2mrca[&nd].insert(ottID);
+			markPathToRoot(refNdp2mrca, ottID);
+			leafSet.insert(ottID);
+		}
+	}
+	map<set<long>, const NxsSimpleNode *> sourceClades;
+	for (map<const NxsSimpleNode *, set<long> >::const_iterator nsIt = ndp2mrca.begin(); nsIt != ndp2mrca.end(); ++nsIt) {
+		const NxsSimpleNode * nd = nsIt->first;
+		const NxsSimpleNode * par = nd->GetEdgeToParentRef().GetParent();
+		if (par != 0 && !nd->IsTip()) {
+			const set<long> & nm = nsIt->second;
+			sourceClades[nm] = nsIt->first;
+		}
+	}
+	recordSupportedNodes(refNdp2mrca, sourceClades, gSupportedNodes, leafSet, ndp2mrca);
+	if (gCurrTmpOstream != 0) {
+		*gCurrTmpOstream << "#NEXUS\nBEGIN TREES;\n";
+
+		*gCurrTmpOstream << "   Tree pruned_synth = [&R] ";
+		writeNewickOTTIDs(*gCurrTmpOstream, gRefTree, refNdp2mrca);
+		
+		*gCurrTmpOstream << "   Tree input = [&R] ";
+		writeNewickOTTIDs(*gCurrTmpOstream, tree, ndp2mrca);
+		
+		*gCurrTmpOstream << "END;\n";
+	}
+}
+
+*/
 		return true;
 	}
+
+
 };
 
 
@@ -346,93 +404,6 @@ void recordSupportedNodes(const map<const NxsSimpleNode *, set<long> > & refNdp2
 	}
 }
 
-
-void expandOTTInternalsWhichAreLeaves(const NxsTaxaBlockAPI * tb, NxsSimpleTree * tree) {
-	vector<const NxsSimpleNode *> nodes =  tree->GetPreorderTraversal();
-	map<NxsSimpleNode *, set<long> > replaceNodes;
-	for (vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
-		const NxsSimpleNode & nd = **nIt;
-		const unsigned outDegree = nd.GetOutDegree();
-		if (outDegree == 0) {
-			long ottID = getOTTIndex(tb, **nIt);
-			assert(ottID >= 0);
-			assert(gOttID2TaxNode.find(ottID) != gOttID2TaxNode.end());
-			if (gTaxLeafOTTIDs.find(ottID) == gTaxLeafOTTIDs.end()) {
-				set<long> leafSet;
-				fillTipOTTIDs(gOttID2TaxNode, ottID, leafSet, gTaxNode2ottID);
-				replaceNodes[const_cast<NxsSimpleNode *>(&nd)] = leafSet;
-			}
-		}
-	}
-	for (map<NxsSimpleNode *, set<long> >::const_iterator rIt = replaceNodes.begin(); rIt != replaceNodes.end(); ++rIt) {
-		NxsSimpleNode * oldNode = rIt->first;
-		const set<long> & leafSet = rIt->second;
-		assert(leafSet.size() > 0);
-		oldNode->SetTaxonIndex(UINT_MAX); // make this no longer appear to be a tip
-		for (set<long>::const_iterator lsIt = leafSet.begin(); lsIt != leafSet.end(); ++lsIt) {
-			NxsSimpleNode *newNode =  tree->AllocNewNode(oldNode);
-			oldNode->AddChild(newNode);
-			gExpanded[newNode] = *lsIt;
-			assert(gTabooLeaf.find(*lsIt) == gTabooLeaf.end());
-			gTabooLeaf[*lsIt] = newNode;
-		}
-	}
-}
-
-void processSourceTree(const NxsTaxaBlockAPI * tb, NxsSimpleTree * tree) {
-	expandOTTInternalsWhichAreLeaves(tb, tree);
-	map<const NxsSimpleNode *, set<long> > ndp2mrca;
-	map<const NxsSimpleNode *, set<long> > refNdp2mrca;
-	set<long> leafSet;
-
-	vector<const NxsSimpleNode *> nodes =  tree->GetPreorderTraversal();
-	for (vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
-		const NxsSimpleNode & nd = **nIt;
-		vector<NxsSimpleNode *> children = nd.GetChildren();
-		const unsigned outDegree = children.size();
-		if (outDegree > 0) {
-			set<long> & mrca = ndp2mrca[&nd];
-			for (vector<NxsSimpleNode *>::const_iterator cIt = children.begin(); cIt != children.end(); ++cIt) {
-				const NxsSimpleNode * c = *cIt;
-				assert(ndp2mrca.find(c) != ndp2mrca.end());
-				set<long> & csl = ndp2mrca[c];
-				mrca.insert(csl.begin(), csl.end());
-			}
-		} else if (outDegree == 0) {
-			long ottID = getOTTIndex(tb, **nIt);
-			map<long, const NxsSimpleNode *>::const_iterator tlIt = gTabooLeaf.find(ottID);
-			if (tlIt != gTabooLeaf.end()) {
-				assert(tlIt->second == *nIt);
-			}
-			assert(ottID >= 0);
-			assert(gOttID2TaxNode.find(ottID) != gOttID2TaxNode.end());
-			ndp2mrca[&nd].insert(ottID);
-			markPathToRoot(refNdp2mrca, ottID);
-			leafSet.insert(ottID);
-		}
-	}
-	map<set<long>, const NxsSimpleNode *> sourceClades;
-	for (map<const NxsSimpleNode *, set<long> >::const_iterator nsIt = ndp2mrca.begin(); nsIt != ndp2mrca.end(); ++nsIt) {
-		const NxsSimpleNode * nd = nsIt->first;
-		const NxsSimpleNode * par = nd->GetEdgeToParentRef().GetParent();
-		if (par != 0 && !nd->IsTip()) {
-			const set<long> & nm = nsIt->second;
-			sourceClades[nm] = nsIt->first;
-		}
-	}
-	recordSupportedNodes(refNdp2mrca, sourceClades, gSupportedNodes, leafSet, ndp2mrca);
-	if (gCurrTmpOstream != 0) {
-		*gCurrTmpOstream << "#NEXUS\nBEGIN TREES;\n";
-
-		*gCurrTmpOstream << "   Tree pruned_synth = [&R] ";
-		writeNewickOTTIDs(*gCurrTmpOstream, gRefTree, refNdp2mrca);
-		
-		*gCurrTmpOstream << "   Tree input = [&R] ";
-		writeNewickOTTIDs(*gCurrTmpOstream, tree, ndp2mrca);
-		
-		*gCurrTmpOstream << "END;\n";
-	}
-}
 
 
 

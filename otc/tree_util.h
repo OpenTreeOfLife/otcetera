@@ -13,12 +13,18 @@ namespace otc {
 template<typename T>
 bool isInternalNode(const RootedTreeNode<T> & nd);
 template<typename T>
+bool isLeaf(const RootedTreeNode<T> & nd);
+template<typename T>
 T * findLeftmostInSubtree(T * nd);
 
 
 template<typename T>
 inline bool isInternalNode(const RootedTreeNode<T> & nd) {
 	return !nd.isTip();
+}
+template<typename T>
+inline bool isLeaf(const RootedTreeNode<T> & nd) {
+	return nd.isTip();
 }
 
 template<typename T>
