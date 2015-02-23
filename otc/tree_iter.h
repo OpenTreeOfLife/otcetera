@@ -351,9 +351,9 @@ class anc_iterator : std::forward_iterator_tag {
 };
 
 template<typename T>
-class ChildIterator {
+class ChildIter {
 	public:
-	explicit ChildIterator(T & n)
+	explicit ChildIter(T & n)
 		:node(n) {
 	}
 	child_iterator<T> begin() const {
@@ -367,9 +367,9 @@ class ChildIterator {
 };
 
 template<typename T>
-class ConstChildIterator {
+class ConstChildIter {
 	public:
-	explicit ConstChildIterator(const T & n)
+	explicit ConstChildIter(const T & n)
 		:node(n) {
 	}
 	const_child_iterator<T> begin() const {
@@ -423,6 +423,22 @@ class ConstPostorderInternalNode {
 	}
 	const_postorder_iterator<typename T::node_type> begin() const {
 		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
+	}
+	const_postorder_iterator<typename T::node_type> end() const {
+		return const_postorder_iterator<typename T::node_type>{nullptr};
+	}
+	private:
+		const T & tree;
+};
+
+template<typename T>
+class ConstPostorderIter {
+	public:
+	explicit ConstPostorderIter(const T &t)
+		:tree(t){
+	}
+	const_postorder_iterator<typename T::node_type> begin() const {
+		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot()});
 	}
 	const_postorder_iterator<typename T::node_type> end() const {
 		return const_postorder_iterator<typename T::node_type>{nullptr};

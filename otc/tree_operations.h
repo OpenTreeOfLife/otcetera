@@ -40,7 +40,7 @@ void fillDesIdSets(RootedTree<T, U> & tree) {
 		if (node->isTip()) {
 			desIds.insert(node->getOttId());
 		} else {
-			for (auto child : ChildIterator<RootedTreeNode<T> >(*node)) {
+			for (auto child : ChildIter<RootedTreeNode<T> >(*node)) {
 				std::set<long> & cDesIds = child->getData().desIds;
 				desIds.insert(cDesIds.begin(), cDesIds.end());
 			}
@@ -197,7 +197,7 @@ inline bool multipleChildrenInMap(const RootedTreeNode<T> & nd,
 	assert(first);
 	bool foundFirst = false;
 	*first = nullptr;
-	for(auto c : ConstChildIterator<RootedTreeNode<T> >(nd)) {
+	for(auto c : ConstChildIter<RootedTreeNode<T> >(nd)) {
 		if (markedMap.find(c) != markedMap.end()) {
 			if (foundFirst) {
 				return true;
@@ -241,7 +241,7 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 		auto nsn = findNextSignificantNode<T>(&srcNd, markedMap);
 		out << '(';
 		unsigned numcwritten = 0;
-		for (auto child : ConstChildIterator<RootedTreeNode<T> >(*nsn)) {
+		for (auto child : ConstChildIter<RootedTreeNode<T> >(*nsn)) {
 			if (markedMap.find(child) != markedMap.end()){
 				if (numcwritten > 0) {
 					out << ',';

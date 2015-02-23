@@ -57,6 +57,42 @@ bool checkPreorder(const T & tree) {
 	return true;
 }
 
+template<typename T>
+bool checkPostorder(const T & tree) {
+	auto ns = tree.getSetOfAllNodes();
+	std::set<const typename T::node_type *> visited;
+	for (auto nd : ConstPostorderIter<T>(tree)) {
+		auto p = nd->getParent();
+		if (p) {
+			if (contains(visited, p)) {
+				assert(!contains(visited, p));
+				return false;
+			}
+		}
+		visited.insert(nd);
+	}
+	if (visited != ns) {
+		assert(visited == ns);
+		return false;
+	}
+	return true;
+}
+
+template<typename T>
+bool checkChildIter(const T & tree) {
+	auto ns = tree.getSetOfAllNodes();
+	for (auto nd : ns) {
+		auto nc = nd->getOutDegree();
+		auto v = 0U;
+		for (auto c : ConstChildIter<typename T::node_type>(*nd)) {
+			assert(c->getParent() == nd);
+			++v;
+		}
+		assert(v == nc);
+	}
+	return true;
+}
+
 
 template<typename T>
 bool checkTreeInvariants(const T & tree) {
@@ -64,6 +100,12 @@ bool checkTreeInvariants(const T & tree) {
 		return false;
 	}
 	if (!checkPreorder(tree)) {
+		return false;
+	}
+	if (!checkPostorder(tree)) {
+		return false;
+	}
+	if (!checkChildIter(tree)) {
 		return false;
 	}
 	return true;
