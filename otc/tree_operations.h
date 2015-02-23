@@ -136,6 +136,7 @@ std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, 
 	const U & taxData = taxonomy.getData();
 	std::map<RootedTreeNode<T> *, std::set<long> > replaceNodes;
 	for (auto nd : LeafNodeIter<T, U>(toExpand)) {
+		assert(nd->isTip());
 		assert(nd->hasOttId());
 		auto ottId = nd->getOttId();
 		auto taxNd = taxData.getNodeForOttId(ottId);

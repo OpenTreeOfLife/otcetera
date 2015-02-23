@@ -194,8 +194,17 @@ class const_postorder_iterator : std::forward_iterator_tag {
 			if (curr == lastNode) {
 				curr = nullptr;
 			} else {
-				auto n = curr->getNextSib();
-				curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
+				for (;;) {
+					auto n = curr->getNextSib();
+					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
+					if (filterFn == nullptr || filterFn(*curr)) {
+						break;
+					}
+					if (curr == lastNode) {
+						curr = nullptr;
+						break;
+					}
+				}
 			}
 		}
 	public:
@@ -214,7 +223,7 @@ class const_postorder_iterator : std::forward_iterator_tag {
 			if (lastNode != nullptr) {
 				curr = findLeftmostInSubtree<NodeType>(lastNode);
 			}
-			if (c != nullptr && filterFn && !filterFn(*lastNode)) {
+			if (curr != nullptr && filterFn && !filterFn(*curr)) {
 				_advance();
 			}
 		}
@@ -249,8 +258,17 @@ class postorder_iterator : std::forward_iterator_tag {
 			if (curr == lastNode) {
 				curr = nullptr;
 			} else {
-				auto n = curr->getNextSib();
-				curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
+				for (;;) {
+					auto n = curr->getNextSib();
+					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
+					if (filterFn == nullptr || filterFn(*curr)) {
+						break;
+					}
+					if (curr == lastNode) {
+						curr = nullptr;
+						break;
+					}
+				}
 			}
 		}
 	public:
@@ -269,7 +287,7 @@ class postorder_iterator : std::forward_iterator_tag {
 			if (lastNode != nullptr) {
 				curr = findLeftmostInSubtree<NodeType>(lastNode);
 			}
-			if (c != nullptr && filterFn && !filterFn(*lastNode)) {
+			if (curr != nullptr && filterFn && !filterFn(*curr)) {
 				_advance();
 			}
 		}
