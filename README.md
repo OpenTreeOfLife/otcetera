@@ -10,7 +10,10 @@ It also uses easylogginpp which is distributed under an MIT License. See
   that project is otc/easylogging++.h
   
 
-## prerequisites
+
+## Installation
+
+### prerequisites
 To facilitate parsing of NexSON, this version of requires rapidjson.
 Download it from https://github.com/miloyip/rapidjson
 and put the path to its include subdir in a "-I" CPPFLAGS or CXXFLAGS
@@ -18,7 +21,7 @@ when you run configure.
 
 You also need the whole autotools stack including libtool.
 
-# Installation
+### configuration + building
 
 To run the whole autoreconf stuff in a manner that will add missing bits as needed,
 run:
@@ -37,6 +40,39 @@ Then to configure and build with clang use:
 
 To use g++, substitute `reconf-gcc.sh` for `reconf-clang.sh` in that work flow.
 
+Python 2 (recent enough to have the subprocess module as part of the standard lib)
+is required for the `make check` operation to succeed.
+
+
+## Usage
+## Common command line flags
+The tools use the same (OTCLI) class to process command line arguments. 
+This provides the following command line flags:
+  * `-h` for help
+  * `-v` for verbose output
+  * `-q` for quieter than normal output
+  * `-t` for trace level (extremely verbose) output
+
+Unless otherwise stated, the command line tools that need a tree take a filepath 
+to a newick tree file. The numeric suffix of each label in the tree is taken to
+be the OTT id. This accommodates the name munging that some of the open tree of
+life tools perform on taxonomic names with special characters (because only the
+OTT id is used to associate labels in different trees)
+
+### Checking for incorrect internal labels in a full tree
+
+    otcchecktaxonomicnodes synth.tre taxonomy.tre
+
+will check every labelled internal node is correctly labelled. To do this, it 
+verifies that the set of OTT ids associated with tips that descend from the 
+node is identical to the set of OTT ids associated with terminal taxa below
+the corresponding node in the taxonomic tree.
+
+A report will be issued for every problematic labeling. 
+
+Assumptions:
+  1. synth tree and taxonomy tree have the same leaf set in terms of OTT ids
+  2. each label has numeric suffix, which is treated as the OTT id.
 
 ## NCL credits
 As of March 09, 2012, NCL is available under a Simplified BSD license (see

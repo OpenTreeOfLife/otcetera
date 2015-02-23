@@ -1,8 +1,2 @@
-ottID 4 incorrect:
-    ott10 is in toCheck but not taxonomy
-    ott2 is in taxonomy but not toCheck
         Could not find this set of leaves named "A ott4" in the tree to check when searching through the taxonomic node.
-ottID 12 incorrect:
-    ott2 is in toCheck but not taxonomy
-    ott10 is in taxonomy but not toCheck
         Could not find this set of leaves named "C ott12" in the tree to check when searching through the taxonomic node.

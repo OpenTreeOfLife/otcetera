@@ -35,8 +35,8 @@ struct CheckTaxonState {
 		if (streeDes != taxTreeDes) {
 			if (topLevel) {
 				numErrors += 1;
-				out << "ottID " << ottID << " incorrect:\n";
-				writeOttSetDiff(out, "    ", streeDes, "toCheck", taxTreeDes, "taxonomy");
+			//	out << "ottID " << ottID << " incorrect:\n";
+			//	writeOttSetDiff(out, "    ", streeDes, "toCheck", taxTreeDes, "taxonomy");
 			}
 			if (climbSynth && isProperSubset(streeDes, taxTreeDes)) {
 				return doCheckEquivalent(out, ottID, snode->getParent(), tnode, false, true, false);
