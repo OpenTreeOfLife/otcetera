@@ -1,7 +1,5 @@
 #include "otc/tree.h"
 using namespace otc;
-
-
 /*
 template<typename T> class TreeNode;
 template<typename T>

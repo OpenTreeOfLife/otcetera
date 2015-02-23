@@ -10,7 +10,6 @@
 #include "otc/util.h"
 namespace otc {
 
-
 class OTCLI {
 	public:
 		OTCLI(const char *title,
@@ -119,8 +118,6 @@ inline int treeProcessingMain(OTCLI & otCLI,
 	}
 	return otCLI.exitCode;
 }
-
-
 
 } // namespace otc
 #endif

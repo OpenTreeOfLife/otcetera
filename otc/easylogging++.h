@@ -29,7 +29,6 @@
 #pragma clang diagnostic ignored  "-Wmissing-noreturn"
 
 
-
 // Compilers and C++0x/C++11 Evaluation
 #if defined(__GNUC__)
 #   define ELPP_COMPILER_GCC 1
@@ -1889,7 +1888,6 @@ public:
     virtual inline iterator end(void) ELPP_FINAL {
         return m_list.end();
     }
-
 
     /// @return Constant iterator pointer from start of repository
     virtual inline const_iterator cbegin(void) const ELPP_FINAL {

@@ -16,7 +16,6 @@ static el::Configurations defaultConf;
 
 namespace otc {
 
-
 OTCLI::OTCLI(const char *title,
 		  const char *descrip,
 		  const char *usage,
@@ -39,7 +38,6 @@ OTCLI::OTCLI(const char *title,
 	}
 	el::Loggers::reconfigureLogger("default", defaultConf);
 }
-
 
 void OTCLI::printHelp(std::ostream & outStream) {
 	outStream << this->titleStr << ": " << this->descriptionStr << ".\n";
@@ -135,6 +133,5 @@ bool OTCLI::isDotTxtFile(const std::string &fp) {
 	const size_t fnl = fp.length();
 	return (fp.substr(fnl - 4) == std::string(".txt"));
 }
-
 
 } // namespace otc

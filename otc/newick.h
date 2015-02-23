@@ -11,8 +11,6 @@
 #include "otc/error.h"
 
 namespace otc {
-
-
 //Takes wide istream and (optional) filepath (just used for error reporting if not empty)
 template<typename T, typename U>
 std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, const std::string & filepath, const ParsingRules &parsingRules);
@@ -72,8 +70,6 @@ inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, cons
 	postParseHook(*treePtr);
 	return treePtr;
 }
-
-
 
 }// namespace otc
 #endif

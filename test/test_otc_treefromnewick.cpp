@@ -24,7 +24,6 @@ class TestValidTreeStruct {
 		}
 };
 
-
 int main(int argc, char *argv[]) {
 	std::vector<std::string> validfilenames = {"abc-newick.tre", 
 						   "words-polytomy.tre", 

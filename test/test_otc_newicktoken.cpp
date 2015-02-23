@@ -2,7 +2,6 @@
 #include "otc/test_harness.h"
 using namespace otc;
 
-
 char testSingleCharLabelPoly(const TestHarness &);
 char testWordLabelPoly(const TestHarness &);
 char testBifurcating(const TestHarness &);
@@ -17,9 +16,6 @@ char testUnbalancedToManyClose(const TestHarness &);
 char testEmptyClade(const TestHarness &);
 char testEmptySib(const TestHarness &);
 char testEmptyBranchLength(const TestHarness &);
-
-
-
 char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected);
 char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn);
 
@@ -102,7 +98,6 @@ char testBranchLengths(const TestHarness &th) {
 												")", "some label", ":", "3", ";"};
 	return genericTokenTest(th, "branch-lengths.tre", expected);
 }
-
 
 char testQuotedWordLabelPoly(const TestHarness &th) {
 	const std::vector<std::string> expected = {"(", "AB",

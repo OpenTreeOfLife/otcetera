@@ -51,7 +51,6 @@ struct CheckTaxonState {
 		return true;
 	}
 
-
 	void summarize(const OTCLI &otCLI) {
 		if (taxonomy == nullptr) {
 			numErrors = 1;

@@ -19,7 +19,6 @@ T * findLeftmostInSubtree(T * nd);
 template<typename T>
 T * findRightmostInSubtree(T * nd);
 
-
 template<typename T>
 inline bool isInternalNode(const RootedTreeNode<T> & nd) {
 	return !nd.isTip();

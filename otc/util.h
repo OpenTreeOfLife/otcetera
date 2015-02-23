@@ -18,7 +18,6 @@ const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
 bool openUTF8File(const std::string &filepath, std::ifstream & inp);
 bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
 
-
 template<typename T>
 bool isProperSubset(const T & small, const T & big);
 template<typename T>
@@ -52,7 +51,6 @@ std::set<T> keys(const std::map<T, U> & container) {
 	}
 	return k;
 }
-
 
 inline void writeOttSet(std::ostream & out,
 						const char *indent,
@@ -113,7 +111,6 @@ std::string strip_surrounding_whitespace(const std::string &n);
 std::list<std::string> split_string(const std::string &s);
 std::list<std::set<long> > parseDesignatorsFile(const std::string &fp);
 
-
 inline std::size_t find_first_graph_index(const std::string & s) {
 	std::size_t pos = 0U;
 	for (auto c : s) {
@@ -124,6 +121,7 @@ inline std::size_t find_first_graph_index(const std::string & s) {
 	}
 	return std::string::npos;
 }
+
 inline std::size_t find_last_graph_index(const std::string & s) {
 	auto pos = s.length();
 	while (pos > 0) {
@@ -134,7 +132,6 @@ inline std::size_t find_last_graph_index(const std::string & s) {
 	}
 	return std::string::npos;
 }
-
 
 inline std::string strip_leading_whitespace(const std::string & n) {
 	auto x = find_first_graph_index(n);

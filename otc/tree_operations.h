@@ -17,7 +17,6 @@ std::size_t checkForUnknownTaxa(std::ostream & err, const RootedTree<T, U> & toC
 template<typename T, typename U>
 RootedTreeNode<T> * findMRCAFromIDSet(RootedTree<T, U> & tree, const std::set<long> & idSet, long trigger);
 
-
 std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd);
 
 //// impl
@@ -94,7 +93,6 @@ RootedTreeNode<T> * findMRCAFromIDSet(RootedTree<T, U> & tree, const std::set<lo
 	return nullptr;
 }
 
-
 template<typename T, typename U>
 std::size_t checkForUnknownTaxa(std::ostream & err, const RootedTree<T, U> & toCheck, const RootedTree<T, U> & taxonomy) {
 	auto taxOttIds = taxonomy.getRoot()->getData().desIds;
@@ -114,9 +112,6 @@ inline RootedTreeNode<T> * addChildForOttId(RootedTreeNode<T> & nd, long ottId, 
 	nn->setOttId(ottId);
 	return nn;
 }
-
-
-
 
 inline std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd) {
 	return nd.getData().desIds;
@@ -161,9 +156,11 @@ std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, 
 	return expanded;
 }
 
-
 template<typename T, typename U>
-void markPathToRoot(const RootedTree<T, U> & fullTree, long ottId, std::map<const RootedTreeNode<T> *, std::set<long> > &n2m){
+void markPathToRoot(const RootedTree<T, U> & fullTree,
+					long ottId,
+					std::map<const RootedTreeNode<T> *,
+					std::set<long> > &n2m){
 	auto startNd = fullTree.getData().getNodeForOttId(ottId);
 	assert(startNd != nullptr);
 	if (startNd == nullptr) {
@@ -177,12 +174,11 @@ void markPathToRoot(const RootedTree<T, U> & fullTree, long ottId, std::map<cons
 	}
 }
 
-
 // find most recent anc of nd with out-degree > 1
 template<typename T>
 inline T * findFirstBranchingAnc(T * nd) {
 	T * anc = nd->getParent();
-	if (anc != nullptr) {
+	if (anc == nullptr) {
 		return nullptr;
 	}
 	while (anc->isOutDegreeOneNode()) {
@@ -209,7 +205,6 @@ inline bool multipleChildrenInMap(const RootedTreeNode<T> & nd,
 	}
 	return false;
 }
-
 
 template<typename T>
 inline const RootedTreeNode<T> * findNextSignificantNode(const RootedTreeNode<T> * node,
@@ -256,7 +251,6 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 		out << ')';
 	}
 }
-
 
 template<typename T>
 inline void describeUnnamedNode(const RootedTreeNode<T> & nd,

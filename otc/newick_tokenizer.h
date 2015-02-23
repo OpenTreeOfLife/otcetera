@@ -128,7 +128,6 @@ class OTCParsingContentError: public OTCError {
 		const FilePosStruct pos;
 };
 
-
 class NewickTokenizer {
 	public:
 		enum newick_token_state_t {

@@ -13,7 +13,6 @@ static const char * _ILL_AFTER_COLON = "Illegal character after \":\" character.
 static const char * _ILL_NO_SEMICOLON = "Expecting ; after a newick description.";
 static const char * _ILL_FIRST_CHAR = "Expecting a newick tree to start with \"(\".";
 
-
 void NewickTokenizer::iterator::onLabelExit(char n, bool fromWS) {
 	bool whitespaceFound = fromWS;
 	if (std::strchr("(),:;", n) == nullptr) {
@@ -290,6 +289,5 @@ void NewickTokenizer::iterator::consumeNextToken() {
 		}
 	}
 }
-
 
 } //namespace otc

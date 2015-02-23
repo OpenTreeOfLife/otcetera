@@ -50,8 +50,6 @@ bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp) {
 	return inp.good();
 }
 
-
-
 /*!
 	Returns true if `o` points to a string that represents a long (and `o` has no other characters than the long).
 	if n is not NULL, then when the function returns true, *n will be the long.
@@ -74,9 +72,6 @@ bool char_ptr_to_long(const char *o, long *n)
 	}
 	return false;
 }
-
-
-
 
 // splits a string by whitespace and push the graphical strings to the back of r.
 //	Leading and trailing whitespace is lost ( there will be no empty strings added

@@ -356,7 +356,6 @@ class anc_iterator : std::forward_iterator_tag {
 		}
 };
 
-
 template<typename T>
 class ChildIterator {
 	public:
@@ -388,7 +387,6 @@ class ConstChildIterator {
 	private:
 		const RootedTreeNode<T> & node;
 };
-
 
 template<typename T, typename U>
 class ConstPreorderInternalNode {
@@ -485,8 +483,6 @@ class AncNodeIter {
 	private:
 		RootedTreeNode<T> * des;
 };
-
-
 
 template<typename T, typename U>
 class PostorderNode {

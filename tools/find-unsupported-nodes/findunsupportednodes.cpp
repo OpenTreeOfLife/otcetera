@@ -36,7 +36,6 @@ bool singleDesSupportedOrNamed(const MyNodeType *nd, const std::set<const MyNode
 	return false;
 }
 
-
 struct FindUnsupportedState {
 	std::unique_ptr<Tree_t> toCheck;
 	std::unique_ptr<Tree_t> taxonomy;
@@ -116,13 +115,13 @@ struct FindUnsupportedState {
 				}
 			}
 		}
-		out << "\n\nFinal summary:\n";
+		out << "Final summary:\n";
 		//out << gRefTreeNumNamedInternalsNodes << " internal nodes were named in the reference tree. These were not rigorously checked against the taxonomy. They may not be detected as errors.\n";
 		out << numSupportedInternals << " internal nodes where flagged as being supported by an input (including taxonomy).\n";
 		int supNamed = numSupportedInternals - supNonNamed;
 		out << "    " << supNamed << " of these were named (some of the support could just be the taxonomic expansion of tips).\n";
 		out << "    " << supNonNamed << " of these were unnamed.\n";
-		out << numUnsupported << " unsupported nodes.\n";
+		out << numUnsupported << " unsupported nodes.";
 		out << std::endl;
 		if (numErrors < 0) {
 			numErrors -= numUnsupported;
@@ -177,15 +176,25 @@ struct FindUnsupportedState {
 							  const std::map<const MyNodeType *, std::set<long> > &prunedDesId,
 							  const std::map<std::set<long>, const MyNodeType *> & sourceClades,
 							  std::set<const MyNodeType *> & supported) {
+		//otCLI.out << "sourceClades\n";
+		//for (auto sc : sourceClades) {
+		//	writeOttSet(otCLI.out, " ", sc.first, " ");
+		//	otCLI.out << '\n';
+		//}
 		for (auto pd : prunedDesId) {
+			//otCLI.out << "pruned el:";
+			//writeOttSet(otCLI.out, " ", pd.second, " ");
+			//otCLI.out << "\n";
 			auto nd = pd.first;
 			auto par = nd->getParent();
 			if (par == nullptr) {
+				//otCLI.out << "  par null\n";
 				continue;
 			}
 			auto ls = pd.second;
 			auto firstBranchingAnc = findFirstBranchingAnc<const MyNodeType>(nd);
 			if (firstBranchingAnc == nullptr) {
+				//otCLI.out << "  firstBranchingAnc null\n";
 				continue;
 			}
 			auto nm = pd.second;
@@ -193,11 +202,17 @@ struct FindUnsupportedState {
 			assert(ancIt != prunedDesId.end());
 			auto anm = ancIt->second;
 			const MyNodeType * firstNdPtr; // just used to match call
-			if ((!multipleChildrenInMap(*nd, prunedDesId, &firstNdPtr)) || anm == nm) {
+			if (!multipleChildrenInMap(*nd, prunedDesId, &firstNdPtr)) {
+				//otCLI.out << "  multipleChildrenInMap false\n";
+				continue;
+			}
+			if (anm == nm) {
+				//otCLI.out << "  anc set == node set\n";
 				continue;
 			}
 			auto scIt = sourceClades.find(nm);
 			if (scIt != sourceClades.end()) {
+				//otCLI.out << "  supported\n";
 				if (aPrioriProblemNodes.find(nd) != aPrioriProblemNodes.end()) {
 					auto apIt = aPrioriProblemNodes.find(nd);
 					otCLI.out << "ERROR!: a priori unsupported node found. Designators were ";
@@ -210,12 +225,12 @@ struct FindUnsupportedState {
 					numErrors += 1;
 				}
 				supported.insert(nd);
+			} else {
+				//otCLI.out << "  unsupported\n";
 			}
 		}
 	}
-
 };
-
 
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 	FindUnsupportedState * ctsp = static_cast<FindUnsupportedState *>(otCLI.blob);

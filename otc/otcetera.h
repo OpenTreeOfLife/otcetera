@@ -5,6 +5,5 @@
 
 namespace otc {
 
-
 } // namespace otc
 #endif
