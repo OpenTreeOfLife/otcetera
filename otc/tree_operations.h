@@ -24,7 +24,7 @@ std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd);
 template<typename T, typename U>
 unsigned int countPolytomies(const RootedTree<T, U> & tree) {
 	unsigned int n = 0U;
-	for (auto node : ConstPostorderInternalNode<T, U>{tree}) {
+	for (auto node : ConstPostorderInternalNode<RootedTree<T, U> >{tree}) {
 		if (node->getOutDegree() > 2) {
 			n += 1;
 		}
@@ -35,12 +35,12 @@ unsigned int countPolytomies(const RootedTree<T, U> & tree) {
 template<typename T, typename U>
 void fillDesIdSets(RootedTree<T, U> & tree) {
 	// assumes OttId is set for each tip
-	for (auto node : PostorderNode<T, U>(tree)) {
+	for (auto node : PostorderIter<RootedTree<T, U> >(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
 		if (node->isTip()) {
 			desIds.insert(node->getOttId());
 		} else {
-			for (auto child : ChildIterator<T>(*node)) {
+			for (auto child : ChildIterator<RootedTreeNode<T> >(*node)) {
 				std::set<long> & cDesIds = child->getData().desIds;
 				desIds.insert(cDesIds.begin(), cDesIds.end());
 			}
@@ -119,8 +119,11 @@ inline std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd) {
 
 inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> & ls) {
 	const std::set<long> toRemove = nd.getData().desIds;
+	assert(!toRemove.empty());
 	nd.getData().desIds = ls;
-	for (auto anc : AncNodeIter<RTSplits>(&nd)) {
+	for (auto anc : AncNodeIter<RootedTreeNode<RTSplits> >(&nd)) {
+		assert(anc != nullptr);
+		assert(!anc->getData().desIds.empty());
 		anc->getData().desIds.erase(begin(toRemove), end(toRemove));
 		anc->getData().desIds.insert(begin(ls), end(ls));
 	}
@@ -130,7 +133,7 @@ template<typename T, typename U>
 std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, U> & toExpand, const RootedTree<T, U> & taxonomy) {
 	const U & taxData = taxonomy.getData();
 	std::map<RootedTreeNode<T> *, std::set<long> > replaceNodes;
-	for (auto nd : LeafNodeIter<T, U>(toExpand)) {
+	for (auto nd : LeafIter<RootedTree<T, U> >(toExpand)) {
 		assert(nd->isTip());
 		assert(nd->hasOttId());
 		auto ottId = nd->getOttId();
@@ -169,7 +172,7 @@ void markPathToRoot(const RootedTree<T, U> & fullTree,
 		throw OTCError(m);
 	}
 	n2m[startNd].insert(ottId);
-	for (auto nd : AncNodeIter<T>(startNd)) {
+	for (auto nd : AncNodeIter<RootedTreeNode<T> >(startNd)) {
 		n2m[nd].insert(ottId);
 	}
 }
@@ -194,7 +197,7 @@ inline bool multipleChildrenInMap(const RootedTreeNode<T> & nd,
 	assert(first);
 	bool foundFirst = false;
 	*first = nullptr;
-	for(auto c : ConstChildIterator<T>(nd)) {
+	for(auto c : ConstChildIterator<RootedTreeNode<T> >(nd)) {
 		if (markedMap.find(c) != markedMap.end()) {
 			if (foundFirst) {
 				return true;
@@ -238,7 +241,7 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 		auto nsn = findNextSignificantNode<T>(&srcNd, markedMap);
 		out << '(';
 		unsigned numcwritten = 0;
-		for (auto child : ConstChildIterator<T>(*nsn)) {
+		for (auto child : ConstChildIterator<RootedTreeNode<T> >(*nsn)) {
 			if (markedMap.find(child) != markedMap.end()){
 				if (numcwritten > 0) {
 					out << ',';

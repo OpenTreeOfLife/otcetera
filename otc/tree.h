@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 #include "otc/otc_base_includes.h"
 
 namespace otc {
@@ -174,8 +175,9 @@ class RootedTreeNode {
 template<typename T, typename U>
 class RootedTree {
 	public:
-		typedef T node_data_type;
-		typedef U data_type;
+		using node_data_type = T;
+		using node_type = RootedTreeNode<T>;
+		using data_type = U;
 		
 		RootedTree<T, U>()
 			:root(nullptr) {
@@ -243,6 +245,13 @@ class RootedTree {
 				delete nIt;
 			}
 			allNodes.clear();
+		}
+		std::set<const RootedTreeNode<T> *> getSetOfAllNodes() const {
+			std::set<const RootedTreeNode<T> *> r;
+			for (auto nd : allNodes) {
+				r.insert(nd);
+			}
+			return r;
 		}
 	private:
 		RootedTree<T, U>(const RootedTree<T, U> &); //not defined.  Not copyable

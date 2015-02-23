@@ -66,6 +66,7 @@ AC_CONFIG_FILES([					\
 	otc/Makefile					\
 	test/Makefile \
 	tools/Makefile \
+	tools/assert-invariants/Makefile \
 	tools/check-taxonomic-nodes/Makefile \
 	tools/find-unsupported-nodes/Makefile \
 	tools/polytomy-count/Makefile \

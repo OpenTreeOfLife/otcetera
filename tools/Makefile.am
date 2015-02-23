@@ -1,4 +1,5 @@
 SUBDIRS = \
+	assert-invariants \
 	check-taxonomic-nodes \
 	find-unsupported-nodes \
 	polytomy-count

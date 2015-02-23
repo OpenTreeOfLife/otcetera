@@ -66,7 +66,7 @@ struct CheckTaxonState {
 		auto taxOttIdToNode = taxonomy->getData().ottIdToNode;
 		auto taxOttIds = taxonomy->getRoot()->getData().desIds;
 		auto toCheckOttIds = toCheck->getRoot()->getData().desIds;
-		for (auto toCheckNd: ConstPostorderInternalNode<RTSplits, RootedTreeForNodeType>(*toCheck)) {
+		for (auto toCheckNd: ConstPostorderInternalNode<Tree_t>(*toCheck)) {
 			if (!toCheckNd->hasOttId()) {
 				continue;
 			}

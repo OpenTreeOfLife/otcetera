@@ -11,7 +11,7 @@
 namespace otc {
 
 template<typename T>
-using NdFilterFn = std::function<bool(const RootedTreeNode<T> &)>;
+using NdFilterFn = std::function<bool(const T &)>;
 
 /// visits ancestors before descendants
 /// if filterFn is supplied, then only the nodes associated with a true
@@ -21,7 +21,7 @@ template<typename T>
 class const_preorder_iterator : std::forward_iterator_tag {
 	private:
 		const NdFilterFn<T> filterFn;
-		const RootedTreeNode<T> * curr;
+		const T * curr;
 		bool movingDown;
 
 		void _advance() {
@@ -55,12 +55,12 @@ class const_preorder_iterator : std::forward_iterator_tag {
 			} while ((filterFn != nullptr && !filterFn(*curr)));
 		}
 	public:
-		const_preorder_iterator(const RootedTreeNode<T> *c)
+		const_preorder_iterator(const T *c)
 			:filterFn{nullptr},
 			curr(c),
 			movingDown(false) {
 		}
-		const_preorder_iterator(const RootedTreeNode<T> *c, NdFilterFn<T> f)
+		const_preorder_iterator(const T *c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(c),
 			movingDown(false) {
@@ -74,7 +74,7 @@ class const_preorder_iterator : std::forward_iterator_tag {
 		bool operator!=(const const_preorder_iterator &other) {
 			return this->curr != other.curr;
 		}
-		const RootedTreeNode<T> * operator*() const {
+		const T * operator*() const {
 			return curr;
 		}
 		const_preorder_iterator & operator++() {
@@ -90,23 +90,22 @@ class const_preorder_iterator : std::forward_iterator_tag {
 template<typename T>
 class const_child_iterator : std::forward_iterator_tag {
 	private:
-		typedef RootedTreeNode<T> NodeType;
 		NdFilterFn<T> filterFn;
-		const NodeType * curr;
+		const T * curr;
 
 		void _advance() {
 			assert(curr != nullptr);
 			curr = curr->getNextSib();
 		}
 	public:
-		const_child_iterator(const RootedTreeNode<T> *c)
+		const_child_iterator(const T *c)
 			:filterFn{nullptr},
 			curr(nullptr) {
 			if (c != nullptr) {
 				curr = c->getFirstChild();
 			}
 		}
-		const_child_iterator(const RootedTreeNode<T> *c, NdFilterFn<T> f)
+		const_child_iterator(const T *c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(nullptr) {
 			if (c != nullptr) {
@@ -122,7 +121,7 @@ class const_child_iterator : std::forward_iterator_tag {
 		bool operator!=(const_child_iterator &other) {
 			return this->curr != other.curr;
 		}
-		const RootedTreeNode<T> * operator*() const {
+		const T * operator*() const {
 			return curr;
 		}
 		const_child_iterator & operator++() {
@@ -137,23 +136,22 @@ class const_child_iterator : std::forward_iterator_tag {
 template<typename T>
 class child_iterator : std::forward_iterator_tag {
 	private:
-		typedef RootedTreeNode<T> NodeType;
 		NdFilterFn<T> filterFn;
-		NodeType * curr;
+		T * curr;
 
 		void _advance() {
 			assert(curr != nullptr);
 			curr = curr->getNextSib();
 		}
 	public:
-		child_iterator(RootedTreeNode<T> *c)
+		child_iterator(T *c)
 			:filterFn{nullptr},
 			curr(nullptr) {
 			if (c != nullptr) {
 				curr = c->getFirstChild();
 			}
 		}
-		child_iterator(RootedTreeNode<T> *c, NdFilterFn<T> f)
+		child_iterator(T *c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(nullptr) {
 			if (c != nullptr) {
@@ -169,7 +167,7 @@ class child_iterator : std::forward_iterator_tag {
 		bool operator!=(child_iterator &other) {
 			return this->curr != other.curr;
 		}
-		RootedTreeNode<T> * operator*() const {
+		T * operator*() const {
 			return curr;
 		}
 		child_iterator & operator++() {
@@ -185,10 +183,9 @@ class child_iterator : std::forward_iterator_tag {
 template<typename T>
 class const_postorder_iterator : std::forward_iterator_tag {
 	private:
-		typedef const RootedTreeNode<T> NodeType;
 		const NdFilterFn<T> filterFn;
-		const NodeType * curr;
-		const NodeType * lastNode;
+		const T * curr;
+		const T * lastNode;
 
 		void _advance() {
 			if (curr == lastNode) {
@@ -196,7 +193,7 @@ class const_postorder_iterator : std::forward_iterator_tag {
 			} else {
 				for (;;) {
 					auto n = curr->getNextSib();
-					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
+					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<const T>(n));
 					if (filterFn == nullptr || filterFn(*curr)) {
 						break;
 					}
@@ -208,20 +205,20 @@ class const_postorder_iterator : std::forward_iterator_tag {
 			}
 		}
 	public:
-		const_postorder_iterator(const RootedTreeNode<T> *c)
+		const_postorder_iterator(const T *c)
 			:filterFn{nullptr},
 			curr(nullptr),
 			lastNode(c) {
 			if (lastNode != nullptr) {
-				curr = findLeftmostInSubtree<NodeType>(lastNode);
+				curr = findLeftmostInSubtree<const T>(lastNode);
 			}
 		}
-		const_postorder_iterator(const RootedTreeNode<T> *c, NdFilterFn<T> f)
+		const_postorder_iterator(const T *c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(nullptr),
 			lastNode(c) {
 			if (lastNode != nullptr) {
-				curr = findLeftmostInSubtree<NodeType>(lastNode);
+				curr = findLeftmostInSubtree<const T>(lastNode);
 			}
 			if (curr != nullptr && filterFn && !filterFn(*curr)) {
 				_advance();
@@ -233,7 +230,7 @@ class const_postorder_iterator : std::forward_iterator_tag {
 		bool operator!=(const const_postorder_iterator &other) {
 			return this->curr != other.curr;
 		}
-		const RootedTreeNode<T> * operator*() const {
+		const T * operator*() const {
 			return curr;
 		}
 		const_postorder_iterator & operator++() {
@@ -249,10 +246,9 @@ class const_postorder_iterator : std::forward_iterator_tag {
 template<typename T>
 class postorder_iterator : std::forward_iterator_tag {
 	private:
-		typedef RootedTreeNode<T> NodeType;
 		const NdFilterFn<T> filterFn;
-		NodeType * curr;
-		NodeType * lastNode;
+		T * curr;
+		T * lastNode;
 
 		void _advance() {
 			if (curr == lastNode) {
@@ -260,7 +256,7 @@ class postorder_iterator : std::forward_iterator_tag {
 			} else {
 				for (;;) {
 					auto n = curr->getNextSib();
-					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<NodeType>(n));
+					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<T>(n));
 					if (filterFn == nullptr || filterFn(*curr)) {
 						break;
 					}
@@ -272,20 +268,20 @@ class postorder_iterator : std::forward_iterator_tag {
 			}
 		}
 	public:
-		postorder_iterator(RootedTreeNode<T> *c)
+		postorder_iterator(T *c)
 			:filterFn{nullptr},
 			curr(nullptr),
 			lastNode(c) {
 			if (lastNode != nullptr) {
-				curr = findLeftmostInSubtree<NodeType>(lastNode);
+				curr = findLeftmostInSubtree<T>(lastNode);
 			}
 		}
-		postorder_iterator(RootedTreeNode<T> *c, NdFilterFn<T> f)
+		postorder_iterator(T *c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(nullptr),
 			lastNode(c) {
 			if (lastNode != nullptr) {
-				curr = findLeftmostInSubtree<NodeType>(lastNode);
+				curr = findLeftmostInSubtree<T>(lastNode);
 			}
 			if (curr != nullptr && filterFn && !filterFn(*curr)) {
 				_advance();
@@ -297,7 +293,7 @@ class postorder_iterator : std::forward_iterator_tag {
 		bool operator!=(const postorder_iterator &other) {
 			return this->curr != other.curr;
 		}
-		RootedTreeNode<T> * operator*() const {
+		T * operator*() const {
 			return curr;
 		}
 		postorder_iterator & operator++() {
@@ -309,13 +305,11 @@ class postorder_iterator : std::forward_iterator_tag {
 		}
 };
 
-/// descendants before ancestors, but not guaranteed to be the reverse of const_preorder_iterator
 template<typename T>
 class anc_iterator : std::forward_iterator_tag {
 	private:
-		typedef RootedTreeNode<T> NodeType;
 		const NdFilterFn<T> filterFn;
-		NodeType * curr;
+		T * curr;
 		
 		void _advance() {
 			assert(curr != nullptr);
@@ -324,14 +318,14 @@ class anc_iterator : std::forward_iterator_tag {
 			} while(curr != nullptr && filterFn != nullptr && !filterFn(curr));
 		}
 	public:
-		anc_iterator(RootedTreeNode<T> *c)
+		anc_iterator(T *c)
 			:filterFn{nullptr},
 			curr(c) {
 			if (curr != nullptr) {
 				_advance();
 			}
 		}
-		anc_iterator(RootedTreeNode<T> *c, NdFilterFn<T> f)
+		anc_iterator(T *c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(c) {
 			if (curr != nullptr) {
@@ -344,7 +338,7 @@ class anc_iterator : std::forward_iterator_tag {
 		bool operator!=(const anc_iterator &other) {
 			return this->curr != other.curr;
 		}
-		RootedTreeNode<T> * operator*() const {
+		T * operator*() const {
 			return curr;
 		}
 		anc_iterator & operator++() {
@@ -359,7 +353,7 @@ class anc_iterator : std::forward_iterator_tag {
 template<typename T>
 class ChildIterator {
 	public:
-	explicit ChildIterator(RootedTreeNode<T> & n)
+	explicit ChildIterator(T & n)
 		:node(n) {
 	}
 	child_iterator<T> begin() const {
@@ -369,13 +363,13 @@ class ChildIterator {
 		return child_iterator<T>{nullptr};
 	}
 	private:
-		RootedTreeNode<T> & node;
+		T & node;
 };
 
 template<typename T>
 class ConstChildIterator {
 	public:
-	explicit ConstChildIterator(const RootedTreeNode<T> & n)
+	explicit ConstChildIterator(const T & n)
 		:node(n) {
 	}
 	const_child_iterator<T> begin() const {
@@ -385,93 +379,110 @@ class ConstChildIterator {
 		return const_child_iterator<T>{nullptr};
 	}
 	private:
-		const RootedTreeNode<T> & node;
+		const T & node;
 };
 
-template<typename T, typename U>
+template<typename T>
 class ConstPreorderInternalNode {
 	public:
-	explicit ConstPreorderInternalNode(const RootedTree<T, U> &t)
+	explicit ConstPreorderInternalNode(const T &t)
 		:tree(t){
 	}
-	const_preorder_iterator<T> begin() const {
-		return std::move(const_preorder_iterator<T>{tree.getRoot(), isInternalNode<T>});
+	const_preorder_iterator<typename T::node_type> begin() const {
+		return std::move(const_preorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
 	}
-	const_preorder_iterator<T> end() const {
-		return const_preorder_iterator<T>{nullptr};
+	const_preorder_iterator<typename T::node_type> end() const {
+		return const_preorder_iterator<typename T::node_type>{nullptr};
 	}
 	private:
-		const RootedTree<T, U> & tree;
+		const T & tree;
 };
 
-template<typename T, typename U>
+template<typename T>
+class ConstPreorder {
+	public:
+	explicit ConstPreorder(const T &t)
+		:tree(t){
+	}
+	const_preorder_iterator<typename T::node_type> begin() const {
+		return std::move(const_preorder_iterator<typename T::node_type>{tree.getRoot()});
+	}
+	const_preorder_iterator<typename T::node_type> end() const {
+		return const_preorder_iterator<typename T::node_type>{nullptr};
+	}
+	private:
+		const T & tree;
+};
+
+
+template<typename T>
 class ConstPostorderInternalNode {
 	public:
-	explicit ConstPostorderInternalNode(const RootedTree<T, U> &t)
+	explicit ConstPostorderInternalNode(const T &t)
 		:tree(t){
 	}
-	const_postorder_iterator<T> begin() const {
-		return std::move(const_postorder_iterator<T>{tree.getRoot(), isInternalNode<T>});
+	const_postorder_iterator<typename T::node_type> begin() const {
+		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
 	}
-	const_postorder_iterator<T> end() const {
-		return const_postorder_iterator<T>{nullptr};
+	const_postorder_iterator<typename T::node_type> end() const {
+		return const_postorder_iterator<typename T::node_type>{nullptr};
 	}
 	private:
-		const RootedTree<T, U> & tree;
+		const T & tree;
 };
 
-template<typename T, typename U>
+template<typename T>
 class PostorderInternalNode {
 	public:
-	explicit PostorderInternalNode(RootedTree<T, U> & t)
+	explicit PostorderInternalNode(T & t)
 		:tree(t){
 	}
-	postorder_iterator<T> begin() const {
-		return std::move(postorder_iterator<T>{tree.getRoot(), isInternalNode<T>});
+	postorder_iterator<typename T::node_type> begin() const {
+		return std::move(postorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
 	}
-	postorder_iterator<T> end() const {
-		return postorder_iterator<T>{nullptr};
+	postorder_iterator<typename T::node_type> end() const {
+		return postorder_iterator<typename T::node_type>{nullptr};
 	}
 	private:
-		RootedTree<T, U> & tree;
+		T & tree;
 };
 
-template<typename T, typename U>
-class LeafNodeIter {
+template<typename T>
+class LeafIter {
 	public:
-	explicit LeafNodeIter(RootedTree<T, U> & t)
+	explicit LeafIter(T & t)
 		:tree(t){
 	}
-	postorder_iterator<T> begin() const {
-		return std::move(postorder_iterator<T>{tree.getRoot(), isLeaf<T>});
+	postorder_iterator<typename T::node_type> begin() const {
+		return std::move(postorder_iterator<typename T::node_type>{tree.getRoot(), isLeaf<typename T::node_type>});
 	}
-	postorder_iterator<T> end() const {
-		return postorder_iterator<T>{nullptr};
+	postorder_iterator<typename T::node_type> end() const {
+		return postorder_iterator<typename T::node_type>{nullptr};
 	}
 	private:
-		RootedTree<T, U> & tree;
+		T & tree;
 };
 
-template<typename T, typename U>
-class ConstLeafNodeIter {
+template<typename T>
+class ConstLeafIter {
 	public:
-	explicit ConstLeafNodeIter(const RootedTree<T, U> & t)
+	explicit ConstLeafIter(const T & t)
 		:tree(t){
 	}
-	const_postorder_iterator<T> begin() const {
-		return std::move(const_postorder_iterator<T>{tree.getRoot(), isLeaf<T>});
+	const_postorder_iterator<typename T::node_type> begin() const {
+		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot(), isLeaf<typename T::node_type>});
 	}
-	const_postorder_iterator<T> end() const {
-		return const_postorder_iterator<T>{nullptr};
+	const_postorder_iterator<typename T::node_type> end() const {
+		return const_postorder_iterator<typename T::node_type>{nullptr};
 	}
 	private:
-		const RootedTree<T, U> & tree;
+		const T & tree;
 };
 
 template<typename T>
 class AncNodeIter {
 	public:
-	explicit AncNodeIter(RootedTreeNode<T> * n)
+	explicit AncNodeIter(T * n)
 		:des(n){
 	}
 	anc_iterator<T> begin() const {
@@ -481,23 +492,23 @@ class AncNodeIter {
 		return anc_iterator<T>{nullptr};
 	}
 	private:
-		RootedTreeNode<T> * des;
+		T * des;
 };
 
-template<typename T, typename U>
-class PostorderNode {
+template<typename T>
+class PostorderIter {
 	public:
-	explicit PostorderNode(RootedTree<T, U> & t)
+	explicit PostorderIter(T & t)
 		:tree(t){
 	}
-	postorder_iterator<T> begin() const {
-		return std::move(postorder_iterator<T>{tree.getRoot()});
+	postorder_iterator<typename T::node_type> begin() const {
+		return std::move(postorder_iterator<typename T::node_type>{tree.getRoot()});
 	}
-	postorder_iterator<T> end() const {
-		return postorder_iterator<T>{nullptr};
+	postorder_iterator<typename T::node_type> end() const {
+		return postorder_iterator<typename T::node_type>{nullptr};
 	}
 	private:
-		RootedTree<T, U> & tree;
+		T & tree;
 };
 
 } // namespace otc
