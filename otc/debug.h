@@ -93,6 +93,27 @@ bool checkChildIter(const T & tree) {
 	return true;
 }
 
+template<typename T>
+bool checkDesIds(const T & tree) {
+	auto ns = tree.getSetOfAllNodes();
+	for (auto nd : ns) {
+		if (nd->isTip()) {
+			continue;
+		}
+		std::set<long> d;
+		auto sum = 0U;
+		for (auto c : ConstChildIter<typename T::node_type>(*nd)) {
+			const auto & cd = c->getData().desIds;
+			sum += cd.size();
+			assert(cd.size() > 0);
+			d.insert(cd.begin(), cd.end());
+		}
+		assert(sum == d.size());
+		assert(nd->getData().desIds == d);
+	}
+	return true;
+}
+
 
 template<typename T>
 bool checkTreeInvariants(const T & tree) {
@@ -106,6 +127,9 @@ bool checkTreeInvariants(const T & tree) {
 		return false;
 	}
 	if (!checkChildIter(tree)) {
+		return false;
+	}
+	if (!checkDesIds(tree)) {
 		return false;
 	}
 	return true;
