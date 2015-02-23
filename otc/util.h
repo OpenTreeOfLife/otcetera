@@ -17,6 +17,7 @@ const std::string readStrContentOfUTF8File(const std::string &filepath);
 const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
 bool openUTF8File(const std::string &filepath, std::ifstream & inp);
 bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
+std::list<std::string> readLinesOfFile(const std::string & filepath);
 
 template<typename T>
 bool isProperSubset(const T & small, const T & big);

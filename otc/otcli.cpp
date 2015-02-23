@@ -45,6 +45,7 @@ void OTCLI::printHelp(std::ostream & outStream) {
 	outStream << "    " << this->titleStr << " " << this->usageStr << "\n";
 	outStream << "Standard command-line flags:\n";
 	outStream << "    -h on the command line shows this help message\n";
+	outStream << "    -fFILE treat each line of FILE as an arg\n";
 	outStream << "    -q QUIET mode (all logging disabled)\n";
 	outStream << "    -t TRACE level debugging (very noisy)\n";
 	outStream << "    -v verbose\n";
@@ -103,6 +104,12 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 		this->verbose = false;
 		defaultConf.set(el::Level::Global, el::ConfigurationType::Enabled, "false");
 		el::Loggers::reconfigureLogger("default", defaultConf);
+	} else if (f == 'f') {
+		if (flagWithoutDash.length() == 1) {
+			this->err << "Expecting an argument value after the  -f flag.\n";
+			return false;
+		}
+		extraArgs = readLinesOfFile(flagWithoutDash.substr(1));
 	}
 	// this is where, we'd insert a procedure for generic flag handling...
 	// IF WE HAD ONE!
@@ -113,13 +120,24 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 }
 bool OTCLI::parseArgs(int argc, char *argv[], std::vector<std::string> & args) {
 	this->exitCode = 0;
+	std::list<std::string> allArgs;
 	for (int i = 1; i < argc; ++i) {
 		auto filepath = argv[i];
-		auto slen = strlen(filepath);
+		allArgs.push_back(filepath);
+	}
+	for (auto aIt = allArgs.begin(); aIt != allArgs.end(); ++aIt) {
+		auto filepath = *aIt;
+		auto slen = filepath.length();
 		if (slen > 1U && filepath[0] == '-') {
-			const std::string flagWithoutDash(filepath + 1);
+			extraArgs.clear();
+			const std::string flagWithoutDash = filepath.substr(1);
 			if (!this->handleFlag(flagWithoutDash)) {
 				return false;
+			}
+			if (!extraArgs.empty()) {
+				auto b = aIt;
+				++b;
+				allArgs.insert(b, begin(extraArgs), end(extraArgs));
 			}
 		} else {
 			const std::string filepathstr(filepath);

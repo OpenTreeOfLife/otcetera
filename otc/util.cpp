@@ -50,6 +50,22 @@ bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp) {
 	return inp.good();
 }
 
+std::list<std::string> readLinesOfFile(const std::string & filepath) {
+	std::ifstream inp;
+	if (!openUTF8File(filepath, inp)) {
+		throw OTCError("Could not open file \"" + filepath + "\"");
+	}
+	std::list<std::string> lines;
+	std::string line;
+	while (getline(inp, line)) {
+		//std::cerr << line << '\n';
+		auto stripped = strip_surrounding_whitespace(line);
+		if (!stripped.empty()) {
+			lines.push_back(stripped);
+		}
+	}
+	return lines;
+}
 /*!
 	Returns true if `o` points to a string that represents a long (and `o` has no other characters than the long).
 	if n is not NULL, then when the function returns true, *n will be the long.
@@ -102,7 +118,7 @@ std::list<std::set<long> > parseDesignatorsFile(const std::string &fp) {
 	std::string line;
 	std::list<std::set<long> > allDesignators;
 	try{
-			while (getline(inpf, line)) {
+		while (getline(inpf, line)) {
 			auto stripped = strip_surrounding_whitespace(line);
 			if (!stripped.empty()) {
 				auto words = split_string(stripped);

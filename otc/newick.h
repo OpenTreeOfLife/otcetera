@@ -28,7 +28,7 @@ inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, cons
 	std::unique_ptr<RootedTree<T, U> > treePtr(rawTreePtr);
 	RootedTreeNode<T> * currNode = rawTreePtr->createRoot();
 	// If we read a label or colon, we might consume multiple tokens;
-	for (;tokenIt != tokenizer.end(); ) {
+	for (; tokenIt != tokenizer.end(); ) {
 		const NewickTokenizer::Token topOfLoopToken = *tokenIt;
 		if (topOfLoopToken.state == NewickTokenizer::NWK_OPEN) {
 			nodeStack.push(currNode);
@@ -62,6 +62,7 @@ inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, cons
 			const NewickTokenizer::Token brLenToken = *tokenIt;
 			assert(brLenToken.state == NewickTokenizer::NWK_BRANCH_INFO);
 			newickParseNodeInfo(*rawTreePtr, *currNode, nullptr, &topOfLoopToken, &brLenToken, parsingRules);
+			++tokenIt;
 		} else {
 			assert(topOfLoopToken.state == NewickTokenizer::NWK_SEMICOLON);
 			break;

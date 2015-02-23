@@ -60,6 +60,7 @@ class OTCLI {
 		std::map<char, bool (*)(OTCLI &, const std::string &)> clientDefFlagCallbacks;
 		std::set<char> clientDefArgNeeded;
 		ParsingRules parsingRules;
+		std::list<std::string> extraArgs;
 	public:
 		std::ostream & out;
 		std::ostream & err;
@@ -95,6 +96,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 				if (!openUTF8File(filename, inp)) {
 					throw OTCError("Could not open \"" + filename + "\"");
 				}
+				LOG(INFO) << "reading \"" << filename << "\"...";
 				for (;;) {
 					std::unique_ptr<RootedTree<T, U> > nt = readNextNewick<T, U>(inp, filename, otCLI.getParsingRules());
 					if (nt == nullptr) {
