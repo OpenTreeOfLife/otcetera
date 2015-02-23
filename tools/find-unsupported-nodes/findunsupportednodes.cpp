@@ -173,7 +173,7 @@ struct FindUnsupportedState {
 		return true;
 	}
 	void recordSupportedNodes(OTCLI & otCLI,
-							  const std::map<const MyNodeType *, std::set<long> > &prunedDesId,
+							  const std::map<const MyNodeType *, std::set<long> > & prunedDesId,
 							  const std::map<std::set<long>, const MyNodeType *> & sourceClades,
 							  std::set<const MyNodeType *> & supported) {
 		//otCLI.out << "sourceClades\n";

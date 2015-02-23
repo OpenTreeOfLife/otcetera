@@ -124,7 +124,10 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
 	for (auto anc : AncNodeIter<RootedTreeNode<RTSplits> >(&nd)) {
 		assert(anc != nullptr);
 		assert(!anc->getData().desIds.empty());
-		anc->getData().desIds.erase(begin(toRemove), end(toRemove));
+		for (auto tr : toRemove) {
+			assert(contains(anc->getData().desIds, tr));
+			anc->getData().desIds.erase(tr);
+		}
 		anc->getData().desIds.insert(begin(ls), end(ls));
 	}
 }
@@ -192,7 +195,7 @@ inline T * findFirstBranchingAnc(T * nd) {
 
 template<typename T, typename U>
 inline bool multipleChildrenInMap(const RootedTreeNode<T> & nd,
-								  std::map<const RootedTreeNode<T> *, U> markedMap,
+								  const std::map<const RootedTreeNode<T> *, U> & markedMap,
 								  const RootedTreeNode<T> **first) {
 	assert(first);
 	bool foundFirst = false;
