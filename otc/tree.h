@@ -137,6 +137,13 @@ class RootedTreeNode {
 		bool isOutDegreeOneNode() const {
 			return (lChild != nullptr) && (lChild->rSib == nullptr);
 		}
+		bool includesOnlyOneLeaf() const {
+			if (isTip()) {
+				return true;
+			}
+			return isOutDegreeOneNode() && lChild->includesOnlyOneLeaf();
+		}
+
 	public:
 		void writeAsNewick(std::ostream &out,
 						   bool useLeafNames,

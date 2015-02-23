@@ -16,6 +16,8 @@ template<typename T>
 bool isLeaf(const RootedTreeNode<T> & nd);
 template<typename T>
 T * findLeftmostInSubtree(T * nd);
+template<typename T>
+T * findRightmostInSubtree(T * nd);
 
 
 template<typename T>
@@ -28,7 +30,7 @@ inline bool isLeaf(const RootedTreeNode<T> & nd) {
 }
 
 template<typename T>
-T * findLeftmostInSubtree(T * nd) {
+inline T * findLeftmostInSubtree(T * nd) {
 	if (nd == nullptr) {
 		return nullptr;
 	}
@@ -36,6 +38,18 @@ T * findLeftmostInSubtree(T * nd) {
 	while (next != nullptr) {
 		nd = next;
 		next = nd->getFirstChild();
+	}
+	return nd;
+}
+template<typename T>
+inline T * findRightmostInSubtree(T * nd) {
+	if (nd == nullptr) {
+		return nullptr;
+	}
+	auto next = nd->getLastChild();
+	while (next != nullptr) {
+		nd = next;
+		next = nd->getLastChild();
 	}
 	return nd;
 }
