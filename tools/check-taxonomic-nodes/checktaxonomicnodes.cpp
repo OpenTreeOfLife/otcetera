@@ -58,17 +58,15 @@ struct CheckTaxonState {
 			otCLI.err << badNTreesMessage;
 			return;
 		}
-		auto taxOttIdToNode = taxonomy->getData().ottIdToNode;
-		const std::set<long> taxOttIds = taxonomy->getRoot()->getData().desIds;
-		const std::set<long> toCheckOttIds = toCheck->getRoot()->getData().desIds;
-		auto extras = set_difference_as_set(toCheckOttIds, taxOttIds);
-		if (!extras.empty()) {
-			otCLI.err << "OTT Ids found in the tree to check but not in the taxonomy:\n";
-			writeOttSet(otCLI.err, "  ", extras, "\n");
-			numErrors = (extras.size() > INT_MAX ? INT_MAX : (int) extras.size());
+		auto nE = checkForUnknownTaxa(otCLI.err, *toCheck, *taxonomy);
+		if (nE > 0) {
+			numErrors = (nE > INT_MAX ? INT_MAX : (int) nE);
 			return;
 		}
 		// now check for taxonomic identity
+		auto taxOttIdToNode = taxonomy->getData().ottIdToNode;
+		auto taxOttIds = taxonomy->getRoot()->getData().desIds;
+		auto toCheckOttIds = toCheck->getRoot()->getData().desIds;
 		for (auto toCheckNd: ConstPostorderInternalNode<RTSplits, RootedTreeForNodeType>(*toCheck)) {
 			if (!toCheckNd->hasOttId()) {
 				continue;
@@ -127,25 +125,3 @@ int main(int argc, char *argv[]) {
 	return rc;
 }
 
-#if 0
-
-
-
-void summarize(std::ostream & out) {
-	for (map<const NxsSimpleNode *, long>::const_iterator rnit = gRefNamedNodes.begin(); rnit != gRefNamedNodes.end(); ++rnit) {
-		const NxsSimpleNode * nd = rnit->first;
-		const long ottID = rnit->second;
-		std::map<long, const NxsSimpleNode *>::const_iterator tID2nd = gOttID2TaxNode.find(ottID);
-		assert(tID2nd != gOttID2TaxNode.end());
-		const NxsSimpleNode *taxNd = tID2nd->second;
-		if (!doCheckEquivalent(out, ottID, nd, gRefNdp2mrca, taxNd, gTaxNdp2mrca, true, true, true)) {
-			out << "        Could not find this set of leaves in the synth \"" << nd->getName() <<"\" in any taxonomic node.\n";
-		}
-	}
-	if (gTaxLeafSet != gRefLeafSet) {
-		writeOttSetDiff(out, "", gRefLeafSet, "synth", gTaxLeafSet, "taxonomy");
-	}
-}
-
-
-#endif

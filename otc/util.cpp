@@ -51,4 +51,90 @@ bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp) {
 }
 
 
+
+/*!
+	Returns true if `o` points to a string that represents a long (and `o` has no other characters than the long).
+	if n is not NULL, then when the function returns true, *n will be the long.
+*/
+bool char_ptr_to_long(const char *o, long *n)
+	{
+	if (o == nullptr) {
+		return false;
+	}
+	if (strchr("0123456789-+", *o) != nullptr) {
+		char * pEnd;
+		const long i = strtol(o, &pEnd, 10);
+		if (*pEnd != '\0') {
+			return false;
+		}
+		if (n != NULL) {
+			*n = i;
+		}
+		return true;
+	}
+	return false;
+}
+
+
+
+
+// splits a string by whitespace and push the graphical strings to the back of r.
+//	Leading and trailing whitespace is lost ( there will be no empty strings added
+//		to the list.
+std::list<std::string> split_string(const std::string &s)
+	{
+	std::list<std::string> r;
+	std::string current;
+	for (auto c : s) {
+		if (isgraph(c))
+			current.append(1, c);
+		else if (!current.empty()) {
+			r.push_back(current);
+			current.clear();
+		}
+	}
+	if (!current.empty()) {
+		r.push_back(current);
+	}
+	return r;
+}
+
+std::list<std::set<long> > parseDesignatorsFile(const std::string &fp) {
+	std::ifstream inpf;
+	if (!openUTF8File(fp, inpf)) {
+		throw OTCError("Could not open designators file \"" + fp + "\"");
+	}
+	std::string line;
+	std::list<std::set<long> > allDesignators;
+	try{
+			while (getline(inpf, line)) {
+			auto stripped = strip_surrounding_whitespace(line);
+			if (!stripped.empty()) {
+				auto words = split_string(stripped);
+				if (words.size() < 2) {
+					std::string m = "Expecting >1 designator on each line. Found: ";
+					m +=  line;
+					throw OTCError(m);
+				}
+				std::set<long> designators;
+				for (auto ds : words) {
+					long d;
+					if (!char_ptr_to_long(ds.c_str(), &d)) {
+						std::string m = "Expecting numeric designator. Found: ";
+						m += line;
+						throw OTCError(m);
+					}
+					designators.insert(d);
+				}
+				allDesignators.push_back(designators);
+			}
+		}
+	} catch (...) {
+		inpf.close();
+		throw;
+	}
+	inpf.close();
+	return allDesignators;
+}
+
 }//namespace otc

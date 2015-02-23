@@ -10,6 +10,7 @@
 #include "otc/util.h"
 namespace otc {
 
+
 class OTCLI {
 	public:
 		OTCLI(const char *title,
@@ -23,6 +24,16 @@ class OTCLI {
 		std::string currTmpFilepath;
 		void * blob;
 
+		void addFlag(char flag, const std::string & help, bool (*cb)(OTCLI &, const std::string &), bool argNeeded) {
+			if (clientDefFlagHelp.find(flag) != clientDefFlagHelp.end()) {
+				throw OTCError("Clashing flag assignment");
+			}
+			clientDefFlagHelp[flag] = help;
+			clientDefFlagCallbacks[flag] = cb;
+			if (argNeeded) {
+				clientDefArgNeeded.insert(flag);
+			}
+		}
 		bool handleFlag(const std::string & flagWithoutDash);
 		bool parseArgs(int argc, char *argv[], std::vector<std::string> & args);
 		void printHelp(std::ostream & outStream);
@@ -36,10 +47,20 @@ class OTCLI {
 		auto getTitle() const {
 			return this->titleStr;
 		}
+		ParsingRules & getParsingRules() {
+			return parsingRules;
+		}
+		const ParsingRules & getParsingRules() const {
+			return parsingRules;
+		}
 	private:
 		std::string titleStr;
 		std::string descriptionStr;
 		std::string usageStr;
+		std::map<char, std::string> clientDefFlagHelp;
+		std::map<char, bool (*)(OTCLI &, const std::string &)> clientDefFlagCallbacks;
+		std::set<char> clientDefArgNeeded;
+		ParsingRules parsingRules;
 	public:
 		std::ostream & out;
 		std::ostream & err;
@@ -76,7 +97,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 					throw OTCError("Could not open \"" + filename + "\"");
 				}
 				for (;;) {
-					std::unique_ptr<RootedTree<T, U> > nt = readNextNewick<T, U>(inp, filename);
+					std::unique_ptr<RootedTree<T, U> > nt = readNextNewick<T, U>(inp, filename, otCLI.getParsingRules());
 					if (nt == nullptr) {
 						break;
 					}

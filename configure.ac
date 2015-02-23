@@ -67,6 +67,7 @@ AC_CONFIG_FILES([					\
 	test/Makefile \
 	tools/Makefile \
 	tools/check-taxonomic-nodes/Makefile \
+	tools/find-unsupported-nodes/Makefile \
 	tools/polytomy-count/Makefile \
 	otceterav0.0.pc \
 	])

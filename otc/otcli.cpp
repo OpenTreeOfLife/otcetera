@@ -43,36 +43,62 @@ OTCLI::OTCLI(const char *title,
 
 void OTCLI::printHelp(std::ostream & outStream) {
 	outStream << this->titleStr << ": " << this->descriptionStr << ".\n";
-	outStream << "\nThe most common usage is simply:\n";
-	outStream << this->titleStr << " " << this->usageStr << "\n";
-	outStream << "\nCommand-line flags:\n\n";
-	outStream << "    -h on the command line shows this help message\n\n";
-	outStream << "    -q QUIET mode (all logging disabled)\n\n";
-	outStream << "    -t TRACE level debugging (very noisy)\n\n";
-	outStream << "    -v verbose\n\n";
+	outStream << "The most common usage is simply:\n";
+	outStream << "    " << this->titleStr << " " << this->usageStr << "\n";
+	outStream << "Standard command-line flags:\n";
+	outStream << "    -h on the command line shows this help message\n";
+	outStream << "    -q QUIET mode (all logging disabled)\n";
+	outStream << "    -t TRACE level debugging (very noisy)\n";
+	outStream << "    -v verbose\n";
+	if (!clientDefFlagHelp.empty()) {
+		outStream << "Exe-specific command-line flags:\n";
+	}
+	for (auto c : clientDefFlagHelp) {
+		if (contains(clientDefArgNeeded, c.first)) {
+			outStream << "    -" << c.first << "ARG " << c.second << '\n';
+		} else {
+			outStream << "    -" << c.first << ' ' << c.second << '\n';
+		}
+	}
 }
 
 bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 	bool recursionNeeded = false;
-	if (flagWithoutDash[0] == 'h') {
+	auto f = flagWithoutDash[0];
+	if (clientDefFlagCallbacks.find(f) != clientDefFlagCallbacks.end()) {
+		auto cb = clientDefFlagCallbacks[f];
+		try {
+			auto n = flagWithoutDash.substr(1);
+			if (contains(clientDefArgNeeded, f) && n.empty()) {
+				this->err << "Expecting an argument value after the  -" << f << " flag.\n";
+				return false;
+			}
+			auto rc = cb(*this, n);
+			return rc;
+		} catch (std::exception & x) {
+			this->err << x.what() << '\n';
+			return false;
+		}
+	}
+	if (f == 'h') {
 		this->printHelp(this->out);
 		this->exitCode = 1;
 		return false;
-	} else if (flagWithoutDash[0] == 'v') {
+	} else if (f == 'v') {
 		if (flagWithoutDash.length() > 1) {
 			recursionNeeded = true;
 		}
 		this->verbose = true;
 		defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
 		el::Loggers::reconfigureLogger("default", defaultConf);
-	} else if (flagWithoutDash[0] == 't') {
+	} else if (f == 't') {
 		if (flagWithoutDash.length() > 1) {
 			recursionNeeded = true;
 		}
 		this->verbose = true;
 		defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
 		el::Loggers::reconfigureLogger("default", defaultConf);
-	} else if (flagWithoutDash[0] == 'q') {
+	} else if (f == 'q') {
 		if (flagWithoutDash.length() > 1) {
 			recursionNeeded = true;
 		}

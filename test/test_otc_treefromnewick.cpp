@@ -17,7 +17,8 @@ class TestValidTreeStruct {
 				return 'U';
 			}
 			for (;;) {
-				auto nt = readNextNewick<RTNodeNoData, RTreeNoData>(inp, filename);
+				ParsingRules pr;
+				auto nt = readNextNewick<RTNodeNoData, RTreeNoData>(inp, filename, pr);
 				return (nt != nullptr ? '.': 'F');
 			}
 		}

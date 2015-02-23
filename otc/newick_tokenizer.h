@@ -6,8 +6,16 @@
 #include <stdexcept>
 #include "otc/otc_base_includes.h"
 #include "otc/error.h"
+#include "otc/util.h"
 
 namespace otc {
+
+struct ParsingRules {
+	ParsingRules()
+		:ottIdValidator(nullptr) {
+		}
+	const std::set<long> * ottIdValidator;
+};
 
 typedef std::shared_ptr<const std::string> ConstStrPtr;
 struct FilePosStruct {
@@ -332,8 +340,6 @@ class NewickTokenizer {
 		std::istream & inputStream;
 		ConstStrPtr inpFilepath;
 };
-
-bool char_ptr_to_long(const char *c, long *n);
 
 inline long ottIDFromName(const std::string & n) {
 	if (n.empty()) {

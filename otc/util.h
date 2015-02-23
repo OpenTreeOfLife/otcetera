@@ -7,6 +7,7 @@
 #include <set>
 #include <algorithm>
 #include <iterator>
+#include <list>
 #include "otc/otc_base_includes.h"
 #include "otc/error.h"
 
@@ -101,6 +102,64 @@ std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & s
 	std::set<T> d;
 	set_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
 	return d;
+}
+
+bool char_ptr_to_long(const char *c, long *n);
+std::size_t find_first_graph_index(const std::string & s);
+std::size_t find_last_graph_index(const std::string & s);
+std::string strip_leading_whitespace(const std::string & s);
+std::string strip_trailing_whitespace(const std::string & s);
+std::string strip_surrounding_whitespace(const std::string &n);
+std::list<std::string> split_string(const std::string &s);
+std::list<std::set<long> > parseDesignatorsFile(const std::string &fp);
+
+
+inline std::size_t find_first_graph_index(const std::string & s) {
+	std::size_t pos = 0U;
+	for (auto c : s) {
+		if (isgraph(c)) {
+			return pos;
+		}
+		++pos;
+	}
+	return std::string::npos;
+}
+inline std::size_t find_last_graph_index(const std::string & s) {
+	auto pos = s.length();
+	while (pos > 0) {
+		--pos;
+		if (isgraph(s[pos])) {
+			return pos;
+		}
+	}
+	return std::string::npos;
+}
+
+
+inline std::string strip_leading_whitespace(const std::string & n) {
+	auto x = find_first_graph_index(n);
+	if (x == std::string::npos) {
+		return std::string();
+	}
+	return n.substr(x);
+}
+
+inline std::string strip_trailing_whitespace(const std::string & n) {
+	auto x = find_last_graph_index(n);
+	if (x == std::string::npos) {
+		return std::string();
+	}
+	return n.substr(0, 1 + x);
+}
+
+inline std::string strip_surrounding_whitespace(const std::string &n) {
+	auto s = find_first_graph_index(n);
+	if (s == std::string::npos) {
+		return std::string();
+	}
+	auto e = find_last_graph_index(n);
+	assert(e != std::string::npos);
+	return n.substr(s, 1 + e - s);
 }
 
 } //namespace otc

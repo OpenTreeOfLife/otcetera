@@ -292,27 +292,4 @@ void NewickTokenizer::iterator::consumeNextToken() {
 }
 
 
-/*!
-	Returns true if `o` points to a string that represents a long (and `o` has no other characters than the long).
-	if n is not NULL, then when the function returns true, *n will be the long.
-*/
-bool char_ptr_to_long(const char *o, long *n)
-	{
-	if (o == nullptr) {
-		return false;
-	}
-	if (strchr("0123456789-+", *o) != nullptr) {
-		char * pEnd;
-		const long i = strtol(o, &pEnd, 10);
-		if (*pEnd != '\0') {
-			return false;
-		}
-		if (n != NULL) {
-			*n = i;
-		}
-		return true;
-	}
-	return false;
-}
-
 } //namespace otc

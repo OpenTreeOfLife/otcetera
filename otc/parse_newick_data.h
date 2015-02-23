@@ -15,21 +15,24 @@ void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
 						 RootedTreeNode<RTNodeNoData> &,
 						 const NewickTokenizer::Token * labelToken,
 						 const NewickTokenizer::Token * colonToken, // used for comment
-						 const NewickTokenizer::Token * branchLenToken);
+						 const NewickTokenizer::Token * branchLenToken,
+						 const ParsingRules & parsingRules);
 void postParseHook(RootedTree<RTNodeNoData, RTreeNoData> & );
 
 ////////////////////////////////////////////////////////////////////////////////
 // no ops for no data
 inline void newickCloseNodeHook(RootedTree<RTNodeNoData, RTreeNoData> & ,
 								RootedTreeNode<RTNodeNoData> & ,
-								const NewickTokenizer::Token & ) {
+								const NewickTokenizer::Token & ,
+								const ParsingRules & ) {
 }
 
 inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
 								RootedTreeNode<RTNodeNoData> & node,
 								const NewickTokenizer::Token * labelToken,
 								const NewickTokenizer::Token * , // used for comment
-								const NewickTokenizer::Token * ) {
+								const NewickTokenizer::Token * ,
+								const ParsingRules &) {
 	if (labelToken) {
 		node.setName(labelToken->content());
 	}
@@ -40,22 +43,32 @@ inline void postParseHook(RootedTree<RTNodeNoData, RTreeNoData> & ) {
 // tree-level mapping of ottID to Node data
 inline void newickCloseNodeHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & ,
 								RootedTreeNode<RTNodeNoData> & ,
-								const NewickTokenizer::Token & ) {
+								const NewickTokenizer::Token & ,
+								const ParsingRules & ) {
 }
 
 template <typename T, typename U>
 void setOttIdAndAddToMap(RootedTree<T, U> & tree,
 						 RootedTreeNode<T> & node,
-						 const NewickTokenizer::Token * labelToken);
+						 const NewickTokenizer::Token * labelToken,
+						 const ParsingRules &);
 
 template <typename T, typename U>
 inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
 						 RootedTreeNode<T> & node,
-						 const NewickTokenizer::Token * labelToken) {
+						 const NewickTokenizer::Token * labelToken,
+						 const ParsingRules & parsingRules) {
 	if (labelToken) {
 		node.setName(labelToken->content());
 		long ottID = ottIDFromName(labelToken->content());
 		if (ottID >= 0) {
+			if (parsingRules.ottIdValidator != nullptr) {
+				if (!contains(*parsingRules.ottIdValidator, ottID)) {
+					std::string m = "Unrecognized OTT Id ";
+					m += std::to_string(ottID);
+					throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->getStartPos());
+				}
+			}
 			node.setOttId(ottID);
 			U & treeData = tree.getData();
 			if (contains(treeData.ottIdToNode, ottID)) {
@@ -76,8 +89,9 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNod
 								RootedTreeNode<RTNodeNoData> & node,
 								const NewickTokenizer::Token * labelToken,
 								const NewickTokenizer::Token * , // used for comment
-								const NewickTokenizer::Token * ) {
-	setOttIdAndAddToMap(tree, node, labelToken);
+								const NewickTokenizer::Token * ,
+								const ParsingRules & parsingRules) {
+	setOttIdAndAddToMap(tree, node, labelToken, parsingRules);
 }
 inline void postParseHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & ) {
 }
@@ -85,7 +99,8 @@ inline void postParseHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoDat
 // tree-level mapping of ottID to Node data
 inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
 								RootedTreeNode<RTSplits> & node,
-								const NewickTokenizer::Token & token) {
+								const NewickTokenizer::Token & token,
+								const ParsingRules & ) {
 	if (node.isTip() && !node.hasOttId()) {
 		throw OTCParsingContentError("Expecting each tip to have an ID.", token.getStartPos());
 	}
@@ -95,8 +110,9 @@ inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
 								RootedTreeNode<RTSplits> & node,
 								const NewickTokenizer::Token * labelToken,
 								const NewickTokenizer::Token * , // used for comment
-								const NewickTokenizer::Token * ) {
-	setOttIdAndAddToMap(tree, node, labelToken);
+								const NewickTokenizer::Token * ,
+								const ParsingRules & parsingRules) {
+	setOttIdAndAddToMap(tree, node, labelToken, parsingRules);
 }
 
 inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree) {

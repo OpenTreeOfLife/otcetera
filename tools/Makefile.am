@@ -1,5 +1,6 @@
 SUBDIRS = \
 	check-taxonomic-nodes \
+	find-unsupported-nodes \
 	polytomy-count
 
 check:
