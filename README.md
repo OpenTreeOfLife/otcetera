@@ -5,10 +5,10 @@ otcetera owes a lot of code and ideas to Paul Lewis' Nexus Class Library.
   See http://hydrodictyon.eeb.uconn.edu/ncl/ and 
   https://github.com/mtholder/ncl
 
-It also uses easylogginpp which is distributed under an MIT License. See
+It also uses easyloggingpp which is distributed under an MIT License. See
   http://github.com/easylogging/ for info on that project. The file from
   that project is otc/easylogging++.h
-  
+
 
 
 ## Installation
@@ -45,7 +45,7 @@ is required for the `make check` operation to succeed.
 
 
 ## Usage
-## Common command line flags
+### Common command line flags
 The tools use the same (OTCLI) class to process command line arguments. 
 This provides the following command line flags:
   * `-h` for help
@@ -74,11 +74,16 @@ Assumptions:
   1. synth tree and taxonomy tree have the same leaf set in terms of OTT ids
   2. each label has numeric suffix, which is treated as the OTT id.
 
-## NCL credits
+## ACKNOWLEDGEMENTS
+See comments above about usage of [easyloggingpp](https://github.com/easylogging/)
+and [rapidjson](https://github.com/miloyip/rapidjson)
+
+To acknowledge the contributions of the NCL code and ideas, a snapshot of the 
+NCL credits taken from the version of NCL used to jump start otcetera is:
+
 As of March 09, 2012, NCL is available under a Simplified BSD license (see
 BSDLicense.txt) in addition to the GPL license.
 
-# ACKNOWLEDGEMENTS
 NCL AUTHORS -- the author of the NEXUS Class Library (NCL) version 2.0 is
 
   Paul O. Lewis, Ph.D.
