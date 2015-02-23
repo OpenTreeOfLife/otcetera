@@ -41,7 +41,7 @@ void fillDesIdSets(RootedTree<T, U> & tree) {
 		if (node->isTip()) {
 			desIds.insert(node->getOttId());
 		} else {
-			for (auto child : ChildIterator<T, U>(*node)) {
+			for (auto child : ChildIterator<T>(*node)) {
 				std::set<long> & cDesIds = child->getData().desIds;
 				desIds.insert(cDesIds.begin(), cDesIds.end());
 			}
@@ -160,6 +160,101 @@ std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, 
 	return expanded;
 }
 
+
+template<typename T, typename U>
+void markPathToRoot(const RootedTree<T, U> & fullTree, long ottId, std::map<const RootedTreeNode<T> *, std::set<long> > &n2m){
+	auto startNd = fullTree.getData().getNodeForOttId(ottId);
+	assert(startNd != nullptr);
+	if (startNd == nullptr) {
+		std::string m = "OTT id not found ";
+		m += std::to_string(ottId);
+		throw OTCError(m);
+	}
+	n2m[startNd].insert(ottId);
+	for (auto nd : AncNodeIter<T>(startNd)) {
+		n2m[nd].insert(ottId);
+	}
+}
+
+
+// find most recent anc of nd with out-degree > 1
+template<typename T>
+inline T * findFirstBranchingAnc(T * nd) {
+	T * anc = nd->getParent();
+	if (anc != nullptr) {
+		return nullptr;
+	}
+	while (anc->isOutDegreeOneNode()) {
+		anc = anc->getParent();
+	}
+	return anc;
+}
+
+template<typename T, typename U>
+inline bool multipleChildrenInMap(const RootedTreeNode<T> & nd,
+								  std::map<const RootedTreeNode<T> *, U> markedMap,
+								  const RootedTreeNode<T> **first) {
+	assert(first);
+	bool foundFirst = false;
+	*first = nullptr;
+	for(auto c : ConstChildIterator<T>(nd)) {
+		if (markedMap.find(c) != markedMap.end()) {
+			if (foundFirst) {
+				return true;
+			}
+			foundFirst = true;
+			*first = c;
+		}
+	}
+	return false;
+}
+
+
+template<typename T>
+inline const RootedTreeNode<T> * findNextSignificantNode(const RootedTreeNode<T> * node,
+														 const std::map<const RootedTreeNode<T> *, std::set<long> > & markedMap) {
+	assert(node != nullptr);
+	auto currNode = node;
+	for (;;) {
+		const RootedTreeNode<T> * sc;
+		if (multipleChildrenInMap(*currNode, markedMap, &sc)) {
+			return currNode;
+		}
+		if (sc == 0L) {
+			const char * msg = "Failing. Node found with ottIDs marked, but no children with ottIDs marked";
+			throw OTCError(msg);
+		}
+		currNode = sc;
+	}
+}
+
+template<typename T>
+inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
+											const RootedTreeNode<T> & srcNd,
+											const std::map<const RootedTreeNode<T> *, std::set<long> > & markedMap) {
+	const auto nIt = markedMap.find(&srcNd);
+	assert(nIt != markedMap .end());
+	const auto & ottIDSet = nIt->second;
+	if (ottIDSet.size() == 1) {
+		out << "ott" << *ottIDSet.begin();
+	} else {
+		assert(ottIDSet.size() > 1);
+		auto nsn = findNextSignificantNode<T>(&srcNd, markedMap);
+		out << '(';
+		unsigned numcwritten = 0;
+		for (auto child : ConstChildIterator<T>(*nsn)) {
+			if (markedMap.find(child) != markedMap.end()){
+				if (numcwritten > 0) {
+					out << ',';
+				}
+				writePrunedSubtreeNewickForMarkedNodes(out, *child, markedMap);
+				++numcwritten;
+			}
+		}
+		assert(numcwritten > 1);
+		out << ')';
+	}
+}
 
 } // namespace otc
 #endif

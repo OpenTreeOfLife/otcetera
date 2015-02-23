@@ -19,6 +19,7 @@ struct FindUnsupportedState {
 	int numErrors;
 	std::map<const MyNodeType *, std::set<long> > aPrioriProblemNodes;
 	std::set<long> ottIds;
+	std::set<const MyNodeType *> supportedNodes;
 
 	FindUnsupportedState()
 		:toCheck(nullptr),
@@ -49,64 +50,70 @@ struct FindUnsupportedState {
 		return true;
 	}
 	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
-	expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
-	/*
-	map<const NxsSimpleNode *, set<long> > ndp2mrca;
-	map<const NxsSimpleNode *, set<long> > refNdp2mrca;
-	set<long> leafSet;
-
-	vector<const NxsSimpleNode *> nodes =  tree->GetPreorderTraversal();
-	for (vector<const NxsSimpleNode *>::const_reverse_iterator nIt = nodes.rbegin(); nIt != nodes.rend(); ++nIt) {
-		const NxsSimpleNode & nd = **nIt;
-		vector<NxsSimpleNode *> children = nd.GetChildren();
-		const unsigned outDegree = children.size();
-		if (outDegree > 0) {
-			set<long> & mrca = ndp2mrca[&nd];
-			for (vector<NxsSimpleNode *>::const_iterator cIt = children.begin(); cIt != children.end(); ++cIt) {
-				const NxsSimpleNode * c = *cIt;
-				assert(ndp2mrca.find(c) != ndp2mrca.end());
-				set<long> & csl = ndp2mrca[c];
-				mrca.insert(csl.begin(), csl.end());
-			}
-		} else if (outDegree == 0) {
-			long ottID = getOTTIndex(tb, **nIt);
-			map<long, const NxsSimpleNode *>::const_iterator tlIt = gTabooLeaf.find(ottID);
-			if (tlIt != gTabooLeaf.end()) {
-				assert(tlIt->second == *nIt);
-			}
-			assert(ottID >= 0);
-			assert(gOttID2TaxNode.find(ottID) != gOttID2TaxNode.end());
-			ndp2mrca[&nd].insert(ottID);
-			markPathToRoot(refNdp2mrca, ottID);
-			leafSet.insert(ottID);
+		assert(taxonomy != nullptr);
+		assert(tree != nullptr);
+		expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
+		return processExpandedTree(otCLI, *tree);
+	}
+	bool processExpandedTree(OTCLI & otCLI, const Tree_t & tree) {
+		assert(toCheck != nullptr);
+		std::map<const MyNodeType *, std::set<long> > prunedDesId;
+		for (auto nd : ConstLeafNodeIter<RTSplits, RootedTreeForNodeType>(tree)) {
+			auto ottId = nd->getOttId();
+			markPathToRoot(*toCheck, ottId, prunedDesId);
 		}
-	}
-	map<set<long>, const NxsSimpleNode *> sourceClades;
-	for (map<const NxsSimpleNode *, set<long> >::const_iterator nsIt = ndp2mrca.begin(); nsIt != ndp2mrca.end(); ++nsIt) {
-		const NxsSimpleNode * nd = nsIt->first;
-		const NxsSimpleNode * par = nd->GetEdgeToParentRef().GetParent();
-		if (par != 0 && !nd->IsTip()) {
-			const set<long> & nm = nsIt->second;
-			sourceClades[nm] = nsIt->first;
+		std::map<std::set<long>, const MyNodeType *> sourceClades;
+		for (auto nd : ConstPostorderInternalNode<RTSplits, RootedTreeForNodeType>(tree)) {
+			if (nd->getParent() != nullptr && !nd->isTip()) {
+				sourceClades[nd->getData().desIds] = nd;
+			}
 		}
-	}
-	recordSupportedNodes(refNdp2mrca, sourceClades, gSupportedNodes, leafSet, ndp2mrca);
-	if (gCurrTmpOstream != 0) {
-		*gCurrTmpOstream << "#NEXUS\nBEGIN TREES;\n";
-
-		*gCurrTmpOstream << "   Tree pruned_synth = [&R] ";
-		writeNewickOTTIDs(*gCurrTmpOstream, gRefTree, refNdp2mrca);
-		
-		*gCurrTmpOstream << "   Tree input = [&R] ";
-		writeNewickOTTIDs(*gCurrTmpOstream, tree, ndp2mrca);
-		
-		*gCurrTmpOstream << "END;\n";
-	}
-}
-
-*/
+		recordSupportedNodes(otCLI, prunedDesId, sourceClades, supportedNodes);
 		return true;
 	}
+	void recordSupportedNodes(OTCLI & otCLI,
+							  const std::map<const MyNodeType *, std::set<long> > &prunedDesId,
+							  const std::map<std::set<long>, const MyNodeType *> & sourceClades,
+							  std::set<const MyNodeType *> & supported) {
+
+		for (auto pd : prunedDesId) {
+			auto nd = pd.first;
+			auto par = nd->getParent();
+			if (par == nullptr) {
+				continue;
+			}
+			auto ls = pd.second;
+			auto firstBranchingAnc = findFirstBranchingAnc<const MyNodeType>(nd);
+			if (firstBranchingAnc == nullptr) {
+				continue;
+			}
+			auto nm = pd.second;
+			auto ancIt = prunedDesId.find(firstBranchingAnc);
+			assert(ancIt != prunedDesId.end());
+			auto anm = ancIt->second;
+			const MyNodeType * firstNdPtr; // just used to match call
+			if ((!multipleChildrenInMap(*nd, prunedDesId, &firstNdPtr)) || anm == nm) {
+				continue;
+			}
+			auto scIt = sourceClades.find(nm);
+			if (scIt != sourceClades.end()) {
+				if (aPrioriProblemNodes.find(nd) != aPrioriProblemNodes.end()) {
+					auto apIt = aPrioriProblemNodes.find(nd);
+					otCLI.out << "ERROR!: a priori unsupported node found. Designators were ";
+					writeOttSet(otCLI.out, "", apIt->second, " ");
+					otCLI.out << ". A node was found, which (when pruned to the leaf set of an input tree) contained:\n";
+					writeOttSet(otCLI.out, "    ", nm, " ");
+					otCLI.out << "\nThe subtree from the source was: ";
+					auto srcNd = scIt->second;
+					writePrunedSubtreeNewickForMarkedNodes(otCLI.out, *srcNd, prunedDesId);
+					numErrors += 1;
+				}
+				supported.insert(nd);
+			}
+		}
+	}
+
+
 
 
 };
@@ -315,94 +322,6 @@ const NxsSimpleNode * findMRCA(const map<long, const NxsSimpleNode *> & ref,
 }
 
 
-void markPathToRoot(map<const NxsSimpleNode *, set<long> > &n2m, long ottID) {
-	const NxsSimpleNode * nd = 0;
-	map<long, const NxsSimpleNode *>::const_iterator fIt = gOttID2RefNode.find(ottID);
-	if (fIt != gOttID2RefNode.end()) {
-		nd = fIt->second;
-	} else {
-		assert(false);
-		nd = findMRCA(gOttID2RefNode, gOttID2TaxNode, ottID);
-	}
-	assert(nd != 0);
-	while (nd != 0) {
-		n2m[nd].insert(ottID);
-		nd = nd->GetEdgeToParentRef().GetParent();
-	}
-}
-
-
-void recordSupportedNodes(const map<const NxsSimpleNode *, set<long> > & refNdp2mrca,
-						  const map<set<long>, const NxsSimpleNode *> & sourceClades,
-						  set<const NxsSimpleNode *> & supportedNodes,
-						  const set<long> & leafSet,
-						  const map<const NxsSimpleNode *, set<long> > & srcNdp2mrca) {
-	assert(gAPrioriProblemNode.empty() == gNoAprioriTests);
-	if (false) {//debugging
-		cerr << "sourceClades:\n";
-		for (map<set<long>, const NxsSimpleNode *>::const_iterator scit = sourceClades.begin(); scit != sourceClades.end(); ++scit) {
-			cerr << "  clade: ";
-			writeOttSet(cerr, "", scit->first, " ");
-			cerr << "\n";
-		}
-	}
-
-	for (map<const NxsSimpleNode *, set<long> >::const_iterator nsIt = refNdp2mrca.begin(); nsIt != refNdp2mrca.end(); ++nsIt) {
-		const NxsSimpleNode * nd = nsIt->first;
-		const bool printDB = false; //gAPrioriProblemNode.find(nd) != gAPrioriProblemNode.end();
-		const NxsSimpleNode * par = nd->GetEdgeToParentRef().GetParent();
-		if (par != 0) {
-			const set<long> & nm = nsIt->second;
-			const NxsSimpleNode * firstBranchingAnc = findFirstBranchingAnc(nd);
-			map<const NxsSimpleNode *, set<long> >::const_iterator ancIt = refNdp2mrca.find(firstBranchingAnc);
-			assert(ancIt != refNdp2mrca.end());
-			const set<long> & anm = ancIt->second;
-			if (printDB) { //debugging
-				cerr << "DEBUGGING refTree node " << (long)nd << ": ";
-				writeOttSet(cerr, "", nm, " ");
-				cerr << "\n";
-				cerr << "refTree par " << (long)firstBranchingAnc << ": ";
-				writeOttSet(cerr, "", anm, " ");
-				cerr << "\n";
-			}
-			if (isTheMrcaInThisLeafSet(nd, refNdp2mrca)) {
-				if (anm != nm) {
-					map<set<long>, const NxsSimpleNode *>::const_iterator scIt = sourceClades.find(nm);
-					if (scIt != sourceClades.end()) {
-						if (gAPrioriProblemNode.find(nd) != gAPrioriProblemNode.end()) {
-							ostream & out = cerr;
-							map<const NxsSimpleNode *, set<long> >::const_iterator apIt = gAPrioriProblemNode.find(nd);
-							out << "ERROR!: a priori unsupported node found. Designators were ";
-							writeOttSet(out, "", apIt->second, " ");
-							out << ". A node was found, which (when pruned to the leaf set of an input tree) contained:\n";
-							writeOttSet(out, "    ", nm, " ");
-							out << "\nThe subtree from the source was: ";
-							const NxsSimpleNode * srcNd = scIt->second;
-							writeSubtreeNewickOTTIDs(out, srcNd, srcNdp2mrca);
-							gExitCode = -1;
-						}
-						supportedNodes.insert(nd);
-						if (printDB) { //debugging
-							cerr <<"SUPPORTED!\n";
-						}
-					} else {
-						if (printDB) { //debugging
-							cerr <<"UNsupported. node mrca set not in source tree\n";
-						}
-					} 
-				} else {
-					if (printDB) { //debugging
-						cerr <<"UNsupported. node mrca set == first branching ancestors mrca set on this leaf set\n";
-					}
-				}
-			} else {
-				if (printDB) { //debugging
-					cerr <<"UNsupported. not a mrcaInThisLeafSet\n";
-				}
-			}
-		}
-	}
-}
 
 
 

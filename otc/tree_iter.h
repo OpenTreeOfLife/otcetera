@@ -86,7 +86,53 @@ class const_preorder_iterator : std::forward_iterator_tag {
 		}
 };
 
+/// descendants before ancestors, but not guaranteed to be the reverse of const_preorder_iterator
+template<typename T>
+class const_child_iterator : std::forward_iterator_tag {
+	private:
+		typedef RootedTreeNode<T> NodeType;
+		NdFilterFn<T> filterFn;
+		const NodeType * curr;
 
+		void _advance() {
+			assert(curr != nullptr);
+			curr = curr->getNextSib();
+		}
+	public:
+		const_child_iterator(const RootedTreeNode<T> *c)
+			:filterFn{nullptr},
+			curr(nullptr) {
+			if (c != nullptr) {
+				curr = c->getFirstChild();
+			}
+		}
+		const_child_iterator(const RootedTreeNode<T> *c, NdFilterFn<T> f)
+			:filterFn{f},
+			curr(nullptr) {
+			if (c != nullptr) {
+				curr = c->getFirstChild();
+			}
+			if (c != nullptr && filterFn && !filterFn(*c)) {
+				_advance();
+			}
+		}
+		bool operator==(const_child_iterator &other) {
+			return this->curr == other.curr;
+		}
+		bool operator!=(const_child_iterator &other) {
+			return this->curr != other.curr;
+		}
+		const RootedTreeNode<T> * operator*() const {
+			return curr;
+		}
+		const_child_iterator & operator++() {
+			if (curr == nullptr) {
+				throw std::out_of_range("Incremented a dead const_child_iterator");
+			}
+			_advance();
+			return *this;
+		}
+};
 /// descendants before ancestors, but not guaranteed to be the reverse of const_preorder_iterator
 template<typename T>
 class child_iterator : std::forward_iterator_tag {
@@ -293,7 +339,7 @@ class anc_iterator : std::forward_iterator_tag {
 };
 
 
-template<typename T, typename U>
+template<typename T>
 class ChildIterator {
 	public:
 	explicit ChildIterator(RootedTreeNode<T> & n)
@@ -308,6 +354,23 @@ class ChildIterator {
 	private:
 		RootedTreeNode<T> & node;
 };
+
+template<typename T>
+class ConstChildIterator {
+	public:
+	explicit ConstChildIterator(const RootedTreeNode<T> & n)
+		:node(n) {
+	}
+	const_child_iterator<T> begin() const {
+		return std::move(const_child_iterator<T>{&node});
+	}
+	const_child_iterator<T> end() const {
+		return const_child_iterator<T>{nullptr};
+	}
+	private:
+		const RootedTreeNode<T> & node;
+};
+
 
 template<typename T, typename U>
 class ConstPreorderInternalNode {
@@ -371,6 +434,22 @@ class LeafNodeIter {
 	}
 	private:
 		RootedTree<T, U> & tree;
+};
+
+template<typename T, typename U>
+class ConstLeafNodeIter {
+	public:
+	explicit ConstLeafNodeIter(const RootedTree<T, U> & t)
+		:tree(t){
+	}
+	const_postorder_iterator<T> begin() const {
+		return std::move(const_postorder_iterator<T>{tree.getRoot(), isLeaf<T>});
+	}
+	const_postorder_iterator<T> end() const {
+		return const_postorder_iterator<T>{nullptr};
+	}
+	private:
+		const RootedTree<T, U> & tree;
 };
 
 template<typename T>

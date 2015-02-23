@@ -17,6 +17,7 @@ typedef std::string namestring_t;
 template<typename T>
 class RootedTreeNode {
 	public:
+		using data_type = T;
 		const RootedTreeNode<T> * getParent() const {
 			return parent;
 		}
@@ -133,6 +134,9 @@ class RootedTreeNode {
 			n->parent = nullptr;
 			return true;
 		}
+		bool isOutDegreeOneNode() const {
+			return (lChild != nullptr) && (lChild->rSib == nullptr);
+		}
 	public:
 		void writeAsNewick(std::ostream &out,
 						   bool useLeafNames,
@@ -163,6 +167,9 @@ class RootedTreeNode {
 template<typename T, typename U>
 class RootedTree {
 	public:
+		typedef T node_data_type;
+		typedef U data_type;
+		
 		RootedTree<T, U>()
 			:root(nullptr) {
 		}
