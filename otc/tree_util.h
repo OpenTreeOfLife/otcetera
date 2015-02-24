@@ -15,9 +15,13 @@ bool isInternalNode(const T & nd);
 template<typename T>
 bool isLeaf(const T & nd);
 template<typename T>
-T * findLeftmostInSubtree(T * nd);
+T * findLeftmostInSubtreeM(T * nd);
 template<typename T>
-T * findRightmostInSubtree(T * nd);
+T * findRightmostInSubtreeM(T * nd);
+template<typename T>
+const T * findLeftmostInSubtree(const T * nd);
+template<typename T>
+const T * findRightmostInSubtree(const T * nd);
 
 template<typename T>
 inline bool isInternalNode(const T & nd) {
@@ -29,7 +33,7 @@ inline bool isLeaf(const T & nd) {
 }
 
 template<typename T>
-inline T * findLeftmostInSubtree(T * nd) {
+inline const T * findLeftmostInSubtree(const T * nd) {
 	if (nd == nullptr) {
 		return nullptr;
 	}
@@ -41,7 +45,13 @@ inline T * findLeftmostInSubtree(T * nd) {
 	return nd;
 }
 template<typename T>
-inline T * findRightmostInSubtree(T * nd) {
+inline T * findLeftmostInSubtreeM(T * nd) {
+	const T * c = const_cast<const T *>(nd);
+	return const_cast<T*>(findLeftmostInSubtree<T>(c));
+}
+
+template<typename T>
+inline const T * findRightmostInSubtree(const T * nd) {
 	if (nd == nullptr) {
 		return nullptr;
 	}
@@ -51,6 +61,12 @@ inline T * findRightmostInSubtree(T * nd) {
 		next = nd->getLastChild();
 	}
 	return nd;
+}
+
+template<typename T>
+inline T * findRightmostInSubtreeM(T * nd) {
+	const T * c = const_cast<const T *>(nd);
+	return const_cast<T*>(findRightmostInSubtree<T>(c));
 }
 
 } // namespace otc

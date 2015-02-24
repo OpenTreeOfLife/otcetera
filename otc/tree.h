@@ -18,32 +18,38 @@ typedef std::string namestring_t;
 template<typename T>
 class RootedTreeNode {
 	public:
+		using node_type = RootedTreeNode<T>;
 		using data_type = T;
-		const RootedTreeNode<T> * getParent() const {
-			return parent;
-		}
-		RootedTreeNode<T> * getParent() {
-			return parent;
-		}
 		bool isTip() const {
 			return (lChild == nullptr);
 		}
-		const RootedTreeNode<T> * getFirstChild() const {
+		const node_type * getParent() const {
+			return parent;
+		}
+		node_type * getParent() {
+			return parent;
+		}
+		const node_type * getFirstChild() const {
 			return lChild;
 		}
-		RootedTreeNode<T> * getFirstChild() {
+		node_type * getFirstChild() {
 			return lChild;
 		}
-		RootedTreeNode<T> * getNextSib() const {
+		const node_type * getNextSib() const {
 			return rSib;
 		}
-		RootedTreeNode<T> * getLastChild() const {
-			auto currNode = this->getFirstChild();
-			if (currNode == nullptr)
-				return nullptr;
-			return currNode->getLastSib();
+		node_type * getNextSib() {
+			return rSib;
 		}
-		RootedTreeNode<T> * getLastSib() const {
+		const node_type * getLastChild() const {
+			if (lChild == nullptr)
+				return nullptr;
+			return (lChild->rSib == nullptr ? lChild : lChild->getLastSib());
+		}
+		node_type * getLastChild() {
+			return const_cast<node_type *>(const_cast<const node_type *>(this)->getLastChild());
+		}
+		const node_type * getLastSib() const {
 			auto currNode = this->getNextSib();
 			if (currNode == nullptr) {
 				return nullptr;
@@ -55,8 +61,12 @@ class RootedTreeNode {
 			}
 			return currNode;
 		}
-		std::vector<const RootedTreeNode<T> *> getChildren() const {
-			std::vector<const RootedTreeNode<T> *> children;
+		node_type * getLastSib() {
+			return const_cast<node_type *>(const_cast<const node_type *>(this)->getLastSib());
+		}
+		
+		std::vector<const node_type *> getChildren() const {
+			std::vector<const node_type *> children;
 			auto * currNode = getFirstChild();
 			while(currNode) {
 				children.push_back(currNode);
@@ -101,20 +111,20 @@ class RootedTreeNode {
 			parent(par),
 			ottId(LONG_MAX) {
 		}
-		void addSib(RootedTreeNode<T> *n) {
+		void addSib(node_type *n) {
 			if (rSib) {
 				rSib->addSib(n);
 			} else {
 				rSib = n;
 			}
 		}
-		void addChild(RootedTreeNode<T> *n) {
+		void addChild(node_type *n) {
 			if (lChild)
 				lChild->addSib(n);
 			else
 				lChild = n;
 		}
-		bool removeChild(RootedTreeNode<T> *n) {
+		bool removeChild(node_type *n) {
 			if (n == nullptr || lChild == nullptr) {
 				return false;
 			}
@@ -148,26 +158,25 @@ class RootedTreeNode {
 	public:
 		void writeAsNewick(std::ostream &out,
 						   bool useLeafNames,
-						   const std::map<RootedTreeNode<T> *, namestring_t> *nd2name=nullptr) const;
-		void addSelfAndDesToPreorder(std::vector<const RootedTreeNode<T> *> &p) const;
+						   const std::map<node_type *, namestring_t> *nd2name=nullptr) const;
+		void addSelfAndDesToPreorder(std::vector<const node_type *> &p) const;
 
-		void lowLevelSetFirstChild(RootedTreeNode<T> *nd) {
+		void lowLevelSetFirstChild(node_type *nd) {
 			lChild = nd;
 		}
-		void lowLevelSetNextSib(RootedTreeNode<T> *nd) {
+		void lowLevelSetNextSib(node_type *nd) {
 			rSib = nd;
 		}
 	private:
-		RootedTreeNode<T> * lChild;
-		RootedTreeNode<T> * rSib;
-		RootedTreeNode<T> * parent;
+		node_type * lChild;
+		node_type * rSib;
+		node_type * parent;
 		namestring_t name; // non-empty only for internals that are labelled with names that are NOT taxLabels
 		long ottId; // present for every leaf. UINT_MAX for internals labeled with taxlabels
 		T data;
 	private:
-		RootedTreeNode<T>(const RootedTreeNode<T> &); //not defined.  Not copyable
-		RootedTreeNode<T> & operator=(const RootedTreeNode<T> &); //not defined.  Not copyable
-
+		RootedTreeNode<T>(const RootedTreeNode<T> &) = delete;
+		RootedTreeNode<T> & operator=(const RootedTreeNode<T> &) = delete;
 		template<typename Y, typename Z>
 		friend class RootedTree;
 };
@@ -185,37 +194,37 @@ class RootedTree {
 		~RootedTree<T, U>() {
 			clear();
 		}
-		std::vector<const RootedTreeNode<T> *> getPreorderTraversal() const;
-		const std::vector<const RootedTreeNode<T> *> & getLeavesRef() {
+		std::vector<const node_type *> getPreorderTraversal() const;
+		const std::vector<const node_type *> & getLeavesRef() {
 			return leaves;
 		}
 		void writeAsNewick(std::ostream &out,
 						   bool nhx,
 						   bool useLeafNames,
-						   const std::map<RootedTreeNode<T> *, namestring_t> *nd2name=nullptr) const {
+						   const std::map<node_type *, namestring_t> *nd2name=nullptr) const {
 			if (root) {
 				root->writeAsNewick(out, nhx, useLeafNames, nd2name);
 			}
 		}
-		const RootedTreeNode<T> * getRoot() const {
+		const node_type * getRoot() const {
 			return root;
 		}
-		RootedTreeNode<T> * getRoot() {
+		node_type * getRoot() {
 			return root;
 		}
-		RootedTreeNode<T> * createRoot() {
+		node_type * createRoot() {
 			if (root != nullptr) {
 				clear();
 			}
 			this->root = this->allocNewNode(nullptr);
 			return this->root;
 		}
-		RootedTreeNode<T> * createChild(RootedTreeNode<T> *par) {
+		node_type * createChild(node_type *par) {
 			auto c = this->allocNewNode(par);
 			par->addChild(c);
 			return c;
 		}
-		RootedTreeNode<T> * createSib(RootedTreeNode<T> *leftSib) {
+		node_type * createSib(node_type *leftSib) {
 			assert(leftSib->parent != nullptr);
 			auto s = this->allocNewNode(leftSib->parent);
 			leftSib->addSib(s);
@@ -228,13 +237,13 @@ class RootedTree {
 			return this->data;
 		}
 	protected:
-		std::vector<RootedTreeNode<T> *> allNodes;
-		std::vector<RootedTreeNode<T> *> leaves;
-		RootedTreeNode<T> * root;
+		std::vector<node_type *> allNodes;
+		std::vector<node_type *> leaves;
+		node_type * root;
 		U data;
 	public:
-		RootedTreeNode<T> * allocNewNode(RootedTreeNode<T> *p) {
-			RootedTreeNode<T> * nd = new RootedTreeNode<T>(p);
+		node_type * allocNewNode(node_type *p) {
+			node_type * nd = new node_type(p);
 			allNodes.push_back(nd);
 			return nd;
 		}
@@ -246,16 +255,16 @@ class RootedTree {
 			}
 			allNodes.clear();
 		}
-		std::set<const RootedTreeNode<T> *> getSetOfAllNodes() const {
-			std::set<const RootedTreeNode<T> *> r;
+		std::set<const node_type *> getSetOfAllNodes() const {
+			std::set<const node_type *> r;
 			for (auto nd : allNodes) {
 				r.insert(nd);
 			}
 			return r;
 		}
 	private:
-		RootedTree<T, U>(const RootedTree<T, U> &); //not defined.  Not copyable
-		RootedTree<T, U> & operator=(const RootedTree<T, U> &); //not defined.  Not copyable
+		RootedTree<T, U>(const RootedTree<T, U> &) = delete;
+		RootedTree<T, U> & operator=(const RootedTree<T, U> &) = delete;
 };
 
 struct RTNodeNoData{};

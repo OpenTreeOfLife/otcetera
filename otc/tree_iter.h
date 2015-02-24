@@ -256,7 +256,7 @@ class postorder_iterator : std::forward_iterator_tag {
 			} else {
 				for (;;) {
 					auto n = curr->getNextSib();
-					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<T>(n));
+					curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtreeM<T>(n));
 					if (filterFn == nullptr || filterFn(*curr)) {
 						break;
 					}
@@ -273,7 +273,7 @@ class postorder_iterator : std::forward_iterator_tag {
 			curr(nullptr),
 			lastNode(c) {
 			if (lastNode != nullptr) {
-				curr = findLeftmostInSubtree<T>(lastNode);
+				curr = findLeftmostInSubtreeM<T>(lastNode);
 			}
 		}
 		postorder_iterator(T *c, NdFilterFn<T> f)
@@ -281,7 +281,7 @@ class postorder_iterator : std::forward_iterator_tag {
 			curr(nullptr),
 			lastNode(c) {
 			if (lastNode != nullptr) {
-				curr = findLeftmostInSubtree<T>(lastNode);
+				curr = findLeftmostInSubtreeM<T>(lastNode);
 			}
 			if (curr != nullptr && filterFn && !filterFn(*curr)) {
 				_advance();
