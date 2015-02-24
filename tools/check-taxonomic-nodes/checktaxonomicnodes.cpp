@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
 				"some.tre taxonomy.tre");
 	CheckTaxonState cts;
 	otCLI.blob = static_cast<void *>(&cts);
-	auto rc = treeProcessingMain<RTSplits, RootedTreeForNodeType>(otCLI,
+	auto rc = treeProcessingMain<Tree_t>(otCLI,
 																	  argc,
 																	  argv,
 																	  processNextTree,

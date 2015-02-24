@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcassertinvariants",
 				"takes a tree file, parses it and runs a series of checks of invariants of the tree operations.",
 				"test.tre");
-	auto rc = treeProcessingMain<RTSplits, RootedTreeForNodeType>(otCLI,
+	auto rc = treeProcessingMain<Tree_t>(otCLI,
 																 argc,
 																 argv,
 																 processNextTree,

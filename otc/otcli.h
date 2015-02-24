@@ -66,18 +66,18 @@ class OTCLI {
 		std::ostream & err;
 };
 
-template<typename T, typename U>
+template<typename T>
 int treeProcessingMain(OTCLI & otCLI,
 						  int argc,
 						  char * argv[],
-						  bool (*treePtr)(OTCLI &, std::unique_ptr<RootedTree<T, U> >),
+						  bool (*treePtr)(OTCLI &, std::unique_ptr<T>),
 						  int (*summarizePtr)(OTCLI &));
 
-template<typename T, typename U>
+template<typename T>
 inline int treeProcessingMain(OTCLI & otCLI,
 								 int argc,
 								 char * argv[],
-								 bool (*treePtr)(OTCLI &, std::unique_ptr<RootedTree<T, U> >),
+								 bool (*treePtr)(OTCLI &, std::unique_ptr<T>),
 								 int (*summarizePtr)(OTCLI &)) {
 	std::vector<std::string> filenameVec;
 	if (!otCLI.parseArgs(argc, argv, filenameVec)) {
@@ -98,7 +98,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 				}
 				LOG(INFO) << "reading \"" << filename << "\"...";
 				for (;;) {
-					std::unique_ptr<RootedTree<T, U> > nt = readNextNewick<T, U>(inp, filename, otCLI.getParsingRules());
+					std::unique_ptr<T> nt = readNextNewick<T>(inp, filename, otCLI.getParsingRules());
 					if (nt == nullptr) {
 						break;
 					}

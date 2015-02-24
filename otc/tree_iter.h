@@ -399,9 +399,9 @@ class ConstPreorderInternalNode {
 };
 
 template<typename T>
-class ConstPreorder {
+class ConstPreorderIter {
 	public:
-	explicit ConstPreorder(const T &t)
+	explicit ConstPreorderIter(const T &t)
 		:tree(t){
 	}
 	const_preorder_iterator<typename T::node_type> begin() const {

@@ -3,6 +3,7 @@
 #include "otc/test_harness.h"
 using namespace otc;
 
+typedef RootedTree<RTNodeNoData, RTreeNoData> Tree_t;
 class TestValidTreeStruct {
 		const std::string filename;
 	public:
@@ -18,7 +19,7 @@ class TestValidTreeStruct {
 			}
 			for (;;) {
 				ParsingRules pr;
-				auto nt = readNextNewick<RTNodeNoData, RTreeNoData>(inp, filename, pr);
+				auto nt = readNextNewick<Tree_t>(inp, filename, pr);
 				return (nt != nullptr ? '.': 'F');
 			}
 		}

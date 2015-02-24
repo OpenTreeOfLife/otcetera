@@ -12,21 +12,21 @@
 
 namespace otc {
 //Takes wide istream and (optional) filepath (just used for error reporting if not empty)
-template<typename T, typename U>
-std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, const std::string & filepath, const ParsingRules &parsingRules);
+template<typename T>
+std::unique_ptr<T> readNextNewick(std::istream &inp, const std::string & filepath, const ParsingRules &parsingRules);
 
-template<typename T, typename U>
-inline std::unique_ptr<RootedTree<T, U> > readNextNewick(std::istream &inp, const std::string & filepath, const ParsingRules &parsingRules) {
+template<typename T>
+inline std::unique_ptr<T> readNextNewick(std::istream &inp, const std::string & filepath, const ParsingRules &parsingRules) {
 	assert(inp.good());
 	NewickTokenizer tokenizer(inp, filepath);
 	auto tokenIt = tokenizer.begin();
 	if (tokenIt == tokenizer.end()) {
-		return std::unique_ptr<RootedTree<T, U> >(nullptr);
+		return std::unique_ptr<T>(nullptr);
 	}
-	std::stack<RootedTreeNode<T> *> nodeStack;
-	RootedTree<T, U> * rawTreePtr = new RootedTree<T, U>();
-	std::unique_ptr<RootedTree<T, U> > treePtr(rawTreePtr);
-	RootedTreeNode<T> * currNode = rawTreePtr->createRoot();
+	std::stack<typename T::node_type *> nodeStack;
+	T * rawTreePtr = new T();
+	std::unique_ptr<T> treePtr(rawTreePtr);
+	typename T::node_type * currNode = rawTreePtr->createRoot();
 	// If we read a label or colon, we might consume multiple tokens;
 	for (; tokenIt != tokenizer.end(); ) {
 		const NewickTokenizer::Token topOfLoopToken = *tokenIt;

@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
 				  "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them.",
 				  handleDesignator,
 				  true);
-	auto rc = treeProcessingMain<RTSplits, RootedTreeForNodeType>(otCLI,
+	auto rc = treeProcessingMain<Tree_t>(otCLI,
 																	  argc,
 																	  argv,
 																	  processNextTree,

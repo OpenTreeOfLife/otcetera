@@ -40,7 +40,7 @@ template<typename T>
 bool checkPreorder(const T & tree) {
 	auto ns = tree.getSetOfAllNodes();
 	std::set<const typename T::node_type *> visited;
-	for (auto nd : ConstPreorder<T>(tree)) {
+	for (auto nd : ConstPreorderIter<T>(tree)) {
 		auto p = nd->getParent();
 		if (p) {
 			if (!contains(visited, p)) {
