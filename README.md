@@ -49,6 +49,8 @@ is required for the `make check` operation to succeed.
 The tools use the same (OTCLI) class to process command line arguments. 
 This provides the following command line flags:
   * `-h` for help
+  * `-fFILE` to treat every line of FILE as if it were a command line argument
+      (useful for processing hundreds of filenames)
   * `-v` for verbose output
   * `-q` for quieter than normal output
   * `-t` for trace level (extremely verbose) output
@@ -73,6 +75,17 @@ A report will be issued for every problematic labeling.
 Assumptions:
   1. synth tree and taxonomy tree have the same leaf set in terms of OTT ids
   2. each label has numeric suffix, which is treated as the OTT id.
+
+### Checking for unnamed nodes in a full tree that have no tree supporting them
+
+    otcfindunsupportednodes taxonomy.tre synth.tre inp1.tre inp2.tre ...
+
+will report any nodes in `synth.tre` that are not named and which do not have
+any [ITEB support](https://github.com/OpenTreeOfLife/treemachine/blob/nonsense-1/nonsense/iteb_support_theorem.md)
+
+The taxonomy is just used for the ottID validation (on the assumption that 
+the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
+can help identify problems with those nodes).
 
 ## ACKNOWLEDGEMENTS
 See comments above about usage of [easyloggingpp](https://github.com/easylogging/)
