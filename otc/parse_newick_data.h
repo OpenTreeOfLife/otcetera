@@ -116,7 +116,7 @@ inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
 }
 
 inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree) {
-	fillDesIdSets<RTSplits, RTreeOttIDMapping<RTSplits> >(tree);
+	fillDesIdSets(tree);
 }
 
 } // namespace otc

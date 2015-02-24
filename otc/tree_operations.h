@@ -10,21 +10,21 @@
 
 namespace otc {
 
-template<typename T, typename U>
-unsigned int countPolytomies(const RootedTree<T, U> & tree);
-template<typename T, typename U>
-std::size_t checkForUnknownTaxa(std::ostream & err, const RootedTree<T, U> & toCheck, const RootedTree<T, U> & taxonomy);
-template<typename T, typename U>
-RootedTreeNode<T> * findMRCAFromIDSet(RootedTree<T, U> & tree, const std::set<long> & idSet, long trigger);
+template<typename T>
+unsigned int countPolytomies(const T & tree);
+template<typename T>
+std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T & taxonomy);
+template<typename T>
+typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet, long trigger);
 
 std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd);
 
 //// impl
 
-template<typename T, typename U>
-unsigned int countPolytomies(const RootedTree<T, U> & tree) {
+template<typename T>
+unsigned int countPolytomies(const T & tree) {
 	unsigned int n = 0U;
-	for (auto node : ConstPostorderInternalNode<RootedTree<T, U> >{tree}) {
+	for (auto node : ConstPostorderInternalNode<T>{tree}) {
 		if (node->getOutDegree() > 2) {
 			n += 1;
 		}
@@ -32,15 +32,15 @@ unsigned int countPolytomies(const RootedTree<T, U> & tree) {
 	return n;
 }
 
-template<typename T, typename U>
-void fillDesIdSets(RootedTree<T, U> & tree) {
+template<typename T>
+void fillDesIdSets(T & tree) {
 	// assumes OttId is set for each tip
-	for (auto node : PostorderIter<RootedTree<T, U> >(tree)) {
+	for (auto node : PostorderIter<T>(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
 		if (node->isTip()) {
 			desIds.insert(node->getOttId());
 		} else {
-			for (auto child : ChildIter<RootedTreeNode<T> >(*node)) {
+			for (auto child : ChildIter<typename T::node_type>(*node)) {
 				std::set<long> & cDesIds = child->getData().desIds;
 				desIds.insert(cDesIds.begin(), cDesIds.end());
 			}
@@ -49,9 +49,9 @@ void fillDesIdSets(RootedTree<T, U> & tree) {
 }
 
 // uses ottID->node mapping, but the split sets of the nodes
-template<typename T, typename U>
-RootedTreeNode<T> * findMRCAFromIDSet(RootedTree<T, U> & tree, const std::set<long> & idSet, long trigger) {
-	typedef RootedTreeNode<T> NT_t;
+template<typename T>
+typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet, long trigger) {
+	typedef typename T::node_type NT_t;
 	auto ottIdToNode = tree.getData().ottIdToNode;
 	std::map<NT_t *, unsigned int> n2c;
 	long shortestPathLen = -1;
@@ -93,8 +93,8 @@ RootedTreeNode<T> * findMRCAFromIDSet(RootedTree<T, U> & tree, const std::set<lo
 	return nullptr;
 }
 
-template<typename T, typename U>
-std::size_t checkForUnknownTaxa(std::ostream & err, const RootedTree<T, U> & toCheck, const RootedTree<T, U> & taxonomy) {
+template<typename T>
+std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T & taxonomy) {
 	auto taxOttIds = taxonomy.getRoot()->getData().desIds;
 	auto toCheckOttIds = toCheck.getRoot()->getData().desIds;
 	auto extras = set_difference_as_set(toCheckOttIds, taxOttIds);
@@ -106,8 +106,8 @@ std::size_t checkForUnknownTaxa(std::ostream & err, const RootedTree<T, U> & toC
 	return 0U;
 }
 
-template<typename T, typename U>
-inline RootedTreeNode<T> * addChildForOttId(RootedTreeNode<T> & nd, long ottId, RootedTree<T, U> & tree) {
+template<typename T>
+inline typename T::node_type * addChildForOttId(typename T::node_type & nd, long ottId, T & tree) {
 	auto nn = tree.createChild(&nd);
 	nn->setOttId(ottId);
 	return nn;
@@ -132,11 +132,11 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
 	}
 }
 
-template<typename T, typename U>
-std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, U> & toExpand, const RootedTree<T, U> & taxonomy) {
-	const U & taxData = taxonomy.getData();
-	std::map<RootedTreeNode<T> *, std::set<long> > replaceNodes;
-	for (auto nd : LeafIter<RootedTree<T, U> >(toExpand)) {
+template<typename T>
+std::vector<typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpand, const T & taxonomy) {
+	const auto & taxData = taxonomy.getData();
+	std::map<typename T::node_type *, std::set<long> > replaceNodes;
+	for (auto nd : LeafIter<T>(toExpand)) {
 		assert(nd->isTip());
 		assert(nd->hasOttId());
 		auto ottId = nd->getOttId();
@@ -147,7 +147,7 @@ std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, 
 			replaceNodes[nd] = leafSet;
 		}
 	}
-	std::vector<RootedTreeNode<T> *> expanded;
+	std::vector<typename T::node_type *> expanded;
 	expanded.reserve(replaceNodes.size());
 	for (auto r : replaceNodes) {
 		auto oldNode = r.first;
@@ -162,11 +162,10 @@ std::vector<RootedTreeNode<T> *> expandOTTInternalsWhichAreLeaves(RootedTree<T, 
 	return expanded;
 }
 
-template<typename T, typename U>
-void markPathToRoot(const RootedTree<T, U> & fullTree,
+template<typename T>
+void markPathToRoot(const T & fullTree,
 					long ottId,
-					std::map<const RootedTreeNode<T> *,
-					std::set<long> > &n2m){
+					std::map<const typename T::node_type *, std::set<long> > &n2m){
 	auto startNd = fullTree.getData().getNodeForOttId(ottId);
 	assert(startNd != nullptr);
 	if (startNd == nullptr) {
@@ -175,7 +174,7 @@ void markPathToRoot(const RootedTree<T, U> & fullTree,
 		throw OTCError(m);
 	}
 	n2m[startNd].insert(ottId);
-	for (auto nd : AncNodeIter<RootedTreeNode<T> >(startNd)) {
+	for (auto nd : AncNodeIter<typename T::node_type>(startNd)) {
 		n2m[nd].insert(ottId);
 	}
 }
@@ -194,13 +193,13 @@ inline T * findFirstBranchingAnc(T * nd) {
 }
 
 template<typename T, typename U>
-inline bool multipleChildrenInMap(const RootedTreeNode<T> & nd,
-								  const std::map<const RootedTreeNode<T> *, U> & markedMap,
-								  const RootedTreeNode<T> **first) {
+inline bool multipleChildrenInMap(const T & nd,
+								  const std::map<const T *, U> & markedMap,
+								  const T **first) {
 	assert(first);
 	bool foundFirst = false;
 	*first = nullptr;
-	for(auto c : ConstChildIter<RootedTreeNode<T> >(nd)) {
+	for(auto c : ConstChildIter<T>(nd)) {
 		if (markedMap.find(c) != markedMap.end()) {
 			if (foundFirst) {
 				return true;
@@ -213,12 +212,11 @@ inline bool multipleChildrenInMap(const RootedTreeNode<T> & nd,
 }
 
 template<typename T>
-inline const RootedTreeNode<T> * findNextSignificantNode(const RootedTreeNode<T> * node,
-														 const std::map<const RootedTreeNode<T> *, std::set<long> > & markedMap) {
+inline const T * findNextSignificantNode(const T * node, const std::map<const T *, std::set<long> > & markedMap) {
 	assert(node != nullptr);
 	auto currNode = node;
 	for (;;) {
-		const RootedTreeNode<T> * sc;
+		const T * sc;
 		if (multipleChildrenInMap(*currNode, markedMap, &sc)) {
 			return currNode;
 		}
@@ -232,8 +230,8 @@ inline const RootedTreeNode<T> * findNextSignificantNode(const RootedTreeNode<T>
 
 template<typename T>
 inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
-											const RootedTreeNode<T> & srcNd,
-											const std::map<const RootedTreeNode<T> *, std::set<long> > & markedMap) {
+											const T & srcNd,
+											const std::map<const T *, std::set<long> > & markedMap) {
 	const auto nIt = markedMap.find(&srcNd);
 	assert(nIt != markedMap .end());
 	const auto & ottIDSet = nIt->second;
@@ -244,7 +242,7 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 		auto nsn = findNextSignificantNode<T>(&srcNd, markedMap);
 		out << '(';
 		unsigned numcwritten = 0;
-		for (auto child : ConstChildIter<RootedTreeNode<T> >(*nsn)) {
+		for (auto child : ConstChildIter<T>(*nsn)) {
 			if (markedMap.find(child) != markedMap.end()){
 				if (numcwritten > 0) {
 					out << ',';
@@ -259,7 +257,7 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 }
 
 template<typename T>
-inline void describeUnnamedNode(const RootedTreeNode<T> & nd,
+inline void describeUnnamedNode(const T & nd,
 								std::ostream & out,
 								unsigned int anc,
 								bool useNdNames) {
