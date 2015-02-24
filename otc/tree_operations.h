@@ -263,16 +263,16 @@ inline void describeUnnamedNode(const T & nd,
 								bool useNdNames) {
 	if (useNdNames && !nd.getName().empty()) {
 		if (anc > 0) {
-			out << "ancestor " << anc << " node(s) before \"" << nd.getName() << "\"";
+			out << "ancestor " << anc << " node(s) before \"" << nd.getName() << "\"\n";
 		} else {
-			out << "the node \"" << nd.getName() << "\"";
+			out << "the node \"" << nd.getName() << "\"\n";
 		}
 	}
 	else if (nd.isTip()) {
 		if (anc > 0) {
-			out << "ancestor " << anc << " node(s) before the leaf \"" << nd.getName()  << "\"";
+			out << "ancestor " << anc << " node(s) before the leaf \"" << nd.getName()  << "\"\n";
 		} else {
-			out << "the leaf \"" << nd.getName()  << "\"";
+			out << "the leaf \"" << nd.getName()  << "\"\n";
 		}
 	} else if (nd.isOutDegreeOneNode()) {
 		describeUnnamedNode(*nd.getFirstChild(), out, anc + 1, useNdNames);
@@ -280,12 +280,11 @@ inline void describeUnnamedNode(const T & nd,
 		auto left = findLeftmostInSubtree(&nd)->getName();
 		auto right = findRightmostInSubtree(&nd)->getName();
 		if (anc > 0) {
-			out << "ancestor " << anc << " node(s) before MRCA of \"" << left << "\" and " << "\"" << right <<'\"';
+			out << "ancestor " << anc << " node(s) before MRCA of \"" << left << "\" and " << "\"" << right << "\"\n";
 		} else {
-			out <<  "MRCA of \"" << left << "\" and " << "\"" << right <<'\"';
+			out <<  "MRCA of \"" << left << "\" and " << "\"" << right << "\"\n";
 		}
 	}
-	out << std::endl;
 }
 
 } // namespace otc
