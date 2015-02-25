@@ -50,6 +50,9 @@ struct DetectContestedState {
 		for (auto & nodeSetPair : prunedDesId) {
 			auto nd = nodeSetPair.first;
 			auto & ds = nodeSetPair.second;
+			if (ds.size() < 2) {
+				continue;
+			}
 			auto tctnlIt = taxCladesToTaxNdList.find(ds);
 			if (tctnlIt == taxCladesToTaxNdList.end()) {
 				std::list<const Node_t *> sel{1, nd};
