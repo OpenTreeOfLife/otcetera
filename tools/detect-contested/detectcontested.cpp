@@ -8,16 +8,6 @@ typedef otc::RootedTreeNode<RTSplits> Node_t;
 typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 
-template<typename T>
-bool desIdSetsConflict(const T & ns, const T &scs) {
-	if (ns.size() < 2 || scs.size() < 2) {
-		return false;
-	}
-	T sinter;
-	std::set_intersection(begin(ns), end(ns), begin(scs), end(scs), std::inserter(sinter, begin(sinter)));
-	const auto soi = sinter.size();
-	return !(soi == 0 || soi == ns.size() || soi == scs.size());
-}
 
 struct DetectContestedState {
 	std::unique_ptr<Tree_t> taxonomy;
@@ -50,7 +40,7 @@ struct DetectContestedState {
 		return processExpandedTree(otCLI, *tree);
 	}
 
-	bool processExpandedTree(OTCLI & otCLI, Tree_t & tree) {
+	bool processExpandedTree(OTCLI &, Tree_t & tree) {
 		std::map<const Node_t *, std::set<long> > prunedDesId;
 		for (auto nd : ConstLeafIter<Tree_t>(tree)) {
 			auto ottId = nd->getOttId();
@@ -82,7 +72,7 @@ struct DetectContestedState {
 				continue;
 			}
 			for (auto sc : sourceClades) {
-				if (desIdSetsConflict(ns, sc)) {
+				if (!areCompatibleDesIdSets(ns, sc)) {
 					contestedSet.insert(nd);
 				}
 			}

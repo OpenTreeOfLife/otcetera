@@ -9,7 +9,9 @@ It also uses easyloggingpp which is distributed under an MIT License. See
   http://github.com/easylogging/ for info on that project. The file from
   that project is otc/easylogging++.h
 
-
+Some set comparisons (in util.h) were based on
+   http://stackoverflow.com/posts/1964252/revisions
+by http://stackoverflow.com/users/127669/graphics-noob
 
 ## Installation
 

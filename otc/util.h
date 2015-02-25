@@ -42,7 +42,9 @@ void writeOttSet(std::ostream & out, const char *indent, const std::set<long> &f
 void writeOttSetDiff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
 
 template<typename T>
-bool isProperSubset(const T & small, const T & big);
+bool isSubset(const T & small, const T & big);
+template<typename T>
+bool haveIntersection(const T & first, const T & second);
 template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T, typename U>
@@ -114,6 +116,129 @@ inline bool isProperSubset(const T & small, const T & big) {
 		}
 	}
 	return true;
+}
+
+template<typename T>
+inline bool isSubset(const T & small, const T & big) {
+	if (big.size() < small.size()) {
+		return false;
+	}
+	for (auto rIt : small) {
+		if (big.find(rIt) == big.end()) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// http://stackoverflow.com/posts/1964252/revisions
+template<class Set1, class Set2> 
+inline bool areDisjoint(const Set1 & set1, const Set2 & set2) {
+	if (set1.empty() || set2.empty()) {
+		return true;
+	}
+	auto it1 = set1.begin();
+	auto it1End = set1.end();
+	auto it2 = set2.begin();
+	auto it2End = set2.end();
+	if (*it1 > *set2.rbegin() || *it2 > *set1.rbegin()) {
+		return true;
+	}
+	while (it1 != it1End && it2 != it2End) {
+		if (*it1 == *it2) {
+			return false;
+		}
+		if(*it1 < *it2) {
+			it1++;
+		} else {
+			it2++;
+		}
+	}
+	return true;
+}
+
+// called when we've determined that set1 is smaller than set2, and they have an
+// intersection with the first el of set1, so set 1 could be a subset of set2
+// returns true if set1 is a subset of set2 (where the args are the iterators and
+// end iterators for each set)
+template<typename T> 
+inline bool finishSubSetCompat(T & it1, const T & it1End, T & it2, const T &it2End) {
+	while (it1 != it1End && it2 != it2End) {
+		if (*it1 == *it2) {
+			++it1;
+			++it2;
+		} else if (*it1 < *it2) {
+			return false;
+		} else {
+			++it2;
+		}
+	}
+	return it1 == it1End;
+}
+
+// adapted http://stackoverflow.com/posts/1964252/revisions
+template<typename T> 
+inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
+	if (set1.size() < 2 || set2.size() < 2) {
+		return true;
+	}
+	auto it1 = set1.begin();
+	auto it1End = set1.end();
+	auto it2 = set2.begin();
+	auto it2End = set2.end();
+	if (*it1 > *set2.rbegin() || *it2 > *set1.rbegin()) {
+		return true; // disjoint
+	}
+	while (it1 != it1End && it2 != it2End) {
+		if (*it1 == *it2) {
+			// there is an intersection. they must be equal, or one a subset of the other...
+			if (it1 == set1.begin()) {
+				if (it2 == set2.begin()) {
+					//if they are the same size, they have to be equal
+					if (set1.size() == set2.size()) {
+						return set1 == set2;
+					}
+					++it1;
+					++it2;
+					// otherwise, they are only compatible if the 
+					//	smaller set is a subset of the other.
+					if (set1.size() < set2.size()) {
+						return finishSubSetCompat(it1, it1End, it2, it2End);
+					} else {
+						return finishSubSetCompat(it2, it2End, it1, it1End);
+					}
+				} else {
+					// did not match first el of set2, so only compat if set1 is in set2
+					if (set2.size() < set1.size()) {
+						return false;
+					}
+					return finishSubSetCompat(it1, it1End, it2, it2End);
+				}
+			} else if (it2 == set2.begin()) {
+				// did not match first el of set1, so only compat if set2 is in set1
+				if (set1.size() < set2.size()) {
+					return false;
+				}
+				return finishSubSetCompat(it2, it2End, it1, it1End);
+			} else {
+				// first intersection is not the first element of either,
+				//	 so one can't be a subset of the other...
+				return false;
+			}
+		}
+		if(*it1 < *it2) {
+			it1++;
+		} else {
+			it2++;
+		}
+	}
+	return true; // disjoint, so compatible
+}
+
+
+template<typename T>
+inline bool haveIntersection(const T & first, const T & second) {
+	return !areDisjoint<T, T>(first, second);
 }
 
 template<typename T>
