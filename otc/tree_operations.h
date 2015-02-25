@@ -126,7 +126,7 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
 	const std::set<long> toRemove = nd.getData().desIds;
 	assert(!toRemove.empty());
 	nd.getData().desIds = ls;
-	for (auto anc : AncNodeIter<RootedTreeNode<RTSplits> >(&nd)) {
+	for (auto anc : AncIter<RootedTreeNode<RTSplits> >(&nd)) {
 		assert(anc != nullptr);
 		assert(!anc->getData().desIds.empty());
 		for (auto tr : toRemove) {
@@ -179,7 +179,7 @@ void markPathToRoot(const T & fullTree,
 		throw OTCError(m);
 	}
 	n2m[startNd].insert(ottId);
-	for (auto nd : AncNodeIter<typename T::node_type>(startNd)) {
+	for (auto nd : AncIter<typename T::node_type>(startNd)) {
 		n2m[nd].insert(ottId);
 	}
 }
@@ -314,7 +314,7 @@ inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
 
 template <typename T, typename U>
 void insertAncestorsToParaphyleticSet(T * nd, U & includedNodes) {
-	for (auto anc : AncNodeIter<T>(nd)) {
+	for (auto anc : AncIter<T>(nd)) {
 		if (contains(includedNodes, anc)) {
 			return;
 		}

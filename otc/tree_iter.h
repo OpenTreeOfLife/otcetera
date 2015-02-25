@@ -469,9 +469,9 @@ class LeafIter {
 
 
 template<typename T>
-class AncNodeIter {
+class AncIter {
 	public:
-	explicit AncNodeIter(T * n)
+	explicit AncIter(T * n)
 		:des(n){
 	}
 	anc_iterator<T> begin() const {
