@@ -297,14 +297,36 @@ inline void describeUnnamedNode(const T & nd,
 
 template<typename T, typename U>
 inline void cullRefsToNodeFromData(RootedTree<T, U> & , RootedTreeNode<T> *) {
-	std::cout << "generic!\n";
 }
 
-template<typename T>
-inline void cullRefsToNodeFromData(RootedTree<T, RTreeOttIDMapping<T> > & , RootedTreeNode<T> *) {
-	std::cout << "partial!\n";
+template<>
+inline void cullRefsToNodeFromData(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & tree, 
+								   RootedTreeNode<RTNodeNoData> *nd) {
+	assert(nd != nullptr);
+	if (nd->hasOttId()) {
+		tree.getData().ottIdToNode.erase(nd->getOttId());
+	}
 }
 
+template<>
+inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, 
+								   RootedTreeNode<RTSplits> *nd)  {
+	typedef RootedTreeNode<RTSplits> node_t;
+	assert(nd != nullptr);
+	if (nd->hasOttId()) {
+		tree.getData().ottIdToNode.erase(nd->getOttId());
+	}
+	const auto & d = nd->getData().desIds;
+	if (d.empty()) {
+		return;
+	}
+	for (auto a : AncIter<node_t>(nd)) {
+		auto & ad = a->getData().desIds;
+		for (auto el : d) {
+			ad.erase(el);
+		}
+	}
+}
 
 template<typename T>
 inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
@@ -318,7 +340,7 @@ void insertAncestorsToParaphyleticSet(T * nd, U & includedNodes) {
 		if (contains(includedNodes, anc)) {
 			return;
 		}
-		includedNodes.insert(nd);
+		includedNodes.insert(anc);
 	}
 }
 

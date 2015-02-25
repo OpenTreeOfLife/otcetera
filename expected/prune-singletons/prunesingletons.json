@@ -1,0 +1,12 @@
+[
+  {
+    "invocation" : ["otcprunetaxonomy", "<INFILELIST>"],
+    "infile_list": ["three-genus-taxonomy.tre", "three-genus-subsample.tre"],
+    "expected": "prunesingletons-expected"
+  },
+  {
+    "invocation" : ["otcprunetaxonomy", "<INFILELIST>"],
+    "infile_list": ["three-genus-taxonomy.tre", "three-genus-taxonomy.tre"],
+    "expected": "prunesingletons-expected"
+  }
+]

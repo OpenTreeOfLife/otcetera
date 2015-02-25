@@ -52,7 +52,7 @@ struct PruneTaxonomyState {
 		for (auto nd : ConstLeafIter<Tree_t>(tree)) {
 			auto ottId = nd->getOttId();
 			auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
-			assert(taxoNode == nullptr);
+			assert(taxoNode != nullptr);
 			if (!contains(includedNodes, taxoNode)) {
 				includedNodes.insert(taxoNode);
 				insertAncestorsToParaphyleticSet(taxoNode, includedNodes);
