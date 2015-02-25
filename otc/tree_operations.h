@@ -334,16 +334,20 @@ template<typename T>
 inline void writeClosingNewick(std::ostream & out, const T *nd, const T * r) {
 	out << ')';
 	auto n = nd->getParent();
-	writeNodeAsNewickLabel(out, nd);
+	writeNodeAsNewickLabel(out, n);
+	if (n == r) {
+		return;
+	}
 	while (n->getNextSib() == nullptr) {
-		out << ')';
 		if (n == r) {
 			return;
 		}
+		out << ')';
 		n = n->getParent();
 		assert(n != nullptr);
-		writeNodeAsNewickLabel(out, nd);
+		writeNodeAsNewickLabel(out, n);
 	}
+	out << ',';
 }
 template<typename T>
 inline void writeNewick(std::ostream & out, const T *nd) {
@@ -353,7 +357,7 @@ inline void writeNewick(std::ostream & out, const T *nd) {
 	} else {
 		for (auto n : ConstPreorderIterN<T>(nd)) {
 			if (n->isTip()) {
-				writeNodeAsNewickLabel(out, nd);
+				writeNodeAsNewickLabel(out, n);
 				if (n->getNextSib() == nullptr) {
 					writeClosingNewick<T>(out, n, nd);
 				} else {

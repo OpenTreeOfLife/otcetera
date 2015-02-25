@@ -38,6 +38,7 @@ struct PruneTaxonomyState {
 			pruneAndDelete(*taxonomy, nd);
 		}
 		writeTreeAsNewick(otCLI.out, *taxonomy);
+		otCLI.out << '\n';
 	}
 
 	bool processTaxonomyTree(OTCLI & otCLI) {
