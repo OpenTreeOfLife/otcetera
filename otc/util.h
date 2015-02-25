@@ -13,11 +13,33 @@
 
 namespace otc {
 
+enum QuotingRequirementsEnum {
+	NO_QUOTES_NEEDED,
+	UNDERSCORE_INSTEAD_OF_QUOTES,
+	QUOTES_NEEDED
+};
+
 const std::string readStrContentOfUTF8File(const std::string &filepath);
 const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
 bool openUTF8File(const std::string &filepath, std::ifstream & inp);
 bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
 std::list<std::string> readLinesOfFile(const std::string & filepath);
+
+bool char_ptr_to_long(const char *c, long *n);
+std::size_t find_first_graph_index(const std::string & s);
+std::size_t find_last_graph_index(const std::string & s);
+std::string strip_leading_whitespace(const std::string & s);
+std::string strip_trailing_whitespace(const std::string & s);
+std::string strip_surrounding_whitespace(const std::string &n);
+std::list<std::string> split_string(const std::string &s);
+std::list<std::set<long> > parseDesignatorsFile(const std::string &fp);
+
+QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s);
+std::string addNewickQuotes(const std::string &s);
+std::string blanksToUnderscores(const std::string &s);
+void writeEscapedForNewick(std::ostream & out, const std::string & n);
+void writeOttSet(std::ostream & out, const char *indent, const std::set<long> &fir, const char * sep);
+void writeOttSetDiff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
 
 template<typename T>
 bool isProperSubset(const T & small, const T & big);
@@ -27,8 +49,6 @@ template<typename T, typename U>
 bool contains(const T & container, const U & key);
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
-void writeOttSet(std::ostream & out, const char *indent, const std::set<long> &fir, const char * sep);
-void writeOttSetDiff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
 
 inline const std::wstring readWStrContentOfUTF8File(const std::string &filepath) {
 	std::wifstream inp;
@@ -103,15 +123,6 @@ std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & s
 	return d;
 }
 
-bool char_ptr_to_long(const char *c, long *n);
-std::size_t find_first_graph_index(const std::string & s);
-std::size_t find_last_graph_index(const std::string & s);
-std::string strip_leading_whitespace(const std::string & s);
-std::string strip_trailing_whitespace(const std::string & s);
-std::string strip_surrounding_whitespace(const std::string &n);
-std::list<std::string> split_string(const std::string &s);
-std::list<std::set<long> > parseDesignatorsFile(const std::string &fp);
-
 inline std::size_t find_first_graph_index(const std::string & s) {
 	std::size_t pos = 0U;
 	for (auto c : s) {
@@ -158,6 +169,56 @@ inline std::string strip_surrounding_whitespace(const std::string &n) {
 	auto e = find_last_graph_index(n);
 	assert(e != std::string::npos);
 	return n.substr(s, 1 + e - s);
+}
+
+
+inline QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s) {
+	QuotingRequirementsEnum nrq = NO_QUOTES_NEEDED;
+	for (auto c : s) {
+		if (!isgraph(c)) {
+			if (c != ' ') {
+				return QUOTES_NEEDED;
+			}
+			nrq  = UNDERSCORE_INSTEAD_OF_QUOTES;
+		} else if (strchr("(){}\"-]/\\,;:=*`+<>", c) != nullptr) {
+			return (s.length() > 1 ? QUOTES_NEEDED : NO_QUOTES_NEEDED);
+		} else if (strchr("\'[_", c) != nullptr) {
+			return QUOTES_NEEDED;
+		}
+	}
+	return nrq;
+}
+
+inline std::string addNewickQuotes(const std::string &s) {
+	std::string withQuotes;
+	unsigned len = (unsigned)s.length();
+	withQuotes.reserve(len + 4);
+	withQuotes.append(1,'\'');
+	for (auto c : s) {
+		withQuotes.append(1, c);
+		if (c == '\'') {
+			withQuotes.append(1,'\'');
+		}
+	}
+	withQuotes.append(1,'\'');
+	return withQuotes;
+}
+
+inline std::string blanksToUnderscores(const std::string &s) {
+	std::string r{s};
+	std::replace(begin(r), end(r), ' ', '_');
+	return r;
+}
+
+inline void writeEscapedForNewick(std::ostream & out, const std::string & n) {
+	const QuotingRequirementsEnum r = determineNewickQuotingRequirements(n);
+	if (r == NO_QUOTES_NEEDED) {
+		out << n;
+	} else if (r == UNDERSCORE_INSTEAD_OF_QUOTES) {
+		out << blanksToUnderscores(n);
+	} else {
+		out << addNewickQuotes(n);
+	}
 }
 
 } //namespace otc

@@ -29,7 +29,7 @@ std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd);
 template<typename T>
 unsigned int countPolytomies(const T & tree) {
 	unsigned int n = 0U;
-	for (auto node : ConstPostorderInternalNode<T>{tree}) {
+	for (auto node : ConstPostorderInternalIter<T>{tree}) {
 		if (node->getOutDegree() > 2) {
 			n += 1;
 		}
@@ -262,119 +262,6 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 	}
 }
 
-enum QuotingRequirementsEnum {
-	NO_QUOTES_NEEDED,
-	UNDERSCORE_INSTEAD_OF_QUOTES,
-	QUOTES_NEEDED
-};
-QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s);
-std::string addNewickQuotes(const std::string &s);
-std::string blanksToUnderscores(const std::string &s);
-void writeEscapedForNewick(std::ostream & out, const std::string & n);
-
-inline QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s) {
-	QuotingRequirementsEnum nrq = NO_QUOTES_NEEDED;
-	for (auto c : s) {
-		if (!isgraph(c)) {
-			if (c != ' ') {
-				return QUOTES_NEEDED;
-			}
-			nrq  = UNDERSCORE_INSTEAD_OF_QUOTES;
-		} else if (strchr("(){}\"-]/\\,;:=*`+<>", c) != nullptr) {
-			return (s.length() > 1 ? QUOTES_NEEDED : NO_QUOTES_NEEDED);
-		} else if (strchr("\'[_", c) != nullptr) {
-			return QUOTES_NEEDED;
-		}
-	}
-	return nrq;
-}
-
-inline std::string addNewickQuotes(const std::string &s) {
-	std::string withQuotes;
-	unsigned len = (unsigned)s.length();
-	withQuotes.reserve(len + 4);
-	withQuotes.append(1,'\'');
-	for (auto c : s) {
-		withQuotes.append(1, c);
-		if (c == '\'') {
-			withQuotes.append(1,'\'');
-		}
-	}
-	withQuotes.append(1,'\'');
-	return withQuotes;
-}
-
-inline std::string blanksToUnderscores(const std::string &s) {
-	std::string r{s};
-	std::replace(begin(r), end(r), ' ', '_');
-	return r;
-}
-
-inline void writeEscapedForNewick(std::ostream & out, const std::string & n) {
-	const QuotingRequirementsEnum r = determineNewickQuotingRequirements(n);
-	if (r == NO_QUOTES_NEEDED) {
-		out << n;
-	} else if (r == UNDERSCORE_INSTEAD_OF_QUOTES) {
-		out << blanksToUnderscores(n);
-	} else {
-		out << addNewickQuotes(n);
-	}
-}
-
-template<typename T>
-inline void writeNodeAsNewickLabel(std::ostream & out, const T *nd) {
-	if (nd->isTip()) {
-		writeEscapedForNewick(out, nd->getName());
-	} else if (!nd->getName().empty()) {
-		writeEscapedForNewick(out, nd->getName());
-	}
-}
-
-template<typename T>
-inline void writeClosingNewick(std::ostream & out, const T *nd, const T * r) {
-	out << ')';
-	auto n = nd->getParent();
-	writeNodeAsNewickLabel(out, n);
-	if (n == r) {
-		return;
-	}
-	while (n->getNextSib() == nullptr) {
-		if (n == r) {
-			return;
-		}
-		out << ')';
-		n = n->getParent();
-		assert(n != nullptr);
-		writeNodeAsNewickLabel(out, n);
-	}
-	out << ',';
-}
-template<typename T>
-inline void writeNewick(std::ostream & out, const T *nd) {
-	assert(nd != nullptr);
-	if (nd->isTip()) {
-		writeNodeAsNewickLabel(out, nd);
-	} else {
-		for (auto n : ConstPreorderIterN<T>(nd)) {
-			if (n->isTip()) {
-				writeNodeAsNewickLabel(out, n);
-				if (n->getNextSib() == nullptr) {
-					writeClosingNewick<T>(out, n, nd);
-				} else {
-					out << ',';
-				}
-			} else {
-				out << '(';
-			}
-		}
-	}
-}
-
-template<typename T>
-inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
-	writeNewick<typename T::node_type>(out, tree.getRoot());
-	out << ';';
-}
 
 
 template<typename T>
@@ -445,6 +332,63 @@ void insertDescendantsOfUnincludedSubtrees(T * nd, U & includedNodes) {
 		}
 	}
 }
+
+
+template<typename T>
+inline void writeNodeAsNewickLabel(std::ostream & out, const T *nd) {
+	if (nd->isTip()) {
+		writeEscapedForNewick(out, nd->getName());
+	} else if (!nd->getName().empty()) {
+		writeEscapedForNewick(out, nd->getName());
+	}
+}
+
+template<typename T>
+inline void writeClosingNewick(std::ostream & out, const T *nd, const T * r) {
+	out << ')';
+	auto n = nd->getParent();
+	writeNodeAsNewickLabel(out, n);
+	if (n == r) {
+		return;
+	}
+	while (n->getNextSib() == nullptr) {
+		if (n == r) {
+			return;
+		}
+		out << ')';
+		n = n->getParent();
+		assert(n != nullptr);
+		writeNodeAsNewickLabel(out, n);
+	}
+	out << ',';
+}
+template<typename T>
+inline void writeNewick(std::ostream & out, const T *nd) {
+	assert(nd != nullptr);
+	if (nd->isTip()) {
+		writeNodeAsNewickLabel(out, nd);
+	} else {
+		for (auto n : ConstPreorderIterN<T>(nd)) {
+			if (n->isTip()) {
+				writeNodeAsNewickLabel(out, n);
+				if (n->getNextSib() == nullptr) {
+					writeClosingNewick<T>(out, n, nd);
+				} else {
+					out << ',';
+				}
+			} else {
+				out << '(';
+			}
+		}
+	}
+}
+
+template<typename T>
+inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
+	writeNewick<typename T::node_type>(out, tree.getRoot());
+	out << ';';
+}
+
 
 } // namespace otc
 #endif

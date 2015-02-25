@@ -15,7 +15,7 @@ void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t 
 bool singleDesSupportedOrNamed(const Node_t *nd, const std::set<const Node_t *> & supportedNodes);
 
 void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t *> & supportedNodes) {
-	for (auto nd : ConstPostorderInternalNode<Tree_t>(tree)) {
+	for (auto nd : ConstPostorderInternalIter<Tree_t>(tree)) {
 		if (nd->isOutDegreeOneNode()) {
 			auto c = nd->getFirstChild();
 			if (c->hasOttId() || supportedNodes.find(c) != supportedNodes.end()) {
@@ -163,7 +163,7 @@ struct FindUnsupportedState {
 			markPathToRoot(*toCheck, ottId, prunedDesId);
 		}
 		std::map<std::set<long>, const Node_t *> sourceClades;
-		for (auto nd : ConstPostorderInternalNode<Tree_t>(tree)) {
+		for (auto nd : ConstPostorderInternalIter<Tree_t>(tree)) {
 			if (nd->getParent() != nullptr && !nd->isTip()) {
 				sourceClades[nd->getData().desIds] = nd;
 			}

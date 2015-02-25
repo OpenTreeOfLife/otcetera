@@ -350,6 +350,7 @@ class anc_iterator : std::forward_iterator_tag {
 		}
 };
 
+// children of a node
 template<typename T>
 class ChildIter {
 	public:
@@ -414,6 +415,8 @@ class ConstPreorderIter {
 		const T & tree;
 };
 
+
+// preorder constructed with a node
 template<typename T>
 class ConstPreorderIterN {
 	public:
@@ -431,52 +434,21 @@ class ConstPreorderIterN {
 };
 
 
+// Only tips (aka leaves)
 template<typename T>
-class ConstPostorderInternalNode {
+class ConstLeafIter {
 	public:
-	explicit ConstPostorderInternalNode(const T &t)
+	explicit ConstLeafIter(const T & t)
 		:tree(t){
 	}
 	const_postorder_iterator<typename T::node_type> begin() const {
-		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
+		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot(), isLeaf<typename T::node_type>});
 	}
 	const_postorder_iterator<typename T::node_type> end() const {
 		return const_postorder_iterator<typename T::node_type>{nullptr};
 	}
 	private:
 		const T & tree;
-};
-
-template<typename T>
-class ConstPostorderIter {
-	public:
-	explicit ConstPostorderIter(const T &t)
-		:tree(t){
-	}
-	const_postorder_iterator<typename T::node_type> begin() const {
-		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot()});
-	}
-	const_postorder_iterator<typename T::node_type> end() const {
-		return const_postorder_iterator<typename T::node_type>{nullptr};
-	}
-	private:
-		const T & tree;
-};
-
-template<typename T>
-class PostorderInternalNode {
-	public:
-	explicit PostorderInternalNode(T & t)
-		:tree(t){
-	}
-	postorder_iterator<typename T::node_type> begin() const {
-		return std::move(postorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
-	}
-	postorder_iterator<typename T::node_type> end() const {
-		return postorder_iterator<typename T::node_type>{nullptr};
-	}
-	private:
-		T & tree;
 };
 
 template<typename T>
@@ -495,21 +467,6 @@ class LeafIter {
 		T & tree;
 };
 
-template<typename T>
-class ConstLeafIter {
-	public:
-	explicit ConstLeafIter(const T & t)
-		:tree(t){
-	}
-	const_postorder_iterator<typename T::node_type> begin() const {
-		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot(), isLeaf<typename T::node_type>});
-	}
-	const_postorder_iterator<typename T::node_type> end() const {
-		return const_postorder_iterator<typename T::node_type>{nullptr};
-	}
-	private:
-		const T & tree;
-};
 
 template<typename T>
 class AncNodeIter {
@@ -527,6 +484,23 @@ class AncNodeIter {
 		T * des;
 };
 
+// des before anc
+template<typename T>
+class ConstPostorderIter {
+	public:
+	explicit ConstPostorderIter(const T &t)
+		:tree(t){
+	}
+	const_postorder_iterator<typename T::node_type> begin() const {
+		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot()});
+	}
+	const_postorder_iterator<typename T::node_type> end() const {
+		return const_postorder_iterator<typename T::node_type>{nullptr};
+	}
+	private:
+		const T & tree;
+};
+
 template<typename T>
 class PostorderIter {
 	public:
@@ -542,6 +516,50 @@ class PostorderIter {
 	private:
 		T & tree;
 };
+
+template<typename T>
+class ConstPostorderInternalIter {
+	public:
+	explicit ConstPostorderInternalIter(const T &t)
+		:tree(t){
+	}
+	const_postorder_iterator<typename T::node_type> begin() const {
+		return std::move(const_postorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
+	}
+	const_postorder_iterator<typename T::node_type> end() const {
+		return const_postorder_iterator<typename T::node_type>{nullptr};
+	}
+	private:
+		const T & tree;
+};
+
+template<typename T>
+class PostorderInternalIter {
+	public:
+	explicit PostorderInternalIter(T & t)
+		:tree(t){
+	}
+	postorder_iterator<typename T::node_type> begin() const {
+		return std::move(postorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
+	}
+	postorder_iterator<typename T::node_type> end() const {
+		return postorder_iterator<typename T::node_type>{nullptr};
+	}
+	private:
+		T & tree;
+};
+
+
+
+// used to express iteration over all nodes where order does not matter
+template<typename T>
+using NodeIter = PostorderIter<T>;
+template<typename T>
+using ConstNodeIter = ConstPostorderIter<T>;
+template<typename T>
+using InternalNodeIter = PostorderInternalIter<T>;
+template<typename T>
+using ConstInternalNodeIter = ConstPostorderInternalIter<T>;
 
 } // namespace otc
 #endif

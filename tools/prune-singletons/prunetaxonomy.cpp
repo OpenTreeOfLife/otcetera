@@ -22,13 +22,13 @@ struct PruneTaxonomyState {
 		}
 
 	void summarize(const OTCLI &otCLI) {
-		if (taxonomy == nullptr) {
+		if (taxonomy == nullptr || includedNodes.empty()) {
 			otCLI.err << badNTreesMessage << '\n';
 			numErrors = 1;
 			return;
 		}
 		std::set<Node_t *> toPrune;
-		for (auto nd : PostorderIter<Tree_t>(*taxonomy)) {
+		for (auto nd : NodeIter<Tree_t>(*taxonomy)) {
 			const Node_t *  c = const_cast<const Node_t *>(nd);
 			if ((!contains(includedNodes, c)) && contains(includedNodes, c->getParent())) {
 				toPrune.insert(nd);
