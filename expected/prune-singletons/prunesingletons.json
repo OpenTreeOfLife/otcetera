@@ -7,6 +7,6 @@
   {
     "invocation" : ["otcprunetaxonomy", "<INFILELIST>"],
     "infile_list": ["three-genus-taxonomy.tre", "three-genus-taxonomy.tre"],
-    "expected": "prunesingletons-expected"
+    "expected": "noprune-expected"
   }
 ]
