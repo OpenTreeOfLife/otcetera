@@ -31,9 +31,10 @@ def test_invoc(tag, invocation, result_dir):
         expected_output = codecs.open(exp_outf, 'r', encoding='utf-8').read()
         obtained_output = codecs.open(obt_outf, 'r', encoding='utf-8').read()
         if obtained_output != expected_output:
-            FAILED_TESTS.append(tag)
-            error('OUTPUT differed for {}:\n'.format(tag))
-            subprocess.call(['diff', exp_outf, obt_outf])
+            if expected_output.strip() != '' or obtained_output.strip() != '':
+                FAILED_TESTS.append(tag)
+                error('OUTPUT differed for {}:\n'.format(tag))
+                subprocess.call(['diff', exp_outf, obt_outf])
     exp_exitf = os.path.join(result_dir, 'exit')
     if os.path.exists(exp_exitf):
         expected_exit = int(codecs.open(exp_exitf, 'r', encoding='utf-8').read())
