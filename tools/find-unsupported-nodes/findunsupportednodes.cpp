@@ -4,18 +4,17 @@
 #include "otc/tree_data.h"
 using namespace otc;
 
-typedef otc::RootedTreeNode<RTSplits> MyNodeType;
-typedef RTreeOttIDMapping<RTSplits> RootedTreeForNodeType;
-typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
+typedef otc::RootedTreeNode<RTSplits> Node_t;
+typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
 
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg);
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 extern const char * badNTreesMessage;
-const char * badNTreesMessage = "Expecting a full tree, a full taxonomy, and some number of input trees";
-void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const MyNodeType *> & supportedNodes);
-bool singleDesSupportedOrNamed(const MyNodeType *nd, const std::set<const MyNodeType *> & supportedNodes);
+const char * badNTreesMessage = "Expecting a full taxonomy, a full tree, and some number of input trees";
+void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t *> & supportedNodes);
+bool singleDesSupportedOrNamed(const Node_t *nd, const std::set<const Node_t *> & supportedNodes);
 
-void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const MyNodeType *> & supportedNodes) {
+void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t *> & supportedNodes) {
 	for (auto nd : ConstPostorderInternalNode<Tree_t>(tree)) {
 		if (nd->isOutDegreeOneNode()) {
 			auto c = nd->getFirstChild();
@@ -26,7 +25,7 @@ void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const MyNodeT
 	}
 }
 
-bool singleDesSupportedOrNamed(const MyNodeType *nd, const std::set<const MyNodeType *> & supportedNodes) {
+bool singleDesSupportedOrNamed(const Node_t *nd, const std::set<const Node_t *> & supportedNodes) {
 	if (supportedNodes.find(nd) != supportedNodes.end()) {
 		return true;
 	}
@@ -40,9 +39,9 @@ struct FindUnsupportedState {
 	std::unique_ptr<Tree_t> toCheck;
 	std::unique_ptr<Tree_t> taxonomy;
 	int numErrors;
-	std::map<const MyNodeType *, std::set<long> > aPrioriProblemNodes;
+	std::map<const Node_t *, std::set<long> > aPrioriProblemNodes;
 	std::set<long> ottIds;
-	std::set<const MyNodeType *> supportedNodes;
+	std::set<const Node_t *> supportedNodes;
 
 	FindUnsupportedState()
 		:toCheck(nullptr),
@@ -51,7 +50,7 @@ struct FindUnsupportedState {
 		}
 
 	int describeUnnamedUnsupported(std::ostream &out, const Tree_t & tree,
-								   const std::set<const MyNodeType *> & supported) const {
+								   const std::set<const Node_t *> & supported) const {
 		auto ig = ConstPreorderInternalNode<Tree_t>(tree);
 		auto nIt = ig.begin();
 		const auto eIt = ig.end();
@@ -141,7 +140,7 @@ struct FindUnsupportedState {
 	}
 
 	void markSuspectNode(const std::set<long> & designators) {
-		const MyNodeType * mrca = findMRCAFromIDSet(*toCheck, designators, -1);
+		const Node_t * mrca = findMRCAFromIDSet(*toCheck, designators, -1);
 		aPrioriProblemNodes[mrca] = designators;
 	}
 
@@ -158,12 +157,12 @@ struct FindUnsupportedState {
 	}
 	bool processExpandedTree(OTCLI & otCLI, const Tree_t & tree) {
 		assert(toCheck != nullptr);
-		std::map<const MyNodeType *, std::set<long> > prunedDesId;
+		std::map<const Node_t *, std::set<long> > prunedDesId;
 		for (auto nd : ConstLeafIter<Tree_t>(tree)) {
 			auto ottId = nd->getOttId();
 			markPathToRoot(*toCheck, ottId, prunedDesId);
 		}
-		std::map<std::set<long>, const MyNodeType *> sourceClades;
+		std::map<std::set<long>, const Node_t *> sourceClades;
 		for (auto nd : ConstPostorderInternalNode<Tree_t>(tree)) {
 			if (nd->getParent() != nullptr && !nd->isTip()) {
 				sourceClades[nd->getData().desIds] = nd;
@@ -173,9 +172,9 @@ struct FindUnsupportedState {
 		return true;
 	}
 	void recordSupportedNodes(OTCLI & otCLI,
-							  const std::map<const MyNodeType *, std::set<long> > & prunedDesId,
-							  const std::map<std::set<long>, const MyNodeType *> & sourceClades,
-							  std::set<const MyNodeType *> & supported) {
+							  const std::map<const Node_t *, std::set<long> > & prunedDesId,
+							  const std::map<std::set<long>, const Node_t *> & sourceClades,
+							  std::set<const Node_t *> & supported) {
 		//otCLI.out << "sourceClades\n";
 		//for (auto sc : sourceClades) {
 		//	writeOttSet(otCLI.out, " ", sc.first, " ");
@@ -192,7 +191,7 @@ struct FindUnsupportedState {
 				continue;
 			}
 			auto ls = pd.second;
-			auto firstBranchingAnc = findFirstBranchingAnc<const MyNodeType>(nd);
+			auto firstBranchingAnc = findFirstBranchingAnc<const Node_t>(nd);
 			if (firstBranchingAnc == nullptr) {
 				//otCLI.out << "  firstBranchingAnc null\n";
 				continue;
@@ -201,7 +200,7 @@ struct FindUnsupportedState {
 			auto ancIt = prunedDesId.find(firstBranchingAnc);
 			assert(ancIt != prunedDesId.end());
 			auto anm = ancIt->second;
-			const MyNodeType * firstNdPtr; // just used to match call
+			const Node_t * firstNdPtr; // just used to match call
 			if (!multipleChildrenInMap(*nd, prunedDesId, &firstNdPtr)) {
 				//otCLI.out << "  multipleChildrenInMap false\n";
 				continue;

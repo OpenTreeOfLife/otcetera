@@ -17,6 +17,11 @@ std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T &
 template<typename T>
 typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet, long trigger);
 
+template<typename T>
+void pruneAndDelete(T & tree, typename T::node_type *toDel);
+template<typename T, typename U>
+inline void cullRefsToNodeFromData(RootedTree<T, U> & tree, RootedTreeNode<T> *toDel);
+
 std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd);
 
 //// impl
@@ -179,6 +184,7 @@ void markPathToRoot(const T & fullTree,
 	}
 }
 
+
 // find most recent anc of nd with out-degree > 1
 template<typename T>
 inline T * findFirstBranchingAnc(T * nd) {
@@ -256,6 +262,117 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 	}
 }
 
+enum QuotingRequirementsEnum {
+	NO_QUOTES_NEEDED,
+	UNDERSCORE_INSTEAD_OF_QUOTES,
+	QUOTES_NEEDED
+};
+QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s);
+std::string addNewickQuotes(const std::string &s);
+std::string blanksToUnderscores(const std::string &s);
+void writeEscapedForNewick(std::ostream & out, const std::string & n);
+
+inline QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s) {
+	QuotingRequirementsEnum nrq = NO_QUOTES_NEEDED;
+	for (auto c : s) {
+		if (!isgraph(c)) {
+			if (c != ' ') {
+				return QUOTES_NEEDED;
+			}
+			nrq  = UNDERSCORE_INSTEAD_OF_QUOTES;
+		} else if (strchr("(){}\"-]/\\,;:=*`+<>", c) != nullptr) {
+			return (s.length() > 1 ? QUOTES_NEEDED : NO_QUOTES_NEEDED);
+		} else if (strchr("\'[_", c) != nullptr) {
+			return QUOTES_NEEDED;
+		}
+	}
+	return nrq;
+}
+
+inline std::string addNewickQuotes(const std::string &s) {
+	std::string withQuotes;
+	unsigned len = (unsigned)s.length();
+	withQuotes.reserve(len + 4);
+	withQuotes.append(1,'\'');
+	for (auto c : s) {
+		withQuotes.append(1, c);
+		if (c == '\'') {
+			withQuotes.append(1,'\'');
+		}
+	}
+	withQuotes.append(1,'\'');
+	return withQuotes;
+}
+
+inline std::string blanksToUnderscores(const std::string &s) {
+	std::string r{s};
+	std::replace(begin(r), end(r), ' ', '_');
+	return r;
+}
+
+inline void writeEscapedForNewick(std::ostream & out, const std::string & n) {
+	const QuotingRequirementsEnum r = determineNewickQuotingRequirements(n);
+	if (r == NO_QUOTES_NEEDED) {
+		out << n;
+	} else if (r == UNDERSCORE_INSTEAD_OF_QUOTES) {
+		out << blanksToUnderscores(n);
+	} else {
+		out << addNewickQuotes(n);
+	}
+}
+
+template<typename T>
+inline void writeNodeAsNewickLabel(std::ostream & out, const T *nd) {
+	if (nd->isTip()) {
+		writeEscapedForNewick(out, nd->getName());
+	} else if (!nd->getName().empty()) {
+		writeEscapedForNewick(out, nd->getName());
+	}
+}
+
+template<typename T>
+inline void writeClosingNewick(std::ostream & out, const T *nd, const T * r) {
+	out << ')';
+	auto n = nd->getParent();
+	writeNodeAsNewickLabel(out, nd);
+	while (n->getNextSib() == nullptr) {
+		out << ')';
+		if (n == r) {
+			return;
+		}
+		n = n->getParent();
+		assert(n != nullptr);
+		writeNodeAsNewickLabel(out, nd);
+	}
+}
+template<typename T>
+inline void writeNewick(std::ostream & out, const T *nd) {
+	assert(nd != nullptr);
+	if (nd->isTip()) {
+		writeNodeAsNewickLabel(out, nd);
+	} else {
+		for (auto n : ConstPreorderIterN<T>(nd)) {
+			if (n->isTip()) {
+				writeNodeAsNewickLabel(out, nd);
+				if (n->getNextSib() == nullptr) {
+					writeClosingNewick<T>(out, n, nd);
+				} else {
+					out << ',';
+				}
+			} else {
+				out << '(';
+			}
+		}
+	}
+}
+
+template<typename T>
+inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
+	writeNewick<typename T::node_type>(out, tree.getRoot());
+	out << ';';
+}
+
+
 template<typename T>
 inline void describeUnnamedNode(const T & nd,
 								std::ostream & out,
@@ -283,6 +400,44 @@ inline void describeUnnamedNode(const T & nd,
 			out << "ancestor " << anc << " node(s) before MRCA of \"" << left << "\" and " << "\"" << right << "\"\n";
 		} else {
 			out <<  "MRCA of \"" << left << "\" and " << "\"" << right << "\"\n";
+		}
+	}
+}
+
+template<typename T, typename U>
+inline void cullRefsToNodeFromData(RootedTree<T, U> & , RootedTreeNode<T> *) {
+	std::cout << "generic!\n";
+}
+
+template<typename T>
+inline void cullRefsToNodeFromData(RootedTree<T, RTreeOttIDMapping<T> > & , RootedTreeNode<T> *) {
+	std::cout << "partial!\n";
+}
+
+
+template<typename T>
+inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
+	cullRefsToNodeFromData<typename T::node_data_type, typename T::data_type>(tree, toDel);
+	tree._pruneAndDelete(toDel);
+}
+
+template <typename T, typename U>
+void insertAncestorsToParaphyleticSet(T * nd, U & includedNodes) {
+	for (auto anc : AncNodeIter<T>(nd)) {
+		if (contains(includedNodes, anc)) {
+			return;
+		}
+		includedNodes.insert(nd);
+	}
+}
+
+//@TMP recursive until we have a pre-order subtree skipping iter.
+template <typename T, typename U>
+void insertDescendantsOfUnincludedSubtrees(T * nd, U & includedNodes) {
+	for (auto c : ChildIter<T>(*nd)) {
+		if (!contains(includedNodes, c)) {
+			includedNodes.insert(c);
+			insertDescendantsOfUnincludedSubtrees(c, includedNodes);
 		}
 	}
 }

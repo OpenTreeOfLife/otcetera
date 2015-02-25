@@ -195,9 +195,6 @@ class RootedTree {
 			clear();
 		}
 		std::vector<const node_type *> getPreorderTraversal() const;
-		const std::vector<const node_type *> & getLeavesRef() {
-			return leaves;
-		}
 		void writeAsNewick(std::ostream &out,
 						   bool nhx,
 						   bool useLeafNames,
@@ -236,20 +233,37 @@ class RootedTree {
 		const U & getData() const {
 			return this->data;
 		}
+		void _pruneAndDangle(node_type * nd) {
+			assert(contains(allNodes, nd));
+			auto p = nd->getParent();
+			if (p == nullptr) {
+				root = nullptr;
+				return;
+			}
+			p->removeChild(nd);
+		}
+		void _pruneAndDelete(node_type * nd) {
+			assert(contains(allNodes, nd));
+			auto p = nd->getParent();
+			if (p == nullptr) {
+				clear();
+				return;
+			}
+			p->removeChild(nd);
+			deletePrunedSubtreeNodes(nd);
+		}
 	protected:
-		std::vector<node_type *> allNodes;
-		std::vector<node_type *> leaves;
+		std::set<node_type *> allNodes;
 		node_type * root;
 		U data;
 	public:
 		node_type * allocNewNode(node_type *p) {
 			node_type * nd = new node_type(p);
-			allNodes.push_back(nd);
+			allNodes.insert(nd);
 			return nd;
 		}
 		void clear() {
 			root = NULL;
-			leaves.clear();
 			for (auto nIt : allNodes) {
 				delete nIt;
 			}
@@ -263,6 +277,15 @@ class RootedTree {
 			return r;
 		}
 	private:
+		//@ tmp recursive!
+		void deletePrunedSubtreeNodes(node_type * nd) {
+			allNodes.erase(nd);
+			auto c = nd->getFirstChild();
+			while (c != nullptr) {
+				deletePrunedSubtreeNodes(c);
+				c = c->getNextSib();
+			}
+		}
 		RootedTree<T, U>(const RootedTree<T, U> &) = delete;
 		RootedTree<T, U> & operator=(const RootedTree<T, U> &) = delete;
 };

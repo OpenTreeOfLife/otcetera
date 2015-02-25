@@ -4,10 +4,10 @@ using namespace otc;
 typedef RootedTree<RTNodeNoData, RTreeNoData> Tree_t;
 
 template<typename T>
-bool writeDegreeDistribution(OTCLI & otCLI, std::unique_ptr<T> tree);
+bool writeDegreeDistribution(OTCLI & , std::unique_ptr<T> tree);
 
 template<typename T>
-inline bool writeDegreeDistribution(OTCLI & otCLI, std::unique_ptr<T> tree) {
+inline bool writeDegreeDistribution(OTCLI & , std::unique_ptr<T> tree) {
 	std::map<unsigned long, unsigned long> degreeDistribution;
 	for (auto nd : ConstPreorderIter<T>(*tree)) {
 		auto od = nd->getOutDegree();

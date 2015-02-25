@@ -69,6 +69,7 @@ AC_CONFIG_FILES([					\
 	tools/assert-invariants/Makefile \
 	tools/check-taxonomic-nodes/Makefile \
 	tools/find-unsupported-nodes/Makefile \
+	tools/prune-singletons/Makefile \
 	tools/simple-stats/Makefile \
 	otceterav0.0.pc \
 	])

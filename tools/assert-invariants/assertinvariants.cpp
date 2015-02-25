@@ -5,7 +5,7 @@
 #include "otc/debug.h"
 using namespace otc;
 
-typedef otc::RootedTreeNode<RTSplits> MyNodeType;
+typedef otc::RootedTreeNode<RTSplits> Node_t;
 typedef RTreeOttIDMapping<RTSplits> RootedTreeForNodeType;
 typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
 

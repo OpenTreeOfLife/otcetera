@@ -2,6 +2,7 @@ SUBDIRS = \
 	assert-invariants \
 	check-taxonomic-nodes \
 	find-unsupported-nodes \
+	prune-singletons \
 	simple-stats
 
 check:

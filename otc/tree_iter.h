@@ -414,6 +414,22 @@ class ConstPreorderIter {
 		const T & tree;
 };
 
+template<typename T>
+class ConstPreorderIterN {
+	public:
+	explicit ConstPreorderIterN(const T * t)
+		:nd(t){
+	}
+	const_preorder_iterator<T> begin() const {
+		return std::move(const_preorder_iterator<T>{nd});
+	}
+	const_preorder_iterator<T> end() const {
+		return const_preorder_iterator<T>{nullptr};
+	}
+	private:
+		const T * nd;
+};
+
 
 template<typename T>
 class ConstPostorderInternalNode {
