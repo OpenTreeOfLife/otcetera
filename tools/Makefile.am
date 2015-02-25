@@ -1,6 +1,7 @@
 SUBDIRS = \
 	assert-invariants \
 	check-taxonomic-nodes \
+	detect-contested \
 	find-unsupported-nodes \
 	prune-singletons \
 	simple-stats

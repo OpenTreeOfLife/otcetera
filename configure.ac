@@ -68,6 +68,7 @@ AC_CONFIG_FILES([					\
 	tools/Makefile \
 	tools/assert-invariants/Makefile \
 	tools/check-taxonomic-nodes/Makefile \
+	tools/detect-contested/Makefile \
 	tools/find-unsupported-nodes/Makefile \
 	tools/prune-singletons/Makefile \
 	tools/simple-stats/Makefile \

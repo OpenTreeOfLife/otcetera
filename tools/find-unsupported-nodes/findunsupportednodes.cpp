@@ -9,8 +9,6 @@ typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename N
 
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg);
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
-extern const char * badNTreesMessage;
-const char * badNTreesMessage = "Expecting a full taxonomy, a full tree, and some number of input trees";
 void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t *> & supportedNodes);
 bool singleDesSupportedOrNamed(const Node_t *nd, const std::set<const Node_t *> & supportedNodes);
 
@@ -89,11 +87,6 @@ struct FindUnsupportedState {
 	}
 
 	void summarize(const OTCLI &otCLI) {
-		if (toCheck == nullptr) {
-			otCLI.err << badNTreesMessage << '\n';
-			numErrors = 1;
-			return;
-		}
 		extendSupportedToRedundantNodes(*toCheck, supportedNodes);
 		auto & out = otCLI.out;
 		int numUnsupported = describeUnnamedUnsupported(otCLI.out, *toCheck, supportedNodes);
@@ -175,22 +168,13 @@ struct FindUnsupportedState {
 							  const std::map<const Node_t *, std::set<long> > & prunedDesId,
 							  const std::map<std::set<long>, const Node_t *> & sourceClades,
 							  std::set<const Node_t *> & supported) {
-		//otCLI.out << "sourceClades\n";
-		//for (auto sc : sourceClades) {
-		//	writeOttSet(otCLI.out, " ", sc.first, " ");
-		//	otCLI.out << '\n';
-		//}
 		for (auto pd : prunedDesId) {
-			//otCLI.out << "pruned el:";
-			//writeOttSet(otCLI.out, " ", pd.second, " ");
-			//otCLI.out << "\n";
 			auto nd = pd.first;
 			auto par = nd->getParent();
 			if (par == nullptr) {
 				//otCLI.out << "  par null\n";
 				continue;
 			}
-			auto ls = pd.second;
 			auto firstBranchingAnc = findFirstBranchingAnc<const Node_t>(nd);
 			if (firstBranchingAnc == nullptr) {
 				//otCLI.out << "  firstBranchingAnc null\n";
@@ -264,11 +248,7 @@ int main(int argc, char *argv[]) {
 				  "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them.",
 				  handleDesignator,
 				  true);
-	auto rc = treeProcessingMain<Tree_t>(otCLI,
-																	  argc,
-																	  argv,
-																	  processNextTree,
-																	  nullptr);
+	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 3);
 	if (rc == 0) {
 		fus.summarize(otCLI);
 		return fus.numErrors;

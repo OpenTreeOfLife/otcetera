@@ -52,11 +52,6 @@ struct CheckTaxonState {
 	}
 
 	void summarize(const OTCLI &otCLI) {
-		if (taxonomy == nullptr) {
-			numErrors = 1;
-			otCLI.err << badNTreesMessage;
-			return;
-		}
 		auto nE = checkForUnknownTaxa(otCLI.err, *toCheck, *taxonomy);
 		if (nE > 0) {
 			numErrors = (nE > INT_MAX ? INT_MAX : (int) nE);
@@ -112,11 +107,7 @@ int main(int argc, char *argv[]) {
 				"some.tre taxonomy.tre");
 	CheckTaxonState cts;
 	otCLI.blob = static_cast<void *>(&cts);
-	auto rc = treeProcessingMain<Tree_t>(otCLI,
-																	  argc,
-																	  argv,
-																	  processNextTree,
-																	  nullptr);
+	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 2);
 	if (rc == 0) {
 		cts.summarize(otCLI);
 		return cts.numErrors;

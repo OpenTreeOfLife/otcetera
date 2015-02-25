@@ -8,3 +8,6 @@ $(STEP_2_DIR)/taxonomy.tre : input/taxonomy.tre $(STEP_1_INPUTS)
 	if otcprunetaxonomy ../input/taxonomy.tre -ftree-ranking.txt > ../.output ; \
 	then mv ../.output ../$(STEP_2_DIR)/taxonomy.tre ; \
 	fi
+
+clean:
+	rm $(STEP_2_DIR)/taxonomy.tre

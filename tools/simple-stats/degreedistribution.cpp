@@ -24,6 +24,6 @@ int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcdegreedistribution",
 				 "takes a filepath to a newick file and reports the number of nodes of each out-degree",
 				 {"some.tre"});
-	return treeProcessingMain<Tree_t>(otCLI, argc, argv, writeDegreeDistribution, nullptr);
+	return treeProcessingMain<Tree_t>(otCLI, argc, argv, writeDegreeDistribution, nullptr, 1);
 }
 

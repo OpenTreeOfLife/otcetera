@@ -15,6 +15,6 @@ int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcpolytomycount",
 				 "takes a filepath to a newick file and reports the number of polytomies in each tree (one line per tree)",
 				 {"some.tre"});
-	return treeProcessingMain<Tree_t>(otCLI, argc, argv, writeNumPolytomies, nullptr);
+	return treeProcessingMain<Tree_t>(otCLI, argc, argv, writeNumPolytomies, nullptr, 1);
 }
 

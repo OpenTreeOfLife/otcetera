@@ -7,9 +7,6 @@ using namespace otc;
 typedef otc::RootedTreeNode<RTNodeNoData> Node_t;
 typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
-extern const char * badNTreesMessage;
-const char * badNTreesMessage = "Expecting a full taxonomy, and some number of input trees";
-
 struct PruneTaxonomyState {
 	std::unique_ptr<Tree_t> taxonomy;
 	int numErrors;
@@ -22,11 +19,7 @@ struct PruneTaxonomyState {
 		}
 
 	void summarize(const OTCLI &otCLI) {
-		if (taxonomy == nullptr || includedNodes.empty()) {
-			otCLI.err << badNTreesMessage << '\n';
-			numErrors = 1;
-			return;
-		}
+		assert(taxonomy != nullptr && !includedNodes.empty());
 		std::set<Node_t *> toPrune;
 		for (auto nd : NodeIter<Tree_t>(*taxonomy)) {
 			const Node_t *  c = const_cast<const Node_t *>(nd);
@@ -80,7 +73,7 @@ int main(int argc, char *argv[]) {
 				"taxonomy.tre inp1.tre inp2.tre");
 	PruneTaxonomyState fus;
 	otCLI.blob = static_cast<void *>(&fus);
-	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr);
+	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 2);
 	if (rc == 0) {
 		fus.summarize(otCLI);
 		return fus.numErrors;

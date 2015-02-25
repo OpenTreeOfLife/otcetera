@@ -78,14 +78,16 @@ inline int treeProcessingMain(OTCLI & otCLI,
 								 int argc,
 								 char * argv[],
 								 bool (*treePtr)(OTCLI &, std::unique_ptr<T>),
-								 int (*summarizePtr)(OTCLI &)) {
+								 int (*summarizePtr)(OTCLI &),
+								 unsigned minNumTrees) {
 	std::vector<std::string> filenameVec;
 	if (!otCLI.parseArgs(argc, argv, filenameVec)) {
 		otCLI.exitCode = 1;
 		return otCLI.exitCode;
 	}
-	if (filenameVec.empty()) {
-		otCLI.err << otCLI.getTitle() << ": Expecting a tree filepath.\n";
+	if (filenameVec.size() < minNumTrees) {
+		otCLI.printHelp(otCLI.err);
+		otCLI.err << otCLI.getTitle() << ": Expecting at least " << minNumTrees << " tree filepath(s).\n";
 		otCLI.exitCode = 1;
 		return otCLI.exitCode;
 	}
