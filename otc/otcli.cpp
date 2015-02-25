@@ -52,7 +52,7 @@ void OTCLI::printHelp(std::ostream & outStream) {
 	if (!clientDefFlagHelp.empty()) {
 		outStream << "Exe-specific command-line flags:\n";
 	}
-	for (auto c : clientDefFlagHelp) {
+	for (const auto & c : clientDefFlagHelp) {
 		if (contains(clientDefArgNeeded, c.first)) {
 			outStream << "    -" << c.first << "ARG " << c.second << '\n';
 		} else {
@@ -65,14 +65,14 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 	bool recursionNeeded = false;
 	auto f = flagWithoutDash[0];
 	if (clientDefFlagCallbacks.find(f) != clientDefFlagCallbacks.end()) {
-		auto cb = clientDefFlagCallbacks[f];
+		const auto cb = clientDefFlagCallbacks[f];
 		try {
-			auto n = flagWithoutDash.substr(1);
+			const auto n = flagWithoutDash.substr(1);
 			if (contains(clientDefArgNeeded, f) && n.empty()) {
 				this->err << "Expecting an argument value after the  -" << f << " flag.\n";
 				return false;
 			}
-			auto rc = cb(*this, n);
+			const auto rc = cb(*this, n);
 			return rc;
 		} catch (std::exception & x) {
 			this->err << x.what() << '\n';
@@ -122,12 +122,12 @@ bool OTCLI::parseArgs(int argc, char *argv[], std::vector<std::string> & args) {
 	this->exitCode = 0;
 	std::list<std::string> allArgs;
 	for (int i = 1; i < argc; ++i) {
-		auto filepath = argv[i];
+		const auto filepath = argv[i];
 		allArgs.push_back(filepath);
 	}
 	for (auto aIt = allArgs.begin(); aIt != allArgs.end(); ++aIt) {
-		auto filepath = *aIt;
-		auto slen = filepath.length();
+		const auto & filepath = *aIt;
+		const auto slen = filepath.length();
 		if (slen > 1U && filepath[0] == '-') {
 			extraArgs.clear();
 			const std::string flagWithoutDash = filepath.substr(1);

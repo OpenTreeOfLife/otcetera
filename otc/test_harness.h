@@ -22,17 +22,17 @@ template<typename T>
 bool testVecElementEquality(const std::vector<T> & expected, const std::vector<T> & obtained) noexcept {
 	bool differed = false;
 	try {
-		auto minlen = std::min(expected.size(), obtained.size());
+		const auto minlen = std::min(expected.size(), obtained.size());
 		for (auto i = 0U; i < minlen; ++i) {
-			auto e = expected[i];
-			auto o = obtained[i];
+			const auto & e = expected[i];
+			const auto & o = obtained[i];
 			if (e != o) {
 				std::cerr << "  Element with index=" << i << " differ [obtained != expected] ";
 				testCompleteDiffMessage(o, e);
 				differed = true;
 			}
 		}
-		auto lendiff = (long) expected.size() - (long) obtained.size();
+		const auto lendiff = (long) expected.size() - (long) obtained.size();
 		if (lendiff > 0) {
 			std::cerr << lendiff << " too few elements obtained.\n";
 		} else if (lendiff < 0) {

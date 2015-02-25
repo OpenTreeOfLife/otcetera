@@ -93,7 +93,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 	}
 	try {
 		if (treePtr) {
-			for (auto filename : filenameVec) {
+			for (const auto & filename : filenameVec) {
 				std::ifstream inp;
 				if (!openUTF8File(filename, inp)) {
 					throw OTCError("Could not open \"" + filename + "\"");
@@ -104,7 +104,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 					if (nt == nullptr) {
 						break;
 					}
-					auto cbr = treePtr(otCLI, std::move(nt));
+					const auto cbr = treePtr(otCLI, std::move(nt));
 					if (!cbr) {
 						otCLI.exitCode = 2;
 						return otCLI.exitCode;

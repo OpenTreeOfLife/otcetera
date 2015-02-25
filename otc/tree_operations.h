@@ -22,7 +22,7 @@ void pruneAndDelete(T & tree, typename T::node_type *toDel);
 template<typename T, typename U>
 inline void cullRefsToNodeFromData(RootedTree<T, U> & tree, RootedTreeNode<T> *toDel);
 
-std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd);
+const std::set<long> & getDesOttIds(RootedTreeNode<RTSplits> & nd);
 
 //// impl
 
@@ -61,8 +61,8 @@ typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet
 	std::map<NT_t *, unsigned int> n2c;
 	long shortestPathLen = -1;
 	NT_t * shortestPathNode = nullptr;
-	for (auto i : idSet) {
-		auto rIt = ottIdToNode.find(i);
+	for (const auto & i : idSet) {
+		const auto rIt = ottIdToNode.find(i);
 		if (rIt == ottIdToNode.end()) {
 			std::string em = "tip ";
 			em += std::to_string(i);
@@ -100,9 +100,9 @@ typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet
 
 template<typename T>
 std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T & taxonomy) {
-	auto taxOttIds = taxonomy.getRoot()->getData().desIds;
-	auto toCheckOttIds = toCheck.getRoot()->getData().desIds;
-	auto extras = set_difference_as_set(toCheckOttIds, taxOttIds);
+	const auto & taxOttIds = taxonomy.getRoot()->getData().desIds;
+	const auto & toCheckOttIds = toCheck.getRoot()->getData().desIds;
+	const auto extras = set_difference_as_set(toCheckOttIds, taxOttIds);
 	if (!extras.empty()) {
 		err << "OTT Ids found in an input tree,  but not in the taxonomy:\n";
 		writeOttSet(err, "  ", extras, "\n");
@@ -118,7 +118,7 @@ inline typename T::node_type * addChildForOttId(typename T::node_type & nd, long
 	return nn;
 }
 
-inline std::set<long> getDesOttIds(RootedTreeNode<RTSplits> & nd) {
+inline const std::set<long> & getDesOttIds(RootedTreeNode<RTSplits> & nd) {
 	return nd.getData().desIds;
 }
 
@@ -148,15 +148,15 @@ std::vector<typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpa
 		auto taxNd = taxData.getNodeForOttId(ottId);
 		assert(taxNd != nullptr);
 		if (!taxNd->isTip()) {
-			auto leafSet = getDesOttIds(*taxNd);
+			const auto & leafSet = getDesOttIds(*taxNd);
 			replaceNodes[nd] = leafSet;
 		}
 	}
 	std::vector<typename T::node_type *> expanded;
 	expanded.reserve(replaceNodes.size());
-	for (auto r : replaceNodes) {
-		auto oldNode = r.first;
-		auto ls = r.second;
+	for (const auto & r : replaceNodes) {
+		const auto & oldNode = r.first;
+		const auto & ls = r.second;
 		assert(ls.size() > 0);
 		expanded.push_back(oldNode);
 		for (auto loid : ls) {
@@ -285,8 +285,8 @@ inline void describeUnnamedNode(const T & nd,
 	} else if (nd.isOutDegreeOneNode()) {
 		describeUnnamedNode(*nd.getFirstChild(), out, anc + 1, useNdNames);
 	} else {
-		auto left = findLeftmostInSubtree(&nd)->getName();
-		auto right = findRightmostInSubtree(&nd)->getName();
+		const auto & left = findLeftmostInSubtree(&nd)->getName();
+		const auto & right = findRightmostInSubtree(&nd)->getName();
 		if (anc > 0) {
 			out << "ancestor " << anc << " node(s) before MRCA of \"" << left << "\" and " << "\"" << right << "\"\n";
 		} else {

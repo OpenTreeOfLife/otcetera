@@ -26,9 +26,9 @@ char genericTokenTest(const TestHarness &th, const std::string &fn, const std::v
 	}
 	std::vector<std::string> obtained;
 	NewickTokenizer tokenizer(inp, th.getFilePath(fn));
-	for (auto token : tokenizer) {
+	for (const auto & token : tokenizer) {
 		obtained.push_back(token.content());
-		}
+	}
 	if (testVecElementEquality(expected, obtained)) {
 		return '.';
 	}
@@ -42,7 +42,8 @@ char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn) {
 	}
 	NewickTokenizer tokenizer(inp, th.getFilePath(fn));
 	try {
-		for (auto token : tokenizer) {
+		for (const auto & token : tokenizer) {
+			assert(token.content().c_str());
 		}
 	} catch (const OTCParsingError &) {
 		return '.';
@@ -136,7 +137,7 @@ char testUnbalancedToManyClose(const TestHarness &th) {
 }
 char testEmptyClade(const TestHarness &th) {
 	char r = '.';
-	for (auto i : {"1", "2", "3", "4"} ) {
+	for (const auto & i : {"1", "2", "3", "4"} ) {
 		std::string fn = "empty-clade";
 		fn += i;
 		fn += ".tre";
@@ -149,7 +150,7 @@ char testEmptyClade(const TestHarness &th) {
 }
 char testEmptySib(const TestHarness &th) {
 	char r = '.';
-	for (auto i : {"1", "2", "3", "4"} ) {
+	for (const auto & i : {"1", "2", "3", "4"} ) {
 		std::string fn = "empty-sib";
 		fn += i;
 		fn += ".tre";
@@ -162,7 +163,7 @@ char testEmptySib(const TestHarness &th) {
 }
 char testEmptyBranchLength(const TestHarness &th) {
 	char r = '.';
-	for (auto i : {"1", "2", "3", "4", "5"} ) {
+	for (const auto & i : {"1", "2", "3", "4", "5"} ) {
 		std::string fn = "empty-branch-length";
 		fn += i;
 		fn += ".tre";

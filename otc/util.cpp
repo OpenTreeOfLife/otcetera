@@ -96,7 +96,7 @@ std::list<std::string> split_string(const std::string &s)
 	{
 	std::list<std::string> r;
 	std::string current;
-	for (auto c : s) {
+	for (const auto & c : s) {
 		if (isgraph(c))
 			current.append(1, c);
 		else if (!current.empty()) {
@@ -119,16 +119,16 @@ std::list<std::set<long> > parseDesignatorsFile(const std::string &fp) {
 	std::list<std::set<long> > allDesignators;
 	try{
 		while (getline(inpf, line)) {
-			auto stripped = strip_surrounding_whitespace(line);
+			const auto stripped = strip_surrounding_whitespace(line);
 			if (!stripped.empty()) {
-				auto words = split_string(stripped);
+				const auto words = split_string(stripped);
 				if (words.size() < 2) {
 					std::string m = "Expecting >1 designator on each line. Found: ";
 					m +=  line;
 					throw OTCError(m);
 				}
 				std::set<long> designators;
-				for (auto ds : words) {
+				for (const auto & ds : words) {
 					long d;
 					if (!char_ptr_to_long(ds.c_str(), &d)) {
 						std::string m = "Expecting numeric designator. Found: ";

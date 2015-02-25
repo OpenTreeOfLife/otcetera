@@ -22,8 +22,8 @@ int TestHarness::runTests(const TestsVec & tests) {
 		return (int)tests.size();
 	}
 	std::vector<std::string> failures;
-	for (auto tpIt : tests) {
-		auto fn = tpIt.second;
+	for (const auto & tpIt : tests) {
+		const auto & fn = tpIt.second;
 		char resp;
 		try {
 			resp = fn(*this);
@@ -40,7 +40,7 @@ int TestHarness::runTests(const TestsVec & tests) {
 		}
 	}
 	std::cerr << '\n';
-	for (auto f : failures) {
+	for (const auto & f : failures) {
 		std::cerr << f << '\n';
 	}
 	if (!failures.empty()) {

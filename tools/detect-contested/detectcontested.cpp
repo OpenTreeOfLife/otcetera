@@ -46,6 +46,18 @@ struct DetectContestedState {
 			auto ottId = nd->getOttId();
 			markPathToRoot(*taxonomy, ottId, prunedDesId);
 		}
+		std::map<std::set<long>, std::list<const Node_t *> > taxCladesToTaxNdList;
+		for (auto & nodeSetPair : prunedDesId) {
+			auto nd = nodeSetPair.first;
+			auto & ds = nodeSetPair.second;
+			auto tctnlIt = taxCladesToTaxNdList.find(ds);
+			if (tctnlIt == taxCladesToTaxNdList.end()) {
+				std::list<const Node_t *> sel{1, nd};
+				taxCladesToTaxNdList.emplace(ds, sel);
+			} else {
+				tctnlIt->second.push_back(nd);
+			}
+		}
 		std::set<std::set<long> > sourceClades;
 		for (auto nd : PostorderInternalIter<Tree_t>(tree)) {
 			if (nd->getParent() != nullptr && !nd->isTip()) {
@@ -53,27 +65,38 @@ struct DetectContestedState {
 			}
 		}
 		auto numLeaves = tree.getRoot()->getData().desIds.size();
-		recordContested(prunedDesId, sourceClades, contestedNodes, numLeaves);
+		recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves);
 		return true;
 	}
 
-	void recordContested(const std::map<const Node_t *, std::set<long> > & prunedDesId,
+	void recordContested(const std::map<std::set<long>, std::list<const Node_t *> > & prunedDesId,
 						 const std::set<std::set<long> > & sourceClades,
 						 std::set<const Node_t *> & contestedSet,
 						 std::size_t numLeaves) {
-		for (auto pd : prunedDesId) {
-			auto nd = pd.first;
-			if (contains(contestedSet, nd)) {
+		for (const auto & pd : prunedDesId) {
+			// shortcircuite taxon nodes that are already marked as contested
+			const auto & ndlist = pd.second;
+			bool allContested = true;
+			for (auto nd : ndlist) {
+				if (!contains(contestedSet, nd)) {
+					allContested = false;
+					break;
+				}
+			}
+			if (allContested) {
 				continue;
 			}
-			const auto & ns = nd->getData().desIds;
-			const auto nss = ns.size();
+			const auto & taxNodesDesSets = pd.first;
+			const auto nss = taxNodesDesSets.size();
 			if (nss == 1 || nss == numLeaves) {
 				continue;
 			}
-			for (auto sc : sourceClades) {
-				if (!areCompatibleDesIdSets(ns, sc)) {
-					contestedSet.insert(nd);
+			for (const auto & sc : sourceClades) {
+				if (!areCompatibleDesIdSets(taxNodesDesSets, sc)) {
+					for (auto nd : ndlist) {
+						contestedSet.insert(nd);
+					}
+					break;
 				}
 			}
 		}

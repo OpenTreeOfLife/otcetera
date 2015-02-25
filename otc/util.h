@@ -69,7 +69,7 @@ bool contains(const T & container, const U & key) {
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container) {
 	std::set<T> k;
-	for (auto x : container) {
+	for (const auto & x : container) {
 		k.insert(x.first);
 	}
 	return k;
@@ -93,12 +93,12 @@ inline void writeOttSetDiff(std::ostream & out,
 							const char *firN,
 							const std::set<long> & sec,
 							const char *secN) {
-	for (auto rIt : fir) {
+	for (const auto & rIt : fir) {
 		if (sec.find(rIt) == sec.end()) {
 			out << indent << "ott" << rIt << " is in " << firN << " but not " << secN << "\n";
 		}
 	}
-	for (auto rIt : sec) {
+	for (const auto & rIt : sec) {
 		if (fir.find(rIt) == fir.end()) {
 			out << indent << "ott" << rIt << " is in " << secN << " but not " << firN << "\n";
 		}
@@ -110,7 +110,7 @@ inline bool isProperSubset(const T & small, const T & big) {
 	if (big.size() <= small.size()) {
 		return false;
 	}
-	for (auto rIt : small) {
+	for (const auto & rIt : small) {
 		if (big.find(rIt) == big.end()) {
 			return false;
 		}
@@ -123,7 +123,7 @@ inline bool isSubset(const T & small, const T & big) {
 	if (big.size() < small.size()) {
 		return false;
 	}
-	for (auto rIt : small) {
+	for (const auto & rIt : small) {
 		if (big.find(rIt) == big.end()) {
 			return false;
 		}
@@ -138,9 +138,9 @@ inline bool areDisjoint(const Set1 & set1, const Set2 & set2) {
 		return true;
 	}
 	auto it1 = set1.begin();
-	auto it1End = set1.end();
+	const auto it1End = set1.end();
 	auto it2 = set2.begin();
-	auto it2End = set2.end();
+	const auto & it2End = set2.end();
 	if (*it1 > *set2.rbegin() || *it2 > *set1.rbegin()) {
 		return true;
 	}
@@ -183,9 +183,9 @@ inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
 		return true;
 	}
 	auto it1 = set1.begin();
-	auto it1End = set1.end();
+	const auto it1End = set1.end();
 	auto it2 = set2.begin();
-	auto it2End = set2.end();
+	const auto it2End = set2.end();
 	if (*it1 > *set2.rbegin() || *it2 > *set1.rbegin()) {
 		return true; // disjoint
 	}
@@ -250,7 +250,7 @@ std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & s
 
 inline std::size_t find_first_graph_index(const std::string & s) {
 	std::size_t pos = 0U;
-	for (auto c : s) {
+	for (const auto & c : s) {
 		if (isgraph(c)) {
 			return pos;
 		}
@@ -271,7 +271,7 @@ inline std::size_t find_last_graph_index(const std::string & s) {
 }
 
 inline std::string strip_leading_whitespace(const std::string & n) {
-	auto x = find_first_graph_index(n);
+	const auto x = find_first_graph_index(n);
 	if (x == std::string::npos) {
 		return std::string();
 	}
@@ -279,7 +279,7 @@ inline std::string strip_leading_whitespace(const std::string & n) {
 }
 
 inline std::string strip_trailing_whitespace(const std::string & n) {
-	auto x = find_last_graph_index(n);
+	const auto x = find_last_graph_index(n);
 	if (x == std::string::npos) {
 		return std::string();
 	}
@@ -287,11 +287,11 @@ inline std::string strip_trailing_whitespace(const std::string & n) {
 }
 
 inline std::string strip_surrounding_whitespace(const std::string &n) {
-	auto s = find_first_graph_index(n);
+	const auto s = find_first_graph_index(n);
 	if (s == std::string::npos) {
 		return std::string();
 	}
-	auto e = find_last_graph_index(n);
+	const auto e = find_last_graph_index(n);
 	assert(e != std::string::npos);
 	return n.substr(s, 1 + e - s);
 }
@@ -299,7 +299,7 @@ inline std::string strip_surrounding_whitespace(const std::string &n) {
 
 inline QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s) {
 	QuotingRequirementsEnum nrq = NO_QUOTES_NEEDED;
-	for (auto c : s) {
+	for (const auto & c : s) {
 		if (!isgraph(c)) {
 			if (c != ' ') {
 				return QUOTES_NEEDED;
@@ -319,7 +319,7 @@ inline std::string addNewickQuotes(const std::string &s) {
 	unsigned len = (unsigned)s.length();
 	withQuotes.reserve(len + 4);
 	withQuotes.append(1,'\'');
-	for (auto c : s) {
+	for (const auto & c : s) {
 		withQuotes.append(1, c);
 		if (c == '\'') {
 			withQuotes.append(1,'\'');
