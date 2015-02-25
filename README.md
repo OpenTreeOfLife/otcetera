@@ -45,6 +45,9 @@ is required for the `make check` operation to succeed.
 
 
 ## Usage
+See the [supertree/README.md](./supertree/README.md) for instructions on using
+`otcetera` to build a supertree (work in progress).
+
 ### Common command line flags
 The tools use the same (OTCLI) class to process command line arguments. 
 This provides the following command line flags:
@@ -86,6 +89,42 @@ any [ITEB support](https://github.com/OpenTreeOfLife/treemachine/blob/nonsense-1
 The taxonomy is just used for the ottID validation (on the assumption that 
 the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
 can help identify problems with those nodes).
+
+### pruning a taxonomy
+
+    otcprunetaxonomy taxonomy.tre inp1.tre inp2.tre ...
+
+will write (to stdout) a newick version of the taxonomy that has been pruned to 
+not include subtrees that do not include any of the tips of the input trees.  See
+[supertree/step-2-pruned-taxonomy/README.md](./supertree/step-2-pruned-taxonomy/README.md)
+for a more precise description of the pruning rules. This is intended to be used in the
+[ranked tree supertree pipeline](./supertree/README.md),
+
+
+### getting the full distribution of out degree counts for a tree
+
+    otcdegreedistribution sometree.tre
+
+will write out a tab-separated pair of columns of "out degree" and "count" that
+shows how many nodes in the tree tree have each outdegree (0 are leaves. 1 are
+redundant nodes. 2 are fully resolved internals...)
+
+### counting polytomies in a tree
+
+    otcpolytomycount sometree.tre
+
+will write out the number of nodes with out degree greater than 2 to stdout. This
+is just a summary of the info reported by `otcdegreedistribution`.
+
+
+### debugging otcetera handling of trees
+
+    otcassertinvariants sometree.tre
+
+will parse a tree and run through lots of traversals, asserting various
+invariants. Should exit silently if there are no bugs.
+
+
 
 ## ACKNOWLEDGEMENTS
 See comments above about usage of [easyloggingpp](https://github.com/easylogging/)
