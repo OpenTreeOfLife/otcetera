@@ -7,15 +7,15 @@ using namespace otc;
 typedef otc::RootedTreeNode<RTSplits> Node_t;
 typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
-
-
-struct DetectContestedState {
+bool handleTabooOTTIdListFile(OTCLI & otCLI, const std::string &nextArg);
+struct RemapToDeepestUnlistedState {
 	std::unique_ptr<Tree_t> taxonomy;
 	int numErrors;
 	std::set<long> ottIds;
 	std::set<const Node_t *> contestedNodes;
+	std::set<long> tabooIds;
 
-	DetectContestedState()
+	RemapToDeepestUnlistedState()
 		:taxonomy(nullptr),
 		 numErrors(0) {
 		}
@@ -104,10 +104,16 @@ struct DetectContestedState {
 			}
 		}
 	}
+
+	bool parseAndTabooOTTIdListFile(const std::string &fp) {
+		auto t = parseListOfOttIds(fp);
+		tabooIds.insert(begin(t), end(t));
+		return true;
+	}
 };
 
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
-	DetectContestedState * ctsp = static_cast<DetectContestedState *>(otCLI.blob);
+	RemapToDeepestUnlistedState * ctsp = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
 	assert(ctsp != nullptr);
 	assert(tree != nullptr);
 	if (ctsp->taxonomy == nullptr) {
@@ -117,12 +123,23 @@ inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 	return ctsp->processSourceTree(otCLI, std::move(tree));
 }
 
+bool handleTabooOTTIdListFile(OTCLI & otCLI, const std::string &nextArg) {
+	RemapToDeepestUnlistedState * fusp = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+	assert(fusp != nullptr);
+	assert(!nextArg.empty());
+	return fusp->parseAndTabooOTTIdListFile(nextArg);
+}
+
 int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcdetectcontested",
 				"takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. Writes the OTT IDs of clades in the taxonomy whose monophyly is questioned by at least one input",
 				"taxonomy.tre inp1.tre inp2.tre");
-	DetectContestedState fus;
+	RemapToDeepestUnlistedState fus;
 	otCLI.blob = static_cast<void *>(&fus);
+	otCLI.addFlag('m',
+				  "ARG=a file containing a list of taboo OTT ids.",
+				  handleTabooOTTIdListFile,
+				  true);
 	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 2);
 	if (rc == 0) {
 		fus.summarize(otCLI);

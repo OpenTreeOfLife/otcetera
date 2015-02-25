@@ -4,6 +4,7 @@ SUBDIRS = \
 	detect-contested \
 	find-unsupported-nodes \
 	prune-singletons \
+	remap-to-deepest-unlisted \
 	simple-stats
 
 check:

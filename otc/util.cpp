@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "otc/util.h"
+#include "otc/newick_tokenizer.h"
 
 namespace otc {
 
@@ -110,6 +111,34 @@ std::list<std::string> split_string(const std::string &s)
 	return r;
 }
 
+std::set<long> parseListOfOttIds(const std::string &fp) {
+	std::ifstream inpf;
+	if (!openUTF8File(fp, inpf)) {
+		throw OTCError("Could not open list of OTT ids file \"" + fp + "\"");
+	}
+	std::string line;
+	std::set<long> ottIds;
+	try{
+		while (getline(inpf, line)) {
+			const auto stripped = strip_surrounding_whitespace(line);
+			if (!stripped.empty()) {
+				long p = ottIDFromName(line);
+				if (p < 1) {
+					std::string m = "Expecting each line to end with an OTT Id. Found: ";
+					m +=  line;
+					throw OTCError(m);
+				}
+				ottIds.insert(p);
+			}
+		}
+	} catch (...) {
+		inpf.close();
+		throw;
+	}
+	inpf.close();
+	return ottIds;
+}
+
 std::list<std::set<long> > parseDesignatorsFile(const std::string &fp) {
 	std::ifstream inpf;
 	if (!openUTF8File(fp, inpf)) {
@@ -147,5 +176,14 @@ std::list<std::set<long> > parseDesignatorsFile(const std::string &fp) {
 	inpf.close();
 	return allDesignators;
 }
+
+std::string filepathToFilename(const std::string &filepath) {
+	auto p = filepath.find_last_of('/');
+	if (p == std::string::npos) {
+		return filepath;
+	}
+	return filepath.substr(1 + p);
+}
+
 
 }//namespace otc

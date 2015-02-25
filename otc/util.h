@@ -24,6 +24,7 @@ const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
 bool openUTF8File(const std::string &filepath, std::ifstream & inp);
 bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
 std::list<std::string> readLinesOfFile(const std::string & filepath);
+std::string filepathToFilename(const std::string &filepath);
 
 bool char_ptr_to_long(const char *c, long *n);
 std::size_t find_first_graph_index(const std::string & s);
@@ -33,6 +34,7 @@ std::string strip_trailing_whitespace(const std::string & s);
 std::string strip_surrounding_whitespace(const std::string &n);
 std::list<std::string> split_string(const std::string &s);
 std::list<std::set<long> > parseDesignatorsFile(const std::string &fp);
+std::set<long> parseListOfOttIds(const std::string &fp);
 
 QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s);
 std::string addNewickQuotes(const std::string &s);

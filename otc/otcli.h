@@ -20,6 +20,7 @@ class OTCLI {
 		bool verbose;
 		bool currReadingDotTxtFile;
 		std::string currentFilename;
+		std::string prefixForFiles;
 		std::string currTmpFilepath;
 		void * blob;
 
@@ -99,6 +100,7 @@ inline int treeProcessingMain(OTCLI & otCLI,
 					throw OTCError("Could not open \"" + filename + "\"");
 				}
 				LOG(INFO) << "reading \"" << filename << "\"...";
+				otCLI.currentFilename = filepathToFilename(filename);
 				for (;;) {
 					std::unique_ptr<T> nt = readNextNewick<T>(inp, filename, otCLI.getParsingRules());
 					if (nt == nullptr) {

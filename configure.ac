@@ -71,6 +71,7 @@ AC_CONFIG_FILES([					\
 	tools/detect-contested/Makefile \
 	tools/find-unsupported-nodes/Makefile \
 	tools/prune-singletons/Makefile \
+	tools/remap-to-deepest-unlisted/Makefile \
 	tools/simple-stats/Makefile \
 	otceterav0.0.pc \
 	])
