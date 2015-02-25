@@ -22,7 +22,6 @@ bool checkNodePointers(const T & nd) {
 
 template<typename T>
 bool checkAllNodePointers(const T & tree) {
-	bool good = true;
 	auto ns = tree.getSetOfAllNodes();
 	for (auto nd : ns) {
 		if (!checkNodePointers(*nd)) {

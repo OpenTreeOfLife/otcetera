@@ -13,7 +13,7 @@ bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 extern const char * badNTreesMessage;
 const char * badNTreesMessage = "Expecting a full tree, a full taxonomy, and some number of input trees";
 
-inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
+inline bool processNextTree(OTCLI & , std::unique_ptr<Tree_t> tree) {
 	checkTreeInvariants(*tree);
 	return true;
 }
