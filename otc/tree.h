@@ -140,6 +140,7 @@ class RootedTreeNode {
 					if (c->rSib == nullptr) {
 						return false;
 					}
+					c = c->rSib;
 				}
 			}
 			n->parent = nullptr;
