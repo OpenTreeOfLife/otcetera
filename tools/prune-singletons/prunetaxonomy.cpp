@@ -57,11 +57,7 @@ struct PruneTaxonomyState {
 				includedNodes.insert(taxoNode);
 				insertAncestorsToParaphyleticSet(taxoNode, includedNodes);
 			}
-			for (auto child : ConstChildIter<Node_t>(taxoNode)) {
-				if (!contains(includedNodes, child)) {
-					insertDescendantsOfUnincludedSubtrees(child, includedNodes);
-				}
-			}
+			insertDescendantsOfUnincludedSubtrees(taxoNode, includedNodes);
 		}
 		return true;
 	}
