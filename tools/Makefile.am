@@ -5,6 +5,7 @@ SUBDIRS = \
 	find-unsupported-nodes \
 	prune-singletons \
 	remap-to-deepest-unlisted \
+	scaffolded-supertree \
 	simple-stats
 
 check:
