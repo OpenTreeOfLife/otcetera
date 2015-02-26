@@ -8,17 +8,50 @@ typedef otc::RootedTreeNode<RTSplits> Node_t;
 typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 bool handleTabooOTTIdListFile(OTCLI & otCLI, const std::string &nextArg);
+
+struct NodePairing {
+	Node_t * scaffoldNode;
+	Node_t * phyloNode;
+	NodePairing(Node_t *taxo, Node_t *phylo)
+		:scaffoldNode(taxo),
+		phyloNode(phylo) {
+	}
+};
+struct PathPairing {
+	const Node_t * const phyloChild;
+	const Node_t * const phyloParent;
+	const Node_t * const scaffoldChild;
+	const Node_t * const scaffoldParent;
+
+	PathPairing(const NodePairing & parent, const NodePairing & child)
+		:phyloChild(child.phyloNode),
+		phyloParent(parent.phyloNode),
+		scaffoldChild(child.scaffoldNode),
+		scaffoldParent(parent.scaffoldNode) {
+	}
+};
+struct AlignmentThreading {
+	std::map<Tree_t *, std::set<NodePairing *> > nodeAlignments;
+	std::map<Tree_t *, std::set<PathPairing *> > edgeBelowAlignments;
+	std::map<Tree_t *, std::set<PathPairing *> > loopAlignments;
+};
+
 struct RemapToDeepestUnlistedState {
 	std::unique_ptr<Tree_t> taxonomy;
 	int numErrors;
 	std::set<long> ottIds;
 	std::set<const Node_t *> contestedNodes;
 	std::set<long> tabooIds;
+	std::list<std::unique_ptr<Tree_t> > inputTrees;
+	std::list<NodePairing> nodePairings;
+	std::list<PathPairing> pathPairings;
+	std::map<const Node_t*, AlignmentThreading> taxoToAlignment;
+
 
 	RemapToDeepestUnlistedState()
 		:taxonomy(nullptr),
 		 numErrors(0) {
-		}
+	}
 
 	void summarize(const OTCLI &otCLI) {
 		assert (taxonomy != nullptr);
@@ -29,81 +62,72 @@ struct RemapToDeepestUnlistedState {
 
 	bool processTaxonomyTree(OTCLI & otCLI) {
 		ottIds = keys(taxonomy->getData().ottIdToNode);
+		for (auto nd : NodeIter<Tree_t>(*taxonomy)) {
+			taxoToAlignment.emplace(nd, AlignmentThreading{});
+		}
 		otCLI.getParsingRules().ottIdValidator = &ottIds;
 		return true;
 	}
 
+	NodePairing * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
+		nodePairings.emplace_back(taxo, nd);
+		auto ndPairPtr = &(*nodePairings.rbegin());
+		auto & athreading = taxoToAlignment[taxo];
+		athreading.nodeAlignments[tree].insert(ndPairPtr);
+		return ndPairPtr;
+	}
+	PathPairing * _addPathMapping(NodePairing * parentPairing, NodePairing * childPairing, Tree_t *tree) {
+		pathPairings.emplace_back(*parentPairing, *childPairing);
+		auto pathPairPtr = &(*pathPairings.rbegin());
+		// register a pointer to the path at each traversed...
+		auto currTaxo = pathPairPtr->scaffoldChild;
+		auto ancTaxo = pathPairPtr->scaffoldParent;
+		if (currTaxo != ancTaxo) {
+			while (currTaxo != ancTaxo) {
+				taxoToAlignment[currTaxo].edgeBelowAlignments[tree].insert(pathPairPtr);
+				currTaxo = currTaxo->getParent();
+			}
+		} else {
+			taxoToAlignment[currTaxo].loopAlignments[tree].insert(pathPairPtr);
+		}
+		return pathPairPtr;
+	}
 	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 		assert(taxonomy != nullptr);
 		assert(tree != nullptr);
-		expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
-		return processExpandedTree(otCLI, *tree);
-	}
-
-	bool processExpandedTree(OTCLI &, Tree_t & tree) {
-		std::map<const Node_t *, std::set<long> > prunedDesId;
-		for (auto nd : ConstLeafIter<Tree_t>(tree)) {
-			auto ottId = nd->getOttId();
-			markPathToRoot(*taxonomy, ottId, prunedDesId);
-		}
-		std::map<std::set<long>, std::list<const Node_t *> > taxCladesToTaxNdList;
-		for (auto & nodeSetPair : prunedDesId) {
-			auto nd = nodeSetPair.first;
-			auto & ds = nodeSetPair.second;
-			if (ds.size() < 2) {
+		std::map<Node_t *, NodePairing *> currTreeNodePairings;
+		for (auto nd : PostorderIter<Tree_t>(*tree)) {
+			auto par = nd->getParent();
+			if (par == nullptr) {
 				continue;
 			}
-			auto tctnlIt = taxCladesToTaxNdList.find(ds);
-			if (tctnlIt == taxCladesToTaxNdList.end()) {
-				std::list<const Node_t *> sel{1, nd};
-				taxCladesToTaxNdList.emplace(ds, sel);
+			NodePairing * ndPairPtr = nullptr;
+			Node_t * taxoChild = nullptr;
+			auto reuseNodePairingIt = currTreeNodePairings.find(nd);
+			if (reuseNodePairingIt == currTreeNodePairings.end()) {
+				auto ottId = nd->getOttId();
+				taxoChild = taxonomy->getData().getNodeForOttId(ottId);
+				ndPairPtr = _addNodeMapping(taxoChild, nd, tree.get());
+				currTreeNodePairings[nd] = ndPairPtr;
 			} else {
-				tctnlIt->second.push_back(nd);
+				ndPairPtr = reuseNodePairingIt->second;
+				taxoChild = ndPairPtr->scaffoldNode;
 			}
-		}
-		std::set<std::set<long> > sourceClades;
-		for (auto nd : PostorderInternalIter<Tree_t>(tree)) {
-			if (nd->getParent() != nullptr && !nd->isTip()) {
-				sourceClades.insert(std::move(nd->getData().desIds));
+			NodePairing * parPairPtr = nullptr;
+			auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
+			if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
+				const auto & parDesIds = par->getData().desIds;
+				auto taxoPar = searchAncForMRCAOfDesIds(taxoChild, parDesIds);
+				parPairPtr = _addNodeMapping(taxoPar, par, tree.get());
+				currTreeNodePairings[par] = parPairPtr;
+			} else {
+				parPairPtr = prevAddedNodePairingIt->second;
 			}
+			_addPathMapping(parPairPtr, ndPairPtr, tree.get());
 		}
-		auto numLeaves = tree.getRoot()->getData().desIds.size();
-		recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves);
 		return true;
 	}
 
-	void recordContested(const std::map<std::set<long>, std::list<const Node_t *> > & prunedDesId,
-						 const std::set<std::set<long> > & sourceClades,
-						 std::set<const Node_t *> & contestedSet,
-						 std::size_t numLeaves) {
-		for (const auto & pd : prunedDesId) {
-			// shortcircuite taxon nodes that are already marked as contested
-			const auto & ndlist = pd.second;
-			bool allContested = true;
-			for (auto nd : ndlist) {
-				if (!contains(contestedSet, nd)) {
-					allContested = false;
-					break;
-				}
-			}
-			if (allContested) {
-				continue;
-			}
-			const auto & taxNodesDesSets = pd.first;
-			const auto nss = taxNodesDesSets.size();
-			if (nss == 1 || nss == numLeaves) {
-				continue;
-			}
-			for (const auto & sc : sourceClades) {
-				if (!areCompatibleDesIdSets(taxNodesDesSets, sc)) {
-					for (auto nd : ndlist) {
-						contestedSet.insert(nd);
-					}
-					break;
-				}
-			}
-		}
-	}
 
 	bool parseAndTabooOTTIdListFile(const std::string &fp) {
 		auto t = parseListOfOttIds(fp);

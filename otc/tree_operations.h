@@ -411,7 +411,18 @@ inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
 	out << ';';
 }
 
-
+template<typename T>
+inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
+	if (isProperSubset(idSet, nd->getData().desIds)) {
+		return nd;
+	}
+	for (auto n : AncIter<T>(nd)) {
+		if (isProperSubset(idSet, n->getData().desIds)) {
+			return nd;
+		}
+	}
+	return nullptr;
+}
 } // namespace otc
 #endif
 
