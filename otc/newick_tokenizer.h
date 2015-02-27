@@ -12,9 +12,11 @@ namespace otc {
 
 struct ParsingRules {
 	ParsingRules()
-		:ottIdValidator(nullptr) {
+		:ottIdValidator(nullptr),
+		includeInternalNodesInDesIdSets(false) {
 		}
 	const std::set<long> * ottIdValidator;
+	bool includeInternalNodesInDesIdSets;
 };
 
 typedef std::shared_ptr<const std::string> ConstStrPtr;

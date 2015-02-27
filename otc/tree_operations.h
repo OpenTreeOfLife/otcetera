@@ -53,6 +53,25 @@ void fillDesIdSets(T & tree) {
 	}
 }
 
+template<typename T>
+void fillDesIdSetsIncludingInternals(T & tree) {
+	// assumes OttId is set for each tip
+	for (auto node : PostorderIter<T>(tree)) {
+		std::set<long> & desIds = node->getData().desIds;
+		if (node->isTip()) {
+			desIds.insert(node->getOttId());
+		} else {
+			if (node->hasOttId()) {
+				desIds.insert(node->getOttId());
+			}
+			for (auto child : ChildIter<typename T::node_type>(*node)) {
+				std::set<long> & cDesIds = child->getData().desIds;
+				desIds.insert(cDesIds.begin(), cDesIds.end());
+			}
+		}
+	}
+}
+
 // uses ottID->node mapping, but the split sets of the nodes
 template<typename T>
 typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet, long trigger) {
@@ -413,12 +432,13 @@ inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
 
 template<typename T>
 inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
+	assert(nd != nullptr);
 	if (isProperSubset(idSet, nd->getData().desIds)) {
 		return nd;
 	}
 	for (auto n : AncIter<T>(nd)) {
 		if (isProperSubset(idSet, n->getData().desIds)) {
-			return nd;
+			return n;
 		}
 	}
 	return nullptr;

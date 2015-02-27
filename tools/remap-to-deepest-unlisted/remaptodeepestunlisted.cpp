@@ -86,6 +86,9 @@ struct RemapToDeepestUnlistedState {
 			while (currTaxo != ancTaxo) {
 				taxoToAlignment[currTaxo].edgeBelowAlignments[tree].insert(pathPairPtr);
 				currTaxo = currTaxo->getParent();
+				if (currTaxo == nullptr) {
+					break;
+				}
 			}
 		} else {
 			taxoToAlignment[currTaxo].loopAlignments[tree].insert(pathPairPtr);

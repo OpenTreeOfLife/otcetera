@@ -68,7 +68,7 @@ inline std::unique_ptr<T> readNextNewick(std::istream &inp, const std::string & 
 			break;
 		}
 	}
-	postParseHook(*treePtr);
+	postParseHook(*treePtr, parsingRules);
 	return treePtr;
 }
 

@@ -15,19 +15,21 @@ struct NodePairing {
 	NodePairing(Node_t *taxo, Node_t *phylo)
 		:scaffoldNode(taxo),
 		phyloNode(phylo) {
+		assert(taxo != nullptr);
+		assert(phylo != nullptr);
 	}
 };
 struct PathPairing {
 	const Node_t * const phyloChild;
 	const Node_t * const phyloParent;
-	const Node_t * const scaffoldChild;
-	const Node_t * const scaffoldParent;
+	const Node_t * const scaffoldDes;
+	const Node_t * const scaffoldAnc;
 
 	PathPairing(const NodePairing & parent, const NodePairing & child)
 		:phyloChild(child.phyloNode),
 		phyloParent(parent.phyloNode),
-		scaffoldChild(child.scaffoldNode),
-		scaffoldParent(parent.scaffoldNode) {
+		scaffoldDes(child.scaffoldNode),
+		scaffoldAnc(parent.scaffoldNode) {
 	}
 };
 struct AlignmentThreading {
@@ -47,7 +49,6 @@ struct RemapToDeepestUnlistedState {
 	std::list<PathPairing> pathPairings;
 	std::map<const Node_t*, AlignmentThreading> taxoToAlignment;
 
-
 	RemapToDeepestUnlistedState()
 		:taxonomy(nullptr),
 		 numErrors(0) {
@@ -66,11 +67,14 @@ struct RemapToDeepestUnlistedState {
 			taxoToAlignment.emplace(nd, AlignmentThreading{});
 		}
 		otCLI.getParsingRules().ottIdValidator = &ottIds;
+		otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
 		return true;
 	}
 
 	NodePairing * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
-		nodePairings.emplace_back(taxo, nd);
+		assert(taxo != nullptr);
+		assert(nd != nullptr);
+		nodePairings.emplace_back(NodePairing(taxo, nd));
 		auto ndPairPtr = &(*nodePairings.rbegin());
 		auto & athreading = taxoToAlignment[taxo];
 		athreading.nodeAlignments[tree].insert(ndPairPtr);
@@ -80,12 +84,15 @@ struct RemapToDeepestUnlistedState {
 		pathPairings.emplace_back(*parentPairing, *childPairing);
 		auto pathPairPtr = &(*pathPairings.rbegin());
 		// register a pointer to the path at each traversed...
-		auto currTaxo = pathPairPtr->scaffoldChild;
-		auto ancTaxo = pathPairPtr->scaffoldParent;
+		auto currTaxo = pathPairPtr->scaffoldDes;
+		auto ancTaxo = pathPairPtr->scaffoldAnc;
 		if (currTaxo != ancTaxo) {
 			while (currTaxo != ancTaxo) {
 				taxoToAlignment[currTaxo].edgeBelowAlignments[tree].insert(pathPairPtr);
 				currTaxo = currTaxo->getParent();
+				if (currTaxo == nullptr) {
+					break;
+				}
 			}
 		} else {
 			taxoToAlignment[currTaxo].loopAlignments[tree].insert(pathPairPtr);
@@ -102,29 +109,36 @@ struct RemapToDeepestUnlistedState {
 				continue;
 			}
 			NodePairing * ndPairPtr = nullptr;
-			Node_t * taxoChild = nullptr;
-			auto reuseNodePairingIt = currTreeNodePairings.find(nd);
-			if (reuseNodePairingIt == currTreeNodePairings.end()) {
+			Node_t * taxoDes = nullptr;
+			if (nd->isTip()) {
+				assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end()); // TMP, Remove this to save time?
+				assert(nd->hasOttId());
 				auto ottId = nd->getOttId();
-				taxoChild = taxonomy->getData().getNodeForOttId(ottId);
-				ndPairPtr = _addNodeMapping(taxoChild, nd, tree.get());
+				taxoDes = taxonomy->getData().getNodeForOttId(ottId);
+				assert(taxoDes != nullptr);
+				ndPairPtr = _addNodeMapping(taxoDes, nd, tree.get());
 				currTreeNodePairings[nd] = ndPairPtr;
 			} else {
+				auto reuseNodePairingIt = currTreeNodePairings.find(nd);
+				assert(reuseNodePairingIt != currTreeNodePairings.end());
 				ndPairPtr = reuseNodePairingIt->second;
-				taxoChild = ndPairPtr->scaffoldNode;
+				taxoDes = ndPairPtr->scaffoldNode;
+				assert(taxoDes != nullptr);
 			}
 			NodePairing * parPairPtr = nullptr;
 			auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
 			if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
 				const auto & parDesIds = par->getData().desIds;
-				auto taxoPar = searchAncForMRCAOfDesIds(taxoChild, parDesIds);
-				parPairPtr = _addNodeMapping(taxoPar, par, tree.get());
+				auto taxoAnc = searchAncForMRCAOfDesIds(taxoDes, parDesIds);
+				assert(taxoAnc != nullptr);
+				parPairPtr = _addNodeMapping(taxoAnc, par, tree.get());
 				currTreeNodePairings[par] = parPairPtr;
 			} else {
 				parPairPtr = prevAddedNodePairingIt->second;
 			}
 			_addPathMapping(parPairPtr, ndPairPtr, tree.get());
 		}
+		otCLI.out << "# pathPairings = " << pathPairings.size() << '\n';
 		return true;
 	}
 
@@ -160,6 +174,7 @@ int main(int argc, char *argv[]) {
 				"taxonomy.tre inp1.tre inp2.tre");
 	RemapToDeepestUnlistedState fus;
 	otCLI.blob = static_cast<void *>(&fus);
+	otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
 	otCLI.addFlag('m',
 				  "ARG=a file containing a list of taboo OTT ids.",
 				  handleTabooOTTIdListFile,
