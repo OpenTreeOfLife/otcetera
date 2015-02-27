@@ -442,7 +442,7 @@ inline bool isEffectivelyATip(const T *nd, std::function<bool(const T &)> subtre
 template<typename T>
 inline bool isEffectivelyLastSib(const T *nd, std::function<bool(const T &)> subtreeFilter) {
 	nd = nd->getNextSib();
-	if (nd != nullptr) {
+	while (nd != nullptr) {
 		if (subtreeFilter(*nd)) {
 			return false;
 		}
