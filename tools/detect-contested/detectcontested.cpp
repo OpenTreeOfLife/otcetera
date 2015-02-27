@@ -40,7 +40,7 @@ struct DetectContestedState {
 		return processExpandedTree(otCLI, *tree);
 	}
 
-	bool processExpandedTree(OTCLI &, Tree_t & tree) {
+	bool processExpandedTree(OTCLI &otCLI, Tree_t & tree) {
 		std::map<const Node_t *, std::set<long> > prunedDesId;
 		for (auto nd : ConstLeafIter<Tree_t>(tree)) {
 			auto ottId = nd->getOttId();
@@ -68,14 +68,16 @@ struct DetectContestedState {
 			}
 		}
 		auto numLeaves = tree.getRoot()->getData().desIds.size();
-		recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves);
+		recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves, otCLI.currentFilename);
 		return true;
 	}
 
 	void recordContested(const std::map<std::set<long>, std::list<const Node_t *> > & prunedDesId,
 						 const std::set<std::set<long> > & sourceClades,
 						 std::set<const Node_t *> & contestedSet,
-						 std::size_t numLeaves) {
+						 std::size_t numLeaves,
+						 const std::string &treeName) {
+		constexpr bool doShortcircuit = false;
 		for (const auto & pd : prunedDesId) {
 			// shortcircuite taxon nodes that are already marked as contested
 			const auto & ndlist = pd.second;
@@ -86,7 +88,7 @@ struct DetectContestedState {
 					break;
 				}
 			}
-			if (allContested) {
+			if (doShortcircuit && allContested) {
 				continue;
 			}
 			const auto & taxNodesDesSets = pd.first;
@@ -98,6 +100,7 @@ struct DetectContestedState {
 				if (!areCompatibleDesIdSets(taxNodesDesSets, sc)) {
 					for (auto nd : ndlist) {
 						contestedSet.insert(nd);
+						std::cerr << nd->getOttId() << " \"" << nd->getName() << "\" contested by \"" << treeName << "\"\n";
 					}
 					break;
 				}

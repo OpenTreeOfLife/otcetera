@@ -106,12 +106,10 @@ struct RemapToDeepestUnlistedState {
 			loopDegree[thr.getTotalNumLoops()] += 1;
 			totalNumNodes += 1;
 			if (thr.isContested()) {
-				otCLI.err << nd->getOttId() << " \"" << nd->getName() << "\" contested by";
 				auto c = thr.getContestingTrees();
 				for (auto ct : c) {
-					otCLI.err << " \"" << ct->getName() << "\"";
+					otCLI.err << nd->getOttId() << " \"" << nd->getName() << "\" contested by \"" << ct->getName() << "\"\n";
 				}
-				otCLI.err << "\n";
 				totalContested += 1;
 				if (nd->getOutDegree() == 1) {
 					redundContested += 1;
