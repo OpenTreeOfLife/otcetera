@@ -134,8 +134,8 @@ inline bool isSubset(const T & small, const T & big) {
 }
 
 // http://stackoverflow.com/posts/1964252/revisions
-template<class Set1, class Set2> 
-inline bool areDisjoint(const Set1 & set1, const Set2 & set2) {
+template<class Set1> 
+inline bool areDisjoint(const Set1 & set1, const Set1 & set2) {
 	if (set1.empty() || set2.empty()) {
 		return true;
 	}
@@ -240,7 +240,7 @@ inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
 
 template<typename T>
 inline bool haveIntersection(const T & first, const T & second) {
-	return !areDisjoint<T, T>(first, second);
+	return !areDisjoint<T>(first, second);
 }
 
 template<typename T>

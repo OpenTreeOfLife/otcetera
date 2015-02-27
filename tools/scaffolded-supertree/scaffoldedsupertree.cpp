@@ -222,13 +222,6 @@ struct RemapToDeepestUnlistedState {
 		otCLI.out << "# pathPairings = " << pathPairings.size() << '\n';
 		return true;
 	}
-
-
-	bool parseAndTabooOTTIdListFile(const std::string &fp) {
-		auto t = parseListOfOttIds(fp);
-		tabooIds.insert(begin(t), end(t));
-		return true;
-	}
 };
 
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
@@ -242,24 +235,13 @@ inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 	return ctsp->processSourceTree(otCLI, std::move(tree));
 }
 
-bool handleTabooOTTIdListFile(OTCLI & otCLI, const std::string &nextArg) {
-	RemapToDeepestUnlistedState * fusp = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
-	assert(fusp != nullptr);
-	assert(!nextArg.empty());
-	return fusp->parseAndTabooOTTIdListFile(nextArg);
-}
-
 int main(int argc, char *argv[]) {
-	OTCLI otCLI("otcdetectcontested",
-				"takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. Writes the OTT IDs of clades in the taxonomy whose monophyly is questioned by at least one input",
+	OTCLI otCLI("otcscaffoldedsupertree",
+				"takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. Crashes or emits bogus output.",
 				"taxonomy.tre inp1.tre inp2.tre");
 	RemapToDeepestUnlistedState fus;
 	otCLI.blob = static_cast<void *>(&fus);
 	otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
-	otCLI.addFlag('m',
-				  "ARG=a file containing a list of taboo OTT ids.",
-				  handleTabooOTTIdListFile,
-				  true);
 	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 2);
 	if (rc == 0) {
 		fus.summarize(otCLI);

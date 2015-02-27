@@ -86,6 +86,97 @@ class const_preorder_iterator : std::forward_iterator_tag {
 		}
 };
 
+
+/// visits ancestors before descendants
+/// if filterFn is supplied, then only the nodes associated with a true
+///		response will be returned (but the descendants of a "false" node
+///		will still be visited.
+template<typename T>
+class const_skipping_preorder_iterator : std::forward_iterator_tag {
+	private:
+		const NdFilterFn<T> subtreeFilterFn;
+		const T * curr;
+		bool movingDown;
+
+		void _advance_down() {
+			while (movingDown) {
+				if (curr->getNextSib()) {
+					curr = curr->getNextSib();
+					if (subtreeFilterFn == nullptr || subtreeFilterFn(*curr)) {
+						movingDown = false;
+					}
+				} else {
+					curr = curr->getParent();
+					if (curr == nullptr) {
+						return;
+					}
+				}
+			}
+		}
+		void _advance() {
+			assert(curr != nullptr);
+			if (movingDown) {
+				_advance_down();
+			} else {
+				_advance_up_or_over();
+			}
+		}
+		void _advance_up_or_over() {
+			if (curr->isTip()) {
+				if (curr->getNextSib() == nullptr) {
+					movingDown = true;
+					_advance_down();
+					return;
+				}
+				curr = curr->getNextSib();
+			} else {
+				curr = curr->getFirstChild();
+			}
+			if (subtreeFilterFn == nullptr || subtreeFilterFn(*curr)) {
+				return;
+			}
+			while (curr->getNextSib()) {
+				curr = curr->getNextSib();
+				if (subtreeFilterFn == nullptr || subtreeFilterFn(*curr)) {
+					return;
+				}
+			}
+			movingDown = true;
+			_advance_down();
+			return;
+		}
+	public:
+		const_skipping_preorder_iterator(const T *c)
+			:subtreeFilterFn{nullptr},
+			curr(c),
+			movingDown(false) {
+		}
+		const_skipping_preorder_iterator(const T *c, NdFilterFn<T> f)
+			:subtreeFilterFn{f},
+			curr(c),
+			movingDown(false) {
+			if (c != nullptr && subtreeFilterFn && !subtreeFilterFn(*curr)) {
+				curr = nullptr;
+			}
+		}
+		bool operator==(const const_skipping_preorder_iterator &other) const {
+			return this->curr == other.curr;
+		}
+		bool operator!=(const const_skipping_preorder_iterator &other) const {
+			return this->curr != other.curr;
+		}
+		const T * operator*() const {
+			return curr;
+		}
+		const_skipping_preorder_iterator & operator++() {
+			if (curr == nullptr) {
+				throw std::out_of_range("Incremented a dead const_skipping_preorder_iterator");
+			}
+			_advance();
+			return *this;
+		}
+};
+
 /// descendants before ancestors, but not guaranteed to be the reverse of const_preorder_iterator
 template<typename T>
 class const_child_iterator : std::forward_iterator_tag {
@@ -454,6 +545,25 @@ class ConstPreorderIterN {
 	}
 	private:
 		const T * nd;
+};
+
+// preorder constructed with a node
+template<typename T>
+class ConstSubtreeFilteringPreorderIterN {
+	public:
+	explicit ConstSubtreeFilteringPreorderIterN(const T * t, std::function<bool(const T &)> subtreeFilterFn)
+		:nd(t), 
+		f(subtreeFilterFn) {
+	}
+	const_skipping_preorder_iterator<T> begin() const {
+		return std::move(const_skipping_preorder_iterator<T>{nd, f});
+	}
+	const_skipping_preorder_iterator<T> end() const {
+		return const_skipping_preorder_iterator<T>{nullptr};
+	}
+	private:
+		const T * nd;
+		std::function<bool(const T &)> f;
 };
 
 

@@ -72,7 +72,7 @@ void fillDesIdSetsIncludingInternals(T & tree) {
 	}
 }
 
-// uses ottID->node mapping, but the split sets of the nodes
+// uses ottID->node mapping, but not the split sets of the nodes
 template<typename T>
 typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet, long trigger) {
 	typedef typename T::node_type NT_t;
@@ -424,6 +424,78 @@ inline void writeNewick(std::ostream & out, const T *nd) {
 	}
 }
 
+
+template<typename T>
+inline bool isEffectivelyATip(const T *nd, std::function<bool(const T &)> subtreeFilter) {
+	if (nd->isTip()) {
+		return true;
+	}
+	for (auto child : ConstChildIter<T>(*nd)) {
+		if (subtreeFilter(*child)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+
+template<typename T>
+inline bool isEffectivelyLastSib(const T *nd, std::function<bool(const T &)> subtreeFilter) {
+	nd = nd->getNextSib();
+	if (nd != nullptr) {
+		if (subtreeFilter(*nd)) {
+			return false;
+		}
+		nd = nd->getNextSib();
+	}
+	return true;
+}
+
+template<typename T>
+inline void writeClosingNewickFiltered(std::ostream & out, const T *nd, const T * r, std::function<bool(const T &)> subtreeFilter) {
+	assert(nd != nullptr);
+	out << ')';
+	auto n = nd->getParent();
+	writeNodeAsNewickLabel(out, n);
+	if (n == r) {
+		return;
+	}
+	while (isEffectivelyLastSib(n, subtreeFilter)) {
+		if (n == r) {
+			return;
+		}
+		out << ')';
+		n = n->getParent();
+		assert(n != nullptr);
+		writeNodeAsNewickLabel(out, n);
+	}
+	out << ',';
+}
+
+template<typename T>
+inline void writeNewickFiltered(std::ostream & out, const T *nd, std::function<bool(const T &)> subtreeFilter) {
+	assert(nd != nullptr);
+	if (nd->isTip()) {
+		if (!subtreeFilter(*nd)) {
+			return;
+		}
+		writeNodeAsNewickLabel(out, nd);
+	} else {
+		for (auto n : ConstSubtreeFilteringPreorderIterN<T>(nd, subtreeFilter)) {
+			if (isEffectivelyATip(n, subtreeFilter)) {
+				writeNodeAsNewickLabel(out, n);
+				if (isEffectivelyLastSib(n, subtreeFilter)) {
+					writeClosingNewickFiltered<T>(out, n, nd, subtreeFilter);
+				} else {
+					out << ',';
+				}
+			} else {
+				out << '(';
+			}
+		}
+	}
+}
+
 template<typename T>
 inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
 	writeNewick<typename T::node_type>(out, tree.getRoot());
@@ -444,6 +516,20 @@ inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
 	return nullptr;
 }
 
+
+template<typename T>
+inline const typename T::node_type * findMRCAUsingDesIds(const T & tree, const std::set<long> & idSet) {
+	if (idSet.empty()) {
+		assert(false);
+		return nullptr;
+	}
+	const long lowestID = *idSet.begin();
+	const typename T::node_type * aTip = tree.getData().getNodeForOttId(lowestID);
+	if (aTip == nullptr) {
+		return nullptr;
+	}
+	return searchAncForMRCAOfDesIds(aTip, idSet);
+}
 
 template<typename T>
 inline void eraseMappingsToNode(typename T::node_type * nd, T & tree) {
