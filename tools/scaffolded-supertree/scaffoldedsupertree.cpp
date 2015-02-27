@@ -65,6 +65,15 @@ struct AlignmentThreading {
 		}
 		return false;
 	}
+	std::list<Tree_t *> getContestingTrees() const {
+		std::list<Tree_t *> r;
+		for (auto i : edgeBelowAlignments) {
+			if (i.second.size() > 1) {
+				r.push_back(i.first);
+			}
+		}
+		return r;
+	}
 };
 
 struct RemapToDeepestUnlistedState {
@@ -97,6 +106,12 @@ struct RemapToDeepestUnlistedState {
 			loopDegree[thr.getTotalNumLoops()] += 1;
 			totalNumNodes += 1;
 			if (thr.isContested()) {
+				otCLI.err << nd->getOttId() << " \"" << nd->getName() << "\" contested by";
+				auto c = thr.getContestingTrees();
+				for (auto ct : c) {
+					otCLI.err << " \"" << ct->getName() << "\"";
+				}
+				otCLI.err << "\n";
 				totalContested += 1;
 				if (nd->getOutDegree() == 1) {
 					redundContested += 1;
@@ -152,12 +167,15 @@ struct RemapToDeepestUnlistedState {
 		}
 		return pathPairPtr;
 	}
-	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
+	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> treeup) {
+		assert(treeup != nullptr);
 		assert(taxonomy != nullptr);
-		assert(tree != nullptr);
+		inputTrees.emplace_back(std::move(treeup));
+		Tree_t & tree{**inputTrees.rbegin()};
+		tree.setName(otCLI.currentFilename);
 		std::map<Node_t *, NodePairing *> currTreeNodePairings;
 		std::set<NodePairing *> tipPairings;
-		for (auto nd : PostorderIter<Tree_t>(*tree)) {
+		for (auto nd : PostorderIter<Tree_t>(tree)) {
 			auto par = nd->getParent();
 			if (par == nullptr) {
 				continue;
@@ -170,7 +188,7 @@ struct RemapToDeepestUnlistedState {
 				auto ottId = nd->getOttId();
 				taxoDes = taxonomy->getData().getNodeForOttId(ottId);
 				assert(taxoDes != nullptr);
-				ndPairPtr = _addNodeMapping(taxoDes, nd, tree.get());
+				ndPairPtr = _addNodeMapping(taxoDes, nd, &tree);
 				for (auto former : tipPairings) {
 					if (areLinearlyRelated(taxoDes, former->scaffoldNode)) {
 						std::string m = "Repeated or nested OTT ID in tip mapping of an input tree: \"";
@@ -196,12 +214,12 @@ struct RemapToDeepestUnlistedState {
 				const auto & parDesIds = par->getData().desIds;
 				auto taxoAnc = searchAncForMRCAOfDesIds(taxoDes, parDesIds);
 				assert(taxoAnc != nullptr);
-				parPairPtr = _addNodeMapping(taxoAnc, par, tree.get());
+				parPairPtr = _addNodeMapping(taxoAnc, par, &tree);
 				currTreeNodePairings[par] = parPairPtr;
 			} else {
 				parPairPtr = prevAddedNodePairingIt->second;
 			}
-			_addPathMapping(parPairPtr, ndPairPtr, tree.get());
+			_addPathMapping(parPairPtr, ndPairPtr, &tree);
 		}
 		otCLI.out << "# pathPairings = " << pathPairings.size() << '\n';
 		return true;

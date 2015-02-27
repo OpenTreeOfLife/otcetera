@@ -285,7 +285,14 @@ class RootedTree {
 		std::set<node_type *> allNodes;
 		node_type * root;
 		U data;
+		std::string name;
 	public:
+		void setName(const std::string &n) {
+			name.assign(n);
+		}
+		const std::string & getName() const {
+			return name;
+		}
 		node_type * allocNewNode(node_type *p) {
 			node_type * nd = new node_type(p);
 			allNodes.insert(nd);
