@@ -20,14 +20,14 @@ struct NodePairing {
 struct PathPairing {
 	const Node_t * const phyloChild;
 	const Node_t * const phyloParent;
-	const Node_t * const scaffoldChild;
-	const Node_t * const scaffoldParent;
+	const Node_t * const scaffoldDes;
+	const Node_t * const scaffoldAnc;
 
 	PathPairing(const NodePairing & parent, const NodePairing & child)
 		:phyloChild(child.phyloNode),
 		phyloParent(parent.phyloNode),
-		scaffoldChild(child.scaffoldNode),
-		scaffoldParent(parent.scaffoldNode) {
+		scaffoldDes(child.scaffoldNode),
+		scaffoldAnc(parent.scaffoldNode) {
 	}
 };
 struct AlignmentThreading {
@@ -80,8 +80,8 @@ struct RemapToDeepestUnlistedState {
 		pathPairings.emplace_back(*parentPairing, *childPairing);
 		auto pathPairPtr = &(*pathPairings.rbegin());
 		// register a pointer to the path at each traversed...
-		auto currTaxo = pathPairPtr->scaffoldChild;
-		auto ancTaxo = pathPairPtr->scaffoldParent;
+		auto currTaxo = pathPairPtr->scaffoldDes;
+		auto ancTaxo = pathPairPtr->scaffoldAnc;
 		if (currTaxo != ancTaxo) {
 			while (currTaxo != ancTaxo) {
 				taxoToAlignment[currTaxo].edgeBelowAlignments[tree].insert(pathPairPtr);

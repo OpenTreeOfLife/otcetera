@@ -41,6 +41,17 @@ class RootedTreeNode {
 		node_type * getNextSib() {
 			return rSib;
 		}
+		// low-level
+		void _setLChild(node_type *s) {
+			lChild = s;
+		}
+		void _setNextSib(node_type *s) {
+			rSib = s;
+		}
+		void _setParent(node_type *s) {
+			parent = s;
+		}
+		//
 		const node_type * getLastChild() const {
 			if (lChild == nullptr)
 				return nullptr;
@@ -64,7 +75,24 @@ class RootedTreeNode {
 		node_type * getLastSib() {
 			return const_cast<node_type *>(const_cast<const node_type *>(this)->getLastSib());
 		}
-		
+		const node_type * getPrevSib() const {
+			if (this->getParent() == nullptr) {
+				return nullptr;
+			}
+			auto currNode = this->getParent()->getFirstChild();
+			if (currNode == this) {
+				return nullptr;
+			}
+			while (currNode->getNextSib() != this) {
+				currNode = currNode->getNextSib();
+				assert(currNode != nullptr);
+			}
+			return currNode;
+		}
+		node_type * getPrevSib() {
+			return const_cast<node_type *>(const_cast<const node_type *>(this)->getPrevSib());
+		}
+
 		std::vector<const node_type *> getChildren() const {
 			std::vector<const node_type *> children;
 			auto * currNode = getFirstChild();

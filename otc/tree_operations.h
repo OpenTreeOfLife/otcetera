@@ -443,6 +443,122 @@ inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
 	}
 	return nullptr;
 }
+
+
+template<typename T>
+inline void eraseMappingsToNode(typename T::node_type * nd, T & tree) {
+	if (nd->hasOttId()) {
+		tree.getData().ottIdToNode.erase(nd->getOttId());
+	}
+}
+template<typename T>
+inline void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename T::node_type * alias, T & tree) {
+	if (nd->hasOttId()) {
+		tree.getData().ottIdToNode[nd->getOttId()] = alias;
+	}
+}
+
+// detaches child from the tree (and lets it dangle)
+// assigns its children to nd (which should be the parent of child)
+// note in the only usage: nd is monotypic, but child is NOT.
+// this suppresses monotypy by getting rid of child in case nd has a
+//	taxonomic assignment that we want to preserve in the desIds
+template<typename T>
+inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
+													typename T::node_type * child,
+													T & tree) {
+	assert(nd);
+	assert(child);
+	assert(child->getParent() == nd);
+	auto entryChild = child->getPrevSib();
+	auto exitChild = child->getNextSib();
+	typename T::node_type * f = child->getFirstChild();
+	typename T::node_type * c = nullptr;
+	auto citf = ChildIter<typename T::node_type>(*child);
+	const auto cite = citf.end();
+	for (auto cit = citf.begin(); cit != cite; ++cit) {
+		c = *cit;
+		c->_setParent(nd);
+	}
+	if (entryChild != nullptr) {
+		assert(entryChild->getNextSib() == child);
+		if (f == nullptr) {
+			entryChild->_setNextSib(exitChild);
+		} else {
+			entryChild->_setNextSib(f);
+			assert(c != nullptr);
+			c->_setNextSib(exitChild);
+		}
+	} else {
+		if (f != nullptr) {
+			nd->_setLChild(f);
+			assert(c != nullptr);
+			c->_setNextSib(exitChild);
+		} else {
+			nd->_setLChild(exitChild);
+		}
+	}
+	if (entryChild != nullptr || exitChild != nullptr) {
+		// nd has a different set of descendants than child.
+		//	nd was not actually monotypic
+		assert(false);
+		eraseMappingsToNode<T>(child, tree);
+	} else {
+		replaceMappingsToNodeWithAlias<T>(child, nd, tree);
+	}
+}
+
+// in some context we need to preserve the deepest because the desIds may need 
+// the internal nodes IDs (even if the IDs correspond to monotypic taxa)
+// returns set of nodes deleted. Their getParent() calls will tell the caller
+//	their former parent (before culling). But note that you may have to 
+//	call it muliple times to find the first ancestor that has not been deleted.
+template<typename T>
+inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDangle(T & tree) {
+	std::set<typename T::node_type *> monotypic;
+	for (auto nd : InternalNodeIter<T>(tree)) {
+		if (nd->isOutDegreeOneNode()) {
+			monotypic.insert(nd);
+		}
+	}
+	std::set<typename T::node_type *> removed;
+	auto toProcess = monotypic;
+	while (!toProcess.empty()) {
+		for (auto toPIt = toProcess.begin(); toPIt != toProcess.end();) {
+			auto tpn = *toPIt;
+			auto child = tpn->getFirstChild();
+			if (!contains(toProcess, child)) {
+				suppressMonotypyByStealingGrandchildren<T>(tpn, child, tree);
+				toProcess.erase(toPIt++);
+				removed.insert(child);
+			} else {
+				++toPIt;
+			}
+		}
+	}
+	return removed;
+}
+
+
+template<typename T>
+inline bool isAncDecPair(const T * nd1, const T *nd2) {
+	if (nd1 == nd2) {
+		return false;
+	}
+	for (auto a : ConstAncIter<T>(nd2)) {
+		if (a == nd1) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// returns true if the nodes are identical or one is an ancestor of the other...
+template<typename T>
+inline bool areLinearlyRelated(const T * nd1, const T *nd2) {
+	return nd1 == nd2 || isAncDecPair(nd1, nd2) || isAncDecPair(nd2, nd1);
+}
+
 } // namespace otc
 #endif
 

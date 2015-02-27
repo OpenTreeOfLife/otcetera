@@ -68,10 +68,10 @@ class const_preorder_iterator : std::forward_iterator_tag {
 				_advance();
 			}
 		}
-		bool operator==(const const_preorder_iterator &other) {
+		bool operator==(const const_preorder_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(const const_preorder_iterator &other) {
+		bool operator!=(const const_preorder_iterator &other) const {
 			return this->curr != other.curr;
 		}
 		const T * operator*() const {
@@ -115,10 +115,10 @@ class const_child_iterator : std::forward_iterator_tag {
 				_advance();
 			}
 		}
-		bool operator==(const_child_iterator &other) {
+		bool operator==(const const_child_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(const_child_iterator &other) {
+		bool operator!=(const const_child_iterator &other) const {
 			return this->curr != other.curr;
 		}
 		const T * operator*() const {
@@ -161,10 +161,10 @@ class child_iterator : std::forward_iterator_tag {
 				_advance();
 			}
 		}
-		bool operator==(child_iterator &other) {
+		bool operator==(const child_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(child_iterator &other) {
+		bool operator!=(const child_iterator &other) const {
 			return this->curr != other.curr;
 		}
 		T * operator*() const {
@@ -224,10 +224,10 @@ class const_postorder_iterator : std::forward_iterator_tag {
 				_advance();
 			}
 		}
-		bool operator==(const const_postorder_iterator &other) {
+		bool operator==(const const_postorder_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(const const_postorder_iterator &other) {
+		bool operator!=(const const_postorder_iterator &other) const {
 			return this->curr != other.curr;
 		}
 		const T * operator*() const {
@@ -287,10 +287,10 @@ class postorder_iterator : std::forward_iterator_tag {
 				_advance();
 			}
 		}
-		bool operator==(const postorder_iterator &other) {
+		bool operator==(const postorder_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(const postorder_iterator &other) {
+		bool operator!=(const postorder_iterator &other) const {
 			return this->curr != other.curr;
 		}
 		T * operator*() const {
@@ -308,34 +308,23 @@ class postorder_iterator : std::forward_iterator_tag {
 template<typename T>
 class anc_iterator : std::forward_iterator_tag {
 	private:
-		const NdFilterFn<T> filterFn;
 		T * curr;
 		
 		void _advance() {
 			assert(curr != nullptr);
-			do {
-				curr = curr->getParent();
-			} while(curr != nullptr && filterFn != nullptr && !filterFn(curr));
+			curr = curr->getParent();
 		}
 	public:
 		anc_iterator(T *c)
-			:filterFn{nullptr},
-			curr(c) {
+			:curr(c) {
 			if (curr != nullptr) {
 				_advance();
 			}
 		}
-		anc_iterator(T *c, NdFilterFn<T> f)
-			:filterFn{f},
-			curr(c) {
-			if (curr != nullptr) {
-				_advance();
-			}
-		}
-		bool operator==(const anc_iterator &other) {
+		bool operator==(const anc_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(const anc_iterator &other) {
+		bool operator!=(const anc_iterator &other) const {
 			return this->curr != other.curr;
 		}
 		T * operator*() const {
@@ -344,6 +333,40 @@ class anc_iterator : std::forward_iterator_tag {
 		anc_iterator & operator++() {
 			if (curr == nullptr) {
 				throw std::out_of_range("Incremented a dead anc_iterator");
+			}
+			_advance();
+			return *this;
+		}
+};
+
+template<typename T>
+class const_anc_iterator : std::forward_iterator_tag {
+	private:
+		const T * curr;
+		
+		void _advance() {
+			assert(curr != nullptr);
+			curr = curr->getParent();
+		}
+	public:
+		const_anc_iterator(const T *c)
+			:curr(c) {
+			if (curr != nullptr) {
+				_advance();
+			}
+		}
+		bool operator==(const const_anc_iterator &other) const {
+			return this->curr == other.curr;
+		}
+		bool operator!=(const const_anc_iterator &other) const {
+			return this->curr != other.curr;
+		}
+		const T * operator*() const {
+			return curr;
+		}
+		const_anc_iterator & operator++() {
+			if (curr == nullptr) {
+				throw std::out_of_range("Incremented a dead const_anc_iterator");
 			}
 			_advance();
 			return *this;
@@ -482,6 +505,22 @@ class AncIter {
 	}
 	private:
 		T * des;
+};
+
+template<typename T>
+class ConstAncIter {
+	public:
+	explicit ConstAncIter(const T * n)
+		:des(n){
+	}
+	const_anc_iterator<T> begin() const {
+		return std::move(const_anc_iterator<T>{des});
+	}
+	const_anc_iterator<T> end() const {
+		return const_anc_iterator<T>{nullptr};
+	}
+	private:
+		const T * des;
 };
 
 // des before anc

@@ -36,13 +36,41 @@ struct AlignmentThreading {
 	std::map<Tree_t *, std::set<NodePairing *> > nodeAlignments;
 	std::map<Tree_t *, std::set<PathPairing *> > edgeBelowAlignments;
 	std::map<Tree_t *, std::set<PathPairing *> > loopAlignments;
+	unsigned long getTotalNumNodeMappings() const {
+		unsigned long t = 0U;
+		for (auto i : nodeAlignments) {
+			t += i.second.size();
+		}
+		return t;
+	}
+	unsigned long getTotalNumLoops() const {
+		unsigned long t = 0U;
+		for (auto i : loopAlignments) {
+			t += i.second.size();
+		}
+		return t;
+	}
+	unsigned long getTotalNumEdgeBelowTraversals() const {
+		unsigned long t = 0U;
+		for (auto i : edgeBelowAlignments) {
+			t += i.second.size();
+		}
+		return t;
+	}
+	bool isContested() const {
+		for (auto i : edgeBelowAlignments) {
+			if (i.second.size() > 1) {
+				return true;
+			}
+		}
+		return false;
+	}
 };
 
 struct RemapToDeepestUnlistedState {
 	std::unique_ptr<Tree_t> taxonomy;
 	int numErrors;
 	std::set<long> ottIds;
-	std::set<const Node_t *> contestedNodes;
 	std::set<long> tabooIds;
 	std::list<std::unique_ptr<Tree_t> > inputTrees;
 	std::list<NodePairing> nodePairings;
@@ -56,13 +84,38 @@ struct RemapToDeepestUnlistedState {
 
 	void summarize(const OTCLI &otCLI) {
 		assert (taxonomy != nullptr);
-		for (auto nd : contestedNodes) {
-			otCLI.out << nd->getName() << '\n';
+		std::map<std::size_t, unsigned long> nodeMappingDegree;
+		std::map<std::size_t, unsigned long> passThroughDegree;
+		std::map<std::size_t, unsigned long> loopDegree;
+		unsigned long totalContested = 0;
+		unsigned long redundContested = 0;
+		unsigned long totalNumNodes = 0;
+		for (auto nd : InternalNodeIter<Tree_t>(*taxonomy)) {
+			const auto & thr = taxoToAlignment[nd];
+			nodeMappingDegree[thr.getTotalNumNodeMappings()] += 1;
+			passThroughDegree[thr.getTotalNumEdgeBelowTraversals()] += 1;
+			loopDegree[thr.getTotalNumLoops()] += 1;
+			totalNumNodes += 1;
+			if (thr.isContested()) {
+				totalContested += 1;
+				if (nd->getOutDegree() == 1) {
+					redundContested += 1;
+				}
+			}
 		}
+		unsigned long m = std::max(loopDegree.rbegin()->first, passThroughDegree.rbegin()->first);
+		m = std::max(m, nodeMappingDegree.rbegin()->first);
+		otCLI.out << "Degree\tNodeMaps\tEdgeMaps\tLoops\n";
+		for (unsigned long i = 0 ; i <= m; ++i) {
+			otCLI.out << i << '\t' << nodeMappingDegree[i]<< '\t' << passThroughDegree[i] << '\t' << loopDegree[i]<< '\n';
+		}
+		otCLI.out << totalNumNodes << " internals\n" << totalContested << " contested\n" << (totalNumNodes - totalContested) << " uncontested\n";
+		otCLI.out << redundContested << " monotypic contested\n";
 	}
 
 	bool processTaxonomyTree(OTCLI & otCLI) {
-		ottIds = keys(taxonomy->getData().ottIdToNode);
+		ottIds = taxonomy->getRoot()->getData().desIds;
+		suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
 		for (auto nd : NodeIter<Tree_t>(*taxonomy)) {
 			taxoToAlignment.emplace(nd, AlignmentThreading{});
 		}
@@ -103,6 +156,7 @@ struct RemapToDeepestUnlistedState {
 		assert(taxonomy != nullptr);
 		assert(tree != nullptr);
 		std::map<Node_t *, NodePairing *> currTreeNodePairings;
+		std::set<NodePairing *> tipPairings;
 		for (auto nd : PostorderIter<Tree_t>(*tree)) {
 			auto par = nd->getParent();
 			if (par == nullptr) {
@@ -117,6 +171,17 @@ struct RemapToDeepestUnlistedState {
 				taxoDes = taxonomy->getData().getNodeForOttId(ottId);
 				assert(taxoDes != nullptr);
 				ndPairPtr = _addNodeMapping(taxoDes, nd, tree.get());
+				for (auto former : tipPairings) {
+					if (areLinearlyRelated(taxoDes, former->scaffoldNode)) {
+						std::string m = "Repeated or nested OTT ID in tip mapping of an input tree: \"";
+						m += nd->getName();
+						m += "\" and \"";
+						m += former->phyloNode->getName();
+						m += "\" found.";
+						throw OTCError(m);
+					}
+				}
+				tipPairings.insert(ndPairPtr);
 				currTreeNodePairings[nd] = ndPairPtr;
 			} else {
 				auto reuseNodePairingIt = currTreeNodePairings.find(nd);
