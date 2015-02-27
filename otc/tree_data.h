@@ -14,6 +14,7 @@ class RTreeOttIDMapping {
 	public:
 		typedef RootedTreeNode<T> NodeType;
 		std::map<long, NodeType *> ottIdToNode;
+		bool desIdSetsContainInternals;
 		NodeType * getNodeForOttId(long ottId) const {
 			const auto it = ottIdToNode.find(ottId);
 			return (it == ottIdToNode.end() ? nullptr : it->second);

@@ -3,7 +3,10 @@ AM_CPPFLAGS = -I@top_srcdir@/otc
 bin_PROGRAMS = otccountleaves \
 				otcdegreedistribution \
 				otcinducedsubtree \
-				otcpolytomycount 
+				otcmissingsplits \
+				otcpolytomycount \
+				otcrf
+
 otcpolytomycount_SOURCES = polytomycount.cpp
 otcpolytomycount_CPPFLAGS = $(AM_CPPFLAGS)
 
@@ -15,3 +18,9 @@ otccountleaves_CPPFLAGS = $(AM_CPPFLAGS)
 
 otcinducedsubtree_SOURCES = inducedsubtree.cpp
 otcinducedsubtree_CPPFLAGS = $(AM_CPPFLAGS)
+
+otcrf_SOURCES = rf.cpp
+otcrf_CPPFLAGS = $(AM_CPPFLAGS)
+
+otcmissingsplits_SOURCES = missingsplits.cpp
+otcmissingsplits_CPPFLAGS = $(AM_CPPFLAGS)

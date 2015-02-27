@@ -40,6 +40,7 @@ unsigned int countPolytomies(const T & tree) {
 template<typename T>
 void fillDesIdSets(T & tree) {
 	// assumes OttId is set for each tip
+	tree.getData().desIdSetsContainInternals = false;
 	for (auto node : PostorderIter<T>(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
 		if (node->isTip()) {
@@ -56,6 +57,7 @@ void fillDesIdSets(T & tree) {
 template<typename T>
 void fillDesIdSetsIncludingInternals(T & tree) {
 	// assumes OttId is set for each tip
+	tree.getData().desIdSetsContainInternals = true;
 	for (auto node : PostorderIter<T>(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
 		if (node->isTip()) {
@@ -643,6 +645,81 @@ inline bool isAncDecPair(const T * nd1, const T *nd2) {
 template<typename T>
 inline bool areLinearlyRelated(const T * nd1, const T *nd2) {
 	return nd1 == nd2 || isAncDecPair(nd1, nd2) || isAncDecPair(nd2, nd1);
+}
+
+template<typename T>
+inline std::set<long> getOttIdSetForLeaves(const T &tree) {
+	if (!tree.getData().desIdSetsContainInternals) {
+		return tree.getRoot()->getData().desIds;
+	}
+	std::set<long> inducingLabels;
+	for (auto nd : ConstLeafIter<T>(tree)) {
+		inducingLabels.insert(nd->getOttId());
+	}
+	return inducingLabels;
+}
+
+template<typename T, typename U>
+void inducedCladeSets(const T & tree1,
+					  const U & tree2,
+					  std::set<std::set<long> > & inducedSplits,
+					  std::set<std::set<long> > & tree2Splits,
+					  bool firstIsSuperset) {
+	assert(firstIsSuperset);
+	const auto inducingLabels = getOttIdSetForLeaves(tree2);
+	auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
+	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
+		return haveIntersection(inducingLabels, nd.getData().desIds);
+	};
+	for (auto n : ConstSubtreeFilteringPreorderIterN<typename T::node_type>(mrca, sf)) {
+		if (n == mrca) {
+			continue;
+		}
+		auto inducedDesIds = n->getData().desIds;
+		const auto x = intersectionOfSets(inducingLabels, inducedDesIds);
+		if (x.size() > 1) {
+			inducedSplits.insert(std::move(x));
+		}
+	}
+	if (firstIsSuperset) {
+			auto t2r = tree2.getRoot();
+			for (auto n : ConstPreorderInternalIter<T>(tree2)) {
+				if (n == t2r) {
+					continue;
+				}
+				const std::set<long> & x = n->getData().desIds;
+				if (x.size() > 2) {
+					tree2Splits.insert(x);
+				}
+			}
+		}
+	else {
+		throw OTCError("Why on earth did you compile without asserts?");
+	}
+}
+
+template<typename T, typename U>
+unsigned long inducedRFDist(const T & tree1, const U & tree2, bool firstIsSuperset) {
+	std::set<std::set<long> > inducedSplits;
+	std::set<std::set<long> > tree2Splits;
+	inducedCladeSets(tree1, tree2, inducedSplits, tree2Splits, firstIsSuperset);
+	return sizeOfSymmetricDifference(tree2Splits, inducedSplits);
+}
+
+template<typename T, typename U>
+unsigned long numInducedSplitsMissingInSecond(const T & tree1,
+											  const U & tree2,
+											  bool firstIsSuperset) {
+	std::set<std::set<long> > inducedSplits;
+	std::set<std::set<long> > tree2Splits;
+	inducedCladeSets(tree1, tree2, inducedSplits, tree2Splits, firstIsSuperset);
+	unsigned long nm = 0;
+	for (auto ics : inducedSplits) {
+		if (!contains(tree2Splits, ics)) {
+			nm += 1;
+		}
+	}
+	return nm;
 }
 
 } // namespace otc

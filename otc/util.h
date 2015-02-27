@@ -348,5 +348,24 @@ inline void writeEscapedForNewick(std::ostream & out, const std::string & n) {
 	}
 }
 
+
+template<typename T>
+inline T intersectionOfSets(const T & first, const T &sec) {
+	T intersection;
+	std::set_intersection(first.begin(), first.end(),
+						  sec.begin(), sec.end(),
+						  std::inserter(intersection, intersection.begin()));
+	return intersection;
+}
+template<typename T>
+inline std::size_t sizeOfSymmetricDifference(const T & first, const T &sec) {
+	T diff;
+	std::set_symmetric_difference(first.begin(), first.end(),
+								  sec.begin(), sec.end(),
+								  std::inserter(diff, diff.begin()));
+	return diff.size();
+}
+
+
 } //namespace otc
 #endif

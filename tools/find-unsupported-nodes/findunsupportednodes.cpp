@@ -49,7 +49,7 @@ struct FindUnsupportedState {
 
 	int describeUnnamedUnsupported(std::ostream &out, const Tree_t & tree,
 								   const std::set<const Node_t *> & supported) const {
-		auto ig = ConstPreorderInternalNode<Tree_t>(tree);
+		auto ig = ConstPreorderInternalIter<Tree_t>(tree);
 		auto nIt = ig.begin();
 		const auto eIt = ig.end();
 		int numUnsupported = 0;

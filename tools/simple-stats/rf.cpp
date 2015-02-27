@@ -8,24 +8,12 @@ typedef otc::RootedTreeNode<RTSplits> Node_t;
 typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 
-struct InducedSubtreeState {
+struct RFState {
 	std::unique_ptr<Tree_t> fulltree;
 	std::set<long> ottIds;
-	std::set<long> inducingLabels;
-	
-	InducedSubtreeState()
+	RFState()
 		:fulltree(nullptr) {
 	}
-
-	void summarize(const OTCLI &otCLI) {
-		auto mrca = findMRCAUsingDesIds(*fulltree, inducingLabels);
-		std::function<bool(const Node_t &)> sf = [this](const Node_t &nd){
-			return haveIntersection(this->inducingLabels, nd.getData().desIds);
-		};
-		writeNewickFiltered(otCLI.out, mrca, sf);
-		otCLI.out << ";\n";
-	}
-
 	bool processTaxonomyTree(OTCLI & otCLI) {
 		ottIds = fulltree->getRoot()->getData().desIds;
 		otCLI.getParsingRules().ottIdValidator = &ottIds;
@@ -36,14 +24,13 @@ struct InducedSubtreeState {
 	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 		assert(tree != nullptr);
 		assert(fulltree != nullptr);
-		auto ls = getOttIdSetForLeaves(*tree);
-		inducingLabels.insert(ls.begin(), ls.end());
+		otCLI.out << inducedRFDist(*fulltree, *tree, true) << '\n';
 		return true;
 	}
 };
 
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
-	InducedSubtreeState * ctsp = static_cast<InducedSubtreeState *>(otCLI.blob);
+	RFState * ctsp = static_cast<RFState *>(otCLI.blob);
 	assert(ctsp != nullptr);
 	assert(tree != nullptr);
 	if (ctsp->fulltree == nullptr) {
@@ -57,13 +44,9 @@ int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcinducedsubtree",
 				"takes at least 2 newick file paths: a full tree, and some number of input trees. Writes the topology of the first tree if it is pruned down to the leafset of the inputs (without removing internal nodes)",
 				"taxonomy.tre inp1.tre inp2.tre");
-	InducedSubtreeState fus;
+	RFState fus;
 	otCLI.blob = static_cast<void *>(&fus);
 	otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
 	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 2);
-	if (rc == 0) {
-		fus.summarize(otCLI);
-		return 0;
-	}
 	return rc;
 }
