@@ -660,7 +660,7 @@ inline std::set<long> getOttIdSetForLeaves(const T &tree) {
 }
 
 template<typename T, typename U>
-void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > & inducedSplits, const T & tree2) {
+void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > & inducedSplits, const U & tree2) {
 	const auto inducingLabels = getOttIdSetForLeaves(tree2);
 	auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
 	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
@@ -680,8 +680,8 @@ void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > &
 
 template<typename T, typename U>
 void getInducedInformativeGroupingMaps(const T & tree1,
-									   std::map<std::set<long>, std::list<typename T::node_type *> > & inducedSplitMaps,
-									   const T & tree2) {
+									   std::map<std::set<long>, std::list<const typename T::node_type *> > & inducedSplitMaps,
+									   const U & tree2) {
 	const auto inducingLabels = getOttIdSetForLeaves(tree2);
 	auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
 	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
@@ -760,12 +760,13 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 									   const U & tree2,
 									   bool firstIsSuperset) {
 	assert(firstIsSuperset);
-	std::map<std::set<long>, std::list<typename T::node_type *> > inducedSplits;
+	std::map<std::set<long>, std::list<const typename T::node_type *> > inducedSplitMap;
 	std::set<std::set<long> > tree2Splits;
-	getInducedInformativeGroupings(tree1, inducedSplits, tree2);
+	getInducedInformativeGroupingMaps(tree1, inducedSplitMap, tree2);
 	getInformativeGroupings(tree2, tree2Splits);
 	unsigned long nm = 0;
-	for (const auto & ics : inducedSplits) {
+	for (const auto & icsm : inducedSplitMap) {
+		const auto & ics = icsm.first;
 		bool found = false;
 		bool compatHeader = false;
 		std::list<std::set<long> > extraIds;
@@ -774,9 +775,9 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 			if (t2s == ics) {
 				found = true;
 			} else {
-				if (!areCompatibleDesIdSets(t2s, ics->first)) {
-					std::set<long> e = set_difference_as_set(t2s, ics->first);
-					std::set<long> m = set_difference_as_set(ics->first, t2s);
+				if (!areCompatibleDesIdSets(t2s, ics)) {
+					std::set<long> e = set_difference_as_set(t2s, ics);
+					std::set<long> m = set_difference_as_set(ics, t2s);
 					assert(!e.empty() || !m.empty());
 					extraIds.push_back(e);
 					missingIds.push_back(m);
@@ -784,14 +785,12 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 			}
 		}
 		if (!extraIds.empty() || !missingIds.empty()) {
-			
-		}
-		auto taxonNode = ics->second;
-		if (!compatHeader) {
-			out << 
-		}
-		if (!contains(tree2Splits, ics)) {
-			nm += 1;
+		for (auto taxonNode : icsm.second) {
+				if (!compatHeader) {
+					out << "NOT FINISHED\n";
+				}
+				nm += 1;
+			}
 		}
 	}
 	return nm;
