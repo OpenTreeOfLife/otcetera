@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
 	OTCLI otCLI("otccountleaves",
 				 "takes a filepath to a newick file and reports the number of leaves",
 				 {"some.tre"});
-	return treeProcessingMain<Tree_t>(otCLI, argc, argv, writeNumLeaves, nullptr, 1);
+	std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnl = writeNumLeaves<Tree_t>;
+	return treeProcessingMain<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
 }
 

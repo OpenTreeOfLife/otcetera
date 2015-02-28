@@ -8,62 +8,98 @@ typedef otc::RootedTreeNode<RTSplits> Node_t;
 typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 
-struct InducedSubtreeState {
-	std::unique_ptr<Tree_t> fulltree;
-	std::set<long> ottIds;
-	std::set<long> inducingLabels;
-	
-	InducedSubtreeState()
-		:fulltree(nullptr) {
-	}
+template<typename T>
+class TaxonomyDependentTreeProcessor {
+	public:
+		using node_type = typename T::node_type;
+		using node_data_type = typename T::node_type::data_type;
+		using tree_data_type = typename T::data_type;
+		using tree_type = T;
 
-	void summarize(const OTCLI &otCLI) {
-		auto mrca = findMRCAUsingDesIds(*fulltree, inducingLabels);
+		std::unique_ptr<Tree_t> taxonomy;
+		std::set<long> ottIds;
+
+		virtual bool processTaxonomyTree(OTCLI & otCLI) {
+			ottIds = taxonomy->getRoot()->getData().desIds;
+			otCLI.getParsingRules().ottIdValidator = &ottIds;
+			otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+			return true;
+		}
+		virtual bool processSourceTree(OTCLI & , std::unique_ptr<Tree_t> tree) {
+			assert(tree != nullptr);
+			assert(taxonomy != nullptr);
+			return true;
+		}
+		virtual bool summarize(const OTCLI &) {
+			return true;
+		}
+		TaxonomyDependentTreeProcessor()
+			:taxonomy(nullptr) {
+		}
+		virtual ~TaxonomyDependentTreeProcessor(){}
+	
+};
+
+struct InducedSubtreeState : public TaxonomyDependentTreeProcessor<Tree_t> {
+	std::set<long> inducingLabels;
+	virtual ~InducedSubtreeState(){}
+
+	virtual bool summarize(const OTCLI &otCLI) override {
+		auto mrca = findMRCAUsingDesIds(*taxonomy, inducingLabels);
 		std::function<bool(const Node_t &)> sf = [this](const Node_t &nd){
 			return haveIntersection(this->inducingLabels, nd.getData().desIds);
 		};
 		writeNewickFiltered(otCLI.out, mrca, sf);
 		otCLI.out << ";\n";
-	}
-
-	bool processTaxonomyTree(OTCLI & otCLI) {
-		ottIds = fulltree->getRoot()->getData().desIds;
-		otCLI.getParsingRules().ottIdValidator = &ottIds;
-		otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
 		return true;
 	}
 
-	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
+	virtual bool processSourceTree(OTCLI &,
+								   std::unique_ptr<Tree_t> tree) override {
 		assert(tree != nullptr);
-		assert(fulltree != nullptr);
+		assert(taxonomy != nullptr);
 		auto ls = getOttIdSetForLeaves(*tree);
 		inducingLabels.insert(ls.begin(), ls.end());
 		return true;
 	}
 };
 
-inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
-	InducedSubtreeState * ctsp = static_cast<InducedSubtreeState *>(otCLI.blob);
-	assert(ctsp != nullptr);
+template<typename T>
+inline bool taxDependentProcessNextTree(OTCLI & otCLI, std::unique_ptr<T> tree) {
+	TaxonomyDependentTreeProcessor<T> * tdtp = static_cast<TaxonomyDependentTreeProcessor<T> *>(otCLI.blob);
+	assert(tdtp != nullptr);
 	assert(tree != nullptr);
-	if (ctsp->fulltree == nullptr) {
-		ctsp->fulltree = std::move(tree);
-		return ctsp->processTaxonomyTree(otCLI);
+	if (tdtp->taxonomy == nullptr) {
+		tdtp->taxonomy = std::move(tree);
+		return tdtp->processTaxonomyTree(otCLI);
 	}
-	return ctsp->processSourceTree(otCLI, std::move(tree));
+	return tdtp->processSourceTree(otCLI, std::move(tree));
+}
+
+template<typename T>
+int taxDependentTreeProcessingMain(OTCLI & otCLI,
+								   int argc,
+								   char *argv[],
+								   TaxonomyDependentTreeProcessor<T> & proc,
+								   unsigned int numTrees,
+								   bool includeInternalNodesInDesIdSets) {
+	assert(otCLI.blob == nullptr);
+	otCLI.blob = static_cast<void *>(&proc);
+	otCLI.getParsingRules().includeInternalNodesInDesIdSets = includeInternalNodesInDesIdSets;
+	std::function<bool (OTCLI &, std::unique_ptr<T>)> pcb = taxDependentProcessNextTree<T>;
+	auto rc = treeProcessingMain<T>(otCLI, argc, argv, pcb, nullptr, numTrees);
+	if (rc == 0) {
+		return (proc.summarize(otCLI) ? 0 : 1);
+	}
+	return rc;
 }
 
 int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcinducedsubtree",
 				"takes at least 2 newick file paths: a full tree, and some number of input trees. Writes the topology of the first tree if it is pruned down to the leafset of the inputs (without removing internal nodes)",
 				"taxonomy.tre inp1.tre inp2.tre");
-	InducedSubtreeState fus;
-	otCLI.blob = static_cast<void *>(&fus);
-	otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
-	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 2);
-	if (rc == 0) {
-		fus.summarize(otCLI);
-		return 0;
-	}
-	return rc;
+	InducedSubtreeState proc;
+	return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
+
+

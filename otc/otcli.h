@@ -71,14 +71,15 @@ template<typename T>
 int treeProcessingMain(OTCLI & otCLI,
 						  int argc,
 						  char * argv[],
-						  bool (*treePtr)(OTCLI &, std::unique_ptr<T>),
-						  int (*summarizePtr)(OTCLI &));
+						  std::function<bool (OTCLI &, std::unique_ptr<T>)> treePtr,
+						  int (*summarizePtr)(OTCLI &),
+						  unsigned minNumTrees);
 
 template<typename T>
 inline int treeProcessingMain(OTCLI & otCLI,
 								 int argc,
 								 char * argv[],
-								 bool (*treePtr)(OTCLI &, std::unique_ptr<T>),
+								 std::function<bool (OTCLI &, std::unique_ptr<T>)> treePtr,
 								 int (*summarizePtr)(OTCLI &),
 								 unsigned minNumTrees) {
 	std::vector<std::string> filenameVec;

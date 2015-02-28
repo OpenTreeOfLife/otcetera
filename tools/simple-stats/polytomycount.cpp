@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcpolytomycount",
 				 "takes a filepath to a newick file and reports the number of polytomies in each tree (one line per tree)",
 				 {"some.tre"});
-	return treeProcessingMain<Tree_t>(otCLI, argc, argv, writeNumPolytomies, nullptr, 1);
+	std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnp = writeNumPolytomies<Tree_t>;
+	return treeProcessingMain<Tree_t>(otCLI, argc, argv, wnp, nullptr, 1);
 }
 
