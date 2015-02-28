@@ -74,7 +74,7 @@ struct CheckTaxonState {
 		}
 		if (toCheckOttIds != taxOttIds) {
 			writeOttSetDiff(otCLI.out, "", toCheckOttIds, "toCheck", taxOttIds, "taxonomy");
-			const auto omitted = set_difference_as_set(taxOttIds, toCheckOttIds);
+			const auto omitted = set_sym_difference_as_set(taxOttIds, toCheckOttIds);
 			otCLI.err << "OTT Ids found in the taxonomy but not the tree toCheck:\n";
 			writeOttSet(otCLI.err, "  ", omitted, "\n");
 			for (const auto & oid: omitted) {

@@ -5,6 +5,7 @@ bin_PROGRAMS = otccountleaves \
 				otcinducedsubtree \
 				otcmissingsplits \
 				otcpolytomycount \
+				otctaxonconflictreport \
 				otcrf
 
 otcpolytomycount_SOURCES = polytomycount.cpp
@@ -24,3 +25,6 @@ otcrf_CPPFLAGS = $(AM_CPPFLAGS)
 
 otcmissingsplits_SOURCES = missingsplits.cpp
 otcmissingsplits_CPPFLAGS = $(AM_CPPFLAGS)
+
+otctaxonconflictreport_SOURCES = taxonconflictreport.cpp
+otctaxonconflictreport_CPPFLAGS = $(AM_CPPFLAGS)

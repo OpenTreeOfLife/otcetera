@@ -123,7 +123,7 @@ template<typename T>
 std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T & taxonomy) {
 	const auto & taxOttIds = taxonomy.getRoot()->getData().desIds;
 	const auto & toCheckOttIds = toCheck.getRoot()->getData().desIds;
-	const auto extras = set_difference_as_set(toCheckOttIds, taxOttIds);
+	const auto extras = set_sym_difference_as_set(toCheckOttIds, taxOttIds);
 	if (!extras.empty()) {
 		err << "OTT Ids found in an input tree,  but not in the taxonomy:\n";
 		writeOttSet(err, "  ", extras, "\n");
@@ -660,12 +660,7 @@ inline std::set<long> getOttIdSetForLeaves(const T &tree) {
 }
 
 template<typename T, typename U>
-void inducedCladeSets(const T & tree1,
-					  const U & tree2,
-					  std::set<std::set<long> > & inducedSplits,
-					  std::set<std::set<long> > & tree2Splits,
-					  bool firstIsSuperset) {
-	assert(firstIsSuperset);
+void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > & inducedSplits, const T & tree2) {
 	const auto inducingLabels = getOttIdSetForLeaves(tree2);
 	auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
 	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
@@ -681,19 +676,56 @@ void inducedCladeSets(const T & tree1,
 			inducedSplits.insert(std::move(x));
 		}
 	}
-	if (firstIsSuperset) {
-			auto t2r = tree2.getRoot();
-			for (auto n : ConstPreorderInternalIter<T>(tree2)) {
-				if (n == t2r) {
-					continue;
-				}
-				const std::set<long> & x = n->getData().desIds;
-				if (x.size() > 2) {
-					tree2Splits.insert(x);
-				}
-			}
+}
+
+template<typename T, typename U>
+void getInducedInformativeGroupingMaps(const T & tree1,
+									   std::map<std::set<long>, std::list<typename T::node_type *> > & inducedSplitMaps,
+									   const T & tree2) {
+	const auto inducingLabels = getOttIdSetForLeaves(tree2);
+	auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
+	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
+		return haveIntersection(inducingLabels, nd.getData().desIds);
+	};
+	for (auto n : ConstSubtreeFilteringPreorderIterN<typename T::node_type>(mrca, sf)) {
+		if (n == mrca) {
+			continue;
 		}
-	else {
+		auto inducedDesIds = n->getData().desIds;
+		const auto x = intersectionOfSets(inducingLabels, inducedDesIds);
+		if (x.size() > 1) {
+			inducedSplitMaps[std::move(x)].push_back(n);
+		}
+	}
+}
+
+
+template<typename T>
+void getInformativeGroupings(const T & tree2,
+							 std::set<std::set<long> > & tree2Splits) {
+	auto t2r = tree2.getRoot();
+	for (auto n : ConstPreorderInternalIter<T>(tree2)) {
+		if (n == t2r) {
+			continue;
+		}
+		const std::set<long> & x = n->getData().desIds;
+		if (x.size() > 2) {
+			tree2Splits.insert(x);
+		}
+	}
+}
+
+template<typename T, typename U>
+void inducedCladeSets(const T & tree1,
+					  const U & tree2,
+					  std::set<std::set<long> > & inducedSplits,
+					  std::set<std::set<long> > & tree2Splits,
+					  bool firstIsSuperset) {
+	assert(firstIsSuperset);
+	getInducedInformativeGroupings(tree1, inducedSplits, tree2);
+	if (firstIsSuperset) {
+		getInformativeGroupings(tree2, tree2Splits);
+	} else {
 		throw OTCError("Why on earth did you compile without asserts?");
 	}
 }
@@ -715,6 +747,49 @@ unsigned long numInducedSplitsMissingInSecond(const T & tree1,
 	inducedCladeSets(tree1, tree2, inducedSplits, tree2Splits, firstIsSuperset);
 	unsigned long nm = 0;
 	for (auto ics : inducedSplits) {
+		if (!contains(tree2Splits, ics)) {
+			nm += 1;
+		}
+	}
+	return nm;
+}
+
+template<typename T, typename U>
+unsigned long reportOnInducedConflicts(std::ostream & out,
+									   const T & tree1,
+									   const U & tree2,
+									   bool firstIsSuperset) {
+	assert(firstIsSuperset);
+	std::map<std::set<long>, std::list<typename T::node_type *> > inducedSplits;
+	std::set<std::set<long> > tree2Splits;
+	getInducedInformativeGroupings(tree1, inducedSplits, tree2);
+	getInformativeGroupings(tree2, tree2Splits);
+	unsigned long nm = 0;
+	for (const auto & ics : inducedSplits) {
+		bool found = false;
+		bool compatHeader = false;
+		std::list<std::set<long> > extraIds;
+		std::list<std::set<long> > missingIds;
+		for (const auto & t2s : tree2Splits) {
+			if (t2s == ics) {
+				found = true;
+			} else {
+				if (!areCompatibleDesIdSets(t2s, ics->first)) {
+					std::set<long> e = set_difference_as_set(t2s, ics->first);
+					std::set<long> m = set_difference_as_set(ics->first, t2s);
+					assert(!e.empty() || !m.empty());
+					extraIds.push_back(e);
+					missingIds.push_back(m);
+				}
+			}
+		}
+		if (!extraIds.empty() || !missingIds.empty()) {
+			
+		}
+		auto taxonNode = ics->second;
+		if (!compatHeader) {
+			out << 
+		}
 		if (!contains(tree2Splits, ics)) {
 			nm += 1;
 		}

@@ -48,6 +48,8 @@ bool isSubset(const T & small, const T & big);
 template<typename T>
 bool haveIntersection(const T & first, const T & second);
 template<typename T>
+std::set<T> set_sym_difference_as_set(const std::set<T> & small, const std::set<T> & big);
+template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T, typename U>
 bool contains(const T & container, const U & key);
@@ -243,6 +245,12 @@ inline bool haveIntersection(const T & first, const T & second) {
 	return !areDisjoint<T>(first, second);
 }
 
+template<typename T>
+std::set<T> set_sym_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
+	std::set<T> d;
+	set_symmetric_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
+	return d;
+}
 template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
 	std::set<T> d;
