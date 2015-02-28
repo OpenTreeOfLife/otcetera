@@ -20,9 +20,7 @@ enum QuotingRequirementsEnum {
 };
 
 const std::string readStrContentOfUTF8File(const std::string &filepath);
-const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
 bool openUTF8File(const std::string &filepath, std::ifstream & inp);
-bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
 std::list<std::string> readLinesOfFile(const std::string & filepath);
 std::string filepathToFilename(const std::string &filepath);
 
@@ -56,6 +54,10 @@ bool contains(const T & container, const U & key);
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
 
+#if defined WIDE_STR_VERSION
+const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
+bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
+
 inline const std::wstring readWStrContentOfUTF8File(const std::string &filepath) {
 	std::wifstream inp;
 	if (!openUTF8WideFile(filepath, inp)) {
@@ -64,6 +66,7 @@ inline const std::wstring readWStrContentOfUTF8File(const std::string &filepath)
 	const std::wstring utf8content((std::istreambuf_iterator<wchar_t>(inp) ), (std::istreambuf_iterator<wchar_t>()));
 	return utf8content;
 }
+#endif //defined WIDE_STR_VERSION
 
 template<typename T, typename U>
 bool contains(const T & container, const U & key) {
@@ -136,7 +139,7 @@ inline bool isSubset(const T & small, const T & big) {
 }
 
 // http://stackoverflow.com/posts/1964252/revisions
-template<class Set1> 
+template<class Set1>
 inline bool areDisjoint(const Set1 & set1, const Set1 & set2) {
 	if (set1.empty() || set2.empty()) {
 		return true;
@@ -165,7 +168,7 @@ inline bool areDisjoint(const Set1 & set1, const Set1 & set2) {
 // intersection with the first el of set1, so set 1 could be a subset of set2
 // returns true if set1 is a subset of set2 (where the args are the iterators and
 // end iterators for each set)
-template<typename T> 
+template<typename T>
 inline bool finishSubSetCompat(T & it1, const T & it1End, T & it2, const T &it2End) {
 	while (it1 != it1End && it2 != it2End) {
 		if (*it1 == *it2) {
@@ -181,7 +184,7 @@ inline bool finishSubSetCompat(T & it1, const T & it1End, T & it2, const T &it2E
 }
 
 // adapted http://stackoverflow.com/posts/1964252/revisions
-template<typename T> 
+template<typename T>
 inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
 	if (set1.size() < 2 || set2.size() < 2) {
 		return true;
@@ -204,7 +207,7 @@ inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
 					}
 					++it1;
 					++it2;
-					// otherwise, they are only compatible if the 
+					// otherwise, they are only compatible if the
 					//	smaller set is a subset of the other.
 					if (set1.size() < set2.size()) {
 						return finishSubSetCompat(it1, it1End, it2, it2End);
@@ -326,7 +329,7 @@ inline QuotingRequirementsEnum determineNewickQuotingRequirements(const std::str
 
 inline std::string addNewickQuotes(const std::string &s) {
 	std::string withQuotes;
-	unsigned len = (unsigned)s.length();
+	unsigned len = static_cast<unsigned>(s.length());
 	withQuotes.reserve(len + 4);
 	withQuotes.append(1,'\'');
 	for (const auto & c : s) {

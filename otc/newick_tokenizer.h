@@ -168,7 +168,7 @@ class NewickTokenizer {
 					  const FilePosStruct & endPosition,
 					  const std::vector<std::string> &embeddedComments,
 					  newick_token_state_t tokenState)
-					:tokenContent(content), 
+					:tokenContent(content),
 					startPos(startPosition),
 					endPos(endPosition),
 					comments(embeddedComments),
@@ -181,7 +181,7 @@ class NewickTokenizer {
 				const FilePosStruct endPos;
 				const std::vector<std::string> comments;
 				const newick_token_state_t state;
-				
+
 				friend class NewickTokenizer::iterator;
 		};
 
@@ -230,7 +230,7 @@ class NewickTokenizer {
 					if (!pushed.empty()) {
 						return pushed.top();
 					}
-					char c = (char) this->inputStream.rdbuf()->sgetc();
+					char c = static_cast<char>(this->inputStream.rdbuf()->sgetc());
 					pushed.push(c);
 					return c;
 				}
@@ -255,7 +255,7 @@ class NewickTokenizer {
 							c = EOF;
 							return false;
 						}
-						c = (char) (this->inputStream.rdbuf())->sbumpc();
+						c = static_cast<char>((this->inputStream.rdbuf())->sbumpc());
 					}
 					if (c == EOF) {
 						this->atEnd = true;
@@ -311,7 +311,7 @@ class NewickTokenizer {
 					prevTokenState(NWK_NOT_IN_TREE),
 					numUnclosedParens(0) {
 					LOG(TRACE) << "create dead";
-					
+
 				}
 				std::istream & inputStream;
 				ConstStrPtr inpFilepath;

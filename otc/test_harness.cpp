@@ -19,7 +19,7 @@ TestHarness::TestHarness(int argc, char *argv[])
 int TestHarness::runTests(const TestsVec & tests) {
 	if (this->initFailed) {
 		std::cerr << "ERROR: " << tests.size() << " unavaible due to incorrect initializaion of the TestHarness.\n";
-		return (int)tests.size();
+		return static_cast<int>(tests.size());
 	}
 	std::vector<std::string> failures;
 	for (const auto & tpIt : tests) {
@@ -46,7 +46,7 @@ int TestHarness::runTests(const TestsVec & tests) {
 	if (!failures.empty()) {
 		std::cerr << "FAILED " << failures.size() << "/" << tests.size() << " tests.\n";
 	}
-	return (int) failures.size();
+	return static_cast<int>(failures.size());
 }
 
 } // namespace otc

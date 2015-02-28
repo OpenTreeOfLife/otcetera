@@ -32,7 +32,7 @@ bool testVecElementEquality(const std::vector<T> & expected, const std::vector<T
 				differed = true;
 			}
 		}
-		const auto lendiff = (long) expected.size() - (long) obtained.size();
+		const auto lendiff = static_cast<long>(expected.size()) - static_cast<long>(obtained.size());
 		if (lendiff > 0) {
 			std::cerr << lendiff << " too few elements obtained.\n";
 		} else if (lendiff < 0) {
@@ -52,7 +52,7 @@ typedef std::vector<TestFn> TestsVec;
 
 class TestHarness {
 	private:
-		std::string dataDir; //dir that holds the tests 
+		std::string dataDir; //dir that holds the tests
 		bool initFailed;
 	public:
 		TestHarness(int argc, char * argv []);

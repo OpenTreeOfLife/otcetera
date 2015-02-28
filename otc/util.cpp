@@ -14,6 +14,7 @@
 namespace otc {
 
 const std::string readStrContentOfUTF8File(const std::string &filepath) {
+#if defined WIDE_STR_VERSION
 	const std::wstring utf8content = readWStrContentOfUTF8File(filepath);
 	const std::locale empty_locale("");
 	typedef std::codecvt<wchar_t, char, std::mbstate_t> converter_type;
@@ -31,15 +32,26 @@ const std::string readStrContentOfUTF8File(const std::string &filepath) {
 														to_next);
 	if (result == converter_type::ok or result == converter_type::noconv) {
 		const std::string ccontent(&to[0], to_next);
-		return ccontent;
+		return std::move(ccontent);
 	}
 	throw OTCError("Error reading the contents of filepath as UTF-8");
+#else
+	std::ifstream inp;
+	inp.open(filepath);
+	if (!inp.good()) {
+		throw OTCError("Could not open \"" + filepath + "\"");
+	}
+	const std::string utf8content((std::istreambuf_iterator<char>(inp) ),
+									(std::istreambuf_iterator<char>()));
+	return std::move(utf8content);
+#endif
 }
 
 bool openUTF8File(const std::string &filepath, std::ifstream & inp) {
 	inp.open(filepath);
 	return inp.good();
 }
+#if defined WIDE_STR_VERSION
 bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp) {
 	std::setlocale(LC_ALL, "");
 	const std::locale empty_locale("");
@@ -50,6 +62,7 @@ bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp) {
 	inp.imbue(utf8_locale);
 	return inp.good();
 }
+#endif
 
 std::list<std::string> readLinesOfFile(const std::string & filepath) {
 	std::ifstream inp;
