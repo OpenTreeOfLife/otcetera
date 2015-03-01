@@ -291,17 +291,18 @@ class postorder_iterator : std::forward_iterator_tag {
 		}
 };
 
-template<typename T>
+template<typename T, bool isConst>
 class anc_iterator : std::forward_iterator_tag {
 	private:
-		T * curr;
+		typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
+		node_pointer curr;
 		
 		void _advance() {
 			assert(curr != nullptr);
 			curr = curr->getParent();
 		}
 	public:
-		anc_iterator(T *c)
+		anc_iterator(node_pointer c)
 			:curr(c) {
 			if (curr != nullptr) {
 				_advance();
@@ -313,46 +314,12 @@ class anc_iterator : std::forward_iterator_tag {
 		bool operator!=(const anc_iterator &other) const {
 			return this->curr != other.curr;
 		}
-		T * operator*() const {
+		node_pointer operator*() const {
 			return curr;
 		}
 		anc_iterator & operator++() {
 			if (curr == nullptr) {
 				throw std::out_of_range("Incremented a dead anc_iterator");
-			}
-			_advance();
-			return *this;
-		}
-};
-
-template<typename T>
-class const_anc_iterator : std::forward_iterator_tag {
-	private:
-		const T * curr;
-		
-		void _advance() {
-			assert(curr != nullptr);
-			curr = curr->getParent();
-		}
-	public:
-		const_anc_iterator(const T *c)
-			:curr(c) {
-			if (curr != nullptr) {
-				_advance();
-			}
-		}
-		bool operator==(const const_anc_iterator &other) const {
-			return this->curr == other.curr;
-		}
-		bool operator!=(const const_anc_iterator &other) const {
-			return this->curr != other.curr;
-		}
-		const T * operator*() const {
-			return curr;
-		}
-		const_anc_iterator & operator++() {
-			if (curr == nullptr) {
-				throw std::out_of_range("Incremented a dead const_anc_iterator");
 			}
 			_advance();
 			return *this;
@@ -502,11 +469,11 @@ class AncIter {
 	explicit AncIter(T * n)
 		:des(n){
 	}
-	anc_iterator<T> begin() const {
-		return std::move(anc_iterator<T>{des});
+	anc_iterator<T, false> begin() const {
+		return std::move(anc_iterator<T, false>{des});
 	}
-	anc_iterator<T> end() const {
-		return std::move(anc_iterator<T>{nullptr});
+	anc_iterator<T, false> end() const {
+		return std::move(anc_iterator<T, false>{nullptr});
 	}
 	private:
 		T * des;
@@ -518,11 +485,11 @@ class ConstAncIter {
 	explicit ConstAncIter(const T * n)
 		:des(n){
 	}
-	const_anc_iterator<T> begin() const {
-		return std::move(const_anc_iterator<T>{des});
+	anc_iterator<T, true> begin() const {
+		return std::move(anc_iterator<T, true>{des});
 	}
-	const_anc_iterator<T> end() const {
-		return std::move(const_anc_iterator<T>{nullptr});
+	anc_iterator<T, true> end() const {
+		return std::move(anc_iterator<T, true>{nullptr});
 	}
 	private:
 		const T * des;
