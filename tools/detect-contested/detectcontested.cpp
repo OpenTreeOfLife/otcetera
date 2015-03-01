@@ -9,7 +9,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 
 	DetectContestedState()
 		:numErrors(0),
-		doShortcircuit(true) {
+		doShortcircuit(false) {
 		}
 
 	bool summarize(const OTCLI &otCLI) override {
@@ -70,7 +70,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 						 std::size_t numLeaves,
 						 const std::string &treeName) {
 		for (const auto & pd : prunedDesId) {
-			// shortcircuite taxon nodes that are already marked as contested
+			// shortcircuit taxon nodes that are already marked as contested
 			const auto & ndlist = pd.second;
 			bool allContested = true;
 			for (auto nd : ndlist) {

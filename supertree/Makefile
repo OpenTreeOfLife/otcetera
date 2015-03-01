@@ -20,7 +20,7 @@ $(STEP_2_DIR)/taxonomy.tre : input/taxonomy.tre $(STEP_1_INPUTS)
 
 $(STEP_3_DIR)/contested-ott-ids.txt : $(STEP_2_DIR)/taxonomy.tre $(STEP_1_INPUTS)
 	cd $(STEP_1_DIR) ; pwd; \
-	if otcdetectcontested ../$(STEP_2_DIR)/taxonomy.tre -ftree-ranking.txt > .output ; \
+	if otcdetectcontested ../$(STEP_2_DIR)/taxonomy.tre -ftree-ranking.txt >.output 2>../$(STEP_3_DIR)/contested-errstream.txt ; \
 	then mv .output ../$(STEP_3_DIR)/contested-ott-ids.txt ; \
 	fi
 
