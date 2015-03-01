@@ -20,12 +20,19 @@ using NdFilterFn = std::function<bool(const T &)>;
 template<typename T, bool isConst>
 class preorder_iterator : std::forward_iterator_tag {
 	private:
+		const NdFilterFn<T> subtreeFilterFn;
 		const NdFilterFn<T> filterFn;
 		typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
 		node_pointer curr;
 		bool movingDown;
-
 		void _advance() {
+			if (subtreeFilterFn == nullptr) {
+				_unfiltered_advance();
+			} else {
+				_filtered_advance();
+			}
+		}
+		void _unfiltered_advance() {
 			do {
 				assert(curr != nullptr);
 				if (movingDown) {
@@ -55,49 +62,6 @@ class preorder_iterator : std::forward_iterator_tag {
 				}
 			} while ((filterFn != nullptr && !filterFn(*curr)));
 		}
-	public:
-		preorder_iterator(node_pointer c)
-			:filterFn{nullptr},
-			curr(c),
-			movingDown(false) {
-		}
-		preorder_iterator(node_pointer c, NdFilterFn<T> f)
-			:filterFn{f},
-			curr(c),
-			movingDown(false) {
-			if (c != nullptr && filterFn && !filterFn(*curr)) {
-				_advance();
-			}
-		}
-		bool operator==(const preorder_iterator &other) const {
-			return this->curr == other.curr;
-		}
-		bool operator!=(const preorder_iterator &other) const {
-			return this->curr != other.curr;
-		}
-		node_pointer operator*() const {
-			return curr;
-		}
-		preorder_iterator & operator++() {
-			if (curr == nullptr) {
-				throw std::out_of_range("Incremented a dead preorder_iterator");
-			}
-			_advance();
-			return *this;
-		}
-};
-
-
-/// visits ancestors before descendants
-/// if filterFn is supplied, then only the nodes associated with a true
-///		response will be returned (but the descendants of a "false" node
-///		will still be visited.
-template<typename T>
-class const_skipping_preorder_iterator : std::forward_iterator_tag {
-	private:
-		const NdFilterFn<T> subtreeFilterFn;
-		const T * curr;
-		bool movingDown;
 
 		void _advance_down() {
 			while (movingDown) {
@@ -114,13 +78,15 @@ class const_skipping_preorder_iterator : std::forward_iterator_tag {
 				}
 			}
 		}
-		void _advance() {
+		void _filtered_advance() {
 			assert(curr != nullptr);
-			if (movingDown) {
-				_advance_down();
-			} else {
-				_advance_up_or_over();
-			}
+			do {
+				if (movingDown) {
+					_advance_down();
+				} else {
+					_advance_up_or_over();
+				}
+			} while(curr != nullptr || filterFn == nullptr || filterFn(*curr));
 		}
 		void _advance_up_or_over() {
 			if (curr->isTip()) {
@@ -147,31 +113,42 @@ class const_skipping_preorder_iterator : std::forward_iterator_tag {
 			return;
 		}
 	public:
-		const_skipping_preorder_iterator(const T *c)
-			:subtreeFilterFn{nullptr},
+		preorder_iterator(node_pointer c)
+			:subtreeFilterFn(nullptr),
+			filterFn{nullptr},
 			curr(c),
 			movingDown(false) {
 		}
-		const_skipping_preorder_iterator(const T *c, NdFilterFn<T> f)
-			:subtreeFilterFn{f},
+		preorder_iterator(node_pointer c, NdFilterFn<T> f)
+			:subtreeFilterFn(nullptr),
+			filterFn{f},
 			curr(c),
 			movingDown(false) {
-			if (c != nullptr && subtreeFilterFn && !subtreeFilterFn(*curr)) {
-				curr = nullptr;
+			if (c != nullptr && filterFn && !filterFn(*curr)) {
+				_advance();
 			}
 		}
-		bool operator==(const const_skipping_preorder_iterator &other) const {
+		preorder_iterator(node_pointer c, NdFilterFn<T> f, NdFilterFn<T> s)
+			:subtreeFilterFn(s),
+			filterFn{f},
+			curr(c),
+			movingDown(false) {
+			if (c != nullptr && filterFn && !filterFn(*curr)) {
+				_advance();
+			}
+		}
+		bool operator==(const preorder_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(const const_skipping_preorder_iterator &other) const {
+		bool operator!=(const preorder_iterator &other) const {
 			return this->curr != other.curr;
 		}
-		const T * operator*() const {
+		node_pointer operator*() const {
 			return curr;
 		}
-		const_skipping_preorder_iterator & operator++() {
+		preorder_iterator & operator++() {
 			if (curr == nullptr) {
-				throw std::out_of_range("Incremented a dead const_skipping_preorder_iterator");
+				throw std::out_of_range("Incremented a dead preorder_iterator");
 			}
 			_advance();
 			return *this;
@@ -417,11 +394,11 @@ class ConstSubtreeFilteringPreorderIterN {
 		:nd(t), 
 		f(subtreeFilterFn) {
 	}
-	const_skipping_preorder_iterator<T> begin() const {
-		return std::move(const_skipping_preorder_iterator<T>{nd, f});
+	preorder_iterator<T, true> begin() const {
+		return std::move(preorder_iterator<T, true>{nd, nullptr, f});
 	}
-	const_skipping_preorder_iterator<T> end() const {
-		return std::move(const_skipping_preorder_iterator<T>{nullptr});
+	preorder_iterator<T, true> end() const {
+		return std::move(preorder_iterator<T, true>{nullptr});
 	}
 	private:
 		const T * nd;
