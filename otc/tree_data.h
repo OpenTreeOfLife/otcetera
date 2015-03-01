@@ -26,5 +26,10 @@ class RTSplits {
 		std::set<long> desIds;
 };
 
+typedef otc::RootedTreeNode<RTSplits> NodeWithSplits;
+using NodeWithSplitsPred = std::function<bool(const NodeWithSplits &)>;
+typedef otc::RTreeOttIDMapping<RTSplits> MappedWithSplitsData;
+typedef otc::RootedTree<RTSplits, MappedWithSplitsData> TreeMappedWithSplits;
+
 } // namespace otc
 #endif

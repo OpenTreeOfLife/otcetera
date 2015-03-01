@@ -4,29 +4,31 @@
 #include "otc/tree_data.h"
 using namespace otc;
 
-typedef otc::RootedTreeNode<RTSplits> Node_t;
-typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
-
-struct InducedSubtreeState : public TaxonomyDependentTreeProcessor<Tree_t> {
-	std::set<long> inducingLabels;
+struct InducedSubtreeState
+  : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
+	std::set<long> inducingIds;
 	virtual ~InducedSubtreeState(){}
 
+	// write the induced tree to the output stream
 	virtual bool summarize(const OTCLI &otCLI) override {
-		auto mrca = findMRCAUsingDesIds(*taxonomy, inducingLabels);
-		std::function<bool(const Node_t &)> sf = [this](const Node_t &nd){
-			return haveIntersection(this->inducingLabels, nd.getData().desIds);
+		// find the LIA of the induced taxa
+		auto mrca = findMRCAUsingDesIds(*taxonomy, inducingIds);
+		// do a filtered pre-order traversal
+		NodeWithSplitsPred sf = [this](const NodeWithSplits &nd){
+			return haveIntersection(this->inducingIds, nd.getData().desIds);
 		};
 		writeNewickFiltered(otCLI.out, mrca, sf);
 		otCLI.out << ";\n";
 		return true;
 	}
 
+	// accumulate the set of leaves to include in inducingIds
 	virtual bool processSourceTree(OTCLI &,
-								   std::unique_ptr<Tree_t> tree) override {
+								   std::unique_ptr<TreeMappedWithSplits> tree) override {
 		assert(tree != nullptr);
 		assert(taxonomy != nullptr);
 		auto ls = getOttIdSetForLeaves(*tree);
-		inducingLabels.insert(ls.begin(), ls.end());
+		inducingIds.insert(ls.begin(), ls.end());
 		return true;
 	}
 };
