@@ -63,7 +63,17 @@ struct NodeThreading {
 	bool isContested() const {
 		for (auto i : edgeBelowAlignments) {
 			if (i.second.size() > 1) {
-				return true;
+				const T * firstSrcPar = nullptr;
+				for (auto pp : i.second) {
+					auto sp = pp->phyloParent;
+					if (sp != firstSrcPar) {
+						if (firstSrcPar == nullptr) {
+							firstSrcPar = sp;
+						} else {
+							return true;
+						}
+					}
+				}
 			}
 		}
 		return false;
