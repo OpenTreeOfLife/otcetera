@@ -4,8 +4,7 @@
 #include "otc/tree_data.h"
 using namespace otc;
 
-struct DetectContestedState
-  : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
+struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
 	int numErrors;
 	std::set<const NodeWithSplits *> contestedNodes;
 	bool doShortcircuit;

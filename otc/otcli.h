@@ -8,6 +8,7 @@
 #include "otc/otc_base_includes.h"
 #include "otc/newick.h"
 #include "otc/util.h"
+#include "otc/tree_iter.h"
 namespace otc {
 
 class OTCLI {
@@ -126,7 +127,20 @@ inline int treeProcessingMain(OTCLI & otCLI,
 	return otCLI.exitCode;
 }
 
-
+template<typename T>
+inline std::set<long> getAllOTTIds(const T &taxonomy) {
+	return taxonomy.getRoot()->getData().desIds;
+}
+template<>
+inline std::set<long> getAllOTTIds(const TreeMappedEmptyNodes &taxonomy) {
+	std::set<long> o;
+	for (auto nd : ConstNodeIter<TreeMappedEmptyNodes>(taxonomy)) {
+		if (nd->hasOttId()) {
+			o.insert(nd->getOttId());
+		}
+	}
+	return o;
+}
 
 template<typename T>
 class TaxonomyDependentTreeProcessor {
@@ -140,7 +154,7 @@ class TaxonomyDependentTreeProcessor {
 		std::set<long> ottIds;
 
 		virtual bool processTaxonomyTree(OTCLI & otCLI) {
-			ottIds = taxonomy->getRoot()->getData().desIds;
+			ottIds = getAllOTTIds(*taxonomy);
 			otCLI.getParsingRules().ottIdValidator = &ottIds;
 			otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
 			return true;

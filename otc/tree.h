@@ -329,6 +329,7 @@ class RootedTree {
 struct RTNodeNoData{};
 struct RTreeNoData{};
 
+typedef RootedTreeNode<RTNodeNoData> RootedTreeNodeNoData;
 typedef RootedTree<RTNodeNoData, RTreeNoData> RootedTreeTopologyNoData;
 
 } // namespace otc
