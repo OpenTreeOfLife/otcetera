@@ -126,5 +126,69 @@ inline int treeProcessingMain(OTCLI & otCLI,
 	return otCLI.exitCode;
 }
 
+
+
+template<typename T>
+class TaxonomyDependentTreeProcessor {
+	public:
+		using node_type = typename T::node_type;
+		using node_data_type = typename T::node_type::data_type;
+		using tree_data_type = typename T::data_type;
+		using tree_type = T;
+
+		std::unique_ptr<T> taxonomy;
+		std::set<long> ottIds;
+
+		virtual bool processTaxonomyTree(OTCLI & otCLI) {
+			ottIds = taxonomy->getRoot()->getData().desIds;
+			otCLI.getParsingRules().ottIdValidator = &ottIds;
+			otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+			return true;
+		}
+		virtual bool processSourceTree(OTCLI & , std::unique_ptr<T> tree) {
+			assert(tree != nullptr);
+			assert(taxonomy != nullptr);
+			return true;
+		}
+		virtual bool summarize(const OTCLI &) {
+			return true;
+		}
+		TaxonomyDependentTreeProcessor()
+			:taxonomy(nullptr) {
+		}
+		virtual ~TaxonomyDependentTreeProcessor(){}
+	
+};
+
+template<typename T>
+inline bool taxDependentProcessNextTree(OTCLI & otCLI, std::unique_ptr<T> tree) {
+	TaxonomyDependentTreeProcessor<T> * tdtp = static_cast<TaxonomyDependentTreeProcessor<T> *>(otCLI.blob);
+	assert(tdtp != nullptr);
+	assert(tree != nullptr);
+	if (tdtp->taxonomy == nullptr) {
+		tdtp->taxonomy = std::move(tree);
+		return tdtp->processTaxonomyTree(otCLI);
+	}
+	return tdtp->processSourceTree(otCLI, std::move(tree));
+}
+
+template<typename T>
+int taxDependentTreeProcessingMain(OTCLI & otCLI,
+								   int argc,
+								   char *argv[],
+								   TaxonomyDependentTreeProcessor<T> & proc,
+								   unsigned int numTrees,
+								   bool includeInternalNodesInDesIdSets) {
+	assert(otCLI.blob == nullptr);
+	otCLI.blob = static_cast<void *>(&proc);
+	otCLI.getParsingRules().includeInternalNodesInDesIdSets = includeInternalNodesInDesIdSets;
+	std::function<bool (OTCLI &, std::unique_ptr<T>)> pcb = taxDependentProcessNextTree<T>;
+	auto rc = treeProcessingMain<T>(otCLI, argc, argv, pcb, nullptr, numTrees);
+	if (rc == 0) {
+		return (proc.summarize(otCLI) ? 0 : 1);
+	}
+	return rc;
+}
+
 } // namespace otc
 #endif
