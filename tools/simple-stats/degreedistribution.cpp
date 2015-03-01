@@ -1,5 +1,4 @@
 #include "otc/otcli.h"
-#include "otc/tree_operations.h"
 using namespace otc;
 typedef RootedTree<RTNodeNoData, RTreeNoData> Tree_t;
 

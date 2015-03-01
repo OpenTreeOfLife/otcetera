@@ -1,9 +1,6 @@
-#include <set>
 #include "otc/otcli.h"
-#include "otc/tree_operations.h"
-#include "otc/tree_data.h"
 using namespace otc;
-struct RFState  : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
+struct RFState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
 	virtual ~RFState(){}
 	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) {
 		assert(tree != nullptr);

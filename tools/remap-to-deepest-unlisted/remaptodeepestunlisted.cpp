@@ -1,7 +1,4 @@
-#include <set>
 #include "otc/otcli.h"
-#include "otc/tree_operations.h"
-#include "otc/tree_data.h"
 using namespace otc;
 
 typedef otc::RootedTreeNode<RTSplits> Node_t;
