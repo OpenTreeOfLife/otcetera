@@ -17,11 +17,12 @@ using NdFilterFn = std::function<bool(const T &)>;
 /// if filterFn is supplied, then only the nodes associated with a true
 ///		response will be returned (but the descendants of a "false" node
 ///		will still be visited.
-template<typename T>
-class const_preorder_iterator : std::forward_iterator_tag {
+template<typename T, bool isConst>
+class preorder_iterator : std::forward_iterator_tag {
 	private:
 		const NdFilterFn<T> filterFn;
-		const T * curr;
+		typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
+		node_pointer curr;
 		bool movingDown;
 
 		void _advance() {
@@ -55,12 +56,12 @@ class const_preorder_iterator : std::forward_iterator_tag {
 			} while ((filterFn != nullptr && !filterFn(*curr)));
 		}
 	public:
-		const_preorder_iterator(const T *c)
+		preorder_iterator(node_pointer c)
 			:filterFn{nullptr},
 			curr(c),
 			movingDown(false) {
 		}
-		const_preorder_iterator(const T *c, NdFilterFn<T> f)
+		preorder_iterator(node_pointer c, NdFilterFn<T> f)
 			:filterFn{f},
 			curr(c),
 			movingDown(false) {
@@ -68,18 +69,18 @@ class const_preorder_iterator : std::forward_iterator_tag {
 				_advance();
 			}
 		}
-		bool operator==(const const_preorder_iterator &other) const {
+		bool operator==(const preorder_iterator &other) const {
 			return this->curr == other.curr;
 		}
-		bool operator!=(const const_preorder_iterator &other) const {
+		bool operator!=(const preorder_iterator &other) const {
 			return this->curr != other.curr;
 		}
-		const T * operator*() const {
+		node_pointer operator*() const {
 			return curr;
 		}
-		const_preorder_iterator & operator++() {
+		preorder_iterator & operator++() {
 			if (curr == nullptr) {
-				throw std::out_of_range("Incremented a dead const_preorder_iterator");
+				throw std::out_of_range("Incremented a dead preorder_iterator");
 			}
 			_advance();
 			return *this;
@@ -503,11 +504,11 @@ class ConstPreorderInternalIter {
 	explicit ConstPreorderInternalIter(const T &t)
 		:tree(t){
 	}
-	const_preorder_iterator<typename T::node_type> begin() const {
-		return std::move(const_preorder_iterator<typename T::node_type>{tree.getRoot(), isInternalNode<typename T::node_type>});
+	preorder_iterator<typename T::node_type, true> begin() const {
+		return std::move(preorder_iterator<typename T::node_type, true>{tree.getRoot(), isInternalNode<typename T::node_type>});
 	}
-	const_preorder_iterator<typename T::node_type> end() const {
-		return const_preorder_iterator<typename T::node_type>{nullptr};
+	preorder_iterator<typename T::node_type, true> end() const {
+		return preorder_iterator<typename T::node_type, true>{nullptr};
 	}
 	private:
 		const T & tree;
@@ -519,11 +520,11 @@ class ConstPreorderIter {
 	explicit ConstPreorderIter(const T &t)
 		:tree(t){
 	}
-	const_preorder_iterator<typename T::node_type> begin() const {
-		return std::move(const_preorder_iterator<typename T::node_type>{tree.getRoot()});
+	preorder_iterator<typename T::node_type, true> begin() const {
+		return std::move(preorder_iterator<typename T::node_type, true>{tree.getRoot()});
 	}
-	const_preorder_iterator<typename T::node_type> end() const {
-		return const_preorder_iterator<typename T::node_type>{nullptr};
+	preorder_iterator<typename T::node_type, true> end() const {
+		return preorder_iterator<typename T::node_type, true>{nullptr};
 	}
 	private:
 		const T & tree;
@@ -537,11 +538,11 @@ class ConstPreorderIterN {
 	explicit ConstPreorderIterN(const T * t)
 		:nd(t){
 	}
-	const_preorder_iterator<T> begin() const {
-		return std::move(const_preorder_iterator<T>{nd});
+	preorder_iterator<T, true> begin() const {
+		return std::move(preorder_iterator<T, true>{nd});
 	}
-	const_preorder_iterator<T> end() const {
-		return const_preorder_iterator<T>{nullptr};
+	preorder_iterator<T, true> end() const {
+		return preorder_iterator<T, true>{nullptr};
 	}
 	private:
 		const T * nd;
