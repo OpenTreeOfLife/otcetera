@@ -4,16 +4,12 @@
 #include "otc/tree_data.h"
 using namespace otc;
 
-typedef otc::RootedTreeNode<RTSplits> Node_t;
-typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename Node_t::data_type>> Tree_t;
-
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg);
-bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
-void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t *> & supportedNodes);
-bool singleDesSupportedOrNamed(const Node_t *nd, const std::set<const Node_t *> & supportedNodes);
+void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree, std::set<const NodeWithSplits *> & supportedNodes);
+bool singleDesSupportedOrNamed(const NodeWithSplits *nd, const std::set<const NodeWithSplits *> & supportedNodes);
 
-void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t *> & supportedNodes) {
-	for (auto nd : ConstPostorderInternalIter<Tree_t>(tree)) {
+void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree, std::set<const NodeWithSplits *> & supportedNodes) {
+	for (auto nd : ConstPostorderInternalIter<TreeMappedWithSplits>(tree)) {
 		if (nd->isOutDegreeOneNode()) {
 			auto c = nd->getFirstChild();
 			if (c->hasOttId() || supportedNodes.find(c) != supportedNodes.end()) {
@@ -23,7 +19,7 @@ void extendSupportedToRedundantNodes(const Tree_t & tree, std::set<const Node_t 
 	}
 }
 
-bool singleDesSupportedOrNamed(const Node_t *nd, const std::set<const Node_t *> & supportedNodes) {
+bool singleDesSupportedOrNamed(const NodeWithSplits *nd, const std::set<const NodeWithSplits *> & supportedNodes) {
 	if (supportedNodes.find(nd) != supportedNodes.end()) {
 		return true;
 	}
@@ -33,23 +29,20 @@ bool singleDesSupportedOrNamed(const Node_t *nd, const std::set<const Node_t *> 
 	return false;
 }
 
-struct FindUnsupportedState {
-	std::unique_ptr<Tree_t> toCheck;
-	std::unique_ptr<Tree_t> taxonomy;
+struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
+	std::unique_ptr<TreeMappedWithSplits> toCheck;
 	int numErrors;
-	std::map<const Node_t *, std::set<long> > aPrioriProblemNodes;
-	std::set<long> ottIds;
-	std::set<const Node_t *> supportedNodes;
-
+	std::map<const NodeWithSplits *, std::set<long> > aPrioriProblemNodes;
+	std::set<const NodeWithSplits *> supportedNodes;
+	virtual ~FindUnsupportedState(){}
 	FindUnsupportedState()
 		:toCheck(nullptr),
-		 taxonomy(nullptr),
 		 numErrors(0) {
 		}
 
-	int describeUnnamedUnsupported(std::ostream &out, const Tree_t & tree,
-								   const std::set<const Node_t *> & supported) const {
-		auto ig = ConstPreorderInternalIter<Tree_t>(tree);
+	int describeUnnamedUnsupported(std::ostream &out, const TreeMappedWithSplits & tree,
+								   const std::set<const NodeWithSplits *> & supported) const {
+		auto ig = ConstPreorderInternalIter<TreeMappedWithSplits>(tree);
 		auto nIt = ig.begin();
 		const auto eIt = ig.end();
 		int numUnsupported = 0;
@@ -86,7 +79,7 @@ struct FindUnsupportedState {
 		return numUnsupported;
 	}
 
-	void summarize(const OTCLI &otCLI) {
+	bool summarize(const OTCLI &otCLI) override {
 		extendSupportedToRedundantNodes(*toCheck, supportedNodes);
 		auto & out = otCLI.out;
 		int numUnsupported = describeUnnamedUnsupported(otCLI.out, *toCheck, supportedNodes);
@@ -120,6 +113,7 @@ struct FindUnsupportedState {
 		} else {
 			numErrors = numUnsupported;
 		}
+		return numErrors == 0;
 	}
 
 	void parseAndProcessMRCADesignatorsFile(const std::string &fp) {
@@ -133,30 +127,29 @@ struct FindUnsupportedState {
 	}
 
 	void markSuspectNode(const std::set<long> & designators) {
-		const Node_t * mrca = findMRCAFromIDSet(*toCheck, designators, -1);
+		const NodeWithSplits * mrca = findMRCAFromIDSet(*toCheck, designators, -1);
 		aPrioriProblemNodes[mrca] = designators;
 	}
 
-	bool processTaxonomyTree(OTCLI & otCLI) {
-		ottIds = keys(taxonomy->getData().ottIdToNode);
-		otCLI.getParsingRules().ottIdValidator = &ottIds;
-		return true;
-	}
-	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
+	bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
 		assert(taxonomy != nullptr);
-		assert(tree != nullptr);
+		if (toCheck == nullptr) {
+			toCheck = std::move(tree);
+			return true;
+		}
 		expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
 		return processExpandedTree(otCLI, *tree);
 	}
-	bool processExpandedTree(OTCLI & otCLI, const Tree_t & tree) {
+
+	bool processExpandedTree(OTCLI & otCLI, const TreeMappedWithSplits & tree) {
 		assert(toCheck != nullptr);
-		std::map<const Node_t *, std::set<long> > prunedDesId;
-		for (auto nd : ConstLeafIter<Tree_t>(tree)) {
+		std::map<const NodeWithSplits *, std::set<long> > prunedDesId;
+		for (auto nd : ConstLeafIter<TreeMappedWithSplits>(tree)) {
 			auto ottId = nd->getOttId();
 			markPathToRoot(*toCheck, ottId, prunedDesId);
 		}
-		std::map<std::set<long>, const Node_t *> sourceClades;
-		for (auto nd : ConstPostorderInternalIter<Tree_t>(tree)) {
+		std::map<std::set<long>, const NodeWithSplits *> sourceClades;
+		for (auto nd : ConstPostorderInternalIter<TreeMappedWithSplits>(tree)) {
 			if (nd->getParent() != nullptr && !nd->isTip()) {
 				sourceClades[nd->getData().desIds] = nd;
 			}
@@ -164,10 +157,11 @@ struct FindUnsupportedState {
 		recordSupportedNodes(otCLI, prunedDesId, sourceClades, supportedNodes);
 		return true;
 	}
+
 	void recordSupportedNodes(OTCLI & otCLI,
-							  const std::map<const Node_t *, std::set<long> > & prunedDesId,
-							  const std::map<std::set<long>, const Node_t *> & sourceClades,
-							  std::set<const Node_t *> & supported) {
+							  const std::map<const NodeWithSplits *, std::set<long> > & prunedDesId,
+							  const std::map<std::set<long>, const NodeWithSplits *> & sourceClades,
+							  std::set<const NodeWithSplits *> & supported) {
 		for (auto pd : prunedDesId) {
 			auto nd = pd.first;
 			auto par = nd->getParent();
@@ -175,7 +169,7 @@ struct FindUnsupportedState {
 				//otCLI.out << "  par null\n";
 				continue;
 			}
-			auto firstBranchingAnc = findFirstBranchingAnc<const Node_t>(nd);
+			auto firstBranchingAnc = findFirstBranchingAnc<const NodeWithSplits>(nd);
 			if (firstBranchingAnc == nullptr) {
 				//otCLI.out << "  firstBranchingAnc null\n";
 				continue;
@@ -184,7 +178,7 @@ struct FindUnsupportedState {
 			auto ancIt = prunedDesId.find(firstBranchingAnc);
 			assert(ancIt != prunedDesId.end());
 			auto anm = ancIt->second;
-			const Node_t * firstNdPtr; // just used to match call
+			const NodeWithSplits * firstNdPtr; // just used to match call
 			if (!multipleChildrenInMap(*nd, prunedDesId, &firstNdPtr)) {
 				//otCLI.out << "  multipleChildrenInMap false\n";
 				continue;
@@ -215,21 +209,6 @@ struct FindUnsupportedState {
 	}
 };
 
-inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
-	FindUnsupportedState * ctsp = static_cast<FindUnsupportedState *>(otCLI.blob);
-	assert(ctsp != nullptr);
-	assert(tree != nullptr);
-	if (ctsp->taxonomy == nullptr) {
-		ctsp->taxonomy = std::move(tree);
-		return ctsp->processTaxonomyTree(otCLI);
-	}
-	if (ctsp->toCheck == nullptr) {
-		ctsp->toCheck = std::move(tree);
-		return true;
-	}
-	return ctsp->processSourceTree(otCLI, std::move(tree));
-}
-
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg) {
 	FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
 	assert(fusp != nullptr);
@@ -242,16 +221,10 @@ int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcfindunsupportednodes",
 				"takes at least 2 newick file paths: a full taxonomy tree, a full supertree, and some number of input trees",
 				"taxonomy.tre synth.tre inp1.tre inp2.tre");
-	FindUnsupportedState fus;
-	otCLI.blob = static_cast<void *>(&fus);
+	FindUnsupportedState proc;
 	otCLI.addFlag('m',
 				  "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them.",
 				  handleDesignator,
 				  true);
-	auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 3);
-	if (rc == 0) {
-		fus.summarize(otCLI);
-		return fus.numErrors;
-	}
-	return rc;
+	return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, false);
 }
