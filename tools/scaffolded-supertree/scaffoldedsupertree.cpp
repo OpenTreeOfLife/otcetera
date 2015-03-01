@@ -235,13 +235,11 @@ struct RemapToDeepestUnlistedState
 	}
 
 	bool processTaxonomyTree(OTCLI & otCLI) override {
-		ottIds = taxonomy->getRoot()->getData().desIds;
+		TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
 		suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
 		for (auto nd : NodeIter<TreeMappedWithSplits>(*taxonomy)) {
 			taxoToAlignment.emplace(nd, NodeThreadingWithSplits{});
 		}
-		otCLI.getParsingRules().ottIdValidator = &ottIds;
-		otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
 		return true;
 	}
 
