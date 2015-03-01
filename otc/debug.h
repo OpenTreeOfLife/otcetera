@@ -39,7 +39,7 @@ template<typename T>
 bool checkPreorder(const T & tree) {
 	auto ns = tree.getSetOfAllNodes();
 	std::set<const typename T::node_type *> visited;
-	for (auto nd : ConstPreorderIter<T>(tree)) {
+	for (auto nd : iter_pre_const(tree)) {
 		auto p = nd->getParent();
 		if (p) {
 			if (!contains(visited, p)) {
@@ -60,7 +60,7 @@ template<typename T>
 bool checkPostorder(const T & tree) {
 	auto ns = tree.getSetOfAllNodes();
 	std::set<const typename T::node_type *> visited;
-	for (auto nd : ConstPostorderIter<T>(tree)) {
+	for (auto nd : iter_post_const(tree)) {
 		auto p = nd->getParent();
 		if (p) {
 			if (contains(visited, p)) {
@@ -83,7 +83,7 @@ bool checkChildIter(const T & tree) {
 	for (auto nd : ns) {
 		auto nc = nd->getOutDegree();
 		auto v = 0U;
-		for (auto c : ConstChildIter<typename T::node_type>(*nd)) {
+		for (auto c : iter_child_const(*nd)) {
 			assert(c->getParent() == nd);
 			++v;
 		}
@@ -101,7 +101,7 @@ bool checkDesIds(const T & tree) {
 		}
 		std::set<long> d;
 		auto sum = 0U;
-		for (auto c : ConstChildIter<typename T::node_type>(*nd)) {
+		for (auto c : iter_child_const(*nd)) {
 			const auto & cd = c->getData().desIds;
 			sum += cd.size();
 			assert(cd.size() > 0);

@@ -29,7 +29,7 @@ const std::set<long> & getDesOttIds(RootedTreeNode<RTSplits> & nd);
 template<typename T>
 unsigned int countPolytomies(const T & tree) {
 	unsigned int n = 0U;
-	for (auto node : ConstPostorderInternalIter<T>{tree}) {
+	for (auto node : iter_post_internal_const(tree)) {
 		if (node->getOutDegree() > 2) {
 			n += 1;
 		}
@@ -41,12 +41,12 @@ template<typename T>
 void fillDesIdSets(T & tree) {
 	// assumes OttId is set for each tip
 	tree.getData().desIdSetsContainInternals = false;
-	for (auto node : PostorderIter<T>(tree)) {
+	for (auto node : iter_post(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
 		if (node->isTip()) {
 			desIds.insert(node->getOttId());
 		} else {
-			for (auto child : ChildIter<typename T::node_type>(*node)) {
+			for (auto child : iter_child(*node)) {
 				std::set<long> & cDesIds = child->getData().desIds;
 				desIds.insert(cDesIds.begin(), cDesIds.end());
 			}
@@ -58,7 +58,7 @@ template<typename T>
 void fillDesIdSetsIncludingInternals(T & tree) {
 	// assumes OttId is set for each tip
 	tree.getData().desIdSetsContainInternals = true;
-	for (auto node : PostorderIter<T>(tree)) {
+	for (auto node : iter_post(tree)) {
 		std::set<long> & desIds = node->getData().desIds;
 		if (node->isTip()) {
 			desIds.insert(node->getOttId());
@@ -66,7 +66,7 @@ void fillDesIdSetsIncludingInternals(T & tree) {
 			if (node->hasOttId()) {
 				desIds.insert(node->getOttId());
 			}
-			for (auto child : ChildIter<typename T::node_type>(*node)) {
+			for (auto child : iter_child(*node)) {
 				std::set<long> & cDesIds = child->getData().desIds;
 				desIds.insert(cDesIds.begin(), cDesIds.end());
 			}
@@ -147,7 +147,7 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
 	const std::set<long> toRemove = nd.getData().desIds;
 	assert(!toRemove.empty());
 	nd.getData().desIds = ls;
-	for (auto anc : AncIter<RootedTreeNode<RTSplits> >(&nd)) {
+	for (auto anc : iter_anc(&nd)) {
 		assert(anc != nullptr);
 		assert(!anc->getData().desIds.empty());
 		for (auto tr : toRemove) {
@@ -162,7 +162,7 @@ template<typename T>
 std::vector<typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpand, const T & taxonomy) {
 	const auto & taxData = taxonomy.getData();
 	std::map<typename T::node_type *, std::set<long> > replaceNodes;
-	for (auto nd : LeafIter<T>(toExpand)) {
+	for (auto nd : iter_leaf(toExpand)) {
 		assert(nd->isTip());
 		assert(nd->hasOttId());
 		auto ottId = nd->getOttId();
@@ -200,7 +200,7 @@ void markPathToRoot(const T & fullTree,
 		throw OTCError(m);
 	}
 	n2m[startNd].insert(ottId);
-	for (auto nd : AncIter<typename T::node_type>(startNd)) {
+	for (auto nd : iter_anc(startNd)) {
 		n2m[nd].insert(ottId);
 	}
 }
@@ -226,7 +226,7 @@ inline bool multipleChildrenInMap(const T & nd,
 	assert(first);
 	bool foundFirst = false;
 	*first = nullptr;
-	for(auto c : ConstChildIter<T>(nd)) {
+	for(auto c : iter_child_const(nd)) {
 		if (markedMap.find(c) != markedMap.end()) {
 			if (foundFirst) {
 				return true;
@@ -269,7 +269,7 @@ inline void writePrunedSubtreeNewickForMarkedNodes(std::ostream & out,
 		auto nsn = findNextSignificantNode<T>(&srcNd, markedMap);
 		out << '(';
 		unsigned numcwritten = 0;
-		for (auto child : ConstChildIter<T>(*nsn)) {
+		for (auto child : iter_child_const(*nsn)) {
 			if (markedMap.find(child) != markedMap.end()){
 				if (numcwritten > 0) {
 					out << ',';
@@ -341,7 +341,7 @@ inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSpli
 	if (d.empty()) {
 		return;
 	}
-	for (auto a : AncIter<node_t>(nd)) {
+	for (auto a : iter_anc(nd)) {
 		auto & ad = a->getData().desIds;
 		for (auto el : d) {
 			ad.erase(el);
@@ -357,7 +357,7 @@ inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
 
 template <typename T, typename U>
 void insertAncestorsToParaphyleticSet(T * nd, U & includedNodes) {
-	for (auto anc : AncIter<T>(nd)) {
+	for (auto anc : iter_anc(nd)) {
 		if (contains(includedNodes, anc)) {
 			return;
 		}
@@ -368,7 +368,7 @@ void insertAncestorsToParaphyleticSet(T * nd, U & includedNodes) {
 //@TMP recursive until we have a pre-order subtree skipping iter.
 template <typename T, typename U>
 void insertDescendantsOfUnincludedSubtrees(T * nd, U & includedNodes) {
-	for (auto c : ChildIter<T>(*nd)) {
+	for (auto c : iter_child(*nd)) {
 		if (!contains(includedNodes, c)) {
 			includedNodes.insert(c);
 			insertDescendantsOfUnincludedSubtrees(c, includedNodes);
@@ -411,7 +411,7 @@ inline void writeNewick(std::ostream & out, const T *nd) {
 	if (nd->isTip()) {
 		writeNodeAsNewickLabel(out, nd);
 	} else {
-		for (auto n : ConstPreorderIterN<T>(nd)) {
+		for (auto n : iter_pre_n_const(nd)) {
 			if (n->isTip()) {
 				writeNodeAsNewickLabel(out, n);
 				if (n->getNextSib() == nullptr) {
@@ -432,7 +432,7 @@ inline bool isEffectivelyATip(const T *nd, std::function<bool(const T &)> subtre
 	if (nd->isTip()) {
 		return true;
 	}
-	for (auto child : ConstChildIter<T>(*nd)) {
+	for (auto child : iter_child_const(*nd)) {
 		if (subtreeFilter(*child)) {
 			return false;
 		}
@@ -483,7 +483,7 @@ inline void writeNewickFiltered(std::ostream & out, const T *nd, std::function<b
 		}
 		writeNodeAsNewickLabel(out, nd);
 	} else {
-		for (auto n : ConstSubtreeFilteringPreorderIterN<T>(nd, subtreeFilter)) {
+		for (auto n : iter_pre_filter_n_const(nd, subtreeFilter)) {
 			if (isEffectivelyATip(n, subtreeFilter)) {
 				writeNodeAsNewickLabel(out, n);
 				if (isEffectivelyLastSib(n, subtreeFilter)) {
@@ -510,7 +510,7 @@ inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
 	if (isProperSubset(idSet, nd->getData().desIds)) {
 		return nd;
 	}
-	for (auto n : AncIter<T>(nd)) {
+	for (auto n : iter_anc(nd)) {
 		if (isProperSubset(idSet, n->getData().desIds)) {
 			return n;
 		}
@@ -562,7 +562,7 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
 	auto exitChild = child->getNextSib();
 	typename T::node_type * f = child->getFirstChild();
 	typename T::node_type * c = nullptr;
-	auto citf = ChildIter<typename T::node_type>(*child);
+	auto citf = iter_child(*child);
 	const auto cite = citf.end();
 	for (auto cit = citf.begin(); cit != cite; ++cit) {
 		c = *cit;
@@ -604,7 +604,7 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
 template<typename T>
 inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDangle(T & tree) {
 	std::set<typename T::node_type *> monotypic;
-	for (auto nd : InternalNodeIter<T>(tree)) {
+	for (auto nd : iter_node_internal(tree)) {
 		if (nd->isOutDegreeOneNode()) {
 			monotypic.insert(nd);
 		}
@@ -633,7 +633,7 @@ inline bool isAncDecPair(const T * nd1, const T *nd2) {
 	if (nd1 == nd2) {
 		return false;
 	}
-	for (auto a : ConstAncIter<T>(nd2)) {
+	for (auto a : iter_anc_const(nd2)) {
 		if (a == nd1) {
 			return true;
 		}
@@ -653,7 +653,7 @@ inline std::set<long> getOttIdSetForLeaves(const T &tree) {
 		return tree.getRoot()->getData().desIds;
 	}
 	std::set<long> inducingLabels;
-	for (auto nd : ConstLeafIter<T>(tree)) {
+	for (auto nd : iter_leaf_const(tree)) {
 		inducingLabels.insert(nd->getOttId());
 	}
 	return inducingLabels;
@@ -666,7 +666,7 @@ void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > &
 	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
 		return haveIntersection(inducingLabels, nd.getData().desIds);
 	};
-	for (auto n : ConstSubtreeFilteringPreorderIterN<typename T::node_type>(mrca, sf)) {
+	for (auto n : iter_pre_filter_n_const(mrca, sf)) {
 		if (n == mrca) {
 			continue;
 		}
@@ -687,7 +687,7 @@ void getInducedInformativeGroupingMaps(const T & tree1,
 	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
 		return haveIntersection(inducingLabels, nd.getData().desIds);
 	};
-	for (auto n : ConstSubtreeFilteringPreorderIterN<typename T::node_type>(mrca, sf)) {
+	for (auto n : iter_pre_filter_n_const(mrca, sf)) {
 		if (n == mrca) {
 			continue;
 		}
@@ -704,7 +704,7 @@ template<typename T>
 void getInformativeGroupings(const T & tree2,
 							 std::set<std::set<long> > & tree2Splits) {
 	auto t2r = tree2.getRoot();
-	for (auto n : ConstPreorderInternalIter<T>(tree2)) {
+	for (auto n : iter_pre_internal_const(tree2)) {
 		if (n == t2r) {
 			continue;
 		}

@@ -34,7 +34,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 
 	bool processExpandedTree(OTCLI &otCLI, TreeMappedWithSplits & tree) {
 		std::map<const NodeWithSplits *, std::set<long> > prunedDesId;
-		for (auto nd : ConstLeafIter<TreeMappedWithSplits>(tree)) {
+		for (auto nd : iter_leaf_const(tree)) {
 			auto ottId = nd->getOttId();
 			markPathToRoot(*taxonomy, ottId, prunedDesId);
 		}
@@ -54,7 +54,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 			}
 		}
 		std::set<std::set<long> > sourceClades;
-		for (auto nd : PostorderInternalIter<TreeMappedWithSplits>(tree)) {
+		for (auto nd : iter_post_internal(tree)) {
 			if (nd->getParent() != nullptr && !nd->isTip()) {
 				sourceClades.insert(std::move(nd->getData().desIds));
 			}

@@ -9,7 +9,7 @@ bool writeNumLeaves(OTCLI & , std::unique_ptr<T> tree);
 template<typename T>
 bool writeNumLeaves(OTCLI & , std::unique_ptr<T> tree) {
 	auto c = 0U;
-	for (auto nd : ConstLeafIter<T>(*tree)) {
+	for (auto nd : iter_leaf_const(*tree)) {
 		c += 1;
 	}
 	std::cout << c << '\n';

@@ -134,7 +134,7 @@ inline std::set<long> getAllOTTIds(const T &taxonomy) {
 template<>
 inline std::set<long> getAllOTTIds(const TreeMappedEmptyNodes &taxonomy) {
 	std::set<long> o;
-	for (auto nd : ConstNodeIter<TreeMappedEmptyNodes>(taxonomy)) {
+	for (auto nd : iter_node_const(taxonomy)) {
 		if (nd->hasOttId()) {
 			o.insert(nd->getOttId());
 		}

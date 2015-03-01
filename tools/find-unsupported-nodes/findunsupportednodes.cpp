@@ -6,7 +6,7 @@ void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree, std::set
 bool singleDesSupportedOrNamed(const NodeWithSplits *nd, const std::set<const NodeWithSplits *> & supportedNodes);
 
 void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree, std::set<const NodeWithSplits *> & supportedNodes) {
-	for (auto nd : ConstPostorderInternalIter<TreeMappedWithSplits>(tree)) {
+	for (auto nd : iter_post_internal_const(tree)) {
 		if (nd->isOutDegreeOneNode()) {
 			auto c = nd->getFirstChild();
 			if (c->hasOttId() || supportedNodes.find(c) != supportedNodes.end()) {
@@ -39,7 +39,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 
 	int describeUnnamedUnsupported(std::ostream &out, const TreeMappedWithSplits & tree,
 								   const std::set<const NodeWithSplits *> & supported) const {
-		auto ig = ConstPreorderInternalIter<TreeMappedWithSplits>(tree);
+		auto ig = iter_pre_internal_const(tree);
 		auto nIt = ig.begin();
 		const auto eIt = ig.end();
 		int numUnsupported = 0;
@@ -141,12 +141,12 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 	bool processExpandedTree(OTCLI & otCLI, const TreeMappedWithSplits & tree) {
 		assert(toCheck != nullptr);
 		std::map<const NodeWithSplits *, std::set<long> > prunedDesId;
-		for (auto nd : ConstLeafIter<TreeMappedWithSplits>(tree)) {
+		for (auto nd : iter_leaf_const(tree)) {
 			auto ottId = nd->getOttId();
 			markPathToRoot(*toCheck, ottId, prunedDesId);
 		}
 		std::map<std::set<long>, const NodeWithSplits *> sourceClades;
-		for (auto nd : ConstPostorderInternalIter<TreeMappedWithSplits>(tree)) {
+		for (auto nd : iter_post_internal_const(tree)) {
 			if (nd->getParent() != nullptr && !nd->isTip()) {
 				sourceClades[nd->getData().desIds] = nd;
 			}

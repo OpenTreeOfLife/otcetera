@@ -8,7 +8,7 @@ bool writeDegreeDistribution(OTCLI & , std::unique_ptr<T> tree);
 template<typename T>
 inline bool writeDegreeDistribution(OTCLI & , std::unique_ptr<T> tree) {
 	std::map<unsigned long, unsigned long> degreeDistribution;
-	for (auto nd : ConstPreorderIter<T>(*tree)) {
+	for (auto nd : iter_pre_const(*tree)) {
 		auto od = nd->getOutDegree();
 		degreeDistribution[od] += 1;
 	}

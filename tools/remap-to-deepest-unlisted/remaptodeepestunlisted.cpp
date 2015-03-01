@@ -59,7 +59,7 @@ struct RemapToDeepestUnlistedState {
 
 	bool processTaxonomyTree(OTCLI & otCLI) {
 		ottIds = keys(taxonomy->getData().ottIdToNode);
-		for (auto nd : NodeIter<Tree_t>(*taxonomy)) {
+		for (auto nd : iter_node(*taxonomy)) {
 			taxoToAlignment.emplace(nd, AlignmentThreading{});
 		}
 		otCLI.getParsingRules().ottIdValidator = &ottIds;
@@ -96,7 +96,7 @@ struct RemapToDeepestUnlistedState {
 		assert(taxonomy != nullptr);
 		assert(tree != nullptr);
 		std::map<Node_t *, NodePairing *> currTreeNodePairings;
-		for (auto nd : PostorderIter<Tree_t>(*tree)) {
+		for (auto nd : iter_post(*tree)) {
 			auto par = nd->getParent();
 			if (par == nullptr) {
 				continue;

@@ -13,7 +13,7 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
 	bool summarize(const OTCLI &otCLI) override {
 		assert(taxonomy != nullptr && !includedNodes.empty());
 		std::set<RootedTreeNodeNoData *> toPrune;
-		for (auto nd : NodeIter<TreeMappedEmptyNodes>(*taxonomy)) {
+		for (auto nd : iter_node(*taxonomy)) {
 			const RootedTreeNodeNoData *  c = const_cast<const RootedTreeNodeNoData *>(nd);
 			if ((!contains(includedNodes, c)) && contains(includedNodes, c->getParent())) {
 				toPrune.insert(nd);
@@ -30,7 +30,7 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
 	bool processSourceTree(OTCLI & , const std::unique_ptr<TreeMappedEmptyNodes> treePtr) override {
 		assert(taxonomy != nullptr);
 		std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
-		for (auto nd : ConstLeafIter<TreeMappedEmptyNodes>(*treePtr)) {
+		for (auto nd : iter_leaf_const(*treePtr)) {
 			auto ottId = nd->getOttId();
 			auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
 			assert(taxoNode != nullptr);

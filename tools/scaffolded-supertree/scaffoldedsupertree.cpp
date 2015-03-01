@@ -130,7 +130,7 @@ class ThreadedTree {
 		// do threading
 		std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
 		std::set<NodePairingWithSplits *> tipPairings;
-		for (auto nd : PostorderIter<TreeMappedWithSplits>(tree)) {
+		for (auto nd : iter_post(tree)) {
 			auto par = nd->getParent();
 			if (par == nullptr) {
 				continue;
@@ -202,7 +202,7 @@ struct RemapToDeepestUnlistedState
 		unsigned long totalContested = 0;
 		unsigned long redundContested = 0;
 		unsigned long totalNumNodes = 0;
-		for (auto nd : InternalNodeIter<TreeMappedWithSplits>(*taxonomy)) {
+		for (auto nd : iter_node_internal(*taxonomy)) {
 			const auto & thr = taxoToAlignment[nd];
 			nodeMappingDegree[thr.getTotalNumNodeMappings()] += 1;
 			passThroughDegree[thr.getTotalNumEdgeBelowTraversals()] += 1;
@@ -234,7 +234,7 @@ struct RemapToDeepestUnlistedState
 	bool processTaxonomyTree(OTCLI & otCLI) override {
 		TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
 		suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
-		for (auto nd : NodeIter<TreeMappedWithSplits>(*taxonomy)) {
+		for (auto nd : iter_node(*taxonomy)) {
 			taxoToAlignment.emplace(nd, NodeThreadingWithSplits{});
 		}
 		return true;
