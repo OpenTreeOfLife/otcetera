@@ -390,28 +390,34 @@ template<typename T>
 inline void writeClosingNewick(std::ostream & out, const T *nd, const T * r) {
 	out << ')';
 	auto n = nd->getParent();
+	//std::cerr << " writeClosingNewick = " << getDesignator(*n) << '\n';
 	writeNodeAsNewickLabel(out, n);
 	if (n == r) {
 		return;
 	}
 	while (n->getNextSib() == nullptr) {
+		out << ')';
+		n = n->getParent();
+		//std::cerr << " writeClosingNewick while loop = " << getDesignator(*n) << '\n';
+		assert(n != nullptr);
+		writeNodeAsNewickLabel(out, n);
 		if (n == r) {
 			return;
 		}
-		out << ')';
-		n = n->getParent();
-		assert(n != nullptr);
-		writeNodeAsNewickLabel(out, n);
 	}
+	//std::cerr << "exiting writeClosingNewick = " << getDesignator(*n) << '\n';
 	out << ',';
 }
+
 template<typename T>
 inline void writeNewick(std::ostream & out, const T *nd) {
+	//std::cerr << "starting writeNewick " << getDesignator(*nd) << '\n';
 	assert(nd != nullptr);
 	if (nd->isTip()) {
 		writeNodeAsNewickLabel(out, nd);
 	} else {
 		for (auto n : iter_pre_n_const(nd)) {
+			//std::cerr << "writeNewick in for loop = " << getDesignator(*n) << '\n';
 			if (n->isTip()) {
 				writeNodeAsNewickLabel(out, n);
 				if (n->getNextSib() == nullptr) {
@@ -678,44 +684,6 @@ void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > &
 	}
 }
 
-template<typename T, typename U>
-void getInducedInformativeGroupingMaps(const T & tree1,
-									   std::map<std::set<long>, std::list<const typename T::node_type *> > & inducedSplitMaps,
-									   const U & tree2) {
-	const auto inducingLabels = getOttIdSetForLeaves(tree2);
-	auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
-	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
-		return haveIntersection(inducingLabels, nd.getData().desIds);
-	};
-	for (auto n : iter_pre_filter_n_const(mrca, sf)) {
-		if (n == mrca) {
-			continue;
-		}
-		auto inducedDesIds = n->getData().desIds;
-		const auto x = intersectionOfSets(inducingLabels, inducedDesIds);
-		if (x.size() > 1) {
-			inducedSplitMaps[std::move(x)].push_back(n);
-		}
-	}
-}
-
-
-template<typename T>
-inline void getInformativeGroupingMaps(const T & tree2,
-									  std::map<std::set<long>, const typename T::node_type *> & tree2Splits) {
-	auto t2r = tree2.getRoot();
-	for (auto n : iter_pre_internal_const(tree2)) {
-		if (n == t2r) {
-			continue;
-		}
-		const std::set<long> & x = n->getData().desIds;
-		if (x.size() > 2) {
-			tree2Splits[x] = n;
-		}
-	}
-}
-
-
 template<typename T>
 void getInformativeGroupings(const T & tree2,
 							 std::set<std::set<long> > & tree2Splits) {
@@ -770,66 +738,6 @@ unsigned long numInducedSplitsMissingInSecond(const T & tree1,
 	return nm;
 }
 
-template<typename T, typename U>
-unsigned long reportOnInducedConflicts(std::ostream & out,
-									   const T & tree1,
-									   const U & tree2,
-									   bool firstIsSuperset) {
-	assert(firstIsSuperset);
-	std::map<std::set<long>, std::list<const typename T::node_type *> > inducedSplitMap;
-	std::map<std::set<long>, const typename U::node_type *> tree2Splits;
-	getInducedInformativeGroupingMaps(tree1, inducedSplitMap, tree2);
-	getInformativeGroupingMaps(tree2, tree2Splits);
-	unsigned long nm = 0;
-	for (const auto & icsm : inducedSplitMap) {
-		const auto & ics = icsm.first;
-		bool found = false;
-		std::list<std::set<long> > extraIds;
-		std::list<std::set<long> > missingIds;
-		std::list<const typename U::node_type *> nodeList;
-		for (const auto & t2sP : tree2Splits) {
-			const auto & t2s = t2sP.first;
-			if (t2s == ics) {
-				found = true;
-			} else {
-				if (!areCompatibleDesIdSets(t2s, ics)) {
-					std::set<long> e = set_difference_as_set(t2s, ics);
-					std::set<long> m = set_difference_as_set(ics, t2s);
-					assert(!e.empty() || !m.empty());
-					extraIds.push_back(e);
-					missingIds.push_back(m);
-					nodeList.push_back(t2sP.second);
-				}
-			}
-		}
-		if (!extraIds.empty() || !missingIds.empty()) {
-			for (auto taxonNode : icsm.second) {
-				assert(extraIds.size() == missingIds.size());
-				assert(extraIds.size() == nodeList.size());
-				auto eIt = begin(extraIds);
-				auto mIt = begin(missingIds);
-				auto nIt = begin(nodeList);
-				for (; nIt != end(nodeList); ++nIt, ++eIt, ++mIt) {
-					out << taxonNode->getOttId() << " \"" << taxonNode->getName() << "\" contested by in \"" << tree2.getName() << "\"\n";
-					out << "    split: ";
-					writeNewick(out, *nIt);
-
-					out << ";\n    extras in phylo: ";
-					for (auto o : *eIt) {
-						out << o << ' ';
-					}
-					out << "\n    missing in phylo: ";
-					for (auto o : *mIt) {
-						out << o << ' ';
-					}
-					out << "\n";
-				}
-				nm += 1;
-			}
-		}
-	}
-	return nm;
-}
 
 }// namespace otc
 #endif

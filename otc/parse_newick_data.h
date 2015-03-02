@@ -35,6 +35,10 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
 								const ParsingRules &) {
 	if (labelToken) {
 		node.setName(labelToken->content());
+		long ottID = ottIDFromName(labelToken->content());
+		if (ottID >= 0) {
+			node.setOttId(ottID);
+		}
 	}
 }
 inline void postParseHook(RootedTree<RTNodeNoData, RTreeNoData> & , const ParsingRules & ) {

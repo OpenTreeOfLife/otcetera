@@ -53,6 +53,37 @@ inline T findRightmostInSubtree(T nd) {
 	return nd;
 }
 
+template<typename T>
+inline std::pair<long, long> getMRCAOttIdPair(T nd) {
+	assert(nd != nullptr);
+	if (nd->isTip()) {
+		return std::pair<long, long>(nd->getOttId(), nd->getOttId());
+	}
+	T f = findLeftmostInSubtree(nd);
+	T r = nd->getLastChild();
+	if (!r->isTip()) {
+		r = findLeftmostInSubtree(r);
+	}
+	assert(f->isTip());
+	assert(f->hasOttId());
+	assert(r->isTip());
+	assert(r->hasOttId());
+	return std::pair<long, long>(f->getOttId(), r->getOttId());
+}
+
+template<typename T>
+inline std::string getDesignator(const T &nd) {
+	if (nd.hasOttId()) {
+		std::string r = "ott";
+		return r + std::to_string(nd.getOttId());
+	}
+	assert(!nd.isTip());
+	auto p = getMRCAOttIdPair(&nd);
+	std::string pf = std::to_string(p.first);
+	std::string ps = std::to_string(p.second);
+	return std::string("MRCA(ott") + pf + std::string{", ott"} + ps + std::string{")"};
+}
+
 } // namespace otc
 #endif
 
