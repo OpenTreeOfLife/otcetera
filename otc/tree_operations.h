@@ -701,6 +701,22 @@ void getInducedInformativeGroupingMaps(const T & tree1,
 
 
 template<typename T>
+inline void getInformativeGroupingMaps(const T & tree2,
+									  std::map<std::set<long>, const typename T::node_type *> & tree2Splits) {
+	auto t2r = tree2.getRoot();
+	for (auto n : iter_pre_internal_const(tree2)) {
+		if (n == t2r) {
+			continue;
+		}
+		const std::set<long> & x = n->getData().desIds;
+		if (x.size() > 2) {
+			tree2Splits[x] = n;
+		}
+	}
+}
+
+
+template<typename T>
 void getInformativeGroupings(const T & tree2,
 							 std::set<std::set<long> > & tree2Splits) {
 	auto t2r = tree2.getRoot();
@@ -761,17 +777,18 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 									   bool firstIsSuperset) {
 	assert(firstIsSuperset);
 	std::map<std::set<long>, std::list<const typename T::node_type *> > inducedSplitMap;
-	std::set<std::set<long> > tree2Splits;
+	std::map<std::set<long>, const typename U::node_type *> tree2Splits;
 	getInducedInformativeGroupingMaps(tree1, inducedSplitMap, tree2);
-	getInformativeGroupings(tree2, tree2Splits);
+	getInformativeGroupingMaps(tree2, tree2Splits);
 	unsigned long nm = 0;
 	for (const auto & icsm : inducedSplitMap) {
 		const auto & ics = icsm.first;
 		bool found = false;
-		bool compatHeader = false;
 		std::list<std::set<long> > extraIds;
 		std::list<std::set<long> > missingIds;
-		for (const auto & t2s : tree2Splits) {
+		std::list<const typename U::node_type *> nodeList;
+		for (const auto & t2sP : tree2Splits) {
+			const auto & t2s = t2sP.first;
 			if (t2s == ics) {
 				found = true;
 			} else {
@@ -781,13 +798,31 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 					assert(!e.empty() || !m.empty());
 					extraIds.push_back(e);
 					missingIds.push_back(m);
+					nodeList.push_back(t2sP.second);
 				}
 			}
 		}
 		if (!extraIds.empty() || !missingIds.empty()) {
-		for (auto taxonNode : icsm.second) {
-				if (!compatHeader) {
-					out << "NOT FINISHED\n";
+			for (auto taxonNode : icsm.second) {
+				assert(extraIds.size() == missingIds.size());
+				assert(extraIds.size() == nodeList.size());
+				auto eIt = begin(extraIds);
+				auto mIt = begin(missingIds);
+				auto nIt = begin(nodeList);
+				for (; nIt != end(nodeList); ++nIt, ++eIt, ++mIt) {
+					out << taxonNode->getOttId() << " \"" << taxonNode->getName() << "\" contested by in \"" << tree2.getName() << "\"\n";
+					out << "    split: ";
+					writeNewick(out, *nIt);
+
+					out << ";\n    extras in phylo: ";
+					for (auto o : *eIt) {
+						out << o << ' ';
+					}
+					out << "\n    missing in phylo: ";
+					for (auto o : *mIt) {
+						out << o << ' ';
+					}
+					out << "\n";
 				}
 				nm += 1;
 			}
@@ -796,6 +831,6 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 	return nm;
 }
 
-} // namespace otc
+}// namespace otc
 #endif
 
