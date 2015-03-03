@@ -2,6 +2,46 @@
 #include "otc/debug.h"
 using namespace otc;
 
+std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
+
+
+//currently not copying names
+std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
+	TreeMappedWithSplits * rawTreePtr = new TreeMappedWithSplits();
+	try {
+		NodeWithSplits * newRoot = rawTreePtr->createRoot();
+		auto r = tree.getRoot();
+		assert(r->hasOttId());
+		newRoot->setOttId(r->getOttId());
+		std::map<const NodeWithSplits *, NodeWithSplits *> templateToNew;
+		templateToNew[r]= newRoot;
+		std::map<long, NodeWithSplits *> & newMap = rawTreePtr->getData().ottIdToNode;
+		rawTreePtr->getData().desIdSetsContainInternals = tree.getData().desIdSetsContainInternals;
+		for (auto nd : iter_pre_const(tree)) {
+			auto p = nd->getParent();
+			if (p == nullptr) {
+				continue;
+			}
+			auto t2nIt = templateToNew.find(p);
+			assert(t2nIt != templateToNew.end());
+			auto ntp = t2nIt->second;
+			auto nn = rawTreePtr->createChild(ntp);
+			assert(templateToNew.find(nd) == templateToNew.end());
+			templateToNew[nd] = nn;
+			if (nd->hasOttId()) {
+				nn->setOttId(nd->getOttId());
+				newMap[nd->getOttId()] = nn;
+			} else {
+				assert(false);
+			}
+			nn->getData().desIds = nd->getData().desIds;
+		}
+	} catch (...) {
+		delete rawTreePtr;
+		throw;
+	}
+	return std::unique_ptr<TreeMappedWithSplits>(rawTreePtr);
+}
 template<typename T>
 std::vector<typename T::node_type *> getNodesAliasedBy(typename T::node_type *nd, const T & tree) {
 	const auto & iaf = tree.getData().isAliasFor;
@@ -295,6 +335,46 @@ class ThreadedTree {
 		}
 	}
 
+	void threadTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
+		// do threading
+		std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
+		for (auto nd : iter_post(tree)) {
+			auto par = nd->getParent();
+			if (par == nullptr) {
+				continue;
+			}
+			NodePairingWithSplits * ndPairPtr = nullptr;
+			NodeWithSplits * taxoDes = nullptr;
+			if (nd->isTip()) {
+				assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end()); // TMP, Remove this to save time?
+				assert(nd->hasOttId());
+				auto ottId = nd->getOttId();
+				taxoDes = scaffoldTree.getData().getNodeForOttId(ottId);
+				assert(taxoDes != nullptr);
+				ndPairPtr = _addNodeMapping(taxoDes, nd, treeIndex);
+				currTreeNodePairings[nd] = ndPairPtr;
+			} else {
+				auto reuseNodePairingIt = currTreeNodePairings.find(nd);
+				assert(reuseNodePairingIt != currTreeNodePairings.end());
+				ndPairPtr = reuseNodePairingIt->second;
+				taxoDes = ndPairPtr->scaffoldNode;
+				assert(taxoDes != nullptr);
+			}
+			NodePairingWithSplits * parPairPtr = nullptr;
+			auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
+			if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
+				auto pottId = par->getOttId(); // since it is a taxonomy, it will have internal node labels
+				auto taxoAnc = scaffoldTree.getData().getNodeForOttId(pottId);
+				assert(taxoAnc != nullptr);
+				parPairPtr = _addNodeMapping(taxoAnc, par, treeIndex);
+				currTreeNodePairings[par] = parPairPtr;
+			} else {
+				parPairPtr = prevAddedNodePairingIt->second;
+			}
+			_addPathMapping(parPairPtr, ndPairPtr, treeIndex);
+		}
+	}
+
 	void writeDOTExport(std::ostream & out,
 						   const NodeThreading<NodeWithSplits, NodeWithSplits> & thr,
 						   const NodeWithSplits * nd,
@@ -316,14 +396,18 @@ struct RemapToDeepestUnlistedState
 	std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
 	std::vector<TreeMappedWithSplits *> treePtrByIndex;
 	bool doReportAllContested;
+	bool doConstructSupertree;
 	std::list<long> idsListToReportOn;
 	std::list<long> idListForDotExport;
+	TreeMappedWithSplits * taxonomyAsSource;
 
 	virtual ~RemapToDeepestUnlistedState(){}
 	RemapToDeepestUnlistedState()
 		:TaxonomyDependentTreeProcessor<TreeMappedWithSplits>(),
 		 numErrors(0),
-		 doReportAllContested(false) {
+		 doReportAllContested(false),
+		 doConstructSupertree(false),
+		 taxonomyAsSource(nullptr) {
 	}
 
 	void reportAllConflicting(std::ostream & out, bool verbose) {
@@ -358,6 +442,9 @@ struct RemapToDeepestUnlistedState
 	}
 	
 	bool summarize(const OTCLI &otCLI) override {
+		if (doConstructSupertree) {
+			cloneTaxonomyAsASourceTree();
+		}
 		std::ostream & out{otCLI.out};
 		assert (taxonomy != nullptr);
 		if (doReportAllContested) {
@@ -414,15 +501,38 @@ struct RemapToDeepestUnlistedState
 		otCLI.out << "# pathPairings = " << pathPairings.size() << '\n';
 		return true;
 	}
+
+	bool cloneTaxonomyAsASourceTree() {
+		assert(taxonomy != nullptr);
+		assert(taxonomyAsSource == nullptr);
+		std::unique_ptr<TreeMappedWithSplits> tree = std::move(cloneTree(*taxonomy));
+		taxonomyAsSource = tree.get();
+		std::size_t treeIndex = inputTreesToIndex.size();
+		TreeMappedWithSplits * raw = tree.get();
+		inputTreesToIndex[std::move(tree)] = treeIndex;
+		treePtrByIndex.push_back(taxonomyAsSource);
+		// Store the tree's filename
+		raw->setName("TAXONOMY");
+		threadTaxonomyClone(*taxonomy, *taxonomyAsSource, treeIndex);
+		return true;
+	}
 };
 
 bool handleReportAllFlag(OTCLI & otCLI, const std::string &);
 bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &);
+bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg);
+bool handleSuperTreeFlag(OTCLI & otCLI, const std::string &narg);
 
 bool handleReportAllFlag(OTCLI & otCLI, const std::string &) {
 	RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
 	assert(proc != nullptr);
 	proc->doReportAllContested = true;
+	return true;
+}
+bool handleSuperTreeFlag(OTCLI & otCLI, const std::string &) {
+	RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+	assert(proc != nullptr);
+	proc->doConstructSupertree = true;
 	return true;
 }
 
@@ -469,6 +579,10 @@ int main(int argc, char *argv[]) {
 	otCLI.addFlag('a',
 				  "Write a report of all contested nodes",
 				  handleReportAllFlag,
+				  false);
+	otCLI.addFlag('s',
+				  "Compute a supertree",
+				  handleSuperTreeFlag,
 				  false);
 	otCLI.addFlag('b',
 				  "IDLIST should be a list of OTT IDs. A status report will be generated for those nodes",
