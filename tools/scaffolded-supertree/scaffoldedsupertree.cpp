@@ -28,70 +28,6 @@ struct PathPairing {
 	}
 };
 
-template<typename T, typename U>
-struct NodeThreading {
-	using NodePairSet = std::set<NodePairing<T, U> *>;
-	using PathPairSet = std::set<PathPairing<T, U> *>;
-	
-	std::map<std::size_t, NodePairSet> nodeAlignments;
-	std::map<std::size_t, PathPairSet> edgeBelowAlignments;
-	std::map<std::size_t, PathPairSet > loopAlignments;
-	std::size_t getTotalNumNodeMappings() const {
-		unsigned long t = 0U;
-		for (auto i : nodeAlignments) {
-			t += i.second.size();
-		}
-		return t;
-	}
-	std::size_t getTotalNumLoops() const {
-		unsigned long t = 0U;
-		for (auto i : loopAlignments) {
-			t += i.second.size();
-		}
-		return t;
-	}
-	std::size_t getTotalNumEdgeBelowTraversals() const {
-		unsigned long t = 0U;
-		for (auto i : edgeBelowAlignments) {
-			t += i.second.size();
-		}
-		return t;
-	}
-	bool isContested() const {
-		for (auto i : edgeBelowAlignments) {
-			if (i.second.size() > 1) {
-				const T * firstSrcPar = nullptr;
-				for (auto pp : i.second) {
-					auto sp = pp->phyloParent;
-					if (sp != firstSrcPar) {
-						if (firstSrcPar == nullptr) {
-							firstSrcPar = sp;
-						} else {
-							return true;
-						}
-					}
-				}
-			}
-		}
-		return false;
-	}
-	std::list<std::size_t> getContestingTrees() const {
-		std::list<std::size_t> r;
-		for (auto i : edgeBelowAlignments) {
-			if (i.second.size() > 1) {
-				r.push_back(i.first);
-			}
-		}
-		return r;
-	}
-	const PathPairSet & getEdgesExiting(std::size_t treeIndex) const {
-		auto el = edgeBelowAlignments.find(treeIndex);
-		assert(el != edgeBelowAlignments.end());
-		return el->second;
-	}
-
-};
-
 
 template<typename T, typename U>
 void reportOnConflicting(std::ostream & out, const std::string & prefix, const T * scaff, const std::set<PathPairing<T, U> *> & exitPaths, const std::set<long> & phyloLeafSet) {
@@ -129,7 +65,8 @@ void reportOnConflicting(std::ostream & out, const std::string & prefix, const T
 		}
 	}
 	if (desIdSet2NdConflicting.empty()) {
-		assert(false); // not reachable if we are calling isContested first as a test.
+		out << "VERY ODD " << prefix << ", desIdSet2NdConflicting but desIdSet2NdConflicting is empty()!\n";
+		//assert(false); // not reachable if we are calling isContested first as a test.
 		return;
 	}
 	for (const auto & mIt : desIdSet2NdConflicting) {
@@ -141,6 +78,94 @@ void reportOnConflicting(std::ostream & out, const std::string & prefix, const T
 		emitConflictDetails(out, *nd, e, m);
 	}
 }
+
+
+template<typename T, typename U>
+struct NodeThreading {
+	using NodePairSet = std::set<NodePairing<T, U> *>;
+	using PathPairSet = std::set<PathPairing<T, U> *>;
+	
+	std::map<std::size_t, NodePairSet> nodeAlignments;
+	std::map<std::size_t, PathPairSet> edgeBelowAlignments;
+	std::map<std::size_t, PathPairSet > loopAlignments;
+	std::size_t getTotalNumNodeMappings() const {
+		unsigned long t = 0U;
+		for (auto i : nodeAlignments) {
+			t += i.second.size();
+		}
+		return t;
+	}
+	std::size_t getTotalNumLoops() const {
+		unsigned long t = 0U;
+		for (auto i : loopAlignments) {
+			t += i.second.size();
+		}
+		return t;
+	}
+	std::size_t getTotalNumEdgeBelowTraversals() const {
+		unsigned long t = 0U;
+		for (auto i : edgeBelowAlignments) {
+			t += i.second.size();
+		}
+		return t;
+	}
+	static bool treeContestsMonophyly(const PathPairSet & edgesBelowForTree) {
+		if (edgesBelowForTree.size() > 1) {
+			const T * firstSrcPar = nullptr;
+			for (auto pp : edgesBelowForTree) {
+				auto sp = pp->phyloParent;
+				if (sp != firstSrcPar) {
+					if (firstSrcPar == nullptr) {
+						firstSrcPar = sp;
+					} else {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	bool isContested() const {
+		for (auto i : edgeBelowAlignments) {
+			if (treeContestsMonophyly(i.second)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	std::list<std::size_t> getContestingTrees() const {
+		std::list<std::size_t> r;
+		for (auto i : edgeBelowAlignments) {
+			if (treeContestsMonophyly(i.second)) {
+				r.push_back(i.first);
+			}
+		}
+		return r;
+	}
+	const PathPairSet & getEdgesExiting(std::size_t treeIndex) const {
+		auto el = edgeBelowAlignments.find(treeIndex);
+		assert(el != edgeBelowAlignments.end());
+		return el->second;
+	}
+
+	bool reportIfContested(std::ostream & out,
+						   const U * nd,
+						   const std::vector<TreeMappedWithSplits *> & treePtrByIndex) const {
+		if (isContested()) {
+			auto c = getContestingTrees();
+			for (auto cti : c) {
+				auto ctree = treePtrByIndex.at(cti);
+				const std::set<long> ls = getOttIdSetForLeaves(*ctree);
+				const std::string prefix = getContestedPreamble(*nd, *ctree);
+				const auto & edges = getEdgesExiting(cti);
+				reportOnConflicting(out, prefix, nd, edges, ls);
+			}
+			return true;
+		}
+		return false;
+	}
+};
+
 
 
 using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
@@ -245,15 +270,17 @@ struct RemapToDeepestUnlistedState
 	std::set<long> tabooIds;
 	std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
 	std::vector<TreeMappedWithSplits *> treePtrByIndex;
+	bool doReportAllContested;
+	std::list<long> idsListToReportOn;
 
 	virtual ~RemapToDeepestUnlistedState(){}
 	RemapToDeepestUnlistedState()
 		:TaxonomyDependentTreeProcessor<TreeMappedWithSplits>(),
-		 numErrors(0) {
+		 numErrors(0),
+		 doReportAllContested(false) {
 	}
 
-	bool summarize(const OTCLI &otCLI) override {
-		assert (taxonomy != nullptr);
+	void reportAllConflicting(std::ostream & out) {
 		std::map<std::size_t, unsigned long> nodeMappingDegree;
 		std::map<std::size_t, unsigned long> passThroughDegree;
 		std::map<std::size_t, unsigned long> loopDegree;
@@ -266,17 +293,7 @@ struct RemapToDeepestUnlistedState
 			passThroughDegree[thr.getTotalNumEdgeBelowTraversals()] += 1;
 			loopDegree[thr.getTotalNumLoops()] += 1;
 			totalNumNodes += 1;
-			if (thr.isContested()) {
-				auto c = thr.getContestingTrees();
-				for (auto cti : c) {
-					auto ctree = treePtrByIndex.at(cti);
-					const std::set<long> ls = getOttIdSetForLeaves(*ctree);
-					std::ostringstream ss;
-					ss << nd->getOttId() << " \"" << nd->getName() << "\" contested by \"" << ctree->getName() << "\"";
-					const std::string prefix = ss.str();
-					const auto & edges = thr.getEdgesExiting(cti);
-					reportOnConflicting(otCLI.err, prefix, nd, edges, ls);
-				}
+			if (thr.reportIfContested(out, nd, treePtrByIndex)) {
 				totalContested += 1;
 				if (nd->getOutDegree() == 1) {
 					redundContested += 1;
@@ -285,12 +302,28 @@ struct RemapToDeepestUnlistedState
 		}
 		unsigned long m = std::max(loopDegree.rbegin()->first, passThroughDegree.rbegin()->first);
 		m = std::max(m, nodeMappingDegree.rbegin()->first);
-		otCLI.out << "Degree\tNodeMaps\tEdgeMaps\tLoops\n";
+		out << "Degree\tNodeMaps\tEdgeMaps\tLoops\n";
 		for (unsigned long i = 0 ; i <= m; ++i) {
-			otCLI.out << i << '\t' << nodeMappingDegree[i]<< '\t' << passThroughDegree[i] << '\t' << loopDegree[i]<< '\n';
+			out << i << '\t' << nodeMappingDegree[i]<< '\t' << passThroughDegree[i] << '\t' << loopDegree[i]<< '\n';
 		}
-		otCLI.out << totalNumNodes << " internals\n" << totalContested << " contested\n" << (totalNumNodes - totalContested) << " uncontested\n";
-		otCLI.out << redundContested << " monotypic contested\n";
+		out << totalNumNodes << " internals\n" << totalContested << " contested\n" << (totalNumNodes - totalContested) << " uncontested\n";
+		out << redundContested << " monotypic contested\n";
+	}
+
+	bool summarize(const OTCLI &otCLI) override {
+		assert (taxonomy != nullptr);
+		if (doReportAllContested) {
+			reportAllConflicting(otCLI.out);
+		} else {
+			for (auto tr : idsListToReportOn) {
+				auto nd = taxonomy->getData().getNodeForOttId(tr);
+				if (nd == nullptr) {
+					throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to report on: ") + std::to_string(tr));
+				}
+				const auto & thr = taxoToAlignment[nd];
+				thr.reportIfContested(otCLI.out, nd, treePtrByIndex);
+			}
+		}
 		return true;
 	}
 
@@ -320,10 +353,46 @@ struct RemapToDeepestUnlistedState
 	}
 };
 
+bool handleReportAllFlag(OTCLI & otCLI, const std::string &);
+bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &);
+
+bool handleReportAllFlag(OTCLI & otCLI, const std::string &) {
+	RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+	assert(proc != nullptr);
+	proc->doReportAllContested = true;
+	return true;
+}
+
+bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
+	RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+	assert(proc != nullptr);
+	if (narg.empty()) {
+		throw OTCError("Expecting a list of IDs after the -b argument.");
+	}
+	auto rs = split_string(narg, ',');
+	for (auto word : rs) {
+		auto ottId = ottIDFromName(word);
+		if (ottId < 0) {
+			throw OTCError(std::string("Expecting a list of IDs after the -b argument. Offending word: ") + word);
+		}
+		proc->idsListToReportOn.push_back(ottId);
+	}
+	return true;
+}
+
+
 int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcscaffoldedsupertree",
 				"takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. Crashes or emits bogus output.",
 				"taxonomy.tre inp1.tre inp2.tre");
 	RemapToDeepestUnlistedState proc;
+	otCLI.addFlag('a',
+				  "Write a report of all contested nodes",
+				  handleReportAllFlag,
+				  false);
+	otCLI.addFlag('b',
+				  "IDLIST should be a list of OTT IDs. A status report will be generated for those nodes",
+				  handleReportOnNodesFlag,
+				  true);
 	return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }

@@ -30,7 +30,10 @@ std::size_t find_last_graph_index(const std::string & s);
 std::string strip_leading_whitespace(const std::string & s);
 std::string strip_trailing_whitespace(const std::string & s);
 std::string strip_surrounding_whitespace(const std::string &n);
+// w/o delimiter split_string splits on whitespace and does not return empty 
+//	elements. With the delimiter, consecutive delimiters will lead to an empty string
 std::list<std::string> split_string(const std::string &s);
+std::list<std::string> split_string(const std::string &s, const char delimiter);
 std::list<std::set<long> > parseDesignatorsFile(const std::string &fp);
 std::set<long> parseListOfOttIds(const std::string &fp);
 
@@ -55,6 +58,18 @@ template<typename T, typename U>
 bool contains(const T & container, const U & key);
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
+
+template<typename T>
+inline std::string getContestedPreambleFromName(const T & nd, const std::string & treeName) {
+	std::ostringstream ss;
+	ss << nd.getOttId() << " \"" << nd.getName() << "\" contested by \"" << treeName << "\"";
+	return std::move(ss.str());
+}
+
+template<typename T, typename U>
+inline std::string getContestedPreamble(const T & nd, const U & tree) {
+	return getContestedPreambleFromName(nd, tree.getName());
+}
 
 #if defined WIDE_STR_VERSION
 const std::wstring readWStrContentOfUTF8File(const std::string &filepath);

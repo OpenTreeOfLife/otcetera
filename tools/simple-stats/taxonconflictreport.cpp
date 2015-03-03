@@ -84,7 +84,7 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 				auto mIt = begin(missingIds);
 				auto nIt = begin(nodeList);
 				for (; nIt != end(nodeList); ++nIt, ++eIt, ++mIt) {
-					out << taxonNode->getOttId() << " \"" << taxonNode->getName() << "\" contested by in \"" << tree2.getName() << "\"";
+					out << getContestedPreamble(*taxonNode, tree2);
 					emitConflictDetails(out, **nIt, *eIt, *mIt);
 				}
 				nm += 1;

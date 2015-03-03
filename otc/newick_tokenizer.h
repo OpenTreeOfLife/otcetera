@@ -352,7 +352,7 @@ inline long ottIDFromName(const std::string & n) {
 	if (strchr("0123456789", c[currInd]) == 0) {
 		return -2;
 	}
-	while (currInd > 1) {
+	while (currInd > 0) {
 		--currInd;
 		if (strchr("0123456789", c[currInd]) == 0) {
 			++currInd;

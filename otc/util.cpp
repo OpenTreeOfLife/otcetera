@@ -124,6 +124,25 @@ std::list<std::string> split_string(const std::string &s)
 	return r;
 }
 
+
+std::list<std::string> split_string(const std::string &s, const char delimiter)
+	{
+	std::list<std::string> r;
+	std::string current;
+	for (const auto & c : s) {
+		if (c != delimiter) {
+			current.append(1, c);
+		} else {
+			r.push_back(current);
+			current.clear();
+		}
+	}
+	if (!current.empty()) {
+		r.push_back(current);
+	}
+	return r;
+}
+
 std::set<long> parseListOfOttIds(const std::string &fp) {
 	std::ifstream inpf;
 	if (!openUTF8File(fp, inpf)) {

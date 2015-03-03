@@ -91,7 +91,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 				if (!areCompatibleDesIdSets(taxNodesDesSets, sc)) {
 					for (auto nd : ndlist) {
 						contestedSet.insert(nd);
-						std::cerr << nd->getOttId() << " \"" << nd->getName() << "\" contested by \"" << treeName << "\"\n";
+						std::cerr << getContestedPreambleFromName(*nd, treeName) << '\n';
 					}
 					break;
 				}
