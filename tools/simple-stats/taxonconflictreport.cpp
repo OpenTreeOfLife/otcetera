@@ -33,7 +33,7 @@ inline void getInformativeGroupingMaps(const T & tree2,
 			continue;
 		}
 		const std::set<long> & x = n->getData().desIds;
-		if (x.size() > 2) {
+		if (x.size() > 1) {
 			tree2Splits[x] = n;
 		}
 	}
@@ -50,10 +50,6 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 	std::map<std::set<long>, const typename U::node_type *> tree2Splits;
 	getInducedInformativeGroupingMaps(tree1, inducedSplitMap, tree2);
 	getInformativeGroupingMaps(tree2, tree2Splits);
-	std::cerr << "inducedSplitMap.size = " <<  inducedSplitMap.size() << '\n';
-	std::cerr << "tree2Splits.size = " <<  tree2Splits.size() << '\n';
-	writeNewick(std::cerr, tree2.getRoot());
-	std::cerr << '\n';
 	unsigned long nm = 0;
 	for (const auto & icsm : inducedSplitMap) {
 		const auto & ics = icsm.first;

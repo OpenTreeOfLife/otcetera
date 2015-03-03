@@ -110,9 +110,10 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
 			return false;
 		}
 		extraArgs = readLinesOfFile(flagWithoutDash.substr(1));
+	} else {
+		std::cerr  << "Unrecognized flag: -" + flagWithoutDash << '\n';
+		return false;
 	}
-	// this is where, we'd insert a procedure for generic flag handling...
-	// IF WE HAD ONE!
 	if (recursionNeeded) {
 		return this->handleFlag(flagWithoutDash.substr(1));
 	}
