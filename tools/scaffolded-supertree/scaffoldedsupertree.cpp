@@ -170,7 +170,8 @@ struct NodeThreading {
 	bool reportIfContested(std::ostream & out,
 						   const U * nd,
 						   const std::vector<TreeMappedWithSplits *> & treePtrByIndex,
-						   const std::vector<NodeWithSplits *> & aliasedBy) const {
+						   const std::vector<NodeWithSplits *> & aliasedBy,
+						   bool verbose) const {
 		if (isContested()) {
 			auto c = getContestingTrees();
 			for (auto cti : c) {
@@ -178,10 +179,18 @@ struct NodeThreading {
 				const std::set<long> ls = getOttIdSetForLeaves(*ctree);
 				const auto & edges = getEdgesExiting(cti);
 				const std::string prefix = getContestedPreamble(*nd, *ctree);
-				reportOnConflicting(out, prefix, nd, edges, ls);
+				if (verbose) {
+					reportOnConflicting(out, prefix, nd, edges, ls);
+				} else {
+					out << prefix << '\n';
+				}
 				for (auto na : aliasedBy) {
 					const std::string p2 = getContestedPreamble(*na, *ctree);
-					reportOnConflicting(out, p2, na, edges, ls);
+					if (verbose) {
+						reportOnConflicting(out, p2, na, edges, ls);
+					} else {
+						out << prefix << '\n';
+					}
 				}
 			}
 			return true;
@@ -317,7 +326,7 @@ struct RemapToDeepestUnlistedState
 		 doReportAllContested(false) {
 	}
 
-	void reportAllConflicting(std::ostream & out) {
+	void reportAllConflicting(std::ostream & out, bool verbose) {
 		std::map<std::size_t, unsigned long> nodeMappingDegree;
 		std::map<std::size_t, unsigned long> passThroughDegree;
 		std::map<std::size_t, unsigned long> loopDegree;
@@ -331,7 +340,7 @@ struct RemapToDeepestUnlistedState
 			loopDegree[thr.getTotalNumLoops()] += 1;
 			totalNumNodes += 1;
 			std::vector<NodeWithSplits *> aliasedBy = getNodesAliasedBy(nd, *taxonomy);
-			if (thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy)) {
+			if (thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy, verbose)) {
 				totalContested += 1;
 				if (nd->getOutDegree() == 1) {
 					redundContested += 1;
@@ -352,7 +361,7 @@ struct RemapToDeepestUnlistedState
 		std::ostream & out{otCLI.out};
 		assert (taxonomy != nullptr);
 		if (doReportAllContested) {
-			reportAllConflicting(out);
+			reportAllConflicting(out, otCLI.verbose);
 		} else {
 			for (auto tr : idsListToReportOn) {
 				auto nd = taxonomy->getData().getNodeForOttId(tr);
@@ -361,7 +370,7 @@ struct RemapToDeepestUnlistedState
 				}
 				const auto & thr = taxoToAlignment[nd];
 				std::vector<NodeWithSplits *> aliasedBy = getNodesAliasedBy(nd, *taxonomy);
-				thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy);
+				thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy, otCLI.verbose);
 			}
 		}
 		for (auto tr : idListForDotExport) {
