@@ -141,10 +141,19 @@ void reportOnConflicting(std::ostream & out, const std::string & prefix, const T
 	}
 }
 
+
+template<typename T, typename U> class NodeThreading;
+//template<typename T, typename U>
+//using ThreadingObj = NodeThreading<T, U>;
+
 template<typename T, typename U>
 class GreedyPhylogeneticForest {
 	public:
-	void attemptToAddGrouping(PathPairing<T, U> * ppptr, const std::set<long> & ingroup, const std::set<long> & leafSet);
+	void attemptToAddGrouping(PathPairing<T, U> * ppptr,
+							  const std::set<long> & ingroup,
+							  const std::set<long> & leafSet);
+	void finalizeTree() {}
+	void resolveThreadedClade(U & scaffoldNode, NodeThreading<T, U> * );
 };
 
 template<typename T, typename U>
@@ -152,6 +161,12 @@ inline void GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U
 																const std::set<long> & ingroup,
 																const std::set<long> & leafSet) {
 }
+
+template<typename T, typename U>
+inline void GreedyPhylogeneticForest<T,U>::resolveThreadedClade(U & ,
+																NodeThreading<T, U> *) {
+}
+
 
 template<typename T, typename U>
 struct NodeThreading {
@@ -290,6 +305,8 @@ struct NodeThreading {
 				gpf.attemptToAddGrouping(ppptr, d, relevantIds);
 			}
 		}
+		gpf.finalizeTree();
+		gpf.resolveThreadedClade(scaffoldNode, this);
 	}
 	void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, std::size_t numTrees) {
 	}
