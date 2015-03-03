@@ -74,16 +74,19 @@ struct NodePairing {
 
 template<typename T, typename U>
 struct PathPairing {
-	const T * const scaffoldDes;
-	const T * const scaffoldAnc;
-	const U * const phyloChild;
-	const U * const phyloParent;
+	T * scaffoldDes;
+	T * scaffoldAnc;
+	U * phyloChild;
+	U * phyloParent;
 	
 	PathPairing(const NodePairing<T,U> & parent, const NodePairing<T,U> & child)
 		:scaffoldDes(child.scaffoldNode),
 		scaffoldAnc(parent.scaffoldNode),
 		phyloChild(child.phyloNode),
 		phyloParent(parent.phyloNode) {
+	}
+	std::set<long> getPhyloChildDesID() const {
+		return phyloChild->getData().desIds;
 	}
 };
 
@@ -138,6 +141,17 @@ void reportOnConflicting(std::ostream & out, const std::string & prefix, const T
 	}
 }
 
+template<typename T, typename U>
+class GreedyPhylogeneticForest {
+	public:
+	void attemptToAddGrouping(PathPairing<T, U> * ppptr, const std::set<long> & ingroup, const std::set<long> & leafSet);
+};
+
+template<typename T, typename U>
+inline void GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
+																const std::set<long> & ingroup,
+																const std::set<long> & leafSet) {
+}
 
 template<typename T, typename U>
 struct NodeThreading {
@@ -205,6 +219,79 @@ struct NodeThreading {
 		auto el = edgeBelowAlignments.find(treeIndex);
 		assert(el != edgeBelowAlignments.end());
 		return el->second;
+	}
+
+	// some trees contest monophyly. Return true if these trees are obviously overruled
+	//	 by higher ranking trees so that we can avoid the more expensive unconstrained phylo graph 
+	bool highRankingTreesPreserveMonophyly(std::size_t numTrees) {
+		return false;
+	}
+
+	std::set<long> getRelevantDesIds(const PathPairSet & pps) {
+		std::set<long> relevantIds;
+		for (auto path : pps) {
+			const auto pc = path->phyloChild;
+			const auto & cdi = pc->getData().desIds;
+			relevantIds.insert(begin(cdi), end(cdi));
+		}
+		return relevantIds;
+	}
+
+	void collapseSourceEdge(const T * phyloParent, PathPairing<T, U> *path) {
+	}
+	// there may be 
+	void collapseSourceEdgesToForceOneEntry(U & scaffoldNode, PathPairSet & pps) {
+		if (pps.size() < 2) {
+			return;
+		}
+		std::set<long> relevantIds = getRelevantDesIds(pps);
+		PathPairing<T, U> * firstPairing = *pps.begin();
+		const T * onePhyloPar = firstPairing->phyloParent;
+		const T * phyloMrca = searchAncForMRCAOfDesIds(onePhyloPar, relevantIds);
+		std::set<const T *> prevCollapsed; 
+		prevCollapsed.insert(phyloMrca); // we don't actually collapse this edge, we just add it to the set so we don't collapse it below....
+		for (auto path : pps) {
+			const auto pp = path->phyloParent;
+			if (!contains(prevCollapsed, pp)) {
+				collapseSourceEdge(pp, path);
+				prevCollapsed.insert(pp);
+			}
+		}
+	}
+	void resolveGivenContestedMonophyly(U & scaffoldNode, std::size_t numTrees) {
+		for (std::size_t treeInd = 0 ; treeInd < numTrees; ++treeInd) {
+			const auto ebaIt = edgeBelowAlignments.find(treeInd);
+			if (ebaIt == edgeBelowAlignments.end()) {
+				continue;
+			}
+			PathPairSet & pps = ebaIt->second;
+			collapseSourceEdgesToForceOneEntry(scaffoldNode, pps);
+		}
+		resolveGivenUncontestedMonophyly(scaffoldNode, numTrees);
+	}
+	void resolveGivenUncontestedMonophyly(U & scaffoldNode, std::size_t numTrees) {
+		GreedyPhylogeneticForest<T,U> gpf;
+		for (std::size_t treeInd = 0 ; treeInd < numTrees; ++treeInd) {
+			const auto laIt = loopAlignments.find(treeInd);
+			if (laIt == loopAlignments.end()) {
+				continue;
+			}
+			PathPairSet & pps = laIt->second;
+			// leaf set of this tree for this subtree
+			std::set<long> relevantIds = getRelevantDesIds(pps);
+			// for repeatability, we'll try to add groupings in reverse order of desIds sets (deeper first)
+			std::map<std::set<long>, PathPairing<T,U> *> mapToProvideOrder;
+			for (auto pp : pps) {
+				mapToProvideOrder[pp->getPhyloChildDesID()] = pp;
+			}
+			for (auto mpoIt : mapToProvideOrder) {
+				const auto & d = mpoIt.first;
+				auto ppptr = mpoIt.second;
+				gpf.attemptToAddGrouping(ppptr, d, relevantIds);
+			}
+		}
+	}
+	void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, std::size_t numTrees) {
 	}
 
 	bool reportIfContested(std::ostream & out,
@@ -386,6 +473,7 @@ class ThreadedTree {
 		out << "  getTotalNumEdgeBelowTraversals = " << thr.getTotalNumEdgeBelowTraversals() << "\n";
 		out << "  isContested = " << thr.isContested() << "\n";
 	}
+
 };
 
 struct RemapToDeepestUnlistedState
@@ -400,6 +488,26 @@ struct RemapToDeepestUnlistedState
 	std::list<long> idsListToReportOn;
 	std::list<long> idListForDotExport;
 	TreeMappedWithSplits * taxonomyAsSource;
+
+	void resolveOrCollapse(NodeWithSplits * scaffNd) {
+		auto & thr = taxoToAlignment[scaffNd];
+		const auto numTrees = treePtrByIndex.size();
+		if (thr.isContested()) {
+			if (thr.highRankingTreesPreserveMonophyly(numTrees)) {
+				thr.resolveGivenContestedMonophyly(*scaffNd, numTrees);
+			} else {
+				thr.constructPhyloGraphAndCollapseIfNecessary(*scaffNd, numTrees);
+			}
+		} else {
+			thr.resolveGivenUncontestedMonophyly(*scaffNd, numTrees);
+		}
+	}
+	void constructSupertree() {
+		for (auto nd : iter_post(*taxonomy)) {
+			resolveOrCollapse(nd);
+		}
+	}
+
 
 	virtual ~RemapToDeepestUnlistedState(){}
 	RemapToDeepestUnlistedState()
@@ -444,6 +552,7 @@ struct RemapToDeepestUnlistedState
 	bool summarize(const OTCLI &otCLI) override {
 		if (doConstructSupertree) {
 			cloneTaxonomyAsASourceTree();
+			constructSupertree();
 		}
 		std::ostream & out{otCLI.out};
 		assert (taxonomy != nullptr);
