@@ -286,6 +286,8 @@ class RootedTree {
 		node_type * root;
 		U data;
 		std::string name;
+		std::set<node_type *> detached;
+		
 	public:
 		void setName(const std::string &n) {
 			name.assign(n);
@@ -305,12 +307,17 @@ class RootedTree {
 			}
 			allNodes.clear();
 		}
-		std::set<const node_type *> getSetOfAllNodes() const {
+		std::set<const node_type *> getSetOfAllAttachedNodes() const {
 			std::set<const node_type *> r;
 			for (auto nd : allNodes) {
-				r.insert(nd);
+				if (detached.find(nd) == detached.end()) {
+					r.insert(nd);
+				}
 			}
 			return r;
+		}
+		void markAsDetached(node_type * nd) {
+			detached.insert(nd);
 		}
 	private:
 		//@ tmp recursive!

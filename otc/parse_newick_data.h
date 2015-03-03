@@ -125,6 +125,9 @@ inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & t
 	} else {
 		fillDesIdSets(tree);
 	}
+	for (auto p : tree.getData().ottIdToNode) {
+		assert(p.first == p.second->getOttId());
+	}
 }
 
 } // namespace otc

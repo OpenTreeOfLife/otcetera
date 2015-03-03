@@ -11,6 +11,18 @@
 namespace otc {
 
 template<typename T>
+bool isAncestorDesNoIter(const T *a, const T *d) {
+	auto p = d->getParent();
+	while (p) {
+		if (p == a) {
+			return true;
+		}
+		p = p->getParent();
+	}
+	return false;
+}
+
+template<typename T>
 using NdFilterFn = std::function<bool(const T &)>;
 
 /// visits ancestors before descendants
@@ -35,16 +47,22 @@ class preorder_iterator : std::forward_iterator_tag {
 			if (curr == exitNode) {
 				curr = nullptr;
 			}
-			/*if (curr == nullptr) {
+			if (exitNode == nullptr) {
+				return;
+			}
+			if (curr == nullptr) {
 				std::cerr << "preorder_iterator.curr = nullptr";
 			} else {
 				std::cerr << "preorder_iterator.curr = " << getDesignator(*curr);
+				if (exitNode != nullptr) {
+					assert(isAncestorDesNoIter(exitNode, curr));
+				}
 			}
 			if (exitNode != nullptr) {
 				std::cerr << " exitNode = " << getDesignator(*exitNode) << '\n';
 			} else {
 				std::cerr << '\n';
-			}*/
+			}
 		}
 		void _unfiltered_advance() {
 			do {
@@ -74,7 +92,7 @@ class preorder_iterator : std::forward_iterator_tag {
 				} else {
 					curr = curr->getFirstChild();
 				}
-			} while ((filterFn != nullptr && !filterFn(*curr)));
+			} while (filterFn != nullptr && !filterFn(*curr));
 		}
 
 		void _filtered_advance_down() {

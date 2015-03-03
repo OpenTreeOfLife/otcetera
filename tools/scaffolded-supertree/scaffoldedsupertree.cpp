@@ -1,5 +1,24 @@
 #include "otc/otcli.h"
+#include "otc/debug.h"
 using namespace otc;
+
+template<typename T>
+std::vector<typename T::node_type *> getNodesAliasedBy(typename T::node_type *nd, const T & tree) {
+	const auto & iaf = tree.getData().isAliasFor;
+	const auto aIt = iaf.find(nd);
+	if (aIt == iaf.end()) {
+		std::vector<typename T::node_type *> empty;
+		return empty;
+	}
+	std::vector<typename T::node_type *> r;
+	r.reserve(aIt->second.size());
+	const auto & o2d = tree.getData().ottIdToDetachedNode;
+	for (auto oi : aIt->second) {
+		typename T::node_type * detached = o2d.find(oi)->second;
+		r.push_back(detached);
+	}
+	return r;
+}
 
 template<typename T, typename U>
 struct NodePairing {
@@ -150,20 +169,26 @@ struct NodeThreading {
 
 	bool reportIfContested(std::ostream & out,
 						   const U * nd,
-						   const std::vector<TreeMappedWithSplits *> & treePtrByIndex) const {
+						   const std::vector<TreeMappedWithSplits *> & treePtrByIndex,
+						   const std::vector<NodeWithSplits *> & aliasedBy) const {
 		if (isContested()) {
 			auto c = getContestingTrees();
 			for (auto cti : c) {
 				auto ctree = treePtrByIndex.at(cti);
 				const std::set<long> ls = getOttIdSetForLeaves(*ctree);
-				const std::string prefix = getContestedPreamble(*nd, *ctree);
 				const auto & edges = getEdgesExiting(cti);
+				const std::string prefix = getContestedPreamble(*nd, *ctree);
 				reportOnConflicting(out, prefix, nd, edges, ls);
+				for (auto na : aliasedBy) {
+					const std::string p2 = getContestedPreamble(*na, *ctree);
+					reportOnConflicting(out, p2, na, edges, ls);
+				}
 			}
 			return true;
 		}
 		return false;
 	}
+	
 };
 
 
@@ -261,6 +286,17 @@ class ThreadedTree {
 		}
 	}
 
+	void writeDOTExport(std::ostream & out,
+						   const NodeThreading<NodeWithSplits, NodeWithSplits> & thr,
+						   const NodeWithSplits * nd,
+						   const std::vector<TreeMappedWithSplits *> & treePtrByIndex) const {
+		writeNewick(out, nd);
+		out << "nd.ottID = " << nd->getOttId() << " --> " << (nd->getParent() ? nd->getParent()->getOttId() : 0L) << "\n";
+		out << "  getTotalNumNodeMappings = " << thr.getTotalNumNodeMappings() << "\n";
+		out << "  getTotalNumLoops = " << thr.getTotalNumLoops() << "\n";
+		out << "  getTotalNumEdgeBelowTraversals = " << thr.getTotalNumEdgeBelowTraversals() << "\n";
+		out << "  isContested = " << thr.isContested() << "\n";
+	}
 };
 
 struct RemapToDeepestUnlistedState
@@ -272,6 +308,7 @@ struct RemapToDeepestUnlistedState
 	std::vector<TreeMappedWithSplits *> treePtrByIndex;
 	bool doReportAllContested;
 	std::list<long> idsListToReportOn;
+	std::list<long> idListForDotExport;
 
 	virtual ~RemapToDeepestUnlistedState(){}
 	RemapToDeepestUnlistedState()
@@ -293,7 +330,8 @@ struct RemapToDeepestUnlistedState
 			passThroughDegree[thr.getTotalNumEdgeBelowTraversals()] += 1;
 			loopDegree[thr.getTotalNumLoops()] += 1;
 			totalNumNodes += 1;
-			if (thr.reportIfContested(out, nd, treePtrByIndex)) {
+			std::vector<NodeWithSplits *> aliasedBy = getNodesAliasedBy(nd, *taxonomy);
+			if (thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy)) {
 				totalContested += 1;
 				if (nd->getOutDegree() == 1) {
 					redundContested += 1;
@@ -309,11 +347,12 @@ struct RemapToDeepestUnlistedState
 		out << totalNumNodes << " internals\n" << totalContested << " contested\n" << (totalNumNodes - totalContested) << " uncontested\n";
 		out << redundContested << " monotypic contested\n";
 	}
-
+	
 	bool summarize(const OTCLI &otCLI) override {
+		std::ostream & out{otCLI.out};
 		assert (taxonomy != nullptr);
 		if (doReportAllContested) {
-			reportAllConflicting(otCLI.out);
+			reportAllConflicting(out);
 		} else {
 			for (auto tr : idsListToReportOn) {
 				auto nd = taxonomy->getData().getNodeForOttId(tr);
@@ -321,7 +360,20 @@ struct RemapToDeepestUnlistedState
 					throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to report on: ") + std::to_string(tr));
 				}
 				const auto & thr = taxoToAlignment[nd];
-				thr.reportIfContested(otCLI.out, nd, treePtrByIndex);
+				std::vector<NodeWithSplits *> aliasedBy = getNodesAliasedBy(nd, *taxonomy);
+				thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy);
+			}
+		}
+		for (auto tr : idListForDotExport) {
+			auto nd = taxonomy->getData().getNodeForOttId(tr);
+			if (nd == nullptr) {
+				throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to export to DOT: ") + std::to_string(tr));
+			}
+			//const auto & thr = taxoToAlignment[nd];
+			//writeDOTExport(out, thr, nd, treePtrByIndex);
+			for (auto n : iter_pre_n_const(nd)) {
+				const auto & thr = taxoToAlignment[n];
+				writeDOTExport(out, thr, n, treePtrByIndex);
 			}
 		}
 		return true;
@@ -329,7 +381,9 @@ struct RemapToDeepestUnlistedState
 
 	bool processTaxonomyTree(OTCLI & otCLI) override {
 		TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+		checkTreeInvariants(*taxonomy);
 		suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
+		checkTreeInvariants(*taxonomy);
 		for (auto nd : iter_node(*taxonomy)) {
 			taxoToAlignment.emplace(nd, NodeThreadingWithSplits{});
 		}
@@ -380,6 +434,23 @@ bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
 	return true;
 }
 
+bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg) {
+	RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+	assert(proc != nullptr);
+	if (narg.empty()) {
+		throw OTCError("Expecting a list of IDs after the -d argument.");
+	}
+	auto rs = split_string(narg, ',');
+	for (auto word : rs) {
+		auto ottId = ottIDFromName(word);
+		if (ottId < 0) {
+			throw OTCError(std::string("Expecting a list of IDs after the -d argument. Offending word: ") + word);
+		}
+		proc->idListForDotExport.push_back(ottId);
+	}
+	return true;
+}
+
 
 int main(int argc, char *argv[]) {
 	OTCLI otCLI("otcscaffoldedsupertree",
@@ -393,6 +464,10 @@ int main(int argc, char *argv[]) {
 	otCLI.addFlag('b',
 				  "IDLIST should be a list of OTT IDs. A status report will be generated for those nodes",
 				  handleReportOnNodesFlag,
+				  true);
+	otCLI.addFlag('d',
+				  "IDLIST should be a list of OTT IDs. A DOT file of the nodes will be generated ",
+				  handleDotNodesFlag,
 				  true);
 	return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }

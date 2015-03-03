@@ -22,7 +22,7 @@ bool checkNodePointers(const T & nd) {
 
 template<typename T>
 bool checkAllNodePointers(const T & tree) {
-	auto ns = tree.getSetOfAllNodes();
+	auto ns = tree.getSetOfAllAttachedNodes();
 	for (auto nd : ns) {
 		if (!checkNodePointers(*nd)) {
 			return false;
@@ -37,7 +37,7 @@ bool checkAllNodePointers(const T & tree) {
 
 template<typename T>
 bool checkPreorder(const T & tree) {
-	auto ns = tree.getSetOfAllNodes();
+	auto ns = tree.getSetOfAllAttachedNodes();
 	std::set<const typename T::node_type *> visited;
 	for (auto nd : iter_pre_const(tree)) {
 		auto p = nd->getParent();
@@ -58,7 +58,7 @@ bool checkPreorder(const T & tree) {
 
 template<typename T>
 bool checkPostorder(const T & tree) {
-	auto ns = tree.getSetOfAllNodes();
+	auto ns = tree.getSetOfAllAttachedNodes();
 	std::set<const typename T::node_type *> visited;
 	for (auto nd : iter_post_const(tree)) {
 		auto p = nd->getParent();
@@ -79,7 +79,7 @@ bool checkPostorder(const T & tree) {
 
 template<typename T>
 bool checkChildIter(const T & tree) {
-	auto ns = tree.getSetOfAllNodes();
+	auto ns = tree.getSetOfAllAttachedNodes();
 	for (auto nd : ns) {
 		auto nc = nd->getOutDegree();
 		auto v = 0U;
@@ -94,7 +94,7 @@ bool checkChildIter(const T & tree) {
 
 template<typename T>
 bool checkDesIds(const T & tree) {
-	auto ns = tree.getSetOfAllNodes();
+	auto ns = tree.getSetOfAllAttachedNodes();
 	for (auto nd : ns) {
 		if (nd->isTip()) {
 			continue;
@@ -108,7 +108,16 @@ bool checkDesIds(const T & tree) {
 			d.insert(cd.begin(), cd.end());
 		}
 		assert(sum == d.size());
-		assert(nd->getData().desIds == d);
+		if (tree.getData().desIdSetsContainInternals) {
+			if (nd->hasOttId()) {
+				d.insert(nd->getOttId());
+			}
+		}
+		if (!isSubset(d, nd->getData().desIds)) {
+			std::cerr << "node " << nd->getOttId() << '\n';
+			writeOttSetDiff(std::cerr, " ", nd->getData().desIds, " node.desId ", d, " calc.");
+			assert(isSubset(d, nd->getData().desIds));
+		}
 	}
 	return true;
 }

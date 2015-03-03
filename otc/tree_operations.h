@@ -544,12 +544,25 @@ inline void eraseMappingsToNode(typename T::node_type * nd, T & tree) {
 	if (nd->hasOttId()) {
 		tree.getData().ottIdToNode.erase(nd->getOttId());
 	}
+	tree.markAsDetached(nd);
 }
 template<typename T>
 inline void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename T::node_type * alias, T & tree) {
 	if (nd->hasOttId()) {
+		tree.getData().ottIdToDetachedNode[nd->getOttId()] = nd;
 		tree.getData().ottIdToNode[nd->getOttId()] = alias;
+		auto & iaf = tree.getData().isAliasFor;
+		iaf[alias].insert(nd->getOttId());
+		auto na = iaf.find(nd); // if nd was an alias for other nodes, update them too...
+		if (na != iaf.end()) {
+			for (auto aoi : na->second) {
+				iaf[alias].insert(aoi);
+				tree.getData().ottIdToNode[aoi] = alias;
+			}
+		}
+		iaf.erase(nd);
 	}
+	tree.markAsDetached(nd);
 }
 
 // detaches child from the tree (and lets it dangle)
@@ -564,8 +577,13 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
 	assert(nd);
 	assert(child);
 	assert(child->getParent() == nd);
+	assert(nd->getFirstChild() == child);
+	assert(child->getNextSib() == nullptr);
+	LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd)) << " by stealing children from " << getDesignator(*child) ;
 	auto entryChild = child->getPrevSib();
+	assert(entryChild == nullptr);
 	auto exitChild = child->getNextSib();
+	assert(exitChild == nullptr);
 	typename T::node_type * f = child->getFirstChild();
 	typename T::node_type * c = nullptr;
 	auto citf = iter_child(*child);
