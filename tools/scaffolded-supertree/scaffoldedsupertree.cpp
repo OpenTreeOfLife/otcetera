@@ -152,7 +152,15 @@ class GreedyPhylogeneticForest {
 	void attemptToAddGrouping(PathPairing<T, U> * ppptr,
 							  const std::set<long> & ingroup,
 							  const std::set<long> & leafSet);
-	void finalizeTree() {}
+	void finalizeTree() {
+		assert(false);
+	}
+	void setPossibleMonophyletic(U & scaffoldNode) {
+		assert(false);
+	}
+	bool possibleMonophyleticGroupStillViable() {
+		assert(false);
+	}
 	void resolveThreadedClade(U & scaffoldNode, NodeThreading<T, U> * );
 };
 
@@ -160,11 +168,13 @@ template<typename T, typename U>
 inline void GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
 																const std::set<long> & ingroup,
 																const std::set<long> & leafSet) {
+	assert(false);
 }
 
 template<typename T, typename U>
 inline void GreedyPhylogeneticForest<T,U>::resolveThreadedClade(U & ,
 																NodeThreading<T, U> *) {
+	assert(false);
 }
 
 
@@ -238,7 +248,7 @@ struct NodeThreading {
 
 	// some trees contest monophyly. Return true if these trees are obviously overruled
 	//	 by higher ranking trees so that we can avoid the more expensive unconstrained phylo graph 
-	bool highRankingTreesPreserveMonophyly(std::size_t numTrees) {
+	bool highRankingTreesPreserveMonophyly(std::size_t ) {
 		return false;
 	}
 
@@ -253,13 +263,14 @@ struct NodeThreading {
 	}
 
 	void collapseSourceEdge(const T * phyloParent, PathPairing<T, U> *path) {
+		assert(false);
 	}
 	// there may be 
 	void collapseSourceEdgesToForceOneEntry(U & scaffoldNode, PathPairSet & pps) {
 		if (pps.size() < 2) {
 			return;
 		}
-		std::set<long> relevantIds = getRelevantDesIds(pps);
+		auto relevantIds = getRelevantDesIds(pps);
 		PathPairing<T, U> * firstPairing = *pps.begin();
 		const T * onePhyloPar = firstPairing->phyloParent;
 		const T * phyloMrca = searchAncForMRCAOfDesIds(onePhyloPar, relevantIds);
@@ -291,6 +302,7 @@ struct NodeThreading {
 			if (laIt == loopAlignments.end()) {
 				continue;
 			}
+
 			PathPairSet & pps = laIt->second;
 			// leaf set of this tree for this subtree
 			std::set<long> relevantIds = getRelevantDesIds(pps);
@@ -308,7 +320,49 @@ struct NodeThreading {
 		gpf.finalizeTree();
 		gpf.resolveThreadedClade(scaffoldNode, this);
 	}
+
+	void collapseGroup(U & scaffoldNode, std::size_t numTrees) {
+		assert(false);
+	}
 	void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, std::size_t numTrees) {
+		GreedyPhylogeneticForest<T,U> gpf;
+		gpf.setPossibleMonophyletic(scaffoldNode);
+		for (std::size_t treeInd = 0 ; treeInd < numTrees; ++treeInd) {
+			const auto laIt = loopAlignments.find(treeInd);
+			const auto ebaIt = edgeBelowAlignments.find(treeInd);
+			if (laIt == loopAlignments.end() && ebaIt == edgeBelowAlignments.end()) {
+				continue;
+			}
+			/* find MRCA of the phylo nodes */
+			std::set<long> relevantIds;
+			if (laIt != loopAlignments.end()) {
+				relevantIds = getRelevantDesIds(laIt->second);
+			}
+			if (ebaIt != edgeBelowAlignments.end()) {
+				std::set<long> otherRelevantIds = getRelevantDesIds(ebaIt->second);
+				relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
+			}
+			/* order the groupings */
+			std::map<std::set<long>, PathPairing<T,U> *> mapToProvideOrder;
+			for (auto pp : laIt->second) {
+				mapToProvideOrder[pp->getPhyloChildDesID()] = pp;
+			}
+			for (auto pp : ebaIt->second) {
+				mapToProvideOrder[pp->getPhyloChildDesID()] = pp;
+			}
+			/* try to add groups bail out when we know that the possible group is not monophyletic */
+			for (auto mpoIt : mapToProvideOrder) {
+				const auto & d = mpoIt.first;
+				auto ppptr = mpoIt.second;
+				gpf.attemptToAddGrouping(ppptr, d, relevantIds);
+				if (!gpf.possibleMonophyleticGroupStillViable()) {
+					collapseGroup(scaffoldNode, numTrees);
+					return;
+				}
+			}
+		}
+		gpf.finalizeTree();
+		gpf.resolveThreadedClade(scaffoldNode, this);
 	}
 
 	bool reportIfContested(std::ostream & out,
