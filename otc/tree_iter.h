@@ -50,6 +50,7 @@ class preorder_iterator : std::forward_iterator_tag {
 			if (exitNode == nullptr) {
 				return;
 			}
+#if 0
 			if (curr == nullptr) {
 				std::cerr << "preorder_iterator.curr = nullptr";
 			} else {
@@ -63,6 +64,7 @@ class preorder_iterator : std::forward_iterator_tag {
 			} else {
 				std::cerr << '\n';
 			}
+#endif
 		}
 		void _unfiltered_advance() {
 			do {
