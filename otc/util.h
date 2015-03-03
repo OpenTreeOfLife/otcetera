@@ -46,6 +46,8 @@ bool isSubset(const T & small, const T & big);
 template<typename T>
 bool haveIntersection(const T & first, const T & second);
 template<typename T>
+std::set<T> set_intersection_as_set(const std::set<T> & small, const std::set<T> & big);
+template<typename T>
 std::set<T> set_sym_difference_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & small, const std::set<T> & big);
@@ -249,16 +251,22 @@ inline bool haveIntersection(const T & first, const T & second) {
 }
 
 template<typename T>
+std::set<T> set_intersection_as_set(const std::set<T> & fir, const std::set<T> & sec) {
+	std::set<T> d;
+	set_intersection(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
+	return std::move(d);
+}
+template<typename T>
 std::set<T> set_sym_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
 	std::set<T> d;
 	set_symmetric_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
-	return d;
+	return std::move(d);
 }
 template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
 	std::set<T> d;
 	set_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
-	return d;
+	return std::move(d);
 }
 
 inline std::size_t find_first_graph_index(const std::string & s) {

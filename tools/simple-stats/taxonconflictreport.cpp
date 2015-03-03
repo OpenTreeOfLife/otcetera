@@ -85,18 +85,7 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 				auto nIt = begin(nodeList);
 				for (; nIt != end(nodeList); ++nIt, ++eIt, ++mIt) {
 					out << taxonNode->getOttId() << " \"" << taxonNode->getName() << "\" contested by in \"" << tree2.getName() << "\"";
-					out << "    split: ";
-					writeNewick(out, *nIt);
-
-					out << ";    extras in phylo: ";
-					for (auto o : *eIt) {
-						out << o << ' ';
-					}
-					out << "    missing in phylo: ";
-					for (auto o : *mIt) {
-						out << o << ' ';
-					}
-					out << "\n";
+					emitConflictDetails(out, **nIt, *eIt, *mIt);
 				}
 				nm += 1;
 			}
@@ -104,6 +93,7 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 	}
 	return nm;
 }
+
 
 struct ConflictReporterProc : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
 	virtual ~ConflictReporterProc(){}

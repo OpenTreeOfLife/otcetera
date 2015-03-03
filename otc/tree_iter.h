@@ -379,18 +379,18 @@ class LeafIter {
 template<typename T, bool isConst>
 class AncIter {
 	public:
-	typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
-	explicit AncIter(node_pointer n)
+	typedef typename std::conditional<isConst, const T &, T &>::type node_ref;
+	explicit AncIter(node_ref n)
 		:des(n){
 	}
 	anc_iterator<T, isConst> begin() const {
-		return std::move(anc_iterator<T, isConst>{des});
+		return std::move(anc_iterator<T, isConst>{&des});
 	}
 	anc_iterator<T, isConst> end() const {
 		return std::move(anc_iterator<T, isConst>{nullptr});
 	}
 	private:
-		node_pointer des;
+		node_ref des;
 };
 
 template<typename T, bool isConst>
@@ -519,12 +519,12 @@ inline LeafIter<typename T::node_type, true> iter_leaf_const(const T & tree) {
 }
 
 template<typename T>
-inline AncIter<T, false> iter_anc(T * node) {
+inline AncIter<T, false> iter_anc(T & node) {
 	return std::move(AncIter<T, false>(node));
 }
 
 template<typename T>
-inline AncIter<T, true> iter_anc_const(const T * node) {
+inline AncIter<T, true> iter_anc_const(const T & node) {
 	return std::move(AncIter<T, true>(node));
 }
 

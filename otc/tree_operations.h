@@ -147,7 +147,7 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
 	const std::set<long> toRemove = nd.getData().desIds;
 	assert(!toRemove.empty());
 	nd.getData().desIds = ls;
-	for (auto anc : iter_anc(&nd)) {
+	for (auto anc : iter_anc(nd)) {
 		assert(anc != nullptr);
 		assert(!anc->getData().desIds.empty());
 		for (auto tr : toRemove) {
@@ -200,7 +200,7 @@ void markPathToRoot(const T & fullTree,
 		throw OTCError(m);
 	}
 	n2m[startNd].insert(ottId);
-	for (auto nd : iter_anc(startNd)) {
+	for (auto nd : iter_anc(*startNd)) {
 		n2m[nd].insert(ottId);
 	}
 }
@@ -341,7 +341,7 @@ inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSpli
 	if (d.empty()) {
 		return;
 	}
-	for (auto a : iter_anc(nd)) {
+	for (auto a : iter_anc(*nd)) {
 		auto & ad = a->getData().desIds;
 		for (auto el : d) {
 			ad.erase(el);
@@ -357,7 +357,7 @@ inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
 
 template <typename T, typename U>
 void insertAncestorsToParaphyleticSet(T * nd, U & includedNodes) {
-	for (auto anc : iter_anc(nd)) {
+	for (auto anc : iter_anc(*nd)) {
 		if (contains(includedNodes, anc)) {
 			return;
 		}
@@ -516,7 +516,7 @@ inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
 	if (isProperSubset(idSet, nd->getData().desIds)) {
 		return nd;
 	}
-	for (auto n : iter_anc(nd)) {
+	for (auto n : iter_anc(*nd)) {
 		if (isProperSubset(idSet, n->getData().desIds)) {
 			return n;
 		}
@@ -639,7 +639,7 @@ inline bool isAncDecPair(const T * nd1, const T *nd2) {
 	if (nd1 == nd2) {
 		return false;
 	}
-	for (auto a : iter_anc_const(nd2)) {
+	for (auto a : iter_anc_const(*nd2)) {
 		if (a == nd1) {
 			return true;
 		}
@@ -658,26 +658,26 @@ inline std::set<long> getOttIdSetForLeaves(const T &tree) {
 	if (!tree.getData().desIdSetsContainInternals) {
 		return tree.getRoot()->getData().desIds;
 	}
-	std::set<long> inducingLabels;
+	std::set<long> inducingIds;
 	for (auto nd : iter_leaf_const(tree)) {
-		inducingLabels.insert(nd->getOttId());
+		inducingIds.insert(nd->getOttId());
 	}
-	return inducingLabels;
+	return std::move(inducingIds);
 }
 
 template<typename T, typename U>
 void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > & inducedSplits, const U & tree2) {
-	const auto inducingLabels = getOttIdSetForLeaves(tree2);
-	auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
-	std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
-		return haveIntersection(inducingLabels, nd.getData().desIds);
+	const auto inducingIds = getOttIdSetForLeaves(tree2);
+	auto mrca = findMRCAUsingDesIds(tree1, inducingIds);
+	std::function<bool(const typename T::node_type &)> sf = [inducingIds](const typename T::node_type &nd){
+		return haveIntersection(inducingIds, nd.getData().desIds);
 	};
 	for (auto n : iter_pre_filter_n_const(mrca, sf)) {
 		if (n == mrca) {
 			continue;
 		}
 		auto inducedDesIds = n->getData().desIds;
-		const auto x = intersectionOfSets(inducingLabels, inducedDesIds);
+		const auto x = intersectionOfSets(inducingIds, inducedDesIds);
 		if (x.size() > 1) {
 			inducedSplits.insert(std::move(x));
 		}

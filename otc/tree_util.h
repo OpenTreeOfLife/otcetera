@@ -84,6 +84,21 @@ inline std::string getDesignator(const T &nd) {
 	return std::string("MRCA(ott") + pf + std::string{", ott"} + ps + std::string{")"};
 }
 
+
+template<typename T>
+void emitConflictDetails(std::ostream & out, const T & ndRef, const std::set<long> & extras,  const std::set<long> & missing) {
+	out << "    split: " << getDesignator(ndRef);
+	out << ";    extras in phylo: ";
+	for (auto o : extras) {
+		out << o << ' ';
+	}
+	out << "    missing in phylo: ";
+	for (auto o : missing) {
+		out << o << ' ';
+	}
+	out << "\n";
+}
+
 } // namespace otc
 #endif
 

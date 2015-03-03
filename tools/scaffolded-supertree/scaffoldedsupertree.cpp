@@ -15,16 +15,16 @@ struct NodePairing {
 
 template<typename T, typename U>
 struct PathPairing {
-	const T * const phyloChild;
-	const T * const phyloParent;
-	const U * const scaffoldDes;
-	const U * const scaffoldAnc;
-
+	const T * const scaffoldDes;
+	const T * const scaffoldAnc;
+	const U * const phyloChild;
+	const U * const phyloParent;
+	
 	PathPairing(const NodePairing<T,U> & parent, const NodePairing<T,U> & child)
-		:phyloChild(child.phyloNode),
-		phyloParent(parent.phyloNode),
-		scaffoldDes(child.scaffoldNode),
-		scaffoldAnc(parent.scaffoldNode) {
+		:scaffoldDes(child.scaffoldNode),
+		scaffoldAnc(parent.scaffoldNode),
+		phyloChild(child.phyloNode),
+		phyloParent(parent.phyloNode) {
 	}
 };
 
@@ -84,7 +84,64 @@ struct NodeThreading {
 		}
 		return r;
 	}
+	const PathPairSet & getEdgesExiting(std::size_t treeIndex) const {
+		auto el = edgeBelowAlignments.find(treeIndex);
+		assert(el != edgeBelowAlignments.end());
+		return el->second;
+	}
+
 };
+
+
+template<typename T, typename U>
+void reportOnConflicting(std::ostream & out, const std::string & prefix, const T * scaff, const std::set<PathPairing<T, U> *> & exitPaths, const std::set<long> & phyloLeafSet) {
+	if (exitPaths.size() < 2) {
+		assert(false);
+		return;
+	}
+	const auto scaffDes = set_intersection_as_set(scaff->getData().desIds, phyloLeafSet);
+	auto epIt = begin(exitPaths);
+	const PathPairing<T, U> * ep = *epIt;
+	const U * phyloPar = ep->phyloParent;
+	const U * deepestPhylo = nullptr;
+	std::map<std::set<long>, const U *> desIdSet2NdConflicting;
+	if (isProperSubset(scaffDes, phyloPar->getData().desIds)) {
+		deepestPhylo = phyloPar;
+	} else {
+		desIdSet2NdConflicting[phyloPar->getData().desIds] = phyloPar;
+		for (auto anc : iter_anc_const(*phyloPar)) {
+			if (isProperSubset(scaffDes, anc->getData().desIds)) {
+				deepestPhylo = anc;
+				break;
+			}
+			desIdSet2NdConflicting[anc->getData().desIds] = anc;
+		}
+		assert(deepestPhylo != nullptr);
+	}
+	for (++epIt; epIt != end(exitPaths); ++epIt) {
+		const U * phyloNd  = (*epIt)->phyloChild;
+		assert(phyloNd != nullptr);
+		for (auto anc : iter_anc_const(*phyloNd)) {
+			if (anc == deepestPhylo) {
+				break;
+			}
+			desIdSet2NdConflicting[anc->getData().desIds] = anc;
+		}
+	}
+	if (desIdSet2NdConflicting.empty()) {
+		assert(false); // not reachable if we are calling isContested first as a test.
+		return;
+	}
+	for (const auto & mIt : desIdSet2NdConflicting) {
+		const auto & di = mIt.first;
+		auto nd = mIt.second;
+		const std::set<long> e = set_difference_as_set(di, scaffDes);
+		const std::set<long> m = set_difference_as_set(scaffDes, di);
+		out << prefix;
+		emitConflictDetails(out, *nd, e, m);
+	}
+}
+
 
 using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
 using PathPairingWithSplits = PathPairing<NodeWithSplits, NodeWithSplits>;
@@ -94,8 +151,9 @@ class ThreadedTree {
 	protected:
 	std::list<NodePairingWithSplits> nodePairings;
 	std::list<PathPairingWithSplits> pathPairings;
-	std::map<const NodeWithSplits*, NodeThreadingWithSplits> taxoToAlignment;
+	std::map<const NodeWithSplits *, NodeThreadingWithSplits> taxoToAlignment;
 	public:
+
 	NodePairingWithSplits * _addNodeMapping(NodeWithSplits *taxo, NodeWithSplits *nd, std::size_t treeIndex) {
 		assert(taxo != nullptr);
 		assert(nd != nullptr);
@@ -212,7 +270,12 @@ struct RemapToDeepestUnlistedState
 				auto c = thr.getContestingTrees();
 				for (auto cti : c) {
 					auto ctree = treePtrByIndex.at(cti);
-					otCLI.err << nd->getOttId() << " \"" << nd->getName() << "\" contested by \"" << ctree->getName() << "\"\n";
+					const std::set<long> ls = getOttIdSetForLeaves(*ctree);
+					std::ostringstream ss;
+					ss << nd->getOttId() << " \"" << nd->getName() << "\" contested by \"" << ctree->getName() << "\"";
+					const std::string prefix = ss.str();
+					const auto & edges = thr.getEdgesExiting(cti);
+					reportOnConflicting(otCLI.err, prefix, nd, edges, ls);
 				}
 				totalContested += 1;
 				if (nd->getOutDegree() == 1) {
