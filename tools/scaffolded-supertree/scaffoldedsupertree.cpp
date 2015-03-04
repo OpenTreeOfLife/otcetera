@@ -152,7 +152,7 @@ class RootedForest {
 template<typename T, typename U>
 class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
-    void attemptToAddGrouping(PathPairing<T, U> * ppptr,
+    bool attemptToAddGrouping(PathPairing<T, U> * ppptr,
                               const std::set<long> & ingroup,
                               const std::set<long> & leafSet,
                               const SupertreeContext<T, U> &sc);
@@ -167,6 +167,15 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     }
     void resolveThreadedClade(U & scaffoldNode, NodeThreading<T, U> * );
     private:
+    std::pair<bool, NodeWithSplits *> couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet);
+    void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const std::set<long> & ingroup, const std::set<long> & leafSet);
+    void graftTreesTogether(NodeWithSplits *rr,
+                            NodeWithSplits *ri,
+                            NodeWithSplits *delr,
+                            NodeWithSplits *deli,
+                            const std::set<long> & ingroup,
+                            const std::set<long> & leafSet);
+
 };
 
 
@@ -178,6 +187,9 @@ inline void GreedyPhylogeneticForest<T,U>::resolveThreadedClade(U & ,
 enum SupertreeCtorEvent {
     COLLAPSE_TAXON,
     IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON,
+    CLADE_CREATES_TREE,
+    CLADE_REJECTED,
+    CLADE_ADDED_TO_TREE
 };
 template<typename T, typename U>
 class SupertreeContext {
@@ -256,14 +268,62 @@ void RootedForest<T,U>::addGroupToNewTree(const std::set<long> & ingroup,
 }
 
 template<typename T, typename U>
-inline void GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
+inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
                                                                 const std::set<long> & ingroup,
                                                                 const std::set<long> & leafSet,
                                                                 const SupertreeContext<T,U> &sc) {
-    if (this->empty()) { // first grouping, always add...
+    if (this->empty() || areDisjoint(ottSet, leafSet)) { // first grouping, always add...
+        sc.log(CLADE_CREATES_TREE, ppptr->phyloChild);
         addGroupToNewTree(ingroup, leafSet);
+        return true;
+    }
+    std::list<std::pair<NodeWithSplits *, NodeWithSplits *> > rootIngroupPairs;
+    for (auto r : roots) {
+        auto srca = couldAddToTree(r, ingroup, leafSet);
+        if (!srca.first) {
+            sc.log(CLADE_REJECTED, ppptr->phyloChild);
+            return false;
+        }
+        auto ingroupMRCA = srca.second;
+        if (ingroupMRCA != nullptr) {
+            rootIngroupPairs.push_back(std::pair<NodeWithSplits *, NodeWithSplits *>{r, ingroupMRCA});
+        }
+    }
+    assert(!rootIngroupPairs.empty());
+    auto rit = rootIngroupPairs.begin();
+    const auto & rip = *rit;
+    auto retainedRoot = rip.first;
+    auto ing = rip.second;
+    if (rootIngroupPairs.size() == 1) {
+        sc.log(CLADE_ADDED_TO_TREE, ppptr->phyloChild);
+        addIngroupAtNode(retainedRoot, ing, ingroup, leafSet);
+    } else {
+        for (++rit; rit != rootIngroupPairs.end(); ++rit) {
+            auto dr = rit->first;
+            auto di = rit->second;
+            graftTreesTogether(retainedRoot, ing, dr, di, ingroup, leafSet);
+        }
     }
 }
+
+template<typename T, typename U>
+std::pair<bool, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet) {
+    assert(false);
+}
+template<typename T, typename U>
+void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const std::set<long> & ingroup, const std::set<long> & leafSet) {
+    assert(false);
+}
+template<typename T, typename U>
+void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *rr,
+                            NodeWithSplits *ri,
+                            NodeWithSplits *delr,
+                            NodeWithSplits *deli,
+                            const std::set<long> & ingroup,
+                            const std::set<long> & leafSet) {
+    assert(false);
+}
+
 template<typename T, typename U>
 class NodeThreading {
     public:
