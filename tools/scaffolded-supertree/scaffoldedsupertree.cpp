@@ -143,9 +143,9 @@ class RootedForest {
         }
         void addGroupToNewTree(const std::set<long> & ingroup, const std::set<long> & leafSet);
     private:
-        RootedTree<T, U> nodeSrc;
         RootedTreeNode<T> * createNewRoot();
     protected:
+        RootedTree<T, U> nodeSrc;
         std::list<RootedTreeNode<T> *> roots;
         std::set<long> ottSet;
 };
@@ -311,9 +311,39 @@ inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U
     }
 }
 
+// assumes that nd is the mrca of ingroup and outgroup IDs
+template<typename T>
+bool canBeResolvedToDisplay(const T *nd, const std::set<long> & ingroup, const std::set<long> & leafSet) {
+    const std::set<long> outgroup = set_difference_as_set(leafSet, ingroup);
+    for (auto c : iter_child_const(*nd)) {
+        if (haveIntersection(ingroup, c->getData().desIds) && haveIntersection(outgroup, c->getData().desIds)) {
+            return false;
+        }
+    }
+    return true;
+}
 template<typename T, typename U>
-std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet) {
-    assert(false);
+std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *root, const std::set<long> & ingroup, const std::set<long> & leafSet) {
+    if (areDisjoint(root->getData().desIds, leafSet)) {
+        return std::make_tuple(true, nullptr, nullptr);
+    }
+    const std::set<long> inters = set_intersection_as_set(root->getData().desIds, ingroup);
+    if (inters.empty()) {
+        return std::make_tuple(true, nullptr, nullptr);
+    }
+    auto aLOttId = *(inters.begin());
+    auto aLeaf = nodeSrc.getData().ottIdToNode[aLOttId];
+    assert(aLeaf != nullptr);
+    auto iNd = searchAncForMRCAOfDesIds(aLeaf, inters);
+    const std::set<long> ointers = set_intersection_as_set(root->getData().desIds, leafSet);
+    if (ointers.size() == inters.size()) {
+        return std::make_tuple(true, iNd, root);
+    }
+    auto oNd = searchAncForMRCAOfDesIds(aLeaf, ointers);
+    if (iNd == oNd || !canBeResolvedToDisplay(iNd, inters, ointers)) {
+        return std::make_tuple(false, iNd, iNd);
+    }
+    return std::make_tuple(true, iNd, oNd);
 }
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const std::set<long> & ingroup, const std::set<long> & leafSet) {
