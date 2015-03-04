@@ -63,7 +63,7 @@ template<typename T>
 inline std::string getContestedPreambleFromName(const T & nd, const std::string & treeName) {
 	std::ostringstream ss;
 	ss << nd.getOttId() << " \"" << nd.getName() << "\" contested by \"" << treeName << "\"";
-	return std::move(ss.str());
+	return ss.str();
 }
 
 template<typename T, typename U>
@@ -269,19 +269,19 @@ template<typename T>
 std::set<T> set_intersection_as_set(const std::set<T> & fir, const std::set<T> & sec) {
 	std::set<T> d;
 	set_intersection(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
-	return std::move(d);
+	return d;
 }
 template<typename T>
 std::set<T> set_sym_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
 	std::set<T> d;
 	set_symmetric_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
-	return std::move(d);
+	return d;
 }
 template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
 	std::set<T> d;
 	set_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
-	return std::move(d);
+	return d;
 }
 
 inline std::size_t find_first_graph_index(const std::string & s) {

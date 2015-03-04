@@ -680,7 +680,7 @@ inline std::set<long> getOttIdSetForLeaves(const T &tree) {
 	for (auto nd : iter_leaf_const(tree)) {
 		inducingIds.insert(nd->getOttId());
 	}
-	return std::move(inducingIds);
+	return inducingIds;
 }
 
 template<typename T, typename U>

@@ -32,7 +32,7 @@ const std::string readStrContentOfUTF8File(const std::string &filepath) {
 														to_next);
 	if (result == converter_type::ok or result == converter_type::noconv) {
 		const std::string ccontent(&to[0], to_next);
-		return std::move(ccontent);
+		return ccontent;
 	}
 	throw OTCError("Error reading the contents of filepath as UTF-8");
 #else
@@ -43,7 +43,7 @@ const std::string readStrContentOfUTF8File(const std::string &filepath) {
 	}
 	const std::string utf8content((std::istreambuf_iterator<char>(inp) ),
 									(std::istreambuf_iterator<char>()));
-	return std::move(utf8content);
+	return utf8content;
 #endif
 }
 

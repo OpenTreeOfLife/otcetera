@@ -48,5 +48,23 @@ inline void verifyOttIdMapping(const T & tree) {
 	}
 }
 
+template<typename T>
+inline std::vector<typename T::node_type *> getNodesAliasedBy(typename T::node_type *nd, const T & tree) {
+	const auto & iaf = tree.getData().isAliasFor;
+	const auto aIt = iaf.find(nd);
+	if (aIt == iaf.end()) {
+		std::vector<typename T::node_type *> empty;
+		return empty;
+	}
+	std::vector<typename T::node_type *> r;
+	r.reserve(aIt->second.size());
+	const auto & o2d = tree.getData().ottIdToDetachedNode;
+	for (auto oi : aIt->second) {
+		typename T::node_type * detached = o2d.find(oi)->second;
+		r.push_back(detached);
+	}
+	return r;
+}
+
 } // namespace otc
 #endif
