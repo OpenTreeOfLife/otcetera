@@ -8,13 +8,13 @@ typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
 
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 bool processNextTree(OTCLI & , std::unique_ptr<Tree_t> tree) {
-	checkTreeInvariants(*tree);
-	return true;
+    checkTreeInvariants(*tree);
+    return true;
 }
 
 int main(int argc, char *argv[]) {
-	OTCLI otCLI("otcassertinvariants",
-				"takes a tree file, parses it and runs a series of checks of invariants of the tree operations.",
-				"test.tre");
-	return treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
+    OTCLI otCLI("otcassertinvariants",
+                "takes a tree file, parses it and runs a series of checks of invariants of the tree operations.",
+                "test.tre");
+    return treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
 }

@@ -5,47 +5,47 @@ using namespace otc;
 
 typedef RootedTree<RTNodeNoData, RTreeNoData> Tree_t;
 class TestValidTreeStruct {
-		const std::string filename;
-	public:
-		TestValidTreeStruct(const std::string & fn)
-			:filename(fn) {
-		}
-		char runTest(const TestHarness &h) const {
-			auto fp = h.getFilePath(filename);
-			//std::cerr << "fn = " << fp<< '\n';
-			std::ifstream inp;
-			if (!openUTF8File(fp, inp)) {
-				return 'U';
-			}
-			for (;;) {
-				ParsingRules pr;
-				auto nt = readNextNewick<Tree_t>(inp, filename, pr);
-				return (nt != nullptr ? '.': 'F');
-			}
-		}
+        const std::string filename;
+    public:
+        TestValidTreeStruct(const std::string & fn)
+            :filename(fn) {
+        }
+        char runTest(const TestHarness &h) const {
+            auto fp = h.getFilePath(filename);
+            //std::cerr << "fn = " << fp<< '\n';
+            std::ifstream inp;
+            if (!openUTF8File(fp, inp)) {
+                return 'U';
+            }
+            for (;;) {
+                ParsingRules pr;
+                auto nt = readNextNewick<Tree_t>(inp, filename, pr);
+                return (nt != nullptr ? '.': 'F');
+            }
+        }
 };
 
 int main(int argc, char *argv[]) {
-	std::vector<std::string> validfilenames = {"abc-newick.tre", 
-						   "words-polytomy.tre", 
-						   "bifurcating.tre",
-						   "monotypic.tre", 
-						   "branch-lengths.tre",
-						   "quotedwords-polytomy.tre",
-						   "polytomy-with-comments.tre",
-						   "underscore-handling.tre", 
-						   "whitespace-handling.tre"};
-	TestHarness th(argc, argv);
-	TestsVec tests;
-	for (auto fn : validfilenames) {
-		//const TestValidTreeStruct tvts(fn);
-		const TestValidTreeStruct tvts{fn};
-		TestCallBack tcb = [tvts](const TestHarness &h) {
-			return tvts.runTest(h);
-		};
-		const TestFn tf{fn, tcb};
-		tests.push_back(tf);
-	}
-	return th.runTests(tests);
+    std::vector<std::string> validfilenames = {"abc-newick.tre", 
+                           "words-polytomy.tre", 
+                           "bifurcating.tre",
+                           "monotypic.tre", 
+                           "branch-lengths.tre",
+                           "quotedwords-polytomy.tre",
+                           "polytomy-with-comments.tre",
+                           "underscore-handling.tre", 
+                           "whitespace-handling.tre"};
+    TestHarness th(argc, argv);
+    TestsVec tests;
+    for (auto fn : validfilenames) {
+        //const TestValidTreeStruct tvts(fn);
+        const TestValidTreeStruct tvts{fn};
+        TestCallBack tcb = [tvts](const TestHarness &h) {
+            return tvts.runTest(h);
+        };
+        const TestFn tf{fn, tcb};
+        tests.push_back(tf);
+    }
+    return th.runTests(tests);
 }
 
