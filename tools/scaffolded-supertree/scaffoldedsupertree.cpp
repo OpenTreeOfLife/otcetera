@@ -45,7 +45,8 @@ std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree
 
 
 template<typename T, typename U>
-struct NodePairing {
+class NodePairing {
+    public:
     T * scaffoldNode;
     U * phyloNode;
     NodePairing(T *taxo, U *phylo)
@@ -57,7 +58,8 @@ struct NodePairing {
 };
 
 template<typename T, typename U>
-struct PathPairing {
+class PathPairing {
+    public:
     T * scaffoldDes;
     T * scaffoldAnc;
     U * phyloChild;
@@ -130,12 +132,30 @@ template<typename T, typename U> class NodeThreading;
 //template<typename T, typename U>
 //using ThreadingObj = NodeThreading<T, U>;
 
+template<typename T, typename U> class SupertreeContext;
+
 template<typename T, typename U>
-class GreedyPhylogeneticForest {
+class RootedForest {
+    public:
+        bool empty() const {
+            return roots.empty();
+        }
+        void addGroupToNewTree(const std::set<long> & ingroup, const std::set<long> & leafSet);
+    private:
+        RootedTree<T, U> nodeSrc;
+        RootedTreeNode<T> * createNewRoot();
+    protected:
+        std::list<RootedTreeNode<T> *> roots;
+        std::set<long> ottSet;
+};
+
+template<typename T, typename U>
+class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
     void attemptToAddGrouping(PathPairing<T, U> * ppptr,
                               const std::set<long> & ingroup,
-                              const std::set<long> & leafSet);
+                              const std::set<long> & leafSet,
+                              const SupertreeContext<T, U> &sc);
     void finalizeTree() {
         assert(false);
     }
@@ -146,14 +166,9 @@ class GreedyPhylogeneticForest {
         assert(false);
     }
     void resolveThreadedClade(U & scaffoldNode, NodeThreading<T, U> * );
+    private:
 };
 
-template<typename T, typename U>
-inline void GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
-                                                                const std::set<long> & ingroup,
-                                                                const std::set<long> & leafSet) {
-    assert(false);
-}
 
 template<typename T, typename U>
 inline void GreedyPhylogeneticForest<T,U>::resolveThreadedClade(U & ,
@@ -190,9 +205,68 @@ using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
 using PathPairingWithSplits = PathPairing<NodeWithSplits, NodeWithSplits>;
 using NodeThreadingWithSplits = NodeThreading<NodeWithSplits, NodeWithSplits>;
 const std::set<long> EMPTY_SET;
+// does NOT add the node to roots
+template<typename T, typename U>
+RootedTreeNode<T> * RootedForest<T,U>::createNewRoot() {
+    assert(!empty());
+    auto firstRoot = *roots.begin();
+    auto n = nodeSrc.createChild(firstRoot);
+    // detach the node
+    n->_setParent(nullptr);
+    auto s = n->getPrevSib();
+    if (s == nullptr) {
+        firstRoot->_setLChild(nullptr);
+    } else {
+        s->_setNextSib(nullptr);
+    }
+}
+template<typename T, typename U>
+void RootedForest<T,U>::addGroupToNewTree(const std::set<long> & ingroup,
+                                     const std::set<long> & leafSet) {
+    assert(ingroup.size() < leafSet.size());
+    assert(ingroup.size() > 0);
+    assert(isProperSubset(ingroup, leafSet));
+    assert(areDisjoint(leafSet, ottSet));
+    RootedTreeNode<T> * r = nullptr;
+    if (empty()) {
+        r = nodeSrc.createRoot();
+    } else {
+        r = createNewRoot();
+    }
+    roots.push_back(r);
+    RTreeOttIDMapping<RTSplits> & trd = nodeSrc.getData();
+    auto c = nodeSrc.createChild(r);
+    const auto outgroup = set_difference_as_set(leafSet, ingroup);
+    assert(outgroup.size() > 0);
+    for (auto i : outgroup) {
+        auto n = nodeSrc.createChild(r);
+        n->setOttId(i);
+        trd.ottIdToNode[i] = n;
+        n->getData().desIds.insert(i);
+    }
+    for (auto i : ingroup) {
+        auto n = nodeSrc.createChild(c);
+        n->setOttId(i);
+        trd.ottIdToNode[i] = n;
+        n->getData().desIds.insert(i);
+    }
+    r->getData().desIds = leafSet;
+    c->getData().desIds = ingroup;
+    ottSet.insert(leafSet.begin(), leafSet.end());
+}
 
 template<typename T, typename U>
-struct NodeThreading {
+inline void GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
+                                                                const std::set<long> & ingroup,
+                                                                const std::set<long> & leafSet,
+                                                                const SupertreeContext<T,U> &sc) {
+    if (this->empty()) { // first grouping, always add...
+        addGroupToNewTree(ingroup, leafSet);
+    }
+}
+template<typename T, typename U>
+class NodeThreading {
+    public:
     using NodePairSet = std::set<NodePairing<T, U> *>;
     using PathPairSet = std::set<PathPairing<T, U> *>;
     
@@ -320,7 +394,6 @@ struct NodeThreading {
     }
     void resolveGivenUncontestedMonophyly(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
         LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
-        std::exit(0);
         GreedyPhylogeneticForest<T,U> gpf;
         std::set<PathPairing<T, U> *> considered;
         for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
@@ -340,7 +413,7 @@ struct NodeThreading {
             for (auto mpoIt : mapToProvideOrder) {
                 const auto & d = mpoIt.first;
                 auto ppptr = mpoIt.second;
-                gpf.attemptToAddGrouping(ppptr, d, relevantIds);
+                gpf.attemptToAddGrouping(ppptr, d, relevantIds, sc);
                 considered.insert(ppptr);
             }
         }
@@ -353,7 +426,7 @@ struct NodeThreading {
         auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc);
         for (auto pathPtr : childExitPaths) {
             if (!contains(considered, pathPtr)) {
-                gpf.attemptToAddGrouping(pathPtr, pathPtr->getPhyloChildDesID(), EMPTY_SET);
+                gpf.attemptToAddGrouping(pathPtr, pathPtr->getPhyloChildDesID(), EMPTY_SET, sc);
                 considered.insert(pathPtr); // @TMP not needed
             }
         }
@@ -443,7 +516,7 @@ struct NodeThreading {
             for (auto mpoIt : mapToProvideOrder) {
                 const auto & d = mpoIt.first;
                 auto ppptr = mpoIt.second;
-                gpf.attemptToAddGrouping(ppptr, d, relevantIds);
+                gpf.attemptToAddGrouping(ppptr, d, relevantIds, sc);
                 if (!gpf.possibleMonophyleticGroupStillViable()) {
                     collapseGroup(scaffoldNode, sc);
                     return;
@@ -634,9 +707,10 @@ class ThreadedTree {
 };
 
 
-struct RemapToDeepestUnlistedState
+class RemapToDeepestUnlistedState
     : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits>,
     public ThreadedTree {
+    public:
     int numErrors;
     std::set<long> tabooIds;
     std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
