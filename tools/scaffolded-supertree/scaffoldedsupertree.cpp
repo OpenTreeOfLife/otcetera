@@ -297,6 +297,9 @@ struct NodeThreading {
 	}
 	std::set<PathPairing<T, U> *> getAllChildExitPaths(U & scaffoldNode, const SynthContex<T, U> & sc) {
 		std::set<PathPairing<T, U> *> r;
+		for (auto c : iter_child(scaffoldNode)) {
+			const auto & thr = sc.scaff2NodeThreading.at(c);
+		}
 		return r;
 	}
 	void resolveGivenUncontestedMonophyly(U & scaffoldNode, const SynthContex<T, U> & sc) {
