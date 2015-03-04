@@ -161,7 +161,8 @@ inline void GreedyPhylogeneticForest<T,U>::resolveThreadedClade(U & ,
     assert(false);
 }
 enum SupertreeCtorEvent {
-    COLLAPSE_TAXON
+    COLLAPSE_TAXON,
+    IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON,
 };
 template<typename T, typename U>
 class SupertreeContext {
@@ -170,9 +171,11 @@ class SupertreeContext {
         mutable std::list<LogEvent> events;
 
         const std::size_t numTrees;
-        void log(SupertreeCtorEvent e, const U & scaffoldNode) const {
+        void log(SupertreeCtorEvent e, const U & node) const {
             if (e == COLLAPSE_TAXON) {
-                events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(scaffoldNode.getOttId())});
+                events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
+            } else if (e == IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON) {
+                events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
             }
         }
         std::map<const NodeWithSplits *, NodeThreading<T, U> > & scaff2NodeThreading;
@@ -388,10 +391,17 @@ struct NodeThreading {
             for (auto lp : ebai.second) {
                 if (lp->scaffoldAnc == p) {
                     if (lp->scaffoldDes == &scaffoldNode) {
-                        lp->scaffoldDes = p;
+                        // this only happens if a terminal was mapped to this higher level taxon
+                        // we don't know how to interpret this labe any more, so we'll drop that 
+                        // leaf. The taxa will be included by other relationships (the taxonomy as
+                        // a last resort), so we don't need to worry about losing leaves by skipping this...
+                        assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
+                        sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
+                    } else {
+                        parThreading.loopAlignments[ebai.first].insert(lp);
                     }
-                    parThreading.loopAlignments[ebai.first].insert(lp);
                 } else {
+                    // if the anc isn't the parent, then it must pass through scaffNode's par
                     assert(contains(parThreading.edgeBelowAlignments[ebai.first], lp));
                 }
             }
@@ -401,7 +411,8 @@ struct NodeThreading {
         LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
         LOG(DEBUG) << "TEMP collapsing if conflict..." ;
         if (COLLAPSE_IF_CONFLICT) {
-                collapseGroup(scaffoldNode, sc);
+            collapseGroup(scaffoldNode, sc);
+            return;
         }
         GreedyPhylogeneticForest<T,U> gpf;
         gpf.setPossibleMonophyletic(scaffoldNode);
