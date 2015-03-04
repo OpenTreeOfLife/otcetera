@@ -1,3 +1,4 @@
+#include <tuple>
 #include "otc/otcli.h"
 #include "otc/debug.h"
 using namespace otc;
@@ -167,12 +168,15 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     }
     void resolveThreadedClade(U & scaffoldNode, NodeThreading<T, U> * );
     private:
-    std::pair<bool, NodeWithSplits *> couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet);
+    // return false, nullptr if ingroup/leafset can't be added. true, nullptr if there is no intersection
+    // with the leaves of r, and true, nd * if it can be added by adding the ingroup 
+    std::tuple<bool, NodeWithSplits *, NodeWithSplits *> couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet);
     void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const std::set<long> & ingroup, const std::set<long> & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *ri,
                             NodeWithSplits *delr,
                             NodeWithSplits *deli,
+                            NodeWithSplits *delo,
                             const std::set<long> & ingroup,
                             const std::set<long> & leafSet);
 
@@ -277,37 +281,38 @@ inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U
         addGroupToNewTree(ingroup, leafSet);
         return true;
     }
-    std::list<std::pair<NodeWithSplits *, NodeWithSplits *> > rootIngroupPairs;
+    std::list<std::tuple<NodeWithSplits *, NodeWithSplits *, NodeWithSplits *> > rootIngroupPairs;
     for (auto r : roots) {
         auto srca = couldAddToTree(r, ingroup, leafSet);
-        if (!srca.first) {
+        if (!std::get<0>(srca)) {
             sc.log(CLADE_REJECTED, ppptr->phyloChild);
             return false;
         }
-        auto ingroupMRCA = srca.second;
+        auto ingroupMRCA = std::get<1>(srca);
         if (ingroupMRCA != nullptr) {
-            rootIngroupPairs.push_back(std::pair<NodeWithSplits *, NodeWithSplits *>{r, ingroupMRCA});
+            rootIngroupPairs.push_back(std::make_tuple(r, ingroupMRCA, std::get<2>(srca)));
         }
     }
     assert(!rootIngroupPairs.empty());
     auto rit = rootIngroupPairs.begin();
     const auto & rip = *rit;
-    auto retainedRoot = rip.first;
-    auto ing = rip.second;
+    auto retainedRoot = std::get<0>(rip);
+    auto ing = std::get<1>(rip);
     if (rootIngroupPairs.size() == 1) {
         sc.log(CLADE_ADDED_TO_TREE, ppptr->phyloChild);
         addIngroupAtNode(retainedRoot, ing, ingroup, leafSet);
     } else {
         for (++rit; rit != rootIngroupPairs.end(); ++rit) {
-            auto dr = rit->first;
-            auto di = rit->second;
-            graftTreesTogether(retainedRoot, ing, dr, di, ingroup, leafSet);
+            auto dr = std::get<0>(*rit);
+            auto di = std::get<1>(*rit);
+            auto dout = std::get<2>(*rit);
+            graftTreesTogether(retainedRoot, ing, dr, di, dout, ingroup, leafSet);
         }
     }
 }
 
 template<typename T, typename U>
-std::pair<bool, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet) {
+std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet) {
     assert(false);
 }
 template<typename T, typename U>
@@ -319,6 +324,7 @@ void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *ri,
                             NodeWithSplits *delr,
                             NodeWithSplits *deli,
+                            NodeWithSplits *delo,
                             const std::set<long> & ingroup,
                             const std::set<long> & leafSet) {
     assert(false);
