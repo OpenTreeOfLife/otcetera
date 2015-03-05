@@ -9,6 +9,9 @@ std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
 using OttIdOSet = std::set<long>;
 using OttIdSet = OttIdOSet;
 
+template<typename T, typename U> class NodeThreading;
+template<typename T, typename U>
+void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeThreading<T, U> > & m);
 
 //currently not copying names
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
@@ -61,7 +64,6 @@ class NodePairing {
         assert(phylo != nullptr);
     }
 };
-
 template<typename T, typename U>
 class PathPairing {
     public:
@@ -70,6 +72,20 @@ class PathPairing {
     U * phyloChild;
     U * phyloParent;
     OttIdSet currChildOttIdSet;
+    void setOttIdSet(long oid, std::map<const U *, NodeThreading<T, U> > & m) {
+        OttIdSet n;
+        n.insert(oid);
+        updateAncestralPathOttIdSet(scaffoldAnc, currChildOttIdSet, n, m);
+        currChildOttIdSet = n;
+    }
+    void updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
+        auto i = set_intersection_as_set(oldEls, currChildOttIdSet);
+        if (i.empty()) {
+            return;
+        }
+        currChildOttIdSet.erase(begin(i), end(i));
+        currChildOttIdSet.insert(begin(newEls), end(newEls));
+    }
     PathPairing(const NodePairing<T,U> & parent, const NodePairing<T,U> & child)
         :scaffoldDes(child.scaffoldNode),
         scaffoldAnc(parent.scaffoldNode),
@@ -89,6 +105,14 @@ class PathPairing {
     }
 };
 
+template<typename T>
+inline void updateAllMappedPathsOttIdSets(T & mPathSets, const OttIdSet & oldEls, const OttIdSet & newEls) {
+    for (auto lpIt : mPathSets) {
+        for (auto lp : lpIt.second) {
+            lp->updateOttIdSetNoTraversal(oldEls, newEls);
+        }
+    }
+}
 
 template<typename T, typename U>
 void reportOnConflicting(std::ostream & out, const std::string & prefix, const T * scaffold, const std::set<PathPairing<T, U> *> & exitPaths, const OttIdSet & phyloLeafSet) {
@@ -276,12 +300,20 @@ using NodeThreadingWithSplits = NodeThreading<NodeWithSplits, NodeWithSplits>;
 //      to this taxon
 template<typename T, typename U>
 inline void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & scaffoldNode,
-                                                                           NodeThreading<T, U> *,
+                                                                           NodeThreading<T, U> * embedding,
                                                                            SupertreeContext<T, U> & sc) {
+    const auto snoid = scaffoldNode.getOttId();
+    LOG(DEBUG) << "finishResolutionOfThreadedClade for " << snoid;
     finalizeTree(sc);
     assert(roots.size() == 1);
     auto resolvedTreeRoot = *begin(roots);
     copyStructureToResolvePolytomy(resolvedTreeRoot, sc.scaffoldTree, &scaffoldNode);
+    // remap all path pairings out of this node...
+    for (auto treeInd2eout : embedding->edgeBelowAlignments) {
+        for (auto eout : treeInd2eout.second) {
+            eout->setOttIdSet(snoid, sc.scaffold2NodeThreading);
+        }
+    }
 }
 
 const OttIdSet EMPTY_SET;
@@ -743,10 +775,19 @@ class NodeThreading {
         }
         return false;
     }
-    
+    void updateAllPathsOttIdSets(const OttIdSet & oldEls, const OttIdSet & newEls) {
+        updateAllMappedPathsOttIdSets(loopAlignments, oldEls, newEls);
+        updateAllMappedPathsOttIdSets(edgeBelowAlignments, oldEls, newEls);
+    }
 };
 
-
+template<typename T, typename U>
+inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeThreading<T, U> > & m) {
+    for (auto anc : iter_anc(*nd)) {
+         auto & ant = m.at(anc);
+         ant.updateAllPathsOttIdSets(oldEls, newEls);
+    }
+}
 
 
 class ThreadedTree {
