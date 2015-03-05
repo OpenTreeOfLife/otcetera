@@ -155,8 +155,10 @@ class RootedForest {
         }
         void addGroupToNewTree(const OttIdSet & ingroup, const OttIdSet & leafSet);
         RootedTreeNode<T> * addDetachedLeaf(long ottId) {
+            assert(!contains(ottIdSet, ottId));
             auto lr = createNewRoot();
             lr->setOttId(ottId);
+            ottIdSet.insert(ottId);
             return lr;
         }
     private:
@@ -174,9 +176,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                               const OttIdSet & ingroup,
                               const OttIdSet & leafSet,
                               const SupertreeContext<T, U> &sc);
-    void finalizeTree() {
-        assert(false);
-    }
+    void finalizeTree(const SupertreeContext &sc);
     void setPossibleMonophyletic(U & scaffoldNode) {
         assert(false);
     }
@@ -370,6 +370,24 @@ std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,
     return std::make_tuple(true, iNd, oNd);
 }
 template<typename T, typename U>
+void GreedyPhylogeneticForest<T,U>::finalizeTree(const SupertreeContext<T, U> &sc) {
+    if (roots.size() < 2) {
+        return;
+    }
+    auto rit = begin(roots);
+    auto firstRoot = *rit;
+    for (++rit; rit != end(roots); ++rit) {
+        if (*rit->isTip()) {
+            firstRoot->addChild(*rit);
+        } else {
+            for (auto c : iter_child(**rit)) {
+                firstRoot->addChild();
+            }
+        }
+    }
+    firstRoot->getData().desIds = ottIdSet;
+}
+template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const OttIdSet & ingroup, const OttIdSet & leafSet) {
     assert(false);
 }
@@ -555,7 +573,7 @@ class NodeThreading {
 
             }
         }
-        gpf.finalizeTree();
+        gpf.finalizeTree(sc);
         gpf.resolveThreadedClade(scaffoldNode, this);
     }
 
@@ -649,7 +667,7 @@ class NodeThreading {
                 }
             }
         }
-        gpf.finalizeTree();
+        gpf.finalizeTree(sc);
         gpf.resolveThreadedClade(scaffoldNode, this);
     }
 
