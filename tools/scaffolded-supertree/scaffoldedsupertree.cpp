@@ -5,6 +5,10 @@ using namespace otc;
 constexpr bool COLLAPSE_IF_CONFLICT = true;
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
 
+//using OttIdUSet = std::unordered_set<long>;
+using OttIdOSet = std::set<long>;
+using OttIdSet = OttIdOSet;
+
 
 //currently not copying names
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
@@ -65,21 +69,29 @@ class PathPairing {
     T * scaffoldAnc;
     U * phyloChild;
     U * phyloParent;
-    
+    OttIdSet currChildOttIdSet;
     PathPairing(const NodePairing<T,U> & parent, const NodePairing<T,U> & child)
         :scaffoldDes(child.scaffoldNode),
         scaffoldAnc(parent.scaffoldNode),
         phyloChild(child.phyloNode),
-        phyloParent(parent.phyloNode) {
+        phyloParent(parent.phyloNode),
+        currChildOttIdSet(child.phyloNode->getData().desIds) {
     }
-    std::set<long> getPhyloChildDesID() const {
+    // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
+    // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 
+    // descendant Ott Id set. But may change to reflect this remapping to the effective
+    // set of IDs that include the tip.
+    const OttIdSet & getOttIdSet() const {
+        return currChildOttIdSet;
+    }
+    const OttIdSet & getPhyloChildDesID() const {
         return phyloChild->getData().desIds;
     }
 };
 
 
 template<typename T, typename U>
-void reportOnConflicting(std::ostream & out, const std::string & prefix, const T * scaff, const std::set<PathPairing<T, U> *> & exitPaths, const std::set<long> & phyloLeafSet) {
+void reportOnConflicting(std::ostream & out, const std::string & prefix, const T * scaff, const std::set<PathPairing<T, U> *> & exitPaths, const OttIdSet & phyloLeafSet) {
     if (exitPaths.size() < 2) {
         assert(false);
         return;
@@ -89,7 +101,7 @@ void reportOnConflicting(std::ostream & out, const std::string & prefix, const T
     const PathPairing<T, U> * ep = *epIt;
     const U * phyloPar = ep->phyloParent;
     const U * deepestPhylo = nullptr;
-    std::map<std::set<long>, const U *> desIdSet2NdConflicting;
+    std::map<OttIdSet, const U *> desIdSet2NdConflicting;
     if (isProperSubset(scaffDes, phyloPar->getData().desIds)) {
         deepestPhylo = phyloPar;
     } else {
@@ -121,8 +133,8 @@ void reportOnConflicting(std::ostream & out, const std::string & prefix, const T
     for (const auto & mIt : desIdSet2NdConflicting) {
         const auto & di = mIt.first;
         auto nd = mIt.second;
-        const std::set<long> e = set_difference_as_set(di, scaffDes);
-        const std::set<long> m = set_difference_as_set(scaffDes, di);
+        const OttIdSet e = set_difference_as_set(di, scaffDes);
+        const OttIdSet m = set_difference_as_set(scaffDes, di);
         out << prefix;
         emitConflictDetails(out, *nd, e, m);
     }
@@ -141,21 +153,21 @@ class RootedForest {
         bool empty() const {
             return roots.empty();
         }
-        void addGroupToNewTree(const std::set<long> & ingroup, const std::set<long> & leafSet);
+        void addGroupToNewTree(const OttIdSet & ingroup, const OttIdSet & leafSet);
     private:
         RootedTreeNode<T> * createNewRoot();
     protected:
         RootedTree<T, U> nodeSrc;
         std::list<RootedTreeNode<T> *> roots;
-        std::set<long> ottSet;
+        OttIdSet ottSet;
 };
 
 template<typename T, typename U>
 class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
     bool attemptToAddGrouping(PathPairing<T, U> * ppptr,
-                              const std::set<long> & ingroup,
-                              const std::set<long> & leafSet,
+                              const OttIdSet & ingroup,
+                              const OttIdSet & leafSet,
                               const SupertreeContext<T, U> &sc);
     void finalizeTree() {
         assert(false);
@@ -170,15 +182,15 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     private:
     // return false, nullptr if ingroup/leafset can't be added. true, nullptr if there is no intersection
     // with the leaves of r, and true, nd * if it can be added by adding the ingroup 
-    std::tuple<bool, NodeWithSplits *, NodeWithSplits *> couldAddToTree(NodeWithSplits *r, const std::set<long> & ingroup, const std::set<long> & leafSet);
-    void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const std::set<long> & ingroup, const std::set<long> & leafSet);
+    std::tuple<bool, NodeWithSplits *, NodeWithSplits *> couldAddToTree(NodeWithSplits *r, const OttIdSet & ingroup, const OttIdSet & leafSet);
+    void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const OttIdSet & ingroup, const OttIdSet & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *ri,
                             NodeWithSplits *delr,
                             NodeWithSplits *deli,
                             NodeWithSplits *delo,
-                            const std::set<long> & ingroup,
-                            const std::set<long> & leafSet);
+                            const OttIdSet & ingroup,
+                            const OttIdSet & leafSet);
 
 };
 
@@ -198,8 +210,11 @@ enum SupertreeCtorEvent {
 template<typename T, typename U>
 class SupertreeContext {
     public:
+        SupertreeContext(const SupertreeContext &) = delete;
+        SupertreeContext & operator=(const SupertreeContext &) = delete;
         using LogEvent = std::pair<SupertreeCtorEvent, std::string>;
         mutable std::list<LogEvent> events;
+        mutable std::set<const U *> detachedScaffoldNodes;
 
         const std::size_t numTrees;
         void log(SupertreeCtorEvent e, const U & node) const {
@@ -220,7 +235,7 @@ using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSpli
 using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
 using PathPairingWithSplits = PathPairing<NodeWithSplits, NodeWithSplits>;
 using NodeThreadingWithSplits = NodeThreading<NodeWithSplits, NodeWithSplits>;
-const std::set<long> EMPTY_SET;
+const OttIdSet EMPTY_SET;
 // does NOT add the node to roots
 template<typename T, typename U>
 RootedTreeNode<T> * RootedForest<T,U>::createNewRoot() {
@@ -237,8 +252,11 @@ RootedTreeNode<T> * RootedForest<T,U>::createNewRoot() {
     }
 }
 template<typename T, typename U>
-void RootedForest<T,U>::addGroupToNewTree(const std::set<long> & ingroup,
-                                     const std::set<long> & leafSet) {
+void RootedForest<T,U>::addGroupToNewTree(const OttIdSet & ingroup,
+                                     const OttIdSet & leafSet) {
+    LOG(DEBUG) << " addGroupToNewTree";
+    std::cerr << " ingroup "; writeOttSet(std::cerr, " ", ingroup, " "); std::cerr << std::endl;
+    std::cerr << " leafset "; writeOttSet(std::cerr, " ", leafSet, " "); std::cerr << std::endl;
     assert(ingroup.size() < leafSet.size());
     assert(ingroup.size() > 0);
     assert(isProperSubset(ingroup, leafSet));
@@ -273,8 +291,8 @@ void RootedForest<T,U>::addGroupToNewTree(const std::set<long> & ingroup,
 
 template<typename T, typename U>
 inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
-                                                                const std::set<long> & ingroup,
-                                                                const std::set<long> & leafSet,
+                                                                const OttIdSet & ingroup,
+                                                                const OttIdSet & leafSet,
                                                                 const SupertreeContext<T,U> &sc) {
     if (this->empty() || areDisjoint(ottSet, leafSet)) { // first grouping, always add...
         sc.log(CLADE_CREATES_TREE, ppptr->phyloChild);
@@ -313,8 +331,8 @@ inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U
 
 // assumes that nd is the mrca of ingroup and outgroup IDs
 template<typename T>
-bool canBeResolvedToDisplay(const T *nd, const std::set<long> & ingroup, const std::set<long> & leafSet) {
-    const std::set<long> outgroup = set_difference_as_set(leafSet, ingroup);
+bool canBeResolvedToDisplay(const T *nd, const OttIdSet & ingroup, const OttIdSet & leafSet) {
+    const OttIdSet outgroup = set_difference_as_set(leafSet, ingroup);
     for (auto c : iter_child_const(*nd)) {
         if (haveIntersection(ingroup, c->getData().desIds) && haveIntersection(outgroup, c->getData().desIds)) {
             return false;
@@ -323,11 +341,11 @@ bool canBeResolvedToDisplay(const T *nd, const std::set<long> & ingroup, const s
     return true;
 }
 template<typename T, typename U>
-std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *root, const std::set<long> & ingroup, const std::set<long> & leafSet) {
+std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *root, const OttIdSet & ingroup, const OttIdSet & leafSet) {
     if (areDisjoint(root->getData().desIds, leafSet)) {
         return std::make_tuple(true, nullptr, nullptr);
     }
-    const std::set<long> inters = set_intersection_as_set(root->getData().desIds, ingroup);
+    const OttIdSet inters = set_intersection_as_set(root->getData().desIds, ingroup);
     if (inters.empty()) {
         return std::make_tuple(true, nullptr, nullptr);
     }
@@ -335,7 +353,7 @@ std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,
     auto aLeaf = nodeSrc.getData().ottIdToNode[aLOttId];
     assert(aLeaf != nullptr);
     auto iNd = searchAncForMRCAOfDesIds(aLeaf, inters);
-    const std::set<long> ointers = set_intersection_as_set(root->getData().desIds, leafSet);
+    const OttIdSet ointers = set_intersection_as_set(root->getData().desIds, leafSet);
     if (ointers.size() == inters.size()) {
         return std::make_tuple(true, iNd, root);
     }
@@ -346,7 +364,7 @@ std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,
     return std::make_tuple(true, iNd, oNd);
 }
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const std::set<long> & ingroup, const std::set<long> & leafSet) {
+void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const OttIdSet & ingroup, const OttIdSet & leafSet) {
     assert(false);
 }
 template<typename T, typename U>
@@ -355,8 +373,8 @@ void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *delr,
                             NodeWithSplits *deli,
                             NodeWithSplits *delo,
-                            const std::set<long> & ingroup,
-                            const std::set<long> & leafSet) {
+                            const OttIdSet & ingroup,
+                            const OttIdSet & leafSet) {
     assert(false);
 }
 
@@ -435,13 +453,13 @@ class NodeThreading {
         return false;
     }
 
-    std::set<long> getRelevantDesIds(const PathPairSet & pps) {
-        std::set<long> relevantIds;
+    OttIdSet getRelevantDesIds(const PathPairSet & pps) {
+        OttIdSet relevantIds;
         for (auto path : pps) {
-            const auto pc = path->phyloChild;
-            const auto & cdi = pc->getData().desIds;
+            const auto & cdi = path->getOttIdSet();
             relevantIds.insert(begin(cdi), end(cdi));
         }
+        std::cerr << " getRelevantDesIds returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
         return relevantIds;
     }
 
@@ -500,11 +518,11 @@ class NodeThreading {
 
             PathPairSet & pps = laIt->second;
             // leaf set of this tree for this subtree
-            std::set<long> relevantIds = getRelevantDesIds(pps);
+            OttIdSet relevantIds = getRelevantDesIds(pps);
             // for repeatability, we'll try to add groupings in reverse order of desIds sets (deeper first)
-            std::map<std::set<long>, PathPairing<T,U> *> mapToProvideOrder;
+            std::map<OttIdSet, PathPairing<T,U> *> mapToProvideOrder;
             for (auto pp : pps) {
-                mapToProvideOrder[pp->getPhyloChildDesID()] = pp;
+                mapToProvideOrder[pp->getOttIdSet()] = pp;
             }
             for (auto mpoIt : mapToProvideOrder) {
                 const auto & d = mpoIt.first;
@@ -522,7 +540,7 @@ class NodeThreading {
         auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc);
         for (auto pathPtr : childExitPaths) {
             if (!contains(considered, pathPtr)) {
-                gpf.attemptToAddGrouping(pathPtr, pathPtr->getPhyloChildDesID(), EMPTY_SET, sc);
+                gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, sc);
                 considered.insert(pathPtr); // @TMP not needed
             }
         }
@@ -575,6 +593,21 @@ class NodeThreading {
                 }
             }
         }
+        pruneCollapsedNode(scaffoldNode, sc);
+    }
+    void pruneCollapsedNode(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
+        LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", but not the actual node. Entering wonky state where the threading paths disagree with the tree"; // TMP DO we still need to add "child paths" to parent *before* scaffoldNode?
+        auto scaffoldPtr = &scaffoldNode;
+        auto ls = scaffoldPtr->getPrevSib();
+        if (ls == nullptr) {
+            auto p = scaffoldPtr->getParent();
+            assert(p != nullptr);
+            assert(scaffoldPtr->getNextSib() != nullptr);
+            p->_setLChild(scaffoldPtr->getNextSib());
+        } else {
+            ls->_setNextSib(scaffoldPtr->getNextSib());
+        }
+        sc.detachedScaffoldNodes.insert(scaffoldPtr);
     }
     void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
         LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
@@ -592,21 +625,21 @@ class NodeThreading {
                 continue;
             }
             /* find MRCA of the phylo nodes */
-            std::set<long> relevantIds;
+            OttIdSet relevantIds;
             if (laIt != loopAlignments.end()) {
                 relevantIds = getRelevantDesIds(laIt->second);
             }
             if (ebaIt != edgeBelowAlignments.end()) {
-                std::set<long> otherRelevantIds = getRelevantDesIds(ebaIt->second);
+                OttIdSet otherRelevantIds = getRelevantDesIds(ebaIt->second);
                 relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
             }
             /* order the groupings */
-            std::map<std::set<long>, PathPairing<T,U> *> mapToProvideOrder;
+            std::map<OttIdSet, PathPairing<T,U> *> mapToProvideOrder;
             for (auto pp : laIt->second) {
-                mapToProvideOrder[pp->getPhyloChildDesID()] = pp;
+                mapToProvideOrder[pp->getOttIdSet()] = pp;
             }
             for (auto pp : ebaIt->second) {
-                mapToProvideOrder[pp->getPhyloChildDesID()] = pp;
+                mapToProvideOrder[pp->getOttIdSet()] = pp;
             }
             /* try to add groups bail out when we know that the possible group is not monophyletic */
             for (auto mpoIt : mapToProvideOrder) {
@@ -632,7 +665,7 @@ class NodeThreading {
             auto c = getContestingTrees();
             for (auto cti : c) {
                 auto ctree = treePtrByIndex.at(cti);
-                const std::set<long> ls = getOttIdSetForLeaves(*ctree);
+                const OttIdSet ls = getOttIdSetForLeaves(*ctree);
                 const auto & edges = getEdgesExiting(cti);
                 const std::string prefix = getContestedPreamble(*nd, *ctree);
                 if (verbose) {
@@ -808,7 +841,7 @@ class RemapToDeepestUnlistedState
     public ThreadedTree {
     public:
     int numErrors;
-    std::set<long> tabooIds;
+    OttIdSet tabooIds;
     std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
     std::vector<TreeMappedWithSplits *> treePtrByIndex;
     bool doReportAllContested;
