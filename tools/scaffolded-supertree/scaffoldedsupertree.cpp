@@ -176,7 +176,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                               const OttIdSet & ingroup,
                               const OttIdSet & leafSet,
                               const SupertreeContext<T, U> &sc);
-    void finalizeTree(const SupertreeContext &sc);
+    void finalizeTree(const SupertreeContext<T, U> &sc);
     void setPossibleMonophyletic(U & scaffoldNode) {
         assert(false);
     }
@@ -377,11 +377,11 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(const SupertreeContext<T, U> &s
     auto rit = begin(roots);
     auto firstRoot = *rit;
     for (++rit; rit != end(roots); ++rit) {
-        if (*rit->isTip()) {
+        if ((*rit)->isTip()) {
             firstRoot->addChild(*rit);
         } else {
             for (auto c : iter_child(**rit)) {
-                firstRoot->addChild();
+                firstRoot->addChild(c);
             }
         }
     }
