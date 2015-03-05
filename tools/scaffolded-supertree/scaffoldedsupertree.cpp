@@ -91,23 +91,23 @@ class PathPairing {
 
 
 template<typename T, typename U>
-void reportOnConflicting(std::ostream & out, const std::string & prefix, const T * scaff, const std::set<PathPairing<T, U> *> & exitPaths, const OttIdSet & phyloLeafSet) {
+void reportOnConflicting(std::ostream & out, const std::string & prefix, const T * scaffold, const std::set<PathPairing<T, U> *> & exitPaths, const OttIdSet & phyloLeafSet) {
     if (exitPaths.size() < 2) {
         assert(false);
         return;
     }
-    const auto scaffDes = set_intersection_as_set(scaff->getData().desIds, phyloLeafSet);
+    const auto scaffoldDes = set_intersection_as_set(scaffold->getData().desIds, phyloLeafSet);
     auto epIt = begin(exitPaths);
     const PathPairing<T, U> * ep = *epIt;
     const U * phyloPar = ep->phyloParent;
     const U * deepestPhylo = nullptr;
     std::map<OttIdSet, const U *> desIdSet2NdConflicting;
-    if (isProperSubset(scaffDes, phyloPar->getData().desIds)) {
+    if (isProperSubset(scaffoldDes, phyloPar->getData().desIds)) {
         deepestPhylo = phyloPar;
     } else {
         desIdSet2NdConflicting[phyloPar->getData().desIds] = phyloPar;
         for (auto anc : iter_anc_const(*phyloPar)) {
-            if (isProperSubset(scaffDes, anc->getData().desIds)) {
+            if (isProperSubset(scaffoldDes, anc->getData().desIds)) {
                 deepestPhylo = anc;
                 break;
             }
@@ -133,8 +133,8 @@ void reportOnConflicting(std::ostream & out, const std::string & prefix, const T
     for (const auto & mIt : desIdSet2NdConflicting) {
         const auto & di = mIt.first;
         auto nd = mIt.second;
-        const OttIdSet e = set_difference_as_set(di, scaffDes);
-        const OttIdSet m = set_difference_as_set(scaffDes, di);
+        const OttIdSet e = set_difference_as_set(di, scaffoldDes);
+        const OttIdSet m = set_difference_as_set(scaffoldDes, di);
         out << prefix;
         emitConflictDetails(out, *nd, e, m);
     }
@@ -175,15 +175,15 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     bool attemptToAddGrouping(PathPairing<T, U> * ppptr,
                               const OttIdSet & ingroup,
                               const OttIdSet & leafSet,
-                              const SupertreeContext<T, U> &sc);
-    void finalizeTree(const SupertreeContext<T, U> &sc);
+                              SupertreeContext<T, U> &sc);
+    void finalizeTree(SupertreeContext<T, U> &sc);
     void setPossibleMonophyletic(U & scaffoldNode) {
         assert(false);
     }
     bool possibleMonophyleticGroupStillViable() {
         assert(false);
     }
-    void resolveThreadedClade(U & scaffoldNode, NodeThreading<T, U> * );
+    void finishResolutionOfThreadedClade(U & scaffoldNode, NodeThreading<T, U> * , SupertreeContext<T, U> & sc);
     private:
     // return false, nullptr if ingroup/leafset can't be added. true, nullptr if there is no intersection
     // with the leaves of r, and true, nd * if it can be added by adding the ingroup 
@@ -199,11 +199,12 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
 
 };
 
-
 template<typename T, typename U>
-inline void GreedyPhylogeneticForest<T,U>::resolveThreadedClade(U & ,
-                                                                NodeThreading<T, U> *) {
-    assert(false);
+void copyStructureToResolvePolytomy(const T & sourceTree,
+                                    const typename T::node_type * srcPoly,
+                                    U & destTree,
+                                    typename U::node_type * destPoly) {
+    std::map<NodeWithSplits *, typename U::node_type *> gpf2scaff;
 }
 enum SupertreeCtorEvent {
     COLLAPSE_TAXON,
@@ -218,21 +219,28 @@ class SupertreeContext {
         SupertreeContext(const SupertreeContext &) = delete;
         SupertreeContext & operator=(const SupertreeContext &) = delete;
         using LogEvent = std::pair<SupertreeCtorEvent, std::string>;
-        mutable std::list<LogEvent> events;
-        mutable std::set<const U *> detachedScaffoldNodes;
 
+        std::list<LogEvent> events;
+        std::set<const U *> detachedScaffoldNodes;
         const std::size_t numTrees;
-        void log(SupertreeCtorEvent e, const U & node) const {
+        std::map<const NodeWithSplits *, NodeThreading<T, U> > & scaffold2NodeThreading;
+        std::map<long, typename U::node_type *> & scaffoldOttId2Node;
+        TreeMappedWithSplits & scaffoldTree; // should adjust the templating to make more generic
+
+        void log(SupertreeCtorEvent e, const U & node) {
             if (e == COLLAPSE_TAXON) {
                 events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
             } else if (e == IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON) {
                 events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
             }
         }
-        std::map<const NodeWithSplits *, NodeThreading<T, U> > & scaff2NodeThreading;
-        SupertreeContext(std::size_t nt, std::map<const NodeWithSplits *, NodeThreading<T, U> > & taxoToAlignment)
+        SupertreeContext(std::size_t nt,
+                         std::map<const NodeWithSplits *, NodeThreading<T, U> > & taxoToAlignment,
+                         TreeMappedWithSplits & scaffTree)
             :numTrees(nt),
-            scaff2NodeThreading(taxoToAlignment) {
+            scaffold2NodeThreading(taxoToAlignment),
+            scaffoldOttId2Node(scaffTree.getData().ottIdToNode),
+            scaffoldTree(scaffTree) {
         }
 };
 
@@ -240,6 +248,21 @@ using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSpli
 using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
 using PathPairingWithSplits = PathPairing<NodeWithSplits, NodeWithSplits>;
 using NodeThreadingWithSplits = NodeThreading<NodeWithSplits, NodeWithSplits>;
+
+// 1. finalizeTree
+// 2. copy the structure into the scaffold tree
+// 3. update all of the outgoing paths so that they map
+//      to this taxon
+template<typename T, typename U>
+inline void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & scaffoldNode,
+                                                                           NodeThreading<T, U> *,
+                                                                           SupertreeContext<T, U> & sc) {
+    finalizeTree(sc);
+    assert(roots.size() == 1);
+    auto resolvedTreeRoot = *begin(roots);
+    copyStructureToResolvePolytomy(nodeSrc, resolvedTreeRoot, sc.scaffoldTree, &scaffoldNode);
+}
+
 const OttIdSet EMPTY_SET;
 // does NOT add the node to roots
 template<typename T, typename U>
@@ -299,7 +322,7 @@ template<typename T, typename U>
 inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
                                                                 const OttIdSet & ingroup,
                                                                 const OttIdSet & leafSet,
-                                                                const SupertreeContext<T,U> &sc) {
+                                                                SupertreeContext<T,U> &sc) {
     if (this->empty() || areDisjoint(ottIdSet, leafSet)) { // first grouping, always add...
         sc.log(CLADE_CREATES_TREE, ppptr->phyloChild);
         addGroupToNewTree(ingroup, leafSet);
@@ -370,7 +393,7 @@ std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,
     return std::make_tuple(true, iNd, oNd);
 }
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::finalizeTree(const SupertreeContext<T, U> &sc) {
+void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &sc) {
     if (roots.size() < 2) {
         return;
     }
@@ -509,7 +532,7 @@ class NodeThreading {
             }
         }
     }
-    void resolveGivenContestedMonophyly(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
+    void resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContext<T, U> & sc) {
         for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
             const auto ebaIt = edgeBelowAlignments.find(treeInd);
             if (ebaIt == edgeBelowAlignments.end()) {
@@ -520,17 +543,17 @@ class NodeThreading {
         }
         resolveGivenUncontestedMonophyly(scaffoldNode, sc);
     }
-    std::set<PathPairing<T, U> *> getAllChildExitPaths(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
+    std::set<PathPairing<T, U> *> getAllChildExitPaths(U & scaffoldNode, SupertreeContext<T, U> & sc) {
         std::set<PathPairing<T, U> *> r;
         for (auto c : iter_child(scaffoldNode)) {
-            const auto & thr = sc.scaff2NodeThreading.at(c);
+            const auto & thr = sc.scaffold2NodeThreading.at(c);
             for (auto te : thr.edgeBelowAlignments) {
                 r.insert(begin(te.second), end(te.second));
             }
         }
         return r;
     }
-    void resolveGivenUncontestedMonophyly(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
+    void resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContext<T, U> & sc) {
         LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
         GreedyPhylogeneticForest<T,U> gpf;
         std::set<PathPairing<T, U> *> considered;
@@ -573,11 +596,10 @@ class NodeThreading {
 
             }
         }
-        gpf.finalizeTree(sc);
-        gpf.resolveThreadedClade(scaffoldNode, this);
+        gpf.finishResolutionOfThreadedClade(scaffoldNode, this, sc);
     }
 
-    void collapseGroup(U & scaffoldNode, const SupertreeContext<T,U> & sc) {
+    void collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc) {
         sc.log(COLLAPSE_TAXON, scaffoldNode);
         U * p = scaffoldNode.getParent();
         assert(p != nullptr); // can't disagree with the root !
@@ -587,7 +609,7 @@ class NodeThreading {
                 np->scaffoldNode = p;
             }
         }
-        NodeThreading<T, U>& parThreading = sc.scaff2NodeThreading.at(p);
+        NodeThreading<T, U>& parThreading = sc.scaffold2NodeThreading.at(p);
         // every loop for this node becomes a loop for its parent
         for (auto lai : loopAlignments) {
             for (auto lp : lai.second) {
@@ -612,19 +634,19 @@ class NodeThreading {
                         parThreading.loopAlignments[ebai.first].insert(lp);
                     }
                 } else {
-                    // if the anc isn't the parent, then it must pass through scaffNode's par
+                    // if the anc isn't the parent, then it must pass through scaffoldNode's par
                     assert(contains(parThreading.edgeBelowAlignments[ebai.first], lp));
                 }
             }
         }
         pruneCollapsedNode(scaffoldNode, sc);
     }
-    void pruneCollapsedNode(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
+    void pruneCollapsedNode(U & scaffoldNode, SupertreeContext<T, U> & sc) {
         LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", but not the actual node. Entering wonky state where the threading paths disagree with the tree"; // TMP DO we still need to add "child paths" to parent *before* scaffoldNode?
         scaffoldNode._detachThisNode();
         sc.detachedScaffoldNodes.insert(&scaffoldNode);
     }
-    void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
+    void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, SupertreeContext<T, U> & sc) {
         LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
         LOG(DEBUG) << "TEMP collapsing if conflict..." ;
         if (COLLAPSE_IF_CONFLICT) {
@@ -667,8 +689,7 @@ class NodeThreading {
                 }
             }
         }
-        gpf.finalizeTree(sc);
-        gpf.resolveThreadedClade(scaffoldNode, this);
+        gpf.finishResolutionOfThreadedClade(scaffoldNode, this, sc);
     }
 
     bool reportIfContested(std::ostream & out,
@@ -865,21 +886,22 @@ class RemapToDeepestUnlistedState
     std::list<long> idListForDotExport;
     TreeMappedWithSplits * taxonomyAsSource;
 
-    void resolveOrCollapse(NodeWithSplits * scaffNd, const SupertreeContextWithSplits & sc) {
-        auto & thr = taxoToAlignment[scaffNd];
+    void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
+        auto & thr = taxoToAlignment[scaffoldNd];
         if (thr.isContested()) {
             if (thr.highRankingTreesPreserveMonophyly(sc.numTrees)) {
-                thr.resolveGivenContestedMonophyly(*scaffNd, sc);
+                thr.resolveGivenContestedMonophyly(*scaffoldNd, sc);
             } else {
-                thr.constructPhyloGraphAndCollapseIfNecessary(*scaffNd, sc);
+                thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
             }
         } else {
-            thr.resolveGivenUncontestedMonophyly(*scaffNd, sc);
+            thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
         }
     }
     void constructSupertree() {
         const auto numTrees = treePtrByIndex.size();
-        const SupertreeContextWithSplits sc{numTrees, taxoToAlignment};
+        TreeMappedWithSplits * tax = taxonomy.get();
+        SupertreeContextWithSplits sc{numTrees, taxoToAlignment, *tax};
         for (auto nd : iter_post_internal(*taxonomy)) {
             resolveOrCollapse(nd, sc);
         }
@@ -1080,3 +1102,4 @@ int main(int argc, char *argv[]) {
                   true);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
+
