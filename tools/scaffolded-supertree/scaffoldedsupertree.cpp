@@ -200,11 +200,32 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
 };
 
 template<typename T, typename U>
-void copyStructureToResolvePolytomy(const T & sourceTree,
-                                    const typename T::node_type * srcPoly,
+void copyStructureToResolvePolytomy(const T * srcPoly,
                                     U & destTree,
                                     typename U::node_type * destPoly) {
-    std::map<NodeWithSplits *, typename U::node_type *> gpf2scaff;
+    std::map<const T *, typename U::node_type *> gpf2scaff;
+    std::map<long, typename U::node_type *> & dOttIdToNode = destTree.getData().ottIdToNode;
+    gpf2scaff[srcPoly] = destPoly;
+    for (auto sn : iter_pre_n_const(srcPoly)) {
+        if (sn == srcPoly) {
+            continue;
+        }
+        auto sp = sn->getParent();
+        auto dp = gpf2scaff.at(sp);
+        typename U::node_type * dn;
+        auto nid = sn->getOttId();
+        if (sn->hasOttId() && nid > 0) { // might assign negative number to nodes created in synth...
+            auto oid = sn->getOttId();
+            dn = dOttIdToNode.at(oid);
+            if (dn->getParent() != dp) {
+                dp->addChild(dn);
+            }
+        } else {
+            dn = destTree.createChild(dp);
+            dn->setOttId(sn->getOttId());
+        }
+        gpf2scaff[sn] = dn;
+    }
 }
 enum SupertreeCtorEvent {
     COLLAPSE_TAXON,
@@ -260,7 +281,7 @@ inline void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & s
     finalizeTree(sc);
     assert(roots.size() == 1);
     auto resolvedTreeRoot = *begin(roots);
-    copyStructureToResolvePolytomy(nodeSrc, resolvedTreeRoot, sc.scaffoldTree, &scaffoldNode);
+    copyStructureToResolvePolytomy(resolvedTreeRoot, sc.scaffoldTree, &scaffoldNode);
 }
 
 const OttIdSet EMPTY_SET;
