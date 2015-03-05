@@ -136,6 +136,15 @@ template<typename T>
 inline typename T::node_type * addChildForOttId(typename T::node_type & nd, long ottId, T & tree) {
     auto nn = tree.createChild(&nd);
     nn->setOttId(ottId);
+    tree.getData()->ottIdToNode[ottId] = nn;
+    return nn;
+}
+
+template<>
+inline NodeWithSplits * addChildForOttId<TreeMappedWithSplits>(NodeWithSplits & nd, long ottId, TreeMappedWithSplits & tree) {
+    auto nn = tree.createChild(&nd);
+    nn->setOttId(ottId);
+    tree.getData().ottIdToNode[ottId] = nn;
     return nn;
 }
 

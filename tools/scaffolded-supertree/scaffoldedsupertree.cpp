@@ -193,6 +193,7 @@ class RootedForest {
         OttIdSet ottIdSet;
 };
 
+using CouldAddResult = std::tuple<bool, NodeWithSplits *, NodeWithSplits *>;
 template<typename T, typename U>
 class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
@@ -209,10 +210,8 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     }
     void finishResolutionOfThreadedClade(U & scaffoldNode, NodeThreading<T, U> * , SupertreeContext<T, U> & sc);
     private:
-    // return false, nullptr if ingroup/leafset can't be added. true, nullptr if there is no intersection
-    // with the leaves of r, and true, nd * if it can be added by adding the ingroup 
-    std::tuple<bool, NodeWithSplits *, NodeWithSplits *> couldAddToTree(NodeWithSplits *r, const OttIdSet & ingroup, const OttIdSet & leafSet);
-    void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const OttIdSet & ingroup, const OttIdSet & leafSet);
+    CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & ingroup, const OttIdSet & leafSet);
+    void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & ingroup, const OttIdSet & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *ri,
                             NodeWithSplits *delr,
@@ -403,7 +402,8 @@ inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U
     auto ing = std::get<1>(rip);
     if (rootIngroupPairs.size() == 1) {
         sc.log(CLADE_ADDED_TO_TREE, ppptr->phyloChild);
-        addIngroupAtNode(retainedRoot, ing, ingroup, leafSet);
+        auto outg = std::get<1>(rip);
+        addIngroupAtNode(retainedRoot, ing, outg, ingroup, leafSet);
     } else {
         for (++rit; rit != rootIngroupPairs.end(); ++rit) {
             auto dr = std::get<0>(*rit);
@@ -425,25 +425,39 @@ bool canBeResolvedToDisplay(const T *nd, const OttIdSet & ingroup, const OttIdSe
     }
     return true;
 }
+
+// returns:
+//      false, nullptr, nullptr if ingroup/leafset can't be added. 
+//      true, nullptr, nullptr if there is no intersection with the leafset
+//      true, nullptr, outgroup-MRCA if there is no intersection with the leafset, but not the ingroup
+//      true, ingroup-MRCA, outgroup-MRCA if there is an intersection the leafset and the ingroup and the ingroup could be added
+//          to this tree of the forest
 template<typename T, typename U>
-std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *root, const OttIdSet & ingroup, const OttIdSet & leafSet) {
+CouldAddResult GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *root, const OttIdSet & ingroup, const OttIdSet & leafSet) {
     if (areDisjoint(root->getData().desIds, leafSet)) {
+        return std::make_tuple(true, nullptr, nullptr);
+    }
+    const OttIdSet ointers = set_intersection_as_set(root->getData().desIds, leafSet);
+    if (ointers.empty()) {
         return std::make_tuple(true, nullptr, nullptr);
     }
     const OttIdSet inters = set_intersection_as_set(root->getData().desIds, ingroup);
     if (inters.empty()) {
-        return std::make_tuple(true, nullptr, nullptr);
+        auto aoLOttId = *(ointers.begin());
+        auto aoLeaf = nodeSrc.getData().ottIdToNode[aoLOttId];
+        assert(aoLeaf != nullptr);
+        auto oNd = searchAncForMRCAOfDesIds(aoLeaf, ointers);
+        return std::make_tuple(true, nullptr, oNd);
     }
     auto aLOttId = *(inters.begin());
     auto aLeaf = nodeSrc.getData().ottIdToNode[aLOttId];
     assert(aLeaf != nullptr);
     auto iNd = searchAncForMRCAOfDesIds(aLeaf, inters);
-    const OttIdSet ointers = set_intersection_as_set(root->getData().desIds, leafSet);
     if (ointers.size() == inters.size()) {
         return std::make_tuple(true, iNd, root);
     }
-    auto oNd = searchAncForMRCAOfDesIds(aLeaf, ointers);
-    if (iNd == oNd || !canBeResolvedToDisplay(iNd, inters, ointers)) {
+    auto oNd = searchAncForMRCAOfDesIds(iNd, ointers);
+    if (iNd == oNd && !canBeResolvedToDisplay(iNd, inters, ointers)) {
         return std::make_tuple(false, iNd, iNd);
     }
     return std::make_tuple(true, iNd, oNd);
@@ -467,9 +481,60 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &sc) {
     }
     firstRoot->getData().desIds = ottIdSet;
 }
+
+// addIngroupAtNode adds leaves for all "new" ottIds to:
+//      the root if they are in the outgroup only, OR
+//      ing if they are in the ingroup.
+// The caller has guaranteed that:
+//   outg is a part of the only tree in the forest that intersects with leafSet, AND
+//   outg is the MRCA of all of the taxa in leafset in this tree.
+//   ing is the MRCA of the ingroup in this tree
+//
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, const OttIdSet & ingroup, const OttIdSet & leafSet) {
-    assert(false);
+void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r,
+                                                     NodeWithSplits *ing,
+                                                     NodeWithSplits *outg,
+                                                     const OttIdSet & ingroup,
+                                                     const OttIdSet & leafSet) {
+    assert(outg != nullptr);
+    if (ing == nullptr) {
+        // there was no intersection with the ingroup...
+        // So: create a new node at the MRCA of the outgroup, and add the ingroup to that node.
+        assert(outg != nullptr);
+        ing = nodeSrc.createChild(outg);
+        ing->getData().desIds = ingroup;
+        for (auto io : ingroup) {
+            addChildForOttId(*ing, io, nodeSrc);
+        }
+    } else {
+        const auto newIngLeaves = set_difference_as_set(ingroup, ottIdSet);
+        if (!newIngLeaves.empty()) {
+            ing->getData().desIds.insert(begin(newIngLeaves), end(newIngLeaves));
+            for (auto io : newIngLeaves) {
+                addChildForOttId(*ing, io, nodeSrc);
+            }
+            for (auto ianc : iter_anc(*ing)) {
+                if (ianc == outg) {
+                    break; // we'll update outg and below in the code below
+                }
+                ianc->getData().desIds.insert(begin(newIngLeaves), end(newIngLeaves));
+            }
+        }
+    }
+    // attach any new outgroup leaves as children of outg, creating/expanding a polytomy.
+    const auto newLeaves = set_difference_as_set(leafSet, ottIdSet);
+    ottIdSet.insert(begin(newLeaves), end(newLeaves));
+    const auto newOutLeaves = set_difference_as_set(newLeaves, ingroup);
+    for (auto oo : newOutLeaves) {
+        addChildForOttId(*outg, oo, nodeSrc);
+    }
+    // add new ottids to desIDs in outg and its ancestors
+    auto f = outg->getFirstChild();
+    assert(f != nullptr);
+    for (auto oanc : iter_anc(*f)) {
+        oanc->getData().desIds.insert(begin(newLeaves), end(newLeaves));
+    }
+
 }
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *rr,
