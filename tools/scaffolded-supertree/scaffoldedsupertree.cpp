@@ -234,14 +234,14 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
                                     typename U::node_type * destPoly) {
     std::map<const T *, typename U::node_type *> gpf2scaff;
     std::map<long, typename U::node_type *> & dOttIdToNode = destTree.getData().ottIdToNode;
-    LOG(DEBUG) << " adding " << srcPoly;
+    //LOG(DEBUG) << " adding " << srcPoly;
     gpf2scaff[srcPoly] = destPoly;
     for (auto sn : iter_pre_n_const(srcPoly)) {
         if (sn == srcPoly) {
             continue;
         }
         auto sp = sn->getParent();
-        LOG(DEBUG) << " looking for " << sp << " the parent of " << sn;
+        //LOG(DEBUG) << " looking for " << sp << " the parent of " << sn;
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
         auto nid = sn->getOttId();
@@ -249,13 +249,15 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             auto oid = sn->getOttId();
             dn = dOttIdToNode.at(oid);
             if (dn->getParent() != dp) {
+                dn->_detachThisNode();
+                dn->_setNextSib(nullptr);
                 dp->addChild(dn);
             }
         } else {
             dn = destTree.createChild(dp);
             dn->setOttId(sn->getOttId());
         }
-        LOG(DEBUG) << " adding " << sn;
+        //LOG(DEBUG) << " adding " << sn;
         gpf2scaff[sn] = dn;
     }
 }
@@ -1044,6 +1046,7 @@ class RemapToDeepestUnlistedState
         for (auto nd : iter_post_internal(*taxonomy)) {
             resolveOrCollapse(nd, sc);
         }
+        
     }
 
 
@@ -1091,6 +1094,7 @@ class RemapToDeepestUnlistedState
         if (doConstructSupertree) {
             cloneTaxonomyAsASourceTree();
             constructSupertree();
+            writeTreeAsNewick(otCLI.out, *taxonomy);
         }
         std::ostream & out{otCLI.out};
         assert (taxonomy != nullptr);
