@@ -128,10 +128,20 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         aPrioriProblemNodes[mrca] = designators;
     }
 
+    virtual bool processTaxonomyTree(OTCLI & otCLI) override {
+            TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+            otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
+            // now we get a little cute and reprocess the taxonomy desIds so that they 
+            // exclude internals. So that when we expand source trees, we expand just
+            // to the taxonomy's leaf set
+            clearAndfillDesIdSets(*taxonomy);
+            return true;
+        }
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         if (toCheck == nullptr) {
             toCheck = std::move(tree);
+            otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
             return true;
         }
         expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
@@ -223,5 +233,5 @@ int main(int argc, char *argv[]) {
                   "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them.",
                   handleDesignator,
                   true);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, false);
+    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, true);
 }

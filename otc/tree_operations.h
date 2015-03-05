@@ -53,6 +53,23 @@ void fillDesIdSets(T & tree) {
         }
     }
 }
+template<typename T>
+void clearAndfillDesIdSets(T & tree) {
+    // assumes OttId is set for each tip
+    tree.getData().desIdSetsContainInternals = false;
+    for (auto node : iter_post(tree)) {
+        std::set<long> & desIds = node->getData().desIds;
+        desIds.clear();
+        if (node->isTip()) {
+            desIds.insert(node->getOttId());
+        } else {
+            for (auto child : iter_child(*node)) {
+                std::set<long> & cDesIds = child->getData().desIds;
+                desIds.insert(cDesIds.begin(), cDesIds.end());
+            }
+        }
+    }
+}
 
 template<typename T>
 void fillDesIdSetsIncludingInternals(T & tree) {
@@ -202,12 +219,12 @@ void markPathToRoot(const T & fullTree,
                     long ottId,
                     std::map<const typename T::node_type *, std::set<long> > &n2m){
     auto startNd = fullTree.getData().getNodeForOttId(ottId);
-    assert(startNd != nullptr);
     if (startNd == nullptr) {
         std::string m = "OTT id not found ";
         m += std::to_string(ottId);
         throw OTCError(m);
     }
+    assert(startNd != nullptr);
     n2m[startNd].insert(ottId);
     for (auto nd : iter_anc(*startNd)) {
         n2m[nd].insert(ottId);
