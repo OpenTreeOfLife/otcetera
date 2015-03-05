@@ -183,7 +183,17 @@ class RootedTreeNode {
             }
             return isOutDegreeOneNode() && lChild->includesOnlyOneLeaf();
         }
-
+        // takes this node out of the child array of its parent, but does not fix any other pointer.
+        void _detachThisNode() {
+            auto ls = getPrevSib();
+            if (ls == nullptr) {
+                auto p = getParent();
+                assert(p != nullptr);
+                p->_setLChild(getNextSib());
+            } else {
+                ls->_setNextSib(getNextSib());
+            }
+       }
     public:
         void writeAsNewick(std::ostream &out,
                            bool useLeafNames,

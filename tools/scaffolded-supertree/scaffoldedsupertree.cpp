@@ -154,12 +154,17 @@ class RootedForest {
             return roots.empty();
         }
         void addGroupToNewTree(const OttIdSet & ingroup, const OttIdSet & leafSet);
+        RootedTreeNode<T> * addDetachedLeaf(long ottId) {
+            auto lr = createNewRoot();
+            lr->setOttId(ottId);
+            return lr;
+        }
     private:
         RootedTreeNode<T> * createNewRoot();
     protected:
         RootedTree<T, U> nodeSrc;
         std::list<RootedTreeNode<T> *> roots;
-        OttIdSet ottSet;
+        OttIdSet ottIdSet;
 };
 
 template<typename T, typename U>
@@ -239,17 +244,17 @@ const OttIdSet EMPTY_SET;
 // does NOT add the node to roots
 template<typename T, typename U>
 RootedTreeNode<T> * RootedForest<T,U>::createNewRoot() {
-    assert(!empty());
-    auto firstRoot = *roots.begin();
-    auto n = nodeSrc.createChild(firstRoot);
-    // detach the node
-    n->_setParent(nullptr);
-    auto s = n->getPrevSib();
-    if (s == nullptr) {
-        firstRoot->_setLChild(nullptr);
+    RootedTreeNode<T> * r;
+    if (empty()) {
+        r = nodeSrc.createRoot();
     } else {
-        s->_setNextSib(nullptr);
+        auto firstRoot = *roots.begin();
+        r = nodeSrc.createChild(firstRoot);
+        r->_detachThisNode();
+        r->_setParent(nullptr);
     }
+    roots.push_back(r);
+    return r;
 }
 template<typename T, typename U>
 void RootedForest<T,U>::addGroupToNewTree(const OttIdSet & ingroup,
@@ -257,17 +262,18 @@ void RootedForest<T,U>::addGroupToNewTree(const OttIdSet & ingroup,
     LOG(DEBUG) << " addGroupToNewTree";
     std::cerr << " ingroup "; writeOttSet(std::cerr, " ", ingroup, " "); std::cerr << std::endl;
     std::cerr << " leafset "; writeOttSet(std::cerr, " ", leafSet, " "); std::cerr << std::endl;
+    if (leafSet.empty() || leafSet == ingroup) { // signs that we just have a trivial group to add
+        auto newOttIds = set_difference_as_set(ingroup, ottIdSet);
+        for (auto noid : newOttIds) {
+            addDetachedLeaf(noid);
+        }
+        return;
+    }
     assert(ingroup.size() < leafSet.size());
     assert(ingroup.size() > 0);
     assert(isProperSubset(ingroup, leafSet));
-    assert(areDisjoint(leafSet, ottSet));
-    RootedTreeNode<T> * r = nullptr;
-    if (empty()) {
-        r = nodeSrc.createRoot();
-    } else {
-        r = createNewRoot();
-    }
-    roots.push_back(r);
+    assert(areDisjoint(leafSet, ottIdSet));
+    RootedTreeNode<T> * r = createNewRoot();
     RTreeOttIDMapping<RTSplits> & trd = nodeSrc.getData();
     auto c = nodeSrc.createChild(r);
     const auto outgroup = set_difference_as_set(leafSet, ingroup);
@@ -286,7 +292,7 @@ void RootedForest<T,U>::addGroupToNewTree(const OttIdSet & ingroup,
     }
     r->getData().desIds = leafSet;
     c->getData().desIds = ingroup;
-    ottSet.insert(leafSet.begin(), leafSet.end());
+    ottIdSet.insert(leafSet.begin(), leafSet.end());
 }
 
 template<typename T, typename U>
@@ -294,7 +300,7 @@ inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U
                                                                 const OttIdSet & ingroup,
                                                                 const OttIdSet & leafSet,
                                                                 const SupertreeContext<T,U> &sc) {
-    if (this->empty() || areDisjoint(ottSet, leafSet)) { // first grouping, always add...
+    if (this->empty() || areDisjoint(ottIdSet, leafSet)) { // first grouping, always add...
         sc.log(CLADE_CREATES_TREE, ppptr->phyloChild);
         addGroupToNewTree(ingroup, leafSet);
         return true;
@@ -597,17 +603,8 @@ class NodeThreading {
     }
     void pruneCollapsedNode(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
         LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", but not the actual node. Entering wonky state where the threading paths disagree with the tree"; // TMP DO we still need to add "child paths" to parent *before* scaffoldNode?
-        auto scaffoldPtr = &scaffoldNode;
-        auto ls = scaffoldPtr->getPrevSib();
-        if (ls == nullptr) {
-            auto p = scaffoldPtr->getParent();
-            assert(p != nullptr);
-            assert(scaffoldPtr->getNextSib() != nullptr);
-            p->_setLChild(scaffoldPtr->getNextSib());
-        } else {
-            ls->_setNextSib(scaffoldPtr->getNextSib());
-        }
-        sc.detachedScaffoldNodes.insert(scaffoldPtr);
+        scaffoldNode._detachThisNode();
+        sc.detachedScaffoldNodes.insert(&scaffoldNode);
     }
     void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, const SupertreeContext<T, U> & sc) {
         LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
