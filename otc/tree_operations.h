@@ -388,10 +388,17 @@ void insertDescendantsOfUnincludedSubtrees(T * nd, U & includedNodes) {
 
 template<typename T>
 inline void writeNodeAsNewickLabel(std::ostream & out, const T *nd) {
-    if (nd->isTip()) {
-        writeEscapedForNewick(out, nd->getName());
+    if (nd->isTip()) { //TEMP tip just like internals, but at some point we may want the label-less internals to be unlabelled, regardless of OTT ID
+        const auto & n = nd->getName();
+        if (n.empty()) {
+            out << "ott" << nd->getOttId();
+        } else {
+            writeEscapedForNewick(out, nd->getName());
+        }
     } else if (!nd->getName().empty()) {
         writeEscapedForNewick(out, nd->getName());
+    } else if (nd->hasOttId()) {
+        out << "ott" << nd->getOttId();
     }
 }
 

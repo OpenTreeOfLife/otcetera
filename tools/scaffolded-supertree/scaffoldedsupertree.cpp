@@ -472,7 +472,10 @@ CouldAddResult GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *roo
 }
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &) {
-    LOG(DEBUG) << "finalizeTree for a forest with " << roots.size() << " roots.";
+    LOG(DEBUG) << "finalizeTree for a forest with " << roots.size() << " roots:\n";
+    for (auto r : roots) {
+        std::cerr << " tree-in-forest = "; writeNewick(std::cerr, r); std::cerr << '\n';
+    }
     if (roots.size() < 2) {
         return;
     }
@@ -488,6 +491,7 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &) {
         }
     }
     firstRoot->getData().desIds = ottIdSet;
+    std::cerr << " finalized-tree-from-forest = "; writeNewick(std::cerr, firstRoot); std::cerr << '\n';
 }
 
 // addIngroupAtNode adds leaves for all "new" ottIds to:
@@ -630,13 +634,13 @@ class NodeThreading {
         return false;
     }
 
-    OttIdSet getRelevantDesIds(const PathPairSet & pps) {
+    OttIdSet getRelevantDesIdsFromPath(const PathPairSet & pps) {
         OttIdSet relevantIds;
         for (auto path : pps) {
             const auto & cdi = path->getOttIdSet();
             relevantIds.insert(begin(cdi), end(cdi));
         }
-        std::cerr << " getRelevantDesIds returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
+        std::cerr << " getRelevantDesIdsFromPath returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
         return relevantIds;
     }
 
@@ -645,11 +649,11 @@ class NodeThreading {
         assert(false);
     }
     // there may be 
-    void collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps) {
+    void collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex) {
         if (pps.size() < 2) {
             return;
         }
-        auto relevantIds = getRelevantDesIds(pps);
+        auto relevantIds = getRelevantDesIds(treeIndex);
         PathPairing<T, U> * firstPairing = *pps.begin();
         const T * onePhyloPar = firstPairing->phyloParent;
         const T * phyloMrca = searchAncForMRCAOfDesIds(onePhyloPar, relevantIds);
@@ -670,7 +674,7 @@ class NodeThreading {
                 continue;
             }
             PathPairSet & pps = ebaIt->second;
-            collapseSourceEdgesToForceOneEntry(scaffoldNode, pps);
+            collapseSourceEdgesToForceOneEntry(scaffoldNode, pps, treeInd);
         }
         resolveGivenUncontestedMonophyly(scaffoldNode, sc);
     }
@@ -694,10 +698,9 @@ class NodeThreading {
             if (laIt == loopAlignments.end()) {
                 continue;
             }
-
+            const OttIdSet relevantIds = getRelevantDesIds(treeInd);
             PathPairSet & pps = laIt->second;
             // leaf set of this tree for this subtree
-            OttIdSet relevantIds = getRelevantDesIds(pps);
             // for repeatability, we'll try to add groupings in reverse order of desIds sets (deeper first)
             std::map<OttIdSet, PathPairing<T,U> *> mapToProvideOrder;
             for (auto pp : pps) {
@@ -793,15 +796,6 @@ class NodeThreading {
             if (laIt == loopAlignments.end() && ebaIt == edgeBelowAlignments.end()) {
                 continue;
             }
-            /* find MRCA of the phylo nodes */
-            OttIdSet relevantIds;
-            if (laIt != loopAlignments.end()) {
-                relevantIds = getRelevantDesIds(laIt->second);
-            }
-            if (ebaIt != edgeBelowAlignments.end()) {
-                OttIdSet otherRelevantIds = getRelevantDesIds(ebaIt->second);
-                relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
-            }
             /* order the groupings */
             std::map<OttIdSet, PathPairing<T,U> *> mapToProvideOrder;
             for (auto pp : laIt->second) {
@@ -810,6 +804,7 @@ class NodeThreading {
             for (auto pp : ebaIt->second) {
                 mapToProvideOrder[pp->getOttIdSet()] = pp;
             }
+            const OttIdSet relevantIds = getRelevantDesIds(treeInd);
             /* try to add groups bail out when we know that the possible group is not monophyletic */
             for (auto mpoIt : mapToProvideOrder) {
                 const auto & d = mpoIt.first;
@@ -822,6 +817,20 @@ class NodeThreading {
             }
         }
         gpf.finishResolutionOfThreadedClade(scaffoldNode, this, sc);
+    }
+    OttIdSet getRelevantDesIds(std::size_t treeIndex) {
+        /* find MRCA of the phylo nodes */
+        OttIdSet relevantIds;
+        auto laIt = loopAlignments.find(treeIndex);
+        if (laIt != loopAlignments.end()) {
+            relevantIds = getRelevantDesIdsFromPath(laIt->second);
+        }
+        auto ebaIt = edgeBelowAlignments.find(treeIndex);
+        if (ebaIt != edgeBelowAlignments.end()) {
+            OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(ebaIt->second);
+            relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
+        }
+        return relevantIds;
     }
 
     bool reportIfContested(std::ostream & out,
@@ -1043,8 +1052,10 @@ class RemapToDeepestUnlistedState
         const auto numTrees = treePtrByIndex.size();
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{numTrees, taxoToAlignment, *tax};
+        LOG(DEBUG) << "Before supertree "; writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         for (auto nd : iter_post_internal(*taxonomy)) {
             resolveOrCollapse(nd, sc);
+            LOG(DEBUG) << "After handling " << nd->getOttId(); writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         }
         
     }
@@ -1095,6 +1106,7 @@ class RemapToDeepestUnlistedState
             cloneTaxonomyAsASourceTree();
             constructSupertree();
             writeTreeAsNewick(otCLI.out, *taxonomy);
+            otCLI.out << '\n';
         }
         std::ostream & out{otCLI.out};
         assert (taxonomy != nullptr);
