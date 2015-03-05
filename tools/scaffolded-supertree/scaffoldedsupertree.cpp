@@ -229,12 +229,14 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
                                     typename U::node_type * destPoly) {
     std::map<const T *, typename U::node_type *> gpf2scaff;
     std::map<long, typename U::node_type *> & dOttIdToNode = destTree.getData().ottIdToNode;
+    LOG(DEBUG) << " adding " << srcPoly;
     gpf2scaff[srcPoly] = destPoly;
     for (auto sn : iter_pre_n_const(srcPoly)) {
         if (sn == srcPoly) {
             continue;
         }
         auto sp = sn->getParent();
+        LOG(DEBUG) << " looking for " << sp << " the parent of " << sn;
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
         auto nid = sn->getOttId();
@@ -248,6 +250,7 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             dn = destTree.createChild(dp);
             dn->setOttId(sn->getOttId());
         }
+        LOG(DEBUG) << " adding " << sn;
         gpf2scaff[sn] = dn;
     }
 }
@@ -447,12 +450,13 @@ std::tuple<bool, NodeWithSplits *, NodeWithSplits *> GreedyPhylogeneticForest<T,
 }
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &sc) {
+    LOG(DEBUG) << "finalizeTree for a forest with " << roots.size() << " roots.";
     if (roots.size() < 2) {
         return;
     }
     auto rit = begin(roots);
     auto firstRoot = *rit;
-    for (++rit; rit != end(roots); ++rit) {
+    for (++rit; rit != end(roots); rit = roots.erase(rit)) {
         if ((*rit)->isTip()) {
             firstRoot->addChild(*rit);
         } else {

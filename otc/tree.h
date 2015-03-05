@@ -147,10 +147,12 @@ class RootedTreeNode {
             }
         }
         void addChild(node_type *n) {
-            if (lChild)
+            if (lChild) {
                 lChild->addSib(n);
-            else
+            } else {
                 lChild = n;
+            }
+            n->parent = this;
         }
         bool removeChild(node_type *n) {
             if (n == nullptr || lChild == nullptr) {
