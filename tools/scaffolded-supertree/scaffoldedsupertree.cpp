@@ -174,6 +174,9 @@ template<typename T, typename U> class SupertreeContext;
 template<typename T, typename U>
 class RootedForest {
     public:
+        RootedForest(){}
+        RootedForest(const RootedForest &) = delete;
+        RootedForest & operator=(const RootedForest &) = delete;
         bool empty() const {
             return roots.empty();
         }
@@ -197,12 +200,15 @@ using CouldAddResult = std::tuple<bool, NodeWithSplits *, NodeWithSplits *>;
 template<typename T, typename U>
 class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
+    GreedyPhylogeneticForest() {}
+    GreedyPhylogeneticForest(const GreedyPhylogeneticForest &) = delete;
+    GreedyPhylogeneticForest & operator=(const GreedyPhylogeneticForest &) = delete;
     bool attemptToAddGrouping(PathPairing<T, U> * ppptr,
                               const OttIdSet & ingroup,
                               const OttIdSet & leafSet,
                               SupertreeContext<T, U> &sc);
     void finalizeTree(SupertreeContext<T, U> &sc);
-    void setPossibleMonophyletic(U & scaffoldNode) {
+    void setPossibleMonophyletic(U & /*scaffoldNode*/) {
         assert(false);
     }
     bool possibleMonophyleticGroupStillViable() {
@@ -318,7 +324,6 @@ inline void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & s
     }
 }
 
-const OttIdSet EMPTY_SET;
 // does NOT add the node to roots
 template<typename T, typename U>
 RootedTreeNode<T> * RootedForest<T,U>::createNewRoot() {
@@ -412,6 +417,7 @@ inline bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U
             graftTreesTogether(retainedRoot, ing, dr, di, dout, ingroup, leafSet);
         }
     }
+    return true;
 }
 
 // assumes that nd is the mrca of ingroup and outgroup IDs
@@ -463,7 +469,7 @@ CouldAddResult GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *roo
     return std::make_tuple(true, iNd, oNd);
 }
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &sc) {
+void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &) {
     LOG(DEBUG) << "finalizeTree for a forest with " << roots.size() << " roots.";
     if (roots.size() < 2) {
         return;
@@ -491,7 +497,7 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContext<T, U> &sc) {
 //   ing is the MRCA of the ingroup in this tree
 //
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r,
+void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *, //delete root param?
                                                      NodeWithSplits *ing,
                                                      NodeWithSplits *outg,
                                                      const OttIdSet & ingroup,
@@ -537,13 +543,13 @@ void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *r,
 
 }
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *rr,
-                            NodeWithSplits *ri,
-                            NodeWithSplits *delr,
-                            NodeWithSplits *deli,
-                            NodeWithSplits *delo,
-                            const OttIdSet & ingroup,
-                            const OttIdSet & leafSet) {
+void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *, //rr,
+                            NodeWithSplits *, //ri,
+                            NodeWithSplits *, //delr,
+                            NodeWithSplits *, //deli,
+                            NodeWithSplits *, //delo,
+                            const OttIdSet & , //ingroup,
+                            const OttIdSet & ){  //leafSet
     assert(false);
 }
 
@@ -632,11 +638,12 @@ class NodeThreading {
         return relevantIds;
     }
 
-    void collapseSourceEdge(const T * phyloParent, PathPairing<T, U> *path) {
+    void collapseSourceEdge(const T * , //phyloParent,
+                            PathPairing<T, U> * ) { //path
         assert(false);
     }
     // there may be 
-    void collapseSourceEdgesToForceOneEntry(U & scaffoldNode, PathPairSet & pps) {
+    void collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps) {
         if (pps.size() < 2) {
             return;
         }
@@ -676,6 +683,7 @@ class NodeThreading {
         return r;
     }
     void resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContext<T, U> & sc) {
+        const OttIdSet EMPTY_SET;
         LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
         GreedyPhylogeneticForest<T,U> gpf;
         std::set<PathPairing<T, U> *> considered;
@@ -714,8 +722,8 @@ class NodeThreading {
             }
         }
         for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-            for (auto sc : iter_child(scaffoldNode)) {
-
+            for (auto snc : iter_child(scaffoldNode)) {
+                assert(snc != nullptr);
             }
         }
         gpf.finishResolutionOfThreadedClade(scaffoldNode, this, sc);
@@ -991,7 +999,7 @@ class ThreadedTree {
     void writeDOTExport(std::ostream & out,
                            const NodeThreading<NodeWithSplits, NodeWithSplits> & thr,
                            const NodeWithSplits * nd,
-                           const std::vector<TreeMappedWithSplits *> & treePtrByIndex) const {
+                           const std::vector<TreeMappedWithSplits *> & ) const {
         writeNewick(out, nd);
         out << "nd.ottID = " << nd->getOttId() << " --> " << (nd->getParent() ? nd->getParent()->getOttId() : 0L) << "\n";
         out << "  getTotalNumNodeMappings = " << thr.getTotalNumNodeMappings() << "\n";
