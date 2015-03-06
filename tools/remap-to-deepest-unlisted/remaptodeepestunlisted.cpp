@@ -72,7 +72,7 @@ struct RemapToDeepestUnlistedState {
         }
         return pathPairPtr;
     }
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
+    bool processSourceTree(OTCLI & , std::unique_ptr<Tree_t> tree) {
         assert(taxonomy != nullptr);
         assert(tree != nullptr);
         std::map<Node_t *, NodePairing<Node_t, Node_t>  *> currTreeNodePairings;

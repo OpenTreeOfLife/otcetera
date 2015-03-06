@@ -83,7 +83,7 @@ void NodeThreading<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
     LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
     GreedyPhylogeneticForest<T,U> gpf;
     std::set<PathPairing<T, U> *> considered;
-    for (int treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
+    for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
         const auto laIt = loopAlignments.find(treeInd);
         if (laIt == loopAlignments.end()) {
             continue;
@@ -100,7 +100,7 @@ void NodeThreading<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         for (auto mpoIt : mapToProvideOrder) {
             const auto & d = mpoIt.first;
             auto ppptr = mpoIt.second;
-            gpf.attemptToAddGrouping(ppptr, d, relevantIds, treeInd, bogusGroupIndex++, sc);
+            gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
             considered.insert(ppptr);
         }
     }
