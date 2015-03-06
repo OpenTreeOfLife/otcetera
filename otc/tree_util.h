@@ -83,6 +83,17 @@ inline std::string getDesignator(const T &nd) {
     std::string ps = std::to_string(p.second);
     return std::string("MRCA(ott") + pf + std::string{", ott"} + ps + std::string{")"};
 }
+template<typename T>
+inline std::string getMRCADesignator(const T &nd) {
+    if (nd.isTip()) {
+        std::string r = "ott";
+        return r + std::to_string(nd.getOttId());
+    }
+    auto p = getMRCAOttIdPair(&nd);
+    std::string pf = std::to_string(p.first);
+    std::string ps = std::to_string(p.second);
+    return std::string("MRCA(ott") + pf + std::string{", ott"} + ps + std::string{")"};
+}
 
 
 template<typename T>
