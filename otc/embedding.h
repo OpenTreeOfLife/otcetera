@@ -10,14 +10,14 @@
 namespace otc {
 template<typename T, typename U> class NodePairing;
 template<typename T, typename U> class PathPairing;
-template<typename T, typename U> class NodeThreading;
+template<typename T, typename U> class NodeEmbedding;
 template<typename T, typename U> class SupertreeContext;
 
 template<typename T, typename U>
 void updateAncestralPathOttIdSet(T * nd,
                                  const OttIdSet & oldEls,
                                  const OttIdSet newEls,
-                                 std::map<const T *, NodeThreading<T, U> > & m);
+                                 std::map<const T *, NodeEmbedding<T, U> > & m);
 
 template<typename T, typename U>
 class NodePairing {
@@ -40,7 +40,7 @@ class PathPairing {
     U * phyloChild;
     U * phyloParent;
     OttIdSet currChildOttIdSet;
-    void setOttIdSet(long oid, std::map<const U *, NodeThreading<T, U> > & m) {
+    void setOttIdSet(long oid, std::map<const U *, NodeEmbedding<T, U> > & m) {
         OttIdSet n;
         n.insert(oid);
         updateAncestralPathOttIdSet(scaffoldAnc, currChildOttIdSet, n, m);
@@ -67,7 +67,7 @@ class PathPairing {
 };
 
 template<typename T, typename U>
-inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeThreading<T, U> > & m) {
+inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeEmbedding<T, U> > & m) {
     for (auto anc : iter_anc(*nd)) {
          auto & ant = m.at(anc);
          ant.updateAllPathsOttIdSets(oldEls, newEls);
@@ -75,38 +75,38 @@ inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const O
 }
 
 template<typename T, typename U>
-class NodeThreading {
+class NodeEmbedding {
     public:
     using NodePairSet = std::set<NodePairing<T, U> *>;
     using PathPairSet = std::set<PathPairing<T, U> *>;
     
-    std::map<std::size_t, NodePairSet> nodeAlignments;
-    std::map<std::size_t, PathPairSet> edgeBelowAlignments;
-    std::map<std::size_t, PathPairSet > loopAlignments;
+    std::map<std::size_t, NodePairSet> nodeEmbeddings;
+    std::map<std::size_t, PathPairSet> edgeBelowEmbeddings;
+    std::map<std::size_t, PathPairSet > loopEmbeddings;
     std::size_t getTotalNumNodeMappings() const {
         unsigned long t = 0U;
-        for (auto i : nodeAlignments) {
+        for (auto i : nodeEmbeddings) {
             t += i.second.size();
         }
         return t;
     }
     std::size_t getTotalNumLoops() const {
         unsigned long t = 0U;
-        for (auto i : loopAlignments) {
+        for (auto i : loopEmbeddings) {
             t += i.second.size();
         }
         return t;
     }
     std::size_t getTotalNumEdgeBelowTraversals() const {
         unsigned long t = 0U;
-        for (auto i : edgeBelowAlignments) {
+        for (auto i : edgeBelowEmbeddings) {
             t += i.second.size();
         }
         return t;
     }
     static bool treeContestsMonophyly(const PathPairSet & edgesBelowForTree);
     bool isContested() const {
-        for (auto i : edgeBelowAlignments) {
+        for (auto i : edgeBelowEmbeddings) {
             if (treeContestsMonophyly(i.second)) {
                 return true;
             }
@@ -115,7 +115,7 @@ class NodeThreading {
     }
     std::list<std::size_t> getContestingTrees() const {
         std::list<std::size_t> r;
-        for (auto i : edgeBelowAlignments) {
+        for (auto i : edgeBelowEmbeddings) {
             if (treeContestsMonophyly(i.second)) {
                 r.push_back(i.first);
             }
@@ -123,8 +123,8 @@ class NodeThreading {
         return r;
     }
     const PathPairSet & getEdgesExiting(std::size_t treeIndex) const {
-        auto el = edgeBelowAlignments.find(treeIndex);
-        assert(el != edgeBelowAlignments.end());
+        auto el = edgeBelowEmbeddings.find(treeIndex);
+        assert(el != edgeBelowEmbeddings.end());
         return el->second;
     }
 
@@ -153,14 +153,14 @@ class NodeThreading {
                            const std::vector<NodeWithSplits *> & aliasedBy,
                            bool verbose) const;
     void updateAllPathsOttIdSets(const OttIdSet & oldEls, const OttIdSet & newEls) {
-        updateAllMappedPathsOttIdSets(loopAlignments, oldEls, newEls);
-        updateAllMappedPathsOttIdSets(edgeBelowAlignments, oldEls, newEls);
+        updateAllMappedPathsOttIdSets(loopEmbeddings, oldEls, newEls);
+        updateAllMappedPathsOttIdSets(edgeBelowEmbeddings, oldEls, newEls);
     }
 };
 
 
 template<typename T, typename U>
-inline bool NodeThreading<T, U>::treeContestsMonophyly(const std::set<PathPairing<T, U> *> & edgesBelowForTree) {
+inline bool NodeEmbedding<T, U>::treeContestsMonophyly(const std::set<PathPairing<T, U> *> & edgesBelowForTree) {
     if (edgesBelowForTree.size() > 1) {
         const T * firstSrcPar = nullptr;
         for (auto pp : edgesBelowForTree) {

@@ -60,7 +60,7 @@ bool canBeResolvedToDisplay(const T *nd, const OttIdSet & ingroup, const OttIdSe
 //      to this taxon
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & scaffoldNode,
-                                                                           NodeThreading<T, U> * embedding,
+                                                                           NodeEmbedding<T, U> * embedding,
                                                                            SupertreeContextWithSplits & sc) {
     const auto snoid = scaffoldNode.getOttId();
     LOG(DEBUG) << "finishResolutionOfThreadedClade for " << snoid;
@@ -69,9 +69,9 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & scaffold
     auto & resolvedTree = begin(trees)->second;
     copyStructureToResolvePolytomy(resolvedTree.getRoot(), sc.scaffoldTree, &scaffoldNode);
     // remap all path pairings out of this node...
-    for (auto treeInd2eout : embedding->edgeBelowAlignments) {
+    for (auto treeInd2eout : embedding->edgeBelowEmbeddings) {
         for (auto eout : treeInd2eout.second) {
-            eout->setOttIdSet(snoid, sc.scaffold2NodeThreading);
+            eout->setOttIdSet(snoid, sc.scaffold2NodeEmbedding);
         }
     }
 }

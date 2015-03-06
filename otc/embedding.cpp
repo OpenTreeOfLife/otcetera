@@ -18,7 +18,7 @@ void PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const 
 }
 
 template<typename T, typename U>
-OttIdSet NodeThreading<T, U>::getRelevantDesIdsFromPath(const PathPairSet & pps) {
+OttIdSet NodeEmbedding<T, U>::getRelevantDesIdsFromPath(const PathPairSet & pps) {
     OttIdSet relevantIds;
     for (auto path : pps) {
         const auto & cdi = path->getOttIdSet();
@@ -29,13 +29,13 @@ OttIdSet NodeThreading<T, U>::getRelevantDesIdsFromPath(const PathPairSet & pps)
 }
 
 template<typename T, typename U>
-void NodeThreading<T, U>::collapseSourceEdge(const T * , //phyloParent,
+void NodeEmbedding<T, U>::collapseSourceEdge(const T * , //phyloParent,
                                                  PathPairing<T, U> * ) { //path
     assert(false);
 }
 
 template<typename T, typename U>
-void NodeThreading<T, U>::collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex) {
+void NodeEmbedding<T, U>::collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex) {
     if (pps.size() < 2) {
         return;
     }
@@ -54,10 +54,10 @@ void NodeThreading<T, U>::collapseSourceEdgesToForceOneEntry(U & , PathPairSet &
     }
 }
 template<typename T, typename U>
-void NodeThreading<T, U>::resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
+void NodeEmbedding<T, U>::resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-        const auto ebaIt = edgeBelowAlignments.find(treeInd);
-        if (ebaIt == edgeBelowAlignments.end()) {
+        const auto ebaIt = edgeBelowEmbeddings.find(treeInd);
+        if (ebaIt == edgeBelowEmbeddings.end()) {
             continue;
         }
         PathPairSet & pps = ebaIt->second;
@@ -66,11 +66,11 @@ void NodeThreading<T, U>::resolveGivenContestedMonophyly(U & scaffoldNode, Super
     resolveGivenUncontestedMonophyly(scaffoldNode, sc);
 }
 template<typename T, typename U>
-std::set<PathPairing<T, U> *> NodeThreading<T, U>::getAllChildExitPaths(U & scaffoldNode, SupertreeContextWithSplits & sc) {
+std::set<PathPairing<T, U> *> NodeEmbedding<T, U>::getAllChildExitPaths(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     std::set<PathPairing<T, U> *> r;
     for (auto c : iter_child(scaffoldNode)) {
-        const auto & thr = sc.scaffold2NodeThreading.at(c);
-        for (auto te : thr.edgeBelowAlignments) {
+        const auto & thr = sc.scaffold2NodeEmbedding.at(c);
+        for (auto te : thr.edgeBelowEmbeddings) {
             r.insert(begin(te.second), end(te.second));
         }
     }
@@ -78,14 +78,14 @@ std::set<PathPairing<T, U> *> NodeThreading<T, U>::getAllChildExitPaths(U & scaf
 }
 
 template<typename T, typename U>
-void NodeThreading<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
+void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     const OttIdSet EMPTY_SET;
     LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
     GreedyPhylogeneticForest<T,U> gpf;
     std::set<PathPairing<T, U> *> considered;
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-        const auto laIt = loopAlignments.find(treeInd);
-        if (laIt == loopAlignments.end()) {
+        const auto laIt = loopEmbeddings.find(treeInd);
+        if (laIt == loopEmbeddings.end()) {
             continue;
         }
         const OttIdSet relevantIds = getRelevantDesIds(treeInd);
@@ -128,28 +128,28 @@ void NodeThreading<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
 }
 
 template<typename T, typename U>
-void NodeThreading<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc) {
+void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc) {
     sc.log(COLLAPSE_TAXON, scaffoldNode);
     U * p = scaffoldNode.getParent();
     assert(p != nullptr); // can't disagree with the root !
     // remap all nodes in NodePairing to parent
-    for (auto nai : nodeAlignments) {
+    for (auto nai : nodeEmbeddings) {
         for (auto np : nai.second) {
             np->scaffoldNode = p;
         }
     }
-    NodeThreading<T, U>& parThreading = sc.scaffold2NodeThreading.at(p);
+    NodeEmbedding<T, U>& parThreading = sc.scaffold2NodeEmbedding.at(p);
     // every loop for this node becomes a loop for its parent
-    for (auto lai : loopAlignments) {
+    for (auto lai : loopEmbeddings) {
         for (auto lp : lai.second) {
             if (lp->scaffoldDes) {
                 lp->scaffoldDes = p;
             }
-            parThreading.loopAlignments[lai.first].insert(lp);
+            parThreading.loopEmbeddings[lai.first].insert(lp);
         }
     }
     // every exit edge for this node becomes a loop for its parent if it is not trivial
-    for (auto ebai : edgeBelowAlignments) {
+    for (auto ebai : edgeBelowEmbeddings) {
         for (auto lp : ebai.second) {
             if (lp->scaffoldAnc == p) {
                 if (lp->scaffoldDes == &scaffoldNode) {
@@ -160,11 +160,11 @@ void NodeThreading<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
                     assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
                     sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
                 } else {
-                    parThreading.loopAlignments[ebai.first].insert(lp);
+                    parThreading.loopEmbeddings[ebai.first].insert(lp);
                 }
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par
-                assert(contains(parThreading.edgeBelowAlignments[ebai.first], lp));
+                assert(contains(parThreading.edgeBelowEmbeddings[ebai.first], lp));
             }
         }
     }
@@ -172,14 +172,14 @@ void NodeThreading<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
 }
 
 template<typename T, typename U>
-void NodeThreading<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextWithSplits & sc) {
+void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", but not the actual node. Entering wonky state where the threading paths disagree with the tree"; // TMP DO we still need to add "child paths" to parent *before* scaffoldNode?
     scaffoldNode._detachThisNode();
     sc.detachedScaffoldNodes.insert(&scaffoldNode);
 }
 
 template<typename T, typename U>
-void NodeThreading<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, SupertreeContextWithSplits & sc) {
+void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
     LOG(DEBUG) << "TEMP collapsing if conflict..." ;
     if (COLLAPSE_IF_CONFLICT) {
@@ -189,9 +189,9 @@ void NodeThreading<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
     GreedyPhylogeneticForest<T,U> gpf;
     gpf.setPossibleMonophyletic(scaffoldNode);
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-        const auto laIt = loopAlignments.find(treeInd);
-        const auto ebaIt = edgeBelowAlignments.find(treeInd);
-        if (laIt == loopAlignments.end() && ebaIt == edgeBelowAlignments.end()) {
+        const auto laIt = loopEmbeddings.find(treeInd);
+        const auto ebaIt = edgeBelowEmbeddings.find(treeInd);
+        if (laIt == loopEmbeddings.end() && ebaIt == edgeBelowEmbeddings.end()) {
             continue;
         }
         /* order the groupings */
@@ -219,15 +219,15 @@ void NodeThreading<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
 }
 
 template<typename T, typename U>
-OttIdSet NodeThreading<T, U>::getRelevantDesIds(std::size_t treeIndex) {
+OttIdSet NodeEmbedding<T, U>::getRelevantDesIds(std::size_t treeIndex) {
     /* find MRCA of the phylo nodes */
     OttIdSet relevantIds;
-    auto laIt = loopAlignments.find(treeIndex);
-    if (laIt != loopAlignments.end()) {
+    auto laIt = loopEmbeddings.find(treeIndex);
+    if (laIt != loopEmbeddings.end()) {
         relevantIds = getRelevantDesIdsFromPath(laIt->second);
     }
-    auto ebaIt = edgeBelowAlignments.find(treeIndex);
-    if (ebaIt != edgeBelowAlignments.end()) {
+    auto ebaIt = edgeBelowEmbeddings.find(treeIndex);
+    if (ebaIt != edgeBelowEmbeddings.end()) {
         OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(ebaIt->second);
         relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
     }
@@ -236,7 +236,7 @@ OttIdSet NodeThreading<T, U>::getRelevantDesIds(std::size_t treeIndex) {
 }
 
 template<typename T, typename U>
-bool NodeThreading<T, U>::reportIfContested(std::ostream & out,
+bool NodeEmbedding<T, U>::reportIfContested(std::ostream & out,
                        const U * nd,
                        const std::vector<TreeMappedWithSplits *> & treePtrByIndex,
                        const std::vector<NodeWithSplits *> & aliasedBy,
@@ -323,6 +323,6 @@ void reportOnConflicting(std::ostream & out,
 
 template class NodePairing<NodeWithSplits, NodeWithSplits>; // force explicit instantiaion of this template.
 template class PathPairing<NodeWithSplits, NodeWithSplits>; // force explicit instantiaion of this template.
-template class NodeThreading<NodeWithSplits, NodeWithSplits>; // force explicit instantiaion of this template.
+template class NodeEmbedding<NodeWithSplits, NodeWithSplits>; // force explicit instantiaion of this template.
 
 }// namespace

@@ -7,9 +7,9 @@ using namespace otc;
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
 
 template<typename T, typename U>
-void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeThreading<T, U> > & m);
+void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeEmbedding<T, U> > & m);
 template<typename T, typename U>
-inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeThreading<T, U> > & m) {
+inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeEmbedding<T, U> > & m) {
     for (auto anc : iter_anc(*nd)) {
          auto & ant = m.at(anc);
          ant.updateAllPathsOttIdSets(oldEls, newEls);
@@ -58,13 +58,13 @@ std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree
 
 using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
 using PathPairingWithSplits = PathPairing<NodeWithSplits, NodeWithSplits>;
-using NodeThreadingWithSplits = NodeThreading<NodeWithSplits, NodeWithSplits>;
+using NodeEmbeddingWithSplits = NodeEmbedding<NodeWithSplits, NodeWithSplits>;
 
 class ThreadedTree {
     protected:
     std::list<NodePairingWithSplits> nodePairings;
     std::list<PathPairingWithSplits> pathPairings;
-    std::map<const NodeWithSplits *, NodeThreadingWithSplits> taxoToAlignment;
+    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> taxoToEmbedding;
     public:
 
     NodePairingWithSplits * _addNodeMapping(NodeWithSplits *taxo, NodeWithSplits *nd, std::size_t treeIndex) {
@@ -72,8 +72,8 @@ class ThreadedTree {
         assert(nd != nullptr);
         nodePairings.emplace_back(NodePairingWithSplits(taxo, nd));
         auto ndPairPtr = &(*nodePairings.rbegin());
-        auto & athreading = taxoToAlignment[taxo];
-        athreading.nodeAlignments[treeIndex].insert(ndPairPtr);
+        auto & athreading = taxoToEmbedding[taxo];
+        athreading.nodeEmbeddings[treeIndex].insert(ndPairPtr);
         return ndPairPtr;
     }
     PathPairingWithSplits * _addPathMapping(NodePairingWithSplits * parentPairing,
@@ -86,14 +86,14 @@ class ThreadedTree {
         auto ancTaxo = pathPairPtr->scaffoldAnc;
         if (currTaxo != ancTaxo) {
             while (currTaxo != ancTaxo) {
-                taxoToAlignment[currTaxo].edgeBelowAlignments[treeIndex].insert(pathPairPtr);
+                taxoToEmbedding[currTaxo].edgeBelowEmbeddings[treeIndex].insert(pathPairPtr);
                 currTaxo = currTaxo->getParent();
                 if (currTaxo == nullptr) {
                     break;
                 }
             }
         } else {
-            taxoToAlignment[currTaxo].loopAlignments[treeIndex].insert(pathPairPtr);
+            taxoToEmbedding[currTaxo].loopEmbeddings[treeIndex].insert(pathPairPtr);
         }
         return pathPairPtr;
     }
@@ -190,7 +190,7 @@ class ThreadedTree {
     }
 
     void writeDOTExport(std::ostream & out,
-                           const NodeThreading<NodeWithSplits, NodeWithSplits> & thr,
+                           const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
                            const NodeWithSplits * nd,
                            const std::vector<TreeMappedWithSplits *> & ) const {
         writeNewick(out, nd);
@@ -219,7 +219,7 @@ class RemapToDeepestUnlistedState
     TreeMappedWithSplits * taxonomyAsSource;
 
     void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
-        auto & thr = taxoToAlignment[scaffoldNd];
+        auto & thr = taxoToEmbedding[scaffoldNd];
         if (thr.isContested()) {
             if (thr.highRankingTreesPreserveMonophyly(sc.numTrees)) {
                 thr.resolveGivenContestedMonophyly(*scaffoldNd, sc);
@@ -233,7 +233,7 @@ class RemapToDeepestUnlistedState
     void constructSupertree() {
         const auto numTrees = treePtrByIndex.size();
         TreeMappedWithSplits * tax = taxonomy.get();
-        SupertreeContextWithSplits sc{numTrees, taxoToAlignment, *tax};
+        SupertreeContextWithSplits sc{numTrees, taxoToEmbedding, *tax};
         LOG(DEBUG) << "Before supertree "; writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         for (auto nd : iter_post_internal(*taxonomy)) {
             if (nd == taxonomy->getRoot()) resolveOrCollapse(nd, sc);
@@ -260,7 +260,7 @@ class RemapToDeepestUnlistedState
         unsigned long redundContested = 0;
         unsigned long totalNumNodes = 0;
         for (auto nd : iter_node_internal(*taxonomy)) {
-            const auto & thr = taxoToAlignment[nd];
+            const auto & thr = taxoToEmbedding[nd];
             nodeMappingDegree[thr.getTotalNumNodeMappings()] += 1;
             passThroughDegree[thr.getTotalNumEdgeBelowTraversals()] += 1;
             loopDegree[thr.getTotalNumLoops()] += 1;
@@ -300,7 +300,7 @@ class RemapToDeepestUnlistedState
                 if (nd == nullptr) {
                     throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to report on: ") + std::to_string(tr));
                 }
-                const auto & thr = taxoToAlignment[nd];
+                const auto & thr = taxoToEmbedding[nd];
                 std::vector<NodeWithSplits *> aliasedBy = getNodesAliasedBy(nd, *taxonomy);
                 thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy, otCLI.verbose);
             }
@@ -310,10 +310,10 @@ class RemapToDeepestUnlistedState
             if (nd == nullptr) {
                 throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to export to DOT: ") + std::to_string(tr));
             }
-            //const auto & thr = taxoToAlignment[nd];
+            //const auto & thr = taxoToEmbedding[nd];
             //writeDOTExport(out, thr, nd, treePtrByIndex);
             for (auto n : iter_pre_n_const(nd)) {
-                const auto & thr = taxoToAlignment[n];
+                const auto & thr = taxoToEmbedding[n];
                 writeDOTExport(out, thr, n, treePtrByIndex);
             }
         }
@@ -326,7 +326,7 @@ class RemapToDeepestUnlistedState
         suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
         checkTreeInvariants(*taxonomy);
         for (auto nd : iter_node(*taxonomy)) {
-            taxoToAlignment.emplace(nd, NodeThreadingWithSplits{});
+            taxoToEmbedding.emplace(nd, NodeEmbeddingWithSplits{});
         }
         return true;
     }

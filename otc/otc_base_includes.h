@@ -28,7 +28,7 @@ template<typename T, typename U> class RootedTree;
 template<typename T> class RTreeOttIDMapping;
 template<typename T, typename U> class NodePairing;
 template<typename T, typename U> class PathPairing;
-template<typename T, typename U> class NodeThreading;
+template<typename T, typename U> class NodeEmbedding;
 template<typename T, typename U> class SupertreeContext;
 
 using RootedTreeNodeNoData = RootedTreeNode<RTNodeNoData>;

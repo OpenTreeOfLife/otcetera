@@ -10,7 +10,7 @@ template<typename T, typename U>
 void updateAncestralPathOttIdSet(T * nd,
                                 const OttIdSet & oldEls,
                                 const OttIdSet newEls,
-                                std::map<const T *, NodeThreading<T, U> > & m);
+                                std::map<const T *, NodeEmbedding<T, U> > & m);
 
 
 template<typename T, typename U>

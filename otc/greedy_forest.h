@@ -30,7 +30,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     bool possibleMonophyleticGroupStillViable() {
         assert(false);
     }
-    void finishResolutionOfThreadedClade(U & scaffoldNode, NodeThreading<T, U> * , SupertreeContextWithSplits & sc);
+    void finishResolutionOfThreadedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits & sc);
     private:
     CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & ingroup, const OttIdSet & leafSet);
     void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & ingroup, const OttIdSet & leafSet);
