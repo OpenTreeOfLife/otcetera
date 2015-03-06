@@ -830,6 +830,7 @@ class NodeThreading {
             OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(ebaIt->second);
             relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
         }
+        std::cerr << " for tree " << treeIndex << " getRelevantDesIds returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
         return relevantIds;
     }
 
@@ -1054,7 +1055,7 @@ class RemapToDeepestUnlistedState
         SupertreeContextWithSplits sc{numTrees, taxoToAlignment, *tax};
         LOG(DEBUG) << "Before supertree "; writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         for (auto nd : iter_post_internal(*taxonomy)) {
-            resolveOrCollapse(nd, sc);
+            if (nd == taxonomy->getRoot()) resolveOrCollapse(nd, sc);
             LOG(DEBUG) << "After handling " << nd->getOttId(); writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         }
         
