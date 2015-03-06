@@ -41,6 +41,9 @@ using TreeMappedWithSplits = RootedTree<RTSplits, MappedWithSplitsData>;
 using TreeMappedEmptyNodes = RootedTree<RTNodeNoData, MappedWithEmptyNodeData> ;
 using TreeMappedWithSplits = RootedTree<RTSplits, MappedWithSplitsData>;
 using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSplits>;
+using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
+using PathPairingWithSplits = PathPairing<NodeWithSplits, NodeWithSplits>;
+using NodeEmbeddingWithSplits = NodeEmbedding<NodeWithSplits, NodeWithSplits>;
 
 } // namespace otc
 #endif

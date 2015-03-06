@@ -7,7 +7,8 @@
 
 #include "otc/otc_base_includes.h"
 #include "otc/tree_iter.h"
-
+#include "otc/error.h"
+#include "otc/util.h"
 namespace otc {
 
 template<typename T>

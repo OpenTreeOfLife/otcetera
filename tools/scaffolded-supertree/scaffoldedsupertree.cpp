@@ -3,6 +3,7 @@
 #include "otc/debug.h"
 #include "otc/greedy_forest.h"
 #include "otc/embedding.h"
+#include "otc/embedded_tree.h"
 using namespace otc;
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
 
@@ -55,158 +56,9 @@ std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree
 }
 
 
-
-using NodePairingWithSplits = NodePairing<NodeWithSplits, NodeWithSplits>;
-using PathPairingWithSplits = PathPairing<NodeWithSplits, NodeWithSplits>;
-using NodeEmbeddingWithSplits = NodeEmbedding<NodeWithSplits, NodeWithSplits>;
-
-class ThreadedTree {
-    protected:
-    std::list<NodePairingWithSplits> nodePairings;
-    std::list<PathPairingWithSplits> pathPairings;
-    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> taxoToEmbedding;
-    public:
-
-    NodePairingWithSplits * _addNodeMapping(NodeWithSplits *taxo, NodeWithSplits *nd, std::size_t treeIndex) {
-        assert(taxo != nullptr);
-        assert(nd != nullptr);
-        nodePairings.emplace_back(NodePairingWithSplits(taxo, nd));
-        auto ndPairPtr = &(*nodePairings.rbegin());
-        auto & athreading = taxoToEmbedding[taxo];
-        athreading.nodeEmbeddings[treeIndex].insert(ndPairPtr);
-        return ndPairPtr;
-    }
-    PathPairingWithSplits * _addPathMapping(NodePairingWithSplits * parentPairing,
-                                            NodePairingWithSplits * childPairing,
-                                            std::size_t treeIndex) {
-        pathPairings.emplace_back(*parentPairing, *childPairing);
-        auto pathPairPtr = &(*pathPairings.rbegin());
-        // register a pointer to the path at each traversed...
-        auto currTaxo = pathPairPtr->scaffoldDes;
-        auto ancTaxo = pathPairPtr->scaffoldAnc;
-        if (currTaxo != ancTaxo) {
-            while (currTaxo != ancTaxo) {
-                taxoToEmbedding[currTaxo].edgeBelowEmbeddings[treeIndex].insert(pathPairPtr);
-                currTaxo = currTaxo->getParent();
-                if (currTaxo == nullptr) {
-                    break;
-                }
-            }
-        } else {
-            taxoToEmbedding[currTaxo].loopEmbeddings[treeIndex].insert(pathPairPtr);
-        }
-        return pathPairPtr;
-    }
-    void threadNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
-        // do threading
-        std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
-        std::set<NodePairingWithSplits *> tipPairings;
-        for (auto nd : iter_post(tree)) {
-            auto par = nd->getParent();
-            if (par == nullptr) {
-                continue;
-            }
-            NodePairingWithSplits * ndPairPtr = nullptr;
-            NodeWithSplits * taxoDes = nullptr;
-            if (nd->isTip()) {
-                assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end()); // TMP, Remove this to save time?
-                assert(nd->hasOttId());
-                auto ottId = nd->getOttId();
-                taxoDes = scaffoldTree.getData().getNodeForOttId(ottId);
-                assert(taxoDes != nullptr);
-                ndPairPtr = _addNodeMapping(taxoDes, nd, treeIndex);
-                for (auto former : tipPairings) {
-                    if (areLinearlyRelated(taxoDes, former->scaffoldNode)) {
-                        std::string m = "Repeated or nested OTT ID in tip mapping of an input tree: \"";
-                        m += nd->getName();
-                        m += "\" and \"";
-                        m += former->phyloNode->getName();
-                        m += "\" found.";
-                        throw OTCError(m);
-                    }
-                }
-                tipPairings.insert(ndPairPtr);
-                currTreeNodePairings[nd] = ndPairPtr;
-            } else {
-                auto reuseNodePairingIt = currTreeNodePairings.find(nd);
-                assert(reuseNodePairingIt != currTreeNodePairings.end());
-                ndPairPtr = reuseNodePairingIt->second;
-                taxoDes = ndPairPtr->scaffoldNode;
-                assert(taxoDes != nullptr);
-            }
-            NodePairingWithSplits * parPairPtr = nullptr;
-            auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
-            if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
-                const auto & parDesIds = par->getData().desIds;
-                auto taxoAnc = searchAncForMRCAOfDesIds(taxoDes, parDesIds);
-                assert(taxoAnc != nullptr);
-                parPairPtr = _addNodeMapping(taxoAnc, par, treeIndex);
-                currTreeNodePairings[par] = parPairPtr;
-            } else {
-                parPairPtr = prevAddedNodePairingIt->second;
-            }
-            _addPathMapping(parPairPtr, ndPairPtr, treeIndex);
-        }
-    }
-
-    void threadTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
-        // do threading
-        std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
-        for (auto nd : iter_post(tree)) {
-            auto par = nd->getParent();
-            if (par == nullptr) {
-                continue;
-            }
-            NodePairingWithSplits * ndPairPtr = nullptr;
-            NodeWithSplits * taxoDes = nullptr;
-            if (nd->isTip()) {
-                assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end()); // TMP, Remove this to save time?
-                assert(nd->hasOttId());
-                auto ottId = nd->getOttId();
-                taxoDes = scaffoldTree.getData().getNodeForOttId(ottId);
-                assert(taxoDes != nullptr);
-                ndPairPtr = _addNodeMapping(taxoDes, nd, treeIndex);
-                currTreeNodePairings[nd] = ndPairPtr;
-            } else {
-                auto reuseNodePairingIt = currTreeNodePairings.find(nd);
-                assert(reuseNodePairingIt != currTreeNodePairings.end());
-                ndPairPtr = reuseNodePairingIt->second;
-                taxoDes = ndPairPtr->scaffoldNode;
-                assert(taxoDes != nullptr);
-            }
-            NodePairingWithSplits * parPairPtr = nullptr;
-            auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
-            if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
-                auto pottId = par->getOttId(); // since it is a taxonomy, it will have internal node labels
-                auto taxoAnc = scaffoldTree.getData().getNodeForOttId(pottId);
-                assert(taxoAnc != nullptr);
-                parPairPtr = _addNodeMapping(taxoAnc, par, treeIndex);
-                currTreeNodePairings[par] = parPairPtr;
-            } else {
-                parPairPtr = prevAddedNodePairingIt->second;
-            }
-            _addPathMapping(parPairPtr, ndPairPtr, treeIndex);
-        }
-    }
-
-    void writeDOTExport(std::ostream & out,
-                           const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
-                           const NodeWithSplits * nd,
-                           const std::vector<TreeMappedWithSplits *> & ) const {
-        writeNewick(out, nd);
-        out << "nd.ottID = " << nd->getOttId() << " --> " << (nd->getParent() ? nd->getParent()->getOttId() : 0L) << "\n";
-        out << "  getTotalNumNodeMappings = " << thr.getTotalNumNodeMappings() << "\n";
-        out << "  getTotalNumLoops = " << thr.getTotalNumLoops() << "\n";
-        out << "  getTotalNumEdgeBelowTraversals = " << thr.getTotalNumEdgeBelowTraversals() << "\n";
-        out << "  isContested = " << thr.isContested() << "\n";
-    }
-
-};
-
-
-class RemapToDeepestUnlistedState
+class ScaffoldedSupertree
     : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits>,
-    public ThreadedTree {
+    public EmbeddedTree {
     public:
     int numErrors;
     OttIdSet tabooIds;
@@ -243,8 +95,8 @@ class RemapToDeepestUnlistedState
     }
 
 
-    virtual ~RemapToDeepestUnlistedState(){}
-    RemapToDeepestUnlistedState()
+    virtual ~ScaffoldedSupertree(){}
+    ScaffoldedSupertree()
         :TaxonomyDependentTreeProcessor<TreeMappedWithSplits>(),
          numErrors(0),
          doReportAllContested(false),
@@ -342,7 +194,7 @@ class RemapToDeepestUnlistedState
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
         raw->setName(otCLI.currentFilename);
-        threadNewTree(*taxonomy, *raw, treeIndex);
+        embedNewTree(*taxonomy, *raw, treeIndex);
         otCLI.out << "# pathPairings = " << pathPairings.size() << '\n';
         return true;
     }
@@ -369,20 +221,20 @@ bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg);
 bool handleSuperTreeFlag(OTCLI & otCLI, const std::string &narg);
 
 bool handleReportAllFlag(OTCLI & otCLI, const std::string &) {
-    RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
     proc->doReportAllContested = true;
     return true;
 }
 bool handleSuperTreeFlag(OTCLI & otCLI, const std::string &) {
-    RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
     proc->doConstructSupertree = true;
     return true;
 }
 
 bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
-    RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
     if (narg.empty()) {
         throw OTCError("Expecting a list of IDs after the -b argument.");
@@ -399,7 +251,7 @@ bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
 }
 
 bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg) {
-    RemapToDeepestUnlistedState * proc = static_cast<RemapToDeepestUnlistedState *>(otCLI.blob);
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
     if (narg.empty()) {
         throw OTCError("Expecting a list of IDs after the -d argument.");
@@ -420,7 +272,7 @@ int main(int argc, char *argv[]) {
     OTCLI otCLI("otcscaffoldedsupertree",
                 "takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. Crashes or emits bogus output.",
                 "taxonomy.tre inp1.tre inp2.tre");
-    RemapToDeepestUnlistedState proc;
+    ScaffoldedSupertree proc;
     otCLI.addFlag('a',
                   "Write a report of all contested nodes",
                   handleReportAllFlag,

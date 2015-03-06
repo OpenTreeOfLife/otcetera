@@ -3,6 +3,7 @@
 #include "otc/util.h"
 #include "otc/supertree_context.h"
 #include "otc/tree_operations.h"
+#include "otc/error.h"
 namespace otc {
 constexpr bool COLLAPSE_IF_CONFLICT = true;
 

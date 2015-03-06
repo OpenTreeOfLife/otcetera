@@ -19,6 +19,7 @@ libotcetera_la_HEADERS = \
 
 libotcetera_la_SOURCES = \
 	embedding.cpp \
+	embedded_tree.cpp \
 	forest.cpp \
 	greedy_forest.cpp \
 	newick.cpp \
