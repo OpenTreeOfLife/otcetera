@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <list>
 #include "otc/otc_base_includes.h"
 #include "otc/tree.h"
 
@@ -93,7 +94,10 @@ XXX BOGUS IGNORE THIS one: postcond #X: If an FTreeCA node was new node created 
     unsupported nodes, and the support statements will be transferred one step closer to the root.
     These out-degree=1 
 postconditions about the excludeGroup
-postcondition #5: If a member of the excludedGroup was detached before addition of the PhyloStatement,
+postcondition #5: If there is no intersection between the includeGroup of a PhyloStatement and the 
+    forest, then the PhyloStatement will be added as a new FTree with one internal node that corresponds
+    to the includeGroupMRCA and the root that is the a parent of all member of the excludeGroup. 
+    Otherwise, if a member of the excludedGroup was detached before addition of the PhyloStatement,
     then it will still be detached after the statement is added.
 
 */
@@ -109,18 +113,44 @@ The statement claims that all members of the includeGroup share at least  one co
     they are to the unmentioned taxa. 
 Indeed the unmentioned taxa could be placed anywhere on a tree without contradicting the PhyloStatement.
 */
+struct PhyloStatementSource {
+    PhyloStatementSource(int treeInd, long groupInd)
+        :sourceTreeId(treeInd),
+        cladeId(groupInd) {
+    }
+    const int sourceTreeId;
+    const long cladeId; // ID of the node in the tree
+};
+
 struct PhyloStatement {
-    PhyloStatement(const OttIdSet &includes, const OttIdSet & other, bool otherIsExcludes)
+    /*PhyloStatement(const OttIdSet &includes, const OttIdSet & other, bool otherIsExcludes)
         :includeGroup(includes),
         excludeGroup(otherIsExcludes ? other : set_difference_as_set(other, includes)),
         leafSet(otherIsExcludes ? set_union_as_set(other, includes): other) {
+    }*/
+    PhyloStatement(const OttIdSet &includes,
+                   const OttIdSet &excludes,
+                   const OttIdSet &mentioned, 
+                   PhyloStatementSource pss)
+        :includeGroup(includes),
+        excludeGroup(excludes),
+        leafSet(mentioned),
+        provenance(pss) {
+        debugCheck();
+    }
+    bool debugCheck() const {
+#ifdef DEBUGGING_PHYLO_STATEMENTS
+        assert(set_union_as_set(includes, excludes) == leafSet);
+#endif
+        return true;
     }
     bool isTrivial() const {
         return includeGroup.size() < 2 || includeGroup.size() == leafSet.size();
     }
-    const OttIdSet includeGroup;
-    const OttIdSet excludeGroup;
-    const OttIdSet leafSet; // just the union of the includeGroup and excludeGroup
+    const OttIdSet & includeGroup;
+    const OttIdSet & excludeGroup;
+    const OttIdSet & leafSet; // just the union of the includeGroup and excludeGroup
+    const PhyloStatementSource provenance;
 };
 
 
@@ -128,21 +158,32 @@ template<typename T, typename U>
 class FTree {
     public:
     using node_type = RootedTreeNode<T>;
-    using GroupingConstraint = std::pair<ConstraintType, node_type*>
-
-    FTree(std::size_t treeID)
-        :treeId(treeID),
-         root(nullptr) {
+    using GroupingConstraint = std::pair<node_type*, PhyloStatementSource>;
+    void mirrorPhyloStatement(const PhyloStatement & ps);
+    node_type * getRoot() {
+        return root;
     }
+    FTree(std::size_t treeID,
+          RootedForest<T, U> & theForest,
+          std::map<long, node_type *> & ottIdToNodeRef)
+        :treeId(treeID),
+         root(nullptr),
+         forest(theForest),
+         ottIdToNode(ottIdToNodeRef) {
+    }
+    private:
+    friend class RootedForest<T, U>;
     FTree(const FTree &) = delete;
     FTree & operator=(const FTree &) = delete;
-
-    private:
+    // data members
     const std::size_t treeId; // key for this tree in forest - used for debugging
     node_type * root;
     std::map<node_type *, std::list<GroupingConstraint> > excludesConstraints;
-    std::map<node_type *, std::list<node_type *> > includesConstraints;
+    std::map<node_type *, std::list<GroupingConstraint> > includesConstraints;
     std::map<node_type *, OttIdSet> constrainedDesIds;
+    std::map<node_type *, std::list<PhyloStatementSource> > supportedBy; // only for non-roots
+    RootedForest<T, U> & forest;
+    std::map<long, node_type *> & ottIdToNode;
 };
 
 // Constraint: each node w/ an OTT Id is a tip
@@ -150,39 +191,56 @@ class FTree {
 template<typename T, typename U>
 class RootedForest {
     public:
-        using node_type = RootedTreeNode<T>;
-        RootedForest()
-            :nextTreeId(0U) {
-        }
-        RootedForest(const RootedForest &) = delete;
-        RootedForest & operator=(const RootedForest &) = delete;
-        bool empty() const {
-            return roots.empty();
-        }
-        void addGroupToNewTree(const OttIdSet & ingroup, const OttIdSet & leafSet);
-        node_type * addDetachedLeaf(long ottId) {
-            assert(!contains(ottIdSet, ottId));
-            auto lr = createNewRoot();
-            lr->setOttId(ottId);
-            ottIdSet.insert(ottId);
-            return lr;
-        }
+    using node_type = RootedTreeNode<T>;
+    using tree_type = FTree<T,U>;
+    RootedForest();
+    RootedForest(const RootedForest &) = delete;
+    RootedForest & operator=(const RootedForest &) = delete;
+    bool empty() const {
+        return trees.empty();
+    }
+    void addPhyloStatement(const PhyloStatement &);
+    node_type * createNode(node_type * par);
+    node_type * createLeaf(node_type * par, const OttId & oid);
     private:
-        node_type * createNewRoot();
+    node_type * addDetachedLeaf(const OttId & ottId);
+    tree_type & addDisjointTree(const PhyloStatement &);
+    tree_type & createNewTree();
     protected:
-        RootedTree<T, U> nodeSrc; // not part of the forest, just the memory manager for the nodes
-        std::map<std::size_t, FTree<T,U> > trees;
-        std::size_t nextTreeId;
-        OttIdSet ottIdSet;
+    RootedTree<T, U> nodeSrc; // not part of the forest, just the memory manager for the nodes
+    std::map<std::size_t,  tree_type> trees;
+    std::size_t nextTreeId;
+    OttIdSet ottIdSet;
+    std::map<OttId, node_type *> & ottIdToNode; // alias to this data field in nodeSrc for convenience
 };
 
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T,U>::addDetachedLeaf(long ottId) {
-    assert(!contains(ottIdSet, ottId));
-    auto lr = createNewRoot();
-    lr->setOttId(ottId);
-    ottIdSet.insert(ottId);
-    return lr;
+inline RootedTreeNode<T> * RootedForest<T,U>::addDetachedLeaf(const OttId & ottId) {
+    return createLeaf(nullptr, ottId);
+}
+
+template<typename T, typename U>
+inline RootedTreeNode<T> * RootedForest<T,U>::createNode(RootedTreeNode<T> * p) {
+    auto r = nodeSrc.getRoot();
+    if (r == nullptr) {
+        auto c = nodeSrc.createRoot();
+        if (p != nullptr) {
+            p->addChild(c);
+        }
+        return c;
+    }
+    return nodeSrc.createNode(p);
+}
+
+// does NOT update anc desIds!
+template<typename T, typename U>
+inline RootedTreeNode<T> * RootedForest<T,U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid) {
+    auto n = createNode(p);
+    n->setOttId(oid);
+    ottIdToNode[oid] = n;
+    n->getData().desIds.insert(oid);
+    ottIdSet.insert(oid);
+    return n;
 }
 
 } // namespace otc

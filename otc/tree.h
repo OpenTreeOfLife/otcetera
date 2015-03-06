@@ -262,6 +262,13 @@ class RootedTree {
             par->addChild(c);
             return c;
         }
+        node_type * createNode(node_type *par) {
+            auto c = this->allocNewNode(par);
+            if (par != nullptr) {
+                par->addChild(c);
+            }
+            return c;
+        }
         node_type * createSib(node_type *leftSib) {
             assert(leftSib->parent != nullptr);
             auto s = this->allocNewNode(leftSib->parent);
@@ -345,11 +352,8 @@ class RootedTree {
         RootedTree<T, U> & operator=(const RootedTree<T, U> &) = delete;
 };
 
-struct RTNodeNoData{};
-struct RTreeNoData{};
-
-typedef RootedTreeNode<RTNodeNoData> RootedTreeNodeNoData;
-typedef RootedTree<RTNodeNoData, RTreeNoData> RootedTreeTopologyNoData;
+class RTNodeNoData{};
+class RTreeNoData{};
 
 } // namespace otc
 #endif

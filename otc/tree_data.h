@@ -31,12 +31,6 @@ class RTSplits {
         std::set<long> desIds;
 };
 
-typedef otc::RootedTreeNode<RTSplits> NodeWithSplits;
-using NodeWithSplitsPred = std::function<bool(const NodeWithSplits &)>;
-typedef otc::RTreeOttIDMapping<RTSplits> MappedWithSplitsData;
-typedef otc::RTreeOttIDMapping<RTNodeNoData> MappedWithEmptyNodeData;
-typedef otc::RootedTree<RTSplits, MappedWithSplitsData> TreeMappedWithSplits;
-typedef otc::RootedTree<RTNodeNoData, MappedWithEmptyNodeData> TreeMappedEmptyNodes;
 
 template<typename T>
 inline void verifyOttIdMapping(const T & tree) {

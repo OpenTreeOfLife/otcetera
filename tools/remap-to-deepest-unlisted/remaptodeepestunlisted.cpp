@@ -1,4 +1,5 @@
 #include "otc/otcli.h"
+#include "otc/embedding.h"
 using namespace otc;
 
 typedef otc::RootedTreeNode<RTSplits> Node_t;
@@ -6,31 +7,10 @@ typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename N
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 bool handleTabooOTTIdListFile(OTCLI & otCLI, const std::string &nextArg);
 
-struct NodePairing {
-    Node_t * scaffoldNode;
-    Node_t * phyloNode;
-    NodePairing(Node_t *taxo, Node_t *phylo)
-        :scaffoldNode(taxo),
-        phyloNode(phylo) {
-    }
-};
-struct PathPairing {
-    const Node_t * const phyloChild;
-    const Node_t * const phyloParent;
-    const Node_t * const scaffoldDes;
-    const Node_t * const scaffoldAnc;
-
-    PathPairing(const NodePairing & parent, const NodePairing & child)
-        :phyloChild(child.phyloNode),
-        phyloParent(parent.phyloNode),
-        scaffoldDes(child.scaffoldNode),
-        scaffoldAnc(parent.scaffoldNode) {
-    }
-};
 struct AlignmentThreading {
-    std::map<Tree_t *, std::set<NodePairing *> > nodeAlignments;
-    std::map<Tree_t *, std::set<PathPairing *> > edgeBelowAlignments;
-    std::map<Tree_t *, std::set<PathPairing *> > loopAlignments;
+    std::map<Tree_t *, std::set<NodePairing<Node_t, Node_t> *> > nodeAlignments;
+    std::map<Tree_t *, std::set<PathPairing<Node_t, Node_t> *> > edgeBelowAlignments;
+    std::map<Tree_t *, std::set<PathPairing<Node_t, Node_t> *> > loopAlignments;
 };
 
 struct RemapToDeepestUnlistedState {
@@ -40,8 +20,8 @@ struct RemapToDeepestUnlistedState {
     std::set<const Node_t *> contestedNodes;
     std::set<long> tabooIds;
     std::list<std::unique_ptr<Tree_t> > inputTrees;
-    std::list<NodePairing> nodePairings;
-    std::list<PathPairing> pathPairings;
+    std::list<NodePairing<Node_t, Node_t> > nodePairings;
+    std::list<PathPairing<Node_t, Node_t> > pathPairings;
     std::map<const Node_t*, AlignmentThreading> taxoToAlignment;
 
 
@@ -66,14 +46,14 @@ struct RemapToDeepestUnlistedState {
         return true;
     }
 
-    NodePairing * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
+    NodePairing<Node_t, Node_t> * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
         nodePairings.emplace_back(taxo, nd);
         auto ndPairPtr = &(*nodePairings.rbegin());
         auto & athreading = taxoToAlignment[taxo];
         athreading.nodeAlignments[tree].insert(ndPairPtr);
         return ndPairPtr;
     }
-    PathPairing * _addPathMapping(NodePairing * parentPairing, NodePairing * childPairing, Tree_t *tree) {
+    PathPairing<Node_t, Node_t>  * _addPathMapping(NodePairing<Node_t, Node_t>  * parentPairing, NodePairing<Node_t, Node_t>  * childPairing, Tree_t *tree) {
         pathPairings.emplace_back(*parentPairing, *childPairing);
         auto pathPairPtr = &(*pathPairings.rbegin());
         // register a pointer to the path at each traversed...
@@ -95,13 +75,13 @@ struct RemapToDeepestUnlistedState {
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
         assert(taxonomy != nullptr);
         assert(tree != nullptr);
-        std::map<Node_t *, NodePairing *> currTreeNodePairings;
+        std::map<Node_t *, NodePairing<Node_t, Node_t>  *> currTreeNodePairings;
         for (auto nd : iter_post(*tree)) {
             auto par = nd->getParent();
             if (par == nullptr) {
                 continue;
             }
-            NodePairing * ndPairPtr = nullptr;
+            NodePairing<Node_t, Node_t>  * ndPairPtr = nullptr;
             Node_t * taxoChild = nullptr;
             auto reuseNodePairingIt = currTreeNodePairings.find(nd);
             if (reuseNodePairingIt == currTreeNodePairings.end()) {
@@ -113,7 +93,7 @@ struct RemapToDeepestUnlistedState {
                 ndPairPtr = reuseNodePairingIt->second;
                 taxoChild = ndPairPtr->scaffoldNode;
             }
-            NodePairing * parPairPtr = nullptr;
+            NodePairing<Node_t, Node_t>  * parPairPtr = nullptr;
             auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
             if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
                 const auto & parDesIds = par->getData().desIds;

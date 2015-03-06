@@ -51,6 +51,8 @@ bool haveIntersection(const T & first, const T & second);
 template<typename T>
 std::set<T> set_intersection_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T>
+std::set<T> set_union_as_set(const std::set<T> & small, const std::set<T> & big);
+template<typename T>
 std::set<T> set_sym_difference_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & small, const std::set<T> & big);
@@ -269,6 +271,12 @@ template<typename T>
 std::set<T> set_intersection_as_set(const std::set<T> & fir, const std::set<T> & sec) {
     std::set<T> d;
     set_intersection(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
+    return d;
+}
+template<typename T>
+std::set<T> set_union_as_set(const std::set<T> & fir, const std::set<T> & sec) {
+    std::set<T> d;
+    set_union(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
     return d;
 }
 template<typename T>
