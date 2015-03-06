@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "otc/embedded_tree.h"
 #include "otc/embedding.h"
 #include "otc/tree.h"
@@ -129,17 +130,123 @@ void EmbeddedTree::threadTaxonomyClone(TreeMappedWithSplits & scaffoldTree, Tree
     }
 }
 
+
+
+void writeDOTContent(std::ostream & out,
+                     const NodeWithSplits * nd,
+                     const std::vector<TreeMappedWithSplits *> &,
+                     const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
+                     bool entireSubtree);
+void writePathPairingToDOT(std::ostream & out, 
+                           const PathPairingWithSplits & pp,
+                           std::map<const NodeWithSplits *, std::string> & nd2name,
+                           std::set<std::string> & names,
+                           const std::string &style);
+
+
+void writeNodeDOT(std::ostream & out,
+                           const NodeWithSplits * pn,
+                           std::map<const NodeWithSplits *, std::string> & nd2name,
+                           std::set<std::string> & names,
+                           const std::string &style) {
+    if (!contains(nd2name, pn)) {
+        const auto name = getDesignator(*pn);
+        nd2name[pn] = name;
+        if (!contains(names, name)) {
+            out << "  \"" << nd2name[pn] << "\"";
+            if (!style.empty()) {
+                out << "[" << style <<']';
+            }
+            out << ";\n";
+            names.insert(name);
+        }
+    }
+}
+
+const char * COLORS [] = {"crimson",
+                    "blue",
+                    "springgreen",
+                    "magenta",
+                    "darkorange",
+                    "lightblue",
+                    "goldenrod",
+                    "brown",
+                    "gray"};
+constexpr unsigned LAST_COLOR_IND = 8;
+
+void writePathPairingToDOT(std::ostream & out,
+                           const PathPairingWithSplits & pp,
+                           std::map<const NodeWithSplits *, std::string> & nd2name,
+                           std::set<std::string> & names,
+                           const std::string &style) {
+    const auto * pn = pp.phyloParent;
+    const auto * pd = pp.phyloChild;
+    writeNodeDOT(out, pn, nd2name, names, style);
+    writeNodeDOT(out, pd, nd2name, names, style);
+    out << "    \"" << nd2name[pn] << "\" -> \"" << nd2name[pd] << '\"';
+    if (!style.empty()) {
+        out << "[" << style <<']';
+    }
+    out << ";\n";
+}
+
+void writeDOTContent(std::ostream & out,
+                     const NodeWithSplits * nd,
+                     const std::vector<TreeMappedWithSplits *> & tv,
+                     const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
+                     bool entireSubtree) {
+    std::map<const NodeWithSplits *, std::string> nd2name;
+    std::set<std::string> names;
+    out << "digraph G{\n";
+    std::string scafstyle = "fontcolor=\"black\" color=\"black\"";
+    for (auto n : iter_pre_n_const(nd)) {
+        writeNodeDOT(out, n, nd2name, names, scafstyle);
+    }
+    for (auto n : iter_pre_n_const(nd)) {
+        auto p = n->getParent();
+        if (p == nullptr) {
+            continue;
+        }
+        out << "    " << nd2name[p] << " -> " << nd2name[n] << ";\n";
+    }
+    const NodeEmbeddingWithSplits & thr = eForNd.at(nd);
+    const auto nt = tv.size();
+    for (auto i = 0U; i < nt; ++i) {
+        auto colorIndex = std::min(LAST_COLOR_IND, i);
+        const char * color = COLORS[colorIndex];
+        std::string style = "style=\"dashed\" fontcolor=\"";
+        style.append(color);
+        style.append("\" color=\"");
+        style.append(color);
+        style.append("\"");
+        const auto eait = thr.edgeBelowEmbeddings.find(i);
+        if (eait != thr.edgeBelowEmbeddings.end()) {
+            for (const auto & pp : eait->second) {
+                writePathPairingToDOT(out, *pp, nd2name, names, style);
+            }
+        }
+        const auto lait = thr.loopEmbeddings.find(i);
+        if (lait != thr.loopEmbeddings.end()) {
+            for (const auto & pp : lait->second) {
+                writePathPairingToDOT(out, *pp, nd2name, names, style);
+            }
+        }
+    }
+
+    out << "}\n";
+}
+
 void EmbeddedTree::writeDOTExport(std::ostream & out,
                        const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
                        const NodeWithSplits * nd,
-                       const std::vector<TreeMappedWithSplits *> & ) const {
-    writeNewick(out, nd);
-    out << "nd.ottID = " << nd->getOttId() << " --> " << (nd->getParent() ? nd->getParent()->getOttId() : 0L) << "\n";
-    out << "  getTotalNumNodeMappings = " << thr.getTotalNumNodeMappings() << "\n";
-    out << "  getTotalNumLoops = " << thr.getTotalNumLoops() << "\n";
-    out << "  getTotalNumEdgeBelowTraversals = " << thr.getTotalNumEdgeBelowTraversals() << "\n";
-    out << "  isContested = " << thr.isContested() << "\n";
+                       const std::vector<TreeMappedWithSplits *> &t,
+                       bool entireSubtree) const {
+    writeDOTContent(out, nd, t, taxoToEmbedding, entireSubtree);
 }
+
+
+
+
 
 
 } // namespace otc

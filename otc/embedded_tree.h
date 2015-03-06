@@ -15,11 +15,8 @@ class EmbeddedTree {
     std::list<PathPairingWithSplits> pathPairings;
     std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> taxoToEmbedding;
     
-    int currDotFileIndex;
-
     public:
-    EmbeddedTree()
-        :currDotFileIndex(0) {
+    EmbeddedTree() {
     }
 
     NodePairingWithSplits * _addNodeMapping(NodeWithSplits *taxo,
@@ -33,7 +30,8 @@ class EmbeddedTree {
     void writeDOTExport(std::ostream & out,
                            const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
                            const NodeWithSplits * nd,
-                           const std::vector<TreeMappedWithSplits *> & ) const;
+                           const std::vector<TreeMappedWithSplits *> &,
+                           bool entireSubtree) const;
 };
 
 

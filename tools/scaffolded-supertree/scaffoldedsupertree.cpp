@@ -69,6 +69,8 @@ class ScaffoldedSupertree
     std::list<long> idsListToReportOn;
     std::list<long> idListForDotExport;
     TreeMappedWithSplits * taxonomyAsSource;
+    int currDotFileIndex;
+
 
     void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
         auto & thr = taxoToEmbedding[scaffoldNd];
@@ -86,6 +88,7 @@ class ScaffoldedSupertree
         const auto numTrees = treePtrByIndex.size();
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{numTrees, taxoToEmbedding, *tax};
+        writeNumberedDot(taxonomy->getRoot(), true);
         LOG(DEBUG) << "Before supertree "; writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         for (auto nd : iter_post_internal(*taxonomy)) {
             if (nd == taxonomy->getRoot()) resolveOrCollapse(nd, sc);
@@ -94,6 +97,20 @@ class ScaffoldedSupertree
         
     }
 
+    void writeNumberedDot(NodeWithSplits * nd, bool entireSubtree) {
+        std::string fn = "ScaffSuperTree" + std::to_string(currDotFileIndex++) + ".dot";
+        LOG(DEBUG) << "writing DOT file \"" << fn << "\"";
+        std::ofstream out;
+        out.open(fn);
+        try {
+            const auto & thr = taxoToEmbedding[nd];
+            writeDOTExport(out, thr, nd, treePtrByIndex, entireSubtree);
+        } catch (...) {
+            out.close();
+            throw;
+        }
+        LOG(DEBUG) << "finished DOT file \"" << fn << "\"";
+    }
 
     virtual ~ScaffoldedSupertree(){}
     ScaffoldedSupertree()
@@ -101,7 +118,8 @@ class ScaffoldedSupertree
          numErrors(0),
          doReportAllContested(false),
          doConstructSupertree(false),
-         taxonomyAsSource(nullptr) {
+         taxonomyAsSource(nullptr),
+         currDotFileIndex(0) {
     }
 
     void reportAllConflicting(std::ostream & out, bool verbose) {
@@ -162,11 +180,9 @@ class ScaffoldedSupertree
             if (nd == nullptr) {
                 throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to export to DOT: ") + std::to_string(tr));
             }
-            //const auto & thr = taxoToEmbedding[nd];
-            //writeDOTExport(out, thr, nd, treePtrByIndex);
             for (auto n : iter_pre_n_const(nd)) {
                 const auto & thr = taxoToEmbedding[n];
-                writeDOTExport(out, thr, n, treePtrByIndex);
+                writeDOTExport(out, thr, n, treePtrByIndex, false);
             }
         }
         return true;
