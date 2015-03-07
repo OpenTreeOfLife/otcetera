@@ -71,20 +71,15 @@ void writeNodeDOT(std::ostream & out,
                            bool forceMRCANaming,
                            bool writeLabel,
                            bool pt) {
-    const NodeWithSplits * nd{k.first};
-    if (!pt) {
-        if (contains(nd2name, k)) {
-            return;
-        }
-        const std::string & prefix{k.second};
-        if (nd->isTip() && !prefix.empty()) {
-            return;
-        }
-        std::string name{prefix};
-        const std::string unadorned = forceMRCANaming ? getMRCADesignator(*nd) :  getDesignator(*nd);
-        name.append(unadorned);
-        nd2name.emplace(k, NamePair{name, unadorned});
+    if (contains(nd2name, k)) {
+        return;
     }
+    const NodeWithSplits * nd{k.first};
+    const std::string & prefix{k.second};
+    std::string name{prefix};
+    const std::string unadorned = forceMRCANaming ? getMRCADesignator(*nd) :  getDesignator(*nd);
+    name.append(unadorned);
+    nd2name.emplace(k, NamePair{name, unadorned});
     assert(contains(nd2name, k));
     const NamePair & np = nd2name.at(k);
     out << "  \"" << np.first << "\"[";
@@ -146,7 +141,7 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
     if (pd->isTip() && sd != pd) {
         writeDOTEdge(out, midPointKey, ToDotKey{sd, ""}, nd2name, style, false);
     } else {
-        writeDOTEdge(out, midPointKey, ToDotKey{pd, prefix}, nd2name, style, false);
+        writeDOTEdge(out, midPointKey, dk, nd2name, style, false);
     }
     
 }
@@ -162,11 +157,13 @@ void writePathPairingToDOT(std::ostream & out,
     }
     const std::string emptyStr;
     pathSet.insert(&pp);
-    std::string style = "fontcolor=\"";
-    style.append(color);
-    style.append("\" style=\"dashed\" color=\"");
-    style.append(color);
-    style.append("\"");
+    std::string bstyle = "fontcolor=\"";
+    bstyle.append(color);
+    bstyle.append("\" color=\"");
+    bstyle.append(color);
+    bstyle.append("\"");
+    std::string style = bstyle;
+    style.append(" style=\"dashed\"");
     // The midpoint nodes are unlabeled dots with IDs that are _addr or __addr
     const std::string pname ="_" + std::to_string((long)(&pp));
     const std::string sname ="__" + std::to_string((long)(&pp));
@@ -176,10 +173,11 @@ void writePathPairingToDOT(std::ostream & out,
     const auto * pd = pp.phyloChild;
     const auto * sd = pp.scaffoldDes;
     const ToDotKey pk{pd, "_phpath"};
-    writeOneSideOfPathPairingToDOT(out, pn, pd, sd, pk, pv, nd2name, color, prefix);
+    writeOneSideOfPathPairingToDOT(out, pn, pd, sd, pk, pv, nd2name, style, prefix);
     const auto * sn = pp.scaffoldAnc;
     const ToDotKey sk{sd, "_scpath"};
-    writeOneSideOfPathPairingToDOT(out, sn, sd, sd, sk, sv, nd2name, color, prefix);
+    writeOneSideOfPathPairingToDOT(out, sn, sd, sd, sk, sv, nd2name, style, prefix);
+    style = bstyle;
     style.append(" style=\"dotted\"");
     writeDOTCrossEdge(out, pk, sk, nd2name, style);
 }
@@ -216,6 +214,11 @@ void writeDOTForEmbedding(std::ostream & out,
     out << "digraph G{\n";
     for (auto n : iter_pre_n_const(nd)) {
         const ToDotKey k{n, ""};
+        writeNodeDOT(out, k, nd2name, "", false, true, false);
+    }
+    auto ndp = nd->getParent();
+    if (ndp != nullptr) {
+        const ToDotKey k{ndp, ""};
         writeNodeDOT(out, k, nd2name, "", false, true, false);
     }
     for (auto n : iter_pre_n_const(nd)) {
