@@ -108,13 +108,8 @@ class ScaffoldedSupertree
         LOG(DEBUG) << "writing DOT file \"" << fn << "\"";
         std::ofstream out;
         out.open(fn);
-        try {
-            const auto & thr = taxoToEmbedding[nd];
-            writeDOTExport(out, thr, nd, treePtrByIndex, entireSubtree, includeLastTree);
-        } catch (...) {
-            out.close();
-            throw;
-        }
+        const auto & thr = taxoToEmbedding[nd];
+        writeDOTExport(out, thr, nd, treePtrByIndex, entireSubtree, includeLastTree);
         LOG(DEBUG) << "finished DOT file \"" << fn << "\"";
     }
 

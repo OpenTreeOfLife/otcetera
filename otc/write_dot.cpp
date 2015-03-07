@@ -64,6 +64,7 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
                                      const NodeWithSplits * focalNode,
                                      const std::string & style,
                                      const char * prefix);
+void writeDOTForNodeWithoutEmbedding(std::ostream & out, const NodeWithSplits *nd , NodeToDotNames & nd2name);
 // IMPL
 constexpr const char * COLORS [] = {"crimson",
                                     "blue",
@@ -87,6 +88,10 @@ void writeNodeDOT(std::ostream & out,
         uncheckedWriteNodeDOT(out, k, nd2name, style, forceMRCANaming, writeLabel, pt);
     }
 }
+
+void writeDOTForNodeWithoutEmbedding(std::ostream & , const NodeWithSplits * , NodeToDotNames & ) {
+}
+
 void uncheckedWriteNodeDOT(std::ostream & out,
                            const ToDotKey & k,
                            NodeToDotNames & nd2name,
@@ -268,6 +273,11 @@ void writeDOTForEmbedding(std::ostream & out,
     std::set<const PathPairingWithSplits *> pathSet;
     const auto nt = tv.size() - (includeLastTree ? 0U : 1U);
     for (auto n : iter_pre_n_const(nd)) {
+        const auto emIt = eForNd.find(n);
+        if (emIt == eForNd.end()) {
+            writeDOTForNodeWithoutEmbedding(out, n, nd2name);
+            continue;
+        }
         const NodeEmbeddingWithSplits & thr = eForNd.at(n);
         for (auto i = 0U; i < nt; ++i) {
             const std::string tP = std::string("t") + std::to_string(i);
