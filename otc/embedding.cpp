@@ -7,6 +7,36 @@
 namespace otc {
 constexpr bool COLLAPSE_IF_CONFLICT = true;
 
+// Returns all loop paths for nd and all edgeBelowEmbeddings of its children
+template<typename T, typename U>
+std::vector<const PathPairing<T, U> *>
+NodeEmbedding<T, U>::getAllIncomingPathPairs(const T *nd,
+                                                 const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
+                                                 std::size_t treeIndex) const {
+    std::vector<const PathPairingWithSplits *> r;
+    const auto lait = loopEmbeddings.find(treeIndex);
+    if (lait != loopEmbeddings.end()) {
+        for (const auto pp : lait->second) {
+            r.push_back(pp);
+        }
+    }
+    for (auto c : iter_child_const(*nd)) {
+        const auto cembed = eForNd.find(c);
+        if (cembed == eForNd.end()) {
+            continue;
+        }
+        const auto & emb = cembed->second;
+        const auto ceait = emb.edgeBelowEmbeddings.find(treeIndex);
+        if (ceait != emb.edgeBelowEmbeddings.end()) {
+            for (const auto & e : ceait->second) {
+                r.push_back(e);
+            }
+        }
+    }
+    return r;
+}
+
+
 
 template<typename T, typename U>
 void PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {

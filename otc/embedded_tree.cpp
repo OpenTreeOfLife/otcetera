@@ -131,7 +131,7 @@ void EmbeddedTree::threadTaxonomyClone(TreeMappedWithSplits & scaffoldTree, Tree
 }
 
 void EmbeddedTree::writeDOTExport(std::ostream & out,
-                       const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
+                       const NodeEmbedding<NodeWithSplits, NodeWithSplits> & ,
                        const NodeWithSplits * nd,
                        const std::vector<TreeMappedWithSplits *> &t,
                        bool entireSubtree) const {

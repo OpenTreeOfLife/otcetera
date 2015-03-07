@@ -37,13 +37,16 @@ void writeDOTCrossEdge(std::ostream & out,
                   NodeToDotNames & nd2name,
                   const std::string &style);
 void writePathPairingToDOT(std::ostream & out,
+                           const NodeWithSplits *n, 
                            const PathPairingWithSplits & pp,
                            NodeToDotNames & nd2name,
                            std::set<const PathPairingWithSplits *> & pathSet,
                            const char * color,
                            const char * prefix) ;
 void writeDOTEmbeddingForNode(std::ostream & out,
+                              const NodeWithSplits *n, 
                               const NodeEmbeddingWithSplits & thr,
+                              const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
                               NodeToDotNames & nd2name,
                               std::set<const PathPairingWithSplits *> & pathSet,
                               const char * color,
@@ -53,10 +56,12 @@ void writeDOTEmbeddingForNode(std::ostream & out,
 void writeOneSideOfPathPairingToDOT(std::ostream & out,
                                      const NodeWithSplits * pn,
                                      const NodeWithSplits * pd,
+                                     const NodeWithSplits * sn,
                                      const NodeWithSplits * sd,
                                      const ToDotKey & midPointKey,
                                      const NamePair & namePair,
                                      NodeToDotNames & nd2name,
+                                     const NodeWithSplits * focalNode,
                                      const std::string & style,
                                      const char * prefix);
 // IMPL
@@ -138,32 +143,33 @@ void writeDOTCrossEdge(std::ostream & out,
 }
 
 void writeOneSideOfPathPairingToDOT(std::ostream & out,
-                           const NodeWithSplits * pn,
-                           const NodeWithSplits * pd,
-                           const NodeWithSplits * sd,
+                           const NodeWithSplits * sidePar,
+                           const NodeWithSplits * sideDes,
+                           const NodeWithSplits * scaffAnc,
+                           const NodeWithSplits * scaffDes,
                            const ToDotKey & midPointKey,
                            const NamePair & namePair,
                            NodeToDotNames & nd2name,
+                           const NodeWithSplits * focalNode,
                            const std::string & style,
                            const char * prefix) {
-    const bool isScaffoldSide = (pd == sd);
-    const char * ptu = (isScaffoldSide ? "" : prefix);
-    const ToDotKey nk{pn, ptu};
-    const ToDotKey dk{pd, ptu};
-    writeNodeDOT(out, nk, nd2name, style, true, false, false);
-    writeNodeDOT(out, dk, nd2name, style, false, false, false);
+    const bool isScaffoldSide = (sideDes == scaffDes);
+    const char * ancPref = (isScaffoldSide || (focalNode != scaffAnc) ? "" : prefix);
+    const char * desPref = (isScaffoldSide || sideDes->isTip() ? "" : prefix);
+    const ToDotKey ancK{sidePar, ancPref};
+    const ToDotKey desK{sideDes, desPref};
+    writeNodeDOT(out, ancK, nd2name, style, true, false, false);
+    writeNodeDOT(out, desK, nd2name, style, false, false, false);
+    // always write the point node along the path
     nd2name[midPointKey] = namePair;
     uncheckedWriteNodeDOT(out, midPointKey, nd2name, style, false, false, true);
-    writeDOTEdge(out, ToDotKey{pn, ptu}, midPointKey, nd2name, style, true);
-    if (pd->isTip() && sd != pd) {
-        writeDOTEdge(out, midPointKey, ToDotKey{sd, ""}, nd2name, style, false);
-    } else {
-        writeDOTEdge(out, midPointKey, dk, nd2name, style, false);
-    }
-    
+    // write the edges anck -> midpoint -> desk
+    writeDOTEdge(out, ancK, midPointKey, nd2name, style, true);
+    writeDOTEdge(out, midPointKey, desK, nd2name, style, false);
 }
 
 void writePathPairingToDOT(std::ostream & out,
+                           const NodeWithSplits *n, 
                            const PathPairingWithSplits & pp,
                            NodeToDotNames & nd2name,
                            std::set<const PathPairingWithSplits *> & pathSet,
@@ -189,20 +195,22 @@ void writePathPairingToDOT(std::ostream & out,
     const auto * pn = pp.phyloParent;
     const auto * pd = pp.phyloChild;
     const auto * sd = pp.scaffoldDes;
-    const ToDotKey pk{pd, "_phpath"};
-    writeOneSideOfPathPairingToDOT(out, pn, pd, sd, pk, pv, nd2name, style, prefix);
     const auto * sn = pp.scaffoldAnc;
+    const ToDotKey pk{pd, "_phpath"};
+    writeOneSideOfPathPairingToDOT(out, pn, pd, sn, sd, pk, pv, nd2name, n, style, prefix);
     style = bstyle;
     style.append(" style=\"solid\"");
     const ToDotKey sk{sd, "_scpath"};
-    writeOneSideOfPathPairingToDOT(out, sn, sd, sd, sk, sv, nd2name, style, prefix);
+    writeOneSideOfPathPairingToDOT(out, sn, sd, sn, sd, sk, sv, nd2name, n, style, prefix);
     style = bstyle;
     style.append(" style=\"dotted\"");
     writeDOTCrossEdge(out, pk, sk, nd2name, style);
 }
 
 void writeDOTEmbeddingForNode(std::ostream & out,
+                              const NodeWithSplits * nd,
                               const NodeEmbeddingWithSplits & thr,
+                              const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
                               NodeToDotNames & nd2name,
                               std::set<const PathPairingWithSplits *> & pathSet,
                               const char * color,
@@ -212,14 +220,12 @@ void writeDOTEmbeddingForNode(std::ostream & out,
     const auto eait = thr.edgeBelowEmbeddings.find(treeIndex);
     if (eait != thr.edgeBelowEmbeddings.end()) {
         for (const auto & pp : eait->second) {
-            writePathPairingToDOT(out, *pp, nd2name, pathSet, color, prefix);
+            writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
         }
     }
-    const auto lait = thr.loopEmbeddings.find(treeIndex);
-    if (lait != thr.loopEmbeddings.end()) {
-        for (const auto & pp : lait->second) {
-            writePathPairingToDOT(out, *pp, nd2name, pathSet, color, prefix);
-        }
+    const auto incoming = thr.getAllIncomingPathPairs(nd, eForNd, treeIndex);
+    for (auto pp : incoming) {
+        writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
     }
 }
 
@@ -257,7 +263,7 @@ void writeDOTForEmbedding(std::ostream & out,
             const std::string tP = std::string("t") + std::to_string(i);
             auto colorIndex = std::min(LAST_COLOR_IND, i);
             const char * color = COLORS[colorIndex];
-            writeDOTEmbeddingForNode(out, thr, nd2name, pathSet, color, tP.c_str(), i);
+            writeDOTEmbeddingForNode(out, n, thr, eForNd, nd2name, pathSet, color, tP.c_str(), i);
         }
         if (!entireSubtree) {
             break;
