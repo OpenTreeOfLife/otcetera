@@ -31,7 +31,8 @@ class EmbeddedTree {
                            const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
                            const NodeWithSplits * nd,
                            const std::vector<TreeMappedWithSplits *> &,
-                           bool entireSubtree) const;
+                           bool entireSubtree,
+                           bool includeLastTree) const;
 };
 
 

@@ -134,8 +134,9 @@ void EmbeddedTree::writeDOTExport(std::ostream & out,
                        const NodeEmbedding<NodeWithSplits, NodeWithSplits> & ,
                        const NodeWithSplits * nd,
                        const std::vector<TreeMappedWithSplits *> &t,
-                       bool entireSubtree) const {
-    writeDOTForEmbedding(out, nd, t, taxoToEmbedding, entireSubtree);
+                       bool entireSubtree,
+                       bool includeLastTree) const {
+    writeDOTForEmbedding(out, nd, t, taxoToEmbedding, entireSubtree, includeLastTree);
 }
 
 } // namespace otc

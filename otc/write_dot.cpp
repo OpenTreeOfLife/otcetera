@@ -156,8 +156,17 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
     const bool isScaffoldSide = (sideDes == scaffDes);
     const char * ancPref = (isScaffoldSide || (focalNode != scaffAnc) ? "" : prefix);
     const char * desPref = (isScaffoldSide || sideDes->isTip() ? "" : prefix);
-    const ToDotKey ancK{sidePar, ancPref};
-    const ToDotKey desK{sideDes, desPref};
+    // If we have a tip or a node outside of this focal node, use the scaffold node for the 
+    //  phylo side of the graph. Not accurate, but cuts down on the # of nodes.
+    ToDotKey ancK{sidePar, ancPref};
+    if (focalNode != scaffAnc) {
+        ancK = ToDotKey{scaffAnc, ""};
+    }
+    ToDotKey desK{sideDes, desPref};
+    if (sideDes->isTip()) {
+        desK = ToDotKey{scaffDes, ""};
+    }
+    
     writeNodeDOT(out, ancK, nd2name, style, true, false, false);
     writeNodeDOT(out, desK, nd2name, style, false, false, false);
     // always write the point node along the path
@@ -233,7 +242,8 @@ void writeDOTForEmbedding(std::ostream & out,
                      const NodeWithSplits * nd,
                      const std::vector<TreeMappedWithSplits *> & tv,
                      const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
-                     bool entireSubtree) {
+                     bool entireSubtree,
+                     bool includeLastTree) {
     NodeToDotNames nd2name;
     std::string emptyStr;
     out << "digraph G{\n";
@@ -256,7 +266,7 @@ void writeDOTForEmbedding(std::ostream & out,
         writeDOTEdge(out, pk, nk, nd2name, emptyStr, false);
     }
     std::set<const PathPairingWithSplits *> pathSet;
-    const auto nt = tv.size();
+    const auto nt = tv.size() - (includeLastTree ? 0U : 1U);
     for (auto n : iter_pre_n_const(nd)) {
         const NodeEmbeddingWithSplits & thr = eForNd.at(n);
         for (auto i = 0U; i < nt; ++i) {

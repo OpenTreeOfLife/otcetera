@@ -11,7 +11,8 @@ void writeDOTForEmbedding(std::ostream & out,
                           const NodeWithSplits * nd,
                           const std::vector<TreeMappedWithSplits *> &,
                           const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
-                          bool entireSubtree);
+                          bool entireSubtree,
+                          bool includeLastTree);
 
 } //namespace
 #endif
