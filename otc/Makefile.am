@@ -27,4 +27,5 @@ libotcetera_la_SOURCES = \
 	otcli.cpp \
 	test_harness.cpp \
 	tree.cpp \
-	util.cpp
+	util.cpp \
+	write_dot.cpp
