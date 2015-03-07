@@ -11,13 +11,11 @@ namespace otc {
 typedef std::pair<const NodeWithSplits *, std::string> ToDotKey;
 typedef std::pair<std::string, std::string> NamePair; // nodeName and nodeLabel
 typedef std::map<ToDotKey, NamePair> NodeToDotNames;
-
 void writeNodeDOT(std::ostream & out,
-                           const NodeWithSplits * nd,
+                           const ToDotKey & k,
                            NodeToDotNames & nd2name,
                            const std::string &style, 
                            bool forceMRCANaming,
-                           const std::string & prefix,
                            bool writeLabel,
                            bool pt);
 void writeDOTEdge(std::ostream & out,
@@ -45,6 +43,15 @@ void writeDOTEmbeddingForNode(std::ostream & out,
                               const char * prefix,
                               std::size_t treeIndex
                               );
+void writeOneSideOfPathPairingToDOT(std::ostream & out,
+                                     const NodeWithSplits * pn,
+                                     const NodeWithSplits * pd,
+                                     const NodeWithSplits * sd,
+                                     const ToDotKey & midPointKey,
+                                     const NamePair & namePair,
+                                     NodeToDotNames & nd2name,
+                                     const std::string & style,
+                                     const char * prefix);
 // IMPL
 constexpr const char * COLORS [] = {"crimson",
                                     "blue",
@@ -58,18 +65,18 @@ constexpr const char * COLORS [] = {"crimson",
 constexpr unsigned LAST_COLOR_IND = 8;
 
 void writeNodeDOT(std::ostream & out,
-                           const NodeWithSplits * nd,
+                           const ToDotKey & k,
                            NodeToDotNames & nd2name,
                            const std::string &style, 
                            bool forceMRCANaming,
-                           const std::string & prefix,
                            bool writeLabel,
                            bool pt) {
-    const ToDotKey k{nd, prefix};
+    const NodeWithSplits * nd{k.first};
     if (!pt) {
         if (contains(nd2name, k)) {
             return;
         }
+        const std::string & prefix{k.second};
         if (nd->isTip() && !prefix.empty()) {
             return;
         }
@@ -78,6 +85,7 @@ void writeNodeDOT(std::ostream & out,
         name.append(unadorned);
         nd2name.emplace(k, NamePair{name, unadorned});
     }
+    assert(contains(nd2name, k));
     const NamePair & np = nd2name.at(k);
     out << "  \"" << np.first << "\"[";
     if (pt) {
@@ -100,6 +108,8 @@ void writeDOTEdge(std::ostream & out,
                   NodeToDotNames & nd2name,
                   const std::string &style, 
                   bool /*toMidEdge*/) {
+    assert(contains(nd2name, anc));
+    assert(contains(nd2name, des));
     out << "    \"" << nd2name.at(anc).first << "\" -> \"" << nd2name.at(des).first << '\"';
     if (!style.empty()) {
         out << "[" << style <<']';
@@ -117,17 +127,6 @@ void writeDOTCrossEdge(std::ostream & out,
     writeDOTEdge(out, anc, des, nd2name, s, true);
 }
 
-
-void writeOneSideOfPathPairingToDOT(std::ostream & out,
-                                     const NodeWithSplits * pn,
-                                     const NodeWithSplits * pd,
-                                     const NodeWithSplits * sd,
-                                     const ToDotKey & midPointKey,
-                                     const NamePair & namePair,
-                                     NodeToDotNames & nd2name,
-                                     const std::string & style,
-                                     const char * prefix);
-
 void writeOneSideOfPathPairingToDOT(std::ostream & out,
                            const NodeWithSplits * pn,
                            const NodeWithSplits * pd,
@@ -137,10 +136,12 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
                            NodeToDotNames & nd2name,
                            const std::string & style,
                            const char * prefix) {
-    writeNodeDOT(out, pn, nd2name, style, true, prefix, false, false);
-    writeNodeDOT(out, pd, nd2name, style, false, prefix, false, false);
+    const ToDotKey nk{pn, prefix};
+    const ToDotKey dk{pd, prefix};
+    writeNodeDOT(out, nk, nd2name, style, true, false, false);
+    writeNodeDOT(out, dk, nd2name, style, false, false, false);
     nd2name[midPointKey] = namePair;
-    writeNodeDOT(out, pd, nd2name, style, false, "_path", false, true);
+    writeNodeDOT(out, midPointKey, nd2name, style, false, false, true);
     writeDOTEdge(out, ToDotKey{pn, prefix}, midPointKey, nd2name, style, true);
     if (pd->isTip() && sd != pd) {
         writeDOTEdge(out, midPointKey, ToDotKey{sd, ""}, nd2name, style, false);
@@ -214,7 +215,8 @@ void writeDOTForEmbedding(std::ostream & out,
     std::string emptyStr;
     out << "digraph G{\n";
     for (auto n : iter_pre_n_const(nd)) {
-        writeNodeDOT(out, n, nd2name, "", false, "", true, false);
+        const ToDotKey k{n, ""};
+        writeNodeDOT(out, k, nd2name, "", false, true, false);
     }
     for (auto n : iter_pre_n_const(nd)) {
         auto p = n->getParent();
