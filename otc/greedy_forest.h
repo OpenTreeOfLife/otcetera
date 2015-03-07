@@ -42,7 +42,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                             const OttIdSet & ingroup,
                             const OttIdSet & leafSet);
     std::set<OttIdSet> encountered; // used so that the PhyloStatement  have refs that outlive them
-    void addGroupToNewTree(const OttIdSet & ingroup,
+    bool addGroupToNewTree(const OttIdSet & ingroup,
                            const OttIdSet & leafSet,
                            int treeIndex,
                            long groupIndex);

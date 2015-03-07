@@ -138,12 +138,7 @@ struct PhyloStatement {
         provenance(pss) {
         debugCheck();
     }
-    bool debugCheck() const {
-#ifdef DEBUGGING_PHYLO_STATEMENTS
-        assert(set_union_as_set(includes, excludes) == leafSet);
-#endif
-        return true;
-    }
+    bool debugCheck() const;
     bool isTrivial() const {
         return includeGroup.size() < 2 || includeGroup.size() == leafSet.size();
     }
@@ -199,7 +194,7 @@ class RootedForest {
     bool empty() const {
         return trees.empty();
     }
-    void addPhyloStatement(const PhyloStatement &);
+    bool addPhyloStatement(const PhyloStatement &);
     node_type * createNode(node_type * par);
     node_type * createLeaf(node_type * par, const OttId & oid);
     private:

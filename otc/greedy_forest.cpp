@@ -77,16 +77,16 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & scaffold
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::addGroupToNewTree(const OttIdSet & ingroup,
+bool GreedyPhylogeneticForest<T,U>::addGroupToNewTree(const OttIdSet & ingroup,
                                                       const OttIdSet & leafSet,
                                                       int treeIndex,
                                                       long groupIndex) {
     const auto & i = *(encountered.insert(ingroup).first);
-    const auto & ls = *(encountered.insert(leafSet).first);
+    const auto & ls = (leafSet.empty() ? i : *(encountered.insert(leafSet).first));
     const OttIdSet exc = set_difference_as_set(ls, i);
     const auto & e = *(encountered.insert(exc).first);
     PhyloStatement ps(i, e, ls, PhyloStatementSource(treeIndex, groupIndex));
-    addPhyloStatement(ps);
+    return addPhyloStatement(ps);
 }
 
 template<typename T, typename U>
@@ -96,6 +96,8 @@ bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppp
                                                         int treeIndex,
                                                         long groupIndex,
                                                         SupertreeContextWithSplits &sc) {
+    return addGroupToNewTree(ingroup, leafSet, treeIndex, groupIndex);
+    /*
     if (this->empty() || areDisjoint(ottIdSet, leafSet)) { // first grouping, always add...
         sc.log(CLADE_CREATES_TREE, ppptr->phyloChild);
         addGroupToNewTree(ingroup, leafSet, treeIndex, groupIndex);
@@ -132,7 +134,7 @@ bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppp
             graftTreesTogether(retainedRoot, ing, dr, di, dout, ingroup, leafSet);
         }
     }
-    return true;
+    return true; */
 }
 
 

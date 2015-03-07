@@ -3,6 +3,19 @@
 #include "otc/tree_data.h"
 namespace otc {
 
+bool PhyloStatement::debugCheck() const {
+#ifdef DEBUGGING_PHYLO_STATEMENTS
+    const OttIdSet ie = set_union_as_set(includeGroup, excludeGroup);
+    if (ie != leafSet) {
+        std::cerr << " includeGroup "; writeOttSet(std::cerr, " ", includeGroup, " "); std::cerr << std::endl;
+        std::cerr << " excludeGroup "; writeOttSet(std::cerr, " ", excludeGroup, " "); std::cerr << std::endl;
+        std::cerr << " leafset "; writeOttSet(std::cerr, " ", leafSet, " "); std::cerr << std::endl;
+        assert(false);
+    }
+#endif
+    return true;
+}
+
 template<typename T, typename U>
 typename RootedForest<T,U>::tree_type &
 RootedForest<T,U>::createNewTree() {
@@ -23,7 +36,7 @@ RootedForest<T,U>::RootedForest()
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
+bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     LOG(DEBUG) << " RootedForest::addPhyloStatement";
     std::cerr << " ingroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
     std::cerr << " leafset "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
@@ -33,12 +46,13 @@ void RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
         for (auto noid : newOttIds) {
             addDetachedLeaf(noid);
         }
-        return;
+        return true;
     }
     if (areDisjoint(ps.leafSet, ottIdSet)) {
         addDisjointTree(ps);
+        return true;
     }
-    assert(false); // not implemented
+    assert(false);
 }
 
 template<typename T, typename U>
