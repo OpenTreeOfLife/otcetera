@@ -101,7 +101,7 @@ void uncheckedWriteNodeDOT(std::ostream & out,
     if (pt) {
         out << "shape=point ";
     }
-    if ((!pt) && (writeLabel || nd->isTip())) {
+    if ((!pt) && writeLabel) {
         out << "label=\"" << np.second << "\" ";
     } else {
         out << "label=\"\" ";
@@ -146,13 +146,15 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
                            NodeToDotNames & nd2name,
                            const std::string & style,
                            const char * prefix) {
-    const ToDotKey nk{pn, prefix};
-    const ToDotKey dk{pd, prefix};
+    const bool isScaffoldSide = (pd == sd);
+    const char * ptu = (isScaffoldSide ? "" : prefix);
+    const ToDotKey nk{pn, ptu};
+    const ToDotKey dk{pd, ptu};
     writeNodeDOT(out, nk, nd2name, style, true, false, false);
     writeNodeDOT(out, dk, nd2name, style, false, false, false);
     nd2name[midPointKey] = namePair;
     uncheckedWriteNodeDOT(out, midPointKey, nd2name, style, false, false, true);
-    writeDOTEdge(out, ToDotKey{pn, prefix}, midPointKey, nd2name, style, true);
+    writeDOTEdge(out, ToDotKey{pn, ptu}, midPointKey, nd2name, style, true);
     if (pd->isTip() && sd != pd) {
         writeDOTEdge(out, midPointKey, ToDotKey{sd, ""}, nd2name, style, false);
     } else {
@@ -183,13 +185,15 @@ void writePathPairingToDOT(std::ostream & out,
     const std::string pname ="_" + std::to_string((long)(&pp));
     const std::string sname ="__" + std::to_string((long)(&pp));
     const NamePair pv{pname, emptyStr};
-    const NamePair sv{pname, emptyStr};
+    const NamePair sv{sname, emptyStr};
     const auto * pn = pp.phyloParent;
     const auto * pd = pp.phyloChild;
     const auto * sd = pp.scaffoldDes;
     const ToDotKey pk{pd, "_phpath"};
     writeOneSideOfPathPairingToDOT(out, pn, pd, sd, pk, pv, nd2name, style, prefix);
     const auto * sn = pp.scaffoldAnc;
+    style = bstyle;
+    style.append(" style=\"solid\"");
     const ToDotKey sk{sd, "_scpath"};
     writeOneSideOfPathPairingToDOT(out, sn, sd, sd, sk, sv, nd2name, style, prefix);
     style = bstyle;
