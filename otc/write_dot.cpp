@@ -18,6 +18,13 @@ void writeNodeDOT(std::ostream & out,
                            bool forceMRCANaming,
                            bool writeLabel,
                            bool pt);
+void uncheckedWriteNodeDOT(std::ostream & out,
+                           const ToDotKey & k,
+                           NodeToDotNames & nd2name,
+                           const std::string &style, 
+                           bool forceMRCANaming,
+                           bool writeLabel,
+                           bool pt);
 void writeDOTEdge(std::ostream & out,
                   const ToDotKey anc,
                   const ToDotKey des,
@@ -71,9 +78,17 @@ void writeNodeDOT(std::ostream & out,
                            bool forceMRCANaming,
                            bool writeLabel,
                            bool pt) {
-    if (contains(nd2name, k)) {
-        return;
+    if (!contains(nd2name, k)) {
+        uncheckedWriteNodeDOT(out, k, nd2name, style, forceMRCANaming, writeLabel, pt);
     }
+}
+void uncheckedWriteNodeDOT(std::ostream & out,
+                           const ToDotKey & k,
+                           NodeToDotNames & nd2name,
+                           const std::string &style, 
+                           bool forceMRCANaming,
+                           bool writeLabel,
+                           bool pt) {
     const NodeWithSplits * nd{k.first};
     const std::string & prefix{k.second};
     std::string name{prefix};
@@ -135,7 +150,8 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
     const ToDotKey dk{pd, prefix};
     writeNodeDOT(out, nk, nd2name, style, true, false, false);
     writeNodeDOT(out, dk, nd2name, style, false, false, false);
-    writeNodeDOT(out, midPointKey, nd2name, style, false, false, true);
+    nd2name[midPointKey] = namePair;
+    uncheckedWriteNodeDOT(out, midPointKey, nd2name, style, false, false, true);
     writeDOTEdge(out, ToDotKey{pn, prefix}, midPointKey, nd2name, style, true);
     if (pd->isTip() && sd != pd) {
         writeDOTEdge(out, midPointKey, ToDotKey{sd, ""}, nd2name, style, false);
