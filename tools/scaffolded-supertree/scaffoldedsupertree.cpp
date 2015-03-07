@@ -92,14 +92,18 @@ class ScaffoldedSupertree
         writeNumberedDot(taxonomy->getRoot(), true, true);
         LOG(DEBUG) << "Before supertree "; writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         for (auto nd : iter_post_internal(*taxonomy)) {
+            if (nd->getParent() == nullptr) {
+                break;
+            }
             writeNumberedDot(nd, false, false);
             writeNumberedDot(nd, false, true);
             resolveOrCollapse(nd, sc);
             LOG(DEBUG) << "After handling " << nd->getOttId(); writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
             writeNumberedDot(taxonomy->getRoot(), true, false);
             writeNumberedDot(taxonomy->getRoot(), true, true);
-        
         }
+        writeNumberedDot(taxonomy->getRoot(), true, false);
+        writeNumberedDot(taxonomy->getRoot(), true, true);
         
     }
 
