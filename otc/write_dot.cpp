@@ -135,7 +135,6 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
     const ToDotKey dk{pd, prefix};
     writeNodeDOT(out, nk, nd2name, style, true, false, false);
     writeNodeDOT(out, dk, nd2name, style, false, false, false);
-    nd2name[midPointKey] = namePair;
     writeNodeDOT(out, midPointKey, nd2name, style, false, false, true);
     writeDOTEdge(out, ToDotKey{pn, prefix}, midPointKey, nd2name, style, true);
     if (pd->isTip() && sd != pd) {
