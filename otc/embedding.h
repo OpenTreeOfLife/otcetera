@@ -7,6 +7,7 @@
 #include <set>
 #include <list>
 #include "otc/otc_base_includes.h"
+#include "otc/util.h"
 namespace otc {
 template<typename T, typename U> class NodePairing;
 template<typename T, typename U> class PathPairing;
@@ -43,13 +44,17 @@ class PathPairing {
     void setOttIdSet(long oid, std::map<const U *, NodeEmbedding<T, U> > & m) {
         LOG(DEBUG) << "setOttIdSet " << oid;
         OttIdSet n;
-        n.insert(oid);
         OttIdSet oldIds;
         std::swap(oldIds, currChildOttIdSet);
+        if (contains(oldIds, oid)) {
+            oldIds.erase(oid);
+        } else {
+            n.insert(oid);
+        }
         updateAncestralPathOttIdSet(scaffoldDes, oldIds, n, m);
         currChildOttIdSet = n;
     }
-    void updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
+    bool updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
     PathPairing(const NodePairing<T,U> & parent, const NodePairing<T,U> & child)
         :scaffoldDes(child.scaffoldNode),
         scaffoldAnc(parent.scaffoldNode),
@@ -76,11 +81,15 @@ inline void updateAncestralPathOttIdSet(T * nd,
                                         std::map<const T *, NodeEmbedding<T, U> > & m) {
     auto & curr = m.at(nd);
     LOG(DEBUG) << "  " << nd->getOttId() << " calling updateAllPathsOttIdSets";
-    curr.updateAllPathsOttIdSets(oldEls, newEls);
+    if (!curr.updateAllPathsOttIdSets(oldEls, newEls)) {
+        return;
+    }
     for (auto anc : iter_anc(*nd)) {
-         auto & ant = m.at(anc);
-         LOG(DEBUG) << "  " << anc->getOttId() << " calling updateAllPathsOttIdSets";
-        ant.updateAllPathsOttIdSets(oldEls, newEls);
+        auto & ant = m.at(anc);
+        LOG(DEBUG) << "  " << anc->getOttId() << " calling updateAllPathsOttIdSets";
+        if (!ant.updateAllPathsOttIdSets(oldEls, newEls)) {
+            return;
+        }
     }
 }
 
@@ -162,11 +171,11 @@ class NodeEmbedding {
                            const std::vector<TreeMappedWithSplits *> & treePtrByIndex,
                            const std::vector<NodeWithSplits *> & aliasedBy,
                            bool verbose) const;
-    void updateAllPathsOttIdSets(const OttIdSet & oldEls, const OttIdSet & newEls) {
+    bool updateAllPathsOttIdSets(const OttIdSet & oldEls, const OttIdSet & newEls) {
         LOG(DEBUG) << "    updateAllPathsOttIdSets loops";
-        updateAllMappedPathsOttIdSets(loopEmbeddings, oldEls, newEls);
+        bool r = updateAllMappedPathsOttIdSets(loopEmbeddings, oldEls, newEls);
         LOG(DEBUG) << "    updateAllPathsOttIdSets edgeBelowEmbeddings ";
-        updateAllMappedPathsOttIdSets(edgeBelowEmbeddings, oldEls, newEls);
+        return updateAllMappedPathsOttIdSets(edgeBelowEmbeddings, oldEls, newEls) || r;
     }
     std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(const T * nd,
                                                                   const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
@@ -194,12 +203,14 @@ inline bool NodeEmbedding<T, U>::treeContestsMonophyly(const std::set<PathPairin
 
 
 template<typename T>
-inline void updateAllMappedPathsOttIdSets(T & mPathSets, const OttIdSet & oldEls, const OttIdSet & newEls) {
+inline bool updateAllMappedPathsOttIdSets(T & mPathSets, const OttIdSet & oldEls, const OttIdSet & newEls) {
+    bool r = false;
     for (auto mpIt : mPathSets) {
         for (auto p : mpIt.second) {
-            p->updateOttIdSetNoTraversal(oldEls, newEls);
+            r = r || p->updateOttIdSetNoTraversal(oldEls, newEls);
         }
     }
+    return r;
 }
 
 

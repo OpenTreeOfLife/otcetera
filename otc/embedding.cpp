@@ -39,11 +39,14 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const T *nd,
 
 
 template<typename T, typename U>
-void PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
+bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
     std::cerr << "  updateOttIdSetNoTraversal in currChildOttIdSet"; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
     std::cerr << "  updateOttIdSetNoTraversal in oldEls"; writeOttSet(std::cerr, " ", oldEls, " "); std::cerr << '\n';
     std::cerr << "  updateOttIdSetNoTraversal in newEls"; writeOttSet(std::cerr, " ", newEls, " "); std::cerr << '\n';
     auto i = set_intersection_as_set(oldEls, currChildOttIdSet);
+    if (i.size() < oldEls.size()) {
+        return false;
+    }
     if (!i.empty()) {
         for (auto o : i) {
             currChildOttIdSet.erase(o);
@@ -51,6 +54,7 @@ void PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const 
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
     std::cerr << "  updateOttIdSetNoTraversal out currChildOttIdSet"; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
+    return true;
 }
 
 template<typename T, typename U>
