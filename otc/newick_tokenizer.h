@@ -13,10 +13,12 @@ namespace otc {
 struct ParsingRules {
     ParsingRules()
         :ottIdValidator(nullptr),
-        includeInternalNodesInDesIdSets(false) {
-        }
+        includeInternalNodesInDesIdSets(false),
+        setOttIdForInternals(true) {
+    }
     const std::set<long> * ottIdValidator;
     bool includeInternalNodesInDesIdSets;
+    bool setOttIdForInternals; // TEMP. Do we want to just remove them after processing, rather than adding a conditional to the parsing logic...
 };
 
 typedef std::shared_ptr<const std::string> ConstStrPtr;

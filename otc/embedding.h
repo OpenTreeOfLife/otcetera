@@ -43,7 +43,7 @@ class PathPairing {
     void setOttIdSet(long oid, std::map<const U *, NodeEmbedding<T, U> > & m) {
         OttIdSet n;
         n.insert(oid);
-        updateAncestralPathOttIdSet(scaffoldAnc, currChildOttIdSet, n, m);
+        updateAncestralPathOttIdSet(scaffoldDes, currChildOttIdSet, n, m);
         currChildOttIdSet = n;
     }
     void updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
@@ -67,7 +67,12 @@ class PathPairing {
 };
 
 template<typename T, typename U>
-inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeEmbedding<T, U> > & m) {
+inline void updateAncestralPathOttIdSet(T * nd,
+                                        const OttIdSet & oldEls,
+                                        const OttIdSet newEls,
+                                        std::map<const T *, NodeEmbedding<T, U> > & m) {
+    auto & curr = m.at(nd);
+    curr.updateAllPathsOttIdSets(oldEls, newEls);
     for (auto anc : iter_anc(*nd)) {
          auto & ant = m.at(anc);
          ant.updateAllPathsOttIdSets(oldEls, newEls);
@@ -183,9 +188,9 @@ inline bool NodeEmbedding<T, U>::treeContestsMonophyly(const std::set<PathPairin
 
 template<typename T>
 inline void updateAllMappedPathsOttIdSets(T & mPathSets, const OttIdSet & oldEls, const OttIdSet & newEls) {
-    for (auto lpIt : mPathSets) {
-        for (auto lp : lpIt.second) {
-            lp->updateOttIdSetNoTraversal(oldEls, newEls);
+    for (auto mpIt : mPathSets) {
+        for (auto p : mpIt.second) {
+            p->updateOttIdSetNoTraversal(oldEls, newEls);
         }
     }
 }

@@ -95,10 +95,8 @@ class ScaffoldedSupertree
             LOG(DEBUG) << "Before supertree "; writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
         }
         for (auto nd : iter_post_internal(*taxonomy)) {
-            if (nd->getParent() == nullptr) {
-                break;
-            }
             if (debuggingOutput) {
+                LOG(DEBUG) << "About to call resolveOrCollapse for node ott" << nd->getOttId();
                 writeNumberedDOT(nd, false, false);
                 writeNumberedDOT(nd, false, true);
             }
@@ -211,6 +209,7 @@ class ScaffoldedSupertree
         for (auto nd : iter_node(*taxonomy)) {
             taxoToEmbedding.emplace(nd, NodeEmbeddingWithSplits{});
         }
+        otCLI.getParsingRules().setOttIdForInternals = false;
         return true;
     }
 

@@ -23,6 +23,9 @@ class RootedTreeNode {
         bool isTip() const {
             return (lChild == nullptr);
         }
+        bool isInternal() const {
+            return (lChild != nullptr);
+        }
         const node_type * getParent() const {
             return parent;
         }

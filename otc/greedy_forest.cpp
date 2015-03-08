@@ -71,6 +71,7 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & scaffold
     // remap all path pairings out of this node...
     for (auto treeInd2eout : embedding->edgeBelowEmbeddings) {
         for (auto eout : treeInd2eout.second) {
+            LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << snoid<< ')';
             eout->setOttIdSet(snoid, sc.scaffold2NodeEmbedding);
         }
     }
@@ -186,7 +187,7 @@ std::vector<T *> GreedyPhylogeneticForest<T,U>::getRoots(){
 
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
-    LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:\n";
+    LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     auto roots = getRoots();
     for (auto r : roots) {
         std::cerr << " tree-in-forest = "; writeNewick(std::cerr, r); std::cerr << '\n';

@@ -21,7 +21,7 @@ T findRightmostInSubtreeM(T nd);
 
 template<typename T>
 inline bool isInternalNode(const T & nd) {
-    return !nd.isTip();
+    return nd.isInternal();
 }
 template<typename T>
 inline bool isLeaf(const T & nd) {
