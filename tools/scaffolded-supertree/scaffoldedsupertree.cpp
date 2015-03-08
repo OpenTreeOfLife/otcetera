@@ -7,16 +7,6 @@
 using namespace otc;
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
 
-template<typename T, typename U>
-void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeEmbedding<T, U> > & m);
-template<typename T, typename U>
-inline void updateAncestralPathOttIdSet(T * nd, const OttIdSet & oldEls, const OttIdSet newEls, std::map<const T *, NodeEmbedding<T, U> > & m) {
-    for (auto anc : iter_anc(*nd)) {
-         auto & ant = m.at(anc);
-         ant.updateAllPathsOttIdSets(oldEls, newEls);
-    }
-}
-
 //currently not copying names
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
     TreeMappedWithSplits * rawTreePtr = new TreeMappedWithSplits();

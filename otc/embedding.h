@@ -16,7 +16,7 @@ template<typename T, typename U> class SupertreeContext;
 template<typename T, typename U>
 void updateAncestralPathOttIdSet(T * nd,
                                  const OttIdSet & oldEls,
-                                 const OttIdSet newEls,
+                                 const OttIdSet & newEls,
                                  std::map<const T *, NodeEmbedding<T, U> > & m);
 
 template<typename T, typename U>
@@ -41,9 +41,12 @@ class PathPairing {
     U * phyloParent;
     OttIdSet currChildOttIdSet;
     void setOttIdSet(long oid, std::map<const U *, NodeEmbedding<T, U> > & m) {
+        LOG(DEBUG) << "setOttIdSet " << oid;
         OttIdSet n;
         n.insert(oid);
-        updateAncestralPathOttIdSet(scaffoldDes, currChildOttIdSet, n, m);
+        OttIdSet oldIds;
+        std::swap(oldIds, currChildOttIdSet);
+        updateAncestralPathOttIdSet(scaffoldDes, oldIds, n, m);
         currChildOttIdSet = n;
     }
     void updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
@@ -69,13 +72,15 @@ class PathPairing {
 template<typename T, typename U>
 inline void updateAncestralPathOttIdSet(T * nd,
                                         const OttIdSet & oldEls,
-                                        const OttIdSet newEls,
+                                        const OttIdSet & newEls,
                                         std::map<const T *, NodeEmbedding<T, U> > & m) {
     auto & curr = m.at(nd);
+    LOG(DEBUG) << "  " << nd->getOttId() << " calling updateAllPathsOttIdSets";
     curr.updateAllPathsOttIdSets(oldEls, newEls);
     for (auto anc : iter_anc(*nd)) {
          auto & ant = m.at(anc);
-         ant.updateAllPathsOttIdSets(oldEls, newEls);
+         LOG(DEBUG) << "  " << anc->getOttId() << " calling updateAllPathsOttIdSets";
+        ant.updateAllPathsOttIdSets(oldEls, newEls);
     }
 }
 
@@ -158,7 +163,9 @@ class NodeEmbedding {
                            const std::vector<NodeWithSplits *> & aliasedBy,
                            bool verbose) const;
     void updateAllPathsOttIdSets(const OttIdSet & oldEls, const OttIdSet & newEls) {
+        LOG(DEBUG) << "    updateAllPathsOttIdSets loops";
         updateAllMappedPathsOttIdSets(loopEmbeddings, oldEls, newEls);
+        LOG(DEBUG) << "    updateAllPathsOttIdSets edgeBelowEmbeddings ";
         updateAllMappedPathsOttIdSets(edgeBelowEmbeddings, oldEls, newEls);
     }
     std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(const T * nd,

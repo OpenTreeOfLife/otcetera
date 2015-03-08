@@ -60,7 +60,7 @@ OttIdSet NodeEmbedding<T, U>::getRelevantDesIdsFromPath(const PathPairSet & pps)
         const auto & cdi = path->getOttIdSet();
         relevantIds.insert(begin(cdi), end(cdi));
     }
-    std::cerr << " getRelevantDesIdsFromPath returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
+    //std::cerr << " getRelevantDesIdsFromPath returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
     return relevantIds;
 }
 
