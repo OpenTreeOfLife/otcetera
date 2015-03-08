@@ -3,6 +3,7 @@ import subprocess
 
 NUM_TESTS = 0
 FAILED_TESTS = []
+
 def debug(m):
     sys.stderr.write('DEBUG: ')
     sys.stderr.write(m)
@@ -27,14 +28,22 @@ def test_invoc(tag, invocation, result_dir):
             with codecs.open(obt_exitf, 'w', encoding='utf-8') as ob_ex:
                 ob_ex.write('{e:d}\n'.format(e=exit_code))
     exp_outf = os.path.join(result_dir, 'output')
+    exp_synth = os.path.join(result_dir, 'out.tre')
     if os.path.exists(exp_outf):
         expected_output = codecs.open(exp_outf, 'r', encoding='utf-8').read()
         obtained_output = codecs.open(obt_outf, 'r', encoding='utf-8').read()
         if obtained_output != expected_output:
-            if expected_output.strip() != '' or obtained_output.strip() != '':
-                FAILED_TESTS.append(tag)
-                error('OUTPUT differed for {}:\n'.format(tag))
-                subprocess.call(['diff', exp_outf, obt_outf])
+            FAILED_TESTS.append(tag)
+            error('OUTPUT differed for {}:\n'.format(tag))
+            subprocess.call(['diff', exp_outf, obt_outf])
+    elif os.path.exists(exp_synth):
+        if 0 != subprocess.call([sys.executable,
+                                 TREE_COMP_SCRIPT,
+                                 exp_synth,
+                                 obt_outf]):
+            FAILED_TESTS.append(tag)
+            error('OUTPUT TREE differed for {}:\n'.format(tag))
+            
     exp_exitf = os.path.join(result_dir, 'exit')
     if os.path.exists(exp_exitf):
         expected_exit = int(codecs.open(exp_exitf, 'r', encoding='utf-8').read())
@@ -84,9 +93,15 @@ if __name__ == '__main__':
     import json
     import sys
     import os
-    dat_dir, expected_dir, tools_build_dir = [os.path.abspath(i) for i in sys.argv[1:]]
-    e_dir_list = os.listdir(expected_dir)
-    e_dir_list.sort()
+    SCRIPT_DIR = os.path.split(sys.argv[0])[0]
+    TREE_COMP_SCRIPT = os.path.join(SCRIPT_DIR, 'rooted-tree-diff.py')
+    dat_dir, expected_dir, tools_build_dir = [os.path.abspath(i) for i in sys.argv[1:4]]
+    if len(sys.argv) > 4:
+        test_sub_dir_to_run = sys.argv[4]
+        e_dir_list = [test_sub_dir_to_run]
+    else:
+        e_dir_list = os.listdir(expected_dir)
+        e_dir_list.sort()
     for e_subdir_name in e_dir_list:
         e_path = os.path.join(expected_dir, e_subdir_name)
         t_path = os.path.join(tools_build_dir, e_subdir_name)
