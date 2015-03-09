@@ -98,7 +98,10 @@ class NodeEmbedding {
     public:
     using NodePairSet = std::set<NodePairing<T, U> *>;
     using PathPairSet = std::set<PathPairing<T, U> *>;
-    
+    T * nodeWithEmbedding;
+    NodeEmbedding(T * scaffNode)
+        :nodeWithEmbedding(scaffNode) {
+    }
     std::map<std::size_t, NodePairSet> nodeEmbeddings;
     std::map<std::size_t, PathPairSet> edgeBelowEmbeddings;
     std::map<std::size_t, PathPairSet > loopEmbeddings;
@@ -153,10 +156,12 @@ class NodeEmbedding {
         return false;
     }
 
-    OttIdSet getRelevantDesIdsFromPath(const PathPairSet & pps);
+    const OttIdSet & getRelevantDesIdsFromPath(const PathPairing<T, U> & pps);
+    OttIdSet getRelevantDesIdsFromPathPairSet(const PathPairSet & pps);
+    OttIdSet getRelevantDesIds(const std::map<const T *, NodeEmbedding<T, U> > & eForNd, std::size_t treeIndex);
 
     void collapseSourceEdge(const T * phyloParent, PathPairing<T, U> * path);
-    void collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex);
+    void collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex, SupertreeContextWithSplits &);
     void resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
     std::set<PathPairing<T, U> *> getAllChildExitPaths(U & scaffoldNode, SupertreeContextWithSplits & sc);
     void resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
@@ -164,8 +169,7 @@ class NodeEmbedding {
     void collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc);
     void pruneCollapsedNode(U & scaffoldNode, SupertreeContextWithSplits & sc);
     void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, SupertreeContextWithSplits & sc);
-    OttIdSet getRelevantDesIds(std::size_t treeIndex);
-
+    
     bool reportIfContested(std::ostream & out,
                            const U * nd,
                            const std::vector<TreeMappedWithSplits *> & treePtrByIndex,

@@ -58,13 +58,17 @@ bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const 
 }
 
 template<typename T, typename U>
-OttIdSet NodeEmbedding<T, U>::getRelevantDesIdsFromPath(const PathPairSet & pps) {
+inline const OttIdSet & NodeEmbedding<T, U>::getRelevantDesIdsFromPath(const PathPairing<T, U> & path) {
+    return path.getOttIdSet();
+}
+template<typename T, typename U>
+OttIdSet NodeEmbedding<T, U>::getRelevantDesIdsFromPathPairSet(const PathPairSet & pps) {
     OttIdSet relevantIds;
     for (auto path : pps) {
-        const auto & cdi = path->getOttIdSet();
+        const auto & cdi = getRelevantDesIdsFromPath(*path);
         relevantIds.insert(begin(cdi), end(cdi));
     }
-    //std::cerr << " getRelevantDesIdsFromPath returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
+    //std::cerr << " getRelevantDesIdsFromPathPairSet returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
     return relevantIds;
 }
 
@@ -75,11 +79,14 @@ void NodeEmbedding<T, U>::collapseSourceEdge(const T * , //phyloParent,
 }
 
 template<typename T, typename U>
-void NodeEmbedding<T, U>::collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex) {
+void NodeEmbedding<T, U>::collapseSourceEdgesToForceOneEntry(U & ,
+                                                             PathPairSet & pps,
+                                                             std::size_t treeIndex,
+                                                             SupertreeContextWithSplits & sc) {
     if (pps.size() < 2) {
         return;
     }
-    auto relevantIds = getRelevantDesIds(treeIndex);
+    auto relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeIndex);
     PathPairing<T, U> * firstPairing = *pps.begin();
     const T * onePhyloPar = firstPairing->phyloParent;
     const T * phyloMrca = searchAncForMRCAOfDesIds(onePhyloPar, relevantIds);
@@ -94,14 +101,15 @@ void NodeEmbedding<T, U>::collapseSourceEdgesToForceOneEntry(U & , PathPairSet &
     }
 }
 template<typename T, typename U>
-void NodeEmbedding<T, U>::resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
+void NodeEmbedding<T, U>::resolveGivenContestedMonophyly(U & scaffoldNode,
+                                                         SupertreeContextWithSplits & sc) {
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
         const auto ebaIt = edgeBelowEmbeddings.find(treeInd);
         if (ebaIt == edgeBelowEmbeddings.end()) {
             continue;
         }
         PathPairSet & pps = ebaIt->second;
-        collapseSourceEdgesToForceOneEntry(scaffoldNode, pps, treeInd);
+        collapseSourceEdgesToForceOneEntry(scaffoldNode, pps, treeInd, sc);
     }
     resolveGivenUncontestedMonophyly(scaffoldNode, sc);
 }
@@ -128,7 +136,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         if (laIt == loopEmbeddings.end()) {
             continue;
         }
-        const OttIdSet relevantIds = getRelevantDesIds(treeInd);
+        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
         PathPairSet & pps = laIt->second;
         // leaf set of this tree for this subtree
         // for repeatability, we'll try to add groupings in reverse order of desIds sets (deeper first)
@@ -242,7 +250,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
         for (auto pp : ebaIt->second) {
             mapToProvideOrder[pp->getOttIdSet()] = pp;
         }
-        const OttIdSet relevantIds = getRelevantDesIds(treeInd);
+        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
         /* try to add groups bail out when we know that the possible group is not monophyletic */
         long bogusGroupIndex = 200000; // should get this from the node!
         for (auto mpoIt : mapToProvideOrder) {
@@ -259,16 +267,13 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
 }
 
 template<typename T, typename U>
-OttIdSet NodeEmbedding<T, U>::getRelevantDesIds(std::size_t treeIndex) {
+OttIdSet NodeEmbedding<T, U>::getRelevantDesIds(const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
+                                                std::size_t treeIndex) {
     /* find MRCA of the phylo nodes */
+    auto ippV = getAllIncomingPathPairs(nodeWithEmbedding, eForNd, treeIndex);
     OttIdSet relevantIds;
-    auto laIt = loopEmbeddings.find(treeIndex);
-    if (laIt != loopEmbeddings.end()) {
-        relevantIds = getRelevantDesIdsFromPath(laIt->second);
-    }
-    auto ebaIt = edgeBelowEmbeddings.find(treeIndex);
-    if (ebaIt != edgeBelowEmbeddings.end()) {
-        OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(ebaIt->second);
+    for (auto pIt : ippV) {
+        const OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(*pIt);
         relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
     }
     std::cerr << " for tree " << treeIndex << " getRelevantDesIds returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';

@@ -8,13 +8,24 @@
 #include "otc/write_dot.h"
 namespace otc {
 
+NodeEmbeddingWithSplits & EmbeddedTree::_getEmdeddingForNode(NodeWithSplits * nd) {
+    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits>::iterator sIt = taxoToEmbedding.find(nd);
+    if (sIt == taxoToEmbedding.end()) {
+        auto eres = taxoToEmbedding.emplace(std::piecewise_construct,
+                                            std::forward_as_tuple(nd),
+                                            std::forward_as_tuple(nd));
+        assert(eres.second);
+        return eres.first->second;
+    }
+    return sIt->second;
+}
+
 NodePairingWithSplits * EmbeddedTree::_addNodeMapping(NodeWithSplits *taxo, NodeWithSplits *nd, std::size_t treeIndex) {
     assert(taxo != nullptr);
     assert(nd != nullptr);
     nodePairings.emplace_back(NodePairingWithSplits(taxo, nd));
     auto ndPairPtr = &(*nodePairings.rbegin());
-    auto & athreading = taxoToEmbedding[taxo];
-    athreading.nodeEmbeddings[treeIndex].insert(ndPairPtr);
+    _getEmdeddingForNode(taxo).nodeEmbeddings[treeIndex].insert(ndPairPtr);
     return ndPairPtr;
 }
 PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * parentPairing,
@@ -27,14 +38,14 @@ PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * pa
     auto ancTaxo = pathPairPtr->scaffoldAnc;
     if (currTaxo != ancTaxo) {
         while (currTaxo != ancTaxo) {
-            taxoToEmbedding[currTaxo].edgeBelowEmbeddings[treeIndex].insert(pathPairPtr);
+            _getEmdeddingForNode(currTaxo).edgeBelowEmbeddings[treeIndex].insert(pathPairPtr);
             currTaxo = currTaxo->getParent();
             if (currTaxo == nullptr) {
                 break;
             }
         }
     } else {
-        taxoToEmbedding[currTaxo].loopEmbeddings[treeIndex].insert(pathPairPtr);
+        _getEmdeddingForNode(currTaxo).loopEmbeddings[treeIndex].insert(pathPairPtr);
     }
     return pathPairPtr;
 }

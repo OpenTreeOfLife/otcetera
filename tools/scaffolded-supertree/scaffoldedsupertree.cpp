@@ -64,7 +64,7 @@ class ScaffoldedSupertree
 
 
     void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
-        auto & thr = taxoToEmbedding[scaffoldNd];
+        auto & thr = _getEmdeddingForNode(scaffoldNd);
         if (thr.isContested()) {
             if (thr.highRankingTreesPreserveMonophyly(sc.numTrees)) {
                 thr.resolveGivenContestedMonophyly(*scaffoldNd, sc);
@@ -108,7 +108,7 @@ class ScaffoldedSupertree
         LOG(DEBUG) << "writing DOT file \"" << fn << "\"";
         std::ofstream out;
         out.open(fn);
-        const auto & thr = taxoToEmbedding[nd];
+        const auto & thr = _getEmdeddingForNode(nd);
         writeDOTExport(out, thr, nd, treePtrByIndex, entireSubtree, includeLastTree);
         LOG(DEBUG) << "finished DOT file \"" << fn << "\"";
     }
@@ -132,7 +132,7 @@ class ScaffoldedSupertree
         unsigned long redundContested = 0;
         unsigned long totalNumNodes = 0;
         for (auto nd : iter_node_internal(*taxonomy)) {
-            const auto & thr = taxoToEmbedding[nd];
+            const auto & thr = _getEmdeddingForNode(nd);
             nodeMappingDegree[thr.getTotalNumNodeMappings()] += 1;
             passThroughDegree[thr.getTotalNumEdgeBelowTraversals()] += 1;
             loopDegree[thr.getTotalNumLoops()] += 1;
@@ -172,7 +172,7 @@ class ScaffoldedSupertree
                 if (nd == nullptr) {
                     throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to report on: ") + std::to_string(tr));
                 }
-                const auto & thr = taxoToEmbedding[nd];
+                const auto & thr = _getEmdeddingForNode(nd);
                 std::vector<NodeWithSplits *> aliasedBy = getNodesAliasedBy(nd, *taxonomy);
                 thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy, otCLI.verbose);
             }
@@ -183,7 +183,7 @@ class ScaffoldedSupertree
                 throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to export to DOT: ") + std::to_string(tr));
             }
             for (auto n : iter_pre_n_const(nd)) {
-                const auto & thr = taxoToEmbedding[n];
+                const auto & thr = _getEmdeddingForNode(n);
                 writeDOTExport(out, thr, n, treePtrByIndex, false, false);
             }
         }
@@ -196,8 +196,8 @@ class ScaffoldedSupertree
         checkTreeInvariants(*taxonomy);
         suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
         checkTreeInvariants(*taxonomy);
-        for (auto nd : iter_node(*taxonomy)) {
-            taxoToEmbedding.emplace(nd, NodeEmbeddingWithSplits{});
+        for (NodeWithSplits * nd : iter_node(*taxonomy)) {
+            _getEmdeddingForNode(nd);
         }
         otCLI.getParsingRules().setOttIdForInternals = false;
         return true;

@@ -19,6 +19,7 @@ class EmbeddedTree {
     EmbeddedTree() {
     }
 
+
     NodePairingWithSplits * _addNodeMapping(NodeWithSplits *taxo,
                                             NodeWithSplits *nd,
                                             std::size_t treeIndex);
@@ -33,7 +34,13 @@ class EmbeddedTree {
                            const std::vector<TreeMappedWithSplits *> &,
                            bool entireSubtree,
                            bool includeLastTree) const;
+    protected:
+    NodeEmbeddingWithSplits & _getEmdeddingForNode(NodeWithSplits * nd);
+    const NodeEmbeddingWithSplits & _getEmdeddingForNode(const NodeWithSplits * nd) const {
+        return taxoToEmbedding.at(nd);
+    }
 };
+
 
 
 
