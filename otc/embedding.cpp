@@ -202,10 +202,13 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
             if (lp->scaffoldAnc == p) {
                 if (lp->scaffoldDes == &scaffoldNode) {
                     // this only happens if a terminal was mapped to this higher level taxon
-                    // we don't know how to interpret this labe any more, so we'll drop that 
+                    // we don't know how to interpret this label any more, so we'll drop that 
                     // leaf. The taxa will be included by other relationships (the taxonomy as
                     // a last resort), so we don't need to worry about losing leaves by skipping this...
-                    assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
+                    if (lp->phyloChild->hasOttId()) {
+                        LOG(DEBUG) << "scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
+                        assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
+                    }
                     sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
                 } else {
                     parThreading.loopEmbeddings[ebai.first].insert(lp);
