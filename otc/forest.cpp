@@ -193,6 +193,13 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
                 assert(includeGroupA != nullptr);
             }
             const OttIdSet excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
+            if (debuggingOutputEnabled) {
+                LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
+                std::cerr << " addPhyloStatementToGraph search for an ancestor of:  "; writeOttSet(std::cerr, " ", incGroupIntersection, " "); std::cerr << std::endl;
+                std::cerr << "  wanted to avoid =  "; writeOttSet(std::cerr, " ", ps.excludeGroup, " "); std::cerr << std::endl;
+                std::cerr << "  found a node with desIds:  "; writeOttSet(std::cerr, " ", includeGroupA->getData().desIds, " "); std::cerr << std::endl;
+                std::cerr << "  which includes the excludegroup members:  "; writeOttSet(std::cerr, " ", excInc, " "); std::cerr << std::endl;
+            }
             if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
                 return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
             }
@@ -309,17 +316,27 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     std::set<RootedTreeNode<T> *> cToMove;
     std::list<RootedTreeNode<T> *> orderedToMove;
     std::list<GroupingConstraint *> incToUpdate;
-    bool someNotMoved = false;
     for (auto oid : oids) {
         auto n = ottIdToNode.at(oid);
-        for (auto anc : iter_anc(*n)) {
-            if (anc->getParent() == par) {
-                if (!contains(cToMove, anc)) {
-                    cToMove.insert(anc);
-                    orderedToMove.push_back(anc);
-                    break;
+        bool connectionFound = false;
+        if (n->getParent() == par) {
+            cToMove.insert(n);
+            orderedToMove.push_back(n);
+            connectionFound = true;
+        } else {
+            for (auto anc : iter_anc(*n)) {
+                if (anc->getParent() == par) {
+                    if (!contains(cToMove, anc)) {
+                        cToMove.insert(anc);
+                        orderedToMove.push_back(anc);
+                        connectionFound = true;
+                        break;
+                    }
                 }
             }
+        }
+        if (connectionFound) {
+            continue;
         }
         auto icIt = includesConstraints.find(n);
         if (icIt != includesConstraints.end()) {
@@ -329,16 +346,15 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
                 auto np = igcIt->first;
                 if (np == par) {
                     incToUpdate.push_back(&(*igcIt));
+                    connectionFound = true;
                     break;
                 }
                 ++igcIt;
             }
         }
-        someNotMoved = true;
     }
     assert(cToMove.size() > 0 || incToUpdate.size() > 0);
-    assert(someNotMoved);
-
+    
     auto newNode = forest.createNode(par); // parent of includeGroup
     for (auto c : orderedToMove) {
         c->_detachThisNode();
@@ -350,6 +366,7 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     for (auto gcp : incToUpdate) {
         gcp->first = newNode;
     }
+    assert(!par->isOutDegreeOneNode());
     return newNode;
 }
 template<typename T, typename U>
