@@ -10,7 +10,7 @@ bool PhyloStatement::debugCheck() const {
     if (ie != leafSet) {
         std::cerr << " includeGroup "; writeOttSet(std::cerr, " ", includeGroup, " "); std::cerr << std::endl;
         std::cerr << " excludeGroup "; writeOttSet(std::cerr, " ", excludeGroup, " "); std::cerr << std::endl;
-        std::cerr << " leafset "; writeOttSet(std::cerr, " ", leafSet, " "); std::cerr << std::endl;
+        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", leafSet, " "); std::cerr << std::endl;
         assert(false);
     }
 #endif
@@ -40,10 +40,14 @@ template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     LOG(DEBUG) << " RootedForest::addPhyloStatement";
     std::cerr << " ingroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
-    std::cerr << " leafset "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+    std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
     ps.debugCheck();
-    if (conflictsWithPreviouslyAddedStatement(ps)) {
+    const auto incompatRedundant = checkWithPreviouslyAddedStatement(ps);
+    if (incompatRedundant.first) {
         return false;
+    }
+    if (incompatRedundant.second) { // we have added an identical group before
+        return true;
     }
     if (addPhyloStatementToGraph(ps)) {
         addedSplitsByLeafSet[ps.leafSet].insert(ps.includeGroup);
@@ -53,34 +57,39 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::conflictsWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
+std::pair<bool, bool>
+RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
     if (debuggingOutputEnabled) {
         LOG(DEBUG) << " RootedForest::conflictsWithPreviouslyAddedStatement";
         LOG(DEBUG) << " ingroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); LOG(DEBUG) << std::endl;
-        std::cerr << " leafset "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
     }
     for (const auto sIt : addedSplitsByLeafSet) {
         const auto & prevAddedLeafSet = sIt.first;
         const auto relLeafSet = set_intersection_as_set(prevAddedLeafSet, ps.leafSet);
+        const bool exactLS = relLeafSet.size() == ps.leafSet.size();
         if (relLeafSet.size() < 3) { // no conflict is possible if the intersection is so small that no phylostatements are made
             continue;
         }
         const auto relIncGroup = set_intersection_as_set(ps.includeGroup, relLeafSet);
         const auto & setPrevInc = sIt.second;
         for (const auto & prevInc : setPrevInc) {
+            if (exactLS && prevInc == ps.includeGroup) {
+                return std::pair<bool, bool>(false, true);
+            }
             if (culledAndCompleteConflictWRTLeafSet(relIncGroup, prevInc, relLeafSet)) {
-                return true;
+                return std::pair<bool, bool>(true, false);
             }
         }
     }
-    return false;
+    return std::pair<bool, bool>(false, false);
 }
 
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     LOG(DEBUG) << " RootedForest::addPhyloStatementToGraph";
     std::cerr << " ingroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
-    std::cerr << " leafset "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+    std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
     if (ps.isTrivial()) {
         auto newOttIds = set_difference_as_set(ps.includeGroup, ottIdSet);
         for (auto noid : newOttIds) {

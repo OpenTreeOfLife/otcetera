@@ -195,7 +195,9 @@ class RootedForest {
         return trees.empty();
     }
     bool addPhyloStatement(const PhyloStatement &);
-    bool conflictsWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
+
+    // return <conflicts, redundant> pair based on cache of previously added groups.
+    std::pair<bool, bool> checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
 
     node_type * createNode(node_type * par);
     node_type * createLeaf(node_type * par, const OttId & oid);
