@@ -87,19 +87,19 @@ class ScaffoldedSupertree
         for (auto nd : iter_post_internal(*taxonomy)) {
             if (debuggingOutput) {
                 LOG(DEBUG) << "About to call resolveOrCollapse for node ott" << nd->getOttId();
-                writeNumberedDOT(nd, false, false);
-                writeNumberedDOT(nd, false, true);
+                LOG(DEBUG) << " write DOT for subtree w/o taxonomy" << nd->getOttId();
+                writeNumberedDOT(nd, true, false);
+                LOG(DEBUG) << " write DOT for subtree w taxonomy" << nd->getOttId();
+                writeNumberedDOT(nd, true, true);
             }
             resolveOrCollapse(nd, sc);
             if (debuggingOutput) {
                 LOG(DEBUG) << "After handling " << nd->getOttId(); writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
+                LOG(DEBUG) << " write DOT for whole tree w/o taxonomy" << nd->getOttId();
                 writeNumberedDOT(taxonomy->getRoot(), true, false);
+                LOG(DEBUG) << " write DOT for whole tree w taxonomy" << nd->getOttId();
                 writeNumberedDOT(taxonomy->getRoot(), true, true);
             }
-        }
-        if (debuggingOutput) {
-            writeNumberedDOT(taxonomy->getRoot(), true, false);
-            writeNumberedDOT(taxonomy->getRoot(), true, true);
         }
     }
 

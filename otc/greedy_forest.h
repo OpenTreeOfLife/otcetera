@@ -28,9 +28,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                               const OttIdSet & leafSet,
                               int treeIndex,
                               long groupIndex,
-                              SupertreeContextWithSplits &sc) {
-        return attemptToAddGrouping(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
-    }
+                              SupertreeContextWithSplits &sc);
     void finalizeTree(SupertreeContextWithSplits &sc);
     void setPossibleMonophyletic(U & /*scaffoldNode*/) {
         assert(false);

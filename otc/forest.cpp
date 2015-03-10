@@ -37,6 +37,18 @@ RootedForest<T,U>::RootedForest()
     ottIdToNode(nodeSrc.getData().ottIdToNode) {
 }
 
+// TMP could be faster by storing node->tree lookup
+template<typename T, typename U>
+bool RootedForest<T,U>::isAttached(long ottId) const {
+    auto f = ottIdToNode.find(ottId);
+    if (f == ottIdToNode.end()) {
+        return false;
+    }
+    node_type * n = f->second;
+    assert(n != nullptr);
+    return (n->getParent() != nullptr);
+}
+
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {

@@ -90,6 +90,21 @@ bool GreedyPhylogeneticForest<T,U>::addGroupToNewTree(const OttIdSet & incGroup,
 }
 
 template<typename T, typename U>
+bool GreedyPhylogeneticForest<T,U>::addLeaf(PathPairing<T, U> * ppptr,
+                      const OttIdSet & incGroup,
+                      const OttIdSet & leafSet,
+                      int treeIndex,
+                      long groupIndex,
+                      SupertreeContextWithSplits &sc) {
+    assert(incGroup.size() == 1);
+    const auto ottId = *incGroup.begin();
+    if (!isAttached(ottId)) {
+        return attemptToAddGrouping(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
+    }
+    return true;
+}
+
+template<typename T, typename U>
 bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
                                                         const OttIdSet & incGroup,
                                                         const OttIdSet & leafSet,

@@ -223,6 +223,7 @@ class RootedForest {
     bool empty() const {
         return trees.empty();
     }
+    bool isAttached(long ottId) const;
     bool addPhyloStatement(const PhyloStatement &);
 
     // return <conflicts, redundant> pair based on cache of previously added groups.

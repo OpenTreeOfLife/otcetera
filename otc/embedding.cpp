@@ -224,9 +224,10 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
         for (auto lp : lai.second) {
-            if (lp->scaffoldDes) {
-                lp->scaffoldDes = p;
-            }
+            assert(lp->scaffoldDes == &scaffoldNode);
+            assert(lp->scaffoldAnc == &scaffoldNode);
+            lp->scaffoldDes = p;
+            lp->scaffoldAnc = p;
             parThreading.loopEmbeddings[lai.first].insert(lp);
         }
     }
