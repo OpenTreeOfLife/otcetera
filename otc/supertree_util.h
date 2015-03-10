@@ -31,7 +31,16 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
 bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet);
+template<typename T>
+bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup);
 
+
+// assumes that nd is the mrca of incGroup and excGroup IDs
+template<typename T>
+inline bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet) {
+    const OttIdSet excGroup = set_difference_as_set(leafSet, incGroup);
+    return canBeResolvedToDisplayExcGroup(nd, incGroup, excGroup);
+}
 
 } // namespace
 #endif

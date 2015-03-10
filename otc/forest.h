@@ -175,12 +175,16 @@ class FTree {
          ottIdToNode(ottIdToNodeRef) {
     }
     private:
+    bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     void addPhyloStatementAsChildOfRoot(const PhyloStatement &);
     // this is greedy, we should be building separate FTree instances in many cases....
     void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {
         addPhyloStatementAsChildOfRoot(ps);
     }
-    
+    OttIdSet addPhyloStatementAtNode(const PhyloStatement & ps, 
+                                 node_type * includeGroupMRCA,
+                                 const OttIdSet & attachedElsewhere);
+    node_type * getMRCA(const OttIdSet &id);
     
     friend class RootedForest<T, U>;
     FTree(const FTree &) = delete;

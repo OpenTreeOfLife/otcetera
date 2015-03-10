@@ -2,6 +2,7 @@
 #include "otc/util.h"
 #include "otc/tree_data.h"
 #include "otc/supertree_util.h"
+#include "otc/tree_operations.h"
 namespace otc {
 
 bool PhyloStatement::debugCheck() const {
@@ -110,7 +111,7 @@ std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlapping(const
     typedef OverlapFTreePair<T, U> MyOverlapFTreePair;
     std::map<std::size_t, std::list<MyOverlapFTreePair> > byOverlapSize;
     for (auto & tpIt : trees) {
-        FTree<T, U> * ftree = &(tpIt.second);
+        tree_type * ftree = &(tpIt.second);
         const OttIdSet & inTree = ftree->getIncludedOttIds();
         const OttIdSet inter = set_intersection_as_set(inTree, inc);
         if (!inter.empty()) {
@@ -144,7 +145,9 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         return true;
     }
     auto byIncCardinality = getSortedOverlapping(ps.includeGroup);
+    LOG(DEBUG) << byIncCardinality.size() << " FTree instance referred to in byIncCardinality";
     if (byIncCardinality.empty()) {
+        LOG(DEBUG) << "No intersection between includeGroup of an existing FTree.";
         // this ingroup does not overlap with any ftree. find the FTree with the most overlap
         //  with the excludeGroup...
         auto byExcCardinality = getSortedOverlapping(ps.excludeGroup);
@@ -165,7 +168,97 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         // no other trees had an includeGroup, so no need to add constraints....
         return true;
     }
+    auto & attachmentPair = *byIncCardinality.begin();
+    if (attachmentPair.first.size() == 1) {
+        assert(false);
+        // greedy approach is to add the rest of the ingroup as deep in this tree as possible.
+        //  less greedy: make include/exclude statements at that node
+        return true;
+    } else {
+        std::list<node_type * > nonTrivMRCAs;
+        OttIdSet attachedElsewhere;
+        for (const auto & incPair : byIncCardinality) {
+            const auto & incGroupIntersection = incPair.first;
+            if (incGroupIntersection.size() == 1) {
+                break; // must be compatible because we've hit the singelton nodes...
+            }
+            attachedElsewhere.insert(incGroupIntersection.begin(), incGroupIntersection.end());
+            tree_type * f = incPair.second;
+            auto includeGroupA = f->getMRCA(incGroupIntersection);
+            // If any of the ingroup are specifically excluded, then we have move deeper in the tree.
+            // TMP this could be more efficient and avoid the while loop.
+            while (f->anyExcludedAtNode(includeGroupA, ps.includeGroup)) {
+                includeGroupA = includeGroupA->getParent();
+                assert(includeGroupA != nullptr);
+            }
+            const OttIdSet excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
+            if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
+                return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
+            }
+            nonTrivMRCAs.push_back(includeGroupA);
+        }
+        // all non trivial overlapping trees have approved this split...
+        auto ntmIt = begin(nonTrivMRCAs);
+        for (const auto & incPair : byIncCardinality) {
+            const auto & incGroupIntersection = incPair.first;
+            if (incGroupIntersection.size() == 1) {
+                break; // must be compatible because we've hit the singelton nodes...
+            }
+            tree_type * f = incPair.second;
+            assert(ntmIt != nonTrivMRCAs.end());
+            node_type * includeGroupA = *ntmIt++;
+            auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere);
+            if (!connectedHere.empty()) {
+                attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
+            }
+        }
+        return true;
+    } 
+}
+
+template<typename T, typename U>
+bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
+    const node_type * p = nd->getParent();
+    const OttIdSet & ndi = nd->getData().desIds;
+    for (auto oid : ottIdSet) {
+        auto nd = ottIdToNode.at(oid);
+        auto gcIt = excludesConstraints.find(nd);
+        if (gcIt != excludesConstraints.end()) {
+            for (const auto & gc : gcIt->second) {
+                node_type * en = gc.first;
+                if (en == nd || en == p || isSubset(ndi, en->getData().desIds)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+template<typename T, typename U>
+OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
+                             node_type * includeGroupA,
+                             const OttIdSet & attachedElsewhere) {
     assert(false);
+}
+
+template<typename T, typename U>
+RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
+    if (ottIdSet.empty()) {
+        assert(false);
+        return nullptr;
+    }
+    const auto rel = set_intersection_as_set(ottIdSet, getConnectedOttIds());
+    for (auto nextOttId : rel) {
+        auto x = ottIdToNode.find(nextOttId);
+        if (x == ottIdToNode.end()) {
+            continue;
+        }
+        node_type * aTip = x->second;
+        assert(aTip != nullptr);
+        return searchAncForMRCAOfDesIds(aTip, rel);
+    }
+    return nullptr;
 }
 
 template<typename T, typename U>

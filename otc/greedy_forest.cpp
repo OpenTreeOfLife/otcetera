@@ -41,10 +41,9 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
     }
 }
 
-// assumes that nd is the mrca of incGroup and excGroup IDs
+
 template<typename T>
-bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet) {
-    const OttIdSet excGroup = set_difference_as_set(leafSet, incGroup);
+bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup) {
     for (auto c : iter_child_const(*nd)) {
         if (haveIntersection(incGroup, c->getData().desIds) && haveIntersection(excGroup, c->getData().desIds)) {
             return false;
