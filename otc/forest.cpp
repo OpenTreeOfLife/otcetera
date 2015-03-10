@@ -84,7 +84,7 @@ RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) c
             if (exactLS && prevInc == ps.includeGroup) {
                 return std::pair<bool, bool>(false, true);
             }
-            if (culledAndCompleteConflictWRTLeafSet(relIncGroup, prevInc, relLeafSet)) {
+            if (culledAndCompleteIncompatWRTLeafSet(relIncGroup, prevInc, relLeafSet)) {
                 return std::pair<bool, bool>(true, false);
             }
         }

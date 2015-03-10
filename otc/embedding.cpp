@@ -9,7 +9,7 @@ namespace otc {
 constexpr bool COLLAPSE_IF_CONFLICT = true;
 
 
-bool culledAndCompleteConflictWRTLeafSet(const OttIdSet & culled,
+bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,
                                                 const OttIdSet & complete,
                                                 const OttIdSet & leafSet) {
     //TMP this could be more efficient. See areCompatibleDesIdSets
