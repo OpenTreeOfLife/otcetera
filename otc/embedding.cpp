@@ -3,6 +3,7 @@
 #include "otc/embedding.h"
 #include "otc/util.h"
 #include "otc/supertree_context.h"
+#include "otc/supertree_util.h"
 #include "otc/tree_operations.h"
 #include "otc/error.h"
 namespace otc {

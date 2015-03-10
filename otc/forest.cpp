@@ -64,8 +64,7 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
 }
 
 template<typename T, typename U>
-std::pair<bool, bool>
-RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
+std::pair<bool, bool> RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
     if (false && debuggingOutputEnabled) {
         LOG(DEBUG) << " RootedForest::conflictsWithPreviouslyAddedStatement";
         std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
@@ -92,6 +91,39 @@ RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) c
     return std::pair<bool, bool>(false, false);
 }
 
+
+template<typename T, typename U>
+using OverlapFTreePair = std::pair<OttIdSet, FTree<T, U> *>;
+
+template<typename T, typename U>
+void consumeMapToList(std::map<T, std::list<U> > &m, std::list<U> & out) {
+    for (auto & mIt : m) {
+        for (auto el = begin(mIt.second) ; el != end(mIt.second); ++el) {
+            out.push_back(*el);
+        }
+    }
+}
+
+
+template<typename T, typename U>
+std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlapping(const OttIdSet &inc) {
+    typedef OverlapFTreePair<T, U> MyOverlapFTreePair;
+    std::map<std::size_t, std::list<MyOverlapFTreePair> > byOverlapSize;
+    for (auto & tpIt : trees) {
+        FTree<T, U> * ftree = &(tpIt.second);
+        const OttIdSet & inTree = ftree->getIncludedOttIds();
+        const OttIdSet inter = set_intersection_as_set(inTree, inc);
+        if (!inter.empty()) {
+            const auto k = inter.size();
+            auto & tsList = byOverlapSize[k];
+            tsList.push_back(MyOverlapFTreePair(inter, ftree));
+        }
+    }
+    std::list<MyOverlapFTreePair> r;
+    consumeMapToList(byOverlapSize, r);
+    return r;
+}
+
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
@@ -111,6 +143,28 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         addDisjointTree(ps);
         return true;
     }
+    auto byIncCardinality = getSortedOverlapping(ps.includeGroup);
+    if (byIncCardinality.empty()) {
+        // this ingroup does not overlap with any ftree. find the FTree with the most overlap
+        //  with the excludeGroup...
+        auto byExcCardinality = getSortedOverlapping(ps.excludeGroup);
+        if (byExcCardinality.empty()) {
+            // none of the ingroup or outgroup are attached.
+            // create a new FTree...
+            // this can happen if the outgroup are mentioned in exclude statements (so the 
+            //  areDisjoint returns false). But sense will add all of the leaves in the 
+            //  includeGroup and excludeGroup to this new tree, we don't need any new constraints
+            //  so we can exit
+            addDisjointTree(ps);
+        } else {
+            // TMP TOO GREEDY A CONNECTION - should only do this if all of the outgroup is connected...
+            // we'll add the ingroup as a child of the root
+            auto ftreeToAttach = byExcCardinality.begin()->second;
+            ftreeToAttach->addIncludeGroupDisjointPhyloStatement(ps);
+        }
+        // no other trees had an includeGroup, so no need to add constraints....
+        return true;
+    }
     assert(false);
 }
 
@@ -126,18 +180,26 @@ template<typename T, typename U>
 void FTree<T, U>::mirrorPhyloStatement(const PhyloStatement &ps) {
     assert(root == nullptr);
     root = forest.createNode(nullptr);
-    auto c = forest.createNode(root); // parent of includeGroup
-    supportedBy[c].push_back(ps.provenance);
+    addPhyloStatementAsChildOfRoot(ps);
+}
+
+template<typename T, typename U>
+void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
+    assert(root != nullptr);
+    auto parOfIncGroup = forest.createNode(root); // parent of includeGroup
+    supportedBy[parOfIncGroup].push_back(ps.provenance);
     assert(ps.excludeGroup.size() > 0);
     for (auto i : ps.excludeGroup) {
         forest.createLeaf(root, i);
     }
     for (auto i : ps.includeGroup) {
-        forest.createLeaf(c, i);
+        forest.createLeaf(parOfIncGroup, i);
     }
     root->getData().desIds = ps.leafSet;
-    c->getData().desIds = ps.includeGroup;
+    parOfIncGroup->getData().desIds = ps.includeGroup;
+    connectedIds.insert(begin(ps.leafSet), end(ps.leafSet));
 }
+
 
 
 template class FTree<RTSplits, MappedWithSplitsData>; // force explicit instantiaion of this template.

@@ -158,6 +158,14 @@ class FTree {
     node_type * getRoot() {
         return root;
     }
+    // OTT Ids of nodes on the graph only....
+    const OttIdSet & getConnectedOttIds() {
+        return connectedIds;
+    }
+    // includes OTT Ids of nodes in includesConstraints
+    const OttIdSet & getIncludedOttIds() {
+        return getRoot()->getData().desIds;
+    }
     FTree(std::size_t treeID,
           RootedForest<T, U> & theForest,
           std::map<long, node_type *> & ottIdToNodeRef)
@@ -167,12 +175,20 @@ class FTree {
          ottIdToNode(ottIdToNodeRef) {
     }
     private:
+    void addPhyloStatementAsChildOfRoot(const PhyloStatement &);
+    // this is greedy, we should be building separate FTree instances in many cases....
+    void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {
+        addPhyloStatementAsChildOfRoot(ps);
+    }
+    
+    
     friend class RootedForest<T, U>;
     FTree(const FTree &) = delete;
     FTree & operator=(const FTree &) = delete;
     // data members
     const std::size_t treeId; // key for this tree in forest - used for debugging
     node_type * root;
+    OttIdSet connectedIds;
     std::map<node_type *, std::list<GroupingConstraint> > excludesConstraints;
     std::map<node_type *, std::list<GroupingConstraint> > includesConstraints;
     std::map<node_type *, OttIdSet> constrainedDesIds;
@@ -202,9 +218,10 @@ class RootedForest {
     node_type * createNode(node_type * par);
     node_type * createLeaf(node_type * par, const OttId & oid);
     private:
+    std::list<std::pair<OttIdSet, FTree<T, U> *> > getSortedOverlapping(const OttIdSet &inc);
     node_type * addDetachedLeaf(const OttId & ottId);
     tree_type & addDisjointTree(const PhyloStatement &);
-    bool addPhyloStatementToGraph(const PhyloStatement &);
+    bool addPhyloStatementToGraph(const PhyloStatement &ps);
     tree_type & createNewTree();
     protected:
     RootedTree<T, U> nodeSrc; // not part of the forest, just the memory manager for the nodes
