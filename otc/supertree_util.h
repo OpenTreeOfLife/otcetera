@@ -22,7 +22,7 @@ void reportOnConflicting(std::ostream & out,
 
 // takes 2 "includeGroups" from different PhyloStatements.
 //  `culled` has been pruned down to the common leafSet, and the common leafSet is passed in as `leafSet
-bool culledAndCompleteConflictWRTLeafSet(const OttIdSet & culled, const OttIdSet & complete, const OttIdSet & leafSet);
+bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled, const OttIdSet & complete, const OttIdSet & leafSet);
 
 template<typename T, typename U>
 void copyStructureToResolvePolytomy(const T * srcPoly,
