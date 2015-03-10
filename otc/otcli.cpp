@@ -15,7 +15,7 @@ static el::Configurations defaultConf;
 ///////////////////////////////////////////////////////////////
 
 namespace otc {
-
+bool debuggingOutputEnabled = false;
 OTCLI::OTCLI(const char *title,
           const char *descrip,
           const char *usage,
@@ -88,6 +88,7 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
             recursionNeeded = true;
         }
         this->verbose = true;
+        debuggingOutputEnabled = true;
         defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
         el::Loggers::reconfigureLogger("default", defaultConf);
     } else if (f == 't') {
@@ -102,6 +103,7 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
             recursionNeeded = true;
         }
         this->verbose = false;
+        debuggingOutputEnabled = false;
         defaultConf.set(el::Level::Global, el::ConfigurationType::Enabled, "false");
         el::Loggers::reconfigureLogger("default", defaultConf);
     } else if (f == 'f') {

@@ -1,6 +1,7 @@
 #include "otc/forest.h"
 #include "otc/util.h"
 #include "otc/tree_data.h"
+#include "otc/supertree_util.h"
 namespace otc {
 
 bool PhyloStatement::debugCheck() const {
@@ -41,11 +42,51 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     std::cerr << " ingroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
     std::cerr << " leafset "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
     ps.debugCheck();
+    if (conflictsWithPreviouslyAddedStatement(ps)) {
+        return false;
+    }
+    if (addPhyloStatementToGraph(ps)) {
+        addedSplitsByLeafSet[ps.leafSet].insert(ps.includeGroup);
+        return true;
+    }
+    return false;
+}
+
+template<typename T, typename U>
+bool RootedForest<T,U>::conflictsWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
+    if (debuggingOutputEnabled) {
+        LOG(DEBUG) << " RootedForest::conflictsWithPreviouslyAddedStatement";
+        LOG(DEBUG) << " ingroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); LOG(DEBUG) << std::endl;
+        std::cerr << " leafset "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+    }
+    for (const auto sIt : addedSplitsByLeafSet) {
+        const auto & prevAddedLeafSet = sIt.first;
+        const auto relLeafSet = set_intersection_as_set(prevAddedLeafSet, ps.leafSet);
+        if (relLeafSet.size() < 3) { // no conflict is possible if the intersection is so small that no phylostatements are made
+            continue;
+        }
+        const auto relIncGroup = set_intersection_as_set(ps.includeGroup, relLeafSet);
+        const auto & setPrevInc = sIt.second;
+        for (const auto & prevInc : setPrevInc) {
+            if (culledAndCompleteConflictWRTLeafSet(relIncGroup, prevInc, relLeafSet)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+template<typename T, typename U>
+bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
+    LOG(DEBUG) << " RootedForest::addPhyloStatementToGraph";
+    std::cerr << " ingroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
+    std::cerr << " leafset "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
     if (ps.isTrivial()) {
         auto newOttIds = set_difference_as_set(ps.includeGroup, ottIdSet);
         for (auto noid : newOttIds) {
             addDetachedLeaf(noid);
         }
+
         return true;
     }
     if (areDisjoint(ps.leafSet, ottIdSet)) {

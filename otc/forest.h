@@ -195,11 +195,14 @@ class RootedForest {
         return trees.empty();
     }
     bool addPhyloStatement(const PhyloStatement &);
+    bool conflictsWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
+
     node_type * createNode(node_type * par);
     node_type * createLeaf(node_type * par, const OttId & oid);
     private:
     node_type * addDetachedLeaf(const OttId & ottId);
     tree_type & addDisjointTree(const PhyloStatement &);
+    bool addPhyloStatementToGraph(const PhyloStatement &);
     tree_type & createNewTree();
     protected:
     RootedTree<T, U> nodeSrc; // not part of the forest, just the memory manager for the nodes
@@ -207,6 +210,15 @@ class RootedForest {
     std::size_t nextTreeId;
     OttIdSet ottIdSet;
     std::map<OttId, node_type *> & ottIdToNode; // alias to this data field in nodeSrc for convenience
+    
+    // addedSplitsByLeafSet
+    // TMP, store every PhlyoStatement that we have accepted. This may become too memory inefficient
+    // If we can do this, we can reject a new split based on conflict with another split that was
+    //  accepted (which is less cryptic than just saying that we can't add it.) Some splits can't be
+    //  added because of conflict with "emergent" properties of the forest. So checking
+    //  addedSplitsByLeafSet is not sufficient to know if we can keep a split
+    typedef std::set<OttIdSet> SetOfOTTIdSets;
+    std::map<OttIdSet, SetOfOTTIdSets> addedSplitsByLeafSet; 
 };
 
 template<typename T, typename U>

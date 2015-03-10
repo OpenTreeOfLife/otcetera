@@ -9,6 +9,7 @@
 #include "otc/easylogging++.hpp"
 
 namespace otc {
+extern bool debuggingOutputEnabled;
 // Might want to move to using
 //	https://github.com/lczech/genesis/blob/master/src/tree/bipartitions.hpp
 // at some point for faster operations on sets of indices

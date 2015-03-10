@@ -20,6 +20,15 @@ void updateAncestralPathOttIdSet(T * nd,
                                  const OttIdSet & newEls,
                                  std::map<const T *, NodeEmbedding<T, U> > & m);
 
+/* a pair of aligned nodes from an embedding of a phylogeny onto a scaffold
+   In NodeEmbedding objects two forms of these pairings are created:
+        1. tips of the tree are mapped to the scaffoldNode assigned the same
+            OTT Id,
+        2. internal nodes in phylo tree are mapped to the least inclusive node
+            in the scaffold tree that has all of the descendant OTT Ids from
+            the phylo tree. (so the phyloNode->getData().desIds will be a subset
+            of scaffoldNode->getData().desIds)
+*/
 template<typename T, typename U>
 class NodePairing {
     public:
@@ -33,6 +42,13 @@ class NodePairing {
     }
 };
 
+/* Represents the mapping of an edge from phyloParent -> phyloChild onto
+    a scaffold tree. The endpoints will be pairs of nodes that were aligned.
+    Note that the phyloChild is a child of phyloParent, but scaffoldDes can
+    be the same node as scaffoldAnc or it can be any descendant of that node.
+    Thus an directed edge in the phylo tree pairs with a directed path in the
+    scaffold.
+*/
 template<typename T, typename U>
 class PathPairing {
     public:
@@ -93,6 +109,25 @@ inline void updateAncestralPathOttIdSet(T * nd,
     }
 }
 
+/* A NodeEmbedding object holds pointers to all of the NodePairs and PathPairs
+        relevant to a node (nodeWithEmbedding) in the scaffold Tree.
+    These are stored in a map in which the key is the index of the phylo tree 
+        involved in the mapping.
+    The relevant pairings are:
+        1. all node pairings for nodeWithEmbedding,
+        2. all paths that are loops for nodeWithEmbedding (nodeWithEmbedding is the scaffoldDes
+            and the scaffoldAnc for the PathPair), and
+        3. all paths the leave this node. ie. those that paths that:
+            A. have a scaffoldDes that is nodeWithEmbedding or one of its descendants, AND
+            B. have scaffoldAnc set to an ancestor of nodeWithEmbedding
+    Note that if you want all of the paths that intersect with nodeWithEmbedding, you have
+        to check the edgeBelowEmbeddings field of all of nodeWithEmbedding's children. This
+        is because any PathPairing that has nodeWithEmbedding as the scaffoldAnc will not
+        be found in the edgeBelowEmbeddings for nodeWithEmbedding. And if it is not a loop
+        node for nodeWithEmbedding, the path will not be in loopEmbeddings either. These
+        paths are trivial wrt resolving the tree for nodeWithEmbedding, but they do 
+        contribute to the relevant leaf sets
+*/
 template<typename T, typename U>
 class NodeEmbedding {
     public:

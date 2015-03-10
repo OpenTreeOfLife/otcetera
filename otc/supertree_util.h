@@ -4,7 +4,7 @@
 #include <map>
 #include <set>
 #include "otc/otc_base_includes.h"
-
+#include "otc/util.h"
 namespace otc {
 template<typename T, typename U>
 void updateAncestralPathOttIdSet(T * nd,
@@ -20,6 +20,9 @@ void reportOnConflicting(std::ostream & out,
                          const std::set<PathPairing<T, U> *> & exitPaths,
                          const OttIdSet & phyloLeafSet);
 
+// takes 2 "includeGroups" from different PhyloStatements.
+//  `culled` has been pruned down to the common leafSet, and the common leafSet is passed in as `leafSet
+bool culledAndCompleteConflictWRTLeafSet(const OttIdSet & culled, const OttIdSet & complete, const OttIdSet & leafSet);
 
 template<typename T, typename U>
 void copyStructureToResolvePolytomy(const T * srcPoly,
@@ -29,6 +32,20 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
 template<typename T>
 bool canBeResolvedToDisplay(const T *nd, const OttIdSet & ingroup, const OttIdSet & leafSet);
 
+inline bool culledAndCompleteConflictWRTLeafSet(const OttIdSet & culled,
+                                                const OttIdSet & complete,
+                                                const OttIdSet & leafSet) {
+    //TMP this could be more efficient. See areCompatibleDesIdSets
+    const OttIdSet inter = set_intersection_as_set(culled, complete);
+    if (inter.empty()) {
+        return true;
+    }
+    if (inter == culled) {
+        return true;
+    }
+    const OttIdSet compCulled = set_intersection_as_set(complete, leafSet);
+    return (inter == compCulled);
+}
 
 } // namespace
 #endif
