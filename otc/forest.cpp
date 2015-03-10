@@ -38,30 +38,37 @@ RootedForest<T,U>::RootedForest()
 
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
-    LOG(DEBUG) << " RootedForest::addPhyloStatement";
-    std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
-    std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+    if (debuggingOutputEnabled) {
+        LOG(DEBUG) << " RootedForest::addPhyloStatement";
+        std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
+        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+    }
     ps.debugCheck();
     const auto incompatRedundant = checkWithPreviouslyAddedStatement(ps);
     if (incompatRedundant.first) {
+        LOG(DEBUG) << "    hit incompat w/ prev added shortcircuit";
         return false;
     }
     if (incompatRedundant.second) { // we have added an identical group before
+        LOG(DEBUG) << "    hit redundandt w/ prev added shortcircuit";
         return true;
     }
+    LOG(DEBUG) << "    checking compat w/ graph";
     if (addPhyloStatementToGraph(ps)) {
+        LOG(DEBUG) << "    compat w/ graph";
         addedSplitsByLeafSet[ps.leafSet].insert(ps.includeGroup);
         return true;
     }
+    LOG(DEBUG) << "    incompat w/ graph";
     return false;
 }
 
 template<typename T, typename U>
 std::pair<bool, bool>
 RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
-    if (debuggingOutputEnabled) {
+    if (false && debuggingOutputEnabled) {
         LOG(DEBUG) << " RootedForest::conflictsWithPreviouslyAddedStatement";
-        LOG(DEBUG) << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); LOG(DEBUG) << std::endl;
+        std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
         std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
     }
     for (const auto sIt : addedSplitsByLeafSet) {
@@ -87,9 +94,11 @@ RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) c
 
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
-    LOG(DEBUG) << " RootedForest::addPhyloStatementToGraph";
-    std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
-    std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+    if (debuggingOutputEnabled) {
+        LOG(DEBUG) << " RootedForest::addPhyloStatementToGraph";
+        std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
+        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+    }
     if (ps.isTrivial()) {
         auto newOttIds = set_difference_as_set(ps.includeGroup, ottIdSet);
         for (auto noid : newOttIds) {

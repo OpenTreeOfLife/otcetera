@@ -8,6 +8,23 @@
 namespace otc {
 constexpr bool COLLAPSE_IF_CONFLICT = true;
 
+
+bool culledAndCompleteConflictWRTLeafSet(const OttIdSet & culled,
+                                                const OttIdSet & complete,
+                                                const OttIdSet & leafSet) {
+    //TMP this could be more efficient. See areCompatibleDesIdSets
+    const OttIdSet inter = set_intersection_as_set(culled, complete);
+    if (inter.empty()) {
+        return false;
+    }
+    if (inter == culled) {
+        return false;
+    }
+    const OttIdSet compCulled = set_intersection_as_set(complete, leafSet);
+    return (inter != compCulled);
+}
+
+
 // Returns all loop paths for nd and all edgeBelowEmbeddings of its children
 template<typename T, typename U>
 std::vector<const PathPairing<T, U> *>

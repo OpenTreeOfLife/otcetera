@@ -32,20 +32,6 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
 template<typename T>
 bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet);
 
-inline bool culledAndCompleteConflictWRTLeafSet(const OttIdSet & culled,
-                                                const OttIdSet & complete,
-                                                const OttIdSet & leafSet) {
-    //TMP this could be more efficient. See areCompatibleDesIdSets
-    const OttIdSet inter = set_intersection_as_set(culled, complete);
-    if (inter.empty()) {
-        return true;
-    }
-    if (inter == culled) {
-        return true;
-    }
-    const OttIdSet compCulled = set_intersection_as_set(complete, leafSet);
-    return (inter == compCulled);
-}
 
 } // namespace
 #endif
