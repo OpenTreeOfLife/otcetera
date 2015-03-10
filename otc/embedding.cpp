@@ -40,16 +40,22 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const T *nd,
         }
     }
     for (auto c : iter_child_const(*nd)) {
+        //LOG(DEBUG) << "    getAllIncomingPathPairs c = " << getDesignator(*c);
         const auto cembed = eForNd.find(c);
         if (cembed == eForNd.end()) {
+            //LOG(DEBUG) << "     No embedding found";
             continue;
         }
         const auto & emb = cembed->second;
         const auto ceait = emb.edgeBelowEmbeddings.find(treeIndex);
         if (ceait != emb.edgeBelowEmbeddings.end()) {
             for (const auto & e : ceait->second) {
+                //std::cerr << "     Found some paths e.currChildOttIdSet ="; writeOttSet(std::cerr, "      ", e->currChildOttIdSet, " "); std::cerr << '\n';
+    
                 r.push_back(e);
             }
+        } else {
+                //LOG(DEBUG) << "     No embedding found for this tree";
         }
     }
     return r;
@@ -254,14 +260,47 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
             }
         }
     }
+    for (auto child : iter_child(scaffoldNode)) {
+        auto cit = sc.scaffold2NodeEmbedding.find(child);
+        if (cit == sc.scaffold2NodeEmbedding.end()) {
+            continue;
+        }
+        NodeEmbedding<T, U>& childThreading = cit->second;
+        for (auto ceabi : childThreading.edgeBelowEmbeddings) {
+            for (auto clp : ceabi.second) {
+                if (clp->scaffoldAnc == &scaffoldNode) {
+                    clp->scaffoldAnc = p;
+                }
+            }
+        }
+    }
     pruneCollapsedNode(scaffoldNode, sc);
 }
 
 template<typename T, typename U>
 void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextWithSplits & sc) {
-    LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", but not the actual node. Entering wonky state where the threading paths disagree with the tree"; // TMP DO we still need to add "child paths" to parent *before* scaffoldNode?
+    LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", adding child to parent";
+    // NOTE: it is important that we add the children of scaffoldNode the left of its location
+    //  in the tree so that the postorder traversal will not iterate over them.
+    auto lc = scaffoldNode.getPrevSib();
+    auto rc = scaffoldNode.getNextSib();
     scaffoldNode._detachThisNode();
     sc.detachedScaffoldNodes.insert(&scaffoldNode);
+    auto p = scaffoldNode.getParent();
+    const auto cv = scaffoldNode.getChildren();
+    if (cv.empty()) {
+        assert(false);
+        return;
+    }
+    for (auto c : cv) {
+        c->_setParent(p);
+    }
+    if (lc == nullptr) {
+        p->_setLChild(cv[0]);
+    } else {
+        lc->_setNextSib(cv[0]);
+    }
+    (*cv.rbegin())->_setNextSib(rc);
 }
 
 template<typename T, typename U>
@@ -312,6 +351,7 @@ OttIdSet NodeEmbedding<T, U>::getRelevantDesIds(const std::map<const T *, NodeEm
     OttIdSet relevantIds;
     for (auto pIt : ippV) {
         const OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(*pIt);
+        //std::cerr << "    for tree " << treeIndex << " otherRelevantIds returning"; writeOttSet(std::cerr, " ", otherRelevantIds, " "); std::cerr << '\n';
         relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
     }
     std::cerr << " for tree " << treeIndex << " getRelevantDesIds returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';

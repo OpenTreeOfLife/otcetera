@@ -67,9 +67,8 @@ class PathPairing {
         std::swap(oldIds, currChildOttIdSet);
         if (contains(oldIds, oid)) {
             oldIds.erase(oid);
-        } else {
-            n.insert(oid);
         }
+        n.insert(oid);
         updateAncestralPathOttIdSet(scaffoldDes, oldIds, n, m);
         currChildOttIdSet = n;
     }

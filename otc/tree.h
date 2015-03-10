@@ -96,8 +96,8 @@ class RootedTreeNode {
             return const_cast<node_type *>(const_cast<const node_type *>(this)->getPrevSib());
         }
 
-        std::vector<const node_type *> getChildren() const {
-            std::vector<const node_type *> children;
+        std::vector<node_type *> getChildrenNC() {
+            std::vector<node_type *> children;
             auto * currNode = getFirstChild();
             while(currNode) {
                 children.push_back(currNode);
@@ -105,6 +105,20 @@ class RootedTreeNode {
             }
             return children;
         }
+
+        std::vector<node_type *> getChildren() {
+            return getChildrenNC();
+        }
+
+        std::vector<const node_type *> getChildren() const {
+            node_type * t = const_cast<node_type *>(this);
+            std::vector<const node_type *> r;
+            for (auto i : t->getChildren()) {
+                r.push_back(i);
+            }
+            return r;
+        }
+
         unsigned getOutDegree() const {
             unsigned n = 0;
             auto currNode = getFirstChild();
