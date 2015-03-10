@@ -308,6 +308,7 @@ template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids) {
     std::set<RootedTreeNode<T> *> cToMove;
     std::list<RootedTreeNode<T> *> orderedToMove;
+    std::list<GroupingConstraint *> incToUpdate;
     bool someNotMoved = false;
     for (auto oid : oids) {
         auto n = ottIdToNode.at(oid);
@@ -320,9 +321,22 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
                 }
             }
         }
+        auto icIt = includesConstraints.find(n);
+        if (icIt != includesConstraints.end()) {
+            auto & listOfConstr = icIt->second;
+            auto igcIt = begin(listOfConstr);
+            for (; igcIt != end(listOfConstr);) {
+                auto np = igcIt->first;
+                if (np == par) {
+                    incToUpdate.push_back(&(*igcIt));
+                    break;
+                }
+                ++igcIt;
+            }
+        }
         someNotMoved = true;
     }
-    assert(cToMove.size() > 1);
+    assert(cToMove.size() > 0 || incToUpdate.size() > 0);
     assert(someNotMoved);
 
     auto newNode = forest.createNode(par); // parent of includeGroup
@@ -332,6 +346,9 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
         newNode->addChild(c);
         const auto & di = c->getData().desIds;
         newNode->getData().desIds.insert(begin(di), end(di));
+    }
+    for (auto gcp : incToUpdate) {
+        gcp->first = newNode;
     }
     return newNode;
 }
