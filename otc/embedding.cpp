@@ -1,3 +1,4 @@
+#include <queue>
 #include "otc/greedy_forest.h"
 #include "otc/embedding.h"
 #include "otc/util.h"
@@ -145,11 +146,26 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             mapToProvideOrder[pp->getOttIdSet()] = pp;
         }
         long bogusGroupIndex = 0; // should get this from the node!
-        for (auto mpoIt : mapToProvideOrder) {
-            const auto & d = mpoIt.first;
-            auto ppptr = mpoIt.second;
-            gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+        typedef std::pair<const OttIdSet *, PathPairing<T,U> *>  q_t;
+        std::queue<q_t> trivialQ;
+        for (auto mpoIt = mapToProvideOrder.rbegin(); mpoIt != mapToProvideOrder.rend(); ++mpoIt) {
+            auto ppptr = mpoIt->second;
+            if (ppptr->isEffectivelyATip()) {
+                const q_t toQ{&(mpoIt->first), ppptr};
+                trivialQ.push(toQ);
+            } else {
+                const auto & d = mpoIt->first;
+                gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+                considered.insert(ppptr);
+            }
+        }
+        while (!trivialQ.empty()) {
+            const q_t triv = trivialQ.front();
+            const OttIdSet * inc = triv.first;
+            const auto ppptr = triv.second;
+            gpf.addLeaf(ppptr, *inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
             considered.insert(ppptr);
+            trivialQ.pop();
         }
     }
     // we might have missed some descendants  - any child that is has
@@ -259,7 +275,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
         for (auto mpoIt : mapToProvideOrder) {
             const auto & d = mpoIt.first;
             auto ppptr = mpoIt.second;
-            gpf.attemptToAddGrouping(ppptr, d, relevantIds, treeInd, bogusGroupIndex++, sc);
+            gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
             if (!gpf.possibleMonophyleticGroupStillViable()) {
                 collapseGroup(scaffoldNode, sc);
                 return;

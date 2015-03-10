@@ -28,9 +28,9 @@ template<typename T, typename U>
 void copyStructureToResolvePolytomy(const T * srcPoly,
                                     U & destTree,
                                     typename U::node_type * destPoly);
-// assumes that nd is the mrca of ingroup and outgroup IDs
+// assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
-bool canBeResolvedToDisplay(const T *nd, const OttIdSet & ingroup, const OttIdSet & leafSet);
+bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet);
 
 inline bool culledAndCompleteConflictWRTLeafSet(const OttIdSet & culled,
                                                 const OttIdSet & complete,

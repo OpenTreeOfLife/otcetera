@@ -63,7 +63,7 @@ An FTree's constraint statement should not include any of the connected nodes fo
 As with NodeWithSplits, the node's data has a desIds that lists the Ids of the nodes.
      However, to store the constraints, the FTree may also contain a constrainedDesIds
      for any of the nodes that are connected to that FTree.
-Groupings make the phylogenetic statements that a group of nodes (the "ingroup" of the
+Groupings make the phylogenetic statements that a group of nodes (the "includeGroup" of the
     grouping statement) share at least
 
 

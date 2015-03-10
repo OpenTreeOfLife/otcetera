@@ -57,6 +57,9 @@ class PathPairing {
     U * phyloChild;
     U * phyloParent;
     OttIdSet currChildOttIdSet;
+    bool isEffectivelyATip() {
+        return currChildOttIdSet.size() == 1;
+    }
     void setOttIdSet(long oid, std::map<const U *, NodeEmbedding<T, U> > & m) {
         LOG(DEBUG) << "setOttIdSet " << oid;
         OttIdSet n;

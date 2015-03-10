@@ -18,11 +18,19 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     GreedyPhylogeneticForest(const GreedyPhylogeneticForest &) = delete;
     GreedyPhylogeneticForest & operator=(const GreedyPhylogeneticForest &) = delete;
     bool attemptToAddGrouping(PathPairing<T, U> * ppptr,
-                              const OttIdSet & ingroup,
+                              const OttIdSet & incGroup,
                               const OttIdSet & leafSet,
                               int treeIndex,
                               long groupIndex,
                               SupertreeContextWithSplits &sc);
+    bool addLeaf(PathPairing<T, U> * ppptr,
+                              const OttIdSet & incGroup,
+                              const OttIdSet & leafSet,
+                              int treeIndex,
+                              long groupIndex,
+                              SupertreeContextWithSplits &sc) {
+        return attemptToAddGrouping(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
+    }
     void finalizeTree(SupertreeContextWithSplits &sc);
     void setPossibleMonophyletic(U & /*scaffoldNode*/) {
         assert(false);
@@ -32,17 +40,17 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     }
     void finishResolutionOfThreadedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits & sc);
     private:
-    CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & ingroup, const OttIdSet & leafSet);
-    void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & ingroup, const OttIdSet & leafSet);
+    CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & incGroup, const OttIdSet & leafSet);
+    void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *ri,
                             NodeWithSplits *delr,
                             NodeWithSplits *deli,
                             NodeWithSplits *delo,
-                            const OttIdSet & ingroup,
+                            const OttIdSet & incGroup,
                             const OttIdSet & leafSet);
     std::set<OttIdSet> encountered; // used so that the PhyloStatement  have refs that outlive them
-    bool addGroupToNewTree(const OttIdSet & ingroup,
+    bool addGroupToNewTree(const OttIdSet & incGroup,
                            const OttIdSet & leafSet,
                            int treeIndex,
                            long groupIndex);
