@@ -177,6 +177,7 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     } else {
         std::list<node_type * > nonTrivMRCAs;
         OttIdSet attachedElsewhere;
+        std::vector<bool> shouldResolve;
         for (const auto & incPair : byIncCardinality) {
             const auto & incGroupIntersection = incPair.first;
             if (incGroupIntersection.size() == 1) {
@@ -195,10 +196,12 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
             if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
                 return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
             }
+            shouldResolve.push_back(!excInc.empty());
             nonTrivMRCAs.push_back(includeGroupA);
         }
         // all non trivial overlapping trees have approved this split...
         auto ntmIt = begin(nonTrivMRCAs);
+        auto srIt = begin(shouldResolve);
         for (const auto & incPair : byIncCardinality) {
             const auto & incGroupIntersection = incPair.first;
             if (incGroupIntersection.size() == 1) {
@@ -207,6 +210,10 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
             tree_type * f = incPair.second;
             assert(ntmIt != nonTrivMRCAs.end());
             node_type * includeGroupA = *ntmIt++;
+            const bool addNode = *srIt++;
+            if (addNode) {
+                includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps.includeGroup);
+            }
             auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere);
             if (!connectedHere.empty()) {
                 attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
@@ -221,8 +228,8 @@ bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
     const node_type * p = nd->getParent();
     const OttIdSet & ndi = nd->getData().desIds;
     for (auto oid : ottIdSet) {
-        auto nd = ottIdToNode.at(oid);
-        auto gcIt = excludesConstraints.find(nd);
+        auto leafNd = ottIdToNode.at(oid);
+        auto gcIt = excludesConstraints.find(leafNd);
         if (gcIt != excludesConstraints.end()) {
             for (const auto & gc : gcIt->second) {
                 node_type * en = gc.first;
@@ -236,10 +243,119 @@ bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
 }
 
 template<typename T, typename U>
+RootedTreeNode<T> * FTree<T,U>::addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId) {
+    connectedIds.insert(ottId);
+    return forest.createLeaf(par, ottId);
+}
+
+template<typename T, typename U>
+void FTree<T,U>::addExcludeStatement(long ottId, RootedTreeNode<T> * excludedFrom, const PhyloStatementSource &pss) {
+    OttIdSet x;
+    x.insert(ottId);
+    if (anyExcludedAtNode(excludedFrom, x)) {
+        return; // already excluded from this subtree
+    }
+    RootedTreeNode<T> * eNode = ottIdToNode.at(ottId);
+    // If any of the descendants exclude this node, we can remove those exclude statements,
+    //  because they'll be "dominated by this one"
+    auto ecIt = excludesConstraints.find(eNode);
+    if (ecIt != excludesConstraints.end()) {
+        auto & listOfExc = ecIt->second;
+        auto efIt = begin(listOfExc);
+        for (; efIt != end(listOfExc);) {
+            auto aen = efIt->first;
+            if (isAncestorDesNoIter(excludedFrom, aen)) {
+                efIt = listOfExc.erase(efIt);
+            } else {
+                ++efIt;
+            }
+        }
+    }
+    excludesConstraints[eNode].push_back(GroupingConstraint(excludedFrom, pss));
+}
+
+template<typename T, typename U>
+void FTree<T,U>::addIncludeStatement(long ottId, RootedTreeNode<T> * includedIn, const PhyloStatementSource &pss) {
+    assert(includedIn != nullptr);
+    if (contains(includedIn->getData().desIds, ottId)) {
+        return; // must be included in a des
+    }
+    RootedTreeNode<T> * eNode = ottIdToNode.at(ottId);
+    // If any of the ancestors include this node, we can remove those include statements,
+    //  because they'll be "dominated by this one"
+    auto icIt = includesConstraints.find(eNode);
+    if (icIt != includesConstraints.end()) {
+        auto & listOfInc = icIt->second;
+        auto ifIt = begin(listOfInc);
+        for (; ifIt != end(listOfInc);) {
+            auto aen = ifIt->first;
+            if (isAncestorDesNoIter(includedIn, aen)) {
+                ifIt = listOfInc.erase(ifIt);
+            } else {
+                ++ifIt;
+            }
+        }
+    }
+    includesConstraints[eNode].push_back(GroupingConstraint(includedIn, pss));
+    // Since we know that the node will be a descendant of includedIn we add its Id to desIds
+    includedIn->getData().desIds.insert(ottId);
+    for (auto anc : iter_anc(*includedIn)) {
+        anc->getData().desIds.insert(ottId);
+    }
+}
+
+template<typename T, typename U>
+RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids) {
+    std::set<RootedTreeNode<T> *> cToMove;
+    std::list<RootedTreeNode<T> *> orderedToMove;
+    bool someNotMoved = false;
+    for (auto oid : oids) {
+        auto n = ottIdToNode.at(oid);
+        for (auto anc : iter_anc(*n)) {
+            if (anc->getParent() == par) {
+                if (!contains(cToMove, anc)) {
+                    cToMove.insert(anc);
+                    orderedToMove.push_back(anc);
+                    break;
+                }
+            }
+        }
+        someNotMoved = true;
+    }
+    assert(cToMove.size() > 1);
+    assert(someNotMoved);
+
+    auto newNode = forest.createNode(par); // parent of includeGroup
+    for (auto c : orderedToMove) {
+        c->_detachThisNode();
+        c->_setNextSib(nullptr);
+        newNode->addChild(c);
+        const auto & di = c->getData().desIds;
+        newNode->getData().desIds.insert(begin(di), end(di));
+    }
+    return newNode;
+}
+template<typename T, typename U>
 OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
-                             node_type * includeGroupA,
-                             const OttIdSet & attachedElsewhere) {
-    assert(false);
+                                             RootedTreeNode<T> * includeGroupA,
+                                             const OttIdSet & attachedElsewhere) {
+    OttIdSet r;
+    for (auto oid : ps.includeGroup) {
+        if (!ottIdIsConnected(oid)) {
+            if (contains(attachedElsewhere, oid)) {
+                addIncludeStatement(oid, includeGroupA, ps.provenance);
+            } else {
+                addLeafNoDesUpdate(includeGroupA, oid);
+                r.insert(oid);
+            }
+        }
+    }
+    for (auto oid : ps.excludeGroup) {
+        if (!ottIdIsConnected(oid)) {
+            addExcludeStatement(oid, includeGroupA, ps.provenance);
+        }
+    }
+    return r;
 }
 
 template<typename T, typename U>
@@ -283,10 +399,10 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     supportedBy[parOfIncGroup].push_back(ps.provenance);
     assert(ps.excludeGroup.size() > 0);
     for (auto i : ps.excludeGroup) {
-        forest.createLeaf(root, i);
+        addLeafNoDesUpdate(root, i);
     }
     for (auto i : ps.includeGroup) {
-        forest.createLeaf(parOfIncGroup, i);
+        addLeafNoDesUpdate(parOfIncGroup, i);
     }
     root->getData().desIds = ps.leafSet;
     parOfIncGroup->getData().desIds = ps.includeGroup;

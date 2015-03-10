@@ -8,7 +8,7 @@
 #include <list>
 #include "otc/otc_base_includes.h"
 #include "otc/tree.h"
-
+#include "otc/util.h"
 namespace otc {
 template<typename T, typename U> class RootedForest;
 template<typename T, typename U> class FTree;
@@ -175,6 +175,14 @@ class FTree {
          ottIdToNode(ottIdToNodeRef) {
     }
     private:
+    bool ottIdIsConnected(long ottId) const {
+        return contains(connectedIds, ottId);
+    }
+    void addIncludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
+    void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
+
+    RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids);
+    RootedTreeNode<T> * addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId);
     bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     void addPhyloStatementAsChildOfRoot(const PhyloStatement &);
     // this is greedy, we should be building separate FTree instances in many cases....
@@ -182,8 +190,8 @@ class FTree {
         addPhyloStatementAsChildOfRoot(ps);
     }
     OttIdSet addPhyloStatementAtNode(const PhyloStatement & ps, 
-                                 node_type * includeGroupMRCA,
-                                 const OttIdSet & attachedElsewhere);
+                                     node_type * includeGroupMRCA,
+                                     const OttIdSet & attachedElsewhere);
     node_type * getMRCA(const OttIdSet &id);
     
     friend class RootedForest<T, U>;
@@ -193,6 +201,7 @@ class FTree {
     const std::size_t treeId; // key for this tree in forest - used for debugging
     node_type * root;
     OttIdSet connectedIds;
+    // from excludedNode to the nodes that it is excluded from...
     std::map<node_type *, std::list<GroupingConstraint> > excludesConstraints;
     std::map<node_type *, std::list<GroupingConstraint> > includesConstraints;
     std::map<node_type *, OttIdSet> constrainedDesIds;
