@@ -137,8 +137,7 @@ std::pair<bool, bool> RootedForest<T,U>::checkWithPreviouslyAddedStatement(const
 }
 
 
-template<typename T, typename U>
-using OverlapFTreePair = std::pair<OttIdSet, FTree<T, U> *>;
+
 
 template<typename T, typename U>
 void consumeMapToList(std::map<T, std::list<U> > &m, std::list<U> & out) {
@@ -151,7 +150,7 @@ void consumeMapToList(std::map<T, std::list<U> > &m, std::list<U> & out) {
 
 
 template<typename T, typename U>
-std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlapping(const OttIdSet &inc) {
+std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlappingTrees(const OttIdSet &inc) {
     typedef OverlapFTreePair<T, U> MyOverlapFTreePair;
     std::map<std::size_t, std::list<MyOverlapFTreePair> > byOverlapSize;
     for (auto & tpIt : trees) {
@@ -169,6 +168,85 @@ std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlapping(const
     return r;
 }
 
+
+template<typename T, typename U>
+void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloStatement &ps) {
+    // this ingroup does not overlap with any ftree. find the FTree with the most overlap
+    //  with the excludeGroup...
+    auto byExcCardinality = getSortedOverlappingTrees(ps.excludeGroup);
+    if (byExcCardinality.empty()) {
+        // none of the ingroup or outgroup are attached.
+        // create a new FTree...
+        // this can happen if the outgroup are mentioned in exclude statements (so the 
+        //  areDisjoint returns false). But sense will add all of the leaves in the 
+        //  includeGroup and excludeGroup to this new tree, we don't need any new constraints
+        //  so we can exit
+        addDisjointTree(ps);
+    } else {
+        // TMP TOO GREEDY A CONNECTION - should only do this if all of the outgroup is connected...
+        // we'll add the ingroup as a child of the root
+        auto ftreeToAttach = byExcCardinality.begin()->second;
+        ftreeToAttach->addIncludeGroupDisjointPhyloStatement(ps);
+    }
+    // no other trees had an includeGroup, so no need to add constraints....
+}
+
+template<typename T, typename U>
+bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality, const PhyloStatement &ps) {
+    std::list<node_type * > nonTrivMRCAs;
+    OttIdSet attachedElsewhere;
+    std::vector<bool> shouldResolve;
+    for (const auto & incPair : byIncCardinality) {
+        const auto & incGroupIntersection = incPair.first;
+        if (incGroupIntersection.size() == 1) {
+            break; // must be compatible because we've hit the singelton nodes...
+        }
+        attachedElsewhere.insert(incGroupIntersection.begin(), incGroupIntersection.end());
+        tree_type * f = incPair.second;
+        auto includeGroupA = f->getMRCA(incGroupIntersection);
+        // If any of the ingroup are specifically excluded, then we have move deeper in the tree.
+        // TMP this could be more efficient and avoid the while loop.
+        while (f->anyExcludedAtNode(includeGroupA, ps.includeGroup)) {
+            includeGroupA = includeGroupA->getParent();
+            assert(includeGroupA != nullptr);
+        }
+        const OttIdSet excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
+        if (debuggingOutputEnabled) {
+            LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
+            std::cerr << " addPhyloStatementToGraph search for an ancestor of:  "; writeOttSet(std::cerr, " ", incGroupIntersection, " "); std::cerr << std::endl;
+            std::cerr << "  wanted to avoid =  "; writeOttSet(std::cerr, " ", ps.excludeGroup, " "); std::cerr << std::endl;
+            std::cerr << "  found a node with desIds:  "; writeOttSet(std::cerr, " ", includeGroupA->getData().desIds, " "); std::cerr << std::endl;
+            std::cerr << "  which includes the excludegroup members:  "; writeOttSet(std::cerr, " ", excInc, " "); std::cerr << std::endl;
+        }
+        if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
+            return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
+        }
+        shouldResolve.push_back(!excInc.empty());
+        nonTrivMRCAs.push_back(includeGroupA);
+    }
+    // all non trivial overlapping trees have approved this split...
+    auto ntmIt = begin(nonTrivMRCAs);
+    auto srIt = begin(shouldResolve);
+    for (const auto & incPair : byIncCardinality) {
+        const auto & incGroupIntersection = incPair.first;
+        if (incGroupIntersection.size() == 1) {
+            break; // must be compatible because we've hit the singelton nodes...
+        }
+        tree_type * f = incPair.second;
+        assert(ntmIt != nonTrivMRCAs.end());
+        node_type * includeGroupA = *ntmIt++;
+        const bool addNode = *srIt++;
+        if (addNode) {
+            includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps.includeGroup);
+        }
+        auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere);
+        if (!connectedHere.empty()) {
+            attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
+        }
+    }
+    return true;
+}
+
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
@@ -181,97 +259,26 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         for (auto noid : newOttIds) {
             addDetachedLeaf(noid);
         }
-
         return true;
     }
     if (areDisjoint(ps.leafSet, ottIdSet)) {
         addDisjointTree(ps);
         return true;
     }
-    auto byIncCardinality = getSortedOverlapping(ps.includeGroup);
+    auto byIncCardinality = getSortedOverlappingTrees(ps.includeGroup);
     LOG(DEBUG) << byIncCardinality.size() << " FTree instance referred to in byIncCardinality";
     if (byIncCardinality.empty()) {
         LOG(DEBUG) << "No intersection between includeGroup of an existing FTree.";
-        // this ingroup does not overlap with any ftree. find the FTree with the most overlap
-        //  with the excludeGroup...
-        auto byExcCardinality = getSortedOverlapping(ps.excludeGroup);
-        if (byExcCardinality.empty()) {
-            // none of the ingroup or outgroup are attached.
-            // create a new FTree...
-            // this can happen if the outgroup are mentioned in exclude statements (so the 
-            //  areDisjoint returns false). But sense will add all of the leaves in the 
-            //  includeGroup and excludeGroup to this new tree, we don't need any new constraints
-            //  so we can exit
-            addDisjointTree(ps);
-        } else {
-            // TMP TOO GREEDY A CONNECTION - should only do this if all of the outgroup is connected...
-            // we'll add the ingroup as a child of the root
-            auto ftreeToAttach = byExcCardinality.begin()->second;
-            ftreeToAttach->addIncludeGroupDisjointPhyloStatement(ps);
-        }
-        // no other trees had an includeGroup, so no need to add constraints....
+        addIngroupDisjointPhyloStatementToGraph(ps);
         return true;
     }
     auto & attachmentPair = *byIncCardinality.begin();
     if (attachmentPair.first.size() == 1) {
-        assert(false);
         // greedy approach is to add the rest of the ingroup as deep in this tree as possible.
         //  less greedy: make include/exclude statements at that node
-        return true;
-    } else {
-        std::list<node_type * > nonTrivMRCAs;
-        OttIdSet attachedElsewhere;
-        std::vector<bool> shouldResolve;
-        for (const auto & incPair : byIncCardinality) {
-            const auto & incGroupIntersection = incPair.first;
-            if (incGroupIntersection.size() == 1) {
-                break; // must be compatible because we've hit the singelton nodes...
-            }
-            attachedElsewhere.insert(incGroupIntersection.begin(), incGroupIntersection.end());
-            tree_type * f = incPair.second;
-            auto includeGroupA = f->getMRCA(incGroupIntersection);
-            // If any of the ingroup are specifically excluded, then we have move deeper in the tree.
-            // TMP this could be more efficient and avoid the while loop.
-            while (f->anyExcludedAtNode(includeGroupA, ps.includeGroup)) {
-                includeGroupA = includeGroupA->getParent();
-                assert(includeGroupA != nullptr);
-            }
-            const OttIdSet excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
-            if (debuggingOutputEnabled) {
-                LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
-                std::cerr << " addPhyloStatementToGraph search for an ancestor of:  "; writeOttSet(std::cerr, " ", incGroupIntersection, " "); std::cerr << std::endl;
-                std::cerr << "  wanted to avoid =  "; writeOttSet(std::cerr, " ", ps.excludeGroup, " "); std::cerr << std::endl;
-                std::cerr << "  found a node with desIds:  "; writeOttSet(std::cerr, " ", includeGroupA->getData().desIds, " "); std::cerr << std::endl;
-                std::cerr << "  which includes the excludegroup members:  "; writeOttSet(std::cerr, " ", excInc, " "); std::cerr << std::endl;
-            }
-            if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
-                return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
-            }
-            shouldResolve.push_back(!excInc.empty());
-            nonTrivMRCAs.push_back(includeGroupA);
-        }
-        // all non trivial overlapping trees have approved this split...
-        auto ntmIt = begin(nonTrivMRCAs);
-        auto srIt = begin(shouldResolve);
-        for (const auto & incPair : byIncCardinality) {
-            const auto & incGroupIntersection = incPair.first;
-            if (incGroupIntersection.size() == 1) {
-                break; // must be compatible because we've hit the singelton nodes...
-            }
-            tree_type * f = incPair.second;
-            assert(ntmIt != nonTrivMRCAs.end());
-            node_type * includeGroupA = *ntmIt++;
-            const bool addNode = *srIt++;
-            if (addNode) {
-                includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps.includeGroup);
-            }
-            auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere);
-            if (!connectedHere.empty()) {
-                attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
-            }
-        }
-        return true;
-    } 
+        LOG(DEBUG) << "Missing opportunity to special case ingroups that only overlap with leaves of current trees.\n";
+    }
+    return addIngroupOverlappingPhyloStatementToGraph(byIncCardinality, ps); 
 }
 
 template<typename T, typename U>

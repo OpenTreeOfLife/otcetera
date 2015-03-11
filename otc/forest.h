@@ -210,6 +210,8 @@ class FTree {
     std::map<long, node_type *> & ottIdToNode;
 };
 
+template<typename T, typename U>
+using OverlapFTreePair = std::pair<OttIdSet, FTree<T, U> *>;
 // Constraint: each node w/ an OTT Id is a tip
 //
 template<typename T, typename U>
@@ -230,13 +232,14 @@ class RootedForest {
 
     // return <conflicts, redundant> pair based on cache of previously added groups.
     std::pair<bool, bool> checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
-
     node_type * createNode(node_type * par);
     node_type * createLeaf(node_type * par, const OttId & oid);
     private:
-    std::list<std::pair<OttIdSet, FTree<T, U> *> > getSortedOverlapping(const OttIdSet &inc);
+    std::list<OverlapFTreePair<T,U> > getSortedOverlappingTrees(const OttIdSet &inc);
     node_type * addDetachedLeaf(const OttId & ottId);
     tree_type & addDisjointTree(const PhyloStatement &);
+    bool addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T,U> > &, const PhyloStatement &);
+    void addIngroupDisjointPhyloStatementToGraph(const PhyloStatement &);
     bool addPhyloStatementToGraph(const PhyloStatement &ps);
     tree_type & createNewTree();
     protected:
