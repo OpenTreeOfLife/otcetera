@@ -98,9 +98,7 @@ bool GreedyPhylogeneticForest<T,U>::addLeaf(PathPairing<T, U> * ppptr,
                       SupertreeContextWithSplits &sc) {
     assert(incGroup.size() == 1);
     const auto ottId = *incGroup.begin();
-    if (!isAttached(ottId)) {
-        return attemptToAddGrouping(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
-    }
+    registerLeaf(ottId);
     return true;
 }
 
@@ -111,6 +109,10 @@ bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppp
                                                         int treeIndex,
                                                         long groupIndex,
                                                         SupertreeContextWithSplits &sc) {
+    if (incGroup.size() == 1) {
+        addLeaf(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
+        return true;
+    }
     return addGroupToNewTree(incGroup, leafSet, treeIndex, groupIndex);
     /*
     if (this->empty() || areDisjoint(ottIdSet, leafSet)) { // first grouping, always add...
@@ -203,20 +205,27 @@ template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     auto roots = getRoots();
-    for (auto r : roots) {
-        std::cerr << " tree-in-forest = "; writeNewick(std::cerr, r); std::cerr << '\n';
+    if (roots.size() == 0) {
+        attachAllKnownTipsAsNewTree();
+        return;
+    } else {
+        for (auto r : roots) {
+            std::cerr << " tree-in-forest = "; writeNewick(std::cerr, r); std::cerr << '\n';
+        }
     }
     if (trees.size() < 2) {
         return;
     }
-
+    LOG(WARNING) << "finalizeTree is not correctly merging";
     auto rit = begin(roots);
     auto firstRoot = *rit;
     for (++rit; rit != end(roots); rit = roots.erase(rit)) {
         if ((*rit)->isTip()) {
             firstRoot->addChild(*rit);
         } else {
+            assert((*rit)->getParent() == nullptr);
             for (auto c : iter_child(**rit)) {
+                assert(c->isTip());
                 firstRoot->addChild(c);
             }
         }

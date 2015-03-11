@@ -57,11 +57,14 @@ class PathPairing {
     U * phyloChild;
     U * phyloParent;
     OttIdSet currChildOttIdSet;
-    bool isEffectivelyATip() {
+    bool pathIsNowTrivial() {
         return currChildOttIdSet.size() == 1;
     }
     void setOttIdSet(long oid, std::map<const U *, NodeEmbedding<T, U> > & m) {
-        LOG(DEBUG) << "setOttIdSet " << oid;
+        if (currChildOttIdSet.size() == 1 && *currChildOttIdSet.begin() == oid) {
+            return;
+        }
+        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << (long)this << " prev currChildOttIdSet = " ; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
         OttIdSet n;
         OttIdSet oldIds;
         std::swap(oldIds, currChildOttIdSet);
@@ -79,6 +82,7 @@ class PathPairing {
         phyloChild(child.phyloNode),
         phyloParent(parent.phyloNode),
         currChildOttIdSet(child.phyloNode->getData().desIds) {
+        LOG(DEBUG) << "On initialization for path " << (long)this << " currChildOttIdSet is: "; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << std::endl;
     }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 
@@ -98,6 +102,7 @@ inline void updateAncestralPathOttIdSet(T * nd,
                                         const OttIdSet & newEls,
                                         std::map<const T *, NodeEmbedding<T, U> > & m) {
     auto & curr = m.at(nd);
+    assert(oldEls.size() > 0);
     LOG(DEBUG) << "  " << nd->getOttId() << " calling updateAllPathsOttIdSets";
     if (!curr.updateAllPathsOttIdSets(oldEls, newEls)) {
         return;
@@ -213,9 +218,7 @@ class NodeEmbedding {
                            const std::vector<NodeWithSplits *> & aliasedBy,
                            bool verbose) const;
     bool updateAllPathsOttIdSets(const OttIdSet & oldEls, const OttIdSet & newEls) {
-        LOG(DEBUG) << "    updateAllPathsOttIdSets loops";
         bool r = updateAllMappedPathsOttIdSets(loopEmbeddings, oldEls, newEls);
-        LOG(DEBUG) << "    updateAllPathsOttIdSets edgeBelowEmbeddings ";
         return updateAllMappedPathsOttIdSets(edgeBelowEmbeddings, oldEls, newEls) || r;
     }
     std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(const T * nd,

@@ -65,9 +65,11 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const T *nd,
 
 template<typename T, typename U>
 bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
-    std::cerr << "  updateOttIdSetNoTraversal in currChildOttIdSet"; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
-    std::cerr << "  updateOttIdSetNoTraversal in oldEls"; writeOttSet(std::cerr, " ", oldEls, " "); std::cerr << '\n';
-    std::cerr << "  updateOttIdSetNoTraversal in newEls"; writeOttSet(std::cerr, " ", newEls, " "); std::cerr << '\n';
+    if (debuggingOutputEnabled) {
+        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in currChildOttIdSet"; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
+        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in oldEls"; writeOttSet(std::cerr, " ", oldEls, " "); std::cerr << '\n';
+        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in newEls"; writeOttSet(std::cerr, " ", newEls, " "); std::cerr << '\n';
+    }
     auto i = set_intersection_as_set(oldEls, currChildOttIdSet);
     if (i.size() < oldEls.size()) {
         return false;
@@ -78,7 +80,9 @@ bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const 
         }
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
-    std::cerr << "  updateOttIdSetNoTraversal out currChildOttIdSet"; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
+    if (debuggingOutputEnabled) {
+        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " on updateOttIdSetNoTraversal exit "; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
+    }
     return true;
 }
 
@@ -174,7 +178,8 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         std::queue<q_t> trivialQ;
         for (auto mpoIt = mapToProvideOrder.rbegin(); mpoIt != mapToProvideOrder.rend(); ++mpoIt) {
             auto ppptr = mpoIt->second;
-            if (ppptr->isEffectivelyATip()) {
+            if (ppptr->pathIsNowTrivial()) {
+                LOG(DEBUG) << "pathIsNowTrivial" ; writeOttSet(std::cerr, " ", mpoIt->first, " "); std::cerr << std::endl;
                 const q_t toQ{&(mpoIt->first), ppptr};
                 trivialQ.push(toQ);
             } else {

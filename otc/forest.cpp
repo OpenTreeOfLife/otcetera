@@ -36,6 +36,14 @@ RootedForest<T,U>::RootedForest()
     :nextTreeId(0U),
     ottIdToNode(nodeSrc.getData().ottIdToNode) {
 }
+template<typename T, typename U>
+void RootedForest<T,U>::registerLeaf(long ottId) {
+    auto f = ottIdToNode.find(ottId);
+    if (f != ottIdToNode.end()) {
+        return;
+    }
+    ottIdToNode[ottId] = createNode(nullptr);
+}
 
 // TMP could be faster by storing node->tree lookup
 template<typename T, typename U>
@@ -50,6 +58,23 @@ bool RootedForest<T,U>::isAttached(long ottId) const {
 }
 
 template<typename T, typename U>
+bool RootedForest<T,U>::nodeIsAttached(RootedTreeNode<T> & n) const {
+    return (n.getParent() != nullptr);
+}
+
+template<typename T, typename U>
+void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
+    tree_type & t = createNewTree();
+    t.root = createNode(nullptr);
+    for (auto & o2n : ottIdToNode) {
+        auto nd = o2n.second;
+        if (!nodeIsAttached(*nd)) {
+            t.root->addChild(nd);
+        }
+    }
+}
+
+template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
         LOG(DEBUG) << " RootedForest::addPhyloStatement";
@@ -57,6 +82,13 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
         std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
     }
     ps.debugCheck();
+    assert(ps.includeGroup.size() > 1);
+    if (ps.includeGroup == ps.leafSet) {
+        LOG(DEBUG) << "trivial group - registering all leaves";
+        for (auto oid : ps.leafSet) {
+            registerLeaf(oid);
+        }
+    }
     const auto incompatRedundant = checkWithPreviouslyAddedStatement(ps);
     if (incompatRedundant.first) {
         LOG(DEBUG) << "    hit incompat w/ prev added shortcircuit";

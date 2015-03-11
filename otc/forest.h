@@ -223,7 +223,9 @@ class RootedForest {
     bool empty() const {
         return trees.empty();
     }
+    void registerLeaf(long ottId);
     bool isAttached(long ottId) const;
+    bool nodeIsAttached(RootedTreeNode<T> & n) const;
     bool addPhyloStatement(const PhyloStatement &);
 
     // return <conflicts, redundant> pair based on cache of previously added groups.
@@ -238,6 +240,7 @@ class RootedForest {
     bool addPhyloStatementToGraph(const PhyloStatement &ps);
     tree_type & createNewTree();
     protected:
+    void attachAllKnownTipsAsNewTree();
     RootedTree<T, U> nodeSrc; // not part of the forest, just the memory manager for the nodes
     std::map<std::size_t,  tree_type> trees;
     std::size_t nextTreeId;
