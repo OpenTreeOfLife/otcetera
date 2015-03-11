@@ -58,11 +58,11 @@ bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, cons
 // 3. update all of the outgoing paths so that they map
 //      to this taxon
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::finishResolutionOfThreadedClade(U & scaffoldNode,
+void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
                                                                            NodeEmbedding<T, U> * embedding,
                                                                            SupertreeContextWithSplits & sc) {
     const auto snoid = scaffoldNode.getOttId();
-    LOG(DEBUG) << "finishResolutionOfThreadedClade for " << snoid;
+    LOG(DEBUG) << "finishResolutionOfEmbeddedClade for " << snoid;
     finalizeTree(sc);
     assert(trees.size() == 1);
     auto & resolvedTree = begin(trees)->second;

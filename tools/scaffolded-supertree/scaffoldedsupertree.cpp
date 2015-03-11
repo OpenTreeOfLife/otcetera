@@ -230,7 +230,7 @@ class ScaffoldedSupertree
         treePtrByIndex.push_back(taxonomyAsSource);
         // Store the tree's filename
         raw->setName("TAXONOMY");
-        threadTaxonomyClone(*taxonomy, *taxonomyAsSource, treeIndex);
+        embedTaxonomyClone(*taxonomy, *taxonomyAsSource, treeIndex);
         return true;
     }
 };
@@ -269,7 +269,14 @@ bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
     }
     return true;
 }
-
+bool handleOttForestDOTFlag(OTCLI & otCLI, const std::string &narg) {
+    long conv = -1;
+    if (!char_ptr_to_long(narg.c_str(), &conv) || conv < 0) {
+        throw OTCError(std::string("Expecting a positive number as an ott ID after -z flag. Offending word: ") + narg);
+    }
+    ottIDBeingDebugged = conv;
+    return true;
+}
 bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg) {
     ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
@@ -308,6 +315,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('d',
                   "IDLIST should be a list of OTT IDs. A DOT file of the nodes will be generated ",
                   handleDotNodesFlag,
+                  true);
+    otCLI.addFlag('z',
+                  "ID should be an OTT ID. A series DOT files will be generated for the forest created during the resolution of this OTT ID ",
+                  handleOttForestDOTFlag,
                   true);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }

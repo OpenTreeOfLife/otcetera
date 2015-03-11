@@ -50,7 +50,7 @@ PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * pa
     return pathPairPtr;
 }
 void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
-    // do threading
+    // do embedding
     std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
     std::set<NodePairingWithSplits *> tipPairings;
     for (auto nd : iter_post(tree)) {
@@ -101,8 +101,8 @@ void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedW
     }
 }
 
-void EmbeddedTree::threadTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
-    // do threading
+void EmbeddedTree::embedTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
+    // do embedding
     std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
     for (auto nd : iter_post(tree)) {
         auto par = nd->getParent();

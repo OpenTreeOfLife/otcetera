@@ -16,6 +16,7 @@ static el::Configurations defaultConf;
 
 namespace otc {
 bool debuggingOutputEnabled = false;
+long ottIDBeingDebugged = -1;
 OTCLI::OTCLI(const char *title,
           const char *descrip,
           const char *usage,

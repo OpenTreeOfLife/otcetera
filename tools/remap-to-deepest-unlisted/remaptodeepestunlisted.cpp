@@ -7,7 +7,7 @@ typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename N
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 bool handleTabooOTTIdListFile(OTCLI & otCLI, const std::string &nextArg);
 
-struct EmbeddingThreading {
+struct Embeddings {
     std::map<Tree_t *, std::set<NodePairing<Node_t, Node_t> *> > nodeEmbeddings;
     std::map<Tree_t *, std::set<PathPairing<Node_t, Node_t> *> > edgeBelowEmbeddings;
     std::map<Tree_t *, std::set<PathPairing<Node_t, Node_t> *> > loopEmbeddings;
@@ -22,7 +22,7 @@ struct RemapToDeepestUnlistedState {
     std::list<std::unique_ptr<Tree_t> > inputTrees;
     std::list<NodePairing<Node_t, Node_t> > nodePairings;
     std::list<PathPairing<Node_t, Node_t> > pathPairings;
-    std::map<const Node_t*, EmbeddingThreading> taxoToEmbedding;
+    std::map<const Node_t*, Embeddings> taxoToEmbedding;
 
 
     RemapToDeepestUnlistedState()
@@ -40,7 +40,7 @@ struct RemapToDeepestUnlistedState {
     bool processTaxonomyTree(OTCLI & otCLI) {
         ottIds = keys(taxonomy->getData().ottIdToNode);
         for (auto nd : iter_node(*taxonomy)) {
-            taxoToEmbedding.emplace(nd, EmbeddingThreading{});
+            taxoToEmbedding.emplace(nd, Embeddings{});
         }
         otCLI.getParsingRules().ottIdValidator = &ottIds;
         return true;
@@ -49,8 +49,8 @@ struct RemapToDeepestUnlistedState {
     NodePairing<Node_t, Node_t> * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
         nodePairings.emplace_back(taxo, nd);
         auto ndPairPtr = &(*nodePairings.rbegin());
-        auto & athreading = taxoToEmbedding[taxo];
-        athreading.nodeEmbeddings[tree].insert(ndPairPtr);
+        auto & aembedding = taxoToEmbedding[taxo];
+        aembedding.nodeEmbeddings[tree].insert(ndPairPtr);
         return ndPairPtr;
     }
     PathPairing<Node_t, Node_t>  * _addPathMapping(NodePairing<Node_t, Node_t>  * parentPairing, NodePairing<Node_t, Node_t>  * childPairing, Tree_t *tree) {

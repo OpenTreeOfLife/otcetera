@@ -198,7 +198,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         }
     }
     // we might have missed some descendants  - any child that is has
-    //  "scaffoldNode" as its threaded parent, but which is not involved
+    //  "scaffoldNode" as its embedded parent, but which is not involved
     //  any loop or exiting edges.
     //  This means that we have no info on the placement of such nodes.
     //      so we'll just attach them here.
@@ -217,7 +217,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             assert(snc != nullptr);
         }
     }
-    gpf.finishResolutionOfThreadedClade(scaffoldNode, this, sc);
+    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, sc);
 }
 
 template<typename T, typename U>
@@ -231,7 +231,7 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
             np->scaffoldNode = p;
         }
     }
-    NodeEmbedding<T, U>& parThreading = sc.scaffold2NodeEmbedding.at(p);
+    NodeEmbedding<T, U>& parEmbedding = sc.scaffold2NodeEmbedding.at(p);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
         for (auto lp : lai.second) {
@@ -239,7 +239,7 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
             assert(lp->scaffoldAnc == &scaffoldNode);
             lp->scaffoldDes = p;
             lp->scaffoldAnc = p;
-            parThreading.loopEmbeddings[lai.first].insert(lp);
+            parEmbedding.loopEmbeddings[lai.first].insert(lp);
         }
     }
     // every exit edge for this node becomes a loop for its parent if it is not trivial
@@ -257,11 +257,11 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
                     }
                     sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
                 } else {
-                    parThreading.loopEmbeddings[ebai.first].insert(lp);
+                    parEmbedding.loopEmbeddings[ebai.first].insert(lp);
                 }
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par
-                assert(contains(parThreading.edgeBelowEmbeddings[ebai.first], lp));
+                assert(contains(parEmbedding.edgeBelowEmbeddings[ebai.first], lp));
             }
         }
     }
@@ -270,8 +270,8 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
         if (cit == sc.scaffold2NodeEmbedding.end()) {
             continue;
         }
-        NodeEmbedding<T, U>& childThreading = cit->second;
-        for (auto ceabi : childThreading.edgeBelowEmbeddings) {
+        NodeEmbedding<T, U>& childEmbedding = cit->second;
+        for (auto ceabi : childEmbedding.edgeBelowEmbeddings) {
             for (auto clp : ceabi.second) {
                 if (clp->scaffoldAnc == &scaffoldNode) {
                     clp->scaffoldAnc = p;
@@ -345,7 +345,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
             }
         }
     }
-    gpf.finishResolutionOfThreadedClade(scaffoldNode, this, sc);
+    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, sc);
 }
 
 template<typename T, typename U>

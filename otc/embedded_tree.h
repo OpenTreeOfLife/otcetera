@@ -27,7 +27,7 @@ class EmbeddedTree {
                                             NodePairingWithSplits * childPairing,
                                             std::size_t treeIndex);
     void embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex);
-    void threadTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex);
+    void embedTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex);
     void writeDOTExport(std::ostream & out,
                            const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
                            const NodeWithSplits * nd,

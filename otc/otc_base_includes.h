@@ -10,6 +10,7 @@
 
 namespace otc {
 extern bool debuggingOutputEnabled;
+extern long ottIDBeingDebugged;
 // Might want to move to using
 //	https://github.com/lczech/genesis/blob/master/src/tree/bipartitions.hpp
 // at some point for faster operations on sets of indices
