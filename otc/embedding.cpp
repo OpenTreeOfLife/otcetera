@@ -367,6 +367,7 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextW
     auto p = scaffoldNode.getParent();
     const auto cv = scaffoldNode.getChildren();
     scaffoldNode._detachThisNode();
+    sc.scaffoldTree.markAsDetached(&scaffoldNode);
     sc.detachedScaffoldNodes.insert(&scaffoldNode);
     if (cv.empty()) {
         assert(false);

@@ -207,12 +207,14 @@ class RootedTreeNode {
             auto ls = getPrevSib();
             if (ls == nullptr) {
                 auto p = getParent();
-                assert(p != nullptr);
-                p->_setLChild(getNextSib());
+                if (p != nullptr) {
+                    p->_setLChild(getNextSib());
+                }
             } else {
                 ls->_setNextSib(getNextSib());
             }
             rSib = nullptr;
+            parent = nullptr;
        }
     public:
         void writeAsNewick(std::ostream &out,
@@ -355,6 +357,9 @@ class RootedTree {
         }
         void markAsDetached(node_type * nd) {
             detached.insert(nd);
+        }
+        void markAsAttached(node_type * nd) {
+            detached.erase(nd);
         }
     private:
         //@ tmp recursive!

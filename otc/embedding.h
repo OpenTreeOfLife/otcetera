@@ -82,7 +82,7 @@ class PathPairing {
         phyloChild(child.phyloNode),
         phyloParent(parent.phyloNode),
         currChildOttIdSet(child.phyloNode->getData().desIds) {
-        LOG(DEBUG) << "On initialization for path " << (long)this << " currChildOttIdSet is: "; dbWriteOttSet(" ", currChildOttIdSet, " ");
+        //LOG(DEBUG) << "On initialization for path " << (long)this << " currChildOttIdSet is: "; dbWriteOttSet(" ", currChildOttIdSet, " ");
     }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 

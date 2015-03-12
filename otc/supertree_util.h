@@ -27,7 +27,8 @@ bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled, const OttIdSet
 template<typename T, typename U>
 void copyStructureToResolvePolytomy(const T * srcPoly,
                                     U & destTree,
-                                    typename U::node_type * destPoly);
+                                    typename U::node_type * destPoly,
+                                    SupertreeContextWithSplits &);
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
 bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet);

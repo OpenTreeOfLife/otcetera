@@ -11,7 +11,8 @@ namespace otc {
 template<typename T, typename U>
 void copyStructureToResolvePolytomy(const T * srcPoly,
                                     U & destTree,
-                                    typename U::node_type * destPoly) {
+                                    typename U::node_type * destPoly,
+                                    SupertreeContextWithSplits & sc) {
     std::map<const T *, typename U::node_type *> gpf2scaff;
     std::map<long, typename U::node_type *> & dOttIdToNode = destTree.getData().ottIdToNode;
     //LOG(DEBUG) << " adding " << srcPoly;
@@ -28,9 +29,18 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
         if (sn->hasOttId() && nid > 0) { // might assign negative number to nodes created in synth...
             auto oid = sn->getOttId();
             dn = dOttIdToNode.at(oid);
-            if (dn->getParent() != dp) {
-                dn->_detachThisNode();
+            if (contains(sc.detachedScaffoldNodes, dn)) {
+                dn->_setLChild(nullptr);
                 dn->_setNextSib(nullptr);
+                sc.detachedScaffoldNodes.erase(dn);
+                sc.scaffoldTree.markAsAttached(dn);
+            }
+            if (dn->getParent() != dp) {
+                if (dn->getParent() != nullptr) {
+                    dn->_detachThisNode();
+                    sc.scaffoldTree.markAsDetached(dn);
+                }
+                assert(dn->getNextSib() == nullptr);
                 dp->addChild(dn);
             }
         } else {
@@ -67,7 +77,7 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffold
     finalizeTree(sc);
     assert(trees.size() == 1);
     auto & resolvedTree = begin(trees)->second;
-    copyStructureToResolvePolytomy(resolvedTree.getRoot(), sc.scaffoldTree, &scaffoldNode);
+    copyStructureToResolvePolytomy(resolvedTree.getRoot(), sc.scaffoldTree, &scaffoldNode, sc);
     // remap all path pairings out of this node...
     for (auto treeInd2eout : embedding->edgeBelowEmbeddings) {
         for (auto eout : treeInd2eout.second) {
