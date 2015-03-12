@@ -154,8 +154,16 @@ class FTree {
     public:
     using node_type = RootedTreeNode<T>;
     using GroupingConstraint = std::pair<node_type*, PhyloStatementSource>;
-    void mirrorPhyloStatement(const PhyloStatement & ps);
-    node_type * getRoot() {
+    FTree(std::size_t treeID,
+          RootedForest<T, U> & theForest,
+          std::map<long, node_type *> & ottIdToNodeRef)
+        :treeId(treeID),
+         root(nullptr),
+         forest(theForest),
+         ottIdToNode(ottIdToNodeRef) {
+    }
+    // const methods:
+    const node_type * getRoot() const {
         return root;
     }
     // OTT Ids of nodes on the graph only....
@@ -166,21 +174,23 @@ class FTree {
     const OttIdSet & getIncludedOttIds() {
         return getRoot()->getData().desIds;
     }
-    FTree(std::size_t treeID,
-          RootedForest<T, U> & theForest,
-          std::map<long, node_type *> & ottIdToNodeRef)
-        :treeId(treeID),
-         root(nullptr),
-         forest(theForest),
-         ottIdToNode(ottIdToNodeRef) {
-    }
-    private:
     bool ottIdIsConnected(long ottId) const {
         return contains(connectedIds, ottId);
     }
+    const std::map<node_type *, std::list<GroupingConstraint> > & getExcluded2ConstraintMap() const {
+        return excludesConstraints;
+    }
+    const std::map<node_type *, std::list<GroupingConstraint> > & getIncluded2ConstraintMap() const {
+        return includesConstraints;
+    }
+    // non-const
+    node_type * getRoot() {
+        return root;
+    }
+    void mirrorPhyloStatement(const PhyloStatement & ps);
+    private:
     void addIncludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
-
     RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids);
     RootedTreeNode<T> * addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId);
     bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;

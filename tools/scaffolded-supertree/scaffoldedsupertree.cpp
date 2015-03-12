@@ -45,6 +45,12 @@ std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree
     return std::unique_ptr<TreeMappedWithSplits>(rawTreePtr);
 }
 
+enum SuperTreeDOTStep {
+    BEFORE_ND_WO_TAXO,
+    BEFORE_ND_W_TAXO,
+    AFTER_ND_WO_TAXO,
+    AFTER_ND_W_TAXO
+};
 
 class ScaffoldedSupertree
     : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits>,
@@ -62,6 +68,42 @@ class ScaffoldedSupertree
     int currDotFileIndex;
     bool debuggingOutput;
 
+    void writeEmbeddingDOT(SuperTreeDOTStep sts, const NodeWithSplits * nd, const NodeWithSplits * actionNd) {
+        std::string fn = "ScaffSuperTree_num";
+        fn += std::to_string(currDotFileIndex++);
+        fn += "_";
+        const bool includeLastTree = (sts == BEFORE_ND_W_TAXO || sts == AFTER_ND_W_TAXO);
+        if (sts == BEFORE_ND_WO_TAXO || sts == BEFORE_ND_W_TAXO) {
+            fn += "Nd";
+            fn += std::to_string(nd->getOttId());
+            fn += "Before";
+        } else if (sts == AFTER_ND_WO_TAXO || sts == AFTER_ND_W_TAXO) {
+            fn += "Nd";
+            fn += std::to_string(nd->getOttId());
+            fn += "After";
+        }
+        if (actionNd != nullptr) {
+            fn += "Nd";
+            fn += std::to_string(actionNd->getOttId());
+        }
+        if (includeLastTree) {
+            fn += "WTax";
+        }
+        fn += ".dot";
+        std::ofstream out;
+        out.open(fn);
+        const auto & thr = _getEmdeddingForNode(nd);
+        writeDOTExport(out, thr, nd, treePtrByIndex, true, includeLastTree);
+    }
+    void writeNumberedDOT(NodeWithSplits * nd, bool entireSubtree, bool includeLastTree) {
+        std::string fn = "ScaffSuperTree" + std::to_string(currDotFileIndex++) + ".dot";
+        LOG(DEBUG) << "writing DOT file \"" << fn << "\"";
+        std::ofstream out;
+        out.open(fn);
+        const auto & thr = _getEmdeddingForNode(nd);
+        writeDOTExport(out, thr, nd, treePtrByIndex, entireSubtree, includeLastTree);
+        LOG(DEBUG) << "finished DOT file \"" << fn << "\"";
+    }
 
     void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
         auto & thr = _getEmdeddingForNode(scaffoldNd);
@@ -80,39 +122,25 @@ class ScaffoldedSupertree
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{numTrees, taxoToEmbedding, *tax};
         if (debuggingOutput) {
-            writeNumberedDOT(taxonomy->getRoot(), true, false);
-            writeNumberedDOT(taxonomy->getRoot(), true, true);
-            LOG(DEBUG) << "Before supertree "; writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
+            writeEmbeddingDOT(BEFORE_ND_W_TAXO, taxonomy->getRoot(), nullptr);
+            writeEmbeddingDOT(BEFORE_ND_WO_TAXO, taxonomy->getRoot(), nullptr);
         }
         for (auto nd : iter_post_internal(*taxonomy)) {
             if (debuggingOutput) {
-                LOG(DEBUG) << "About to call resolveOrCollapse for node ott" << nd->getOttId();
-                LOG(DEBUG) << " write DOT for subtree w/o taxonomy" << nd->getOttId();
-                writeNumberedDOT(nd, true, false);
-                LOG(DEBUG) << " write DOT for subtree w taxonomy" << nd->getOttId();
-                writeNumberedDOT(nd, true, true);
+                writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
+                writeEmbeddingDOT(BEFORE_ND_WO_TAXO, nd, nd);
             }
             resolveOrCollapse(nd, sc);
             if (debuggingOutput) {
-                LOG(DEBUG) << "After handling " << nd->getOttId(); writeTreeAsNewick(std::cerr, *taxonomy); std::cerr << '\n';
-                LOG(DEBUG) << " write DOT for whole tree w/o taxonomy" << nd->getOttId();
-                writeNumberedDOT(taxonomy->getRoot(), true, false);
-                LOG(DEBUG) << " write DOT for whole tree w taxonomy" << nd->getOttId();
-                writeNumberedDOT(taxonomy->getRoot(), true, true);
+                writeEmbeddingDOT(AFTER_ND_W_TAXO, nd, nd);
+                writeEmbeddingDOT(AFTER_ND_WO_TAXO, nd, nd);
+                writeEmbeddingDOT(AFTER_ND_W_TAXO, taxonomy->getRoot(), nd);
+                writeEmbeddingDOT(AFTER_ND_WO_TAXO, taxonomy->getRoot(), nd);
             }
         }
     }
 
-    void writeNumberedDOT(NodeWithSplits * nd, bool entireSubtree, bool includeLastTree) {
-        std::string fn = "ScaffSuperTree" + std::to_string(currDotFileIndex++) + ".dot";
-        LOG(DEBUG) << "writing DOT file \"" << fn << "\"";
-        std::ofstream out;
-        out.open(fn);
-        const auto & thr = _getEmdeddingForNode(nd);
-        writeDOTExport(out, thr, nd, treePtrByIndex, entireSubtree, includeLastTree);
-        LOG(DEBUG) << "finished DOT file \"" << fn << "\"";
-    }
-
+   
     virtual ~ScaffoldedSupertree(){}
     ScaffoldedSupertree()
         :TaxonomyDependentTreeProcessor<TreeMappedWithSplits>(),

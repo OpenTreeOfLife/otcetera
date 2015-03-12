@@ -43,7 +43,8 @@ std::string blanksToUnderscores(const std::string &s);
 void writeEscapedForNewick(std::ostream & out, const std::string & n);
 void writeOttSet(std::ostream & out, const char *indent, const std::set<long> &fir, const char * sep);
 void writeOttSetDiff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
-
+template<typename T>
+std::set<T> container_as_set(const std::vector<T> &);
 template<typename T>
 bool isSubset(const T & small, const T & big);
 template<typename T>
@@ -88,12 +89,12 @@ inline const std::wstring readWStrContentOfUTF8File(const std::string &filepath)
 #endif //defined WIDE_STR_VERSION
 
 template<typename T, typename U>
-bool contains(const T & container, const U & key) {
+inline bool contains(const T & container, const U & key) {
     return container.find(key) != container.end();
 }
 
 template<typename T, typename U>
-std::set<T> keys(const std::map<T, U> & container) {
+inline std::set<T> keys(const std::map<T, U> & container) {
     std::set<T> k;
     for (const auto & x : container) {
         k.insert(x.first);
@@ -268,25 +269,31 @@ inline bool haveIntersection(const T & first, const T & second) {
 }
 
 template<typename T>
-std::set<T> set_intersection_as_set(const std::set<T> & fir, const std::set<T> & sec) {
+inline std::set<T> container_as_set(const std::vector<T> &v) {
+    std::set<T> d;
+    d.insert(v.begin(), v.end());
+    return d;
+}
+template<typename T>
+inline std::set<T> set_intersection_as_set(const std::set<T> & fir, const std::set<T> & sec) {
     std::set<T> d;
     set_intersection(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
     return d;
 }
 template<typename T>
-std::set<T> set_union_as_set(const std::set<T> & fir, const std::set<T> & sec) {
+inline std::set<T> set_union_as_set(const std::set<T> & fir, const std::set<T> & sec) {
     std::set<T> d;
     set_union(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
     return d;
 }
 template<typename T>
-std::set<T> set_sym_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
+inline std::set<T> set_sym_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
     std::set<T> d;
     set_symmetric_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
     return d;
 }
 template<typename T>
-std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
+inline std::set<T> set_difference_as_set(const std::set<T> & fir, const std::set<T> & sec) {
     std::set<T> d;
     set_difference(begin(fir), end(fir), begin(sec), end(sec), std::inserter(d, d.end()));
     return d;

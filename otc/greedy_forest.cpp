@@ -86,6 +86,7 @@ bool GreedyPhylogeneticForest<T,U>::addGroupToNewTree(const OttIdSet & incGroup,
     const OttIdSet exc = set_difference_as_set(ls, i);
     const auto & e = *(encountered.insert(exc).first);
     PhyloStatement ps(i, e, ls, PhyloStatementSource(treeIndex, groupIndex));
+    LOG(DEBUG) << " GPF calling addPhyloStatement for tree=" << treeIndex << " group=" << groupIndex;
     return addPhyloStatement(ps);
 }
 

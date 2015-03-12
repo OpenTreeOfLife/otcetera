@@ -44,7 +44,9 @@ void RootedForest<T,U>::registerLeaf(long ottId) {
     if (f != ottIdToNode.end()) {
         return;
     }
-    ottIdToNode[ottId] = createNode(nullptr);
+    auto n = createNode(nullptr);
+    n->setOttId(ottId);
+    ottIdToNode[ottId] = n;
 }
 
 // TMP could be faster by storing node->tree lookup
@@ -498,6 +500,7 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
 
 template<typename T, typename U>
 void RootedForest<T, U>::writeForestDOTToFN(const std::string &fn) const {
+    LOG(DEBUG) << "     creating DOT file for forest: " << fn;
     std::ofstream outf(fn);
     writeDOTForest(outf, *this);
 }

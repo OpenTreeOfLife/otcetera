@@ -66,7 +66,16 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
                                      const std::string & style,
                                      const char * prefix);
 void writeDOTForNodeWithoutEmbedding(std::ostream & out, const NodeWithSplits *nd , NodeToDotNames & nd2name);
+std::string edgeStyleForColor(const char * color);
 // IMPL
+std::string edgeStyleForColor(const char * color) {
+    std::string bstyle = "fontcolor=\"";
+    bstyle.append(color);
+    bstyle.append("\" color=\"");
+    bstyle.append(color);
+    bstyle.append("\"");
+    return bstyle;
+}
 constexpr const char * COLORS [] = {"crimson",
                                     "blue",
                                     "springgreen",
@@ -160,12 +169,13 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
                            const std::string & style,
                            const char * prefix) {
     const bool isScaffoldSide = (sideDes == scaffDes);
-    const char * ancPref = (isScaffoldSide || (focalNode != scaffAnc) ? "" : prefix);
+    constexpr bool mergeScPhAnc = false;
+    const char * ancPref = (isScaffoldSide || (mergeScPhAnc && focalNode != scaffAnc) ? "" : prefix);
     const char * desPref = (isScaffoldSide || sideDes->isTip() ? "" : prefix);
     // If we have a tip or a node outside of this focal node, use the scaffold node for the 
     //  phylo side of the graph. Not accurate, but cuts down on the # of nodes.
     ToDotKey ancK{sidePar, ancPref};
-    if (focalNode != scaffAnc) {
+    if (mergeScPhAnc && focalNode != scaffAnc) {
         ancK = ToDotKey{scaffAnc, ""};
     }
     ToDotKey desK{sideDes, desPref};
@@ -195,11 +205,7 @@ void writePathPairingToDOT(std::ostream & out,
     }
     const std::string emptyStr;
     pathSet.insert(&pp);
-    std::string bstyle = "fontcolor=\"";
-    bstyle.append(color);
-    bstyle.append("\" color=\"");
-    bstyle.append(color);
-    bstyle.append("\"");
+    std::string bstyle = edgeStyleForColor(color);
     std::string style = bstyle;
     style.append(" style=\"dashed\"");
     // The midpoint nodes are unlabeled dots with IDs that are _addr or __addr
@@ -293,14 +299,73 @@ void writeDOTForEmbedding(std::ostream & out,
     out << "}\n";
 }
 
+
+template<typename T>
+using GCList = std::list<std::pair<T *, PhyloStatementSource> >;
+template<typename T>
+using NdToGCListMapping = std::map<T*, GCList<T> >;
+template<typename T>
+void writeDOTGroupingConstraints(std::ostream & out,
+                                 const NdToGCListMapping<T> & ndToGCList,
+                                 const std::string & prefix,
+                                 const std::string & connPrefix,
+                                 NodeToDotNames & nd2name,
+                                 const std::string & ndStyle,
+                                 const std::string & style) {
+    for (const auto & incNdGCPair : ndToGCList ) {
+        const auto & ind = incNdGCPair.first;
+        const auto & incList = incNdGCPair.second;
+        if (incList.empty()) {
+            continue;
+        }
+        const ToDotKey desK{incNdGCPair.first, prefix};
+        writeNodeDOT(out, desK, nd2name, ndStyle, false, true, false);
+        for (const auto & igc : incList) {
+            const ToDotKey ancK{igc.first, connPrefix}; // use connPrefix for the prefix to connect to a connected node
+            writeDOTEdge(out, ancK, desK, nd2name, style, false);
+        }
+    }
+}
+
 void writeDOTForFtree(std::ostream & out,
                               const FTree<RTSplits, MappedWithSplitsData> & tree, 
                               NodeToDotNames & nd2name,
                               const char * color,
                               std::size_t treeIndex
                               ) {
-
+    std::string esty = edgeStyleForColor(color);
+    const std::string nsty = esty;
+    std::string tn = "t";
+    tn += std::to_string(treeIndex);
+    auto r = tree.getRoot();
+    for (auto n : iter_pre_n_const(r)) {
+        auto p = n->getParent();
+        if (p == nullptr) {
+            continue;
+        }
+        const ToDotKey ancK{p, tn};
+        ToDotKey desK{n, tn};
+        if (n->isTip()) {
+            desK = ToDotKey{n, ""};
+        }
+        writeNodeDOT(out, ancK, nd2name, nsty, false, true, false);
+        writeNodeDOT(out, desK, nd2name, nsty, false, true, false);
+        writeDOTEdge(out, ancK, desK, nd2name, esty, false);
+    }
+    const std::string itn = std::string("inc") + tn;
+    const auto & inc = tree.getExcluded2ConstraintMap();
+    std::string incStyle = "shape=plaintext color=\"";
+    incStyle += color;
+    incStyle += "\"";
+    writeDOTGroupingConstraints(out, inc, itn, tn, nd2name, incStyle, esty);
+    const std::string etn = std::string("exc") + tn;
+    const auto & exc = tree.getIncluded2ConstraintMap();
+    std::string excStyle = "shape=octagon color=\"";
+    excStyle += color;
+    excStyle += "\"";
+    writeDOTGroupingConstraints(out, exc, etn, tn, nd2name, excStyle, esty);
 }
+
 void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
     const auto & o2n = forest.getOttIdToNodeMapping();
     NodeToDotNames nd2name;

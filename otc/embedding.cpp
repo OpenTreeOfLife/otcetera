@@ -65,7 +65,7 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const T *nd,
 
 template<typename T, typename U>
 bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
-    if (debuggingOutputEnabled) {
+    if (false && debuggingOutputEnabled) {
         std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in currChildOttIdSet"; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
         std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in oldEls"; writeOttSet(std::cerr, " ", oldEls, " "); std::cerr << '\n';
         std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in newEls"; writeOttSet(std::cerr, " ", newEls, " "); std::cerr << '\n';
@@ -80,7 +80,7 @@ bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const 
         }
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
-    if (debuggingOutputEnabled) {
+    if (false && debuggingOutputEnabled) {
         std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " on updateOttIdSetNoTraversal exit "; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
     }
     return true;
@@ -154,6 +154,36 @@ std::set<PathPairing<T, U> *> NodeEmbedding<T, U>::getAllChildExitPaths(U & scaf
     return r;
 }
 
+enum DOTFileStep {
+    INFORMATIVE_SPLIT,
+    TRIVIAL_SPLIT,
+    NONEMBEDDED_SPLIT
+};
+const std::string getForestDOTFilename(const std::string & prefix,
+                                       const DOTFileStep step,
+                                       std::size_t treeInd,
+                                       long groupIndex);
+const std::string getForestDOTFilename(const std::string & prefix,
+                                       const DOTFileStep step,
+                                       std::size_t treeInd,
+                                       long groupIndex) {
+    std::string base = prefix;
+    if (step == INFORMATIVE_SPLIT) {
+        base += "AfterInfTree";
+    } else if (step == TRIVIAL_SPLIT) {
+        base += "AfterTrivTree";
+    } else if (step == NONEMBEDDED_SPLIT) {
+        base += "AfterXChildSplit";
+    }
+    if (step == INFORMATIVE_SPLIT || step == TRIVIAL_SPLIT || step == NONEMBEDDED_SPLIT) {
+        base += std::to_string(treeInd);
+        base += "Split";
+        base += std::to_string(groupIndex);
+    }
+    base += ".dot";
+    return base;
+}
+
 template<typename T, typename U>
 void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     const OttIdSet EMPTY_SET;
@@ -189,9 +219,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
                 const auto & d = mpoIt->first;
                 gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
                 if (scaffOTTId == ottIDBeingDebugged) {
-                    std::string fn = forestDOTfile;
-                    fn += "AfterSplit"; fn += std::to_string(bogusGroupIndex - 1); fn += "Tree"; fn += std::to_string(treeInd); fn += ".dot";
-                    gpf.writeForestDOTToFN(fn);
+                    gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeInd, bogusGroupIndex -1));
                 }
                 considered.insert(ppptr);
             }
@@ -202,9 +230,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             const auto ppptr = triv.second;
             gpf.addLeaf(ppptr, *inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
             if (scaffOTTId == ottIDBeingDebugged) {
-                std::string fn = forestDOTfile;
-                fn += "AfterTrivSplit"; fn += std::to_string(bogusGroupIndex - 1); fn += "Tree"; fn += std::to_string(treeInd); fn += ".dot";
-                gpf.writeForestDOTToFN(fn);
+                gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeInd, bogusGroupIndex -1));
             }
             considered.insert(ppptr);
             trivialQ.pop();
@@ -216,16 +242,14 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
     //  This means that we have no info on the placement of such nodes.
     //      so we'll just attach them here.
     //  First step: get the list of paths for the children.
-    int bogusTreeIndex = 123456; // should get this from the node!
+    std::size_t bogusTreeIndex = 123456; // should get this from the node!
     long bogusGroupIndex = 100000; // should get this from the node!
     auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc);
     for (auto pathPtr : childExitPaths) {
         if (!contains(considered, pathPtr)) {
-            gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, bogusTreeIndex, bogusGroupIndex++, sc);
+            gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, (int)bogusTreeIndex, bogusGroupIndex++, sc);
             if (scaffOTTId == ottIDBeingDebugged) {
-                std::string fn = forestDOTfile;
-                fn += "AfterChildSplit"; fn += std::to_string(bogusGroupIndex - 1); fn += "Tree"; fn += std::to_string(bogusTreeIndex); fn += ".dot";
-                gpf.writeForestDOTToFN(fn);
+                gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, NONEMBEDDED_SPLIT, bogusTreeIndex, bogusGroupIndex -1));
             }
             considered.insert(pathPtr); // @TMP not needed
         }
@@ -250,6 +274,12 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
 }
 
 template<typename T, typename U>
+std::map<std::size_t, std::set<PathPairing<T, U> *> > copyAllLoopPathPairing(const T *nd, const std::map<const T *, NodeEmbedding<T, U> > & eForNd) {
+    const NodeEmbedding<T, U> & ne = eForNd.at(nd);
+    return ne.loopEmbeddings;
+}
+
+template<typename T, typename U>
 void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc) {
     sc.log(COLLAPSE_TAXON, scaffoldNode);
     U * p = scaffoldNode.getParent();
@@ -261,18 +291,21 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
         }
     }
     NodeEmbedding<T, U>& parEmbedding = sc.scaffold2NodeEmbedding.at(p);
+    const auto beforePL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
+        const auto & treeIndex = lai.first;
         for (auto lp : lai.second) {
             assert(lp->scaffoldDes == &scaffoldNode);
             assert(lp->scaffoldAnc == &scaffoldNode);
             lp->scaffoldDes = p;
             lp->scaffoldAnc = p;
-            parEmbedding.loopEmbeddings[lai.first].insert(lp);
+            parEmbedding.loopEmbeddings[treeIndex].insert(lp);
         }
     }
     // every exit edge for this node becomes a loop for its parent if it is not trivial
     for (auto ebai : edgeBelowEmbeddings) {
+        const auto & treeIndex = ebai.first;
         for (auto lp : ebai.second) {
             if (lp->scaffoldAnc == p) {
                 if (lp->scaffoldDes == &scaffoldNode) {
@@ -280,17 +313,17 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
                     // we don't know how to interpret this label any more, so we'll drop that 
                     // leaf. The taxa will be included by other relationships (the taxonomy as
                     // a last resort), so we don't need to worry about losing leaves by skipping this...
-                    if (lp->phyloChild->hasOttId()) {
-                        LOG(DEBUG) << "scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
+                    if (lp->phyloChild->isTip()) {
+                        LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
                         assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
                     }
                     sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
                 } else {
-                    parEmbedding.loopEmbeddings[ebai.first].insert(lp);
+                    parEmbedding.loopEmbeddings[treeIndex].insert(lp);
                 }
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par
-                assert(contains(parEmbedding.edgeBelowEmbeddings[ebai.first], lp));
+                assert(contains(parEmbedding.edgeBelowEmbeddings[treeIndex], lp));
             }
         }
     }
@@ -309,6 +342,12 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
         }
     }
     pruneCollapsedNode(scaffoldNode, sc);
+    const auto afterPL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
+    for (auto bpl : beforePL) {
+        const auto & afterVal = afterPL.at(bpl.first);
+        assert(isSubset(bpl.second, afterVal));
+    }
+    
 }
 
 template<typename T, typename U>
