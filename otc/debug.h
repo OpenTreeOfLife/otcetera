@@ -36,6 +36,16 @@ bool checkAllNodePointers(const T & tree) {
 }
 
 template<typename T>
+bool checkAllNodePointersIter(const T & node) {
+   for (auto nd : iter_pre_n_const(node)) {
+        if (!checkNodePointers(*nd)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template<typename T>
 bool checkPreorder(const T & tree) {
     auto ns = tree.getSetOfAllAttachedNodes();
     std::set<const typename T::node_type *> visited;

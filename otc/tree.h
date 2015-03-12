@@ -212,6 +212,7 @@ class RootedTreeNode {
             } else {
                 ls->_setNextSib(getNextSib());
             }
+            rSib = nullptr;
        }
     public:
         void writeAsNewick(std::ostream &out,

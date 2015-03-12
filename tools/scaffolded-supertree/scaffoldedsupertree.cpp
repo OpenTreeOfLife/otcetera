@@ -135,7 +135,7 @@ class ScaffoldedSupertree
             postOrder.push_back(nd);
         }
         for (auto nd : postOrder) {
-            checkAllNodePointers(*taxonomy);
+            auto p = nd->getParent();
             if (debuggingOutput) {
                 if (emitScaffoldDotFiles) {
                     writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
@@ -155,6 +155,9 @@ class ScaffoldedSupertree
                 } else {
                     LOG(DEBUG) << "Completed resolveOrCollapse call for OTT" << nd->getOttId();
                 }
+            }
+            if (p != nullptr) {
+                checkAllNodePointersIter(p);
             }
         }
     }

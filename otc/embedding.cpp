@@ -364,10 +364,10 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextW
     //  in the tree so that the postorder traversal will not iterate over them.
     auto lc = scaffoldNode.getPrevSib();
     auto rc = scaffoldNode.getNextSib();
-    scaffoldNode._detachThisNode();
-    sc.detachedScaffoldNodes.insert(&scaffoldNode);
     auto p = scaffoldNode.getParent();
     const auto cv = scaffoldNode.getChildren();
+    scaffoldNode._detachThisNode();
+    sc.detachedScaffoldNodes.insert(&scaffoldNode);
     if (cv.empty()) {
         assert(false);
         return;
