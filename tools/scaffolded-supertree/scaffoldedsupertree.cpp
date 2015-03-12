@@ -135,6 +135,7 @@ class ScaffoldedSupertree
             postOrder.push_back(nd);
         }
         for (auto nd : postOrder) {
+            checkAllNodePointers(*taxonomy);
             if (debuggingOutput) {
                 if (emitScaffoldDotFiles) {
                     writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
