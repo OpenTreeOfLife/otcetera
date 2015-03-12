@@ -38,6 +38,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     }
     void finishResolutionOfEmbeddedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits & sc);
     private:
+    void mergeForest(SupertreeContextWithSplits &);
     CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,

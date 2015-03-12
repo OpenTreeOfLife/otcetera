@@ -21,6 +21,52 @@ bool PhyloStatement::debugCheck() const {
 }
 
 template<typename T, typename U>
+void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
+                const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedInc,
+                const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedExc,
+                const std::map<node_type *, std::list<std::pair<node_type*, PhyloStatementSource> > > & otherIC,
+                const std::map<node_type *, std::list<std::pair<node_type*, PhyloStatementSource> > > & otherEC) {
+    assert(subtreeRoot);
+    auto par = subtreeRoot->getParent();
+    assert(par);
+    const OttIdSet & sroids = subtreeRoot->getData().desIds;
+    OttIdSet overlapIds = set_intersection_as_set(root->getData().desIds, sroids);
+    if (overlapIds.empty()) {
+        //the new tree does not have any leaves with include statements in the current tree...
+        bool needDeeperRoot = false;
+        for (auto oid : sroids) {
+            if (ottIdIsExcludedFromRoot(oid)) {
+                needDeeperRoot = true;
+                break;
+            }
+        }
+        if (needDeeperRoot) {
+            auto nr = forest.createNode(nullptr);
+            nr->addChild(root);
+            root = nr;
+        }
+        root->addChild(subtreeRoot);
+        const PhyloStatementSource bogusPSS{-1, -1};
+        for (auto sn : iter_pre_n(subtreeRoot)) { //TMP need iter_node_n
+            const auto esn = otherInvertedExc.find(sn);
+            if (esn != otherInvertedExc.end()) {
+                for (auto eValNd : esn->second) {
+                    excludesConstraints[eValNd].push_back(GroupingConstraint{sn, bogusPSS});
+                }
+            }
+            const auto isn = otherInvertedInc.find(sn);
+            if (isn != otherInvertedInc.end()) {
+                for (auto eValNd : esn->second) {
+                    includesConstraints[eValNd].push_back(GroupingConstraint{sn, bogusPSS});
+                }
+            }
+        }
+        return;
+    }
+    assert(false);
+}
+
+template<typename T, typename U>
 typename RootedForest<T,U>::tree_type &
 RootedForest<T,U>::createNewTree() {
     std::size_t i = nextTreeId++;

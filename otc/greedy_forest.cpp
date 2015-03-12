@@ -5,6 +5,7 @@
 #include "otc/tree_iter.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
+#include "otc/write_dot.h"
 namespace otc {
 
 template<typename T, typename U>
@@ -204,6 +205,41 @@ std::vector<T *> GreedyPhylogeneticForest<T,U>::getRoots(){
 }
 
 template<typename T, typename U>
+std::map<T, std::set<T> > invertGCMap(const std::map<T, std::list<std::pair<T, U> > > & k2pl) {
+    std::map<T, std::set<T> > r;
+    for (const auto & kIt : k2pl) {
+        const T & k{kIt.first};
+        for (const auto & v : kIt.second) {
+            r[v.first].insert(k);
+        }
+    }
+    return r;
+}
+
+template<typename T, typename U>
+void GreedyPhylogeneticForest<T,U>::mergeForest(SupertreeContextWithSplits &) {
+    auto roots = getRoots();
+    assert(roots.size() > 1);
+    auto trit = begin(trees);
+    auto & firstTree = trit->second;
+    auto firstRoot = firstTree.getRoot();
+    OttIdSet idsIncluded = firstRoot->getData().desIds;
+    for (++trit; trit != end(trees); trit = trees.erase(trit)) {
+        auto & currTree = trit->second;
+        const auto & ic = currTree.getIncluded2ConstraintMap();
+        const auto & ec = currTree.getExcluded2ConstraintMap();
+        const auto nd2Inc = invertGCMap(ic);
+        const auto nd2Exc = invertGCMap(ec);
+        auto currRoot = currTree.getRoot();
+        assert(currRoot->getParent() == nullptr);
+        assert(!currRoot->isTip());
+        for (auto currChild : iter_child(*currRoot)) {
+            firstTree.addSubtree(currChild, nd2Inc, nd2Exc, ic, ec);
+        }
+    }
+}
+
+template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     auto roots = getRoots();
@@ -211,20 +247,13 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
         LOG(DEBUG) << " tree-in-forest = "; dbWriteNewick(r);
     }
     if (trees.size() > 1) {
-        LOG(WARNING) << "finalizeTree is not correctly merging";
-        auto rit = begin(roots);
-        auto firstRoot = *rit;
-        for (++rit; rit != end(roots); rit = roots.erase(rit)) {
-            if ((*rit)->isTip()) {
-                firstRoot->addChild(*rit);
-            } else {
-                assert((*rit)->getParent() == nullptr);
-                for (auto c : iter_child(**rit)) {
-                    assert(c->isTip());
-                    firstRoot->addChild(c);
-                }
-            }
-        }
+        LOG(WARNING) << "finalizeTree is not well thought out. merging of multiple trees is questionable.";
+        const char * dbfn = "real-forest-in-finalizeTree.dot";
+        LOG(WARNING) << "  writing DOT to " << dbfn;
+        std::ofstream outf(dbfn);
+        writeDOTForest(outf, *this);
+        outf.close();
+        
     }
     roots = getRoots();
     assert(roots.size() < 2);

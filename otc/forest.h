@@ -10,6 +10,7 @@
 #include "otc/tree.h"
 #include "otc/util.h"
 namespace otc {
+template<typename T, typename U> class GreedyPhylogeneticForest;
 template<typename T, typename U> class RootedForest;
 template<typename T, typename U> class FTree;
 
@@ -154,6 +155,7 @@ class FTree {
     public:
     using node_type = RootedTreeNode<T>;
     using GroupingConstraint = std::pair<node_type*, PhyloStatementSource>;
+    using NdToConstrainedAt = std::map<node_type *, std::set<node_type *> >;
     FTree(std::size_t treeID,
           RootedForest<T, U> & theForest,
           std::map<long, node_type *> & ottIdToNodeRef)
@@ -165,6 +167,9 @@ class FTree {
     // const methods:
     const node_type * getRoot() const {
         return root;
+    }
+    bool ottIdIsExcludedFromRoot(long oid) const {
+        return isExcludedFromRoot(ottIdToNode.at(oid));
     }
     bool isExcludedFromRoot(const node_type *) const;
     // OTT Ids of nodes on the graph only....
@@ -189,6 +194,11 @@ class FTree {
         return root;
     }
     void mirrorPhyloStatement(const PhyloStatement & ps);
+    void addSubtree(RootedTreeNode<T> * subtreeRoot,
+                    const NdToConstrainedAt & invIncConstr,
+                    const NdToConstrainedAt & invExcConstr, 
+                    const std::map<node_type *, std::list<GroupingConstraint> > & incConstr,
+                    const std::map<node_type *, std::list<GroupingConstraint> > & excConstr);
     private:
     void addIncludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
@@ -206,6 +216,7 @@ class FTree {
     node_type * getMRCA(const OttIdSet &id);
     
     friend class RootedForest<T, U>;
+    friend class GreedyPhylogeneticForest<T, U>;
     FTree(const FTree &) = delete;
     FTree & operator=(const FTree &) = delete;
     // data members
