@@ -11,9 +11,9 @@ bool PhyloStatement::debugCheck() const {
 #ifdef DEBUGGING_PHYLO_STATEMENTS
     const OttIdSet ie = set_union_as_set(includeGroup, excludeGroup);
     if (ie != leafSet) {
-        std::cerr << " includeGroup "; writeOttSet(std::cerr, " ", includeGroup, " "); std::cerr << std::endl;
-        std::cerr << " excludeGroup "; writeOttSet(std::cerr, " ", excludeGroup, " "); std::cerr << std::endl;
-        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", leafSet, " "); std::cerr << std::endl;
+        LOG(DEBUG)  << " includeGroup "; dbWriteOttSet(" ", includeGroup, " ");
+        LOG(DEBUG)  << " excludeGroup "; dbWriteOttSet(" ", excludeGroup, " ");
+        LOG(DEBUG)  << " leafSet "; dbWriteOttSet(" ", leafSet, " ");
         assert(false);
     }
 #endif
@@ -129,8 +129,8 @@ template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
         LOG(DEBUG) << " RootedForest::addPhyloStatement";
-        std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
-        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+        LOG(DEBUG) << " incGroup "; dbWriteOttSet(" ", ps.includeGroup, " ");
+        LOG(DEBUG) << " leafSet "; dbWriteOttSet(" ", ps.leafSet, " ");
     }
     ps.debugCheck();
     assert(ps.includeGroup.size() > 1);
@@ -164,8 +164,8 @@ template<typename T, typename U>
 std::pair<bool, bool> RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
     if (false && debuggingOutputEnabled) {
         LOG(DEBUG) << " RootedForest::conflictsWithPreviouslyAddedStatement";
-        std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
-        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+        LOG(DEBUG) << " incGroup "; dbWriteOttSet(" ", ps.includeGroup, " ");
+        LOG(DEBUG) << " leafSet "; dbWriteOttSet(" ", ps.leafSet, " ");
     }
     for (const auto sIt : addedSplitsByLeafSet) {
         const auto & prevAddedLeafSet = sIt.first;
@@ -290,10 +290,10 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
         const OttIdSet excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
         if (debuggingOutputEnabled) {
             LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
-            std::cerr << " addPhyloStatementToGraph search for an ancestor of:  "; writeOttSet(std::cerr, " ", incGroupIntersection, " "); std::cerr << std::endl;
-            std::cerr << "  wanted to avoid =  "; writeOttSet(std::cerr, " ", ps.excludeGroup, " "); std::cerr << std::endl;
-            std::cerr << "  found a node with desIds:  "; writeOttSet(std::cerr, " ", includeGroupA->getData().desIds, " "); std::cerr << std::endl;
-            std::cerr << "  which includes the excludegroup members:  "; writeOttSet(std::cerr, " ", excInc, " "); std::cerr << std::endl;
+            LOG(DEBUG) << " addPhyloStatementToGraph search for an ancestor of:  "; dbWriteOttSet(" ", incGroupIntersection, " ");
+            LOG(DEBUG) << "  wanted to avoid =  "; dbWriteOttSet(" ", ps.excludeGroup, " ");
+            LOG(DEBUG) << "  found a node with desIds:  "; dbWriteOttSet(" ", includeGroupA->getData().desIds, " ");
+            LOG(DEBUG) << "  which includes the excludegroup members:  "; dbWriteOttSet(" ", excInc, " ");
         }
         if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
             return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
@@ -324,8 +324,8 @@ template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
         LOG(DEBUG) << " RootedForest::addPhyloStatementToGraph";
-        std::cerr << " incGroup "; writeOttSet(std::cerr, " ", ps.includeGroup, " "); std::cerr << std::endl;
-        std::cerr << " leafSet "; writeOttSet(std::cerr, " ", ps.leafSet, " "); std::cerr << std::endl;
+        LOG(DEBUG) << " incGroup "; dbWriteOttSet(" ", ps.includeGroup, " ");
+        LOG(DEBUG) << " leafSet "; dbWriteOttSet(" ", ps.leafSet, " ");
     }
     if (ps.isTrivial()) {
         auto newOttIds = set_difference_as_set(ps.includeGroup, ottIdSet);

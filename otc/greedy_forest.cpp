@@ -208,7 +208,7 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     auto roots = getRoots();
     for (auto r : roots) {
-        std::cerr << " tree-in-forest = "; writeNewick(std::cerr, r); std::cerr << '\n';
+        LOG(DEBUG) << " tree-in-forest = "; dbWriteNewick(r);
     }
     if (trees.size() > 1) {
         LOG(WARNING) << "finalizeTree is not correctly merging";
@@ -233,7 +233,7 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
     assert(roots.size() == 1);
     auto onlyRoot = *roots.begin();
     onlyRoot->getData().desIds = ottIdSet;
-    std::cerr << " finalized-tree-from-forest = "; writeNewick(std::cerr, onlyRoot); std::cerr << '\n';
+    LOG(DEBUG)<< " finalized-tree-from-forest = "; dbWriteNewick(onlyRoot);
 }
 
 // addIngroupAtNode adds leaves for all "new" ottIds to:

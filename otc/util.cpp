@@ -72,7 +72,6 @@ std::list<std::string> readLinesOfFile(const std::string & filepath) {
     std::list<std::string> lines;
     std::string line;
     while (getline(inp, line)) {
-        //std::cerr << line << '\n';
         auto stripped = strip_surrounding_whitespace(line);
         if (!stripped.empty()) {
             lines.push_back(stripped);

@@ -64,7 +64,7 @@ class PathPairing {
         if (currChildOttIdSet.size() == 1 && *currChildOttIdSet.begin() == oid) {
             return;
         }
-        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << (long)this << " prev currChildOttIdSet = " ; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
+        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << (long)this << " prev currChildOttIdSet = " ; dbWriteOttSet(" ", currChildOttIdSet, " ");
         OttIdSet n;
         OttIdSet oldIds;
         std::swap(oldIds, currChildOttIdSet);
@@ -82,7 +82,7 @@ class PathPairing {
         phyloChild(child.phyloNode),
         phyloParent(parent.phyloNode),
         currChildOttIdSet(child.phyloNode->getData().desIds) {
-        LOG(DEBUG) << "On initialization for path " << (long)this << " currChildOttIdSet is: "; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << std::endl;
+        LOG(DEBUG) << "On initialization for path " << (long)this << " currChildOttIdSet is: "; dbWriteOttSet(" ", currChildOttIdSet, " ");
     }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 

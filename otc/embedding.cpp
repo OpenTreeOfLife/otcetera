@@ -50,7 +50,6 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbed
         const auto ceait = emb.edgeBelowEmbeddings.find(treeIndex);
         if (ceait != emb.edgeBelowEmbeddings.end()) {
             for (const auto & e : ceait->second) {
-                //std::cerr << "     Found some paths e.currChildOttIdSet ="; writeOttSet(std::cerr, "      ", e->currChildOttIdSet, " "); std::cerr << '\n';
                 r.push_back(e);
             }
         } else {
@@ -65,9 +64,9 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbed
 template<typename T, typename U>
 bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
     if (false && debuggingOutputEnabled) {
-        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in currChildOttIdSet"; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
-        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in oldEls"; writeOttSet(std::cerr, " ", oldEls, " "); std::cerr << '\n';
-        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " in newEls"; writeOttSet(std::cerr, " ", newEls, " "); std::cerr << '\n';
+        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this << " in currChildOttIdSet"; dbWriteOttSet(" ", currChildOttIdSet, " ");
+        LOG(DEBUG)  << "  updateOttIdSetNoTraversal for " << (long)this << " in oldEls"; dbWriteOttSet(" ", oldEls, " ");
+        LOG(DEBUG)  << "  updateOttIdSetNoTraversal for " << (long)this << " in newEls"; dbWriteOttSet(" ", newEls, " ");
     }
     auto i = set_intersection_as_set(oldEls, currChildOttIdSet);
     if (i.size() < oldEls.size()) {
@@ -80,7 +79,7 @@ bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const 
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
     if (false && debuggingOutputEnabled) {
-        std::cerr << "  updateOttIdSetNoTraversal for " << (long)this << " on updateOttIdSetNoTraversal exit "; writeOttSet(std::cerr, " ", currChildOttIdSet, " "); std::cerr << '\n';
+        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this << " on updateOttIdSetNoTraversal exit "; dbWriteOttSet(" ", currChildOttIdSet, " ");
     }
     return true;
 }
@@ -96,7 +95,6 @@ OttIdSet NodeEmbedding<T, U>::getRelevantDesIdsFromPathPairSet(const PathPairSet
         const auto & cdi = getRelevantDesIdsFromPath(*path);
         relevantIds.insert(begin(cdi), end(cdi));
     }
-    //std::cerr << " getRelevantDesIdsFromPathPairSet returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
     return relevantIds;
 }
 
@@ -211,7 +209,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         for (auto mpoIt = mapToProvideOrder.rbegin(); mpoIt != mapToProvideOrder.rend(); ++mpoIt) {
             auto ppptr = mpoIt->second;
             if (ppptr->pathIsNowTrivial()) {
-                LOG(DEBUG) << "pathIsNowTrivial" ; writeOttSet(std::cerr, " ", mpoIt->first, " "); std::cerr << std::endl;
+                LOG(DEBUG) << "pathIsNowTrivial" ; dbWriteOttSet(" ", mpoIt->first, " ");
                 const q_t toQ{&(mpoIt->first), ppptr};
                 trivialQ.push(toQ);
             } else {
@@ -433,10 +431,8 @@ OttIdSet NodeEmbedding<T, U>::getRelevantDesIds(const std::map<const T *, NodeEm
     OttIdSet relevantIds;
     for (auto pIt : ippV) {
         const OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(*pIt);
-        //std::cerr << "    for tree " << treeIndex << " otherRelevantIds returning"; writeOttSet(std::cerr, " ", otherRelevantIds, " "); std::cerr << '\n';
         relevantIds.insert(otherRelevantIds.begin(), otherRelevantIds.end());
     }
-    std::cerr << " for tree " << treeIndex << " getRelevantDesIds returning"; writeOttSet(std::cerr, " ", relevantIds, " "); std::cerr << '\n';
     return relevantIds;
 }
 

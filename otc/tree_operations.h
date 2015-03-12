@@ -424,7 +424,6 @@ template<typename T>
 inline void writeClosingNewick(std::ostream & out, const T *nd, const T * r) {
     out << ')';
     auto n = nd->getParent();
-    //std::cerr << " writeClosingNewick = " << getDesignator(*n) << '\n';
     writeNodeAsNewickLabel(out, n);
     if (n == r) {
         return;
@@ -432,26 +431,22 @@ inline void writeClosingNewick(std::ostream & out, const T *nd, const T * r) {
     while (n->getNextSib() == nullptr) {
         out << ')';
         n = n->getParent();
-        //std::cerr << " writeClosingNewick while loop = " << getDesignator(*n) << '\n';
         assert(n != nullptr);
         writeNodeAsNewickLabel(out, n);
         if (n == r) {
             return;
         }
     }
-    //std::cerr << "exiting writeClosingNewick = " << getDesignator(*n) << '\n';
     out << ',';
 }
 
 template<typename T>
 inline void writeNewick(std::ostream & out, const T *nd) {
-    //std::cerr << "starting writeNewick " << getDesignator(*nd) << '\n';
     assert(nd != nullptr);
     if (nd->isTip()) {
         writeNodeAsNewickLabel(out, nd);
     } else {
         for (auto n : iter_pre_n_const(nd)) {
-            //std::cerr << "writeNewick in for loop = " << getDesignator(*n) << '\n';
             if (n->isTip()) {
                 writeNodeAsNewickLabel(out, n);
                 if (n->getNextSib() == nullptr) {
@@ -464,6 +459,14 @@ inline void writeNewick(std::ostream & out, const T *nd) {
             }
         }
     }
+}
+template<typename T>
+inline void dbWriteNewick(const T *nd) {
+    if (!debuggingOutputEnabled) {
+        return;
+    }
+    writeNewick(std::cerr, nd);
+    std::cerr << std::endl;
 }
 
 
