@@ -586,7 +586,6 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
 
 template<typename T, typename U>
 FTree<T, U> & RootedForest<T,U>::addDisjointTree(const PhyloStatement &ps) {
-    assert(areDisjoint(ps.leafSet, ottIdSet)); //
     tree_type & r = createNewTree();
     r.mirrorPhyloStatement(ps);
     return r;
