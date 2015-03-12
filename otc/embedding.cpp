@@ -314,7 +314,12 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
                         LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
                         assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
                         sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
-                        assert(false);
+                        OttIdSet innerOTTId;
+                        innerOTTId.insert(lp->phyloChild->getOttId());
+                        OttIdSet n = scaffoldNode.getData().desIds; // expand the internal name to it taxonomic content
+                        n.erase(lp->phyloChild->getOttId());
+                        lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sc.scaffold2NodeEmbedding);
+                        // we'll let the path pairing be lost (since it is attached to a node that will be detached...)
                     } else {
                         lp->scaffoldDes = p;
                         parEmbedding.loopEmbeddings[treeIndex].insert(lp);
