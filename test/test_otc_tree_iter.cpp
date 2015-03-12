@@ -21,7 +21,6 @@ class TestValidTreeStruct {
         }
         char runTest(const TestHarness &h) const {
             auto fp = h.getFilePath(filename);
-            //std::cerr << "fn = " << fp<< '\n';
             std::ifstream inp;
             if (!openUTF8File(fp, inp)) {
                 return 'U';
@@ -72,15 +71,10 @@ class TestValidTreeStruct {
         char doIterTest(const std::string expected [], Tree_t &tree) const {
             auto i = 0;
             for (auto nd: iter_pre_n_const(tree.getRoot())) {
-                //std::cerr << "nd = " << getDesignator(*nd) << '\n';
-                //for (auto nnd: iter_pre_n_const(nd)) {
-                //  std::cerr << "    nested nd = " << getDesignator(*nnd) << '\n';
-                //}
                 if (expected[i] != getNewick(nd)) {
                     std::cerr << expected[i] << " != " << getNewick(nd) << '\n';
                     return 'F';
                 } else {
-                    //std::cerr << "Got: " << expected[i] << '\n';
                 }
                 ++i;
             }
