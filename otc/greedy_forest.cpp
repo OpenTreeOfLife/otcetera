@@ -233,14 +233,20 @@ void GreedyPhylogeneticForest<T,U>::mergeForest(SupertreeContextWithSplits &) {
         auto currRoot = currTree.getRoot();
         assert(currRoot->getParent() == nullptr);
         assert(!currRoot->isTip());
+        std::list<node_type *> rc;
         for (auto currChild : iter_child(*currRoot)) {
+            rc.push_back(currChild);
+            currChild->_setNextSib(nullptr);
+        }
+        for (auto currChild : rc) {
+            currRoot->_setLChild(currChild);
             firstTree.addSubtree(currChild, nd2Inc, nd2Exc, ic, ec);
         }
     }
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
+void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &sc) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     auto roots = getRoots();
     for (auto r : roots) {
@@ -253,7 +259,8 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
         std::ofstream outf(dbfn);
         writeDOTForest(outf, *this);
         outf.close();
-        
+        mergeForest(sc);
+        LOG(WARNING) << "finished questionable mergeForest.";
     }
     roots = getRoots();
     assert(roots.size() < 2);
