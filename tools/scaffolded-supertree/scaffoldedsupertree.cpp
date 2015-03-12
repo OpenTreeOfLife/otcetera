@@ -67,6 +67,7 @@ class ScaffoldedSupertree
     TreeMappedWithSplits * taxonomyAsSource;
     int currDotFileIndex;
     bool debuggingOutput;
+    bool emitScaffoldDotFiles;
 
     void writeEmbeddingDOT(SuperTreeDOTStep sts, const NodeWithSplits * nd, const NodeWithSplits * actionNd) {
         std::string fn = "ScaffSuperTree_num";
@@ -122,20 +123,32 @@ class ScaffoldedSupertree
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{numTrees, taxoToEmbedding, *tax};
         if (debuggingOutput) {
-            writeEmbeddingDOT(BEFORE_ND_W_TAXO, taxonomy->getRoot(), nullptr);
-            writeEmbeddingDOT(BEFORE_ND_WO_TAXO, taxonomy->getRoot(), nullptr);
+            if (emitScaffoldDotFiles) {
+                writeEmbeddingDOT(BEFORE_ND_W_TAXO, taxonomy->getRoot(), nullptr);
+                writeEmbeddingDOT(BEFORE_ND_WO_TAXO, taxonomy->getRoot(), nullptr);
+            } else {
+                LOG(DEBUG) << "Beginning construction of the supertree from the embedded tree.";
+            }
         }
         for (auto nd : iter_post_internal(*taxonomy)) {
             if (debuggingOutput) {
-                writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
-                writeEmbeddingDOT(BEFORE_ND_WO_TAXO, nd, nd);
+                if (emitScaffoldDotFiles) {
+                    writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
+                    writeEmbeddingDOT(BEFORE_ND_WO_TAXO, nd, nd);
+                } else {
+                     LOG(DEBUG) << "Calling resolveOrCollapse for OTT" << nd->getOttId();
+                }
             }
             resolveOrCollapse(nd, sc);
             if (debuggingOutput) {
-                writeEmbeddingDOT(AFTER_ND_W_TAXO, nd, nd);
-                writeEmbeddingDOT(AFTER_ND_WO_TAXO, nd, nd);
-                writeEmbeddingDOT(AFTER_ND_W_TAXO, taxonomy->getRoot(), nd);
-                writeEmbeddingDOT(AFTER_ND_WO_TAXO, taxonomy->getRoot(), nd);
+                if (emitScaffoldDotFiles) {
+                    writeEmbeddingDOT(AFTER_ND_W_TAXO, nd, nd);
+                    writeEmbeddingDOT(AFTER_ND_WO_TAXO, nd, nd);
+                    writeEmbeddingDOT(AFTER_ND_W_TAXO, taxonomy->getRoot(), nd);
+                    writeEmbeddingDOT(AFTER_ND_WO_TAXO, taxonomy->getRoot(), nd);
+                } else {
+                    LOG(DEBUG) << "Completed resolveOrCollapse call for OTT" << nd->getOttId();
+                }
             }
         }
     }
@@ -149,7 +162,8 @@ class ScaffoldedSupertree
          doConstructSupertree(false),
          taxonomyAsSource(nullptr),
          currDotFileIndex(0),
-         debuggingOutput(false) {
+         debuggingOutput(false), 
+         emitScaffoldDotFiles(false) {
     }
 
     void reportAllConflicting(std::ostream & out, bool verbose) {
@@ -315,6 +329,12 @@ bool handleOttForestDOTFlag(OTCLI & otCLI, const std::string &narg) {
     ottIDBeingDebugged = conv;
     return true;
 }
+bool handleOttScaffoldDOTFlag(OTCLI & otCLI, const std::string &) {
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->emitScaffoldDotFiles = true;
+    return true;
+}
 bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg) {
     ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
@@ -358,6 +378,10 @@ int main(int argc, char *argv[]) {
                   "ID should be an OTT ID. A series DOT files will be generated for the forest created during the resolution of this OTT ID ",
                   handleOttForestDOTFlag,
                   true);
+    otCLI.addFlag('y',
+                  "requests DOT export of the embedded tree during the supertree operation - only for use on small examples!",
+                  handleOttScaffoldDOTFlag,
+                  false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
 
