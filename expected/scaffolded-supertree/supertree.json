@@ -8,5 +8,18 @@
                     "three-genus-subsample-higher.tre",
                     "three-genus-taxonomy-resolved.tre"],
     "expected": "non-mono-AC"
+  },
+  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "three-genus-Anotmonophyletic.tre",
+                    "three-genus-BclosertoA1.tre"],
+    "expected": "B-C-higher-A-nonmono"
+  },
+  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "three-genus-BclosertoA1.tre",
+                    "three-genus-Anotmonophyletic.tre"
+                    ],
+    "expected": "B-C-higher-A-nonmono"
   }
 ]
