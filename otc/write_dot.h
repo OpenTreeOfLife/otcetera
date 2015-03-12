@@ -13,6 +13,7 @@ void writeDOTForEmbedding(std::ostream & out,
                           const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
                           bool entireSubtree,
                           bool includeLastTree);
+void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &);
 
 } //namespace
 #endif

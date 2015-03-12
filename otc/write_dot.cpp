@@ -6,6 +6,7 @@
 #include "otc/tree_data.h"
 #include "otc/tree_iter.h"
 #include "otc/tree_operations.h"
+#include "otc/forest.h"
 
 namespace otc {
 typedef std::pair<const NodeWithSplits *, std::string> ToDotKey;
@@ -288,6 +289,37 @@ void writeDOTForEmbedding(std::ostream & out,
         if (!entireSubtree) {
             break;
         }
+    }
+    out << "}\n";
+}
+
+void writeDOTForFtree(std::ostream & out,
+                              const FTree<RTSplits, MappedWithSplitsData> & tree, 
+                              NodeToDotNames & nd2name,
+                              const char * color,
+                              std::size_t treeIndex
+                              ) {
+
+}
+void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
+    const auto & o2n = forest.getOttIdToNodeMapping();
+    NodeToDotNames nd2name;
+    std::string emptyStr;
+    out << "digraph G{\n";
+    for (auto & oidNodePair : o2n) {
+        auto n = oidNodePair.second;
+        const ToDotKey k{n, ""};
+        writeNodeDOT(out, k, nd2name, emptyStr, false, true, false);
+    }
+    const auto & trees = forest.getTrees();
+    auto i = 0U;
+    for (const auto & tiTrPair : trees) {
+        const std::string tP = std::string("t") + std::to_string(i);
+        auto colorIndex = std::min(LAST_COLOR_IND, i);
+        const char * color = COLORS[colorIndex];
+        const auto & tree = tiTrPair.second;
+        writeDOTForFtree(out, tree, nd2name, color, i);
+        ++i;
     }
     out << "}\n";
 }

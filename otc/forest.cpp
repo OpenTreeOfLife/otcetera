@@ -3,6 +3,8 @@
 #include "otc/tree_data.h"
 #include "otc/supertree_util.h"
 #include "otc/tree_operations.h"
+
+#include "otc/write_dot.h"
 namespace otc {
 
 bool PhyloStatement::debugCheck() const {
@@ -494,7 +496,11 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     connectedIds.insert(begin(ps.leafSet), end(ps.leafSet));
 }
 
-
+template<typename T, typename U>
+void RootedForest<T, U>::writeForestDOTToFN(const std::string &fn) const {
+    std::ofstream outf(fn);
+    writeDOTForest(outf, *this);
+}
 
 template class FTree<RTSplits, MappedWithSplitsData>; // force explicit instantiaion of this template.
 template class RootedForest<RTSplits, MappedWithSplitsData>; // force explicit instantiaion of this template.

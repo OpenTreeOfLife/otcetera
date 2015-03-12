@@ -90,12 +90,12 @@ bool GreedyPhylogeneticForest<T,U>::addGroupToNewTree(const OttIdSet & incGroup,
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T,U>::addLeaf(PathPairing<T, U> * ppptr,
+bool GreedyPhylogeneticForest<T,U>::addLeaf(PathPairing<T, U> * ,
                       const OttIdSet & incGroup,
-                      const OttIdSet & leafSet,
-                      int treeIndex,
-                      long groupIndex,
-                      SupertreeContextWithSplits &sc) {
+                      const OttIdSet & ,
+                      int ,
+                      long ,
+                      SupertreeContextWithSplits &) {
     assert(incGroup.size() == 1);
     const auto ottId = *incGroup.begin();
     registerLeaf(ottId);

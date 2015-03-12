@@ -160,6 +160,9 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
     LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
     GreedyPhylogeneticForest<T,U> gpf;
     std::set<PathPairing<T, U> *> considered;
+    const auto scaffOTTId = scaffoldNode.getOttId();
+    std::string forestDOTfile = "forestForOTT";
+    forestDOTfile += std::to_string(scaffOTTId);
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
         const auto laIt = loopEmbeddings.find(treeInd);
         if (laIt == loopEmbeddings.end()) {
@@ -185,6 +188,11 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             } else {
                 const auto & d = mpoIt->first;
                 gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+                if (scaffOTTId == ottIDBeingDebugged) {
+                    std::string fn = forestDOTfile;
+                    fn += "AfterSplit"; fn += std::to_string(bogusGroupIndex - 1); fn += "Tree"; fn += std::to_string(treeInd); fn += ".dot";
+                    gpf.writeForestDOTToFN(fn);
+                }
                 considered.insert(ppptr);
             }
         }
@@ -193,6 +201,11 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             const OttIdSet * inc = triv.first;
             const auto ppptr = triv.second;
             gpf.addLeaf(ppptr, *inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+            if (scaffOTTId == ottIDBeingDebugged) {
+                std::string fn = forestDOTfile;
+                fn += "AfterTrivSplit"; fn += std::to_string(bogusGroupIndex - 1); fn += "Tree"; fn += std::to_string(treeInd); fn += ".dot";
+                gpf.writeForestDOTToFN(fn);
+            }
             considered.insert(ppptr);
             trivialQ.pop();
         }
@@ -209,6 +222,11 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
     for (auto pathPtr : childExitPaths) {
         if (!contains(considered, pathPtr)) {
             gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, bogusTreeIndex, bogusGroupIndex++, sc);
+            if (scaffOTTId == ottIDBeingDebugged) {
+                std::string fn = forestDOTfile;
+                fn += "AfterChildSplit"; fn += std::to_string(bogusGroupIndex - 1); fn += "Tree"; fn += std::to_string(bogusTreeIndex); fn += ".dot";
+                gpf.writeForestDOTToFN(fn);
+            }
             considered.insert(pathPtr); // @TMP not needed
         }
     }
@@ -217,7 +235,18 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             assert(snc != nullptr);
         }
     }
+    if (scaffOTTId == ottIDBeingDebugged) {
+        std::string fn = forestDOTfile;
+        fn += "BeforeFinalize.dot";
+        gpf.writeForestDOTToFN(fn);
+    }
     gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, sc);
+    if (scaffOTTId == ottIDBeingDebugged) {
+        std::string fn = forestDOTfile;
+        fn += "AfterFinalize.dot";
+        gpf.writeForestDOTToFN(fn);
+    }
+    
 }
 
 template<typename T, typename U>

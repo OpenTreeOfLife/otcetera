@@ -222,18 +222,26 @@ class RootedForest {
     RootedForest();
     RootedForest(const RootedForest &) = delete;
     RootedForest & operator=(const RootedForest &) = delete;
+    //accessors/queries:
     bool empty() const {
         return trees.empty();
     }
-    void registerLeaf(long ottId);
+    const std::map<OttId, node_type *> & getOttIdToNodeMapping() const {
+        return ottIdToNode;
+    }
+    const std::map<std::size_t, tree_type> & getTrees() const {
+        return trees;
+    }
     bool isAttached(long ottId) const;
     bool nodeIsAttached(RootedTreeNode<T> & n) const;
-    bool addPhyloStatement(const PhyloStatement &);
-
-    // return <conflicts, redundant> pair based on cache of previously added groups.
     std::pair<bool, bool> checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
+    //modifiers
+    bool addPhyloStatement(const PhyloStatement &);
+    // return <conflicts, redundant> pair based on cache of previously added groups.
     node_type * createNode(node_type * par);
     node_type * createLeaf(node_type * par, const OttId & oid);
+    void registerLeaf(long ottId);
+    void writeForestDOTToFN(const std::string &fn) const;
     private:
     std::list<OverlapFTreePair<T,U> > getSortedOverlappingTrees(const OttIdSet &inc);
     node_type * addDetachedLeaf(const OttId & ottId);
@@ -257,7 +265,7 @@ class RootedForest {
     //  added because of conflict with "emergent" properties of the forest. So checking
     //  addedSplitsByLeafSet is not sufficient to know if we can keep a split
     typedef std::set<OttIdSet> SetOfOTTIdSets;
-    std::map<OttIdSet, SetOfOTTIdSets> addedSplitsByLeafSet; 
+    std::map<OttIdSet, SetOfOTTIdSets> addedSplitsByLeafSet;
 };
 
 template<typename T, typename U>
