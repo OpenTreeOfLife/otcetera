@@ -70,15 +70,15 @@ def clean_name(tok):
 
 def parse_newick(newick):
     newick = newick.strip()
-    print newick
+    #print newick
     assert newick.endswith(';')
     newick = newick[:-1]
     assert newick.startswith('(')
     tokens = [clean_name(i) for i in BRAINDEAD_NEWICK_SPLITTER.split(newick) if i.strip()]
     clades = set()
     append_clades(tokens, clades)
-    for c in clades:
-        sys.stderr.write('clade extracted: {}\n'.format(', '.join(c)))
+    #for c in clades:
+    #    sys.stderr.write('clade extracted: {}\n'.format(', '.join(c)))
     return clades
 
 if __name__ == '__main__':

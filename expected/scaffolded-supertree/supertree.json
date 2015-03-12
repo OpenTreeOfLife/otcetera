@@ -1,7 +1,12 @@
 [
-  {
-    "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
     "infile_list": ["three-genus-taxonomy.tre", "three-genus-taxonomy-resolved.tre"],
     "expected": "just-resolving"
+  },
+  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "three-genus-subsample-higher.tre",
+                    "three-genus-taxonomy-resolved.tre"],
+    "expected": "non-mono-AC"
   }
 ]
