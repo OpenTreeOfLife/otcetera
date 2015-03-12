@@ -367,15 +367,15 @@ int main(int argc, char *argv[]) {
                   handleSuperTreeFlag,
                   false);
     otCLI.addFlag('b',
-                  "IDLIST should be a list of OTT IDs. A status report will be generated for those nodes",
+                  "ARG should be a list of OTT IDs. A status report will be generated for those nodes",
                   handleReportOnNodesFlag,
                   true);
     otCLI.addFlag('d',
-                  "IDLIST should be a list of OTT IDs. A DOT file of the nodes will be generated ",
+                  "ARG should be a list of OTT IDs. A DOT file of the nodes will be generated ",
                   handleDotNodesFlag,
                   true);
     otCLI.addFlag('z',
-                  "ID should be an OTT ID. A series DOT files will be generated for the forest created during the resolution of this OTT ID ",
+                  "ARG should be an OTT ID. A series DOT files will be generated for the forest created during the resolution of this OTT ID ",
                   handleOttForestDOTFlag,
                   true);
     otCLI.addFlag('y',
