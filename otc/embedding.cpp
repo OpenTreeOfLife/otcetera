@@ -29,9 +29,9 @@ bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,
 // Returns all loop paths for nd and all edgeBelowEmbeddings of its children
 template<typename T, typename U>
 std::vector<const PathPairing<T, U> *>
-NodeEmbedding<T, U>::getAllIncomingPathPairs(const T *nd,
-                                                 const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
+NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
                                                  std::size_t treeIndex) const {
+    const T *nd = nodeWithEmbedding;
     std::vector<const PathPairingWithSplits *> r;
     const auto lait = loopEmbeddings.find(treeIndex);
     if (lait != loopEmbeddings.end()) {
@@ -51,7 +51,6 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const T *nd,
         if (ceait != emb.edgeBelowEmbeddings.end()) {
             for (const auto & e : ceait->second) {
                 //std::cerr << "     Found some paths e.currChildOttIdSet ="; writeOttSet(std::cerr, "      ", e->currChildOttIdSet, " "); std::cerr << '\n';
-    
                 r.push_back(e);
             }
         } else {
@@ -291,7 +290,7 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
         }
     }
     NodeEmbedding<T, U>& parEmbedding = sc.scaffold2NodeEmbedding.at(p);
-    const auto beforePL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
+    //const auto beforePL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
         const auto & treeIndex = lai.first;
@@ -308,17 +307,16 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
         const auto & treeIndex = ebai.first;
         for (auto lp : ebai.second) {
             if (lp->scaffoldAnc == p) {
-                if (lp->scaffoldDes == &scaffoldNode) {
+                if (lp->scaffoldDes == &scaffoldNode && lp->phyloChild->isTip()) {
                     // this only happens if a terminal was mapped to this higher level taxon
                     // we don't know how to interpret this label any more, so we'll drop that 
                     // leaf. The taxa will be included by other relationships (the taxonomy as
                     // a last resort), so we don't need to worry about losing leaves by skipping this...
-                    if (lp->phyloChild->isTip()) {
-                        LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
-                        assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
-                    }
+                    LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
+                    assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
                     sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
                 } else {
+                    lp->scaffoldDes = p;
                     parEmbedding.loopEmbeddings[treeIndex].insert(lp);
                 }
             } else {
@@ -342,12 +340,20 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
         }
     }
     pruneCollapsedNode(scaffoldNode, sc);
+    /*
     const auto afterPL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
+
     for (auto bpl : beforePL) {
         const auto & afterVal = afterPL.at(bpl.first);
+        const auto tv = parEmbedding.getAllIncomingPathPairs(sc.scaffold2NodeEmbedding, bpl.first);
         assert(isSubset(bpl.second, afterVal));
+        for (auto pp : bpl.second) {
+            const PathPairing<T, U> * cpp = pp;
+            LOG(DEBUG) << "Checking tree" << bpl.first << " scaff" << p->getOttId() << " " << cpp->scaffoldAnc->getOttId() << " -> " <<  cpp->scaffoldDes->getOttId();
+            assert(vcontains(tv, cpp));
+        }
     }
-    
+    */
 }
 
 template<typename T, typename U>
@@ -420,7 +426,7 @@ template<typename T, typename U>
 OttIdSet NodeEmbedding<T, U>::getRelevantDesIds(const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
                                                 std::size_t treeIndex) {
     /* find MRCA of the phylo nodes */
-    auto ippV = getAllIncomingPathPairs(nodeWithEmbedding, eForNd, treeIndex);
+    auto ippV = getAllIncomingPathPairs(eForNd, treeIndex);
     OttIdSet relevantIds;
     for (auto pIt : ippV) {
         const OttIdSet otherRelevantIds = getRelevantDesIdsFromPath(*pIt);

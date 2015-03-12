@@ -221,8 +221,7 @@ class NodeEmbedding {
         bool r = updateAllMappedPathsOttIdSets(loopEmbeddings, oldEls, newEls);
         return updateAllMappedPathsOttIdSets(edgeBelowEmbeddings, oldEls, newEls) || r;
     }
-    std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(const T * nd,
-                                                                  const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
+    std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
                                                                   std::size_t treeIndex) const;
 };
 

@@ -201,6 +201,9 @@ void writePathPairingToDOT(std::ostream & out,
                            const char * color,
                            const char * prefix) {
     if (contains(pathSet, &pp)) {
+        if (pp.scaffoldDes == pp.scaffoldAnc) {
+            LOG(DEBUG) << "embedding for node" << n->getOttId() << " is skipping one of the loops for tree ?";
+        }
         return;
     }
     const std::string emptyStr;
@@ -217,6 +220,9 @@ void writePathPairingToDOT(std::ostream & out,
     const auto * pd = pp.phyloChild;
     const auto * sd = pp.scaffoldDes;
     const auto * sn = pp.scaffoldAnc;
+    if (sd == sn) {
+        LOG(DEBUG) << "embedding for node" << n->getOttId() << " has found one of the loops for tree ?";
+    }
     const ToDotKey pk{pd, "_phpath"};
     writeOneSideOfPathPairingToDOT(out, pn, pd, sn, sd, pk, pv, nd2name, n, style, prefix);
     style = bstyle;
@@ -244,7 +250,15 @@ void writeDOTEmbeddingForNode(std::ostream & out,
             writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
         }
     }
-    const auto incoming = thr.getAllIncomingPathPairs(nd, eForNd, treeIndex);
+    const auto incoming = thr.getAllIncomingPathPairs(eForNd, treeIndex);
+    if (contains(thr.loopEmbeddings, treeIndex)) {
+        LOG(DEBUG) << "embedding for node" << nd->getOttId() << " has " << thr.loopEmbeddings.at(treeIndex).size() << " loops for tree " << treeIndex << " incoming size = " << incoming.size();
+        for (auto le : thr.loopEmbeddings.at(treeIndex)) {
+            LOG(DEBUG) << "embedding for node" << nd->getOttId() << " has one of the loops for tree " << treeIndex << " with " << le->scaffoldAnc->getOttId() << " -> " << le->scaffoldDes->getOttId();
+        }
+    } else {
+        LOG(DEBUG) << "embedding for node" << nd->getOttId() << " has 0 loops for tree " << treeIndex << " incoming size = " << incoming.size();
+    }
     for (auto pp : incoming) {
         writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
     }

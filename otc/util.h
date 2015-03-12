@@ -59,6 +59,8 @@ template<typename T>
 std::set<T> set_difference_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T, typename U>
 bool contains(const T & container, const U & key);
+template<typename T>
+inline bool vcontains(const std::vector<T> & container, const T & key);
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
 
@@ -92,7 +94,15 @@ template<typename T, typename U>
 inline bool contains(const T & container, const U & key) {
     return container.find(key) != container.end();
 }
-
+template<typename T>
+inline bool vcontains(const std::vector<T> & container, const T & key) {
+    for (const auto & el : container) {
+        if (el == key) {
+            return true;
+        }
+    }
+    return false;
+}
 template<typename T, typename U>
 inline std::set<T> keys(const std::map<T, U> & container) {
     std::set<T> k;
