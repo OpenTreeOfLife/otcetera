@@ -87,11 +87,12 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     }
     ps.debugCheck();
     assert(ps.includeGroup.size() > 1);
+    for (auto oid : ps.leafSet) {
+        registerLeaf(oid);
+    }
     if (ps.includeGroup == ps.leafSet) {
-        LOG(DEBUG) << "trivial group - registering all leaves";
-        for (auto oid : ps.leafSet) {
-            registerLeaf(oid);
-        }
+        LOG(DEBUG) << "trivial group - exiting";
+        return true;
     }
     const auto incompatRedundant = checkWithPreviouslyAddedStatement(ps);
     if (incompatRedundant.first) {
@@ -202,12 +203,16 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
     std::vector<bool> shouldResolve;
     for (const auto & incPair : byIncCardinality) {
         const auto & incGroupIntersection = incPair.first;
-        if (incGroupIntersection.size() == 1) {
-            break; // must be compatible because we've hit the singelton nodes...
-        }
         attachedElsewhere.insert(incGroupIntersection.begin(), incGroupIntersection.end());
         tree_type * f = incPair.second;
-        auto includeGroupA = f->getMRCA(incGroupIntersection);
+        node_type * includeGroupA = nullptr;
+        includeGroupA = f->getMRCA(incGroupIntersection);
+        assert(includeGroupA != nullptr);
+        if (includeGroupA->isTip()) {
+            // this can happen if the overlap is one taxon.
+            includeGroupA = includeGroupA->getParent();
+            assert(includeGroupA != nullptr);
+        }
         // If any of the ingroup are specifically excluded, then we have move deeper in the tree.
         // TMP this could be more efficient and avoid the while loop.
         while (f->anyExcludedAtNode(includeGroupA, ps.includeGroup)) {
@@ -232,10 +237,6 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
     auto ntmIt = begin(nonTrivMRCAs);
     auto srIt = begin(shouldResolve);
     for (const auto & incPair : byIncCardinality) {
-        const auto & incGroupIntersection = incPair.first;
-        if (incGroupIntersection.size() == 1) {
-            break; // must be compatible because we've hit the singelton nodes...
-        }
         tree_type * f = incPair.second;
         assert(ntmIt != nonTrivMRCAs.end());
         node_type * includeGroupA = *ntmIt++;
@@ -461,6 +462,9 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
         }
         node_type * aTip = x->second;
         assert(aTip != nullptr);
+        if (ottIdSet.size() == 1) {
+            return aTip;
+        }
         return searchAncForMRCAOfDesIds(aTip, rel);
     }
     return nullptr;
