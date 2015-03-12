@@ -253,11 +253,21 @@ class ScaffoldedSupertree
         std::unique_ptr<TreeMappedWithSplits> tree = std::move(cloneTree(*taxonomy));
         taxonomyAsSource = tree.get();
         std::size_t treeIndex = inputTreesToIndex.size();
-        TreeMappedWithSplits * raw = tree.get();
         inputTreesToIndex[std::move(tree)] = treeIndex;
         treePtrByIndex.push_back(taxonomyAsSource);
+        // suppress the internal node OTT IDs from the des
+        OttIdSet internalIDs;
+        for (auto nd : iter_post_internal(*taxonomyAsSource)) {
+            if (nd->hasOttId()) {
+                internalIDs.insert(nd->getOttId());
+            }
+            auto & d = nd->getData().desIds;
+            for (auto o : internalIDs) {
+                d.erase(o);
+            }
+        }
         // Store the tree's filename
-        raw->setName("TAXONOMY");
+        taxonomyAsSource->setName("TAXONOMY");
         embedTaxonomyClone(*taxonomy, *taxonomyAsSource, treeIndex);
         return true;
     }

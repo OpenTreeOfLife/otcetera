@@ -307,17 +307,20 @@ void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> 
         const auto & treeIndex = ebai.first;
         for (auto lp : ebai.second) {
             if (lp->scaffoldAnc == p) {
-                if (lp->scaffoldDes == &scaffoldNode && lp->phyloChild->isTip()) {
-                    // this only happens if a terminal was mapped to this higher level taxon
-                    // we don't know how to interpret this label any more, so we'll drop that 
-                    // leaf. The taxa will be included by other relationships (the taxonomy as
-                    // a last resort), so we don't need to worry about losing leaves by skipping this...
-                    LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
-                    assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
-                    sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
-                } else {
-                    lp->scaffoldDes = p;
-                    parEmbedding.loopEmbeddings[treeIndex].insert(lp);
+                if (lp->scaffoldDes == &scaffoldNode) {
+                    if(lp->phyloChild->isTip()) {
+                        // this only happens if a terminal was mapped to this higher level taxon
+                        // we don't know how to interpret this label any more, so we'll drop that 
+                        // leaf. The taxa will be included by other relationships (the taxonomy as
+                        // a last resort), so we don't need to worry about losing leaves by skipping this...
+                        LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
+                        assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
+                        sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
+                        assert(false);
+                    } else {
+                        lp->scaffoldDes = p;
+                        parEmbedding.loopEmbeddings[treeIndex].insert(lp);
+                    }
                 }
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par

@@ -179,7 +179,7 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
         ancK = ToDotKey{scaffAnc, ""};
     }
     ToDotKey desK{sideDes, desPref};
-    if (sideDes->isTip()) {
+    if (scaffDes->isTip()) {
         desK = ToDotKey{scaffDes, ""};
     }
     
@@ -353,13 +353,13 @@ void writeDOTForFtree(std::ostream & out,
         writeDOTEdge(out, ancK, desK, nd2name, esty, false);
     }
     const std::string itn = std::string("inc") + tn;
-    const auto & inc = tree.getExcluded2ConstraintMap();
-    std::string incStyle = "shape=plaintext color=\"";
+    const auto & inc = tree.getIncluded2ConstraintMap();
+    std::string incStyle = "shape=invtriangle color=\"";
     incStyle += color;
     incStyle += "\"";
     writeDOTGroupingConstraints(out, inc, itn, tn, nd2name, incStyle, esty);
     const std::string etn = std::string("exc") + tn;
-    const auto & exc = tree.getIncluded2ConstraintMap();
+    const auto & exc = tree.getExcluded2ConstraintMap();
     std::string excStyle = "shape=octagon color=\"";
     excStyle += color;
     excStyle += "\"";
@@ -373,8 +373,14 @@ void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithS
     out << "digraph G{\n";
     for (auto & oidNodePair : o2n) {
         auto n = oidNodePair.second;
-        const ToDotKey k{n, ""};
-        writeNodeDOT(out, k, nd2name, emptyStr, false, true, false);
+        bool writePlainNd = forest.isAttached(n->getOttId());
+        if (!writePlainNd && (!forest.isMentionedInInclude(n)) && (!forest.isMentionedInExclude(n))) {
+            writePlainNd = true;
+        }
+        if (writePlainNd) {
+            const ToDotKey k{n, ""};
+            writeNodeDOT(out, k, nd2name, emptyStr, false, true, false);
+        }
     }
     const auto & trees = forest.getTrees();
     auto i = 0U;

@@ -77,6 +77,53 @@ void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
         }
     }
 }
+template<typename T, typename U>
+bool FTree<T,U>::isExcludedFromRoot(const node_type *n) const {
+    node_type * ncn = const_cast<node_type *>(n);
+    auto nit = excludesConstraints.find(ncn);
+    if (nit == excludesConstraints.end()) {
+        return false;
+    }
+    for (const auto & en : nit->second) {
+        if (en.first == root) {
+            return true;
+        }
+    }
+    return false;
+}
+template<typename T, typename U>
+void RootedForest<T,U>::attachAllDetachedTips() {
+    if (trees.empty()) {
+        attachAllKnownTipsAsNewTree();
+        return;
+    }
+    assert(trees.size() == 1);
+    tree_type & t = trees.begin()->second;
+    std::list<node_type *> excludedFromRoot;
+    std::list<node_type *> attachableAtRoot;
+    for (auto & o2n : ottIdToNode) {
+        auto nd = o2n.second;
+        if (!nodeIsAttached(*nd)) {
+            if (t.isExcludedFromRoot(nd)) {
+                excludedFromRoot.push_back(nd);
+            } else {
+                attachableAtRoot.push_back(nd);
+            }
+        }
+    }
+    if (!excludedFromRoot.empty()) {
+        auto nr = createNode(nullptr);
+        nr->addChild(t.root);
+        t.root = nr;
+        for (auto n : excludedFromRoot) {
+            nr->addChild(n);
+        }
+    }
+    for (auto n : attachableAtRoot) {
+        t.root->addChild(n);
+    }
+    
+}
 
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
@@ -195,7 +242,28 @@ void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloState
     }
     // no other trees had an includeGroup, so no need to add constraints....
 }
-
+template<typename T, typename U>
+bool RootedForest<T,U>::isMentionedInInclude(const node_type * nd) const {
+    node_type * ncn = const_cast<node_type *>(nd);
+    for (const auto & tp : trees) {
+        const auto & tree = tp.second;
+        if (contains(tree.includesConstraints, ncn)) {
+            return true;
+        }
+    }
+    return false;
+}
+template<typename T, typename U>
+bool RootedForest<T,U>::isMentionedInExclude(const node_type * nd) const {
+    node_type * ncn = const_cast<node_type *>(nd);
+    for (const auto & tp : trees) {
+        const auto & tree = tp.second;
+        if (contains(tree.excludesConstraints, ncn)) {
+            return true;
+        }
+    }
+    return false;
+}
 template<typename T, typename U>
 bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality, const PhyloStatement &ps) {
     std::list<node_type * > nonTrivMRCAs;

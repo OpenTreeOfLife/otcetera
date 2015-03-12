@@ -72,6 +72,7 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffold
         for (auto eout : treeInd2eout.second) {
             LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << snoid<< ')';
             eout->setOttIdSet(snoid, sc.scaffold2NodeEmbedding);
+            eout->scaffoldDes = &scaffoldNode;
         }
     }
 }
@@ -206,33 +207,33 @@ template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     auto roots = getRoots();
-    if (roots.size() == 0) {
-        attachAllKnownTipsAsNewTree();
-        return;
-    } else {
-        for (auto r : roots) {
-            std::cerr << " tree-in-forest = "; writeNewick(std::cerr, r); std::cerr << '\n';
-        }
+    for (auto r : roots) {
+        std::cerr << " tree-in-forest = "; writeNewick(std::cerr, r); std::cerr << '\n';
     }
-    if (trees.size() < 2) {
-        return;
-    }
-    LOG(WARNING) << "finalizeTree is not correctly merging";
-    auto rit = begin(roots);
-    auto firstRoot = *rit;
-    for (++rit; rit != end(roots); rit = roots.erase(rit)) {
-        if ((*rit)->isTip()) {
-            firstRoot->addChild(*rit);
-        } else {
-            assert((*rit)->getParent() == nullptr);
-            for (auto c : iter_child(**rit)) {
-                assert(c->isTip());
-                firstRoot->addChild(c);
+    if (trees.size() > 1) {
+        LOG(WARNING) << "finalizeTree is not correctly merging";
+        auto rit = begin(roots);
+        auto firstRoot = *rit;
+        for (++rit; rit != end(roots); rit = roots.erase(rit)) {
+            if ((*rit)->isTip()) {
+                firstRoot->addChild(*rit);
+            } else {
+                assert((*rit)->getParent() == nullptr);
+                for (auto c : iter_child(**rit)) {
+                    assert(c->isTip());
+                    firstRoot->addChild(c);
+                }
             }
         }
     }
-    firstRoot->getData().desIds = ottIdSet;
-    std::cerr << " finalized-tree-from-forest = "; writeNewick(std::cerr, firstRoot); std::cerr << '\n';
+    roots = getRoots();
+    assert(roots.size() < 2);
+    attachAllDetachedTips();
+    roots = getRoots();
+    assert(roots.size() == 1);
+    auto onlyRoot = *roots.begin();
+    onlyRoot->getData().desIds = ottIdSet;
+    std::cerr << " finalized-tree-from-forest = "; writeNewick(std::cerr, onlyRoot); std::cerr << '\n';
 }
 
 // addIngroupAtNode adds leaves for all "new" ottIds to:

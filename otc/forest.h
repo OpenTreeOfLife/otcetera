@@ -166,6 +166,7 @@ class FTree {
     const node_type * getRoot() const {
         return root;
     }
+    bool isExcludedFromRoot(const node_type *) const;
     // OTT Ids of nodes on the graph only....
     const OttIdSet & getConnectedOttIds() {
         return connectedIds;
@@ -243,6 +244,8 @@ class RootedForest {
         return trees;
     }
     bool isAttached(long ottId) const;
+    bool isMentionedInInclude(const node_type * ) const;
+    bool isMentionedInExclude(const node_type * ) const;
     bool nodeIsAttached(RootedTreeNode<T> & n) const;
     std::pair<bool, bool> checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
     //modifiers
@@ -262,6 +265,7 @@ class RootedForest {
     tree_type & createNewTree();
     protected:
     void attachAllKnownTipsAsNewTree();
+    void attachAllDetachedTips();
     RootedTree<T, U> nodeSrc; // not part of the forest, just the memory manager for the nodes
     std::map<std::size_t,  tree_type> trees;
     std::size_t nextTreeId;
