@@ -2,3 +2,5 @@
 */*/*/obtained-*
 */*/logs
 */*/obtained-*
+*/*/*.dot
+*/*/*.svg

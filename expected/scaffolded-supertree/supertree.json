@@ -16,6 +16,12 @@
     "expected": "B-C-higher-A-nonmono"
   },
   { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+    "infile_list": ["A-Gtaxonomy.tre",
+                    "ABvC.tre",
+                    "DEvF.tre"],
+    "expected": "disjoint"
+  },
+  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-BclosertoA1.tre",
                     "three-genus-Anotmonophyletic.tre"
