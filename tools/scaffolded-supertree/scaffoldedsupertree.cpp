@@ -130,15 +130,20 @@ class ScaffoldedSupertree
                 LOG(DEBUG) << "Beginning construction of the supertree from the embedded tree.";
             }
         }
+        std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post_internal(*taxonomy)) {
+            postOrder.push_back(nd);
+        }
+        for (auto nd : postOrder) {
             if (debuggingOutput) {
                 if (emitScaffoldDotFiles) {
                     writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
                     writeEmbeddingDOT(BEFORE_ND_WO_TAXO, nd, nd);
                 } else {
-                     LOG(DEBUG) << "Calling resolveOrCollapse for OTT" << nd->getOttId();
+                     
                 }
             }
+            LOG(INFO) << "Calling resolveOrCollapse for OTT" << nd->getOttId();
             resolveOrCollapse(nd, sc);
             if (debuggingOutput) {
                 if (emitScaffoldDotFiles) {
