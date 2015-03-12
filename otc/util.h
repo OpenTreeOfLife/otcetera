@@ -127,7 +127,7 @@ inline void writeOttSet(std::ostream & out,
 inline void dbWriteOttSet(const char *indent,
                           const std::set<long> &fir,
                           const char * sep) {
-    if (!ottIDBeingDebugged) {
+    if (!debuggingOutputEnabled) {
         return;
     }
     writeOttSet(std::cerr, indent, fir, sep);

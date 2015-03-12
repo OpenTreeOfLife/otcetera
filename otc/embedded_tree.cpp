@@ -86,6 +86,7 @@ void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedW
             taxoDes = ndPairPtr->scaffoldNode;
             assert(taxoDes != nullptr);
         }
+
         NodePairingWithSplits * parPairPtr = nullptr;
         auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
         if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
