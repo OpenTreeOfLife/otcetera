@@ -5,6 +5,7 @@ libotcetera_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 libotcetera_la_HEADERS = \
 	error.h \
+	ftree.h \
 	newick.h \
 	otcetera.h \
 	otc_base_includes.h \
@@ -21,6 +22,7 @@ libotcetera_la_SOURCES = \
 	embedding.cpp \
 	embedded_tree.cpp \
 	forest.cpp \
+	ftree.cpp \
 	greedy_forest.cpp \
 	newick.cpp \
 	otcetera.cpp \

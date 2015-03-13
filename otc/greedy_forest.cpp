@@ -78,7 +78,9 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffold
                                                                     SupertreeContextWithSplits & sc) {
     const auto snoid = scaffoldNode.getOttId();
     LOG(DEBUG) << "finishResolutionOfEmbeddedClade for " << snoid;
+    debugInvariantsCheck();
     finalizeTree(sc);
+    debugInvariantsCheck();
     assert(trees.size() == 1);
     auto & resolvedTree = begin(trees)->second;
     const auto beforePar = scaffoldNode.getParent();
@@ -254,18 +256,21 @@ void GreedyPhylogeneticForest<T,U>::mergeForest(SupertreeContextWithSplits &) {
         std::list<node_type *> rc;
         for (auto currChild : iter_child(*currRoot)) {
             rc.push_back(currChild);
-            currChild->_setNextSib(nullptr);
         }
         for (auto currChild : rc) {
+            currChild->_setNextSib(nullptr);
+            //LOG(DEBUG) << " transferring " << std::hex << long(currChild);
             currRoot->_setLChild(currChild);
             firstTree.addSubtree(currChild, nd2Inc, nd2Exc, ic, ec);
         }
+        currRoot->_setLChild(nullptr);
     }
 }
 
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &sc) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
+    debugInvariantsCheck();
     auto roots = getRoots();
     for (auto r : roots) {
         LOG(DEBUG) << " tree-in-forest = "; dbWriteNewick(r);
@@ -280,9 +285,11 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &sc)
         mergeForest(sc);
         LOG(WARNING) << "finished questionable mergeForest.";
     }
+    debugInvariantsCheck();
     roots = getRoots();
     assert(roots.size() < 2);
     attachAllDetachedTips();
+    debugInvariantsCheck();
     roots = getRoots();
     assert(roots.size() == 1);
     auto onlyRoot = *roots.begin();

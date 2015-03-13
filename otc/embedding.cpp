@@ -223,6 +223,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
                     gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeInd, bogusGroupIndex -1));
                 }
                 considered.insert(ppptr);
+                gpf.debugInvariantsCheck();
             }
         }
         while (!trivialQ.empty()) {
@@ -233,6 +234,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeInd, bogusGroupIndex -1));
             }
+            gpf.debugInvariantsCheck();
             considered.insert(ppptr);
             trivialQ.pop();
         }
@@ -252,6 +254,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, NONEMBEDDED_SPLIT, bogusTreeIndex, bogusGroupIndex -1));
             }
+            gpf.debugInvariantsCheck();
             considered.insert(pathPtr); // @TMP not needed
         }
     }
@@ -435,6 +438,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
                 collapseGroup(scaffoldNode, sc);
                 return;
             }
+            gpf.debugInvariantsCheck();
         }
     }
     gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, sc);

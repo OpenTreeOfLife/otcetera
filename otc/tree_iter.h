@@ -21,6 +21,15 @@ bool isAncestorDesNoIter(const T *a, const T *d) {
     }
     return false;
 }
+template<typename T>
+inline T * getDeepestAnc(T *nd) {
+    auto p = nd->getParent();
+    while (p != nullptr) {
+        nd = p;
+        p = nd->getParent();
+    }
+    return nd;
+}
 
 template<typename T>
 using NdFilterFn = std::function<bool(const T &)>;
@@ -521,6 +530,16 @@ inline LeafIter<typename T::node_type, false> iter_leaf(T & tree) {
 template<typename T>
 inline LeafIter<typename T::node_type, true> iter_leaf_const(const T & tree) {
     return std::move(LeafIter<typename T::node_type, true>(tree.getRoot()));
+}
+
+template<typename T>
+inline LeafIter<T, false> iter_leaf_n(T & node) {
+    return std::move(LeafIter<T, false>(&node));
+}
+
+template<typename T>
+inline LeafIter<T, true> iter_leaf_n_const(const T & node) {
+    return std::move(LeafIter<T, true>(&node));
 }
 
 template<typename T>
