@@ -190,6 +190,7 @@ void FTree<T,U>::addIncludeStatement(long ottId,
                                      const PhyloStatementSource &pss) {
     assert(includedIn != nullptr);
     if (contains(includedIn->getData().desIds, ottId)) {
+        LOG(DEBUG) << "  addIncludeStatement early return";
         return; // must be included in a des
     }
     RootedTreeNode<T> * eNode = ottIdToNodeMap.at(ottId);
@@ -200,6 +201,7 @@ void FTree<T,U>::addIncludeStatement(long ottId,
         auto & gcPair = icIt->second;
         auto aen = gcPair.first;
         if (aen == includedIn || isAncestorDesNoIter(includedIn, aen)) {
+            LOG(DEBUG) << "  addIncludeStatement is redundant early return";
             return; // prev constraint at least as specific
         }
         if (!isAncestorDesNoIter(aen, includedIn)) {
@@ -267,24 +269,38 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
         gcp->first = newNode;
     }
     assert(!par->isOutDegreeOneNode());
+    debugInvariantsCheck();
     return newNode;
 }
 template<typename T, typename U>
 OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
                                              RootedTreeNode<T> * includeGroupA,
                                              const OttIdSet & attachedElsewhere) {
+    dbWriteOttSet(" FTree<T,U>::addPhyloStatementAtNode inc", ps.includeGroup);
+    LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA;
+    dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
     OttIdSet r;
     for (auto oid : ps.includeGroup) {
         if (!ottIdIsConnected(oid)) {
+            LOG(DEBUG) << " not connected " << oid;
             if (contains(attachedElsewhere, oid)) {
+                LOG(DEBUG) << " attachedElsewhere " << oid;
                 addIncludeStatement(oid, includeGroupA, ps.provenance);
+                auto ifIt = includesConstraints.find(ottIdToNodeMap.at(oid));
+                if (ifIt != includesConstraints.end()) {
+                    LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA << " ic = " << (long) ifIt->second.first << " isAnc" << isAncestorDesNoIter(includeGroupA, ifIt->second.first);
+                }
             } else {
+                LOG(DEBUG) << " adding leaf " << oid;
                 addLeafNoDesUpdate(includeGroupA, oid);
                 r.insert(oid);
             }
+        } else {
+            LOG(DEBUG) << " connected " << oid;
         }
     }
     includeGroupA->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
+    dbWriteOttSet("    later includeGroupA->getData().desIds", includeGroupA->getData().desIds);
     for (auto anc : iter_anc(*includeGroupA)) {
         anc->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
     }
@@ -293,6 +309,10 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
             addExcludeStatement(oid, includeGroupA, ps.provenance);
         }
     }
+    LOG(DEBUG) << "before addPhyloStatementAtNode exit";
+    debugInvariantsCheck();
+
+    LOG(DEBUG) << "bout to addPhyloStatementAtNode exit";
     return r;
 }
 
@@ -410,10 +430,20 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
         if (!contains(ois, o)) {
             if (icnS.second.first == nd) {
                 ois.insert(o);
+            } else {
+                assert(!isAncestorDesNoIter(nd, icnS.second.first));
             }
         }
     }
+    
     if(s != ois) {
+        auto tn = ottIdToNodeMap.find(612446);
+        if (tn != ottIdToNodeMap.end()) {
+            auto icTn = includesConstraints.find(tn->second);
+            if (icTn != includesConstraints.end()) {
+                LOG(DEBUG) << "nd = " << (long)nd << " tn = " << (long)tn->second << " ic = " << (long) icTn->second.first << " isAnc" << isAncestorDesNoIter(nd, icTn->second.first);
+            }
+        }
         dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming s", s);
         dbWriteOttSet("calculated:", ois);
         assert(s == ois);

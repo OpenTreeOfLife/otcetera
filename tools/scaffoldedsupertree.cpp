@@ -85,6 +85,7 @@ class ScaffoldedSupertree
     bool emitScaffoldDotFiles;
     long verboseLoggingTarget;
     std::map<long, long> monotypicRemapping;
+    long ancToBeConsidered;
 
     void writeEmbeddingDOT(SuperTreeDOTStep sts, const NodeWithSplits * nd, const NodeWithSplits * actionNd) {
         std::string fn = "ScaffSuperTree_num";
@@ -126,13 +127,16 @@ class ScaffoldedSupertree
     void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
         assert(!scaffoldNd->isTip());
         auto & thr = _getEmdeddingForNode(scaffoldNd);
+        LOG(INFO) << "  outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
+            LOG(INFO) << "    Contested";
             if (thr.highRankingTreesPreserveMonophyly(sc.numTrees)) {
                 thr.resolveGivenContestedMonophyly(*scaffoldNd, sc);
             } else {
                 thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
             }
         } else {
+            LOG(INFO) << "    Uncontested";
             thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
         }
     }
@@ -153,9 +157,16 @@ class ScaffoldedSupertree
             assert(!nd->isTip());
             postOrder.push_back(nd);
         }
+        NodeWithSplits * ancToAnalyze = nullptr;
+        if (ancToBeConsidered >= 0) {
+            ancToAnalyze = taxonomy->getData().ottIdToNode.at(ancToBeConsidered);
+        }
         for (auto nd : postOrder) {
             if (nd->getOttId() == verboseLoggingTarget) {
                 otCLI.turnOnVerboseMode();
+            }
+            if (ancToAnalyze != nullptr && !isAncestorDesNoIter(ancToAnalyze, nd)) {
+                continue;
             }
             auto p = nd->getParent();
             assert(!nd->isTip());
@@ -163,11 +174,9 @@ class ScaffoldedSupertree
                 if (emitScaffoldDotFiles) {
                     writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
                     writeEmbeddingDOT(BEFORE_ND_WO_TAXO, nd, nd);
-                } else {
-                     
                 }
             }
-            LOG(INFO) << "Calling resolveOrCollapse for OTT" << nd->getOttId();
+            LOG(INFO) << "Calling resolveOrCollapse for OTT" << nd->getOttId() << " " << nd->getName();
             resolveOrCollapse(nd, sc);
             if (debuggingOutput) {
                 if (emitScaffoldDotFiles) {
@@ -208,7 +217,8 @@ class ScaffoldedSupertree
          taxonomyAsSource(nullptr),
          currDotFileIndex(0),
          debuggingOutput(false), 
-         emitScaffoldDotFiles(false) {
+         emitScaffoldDotFiles(false),
+         ancToBeConsidered(-1) {
     }
 
     void reportAllConflicting(std::ostream & out, bool verbose) {
@@ -368,12 +378,23 @@ bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
     }
     return true;
 }
+
 bool handleOttForestDOTFlag(OTCLI & otCLI, const std::string &narg) {
     long conv = -1;
     if (!char_ptr_to_long(narg.c_str(), &conv) || conv < 0) {
         throw OTCError(std::string("Expecting a positive number as an ott ID after -z flag. Offending word: ") + narg);
     }
     ottIDBeingDebugged = conv;
+    return true;
+}
+
+bool handleAncFlag(OTCLI & otCLI, const std::string &narg) {
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
+    long conv = -1;
+    if (!char_ptr_to_long(narg.c_str(), &conv) || conv < 0) {
+        throw OTCError(std::string("Expecting a positive number as an ott ID after -z flag. Offending word: ") + narg);
+    }
+    proc->ancToBeConsidered = conv;
     return true;
 }
 
@@ -437,6 +458,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('z',
                   "ARG should be an OTT ID. A series DOT files will be generated for the forest created during the resolution of this OTT ID ",
                   handleOttForestDOTFlag,
+                  true);
+    otCLI.addFlag('c',
+                  "ARG should be an OTT ID. Only descendants of this OTT ID will be processed during the supetree construction. This is intended to make debugging of large trees faster - the final results are not reliable",
+                  handleAncFlag,
                   true);
     otCLI.addFlag('l',
                   "ARG should be an OTT ID. verbose logging mode will be enabled when solving the subproblem for this node",

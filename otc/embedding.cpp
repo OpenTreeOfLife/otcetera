@@ -199,6 +199,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         if (laIt == loopEmbeddings.end()) {
             continue;
         }
+        LOG(INFO) << "      treeInd = " << treeInd;
         const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
         PathPairSet & pps = laIt->second;
         // leaf set of this tree for this subtree
@@ -219,13 +220,15 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             } else {
                 const auto & d = mpoIt->first;
                 gpf.debugInvariantsCheck();
-                gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+                LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex << " out of " << mapToProvideOrder.size() << " (some of which may be skipped as trivial)";
+                gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex, sc);
                 gpf.debugInvariantsCheck();
                 if (scaffOTTId == ottIDBeingDebugged) {
                     gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeInd, bogusGroupIndex -1));
                 }
                 considered.insert(ppptr);
             }
+            bogusGroupIndex++;
         }
         while (!trivialQ.empty()) {
             const q_t triv = trivialQ.front();
@@ -420,6 +423,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
         if (laIt == loopEmbeddings.end() && ebaIt == edgeBelowEmbeddings.end()) {
             continue;
         }
+        LOG(INFO) << "      treeInd = " << treeInd;
         /* order the groupings */
         std::map<OttIdSet, PathPairing<T,U> *> mapToProvideOrder;
         for (auto pp : laIt->second) {
@@ -434,6 +438,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
         for (auto mpoIt : mapToProvideOrder) {
             const auto & d = mpoIt.first;
             auto ppptr = mpoIt.second;
+            LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex;
             gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
             if (!gpf.possibleMonophyleticGroupStillViable()) {
                 collapseGroup(scaffoldNode, sc);

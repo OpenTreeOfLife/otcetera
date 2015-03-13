@@ -321,10 +321,10 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
         assert(ntmIt != nonTrivMRCAs.end());
         node_type * includeGroupA = *ntmIt++;
         const bool addNode = *srIt++;
-        const bool shouldCreateDeepeRoot = *scdIt;
+        const bool shouldCreateDeeperRoot = *scdIt;
         if (addNode) {
             includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps.includeGroup);
-        } else if (shouldCreateDeepeRoot) {
+        } else if (shouldCreateDeeperRoot) {
             f->createDeeperRoot();
             includeGroupA = f->getRoot();
         }

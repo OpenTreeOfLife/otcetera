@@ -158,6 +158,13 @@ class NodeEmbedding {
         }
         return t;
     }
+    std::size_t getNumLoopTrees() const {
+        std::set<std::size_t> keys;
+        for (auto i : loopEmbeddings) {
+            keys.insert(i.first);
+        }
+        return keys.size();
+    }
     std::size_t getTotalNumLoops() const {
         unsigned long t = 0U;
         for (auto i : loopEmbeddings) {
