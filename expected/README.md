@@ -6,7 +6,7 @@ reads them to determine an invocation to use (with filepaths that are relative
 to the `data` dir) and where to look for the expected output.
 
 By convention the subdirectories of this dir are named to correspond to the 
-subdirs of the tools directory which they test.
+tools which they test (without the otc prefix).
 
 ## Syntax for describing the invocation.
 Each JSON just holds a list of objects (Look at the `*.json` files in the subdirs of this directory) with the invocations and a pointer to the location
