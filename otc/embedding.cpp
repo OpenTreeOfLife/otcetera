@@ -218,12 +218,13 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
                 trivialQ.push(toQ);
             } else {
                 const auto & d = mpoIt->first;
+                gpf.debugInvariantsCheck();
                 gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+                gpf.debugInvariantsCheck();
                 if (scaffOTTId == ottIDBeingDebugged) {
                     gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeInd, bogusGroupIndex -1));
                 }
                 considered.insert(ppptr);
-                gpf.debugInvariantsCheck();
             }
         }
         while (!trivialQ.empty()) {

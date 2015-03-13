@@ -216,11 +216,13 @@ void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloState
         //  areDisjoint returns false). But sense will add all of the leaves in the 
         //  includeGroup and excludeGroup to this new tree, we don't need any new constraints
         //  so we can exit
+        LOG(DEBUG) << "No exclude overlap either, using addDisjointTree";
         addDisjointTree(ps);
     } else {
         // TMP TOO GREEDY A CONNECTION - should only do this if all of the outgroup is connected...
         // we'll add the ingroup as a child of the root
         auto ftreeToAttach = byExcCardinality.begin()->second;
+        LOG(DEBUG) << "Using addIncludeGroupDisjointPhyloStatement";
         ftreeToAttach->addIncludeGroupDisjointPhyloStatement(ps);
     }
     // no other trees had an includeGroup, so no need to add constraints....
@@ -308,7 +310,10 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
     auto ntmIt = begin(nonTrivMRCAs);
     auto srIt = begin(shouldResolveVec);
     auto scdIt = begin(shouldCreateDeeperVec);
+    unsigned i = 0;
     for (const auto & incPair : byIncCardinality) {
+        LOG(DEBUG) << "   addIngroupOverlappingPhyloStatementToGraph mod for loop round " << ++i;
+        debugInvariantsCheck();
         tree_type * f = incPair.second;
         assert(ntmIt != nonTrivMRCAs.end());
         node_type * includeGroupA = *ntmIt++;
@@ -348,6 +353,9 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     auto byIncCardinality = getSortedOverlappingTrees(ps.includeGroup);
     LOG(DEBUG) << byIncCardinality.size() << " FTree instance referred to in byIncCardinality";
     if (byIncCardinality.empty()) {
+        for (auto o : ps.includeGroup) {
+            assert(!isAttached(o));
+        }
         LOG(DEBUG) << "No intersection between includeGroup of an existing FTree.";
         addIngroupDisjointPhyloStatementToGraph(ps);
         return true;

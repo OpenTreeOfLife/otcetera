@@ -137,7 +137,7 @@ bool OTCLI::parseArgs(int argc, char *argv[], std::vector<std::string> & args) {
     this->exitCode = 0;
     std::list<std::string> allArgs;
     for (int i = 1; i < argc; ++i) {
-        const auto filepath = argv[i];
+        const std::string filepath = argv[i];
         allArgs.push_back(filepath);
     }
     for (auto aIt = allArgs.begin(); aIt != allArgs.end(); ++aIt) {

@@ -440,6 +440,15 @@ template<typename T>
 inline PostorderIter<typename T::node_type, true> iter_post_const(const T & tree) {
     return std::move(PostorderIter<typename T::node_type, true>(tree.getRoot(), nullptr));
 }
+template<typename T>
+inline PostorderIter<T, false> iter_post_n(T & node) {
+    return std::move(PostorderIter<T, false>(&node, nullptr));
+}
+
+template<typename T>
+inline PostorderIter<T, true> iter_post_n_const(const T & node) {
+    return std::move(PostorderIter<T, true>(&node, nullptr));
+}
 
 template<typename T>
 inline PostorderIter<typename T::node_type, false> iter_post_internal(T & tree) {

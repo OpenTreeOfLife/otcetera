@@ -354,19 +354,80 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     supportedBy[parOfIncGroup].push_back(ps.provenance);
     assert(ps.excludeGroup.size() > 0);
     for (auto i : ps.excludeGroup) {
-        addLeafNoDesUpdate(root, i);
+        if (!forest.isAttached(i)) {
+            addLeafNoDesUpdate(root, i);
+        } else {
+            addExcludeStatement(i, root, ps.provenance);
+        }
     }
     for (auto i : ps.includeGroup) {
+        assert(!forest.isAttached(i));
         addLeafNoDesUpdate(parOfIncGroup, i);
     }
     root->getData().desIds = ps.leafSet;
     parOfIncGroup->getData().desIds = ps.includeGroup;
 }
 
+template<typename T>
+std::set<T *> getAncSet(T *nd) {
+    std::set<T *> r;
+    T * p = nd->getParent();
+    while (p != nullptr) {
+        r.insert(p);
+        p = p->getParent();
+    }
+    return r;
+}
+template<typename T, typename U>
+void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const{
+    OttIdSet ois;
+    if (nd->isTip()) {
+        ois.insert(nd->getOttId());
+    } else {
+        for (auto c : iter_child_const(*nd)) {
+            const auto & coids = c->getData().desIds;
+            ois.insert(begin(coids), end(coids));
+        }
+    }
+    for (const auto &icnS : includesConstraints) {
+        auto o = icnS.first->getOttId();
+        if (!contains(ois, o)) {
+            for (const auto & conStatement : icnS.second) {
+                if (conStatement.first == nd) {
+                    ois.insert(o);
+                    break;
+                }
+            }
+        }
+    }
+    assert(s == ois);
+}
 template<typename T, typename U>
 void FTree<T, U>::debugInvariantsCheck() const {
-    //TMP TO DO
+    for (auto n : iter_post_n_const(*root)) {
+        OttIdSet noids;
+        if (n->isTip()) {
+            const auto o = n->getOttId();
+            assert(ottIdToNodeMap.at(o) == n);
+        } else {
+            assert(!n->hasOttId());
+        }
+        if (n != root) {
+            assert(isAncestorDesNoIter(root, n));
+        }
+        debugVerifyDesIdsAssumingDes(n->getData().desIds, n);
+        // Make sure that our ancestors do not exclude us.
+        auto exIt = excludesConstraints.find(const_cast<node_type *>(n));
+        if (exIt != excludesConstraints.end()) {
+            const std::set<const node_type *> ancSet = getAncSet(n);
+            for (auto & ex : exIt->second) {
+                const node_type * exNd = ex.first;
+                assert(!contains(ancSet, exNd));
+            }
+        }
+    }
 }
+
 template class FTree<RTSplits, MappedWithSplitsData>; // force explicit instantiaion of this template.
 
 }// namespace

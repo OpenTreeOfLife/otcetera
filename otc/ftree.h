@@ -101,6 +101,7 @@ class FTree {
                     const std::map<node_type *, std::list<GroupingConstraint> > & incConstr,
                     const std::map<node_type *, std::list<GroupingConstraint> > & excConstr);
     void debugInvariantsCheck() const;
+    void debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const;
     private:
     void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {
