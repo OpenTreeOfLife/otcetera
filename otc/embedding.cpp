@@ -66,9 +66,10 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbed
 template<typename T, typename U>
 bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
     if (false && debuggingOutputEnabled) {
-        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this << " in currChildOttIdSet"; dbWriteOttSet(" ", currChildOttIdSet, " ");
-        LOG(DEBUG)  << "  updateOttIdSetNoTraversal for " << (long)this << " in oldEls"; dbWriteOttSet(" ", oldEls, " ");
-        LOG(DEBUG)  << "  updateOttIdSetNoTraversal for " << (long)this << " in newEls"; dbWriteOttSet(" ", newEls, " ");
+        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this << " in ";
+        dbWriteOttSet("currChildOttIdSet", currChildOttIdSet);
+        dbWriteOttSet("oldEls", oldEls);
+        dbWriteOttSet("newEls", newEls);
     }
     auto i = set_intersection_as_set(oldEls, currChildOttIdSet);
     if (i.size() < oldEls.size()) {
@@ -81,7 +82,8 @@ bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const 
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
     if (false && debuggingOutputEnabled) {
-        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this << " on updateOttIdSetNoTraversal exit "; dbWriteOttSet(" ", currChildOttIdSet, " ");
+        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this;
+        dbWriteOttSet("updateOttIdSetNoTraversal exit ", currChildOttIdSet);
     }
     return true;
 }
@@ -211,7 +213,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         for (auto mpoIt = mapToProvideOrder.rbegin(); mpoIt != mapToProvideOrder.rend(); ++mpoIt) {
             auto ppptr = mpoIt->second;
             if (ppptr->pathIsNowTrivial()) {
-                LOG(DEBUG) << "pathIsNowTrivial" ; dbWriteOttSet(" ", mpoIt->first, " ");
+                dbWriteOttSet("pathIsNowTrivial", mpoIt->first);
                 const q_t toQ{&(mpoIt->first), ppptr};
                 trivialQ.push(toQ);
             } else {

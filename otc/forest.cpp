@@ -11,9 +11,9 @@ bool PhyloStatement::debugCheck() const {
 #ifdef DEBUGGING_PHYLO_STATEMENTS
     const OttIdSet ie = set_union_as_set(includeGroup, excludeGroup);
     if (ie != leafSet) {
-        LOG(DEBUG)  << " includeGroup "; dbWriteOttSet(" ", includeGroup, " ");
-        LOG(DEBUG)  << " excludeGroup "; dbWriteOttSet(" ", excludeGroup, " ");
-        LOG(DEBUG)  << " leafSet "; dbWriteOttSet(" ", leafSet, " ");
+        dbWriteOttSet(" includeGroup ",includeGroup);
+        dbWriteOttSet(" excludeGroup ", excludeGroup);
+        dbWriteOttSet(" leafSet ", leafSet);
         assert(false);
     }
 #endif
@@ -197,9 +197,8 @@ void RootedForest<T,U>::attachAllDetachedTips() {
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
-        LOG(DEBUG) << " RootedForest::addPhyloStatement";
-        LOG(DEBUG) << " incGroup "; dbWriteOttSet(" ", ps.includeGroup, " ");
-        LOG(DEBUG) << " leafSet "; dbWriteOttSet(" ", ps.leafSet, " ");
+        dbWriteOttSet(" RootedForest::addPhyloStatement\nincGroup ", ps.includeGroup);
+        dbWriteOttSet(" leafSet", ps.leafSet);
     }
     ps.debugCheck();
     assert(ps.includeGroup.size() > 1);
@@ -232,9 +231,8 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
 template<typename T, typename U>
 std::pair<bool, bool> RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
     if (false && debuggingOutputEnabled) {
-        LOG(DEBUG) << " RootedForest::conflictsWithPreviouslyAddedStatement";
-        LOG(DEBUG) << " incGroup "; dbWriteOttSet(" ", ps.includeGroup, " ");
-        LOG(DEBUG) << " leafSet "; dbWriteOttSet(" ", ps.leafSet, " ");
+        dbWriteOttSet(" RootedForest::conflictsWithPreviouslyAddedStatement incGroup ", ps.includeGroup);
+        dbWriteOttSet(" leafSet", ps.leafSet);
     }
     for (const auto sIt : addedSplitsByLeafSet) {
         const auto & prevAddedLeafSet = sIt.first;
@@ -371,10 +369,10 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
             excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
             if (debuggingOutputEnabled) {
                 LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
-                LOG(DEBUG) << " addPhyloStatementToGraph search for an ancestor of:  "; dbWriteOttSet(" ", incGroupIntersection, " ");
-                LOG(DEBUG) << "  wanted to avoid =  "; dbWriteOttSet(" ", ps.excludeGroup, " ");
-                LOG(DEBUG) << "  found a node with desIds:  "; dbWriteOttSet(" ", includeGroupA->getData().desIds, " ");
-                LOG(DEBUG) << "  which includes the excludegroup members:  "; dbWriteOttSet(" ", excInc, " ");
+                dbWriteOttSet(" addPhyloStatementToGraph search for an ancestor of:  ", incGroupIntersection);
+                dbWriteOttSet(" wanted to avoid =  ", ps.excludeGroup);
+                dbWriteOttSet(" found a node with desIds:  ", includeGroupA->getData().desIds);
+                dbWriteOttSet(" which includes the excludegroup members:  ", excInc);
             }
             if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
                 return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
@@ -411,9 +409,8 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
 template<typename T, typename U>
 bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
-        LOG(DEBUG) << " RootedForest::addPhyloStatementToGraph";
-        LOG(DEBUG) << " incGroup "; dbWriteOttSet(" ", ps.includeGroup, " ");
-        LOG(DEBUG) << " leafSet "; dbWriteOttSet(" ", ps.leafSet, " ");
+        dbWriteOttSet(" RootedForest::addPhyloStatementToGraph incGroup ", ps.includeGroup);
+        dbWriteOttSet(" leafSet", ps.leafSet);
     }
     if (ps.isTrivial()) {
         auto newOttIds = set_difference_as_set(ps.includeGroup, ottIdSet);
@@ -638,6 +635,12 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
         return nullptr;
     }
     const auto rel = set_intersection_as_set(ottIdSet, getConnectedOttIds());
+    dbWriteOttSet(" getMRCA ingroup", ottIdSet);
+    dbWriteOttSet(" getMRCA connected ", getConnectedOttIds());
+    dbWriteOttSet(" getMRCA connected ingroup", rel);
+    const auto & relCheck = root->getData().desIds;
+    dbWriteOttSet(" getMRCA relCheck", relCheck);
+    assert(isSubset(rel, relCheck));
     for (auto nextOttId : rel) {
         auto x = ottIdToNodeMap.find(nextOttId);
         assert(x != ottIdToNodeMap.end());

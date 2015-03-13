@@ -550,11 +550,11 @@ inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
 template<typename T>
 inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
     assert(nd != nullptr);
-    if (isProperSubset(idSet, nd->getData().desIds)) {
+    if (isSubset(idSet, nd->getData().desIds)) {
         return nd;
     }
     for (auto n : iter_anc(*nd)) {
-        if (isProperSubset(idSet, n->getData().desIds)) {
+        if (isSubset(idSet, n->getData().desIds)) {
             return n;
         }
     }

@@ -64,7 +64,8 @@ class PathPairing {
         if (currChildOttIdSet.size() == 1 && *currChildOttIdSet.begin() == oid) {
             return;
         }
-        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << (long)this << " prev currChildOttIdSet = " ; dbWriteOttSet(" ", currChildOttIdSet, " ");
+        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << (long)this;
+        dbWriteOttSet("prev currChildOttIdSet = ", currChildOttIdSet);
         OttIdSet n;
         OttIdSet oldIds;
         std::swap(oldIds, currChildOttIdSet);
@@ -77,8 +78,7 @@ class PathPairing {
     void updateDesIdsForSelfAndAnc(const OttIdSet & oldIds, const OttIdSet & newIds, std::map<const U *, NodeEmbedding<T, U> > & m) {
         updateAncestralPathOttIdSet(scaffoldDes, oldIds, newIds, m);
         currChildOttIdSet = newIds;
-        LOG(DEBUG) << " updateDesIdsForSelfAndAnc onExit currChildOttIdSet = " ; dbWriteOttSet(" ", currChildOttIdSet, " ");
-        
+        dbWriteOttSet(" updateDesIdsForSelfAndAnc onExit currChildOttIdSet = ", currChildOttIdSet);
     }
     bool updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
     PathPairing(const NodePairing<T,U> & parent, const NodePairing<T,U> & child)
@@ -87,7 +87,6 @@ class PathPairing {
         phyloChild(child.phyloNode),
         phyloParent(parent.phyloNode),
         currChildOttIdSet(child.phyloNode->getData().desIds) {
-        //LOG(DEBUG) << "On initialization for path " << (long)this << " currChildOttIdSet is: "; dbWriteOttSet(" ", currChildOttIdSet, " ");
     }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 

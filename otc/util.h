@@ -42,7 +42,7 @@ std::string addNewickQuotes(const std::string &s);
 std::string blanksToUnderscores(const std::string &s);
 void writeEscapedForNewick(std::ostream & out, const std::string & n);
 void writeOttSet(std::ostream & out, const char *indent, const std::set<long> &fir, const char * sep);
-void dbWriteOttSet(const char *indent, const std::set<long> &fir, const char * sep);
+void dbWriteOttSet(const char * label, const std::set<long> &fir);
 void writeOttSetDiff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
 template<typename T>
 std::set<T> container_as_set(const std::vector<T> &);
@@ -124,13 +124,13 @@ inline void writeOttSet(std::ostream & out,
         out << indent << "ott" << *rIt;
     }
 }
-inline void dbWriteOttSet(const char *indent,
-                          const std::set<long> &fir,
-                          const char * sep) {
+inline void dbWriteOttSet(const char * label,
+                          const std::set<long> &fir) {
     if (!debuggingOutputEnabled) {
         return;
     }
-    writeOttSet(std::cerr, indent, fir, sep);
+    std::cerr << label;
+    writeOttSet(std::cerr, " ", fir, " ");
     std::cerr << std::endl;
 }
 inline void writeOttSetDiff(std::ostream & out,
