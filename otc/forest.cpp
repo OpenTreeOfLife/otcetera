@@ -79,32 +79,36 @@ RootedForest<T,U>::createNewTree() {
                            std::forward_as_tuple(i),
                            std::forward_as_tuple(nextTreeId,
                                            *this,
-                                           ottIdToNode));
+                                           ottIdToNodeMap));
     assert(r.second); // must be a new Tree!
     return trees.at(i);
 }
    
 template<typename T, typename U>
-RootedForest<T,U>::RootedForest()
+RootedForest<T,U>::RootedForest(long rootOttId)
     :nextTreeId(0U),
-    ottIdToNode(nodeSrc.getData().ottIdToNode) {
+    ottIdToNodeMap(nodeSrc.getData().ottIdToNode),
+    rootID(rootOttId) {
 }
 template<typename T, typename U>
 void RootedForest<T,U>::registerLeaf(long ottId) {
-    auto f = ottIdToNode.find(ottId);
-    if (f != ottIdToNode.end()) {
+    if (ottId == rootID) {
+        return;
+    }
+    auto f = ottIdToNodeMap.find(ottId);
+    if (f != ottIdToNodeMap.end()) {
         return;
     }
     auto n = createNode(nullptr);
     n->setOttId(ottId);
-    ottIdToNode[ottId] = n;
+    ottIdToNodeMap[ottId] = n;
 }
 
 // TMP could be faster by storing node->tree lookup
 template<typename T, typename U>
 bool RootedForest<T,U>::isAttached(long ottId) const {
-    auto f = ottIdToNode.find(ottId);
-    if (f == ottIdToNode.end()) {
+    auto f = ottIdToNodeMap.find(ottId);
+    if (f == ottIdToNodeMap.end()) {
         return false;
     }
     node_type * n = f->second;
@@ -121,7 +125,11 @@ template<typename T, typename U>
 void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
     tree_type & t = createNewTree();
     t.root = createNode(nullptr);
-    for (auto & o2n : ottIdToNode) {
+    for (auto & o2n : ottIdToNodeMap) {
+        if (o2n.first == rootID) {
+            assert(false);
+            continue;
+        }
         auto nd = o2n.second;
         if (!nodeIsAttached(*nd)) {
             t.root->addChild(nd);
@@ -152,7 +160,11 @@ void RootedForest<T,U>::attachAllDetachedTips() {
     tree_type & t = trees.begin()->second;
     std::list<node_type *> excludedFromRoot;
     std::list<node_type *> attachableAtRoot;
-    for (auto & o2n : ottIdToNode) {
+    for (auto & o2n : ottIdToNodeMap) {
+        if (o2n.first == rootID) {
+            assert(false);
+            continue;
+        }
         auto nd = o2n.second;
         if (!nodeIsAttached(*nd)) {
             if (t.isExcludedFromRoot(nd)) {
@@ -429,7 +441,7 @@ bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
     const node_type * p = nd->getParent();
     const OttIdSet & ndi = nd->getData().desIds;
     for (auto oid : ottIdSet) {
-        auto leafNd = ottIdToNode.at(oid);
+        auto leafNd = ottIdToNodeMap.at(oid);
         auto gcIt = excludesConstraints.find(leafNd);
         if (gcIt != excludesConstraints.end()) {
             for (const auto & gc : gcIt->second) {
@@ -457,7 +469,7 @@ bool FTree<T,U>::anyIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
 template<typename T, typename U>
 bool FTree<T,U>::anyForceIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
     for (auto oid :ottIdSet) {
-        auto oidN = ottIdToNode.at(oid);
+        auto oidN = ottIdToNodeMap.at(oid);
         auto iclIt = includesConstraints.find(oidN);
         if (iclIt != includesConstraints.end()) {
             for (auto inNd : iclIt->second) {
@@ -483,7 +495,7 @@ void FTree<T,U>::addExcludeStatement(long ottId, RootedTreeNode<T> * excludedFro
     if (anyExcludedAtNode(excludedFrom, x)) {
         return; // already excluded from this subtree
     }
-    RootedTreeNode<T> * eNode = ottIdToNode.at(ottId);
+    RootedTreeNode<T> * eNode = ottIdToNodeMap.at(ottId);
     // If any of the descendants exclude this node, we can remove those exclude statements,
     //  because they'll be "dominated by this one"
     auto ecIt = excludesConstraints.find(eNode);
@@ -508,7 +520,7 @@ void FTree<T,U>::addIncludeStatement(long ottId, RootedTreeNode<T> * includedIn,
     if (contains(includedIn->getData().desIds, ottId)) {
         return; // must be included in a des
     }
-    RootedTreeNode<T> * eNode = ottIdToNode.at(ottId);
+    RootedTreeNode<T> * eNode = ottIdToNodeMap.at(ottId);
     // If any of the ancestors include this node, we can remove those include statements,
     //  because they'll be "dominated by this one"
     auto icIt = includesConstraints.find(eNode);
@@ -538,7 +550,7 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     std::list<RootedTreeNode<T> *> orderedToMove;
     std::list<GroupingConstraint *> incToUpdate;
     for (auto oid : oids) {
-        auto n = ottIdToNode.at(oid);
+        auto n = ottIdToNodeMap.at(oid);
         bool connectionFound = false;
         if (n->getParent() == par) {
             cToMove.insert(n);
@@ -621,8 +633,8 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
     }
     const auto rel = set_intersection_as_set(ottIdSet, getConnectedOttIds());
     for (auto nextOttId : rel) {
-        auto x = ottIdToNode.find(nextOttId);
-        if (x == ottIdToNode.end()) {
+        auto x = ottIdToNodeMap.find(nextOttId);
+        if (x == ottIdToNodeMap.end()) {
             continue;
         }
         node_type * aTip = x->second;

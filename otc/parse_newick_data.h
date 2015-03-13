@@ -32,11 +32,18 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
                                 const NewickTokenizer::Token * labelToken,
                                 const NewickTokenizer::Token * , // used for comment
                                 const NewickTokenizer::Token * ,
-                                const ParsingRules &) {
+                                const ParsingRules &parsingRules) {
     if (labelToken) {
         node.setName(labelToken->content());
         long ottID = ottIDFromName(labelToken->content());
         if (ottID >= 0) {
+            if (parsingRules.idRemapping != nullptr) {
+                auto rIt = parsingRules.idRemapping->find(ottID);
+                if (rIt != parsingRules.idRemapping->end()) {
+                    LOG(DEBUG) << "idRemapping from OTT" << ottID << " to OTT" << rIt->second;
+                    ottID = rIt->second;
+                }
+            }
             node.setOttId(ottID);
         }
     }
@@ -74,6 +81,13 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
                     std::string m = "Unrecognized OTT Id ";
                     m += std::to_string(ottID);
                     throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->getStartPos());
+                }
+            }
+            if (parsingRules.idRemapping != nullptr) {
+                auto rIt = parsingRules.idRemapping->find(ottID);
+                if (rIt != parsingRules.idRemapping->end()) {
+                    LOG(DEBUG) << "idRemapping from OTT" << ottID << " to OTT" << rIt->second;
+                    ottID = rIt->second;
                 }
             }
             node.setOttId(ottID);

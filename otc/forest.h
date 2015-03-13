@@ -162,14 +162,14 @@ class FTree {
         :treeId(treeID),
          root(nullptr),
          forest(theForest),
-         ottIdToNode(ottIdToNodeRef) {
+         ottIdToNodeMap(ottIdToNodeRef) {
     }
     // const methods:
     const node_type * getRoot() const {
         return root;
     }
     bool ottIdIsExcludedFromRoot(long oid) const {
-        return isExcludedFromRoot(ottIdToNode.at(oid));
+        return isExcludedFromRoot(ottIdToNodeMap.at(oid));
     }
     bool isExcludedFromRoot(const node_type *) const;
     // OTT Ids of nodes on the graph only....
@@ -232,7 +232,7 @@ class FTree {
     std::map<node_type *, OttIdSet> constrainedDesIds;
     std::map<node_type *, std::list<PhyloStatementSource> > supportedBy; // only for non-roots
     RootedForest<T, U> & forest;
-    std::map<long, node_type *> & ottIdToNode;
+    std::map<long, node_type *> & ottIdToNodeMap;
 };
 
 template<typename T, typename U>
@@ -244,7 +244,7 @@ class RootedForest {
     public:
     using node_type = RootedTreeNode<T>;
     using tree_type = FTree<T,U>;
-    RootedForest();
+    RootedForest(long rootOttID);
     RootedForest(const RootedForest &) = delete;
     RootedForest & operator=(const RootedForest &) = delete;
     //accessors/queries:
@@ -252,7 +252,7 @@ class RootedForest {
         return trees.empty();
     }
     const std::map<OttId, node_type *> & getOttIdToNodeMapping() const {
-        return ottIdToNode;
+        return ottIdToNodeMap;
     }
     const std::map<std::size_t, tree_type> & getTrees() const {
         return trees;
@@ -284,7 +284,7 @@ class RootedForest {
     std::map<std::size_t,  tree_type> trees;
     std::size_t nextTreeId;
     OttIdSet ottIdSet;
-    std::map<OttId, node_type *> & ottIdToNode; // alias to this data field in nodeSrc for convenience
+    std::map<OttId, node_type *> & ottIdToNodeMap; // alias to this data field in nodeSrc for convenience
     
     // addedSplitsByLeafSet
     // TMP, store every PhlyoStatement that we have accepted. This may become too memory inefficient
@@ -294,6 +294,7 @@ class RootedForest {
     //  addedSplitsByLeafSet is not sufficient to know if we can keep a split
     typedef std::set<OttIdSet> SetOfOTTIdSets;
     std::map<OttIdSet, SetOfOTTIdSets> addedSplitsByLeafSet;
+    const long rootID;
 };
 
 template<typename T, typename U>
@@ -317,9 +318,10 @@ inline RootedTreeNode<T> * RootedForest<T,U>::createNode(RootedTreeNode<T> * p) 
 // does NOT update anc desIds!
 template<typename T, typename U>
 inline RootedTreeNode<T> * RootedForest<T,U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid) {
+    assert(oid != rootID);
     auto n = createNode(p);
     n->setOttId(oid);
-    ottIdToNode[oid] = n;
+    ottIdToNodeMap[oid] = n;
     n->getData().desIds.insert(oid);
     ottIdSet.insert(oid);
     return n;

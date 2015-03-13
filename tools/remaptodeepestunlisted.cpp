@@ -30,7 +30,7 @@ struct RemapToDeepestUnlistedState {
          numErrors(0) {
     }
 
-    void summarize(const OTCLI &otCLI) {
+    void summarize(OTCLI &otCLI) {
         assert (taxonomy != nullptr);
         for (auto nd : contestedNodes) {
             otCLI.out << nd->getName() << '\n';

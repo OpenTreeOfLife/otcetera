@@ -10,7 +10,7 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
         :numErrors(0) {
     }
 
-    bool summarize(const OTCLI &otCLI) override {
+    bool summarize(OTCLI &otCLI) override {
         assert(taxonomy != nullptr && !includedNodes.empty());
         std::set<RootedTreeNodeNoData *> toPrune;
         for (auto nd : iter_node(*taxonomy)) {

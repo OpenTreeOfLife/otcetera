@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <stack>
+#include <map>
 #include <stdexcept>
 #include "otc/otc_base_includes.h"
 #include "otc/error.h"
@@ -14,11 +15,13 @@ struct ParsingRules {
     ParsingRules()
         :ottIdValidator(nullptr),
         includeInternalNodesInDesIdSets(false),
-        setOttIdForInternals(true) {
+        setOttIdForInternals(true),
+        idRemapping(nullptr) {
     }
     const std::set<long> * ottIdValidator;
     bool includeInternalNodesInDesIdSets;
     bool setOttIdForInternals; // TEMP. Do we want to just remove them after processing, rather than adding a conditional to the parsing logic...
+    const std::map<long, long> * idRemapping;
 };
 
 typedef std::shared_ptr<const std::string> ConstStrPtr;

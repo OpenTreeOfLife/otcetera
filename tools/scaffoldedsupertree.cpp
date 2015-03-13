@@ -7,6 +7,21 @@
 using namespace otc;
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
 
+template<typename T>
+inline std::map<long, long> generateIdRemapping(const T & tree) {
+    const auto & id2ndMap = tree.getData().ottIdToNode;
+    std::map<long, long> r;
+    for (const auto & idNdPair : id2ndMap) {
+        const auto & inID = idNdPair.first;
+        const auto outID = idNdPair.second->getOttId();
+        if (outID != inID) {
+            assert(!contains(r, inID));
+            r[inID] = outID;
+        }
+    }
+    return r;
+}
+
 //currently not copying names
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
     TreeMappedWithSplits * rawTreePtr = new TreeMappedWithSplits();
@@ -68,6 +83,8 @@ class ScaffoldedSupertree
     int currDotFileIndex;
     bool debuggingOutput;
     bool emitScaffoldDotFiles;
+    long verboseLoggingTarget;
+    std::map<long, long> monotypicRemapping;
 
     void writeEmbeddingDOT(SuperTreeDOTStep sts, const NodeWithSplits * nd, const NodeWithSplits * actionNd) {
         std::string fn = "ScaffSuperTree_num";
@@ -119,7 +136,7 @@ class ScaffoldedSupertree
             thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
         }
     }
-    void constructSupertree() {
+    void constructSupertree(OTCLI &otCLI) {
         const auto numTrees = treePtrByIndex.size();
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{numTrees, taxoToEmbedding, *tax};
@@ -137,7 +154,11 @@ class ScaffoldedSupertree
             postOrder.push_back(nd);
         }
         for (auto nd : postOrder) {
+            if (nd->getOttId() == verboseLoggingTarget) {
+                otCLI.turnOnVerboseMode();
+            }
             auto p = nd->getParent();
+            assert(!nd->isTip());
             if (debuggingOutput) {
                 if (emitScaffoldDotFiles) {
                     writeEmbeddingDOT(BEFORE_ND_W_TAXO, nd, nd);
@@ -166,10 +187,14 @@ class ScaffoldedSupertree
                 if (u == nd) {
                     before = false;
                 } else if ((!before) && u->isTip()) {
-                    LOG(ERROR) << "Node for OTT " << u->getOttId() << " has become a tip after processing OTT" << nd->getOttId();
+                    LOG(ERROR) << "Node for OTT" << u->getOttId() << " has become a tip after processing OTT" << nd->getOttId();
                     assert(false);
                 }
             }
+            if (nd->getOttId() == verboseLoggingTarget) {
+                otCLI.turnOffVerboseMode();
+            }
+            
         }
     }
 
@@ -217,10 +242,10 @@ class ScaffoldedSupertree
         out << redundContested << " monotypic contested\n";
     }
     
-    bool summarize(const OTCLI &otCLI) override {
+    bool summarize(OTCLI &otCLI) override {
         if (doConstructSupertree) {
             cloneTaxonomyAsASourceTree();
-            constructSupertree();
+            constructSupertree(otCLI);
             writeTreeAsNewick(otCLI.out, *taxonomy);
             otCLI.out << '\n';
         }
@@ -257,11 +282,13 @@ class ScaffoldedSupertree
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
         checkTreeInvariants(*taxonomy);
         suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
+        monotypicRemapping = generateIdRemapping(*taxonomy);
         checkTreeInvariants(*taxonomy);
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
             _getEmdeddingForNode(nd);
         }
         otCLI.getParsingRules().setOttIdForInternals = false;
+        otCLI.getParsingRules().idRemapping = &monotypicRemapping;
         return true;
     }
 
@@ -349,12 +376,25 @@ bool handleOttForestDOTFlag(OTCLI & otCLI, const std::string &narg) {
     ottIDBeingDebugged = conv;
     return true;
 }
+
+bool handleOttVerboseLogTargetFlag(OTCLI & otCLI, const std::string &narg) {
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
+    long conv = -1;
+    if (!char_ptr_to_long(narg.c_str(), &conv) || conv < 0) {
+        throw OTCError(std::string("Expecting a positive number as an ott ID after -z flag. Offending word: ") + narg);
+    }
+    proc->verboseLoggingTarget = conv;
+    return true;
+}
+
+
 bool handleOttScaffoldDOTFlag(OTCLI & otCLI, const std::string &) {
     ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
     proc->emitScaffoldDotFiles = true;
     return true;
 }
+
 bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg) {
     ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
     assert(proc != nullptr);
@@ -397,6 +437,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('z',
                   "ARG should be an OTT ID. A series DOT files will be generated for the forest created during the resolution of this OTT ID ",
                   handleOttForestDOTFlag,
+                  true);
+    otCLI.addFlag('l',
+                  "ARG should be an OTT ID. verbose logging mode will be enabled when solving the subproblem for this node",
+                  handleOttVerboseLogTargetFlag,
                   true);
     otCLI.addFlag('y',
                   "requests DOT export of the embedded tree during the supertree operation - only for use on small examples!",

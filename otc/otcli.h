@@ -54,6 +54,8 @@ class OTCLI {
         const ParsingRules & getParsingRules() const {
             return parsingRules;
         }
+        void turnOnVerboseMode();
+        void turnOffVerboseMode();
     private:
         std::string titleStr;
         std::string descriptionStr;
@@ -164,7 +166,7 @@ class TaxonomyDependentTreeProcessor {
             assert(taxonomy != nullptr);
             return true;
         }
-        virtual bool summarize(const OTCLI &) {
+        virtual bool summarize(OTCLI &) {
             return true;
         }
         TaxonomyDependentTreeProcessor()

@@ -14,7 +14,8 @@ using CouldAddResult = std::tuple<bool, NodeWithSplits *, NodeWithSplits *>;
 template<typename T, typename U>
 class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
-    GreedyPhylogeneticForest() {}
+    GreedyPhylogeneticForest(long rootOttId)
+      :RootedForest<RTSplits, MappedWithSplitsData>(rootOttId) {}
     GreedyPhylogeneticForest(const GreedyPhylogeneticForest &) = delete;
     GreedyPhylogeneticForest & operator=(const GreedyPhylogeneticForest &) = delete;
     bool attemptToAddGrouping(PathPairing<T, U> * ppptr,

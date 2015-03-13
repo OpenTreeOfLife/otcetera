@@ -6,6 +6,7 @@
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "otc/write_dot.h"
+#include "debug.h"
 namespace otc {
 
 template<typename T, typename U>
@@ -15,20 +16,23 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
                                     SupertreeContextWithSplits & sc) {
     std::map<const T *, typename U::node_type *> gpf2scaff;
     std::map<long, typename U::node_type *> & dOttIdToNode = destTree.getData().ottIdToNode;
-    //LOG(DEBUG) << " adding " << srcPoly;
+    LOG(DEBUG) << " adding " << srcPoly;
+    LOG(DEBUG) << " copying structure to resolve " << destPoly->getOttId();
     gpf2scaff[srcPoly] = destPoly;
     for (auto sn : iter_pre_n_const(srcPoly)) {
         if (sn == srcPoly) {
             continue;
         }
         auto sp = sn->getParent();
-        //LOG(DEBUG) << " looking for " << sp << " the parent of " << sn;
+        LOG(DEBUG) << " looking for " << sp << " the parent of " << sn;
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
         auto nid = sn->getOttId();
         if (sn->hasOttId() && nid > 0) { // might assign negative number to nodes created in synth...
-            auto oid = sn->getOttId();
-            dn = dOttIdToNode.at(oid);
+            LOG(DEBUG) << " node in src has ID " << nid;
+            dn = dOttIdToNode.at(nid);
+            LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->getOttId();
+            assert(dn != destPoly);
             if (contains(sc.detachedScaffoldNodes, dn)) {
                 dn->_setLChild(nullptr);
                 dn->_setNextSib(nullptr);
@@ -77,7 +81,11 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffold
     finalizeTree(sc);
     assert(trees.size() == 1);
     auto & resolvedTree = begin(trees)->second;
+    const auto beforePar = scaffoldNode.getParent();
+    checkAllNodePointersIter(scaffoldNode);
     copyStructureToResolvePolytomy(resolvedTree.getRoot(), sc.scaffoldTree, &scaffoldNode, sc);
+    checkAllNodePointersIter(scaffoldNode);
+    assert(beforePar == scaffoldNode.getParent());
     // remap all path pairings out of this node...
     for (auto treeInd2eout : embedding->edgeBelowEmbeddings) {
         for (auto eout : treeInd2eout.second) {

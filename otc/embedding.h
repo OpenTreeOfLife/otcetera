@@ -77,6 +77,8 @@ class PathPairing {
     void updateDesIdsForSelfAndAnc(const OttIdSet & oldIds, const OttIdSet & newIds, std::map<const U *, NodeEmbedding<T, U> > & m) {
         updateAncestralPathOttIdSet(scaffoldDes, oldIds, newIds, m);
         currChildOttIdSet = newIds;
+        LOG(DEBUG) << " updateDesIdsForSelfAndAnc onExit currChildOttIdSet = " ; dbWriteOttSet(" ", currChildOttIdSet, " ");
+        
     }
     bool updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
     PathPairing(const NodePairing<T,U> & parent, const NodePairing<T,U> & child)

@@ -12,7 +12,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         doShortcircuit(false) {
         }
 
-    bool summarize(const OTCLI &otCLI) override {
+    bool summarize(OTCLI &otCLI) override {
         assert (taxonomy != nullptr);
         for (auto nd : contestedNodes) {
             otCLI.out << nd->getName() << '\n';

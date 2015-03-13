@@ -76,7 +76,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         return numUnsupported;
     }
 
-    bool summarize(const OTCLI &otCLI) override {
+    bool summarize(OTCLI &otCLI) override {
         extendSupportedToRedundantNodes(*toCheck, supportedNodes);
         auto & out = otCLI.out;
         int numUnsupported = describeUnnamedUnsupported(otCLI.out, *toCheck, supportedNodes);

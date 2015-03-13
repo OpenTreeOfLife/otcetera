@@ -187,7 +187,7 @@ template<typename T, typename U>
 void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     const OttIdSet EMPTY_SET;
     LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
-    GreedyPhylogeneticForest<T,U> gpf;
+    GreedyPhylogeneticForest<T,U> gpf{scaffoldNode.getOttId()};
     std::set<PathPairing<T, U> *> considered;
     const auto scaffOTTId = scaffoldNode.getOttId();
     std::string forestDOTfile = "forestForOTT";
@@ -406,7 +406,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
         collapseGroup(scaffoldNode, sc);
         return;
     }
-    GreedyPhylogeneticForest<T,U> gpf;
+    GreedyPhylogeneticForest<T,U> gpf{scaffoldNode.getOttId()};
     gpf.setPossibleMonophyletic(scaffoldNode);
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
         const auto laIt = loopEmbeddings.find(treeInd);

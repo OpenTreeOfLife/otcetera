@@ -7,7 +7,7 @@ struct InducedSubtreeState
     virtual ~InducedSubtreeState(){}
 
     // write the induced tree to the output stream
-    virtual bool summarize(const OTCLI &otCLI) override {
+    virtual bool summarize(OTCLI &otCLI) override {
         // find the LIA of the induced taxa
         auto mrca = findMRCAUsingDesIds(*taxonomy, inducingIds);
         // do a filtered pre-order traversal

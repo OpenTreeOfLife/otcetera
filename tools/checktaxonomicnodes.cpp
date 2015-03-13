@@ -48,7 +48,7 @@ struct CheckTaxonState {
         return true;
     }
 
-    void summarize(const OTCLI &otCLI) {
+    void summarize(OTCLI &otCLI) {
         auto nE = checkForUnknownTaxa(otCLI.err, *toCheck, *taxonomy);
         if (nE > 0) {
             numErrors = (nE > INT_MAX ? INT_MAX : (int) nE);

@@ -62,6 +62,20 @@ void OTCLI::printHelp(std::ostream & outStream) {
     }
 }
 
+void OTCLI::turnOnVerboseMode() {
+    this->verbose = true;
+    debuggingOutputEnabled = true;
+    defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
+    el::Loggers::reconfigureLogger("default", defaultConf);
+}
+
+void OTCLI::turnOffVerboseMode() {
+    this->verbose = false;
+    debuggingOutputEnabled = false;
+    defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+    el::Loggers::reconfigureLogger("default", defaultConf);
+}
+
 bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
     bool recursionNeeded = false;
     auto f = flagWithoutDash[0];
@@ -88,10 +102,7 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
         if (flagWithoutDash.length() > 1) {
             recursionNeeded = true;
         }
-        this->verbose = true;
-        debuggingOutputEnabled = true;
-        defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
-        el::Loggers::reconfigureLogger("default", defaultConf);
+        turnOnVerboseMode();
     } else if (f == 't') {
         if (flagWithoutDash.length() > 1) {
             recursionNeeded = true;
