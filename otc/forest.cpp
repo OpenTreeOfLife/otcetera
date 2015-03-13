@@ -51,6 +51,9 @@ void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
             createDeeperRoot();
         }
         root->addChild(subtreeRoot);
+        for (auto c : iter_child_const(*subtreeRoot)) {
+            connectedIds.insert(c->getOttId());
+        }
         const PhyloStatementSource bogusPSS{-1, -1};
         for (auto sn : iter_pre_n(subtreeRoot)) { //TMP need iter_node_n
             const auto esn = otherInvertedExc.find(sn);
@@ -132,6 +135,7 @@ void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
         }
         auto nd = o2n.second;
         if (!nodeIsAttached(*nd)) {
+            t.connectedIds.insert(o2n.first);
             t.root->addChild(nd);
         }
     }
@@ -179,10 +183,12 @@ void RootedForest<T,U>::attachAllDetachedTips() {
         nr->addChild(t.root);
         t.root = nr;
         for (auto n : excludedFromRoot) {
+            t.connectedIds.insert(n->getOttId());
             nr->addChild(n);
         }
     }
     for (auto n : attachableAtRoot) {
+        t.connectedIds.insert(n->getOttId());
         t.root->addChild(n);
     }
     
