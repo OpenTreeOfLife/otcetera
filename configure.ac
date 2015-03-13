@@ -66,14 +66,6 @@ AC_CONFIG_FILES([					\
 	otc/Makefile					\
 	test/Makefile \
 	tools/Makefile \
-	tools/assert-invariants/Makefile \
-	tools/check-taxonomic-nodes/Makefile \
-	tools/detect-contested/Makefile \
-	tools/find-unsupported-nodes/Makefile \
-	tools/prune-singletons/Makefile \
-	tools/remap-to-deepest-unlisted/Makefile \
-	tools/scaffolded-supertree/Makefile \
-	tools/simple-stats/Makefile \
 	otceterav0.0.pc \
 	])
 AC_OUTPUT

@@ -104,7 +104,9 @@ if __name__ == '__main__':
         e_dir_list.sort()
     for e_subdir_name in e_dir_list:
         e_path = os.path.join(expected_dir, e_subdir_name)
-        t_path = os.path.join(tools_build_dir, e_subdir_name)
+        if not os.path.isdir(e_path):
+            continue
+        t_path = os.path.join(tools_build_dir)
         if os.path.isdir(t_path):
             th = [i for i in os.listdir(e_path) if i.endswith('.json')]
             th.sort()
