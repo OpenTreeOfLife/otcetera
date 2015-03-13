@@ -17,6 +17,8 @@ bool checkNodePointers(const T & nd) {
         }
         c = c->getNextSib();
     }
+    auto ps = nd.getPrevSib();
+    assert(ps == nullptr || ps->getNextSib() == &nd);
     return good;
 }
 

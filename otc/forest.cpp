@@ -21,6 +21,13 @@ bool PhyloStatement::debugCheck() const {
 }
 
 template<typename T, typename U>
+void FTree<T, U>::createDeeperRoot() {
+    auto nr = forest.createNode(nullptr);
+    nr->addChild(root);
+    root = nr;
+}
+
+template<typename T, typename U>
 void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
                 const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedInc,
                 const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedExc,
@@ -41,9 +48,7 @@ void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
             }
         }
         if (needDeeperRoot) {
-            auto nr = forest.createNode(nullptr);
-            nr->addChild(root);
-            root = nr;
+            createDeeperRoot();
         }
         root->addChild(subtreeRoot);
         const PhyloStatementSource bogusPSS{-1, -1};
@@ -234,9 +239,6 @@ std::pair<bool, bool> RootedForest<T,U>::checkWithPreviouslyAddedStatement(const
     return std::pair<bool, bool>(false, false);
 }
 
-
-
-
 template<typename T, typename U>
 void consumeMapToList(std::map<T, std::list<U> > &m, std::list<U> & out) {
     for (auto & mIt : m) {
@@ -245,7 +247,6 @@ void consumeMapToList(std::map<T, std::list<U> > &m, std::list<U> & out) {
         }
     }
 }
-
 
 template<typename T, typename U>
 std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlappingTrees(const OttIdSet &inc) {
@@ -265,7 +266,6 @@ std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlappingTrees(
     consumeMapToList(byOverlapSize, r);
     return r;
 }
-
 
 template<typename T, typename U>
 void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloStatement &ps) {
@@ -288,6 +288,7 @@ void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloState
     }
     // no other trees had an includeGroup, so no need to add constraints....
 }
+
 template<typename T, typename U>
 bool RootedForest<T,U>::isMentionedInInclude(const node_type * nd) const {
     node_type * ncn = const_cast<node_type *>(nd);
@@ -299,6 +300,7 @@ bool RootedForest<T,U>::isMentionedInInclude(const node_type * nd) const {
     }
     return false;
 }
+
 template<typename T, typename U>
 bool RootedForest<T,U>::isMentionedInExclude(const node_type * nd) const {
     node_type * ncn = const_cast<node_type *>(nd);
@@ -310,11 +312,13 @@ bool RootedForest<T,U>::isMentionedInExclude(const node_type * nd) const {
     }
     return false;
 }
+
 template<typename T, typename U>
 bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality, const PhyloStatement &ps) {
     std::list<node_type * > nonTrivMRCAs;
     OttIdSet attachedElsewhere;
-    std::vector<bool> shouldResolve;
+    std::vector<bool> shouldResolveVec;
+    std::vector<bool> shouldCreateDeeperVec;
     for (const auto & incPair : byIncCardinality) {
         const auto & incGroupIntersection = incPair.first;
         attachedElsewhere.insert(incGroupIntersection.begin(), incGroupIntersection.end());
@@ -330,33 +334,53 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
         // If any of the ingroup are specifically excluded, then we have move deeper in the tree.
         // TMP this could be more efficient and avoid the while loop.
         while (f->anyExcludedAtNode(includeGroupA, ps.includeGroup)) {
+            if (f->anyIncludedAtNode(includeGroupA, ps.excludeGroup)) {
+                return false;
+            }
+            if (f->anyForceIncludedAtNode(includeGroupA, ps.includeGroup)) {
+                return false;
+            }
             includeGroupA = includeGroupA->getParent();
-            assert(includeGroupA != nullptr);
+            if (includeGroupA == nullptr) {
+                break;
+            }
         }
-        const OttIdSet excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
-        if (debuggingOutputEnabled) {
-            LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
-            LOG(DEBUG) << " addPhyloStatementToGraph search for an ancestor of:  "; dbWriteOttSet(" ", incGroupIntersection, " ");
-            LOG(DEBUG) << "  wanted to avoid =  "; dbWriteOttSet(" ", ps.excludeGroup, " ");
-            LOG(DEBUG) << "  found a node with desIds:  "; dbWriteOttSet(" ", includeGroupA->getData().desIds, " ");
-            LOG(DEBUG) << "  which includes the excludegroup members:  "; dbWriteOttSet(" ", excInc, " ");
+        OttIdSet excInc;
+        bool forceDeeperRoot = false;
+        if (includeGroupA == nullptr) {
+            includeGroupA = f->getRoot();
+        } else {
+            excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
+            if (debuggingOutputEnabled) {
+                LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
+                LOG(DEBUG) << " addPhyloStatementToGraph search for an ancestor of:  "; dbWriteOttSet(" ", incGroupIntersection, " ");
+                LOG(DEBUG) << "  wanted to avoid =  "; dbWriteOttSet(" ", ps.excludeGroup, " ");
+                LOG(DEBUG) << "  found a node with desIds:  "; dbWriteOttSet(" ", includeGroupA->getData().desIds, " ");
+                LOG(DEBUG) << "  which includes the excludegroup members:  "; dbWriteOttSet(" ", excInc, " ");
+            }
+            if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
+                return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
+            }
         }
-        if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
-            return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
-        }
-        shouldResolve.push_back(!excInc.empty());
+        shouldCreateDeeperVec.push_back(false);
+        shouldResolveVec.push_back(!excInc.empty());
         nonTrivMRCAs.push_back(includeGroupA);
     }
     // all non trivial overlapping trees have approved this split...
     auto ntmIt = begin(nonTrivMRCAs);
-    auto srIt = begin(shouldResolve);
+    auto srIt = begin(shouldResolveVec);
+    auto scdIt = begin(shouldCreateDeeperVec);
     for (const auto & incPair : byIncCardinality) {
         tree_type * f = incPair.second;
         assert(ntmIt != nonTrivMRCAs.end());
         node_type * includeGroupA = *ntmIt++;
         const bool addNode = *srIt++;
+        const bool shouldCreateDeepeRoot = *scdIt;
         if (addNode) {
             includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps.includeGroup);
+        } else if (shouldCreateDeepeRoot) {
+            f->createDeeperRoot();
+            includeGroupA = f->getRoot();
         }
         auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere);
         if (!connectedHere.empty()) {
@@ -411,6 +435,33 @@ bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
             for (const auto & gc : gcIt->second) {
                 node_type * en = gc.first;
                 if (en == nd || en == p || isSubset(ndi, en->getData().desIds)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+template<typename T, typename U>
+bool FTree<T,U>::anyIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
+    if (!areDisjoint(nd->getData().desIds, ottIdSet)) {
+        return true;
+    }
+    
+    auto c = anyForceIncludedAtNode(nd, ottIdSet);
+    assert(c == false);// if we are correctly updating desIds we don't need this branch.... TMP
+    return c;
+}
+
+template<typename T, typename U>
+bool FTree<T,U>::anyForceIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
+    for (auto oid :ottIdSet) {
+        auto oidN = ottIdToNode.at(oid);
+        auto iclIt = includesConstraints.find(oidN);
+        if (iclIt != includesConstraints.end()) {
+            for (auto inNd : iclIt->second) {
+                if (inNd.first == oidN) {
                     return true;
                 }
             }

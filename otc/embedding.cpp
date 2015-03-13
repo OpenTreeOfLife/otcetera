@@ -279,6 +279,7 @@ std::map<std::size_t, std::set<PathPairing<T, U> *> > copyAllLoopPathPairing(con
 template<typename T, typename U>
 void NodeEmbedding<T, U>::collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc) {
     sc.log(COLLAPSE_TAXON, scaffoldNode);
+    assert(!scaffoldNode.isTip());
     U * p = scaffoldNode.getParent();
     assert(p != nullptr); // can't disagree with the root !
     // remap all nodes in NodePairing to parent
@@ -367,8 +368,9 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextW
     LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", adding child to parent";
     // NOTE: it is important that we add the children of scaffoldNode the left of its location
     //  in the tree so that the postorder traversal will not iterate over them.
-    auto lc = scaffoldNode.getPrevSib();
-    auto rc = scaffoldNode.getNextSib();
+    assert(!scaffoldNode.isTip());
+    auto entrySib = scaffoldNode.getPrevSib();
+    auto exitSib = scaffoldNode.getNextSib();
     auto p = scaffoldNode.getParent();
     const auto cv = scaffoldNode.getChildren();
     scaffoldNode._detachThisNode();
@@ -381,12 +383,15 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextW
     for (auto c : cv) {
         c->_setParent(p);
     }
-    if (lc == nullptr) {
-        p->_setLChild(cv[0]);
+    auto firstMovingChild = cv[0];
+    auto lastMovingChild = *cv.rbegin();
+    if (entrySib == nullptr) {
+        p->_setLChild(firstMovingChild);
     } else {
-        lc->_setNextSib(cv[0]);
+        assert(entrySib->getNextSib() == &scaffoldNode);
+        entrySib->_setNextSib(firstMovingChild);
     }
-    (*cv.rbegin())->_setNextSib(rc);
+    lastMovingChild->_setNextSib(exitSib);
 }
 
 template<typename T, typename U>

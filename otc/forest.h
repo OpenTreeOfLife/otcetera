@@ -200,20 +200,23 @@ class FTree {
                     const std::map<node_type *, std::list<GroupingConstraint> > & incConstr,
                     const std::map<node_type *, std::list<GroupingConstraint> > & excConstr);
     private:
-    void addIncludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
-    RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids);
-    RootedTreeNode<T> * addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId);
-    bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
-    void addPhyloStatementAsChildOfRoot(const PhyloStatement &);
-    // this is greedy, we should be building separate FTree instances in many cases....
     void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {
         addPhyloStatementAsChildOfRoot(ps);
     }
+    void addIncludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
+    RootedTreeNode<T> * addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId);
+    void addPhyloStatementAsChildOfRoot(const PhyloStatement &);
+    // this is greedy, we should be building separate FTree instances in many cases....
     OttIdSet addPhyloStatementAtNode(const PhyloStatement & ps, 
                                      node_type * includeGroupMRCA,
                                      const OttIdSet & attachedElsewhere);
+    bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
+    bool anyForceIncludedAtNode(const node_type *, const OttIdSet &) const ;
+    bool anyIncludedAtNode(const node_type *, const OttIdSet &) const ;
+    void createDeeperRoot();
     node_type * getMRCA(const OttIdSet &id);
+    RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids);
     
     friend class RootedForest<T, U>;
     friend class GreedyPhylogeneticForest<T, U>;

@@ -107,6 +107,7 @@ class ScaffoldedSupertree
     }
 
     void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
+        assert(!scaffoldNd->isTip());
         auto & thr = _getEmdeddingForNode(scaffoldNd);
         if (thr.isContested()) {
             if (thr.highRankingTreesPreserveMonophyly(sc.numTrees)) {
@@ -132,6 +133,7 @@ class ScaffoldedSupertree
         }
         std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post_internal(*taxonomy)) {
+            assert(!nd->isTip());
             postOrder.push_back(nd);
         }
         for (auto nd : postOrder) {
@@ -158,6 +160,15 @@ class ScaffoldedSupertree
             }
             if (p != nullptr) {
                 checkAllNodePointersIter(p);
+            }
+            bool before = true;
+            for (auto u : postOrder) {
+                if (u == nd) {
+                    before = false;
+                } else if ((!before) && u->isTip()) {
+                    LOG(ERROR) << "Node for OTT " << u->getOttId() << " has become a tip after processing OTT" << nd->getOttId();
+                    assert(false);
+                }
             }
         }
     }

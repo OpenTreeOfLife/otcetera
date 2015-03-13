@@ -265,10 +265,10 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &sc)
     if (trees.size() > 1) {
         LOG(WARNING) << "finalizeTree is not well thought out. merging of multiple trees is questionable.";
         const char * dbfn = "real-forest-in-finalizeTree.dot";
-        LOG(WARNING) << "  writing DOT to " << dbfn;
-        std::ofstream outf(dbfn);
-        writeDOTForest(outf, *this);
-        outf.close();
+        LOG(WARNING) << "  should be writing DOT to " << dbfn;
+        //std::ofstream outf(dbfn);
+        //writeDOTForest(outf, *this);
+        //outf.close();
         mergeForest(sc);
         LOG(WARNING) << "finished questionable mergeForest.";
     }

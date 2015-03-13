@@ -99,7 +99,7 @@ class RootedTreeNode {
         std::vector<node_type *> getChildrenNC() {
             std::vector<node_type *> children;
             auto * currNode = getFirstChild();
-            while(currNode) {
+            while (currNode) {
                 children.push_back(currNode);
                 currNode = currNode->getNextSib();
             }
@@ -157,10 +157,11 @@ class RootedTreeNode {
             ottId(LONG_MAX) {
         }
         void addSib(node_type *n) {
-            if (rSib) {
-                rSib->addSib(n);
-            } else {
+            node_type * cs = getLastSib();
+            if (cs == nullptr) {
                 rSib = n;
+            } else {
+                cs->rSib = n;
             }
         }
         void addChild(node_type *n) {
