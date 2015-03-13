@@ -634,9 +634,7 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
     const auto rel = set_intersection_as_set(ottIdSet, getConnectedOttIds());
     for (auto nextOttId : rel) {
         auto x = ottIdToNodeMap.find(nextOttId);
-        if (x == ottIdToNodeMap.end()) {
-            continue;
-        }
+        assert(x != ottIdToNodeMap.end());
         node_type * aTip = x->second;
         assert(aTip != nullptr);
         if (ottIdSet.size() == 1) {
@@ -644,6 +642,18 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
         }
         return searchAncForMRCAOfDesIds(aTip, rel);
     }
+    // reach here if none are connected.
+    for (auto oid : ottIdSet) {
+        auto x = ottIdToNodeMap.find(oid);
+        assert(x != ottIdToNodeMap.end());
+        node_type * aTip = x->second;
+        assert(aTip != nullptr);
+        if (ottIdSet.size() == 1) {
+            return aTip;
+        }
+        return searchAncForMRCAOfDesIds(aTip, rel);
+    }
+    assert(false);
     return nullptr;
 }
 
