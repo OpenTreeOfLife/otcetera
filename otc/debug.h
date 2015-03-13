@@ -39,7 +39,7 @@ bool checkAllNodePointers(const T & tree) {
 
 template<typename T>
 bool checkAllNodePointersIter(const T & node) {
-   for (auto nd : iter_pre_n_const(node)) {
+   for (auto nd : iter_pre_n_const(&node)) {
         if (!checkNodePointers(*nd)) {
             return false;
         }

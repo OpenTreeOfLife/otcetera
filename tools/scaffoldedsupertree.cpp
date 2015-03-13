@@ -159,7 +159,7 @@ class ScaffoldedSupertree
                 }
             }
             if (p != nullptr) {
-                checkAllNodePointersIter(p);
+                checkAllNodePointersIter(*p);
             }
             bool before = true;
             for (auto u : postOrder) {

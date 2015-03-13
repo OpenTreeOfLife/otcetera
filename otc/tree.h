@@ -90,6 +90,7 @@ class RootedTreeNode {
                 currNode = currNode->getNextSib();
                 assert(currNode != nullptr);
             }
+            assert(currNode->getNextSib() == this);
             return currNode;
         }
         node_type * getPrevSib() {
