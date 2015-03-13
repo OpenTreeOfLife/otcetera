@@ -353,23 +353,35 @@ void FTree<T, U>::mirrorPhyloStatement(const PhyloStatement &ps) {
 
 template<typename T, typename U>
 void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
+    dbWriteOttSet(" addPhyloStatementAsChildOfRoot", ps.includeGroup);
+    assert(root != nullptr);
+    if (!root->isTip()) {
+        debugInvariantsCheck();
+    }
+    if (anyExcludedAtNode(root, ps.includeGroup)) {
+        createDeeperRoot();
+        assert(!root->isTip());
+    }
     assert(root != nullptr);
     auto parOfIncGroup = forest.createNode(root); // parent of includeGroup
     supportedBy[parOfIncGroup].push_back(ps.provenance);
     assert(ps.excludeGroup.size() > 0);
     for (auto i : ps.excludeGroup) {
-        if (!forest.isAttached(i)) {
+        if (!forest.isAttached(i)) { // greedy
             addLeafNoDesUpdate(root, i);
+            root->getData().desIds.insert(i);
         } else {
-            addExcludeStatement(i, root, ps.provenance);
+            addExcludeStatement(i, parOfIncGroup, ps.provenance);
         }
     }
     for (auto i : ps.includeGroup) {
         assert(!forest.isAttached(i));
         addLeafNoDesUpdate(parOfIncGroup, i);
     }
-    root->getData().desIds = ps.leafSet;
+    root->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
     parOfIncGroup->getData().desIds = ps.includeGroup;
+    debugInvariantsCheck();
+    LOG(DEBUG) << "Leaving addPhyloStatementAsChildOfRoot";
 }
 
 template<typename T>
