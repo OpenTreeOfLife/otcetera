@@ -46,7 +46,7 @@ template<typename T, typename U>
 void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
                 const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedInc,
                 const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedExc,
-                const std::map<node_type *, std::list<std::pair<node_type*, PhyloStatementSource> > > & otherIC,
+                const std::map<node_type *, std::pair<node_type*, PhyloStatementSource> > & otherIC,
                 const std::map<node_type *, std::list<std::pair<node_type*, PhyloStatementSource> > > & otherEC) {
     assert(subtreeRoot);
     auto par = subtreeRoot->getParent();
@@ -79,8 +79,11 @@ void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
             }
             const auto isn = otherInvertedInc.find(sn);
             if (isn != otherInvertedInc.end()) {
-                for (auto eValNd : esn->second) {
-                    includesConstraints[eValNd].push_back(GroupingConstraint{sn, bogusPSS});
+                for (auto eValNd : isn->second) {
+                    auto pinP = includesConstraints.find(eValNd);
+                    if (pinP == includesConstraints.end() || isAncestorDesNoIter(pinP->first, eValNd)) {
+                        includesConstraints.emplace(eValNd, GroupingConstraint{sn, bogusPSS});
+                    }
                 }
             }
         }
@@ -139,10 +142,8 @@ bool FTree<T,U>::anyForceIncludedAtNode(const node_type * nd, const OttIdSet &ot
         auto oidN = ottIdToNodeMap.at(oid);
         auto iclIt = includesConstraints.find(oidN);
         if (iclIt != includesConstraints.end()) {
-            for (auto inNd : iclIt->second) {
-                if (inNd.first == oidN) {
-                    return true;
-                }
+            if (iclIt->second.first == oidN) {
+                return true;
             }
         }
     }
@@ -182,7 +183,9 @@ void FTree<T,U>::addExcludeStatement(long ottId, RootedTreeNode<T> * excludedFro
 }
 
 template<typename T, typename U>
-void FTree<T,U>::addIncludeStatement(long ottId, RootedTreeNode<T> * includedIn, const PhyloStatementSource &pss) {
+void FTree<T,U>::addIncludeStatement(long ottId,
+                                     RootedTreeNode<T> * includedIn,
+                                     const PhyloStatementSource &pss) {
     assert(includedIn != nullptr);
     if (contains(includedIn->getData().desIds, ottId)) {
         return; // must be included in a des
@@ -192,18 +195,18 @@ void FTree<T,U>::addIncludeStatement(long ottId, RootedTreeNode<T> * includedIn,
     //  because they'll be "dominated by this one"
     auto icIt = includesConstraints.find(eNode);
     if (icIt != includesConstraints.end()) {
-        auto & listOfInc = icIt->second;
-        auto ifIt = begin(listOfInc);
-        for (; ifIt != end(listOfInc);) {
-            auto aen = ifIt->first;
-            if (isAncestorDesNoIter(includedIn, aen)) {
-                ifIt = listOfInc.erase(ifIt);
-            } else {
-                ++ifIt;
-            }
+        auto & gcPair = icIt->second;
+        auto aen = gcPair.first;
+        if (aen == includedIn || isAncestorDesNoIter(includedIn, aen)) {
+            return; // prev constraint at least as specific
+        }
+        if (!isAncestorDesNoIter(aen, includedIn)) {
+            LOG(ERROR) << "Cannot move an inclusion constraint to a different subtree";
+            assert(false);
+            throw OTCError("err in FTree");
         }
     }
-    includesConstraints[eNode].push_back(GroupingConstraint(includedIn, pss));
+    includesConstraints.emplace(eNode, GroupingConstraint(includedIn, pss));
     // Since we know that the node will be a descendant of includedIn we add its Id to desIds
     includedIn->getData().desIds.insert(ottId);
     for (auto anc : iter_anc(*includedIn)) {
@@ -213,6 +216,8 @@ void FTree<T,U>::addIncludeStatement(long ottId, RootedTreeNode<T> * includedIn,
 
 template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids) {
+    dbWriteOttSet("  resolveToCreateCladeOfIncluded oids = ", oids);
+    dbWriteOttSet("                                 nd->getData().desIds = ", par->getData().desIds);
     std::set<RootedTreeNode<T> *> cToMove;
     std::list<RootedTreeNode<T> *> orderedToMove;
     std::list<GroupingConstraint *> incToUpdate;
@@ -238,18 +243,11 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
         if (connectionFound) {
             continue;
         }
-        auto icIt = includesConstraints.find(n);
-        if (icIt != includesConstraints.end()) {
-            auto & listOfConstr = icIt->second;
-            auto igcIt = begin(listOfConstr);
-            for (; igcIt != end(listOfConstr);) {
-                auto np = igcIt->first;
-                if (np == par) {
-                    incToUpdate.push_back(&(*igcIt));
-                    connectionFound = true;
-                    break;
-                }
-                ++igcIt;
+        auto igcIt = includesConstraints.find(n);
+        if (igcIt != includesConstraints.end()) {
+            auto np = igcIt->second.first;
+            if (np == par) {
+                incToUpdate.push_back(&(igcIt->second));
             }
         }
     }
@@ -283,6 +281,10 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
                 r.insert(oid);
             }
         }
+    }
+    includeGroupA->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
+    for (auto anc : iter_anc(*includeGroupA)) {
+        anc->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
     }
     for (auto oid : ps.excludeGroup) {
         if (!ottIdIsConnected(oid)) {
@@ -392,15 +394,16 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
     for (const auto &icnS : includesConstraints) {
         auto o = icnS.first->getOttId();
         if (!contains(ois, o)) {
-            for (const auto & conStatement : icnS.second) {
-                if (conStatement.first == nd) {
-                    ois.insert(o);
-                    break;
-                }
+            if (icnS.second.first == nd) {
+                ois.insert(o);
             }
         }
     }
-    assert(s == ois);
+    if(s != ois) {
+        dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming s", s);
+        dbWriteOttSet("calculated:", ois);
+        assert(s == ois);
+    }
 }
 template<typename T, typename U>
 void FTree<T, U>::debugInvariantsCheck() const {

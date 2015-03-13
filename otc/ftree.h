@@ -87,7 +87,7 @@ class FTree {
     const std::map<node_type *, std::list<GroupingConstraint> > & getExcluded2ConstraintMap() const {
         return excludesConstraints;
     }
-    const std::map<node_type *, std::list<GroupingConstraint> > & getIncluded2ConstraintMap() const {
+    const std::map<node_type *, GroupingConstraint> & getIncluded2ConstraintMap() const {
         return includesConstraints;
     }
     // non-const
@@ -98,7 +98,7 @@ class FTree {
     void addSubtree(RootedTreeNode<T> * subtreeRoot,
                     const NdToConstrainedAt & invIncConstr,
                     const NdToConstrainedAt & invExcConstr, 
-                    const std::map<node_type *, std::list<GroupingConstraint> > & incConstr,
+                    const std::map<node_type *, GroupingConstraint> & incConstr,
                     const std::map<node_type *, std::list<GroupingConstraint> > & excConstr);
     void debugInvariantsCheck() const;
     void debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const;
@@ -131,7 +131,7 @@ class FTree {
     //OttIdSet connectedIds;
     // from excludedNode to the nodes that it is excluded from...
     std::map<node_type *, std::list<GroupingConstraint> > excludesConstraints;
-    std::map<node_type *, std::list<GroupingConstraint> > includesConstraints;
+    std::map<node_type *, GroupingConstraint> includesConstraints;
     std::map<node_type *, OttIdSet> constrainedDesIds;
     std::map<node_type *, std::list<PhyloStatementSource> > supportedBy; // only for non-roots
     RootedForest<T, U> & forest;

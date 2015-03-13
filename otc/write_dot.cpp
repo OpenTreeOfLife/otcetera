@@ -305,6 +305,8 @@ using GCList = std::list<std::pair<T *, PhyloStatementSource> >;
 template<typename T>
 using NdToGCListMapping = std::map<T*, GCList<T> >;
 template<typename T>
+using NdToGCMapping = std::map<T*, std::pair<T *, PhyloStatementSource> >;
+template<typename T>
 void writeDOTGroupingConstraints(std::ostream & out,
                                  const NdToGCListMapping<T> & ndToGCList,
                                  const std::string & prefix,
@@ -324,6 +326,22 @@ void writeDOTGroupingConstraints(std::ostream & out,
             const ToDotKey ancK{igc.first, connPrefix}; // use connPrefix for the prefix to connect to a connected node
             writeDOTEdge(out, ancK, desK, nd2name, style, false);
         }
+    }
+}
+template<typename T>
+void writeDOTGroupingConstraintSingle(std::ostream & out,
+                                 const NdToGCMapping<T> & ndToGCList,
+                                 const std::string & prefix,
+                                 const std::string & connPrefix,
+                                 NodeToDotNames & nd2name,
+                                 const std::string & ndStyle,
+                                 const std::string & style) {
+    for (const auto & incNdGCPair : ndToGCList ) {
+        const auto & ind = incNdGCPair.first;
+        const ToDotKey desK{incNdGCPair.first, prefix};
+        writeNodeDOT(out, desK, nd2name, ndStyle, false, true, false);
+        const ToDotKey ancK{incNdGCPair.second.first, connPrefix}; // use connPrefix for the prefix to connect to a connected node
+        writeDOTEdge(out, ancK, desK, nd2name, style, false);
     }
 }
 
@@ -357,7 +375,7 @@ void writeDOTForFtree(std::ostream & out,
     std::string incStyle = "shape=invtriangle color=\"";
     incStyle += color;
     incStyle += "\"";
-    writeDOTGroupingConstraints(out, inc, itn, tn, nd2name, incStyle, esty);
+    writeDOTGroupingConstraintSingle(out, inc, itn, tn, nd2name, incStyle, esty);
     const std::string etn = std::string("exc") + tn;
     const auto & exc = tree.getExcluded2ConstraintMap();
     std::string excStyle = "shape=octagon color=\"";

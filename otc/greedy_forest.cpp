@@ -24,14 +24,13 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             continue;
         }
         auto sp = sn->getParent();
-        LOG(DEBUG) << " looking for " << sp << " the parent of " << sn;
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
         auto nid = sn->getOttId();
         if (sn->hasOttId() && nid > 0) { // might assign negative number to nodes created in synth...
-            LOG(DEBUG) << " node in src has ID " << nid;
+            //LOG(DEBUG) << " node in src has ID " << nid;
             dn = dOttIdToNode.at(nid);
-            LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->getOttId();
+            //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->getOttId();
             assert(dn != destPoly);
             if (contains(sc.detachedScaffoldNodes, dn)) {
                 dn->_setLChild(nullptr);
@@ -225,7 +224,17 @@ std::vector<T *> GreedyPhylogeneticForest<T,U>::getRoots(){
 }
 
 template<typename T, typename U>
-std::map<T, std::set<T> > invertGCMap(const std::map<T, std::list<std::pair<T, U> > > & k2pl) {
+std::map<T, std::set<T> > invertGCMap(const std::map<T, std::pair<T, U> > & k2pl) {
+    std::map<T, std::set<T> > r;
+    for (const auto & kIt : k2pl) {
+        const T & k{kIt.first};
+        r[kIt.second.first].insert(k);
+    }
+    return r;
+}
+
+template<typename T, typename U>
+std::map<T, std::set<T> > invertGCListMap(const std::map<T, std::list<std::pair<T, U> > > & k2pl) {
     std::map<T, std::set<T> > r;
     for (const auto & kIt : k2pl) {
         const T & k{kIt.first};
@@ -249,7 +258,7 @@ void GreedyPhylogeneticForest<T,U>::mergeForest(SupertreeContextWithSplits &) {
         const auto & ic = currTree.getIncluded2ConstraintMap();
         const auto & ec = currTree.getExcluded2ConstraintMap();
         const auto nd2Inc = invertGCMap(ic);
-        const auto nd2Exc = invertGCMap(ec);
+        const auto nd2Exc = invertGCListMap(ec);
         auto currRoot = currTree.getRoot();
         assert(currRoot->getParent() == nullptr);
         assert(!currRoot->isTip());
