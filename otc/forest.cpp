@@ -36,9 +36,7 @@ void RootedForest<T,U>::registerLeaf(long ottId) {
     if (f != ottIdToNodeMap.end()) {
         return;
     }
-    auto n = createNode(nullptr);
-    n->setOttId(ottId);
-    ottIdToNodeMap[ottId] = n;
+    createLeaf(nullptr, ottId);
 }
 
 // TMP could be faster by storing node->tree lookup
@@ -71,6 +69,7 @@ void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
         if (!nodeIsAttached(*nd)) {
             //t.connectedIds.insert(o2n.first);
             t.root->addChild(nd);
+            t.root->getData().desIds.insert(o2n.first);
         }
     }
 }
@@ -102,15 +101,19 @@ void RootedForest<T,U>::attachAllDetachedTips() {
     if (!excludedFromRoot.empty()) {
         auto nr = createNode(nullptr);
         nr->addChild(t.root);
+        nr->getData().desIds = t.root->getData().desIds;
         t.root = nr;
         for (auto n : excludedFromRoot) {
             //t.connectedIds.insert(n->getOttId());
             nr->addChild(n);
+            nr->getData().desIds.insert(n->getOttId());
         }
     }
+    // these could be attached one node more tipward (old root), but there is no basis for that.
     for (auto n : attachableAtRoot) {
         //t.connectedIds.insert(n->getOttId());
         t.root->addChild(n);
+        t.root->getData().desIds.insert(n->getOttId());
     }
     
 }

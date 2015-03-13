@@ -25,6 +25,7 @@ template<typename T, typename U>
 void FTree<T, U>::createDeeperRoot() {
     auto nr = forest.createNode(nullptr);
     nr->addChild(root);
+    nr->getData().desIds = root->getData().desIds;
     root = nr;
 }
 
@@ -69,6 +70,7 @@ void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
         for (auto c : iter_leaf_n_const(*subtreeRoot)) {
             //connectedIds.insert(c->getOttId());
         }
+        root->getData().desIds.insert(begin(subtreeRoot->getData().desIds), end(subtreeRoot->getData().desIds));
         const PhyloStatementSource bogusPSS{-1, -1};
         for (auto sn : iter_pre_n(subtreeRoot)) { //TMP need iter_node_n
             const auto esn = otherInvertedExc.find(sn);
