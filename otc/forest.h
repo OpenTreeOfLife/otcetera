@@ -129,8 +129,8 @@ class RootedForest {
         return trees;
     }
     bool isAttached(long ottId) const;
-    bool isMentionedInInclude(const node_type * ) const;
-    bool isMentionedInExclude(const node_type * ) const;
+    bool isInABand(const node_type * ) const;
+    bool hasNodesExcludedFromIt(const node_type * ) const;
     bool nodeIsAttached(RootedTreeNode<T> & n) const;
     std::pair<bool, bool> checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
     //modifiers

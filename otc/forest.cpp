@@ -232,11 +232,11 @@ void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloState
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::isMentionedInInclude(const node_type * nd) const {
+bool RootedForest<T,U>::isInABand(const node_type * nd) const {
     node_type * ncn = const_cast<node_type *>(nd);
     for (const auto & tp : trees) {
         const auto & tree = tp.second;
-        if (contains(tree.includesConstraints, ncn)) {
+        if (tree.isInABand(nd)) {
             return true;
         }
     }
@@ -244,11 +244,11 @@ bool RootedForest<T,U>::isMentionedInInclude(const node_type * nd) const {
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::isMentionedInExclude(const node_type * nd) const {
+bool RootedForest<T,U>::hasNodesExcludedFromIt(const node_type * nd) const {
     node_type * ncn = const_cast<node_type *>(nd);
     for (const auto & tp : trees) {
         const auto & tree = tp.second;
-        if (contains(tree.excludesConstraints, ncn)) {
+        if (tree.hasNodesExcludedFromIt(ncn)) {
             return true;
         }
     }
@@ -279,7 +279,7 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
             if (f->anyIncludedAtNode(includeGroupA, ps.excludeGroup)) {
                 return false;
             }
-            if (f->anyForceIncludedAtNode(includeGroupA, ps.includeGroup)) {
+            if (f->anyPhantomNodesAtNode(includeGroupA, ps.includeGroup)) {
                 return false;
             }
             includeGroupA = includeGroupA->getParent();
@@ -398,7 +398,7 @@ template<typename T, typename U>
 void RootedForest<T, U>::debugInvariantsCheck() const {
     std::map<const node_type *, const tree_type *> root2tree;
     for (const auto & t : trees) {
-        t.second.debugInvariantsCheck();
+        t.second.debugInvariantsCheckFT();
         auto r = t.second.getRoot();
         assert(!contains(root2tree, r));
         root2tree[r] = &(t.second);

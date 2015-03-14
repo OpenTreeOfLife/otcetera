@@ -370,6 +370,7 @@ void writeDOTForFtree(std::ostream & out,
         writeNodeDOT(out, desK, nd2name, nsty, false, true, false);
         writeDOTEdge(out, ancK, desK, nd2name, esty, false);
     }
+    /*
     const std::string itn = std::string("inc") + tn;
     const auto & inc = tree.getIncluded2ConstraintMap();
     std::string incStyle = "shape=invtriangle color=\"";
@@ -382,6 +383,7 @@ void writeDOTForFtree(std::ostream & out,
     excStyle += color;
     excStyle += "\"";
     writeDOTGroupingConstraints(out, exc, etn, tn, nd2name, excStyle, esty);
+    */
 }
 
 void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
@@ -392,7 +394,7 @@ void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithS
     for (auto & oidNodePair : o2n) {
         auto n = oidNodePair.second;
         bool writePlainNd = forest.isAttached(n->getOttId());
-        if (!writePlainNd && (!forest.isMentionedInInclude(n)) && (!forest.isMentionedInExclude(n))) {
+        if (!writePlainNd && (!forest.isInABand(n)) && (!forest.hasNodesExcludedFromIt(n))) {
             writePlainNd = true;
         }
         if (writePlainNd) {

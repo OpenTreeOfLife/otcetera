@@ -247,6 +247,8 @@ std::map<T, std::set<T> > invertGCListMap(const std::map<T, std::list<std::pair<
 
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::mergeForest(SupertreeContextWithSplits &) {
+    assert(false);
+/*
     auto roots = getRoots();
     assert(roots.size() > 1);
     auto trit = begin(trees);
@@ -274,6 +276,7 @@ void GreedyPhylogeneticForest<T,U>::mergeForest(SupertreeContextWithSplits &) {
         }
         currRoot->_setLChild(nullptr);
     }
+*/
 }
 
 template<typename T, typename U>

@@ -8,6 +8,64 @@
 #include "otc/write_dot.h"
 namespace otc {
 
+template<typename T>
+bool ExcludeConstraints<T>::isExcludedFrom(const node_type * ndToCheck,
+                                         const node_type * potentialAttachment) const {
+    auto nit = byExcludedNd.find(ndToCheck);
+    if (nit == byExcludedNd.end()) {
+        return false;
+    }
+    return contains(nit->second, potentialAttachment);
+}
+
+template<typename T>
+bool ExcludeConstraints<T>::addExcludeStatement(const node_type * nd2Exclude,
+                                                const node_type * forbiddenAttach) {
+    if (isExcludedFrom(nd2Exclude, forbiddenAttach)) {
+        return false; // already excluded from this subtree
+    }
+    // If any of the descendants exclude this node, we can remove those exclude statements,
+    //  because they'll be "dominated by this one"
+    std::list<node_pair> toRemove;
+    auto pIt = byExcludedNd.find(nd2Exclude);
+    if (pIt != byExcludedNd.end()) {
+        for (const auto & cp : pIt->second) {
+            if (isAncestorDesNoIter(forbiddenAttach, cp)) {
+                toRemove.push_back(node_pair(nd2Exclude, cp));
+            }
+        }
+    }
+    for (auto & np : toRemove) {
+        purgeExcludeRaw(np.first, np.second);
+    }
+    ingestExcludeRaw(nd2Exclude, forbiddenAttach);
+}
+
+template<typename T>
+void ExcludeConstraints<T>::purgeExcludeRaw(const node_type * nd2Exclude,
+                                            const node_type * forbiddenAttach)  {
+    cnode_set & bev = byExcludedNd.at(nd2Exclude);
+    assert(contains(bev, forbiddenAttach));
+    bev.erase(forbiddenAttach);
+    if (bev.empty()) {
+        byExcludedNd.erase(nd2Exclude);
+    }
+    cnode_set & bcv = byNdWithConstraints.at(forbiddenAttach);
+    assert(contains(bcv, nd2Exclude));
+    bcv.erase(nd2Exclude);
+    if (bcv.empty()) {
+        byNdWithConstraints.erase(forbiddenAttach);
+    }
+}
+
+template<typename T>
+void ExcludeConstraints<T>::ingestExcludeRaw(const node_type * nd2Exclude,
+                                             const node_type * forbiddenAttach) {
+    byExcludedNd[nd2Exclude].insert(forbiddenAttach);
+    byNdWithConstraints[forbiddenAttach].insert(nd2Exclude);
+}
+
+
 bool PhyloStatement::debugCheck() const {
 #ifdef DEBUGGING_PHYLO_STATEMENTS
     const OttIdSet ie = set_union_as_set(includeGroup, excludeGroup);
@@ -42,7 +100,7 @@ const OttIdSet FTree<T, U>::getConnectedOttIds() const {
     return r;
 }
 
-
+/*
 template<typename T, typename U>
 void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
                 const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedInc,
@@ -93,35 +151,13 @@ void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
     }
     assert(false);
 }
+*/
 
 template<typename T, typename U>
-bool FTree<T,U>::isExcludedFromRoot(const node_type *n) const {
-    node_type * ncn = const_cast<node_type *>(n);
-    auto nit = excludesConstraints.find(ncn);
-    if (nit == excludesConstraints.end()) {
-        return false;
-    }
-    for (const auto & en : nit->second) {
-        if (en.first == root) {
-            return true;
-        }
-    }
-    return false;
-}
-template<typename T, typename U>
 bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
-    const node_type * p = nd->getParent();
-    const OttIdSet & ndi = nd->getData().desIds;
     for (auto oid : ottIdSet) {
-        auto leafNd = ottIdToNodeMap.at(oid);
-        auto gcIt = excludesConstraints.find(leafNd);
-        if (gcIt != excludesConstraints.end()) {
-            for (const auto & gc : gcIt->second) {
-                node_type * en = gc.first;
-                if (en == nd || en == p || isSubset(ndi, en->getData().desIds)) {
-                    return true;
-                }
-            }
+        if (exclude.isExcludedFrom(ottIdToNodeMap.at(oid), nd)) {
+            return true;
         }
     }
     return false;
@@ -132,19 +168,18 @@ bool FTree<T,U>::anyIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
     if (!areDisjoint(nd->getData().desIds, ottIdSet)) {
         return true;
     }
-    
-    auto c = anyForceIncludedAtNode(nd, ottIdSet);
+    auto c = anyPhantomNodesAtNode(nd, ottIdSet);
     assert(c == false);// if we are correctly updating desIds we don't need this branch.... TMP
     return c;
 }
 
 template<typename T, typename U>
-bool FTree<T,U>::anyForceIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
-    for (auto oid :ottIdSet) {
-        auto oidN = ottIdToNodeMap.at(oid);
-        auto iclIt = includesConstraints.find(oidN);
-        if (iclIt != includesConstraints.end()) {
-            if (iclIt->second.first == oidN) {
+bool FTree<T,U>::anyPhantomNodesAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
+    const auto & b = bands.getBandsForNode(nd);
+    if (!b.empty()) {
+       const auto ns = ottIdSetToNodeSet(ottIdSet);
+        for (auto ob : b) {
+            if (ob->bandPointHasAny(nd, ns)) {
                 return true;
             }
         }
@@ -157,33 +192,7 @@ RootedTreeNode<T> * FTree<T,U>::addLeafNoDesUpdate(RootedTreeNode<T> * par, long
     //connectedIds.insert(ottId);
     return forest.createLeaf(par, ottId);
 }
-
-template<typename T, typename U>
-void FTree<T,U>::addExcludeStatement(long ottId, RootedTreeNode<T> * excludedFrom, const PhyloStatementSource &pss) {
-    OttIdSet x;
-    x.insert(ottId);
-    if (anyExcludedAtNode(excludedFrom, x)) {
-        return; // already excluded from this subtree
-    }
-    RootedTreeNode<T> * eNode = ottIdToNodeMap.at(ottId);
-    // If any of the descendants exclude this node, we can remove those exclude statements,
-    //  because they'll be "dominated by this one"
-    auto ecIt = excludesConstraints.find(eNode);
-    if (ecIt != excludesConstraints.end()) {
-        auto & listOfExc = ecIt->second;
-        auto efIt = begin(listOfExc);
-        for (; efIt != end(listOfExc);) {
-            auto aen = efIt->first;
-            if (isAncestorDesNoIter(excludedFrom, aen)) {
-                efIt = listOfExc.erase(efIt);
-            } else {
-                ++efIt;
-            }
-        }
-    }
-    excludesConstraints[eNode].push_back(GroupingConstraint(excludedFrom, pss));
-}
-
+/*
 template<typename T, typename U>
 void FTree<T,U>::addIncludeStatement(long ottId,
                                      RootedTreeNode<T> * includedIn,
@@ -216,12 +225,15 @@ void FTree<T,U>::addIncludeStatement(long ottId,
     for (auto anc : iter_anc(*includedIn)) {
         anc->getData().desIds.insert(ottId);
     }
-}
+}*/
 
 template<typename T, typename U>
-RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids) {
+RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par,
+                                                               const OttIdSet & oids) {
     dbWriteOttSet("  resolveToCreateCladeOfIncluded oids = ", oids);
     dbWriteOttSet("                                 nd->getData().desIds = ", par->getData().desIds);
+    assert(0);
+    /*
     std::set<RootedTreeNode<T> *> cToMove;
     std::list<RootedTreeNode<T> *> orderedToMove;
     std::list<GroupingConstraint *> incToUpdate;
@@ -269,8 +281,9 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
         gcp->first = newNode;
     }
     assert(!par->isOutDegreeOneNode());
-    debugInvariantsCheck();
+    debugInvariantsCheckFT();
     return newNode;
+    */
 }
 template<typename T, typename U>
 OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
@@ -279,6 +292,8 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
     dbWriteOttSet(" FTree<T,U>::addPhyloStatementAtNode inc", ps.includeGroup);
     LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA;
     dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
+    assert(false);
+    /*
     OttIdSet r;
     for (auto oid : ps.includeGroup) {
         if (!ottIdIsConnected(oid)) {
@@ -310,11 +325,12 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
         }
     }
     LOG(DEBUG) << "before addPhyloStatementAtNode exit";
-    debugInvariantsCheck();
+    debugInvariantsCheckFT();
     LOG(DEBUG) << "foreset level check";
     forest.debugInvariantsCheck();
     LOG(DEBUG) << "bout to addPhyloStatementAtNode exit";
     return r;
+    */
 }
 
 template<typename T, typename U>
@@ -377,7 +393,7 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     dbWriteOttSet(" addPhyloStatementAsChildOfRoot", ps.includeGroup);
     assert(root != nullptr);
     if (!root->isTip()) {
-        debugInvariantsCheck();
+        debugInvariantsCheckFT();
     }
     if (anyExcludedAtNode(root, ps.includeGroup)) {
         createDeeperRoot();
@@ -385,7 +401,6 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     }
     assert(root != nullptr);
     auto parOfIncGroup = forest.createNode(root); // parent of includeGroup
-    supportedBy[parOfIncGroup].push_back(ps.provenance);
     assert(ps.excludeGroup.size() > 0);
     for (auto i : ps.excludeGroup) {
         if (!forest.isAttached(i)) { // greedy
@@ -401,7 +416,7 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     }
     root->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
     parOfIncGroup->getData().desIds = ps.includeGroup;
-    debugInvariantsCheck();
+    debugInvariantsCheckFT();
     LOG(DEBUG) << "Leaving addPhyloStatementAsChildOfRoot";
 }
 
@@ -426,37 +441,28 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
             ois.insert(begin(coids), end(coids));
         }
     }
-    for (const auto &icnS : includesConstraints) {
-        auto o = icnS.first->getOttId();
-        if (!contains(ois, o)) {
-            if (icnS.second.first == nd) {
-                ois.insert(o);
-            } else {
-                assert(!isAncestorDesNoIter(nd, icnS.second.first));
-            }
-        }
-    }
-    
+    const auto pids = bands.getPhantomIds(nd);
+    ois.insert(pids.begin(), pids.end());
     if(s != ois) {
-        auto tn = ottIdToNodeMap.find(612446);
-        if (tn != ottIdToNodeMap.end()) {
-            auto icTn = includesConstraints.find(tn->second);
-            if (icTn != includesConstraints.end()) {
-                LOG(DEBUG) << "nd = " << (long)nd << " tn = " << (long)tn->second << " ic = " << (long) icTn->second.first << " isAnc" << isAncestorDesNoIter(nd, icTn->second.first);
-            }
-        }
         dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming s", s);
         dbWriteOttSet("calculated:", ois);
         assert(s == ois);
     }
 }
 template<typename T, typename U>
-void FTree<T, U>::debugInvariantsCheck() const {
+void FTree<T, U>::debugInvariantsCheckFT() const {
     for (auto n : iter_post_n_const(*root)) {
         OttIdSet noids;
         if (n->isTip()) {
-            const auto o = n->getOttId();
-            assert(ottIdToNodeMap.at(o) == n);
+            if (n->hasOttId()) {
+                const auto o = n->getOttId();
+                assert(ottIdToNodeMap.at(o) == n);
+            }
+            // Make sure that our ancestors do not exclude us.
+            const std::set<const node_type *> ancSet = getAncSet(n);
+            for (auto a : ancSet) {
+                assert(!exclude.isExcludedFrom(n, a));
+            }
         } else {
             assert(!n->hasOttId());
         }
@@ -464,18 +470,11 @@ void FTree<T, U>::debugInvariantsCheck() const {
             assert(isAncestorDesNoIter(root, n));
         }
         debugVerifyDesIdsAssumingDes(n->getData().desIds, n);
-        // Make sure that our ancestors do not exclude us.
-        auto exIt = excludesConstraints.find(const_cast<node_type *>(n));
-        if (exIt != excludesConstraints.end()) {
-            const std::set<const node_type *> ancSet = getAncSet(n);
-            for (auto & ex : exIt->second) {
-                const node_type * exNd = ex.first;
-                assert(!contains(ancSet, exNd));
-            }
-        }
     }
 }
 
+template class ExcludeConstraints<RTSplits>; // force explicit instantiaion of this template.
+template class InterTreeBand<RTSplits>; // force explicit instantiaion of this template.
 template class FTree<RTSplits, MappedWithSplitsData>; // force explicit instantiaion of this template.
 
 }// namespace

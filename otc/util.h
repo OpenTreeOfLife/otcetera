@@ -178,8 +178,8 @@ inline bool isSubset(const T & small, const T & big) {
 }
 
 // http://stackoverflow.com/posts/1964252/revisions
-template<class Set1>
-inline bool areDisjoint(const Set1 & set1, const Set1 & set2) {
+template<class Set1, class Set2>
+inline bool areDisjoint(const Set1 & set1, const Set2 & set2) {
     if (set1.empty() || set2.empty()) {
         return true;
     }
