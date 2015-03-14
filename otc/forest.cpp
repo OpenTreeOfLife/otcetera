@@ -256,7 +256,8 @@ bool RootedForest<T,U>::hasNodesExcludedFromIt(const node_type * nd) const {
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality, const PhyloStatement &ps) {
+bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
+                                                                   const PhyloStatement &ps) {
     std::list<node_type * > nonTrivMRCAs;
     OttIdSet attachedElsewhere;
     std::vector<bool> shouldResolveVec;
@@ -323,7 +324,7 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
         const bool addNode = *srIt++;
         const bool shouldCreateDeeperRoot = *scdIt;
         if (addNode) {
-            includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps.includeGroup);
+            includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps);
             LOG(DEBUG) << "   back from resolveToCreateCladeOfIncluded for loop round " << i;
             debugInvariantsCheck();
         } else if (shouldCreateDeeperRoot) {

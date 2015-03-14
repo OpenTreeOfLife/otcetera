@@ -142,6 +142,11 @@ class InterTreeBandBookkeeping {
     bool isInABand(const node_type *n) const {
         return contains(node2Band, n);
     }
+    void updateToReflectResolution(node_type *oldAnc,
+                                   node_type * newAnc,
+                                   const std::set<node_type *> & movedTips,
+                                   const PhyloStatement & ps);
+    private:
     std::map<const band_type *, node_type *> band2Node;
     std::map<const node_type *, band_set > node2Band;
     const band_set emptySet;
@@ -211,7 +216,7 @@ class FTree {
     bool anyIncludedAtNode(const node_type *, const OttIdSet &) const ;
     void createDeeperRoot();
     node_type * getMRCA(const OttIdSet &id);
-    RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const OttIdSet & oids);
+    RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const PhyloStatement & ps);
     
     friend class RootedForest<T, U>;
     friend class GreedyPhylogeneticForest<T, U>;

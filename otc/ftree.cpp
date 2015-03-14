@@ -229,14 +229,12 @@ void FTree<T,U>::addIncludeStatement(long ottId,
 
 template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par,
-                                                               const OttIdSet & oids) {
+                                                               const PhyloStatement & ps) {
+    const OttIdSet & oids = ps.includeGroup;
     dbWriteOttSet("  resolveToCreateCladeOfIncluded oids = ", oids);
     dbWriteOttSet("                                 nd->getData().desIds = ", par->getData().desIds);
-    assert(0);
-    /*
     std::set<RootedTreeNode<T> *> cToMove;
     std::list<RootedTreeNode<T> *> orderedToMove;
-    std::list<GroupingConstraint *> incToUpdate;
     for (auto oid : oids) {
         auto n = ottIdToNodeMap.at(oid);
         bool connectionFound = false;
@@ -259,16 +257,7 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
         if (connectionFound) {
             continue;
         }
-        auto igcIt = includesConstraints.find(n);
-        if (igcIt != includesConstraints.end()) {
-            auto np = igcIt->second.first;
-            if (np == par) {
-                incToUpdate.push_back(&(igcIt->second));
-            }
-        }
     }
-    assert(cToMove.size() > 0 || incToUpdate.size() > 0);
-    
     auto newNode = forest.createNode(par); // parent of includeGroup
     for (auto c : orderedToMove) {
         c->_detachThisNode();
@@ -277,14 +266,20 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
         const auto & di = c->getData().desIds;
         newNode->getData().desIds.insert(begin(di), end(di));
     }
-    for (auto gcp : incToUpdate) {
-        gcp->first = newNode;
-    }
+    bands.updateToReflectResolution(par, newNode, cToMove, ps);
     assert(!par->isOutDegreeOneNode());
     debugInvariantsCheckFT();
     return newNode;
-    */
 }
+
+template<typename T>
+void InterTreeBandBookkeeping<T>::updateToReflectResolution(node_type *oldAnc,
+                                                            node_type * newAnc,
+                                                            const std::set<node_type *> & movedTips,
+                                                            const PhyloStatement & ps) {
+    assert(0);
+}
+
 template<typename T, typename U>
 OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
                                              RootedTreeNode<T> * includeGroupA,
