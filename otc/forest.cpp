@@ -324,15 +324,23 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
         const bool shouldCreateDeeperRoot = *scdIt;
         if (addNode) {
             includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps.includeGroup);
+            LOG(DEBUG) << "   back from resolveToCreateCladeOfIncluded for loop round " << i;
+            debugInvariantsCheck();
         } else if (shouldCreateDeeperRoot) {
             f->createDeeperRoot();
             includeGroupA = f->getRoot();
+            LOG(DEBUG) << "   back from createDeeperRoot for loop round " << i;
+            debugInvariantsCheck();
         }
         auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere);
         if (!connectedHere.empty()) {
             attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
         }
+        dbWriteOttSet(" includeGroupA...desIds ", includeGroupA->getData().desIds);
+        LOG(DEBUG) << "   back from addPhyloStatementAtNode for loop round " << i;
+        debugInvariantsCheck();
     }
+    LOG(DEBUG) << "   addIngroupOverlappingPhyloStatementToGraph exit true " << i;
     return true;
 }
 

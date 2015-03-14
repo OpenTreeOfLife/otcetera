@@ -311,7 +311,8 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
     }
     LOG(DEBUG) << "before addPhyloStatementAtNode exit";
     debugInvariantsCheck();
-
+    LOG(DEBUG) << "foreset level check";
+    forest.debugInvariantsCheck();
     LOG(DEBUG) << "bout to addPhyloStatementAtNode exit";
     return r;
 }
