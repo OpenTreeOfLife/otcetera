@@ -66,6 +66,14 @@ void ExcludeConstraints<T>::ingestExcludeRaw(const node_type * nd2Exclude,
 }
 
 
+template<typename T>
+void InterTreeBandBookkeeping<T>::updateToReflectResolution(node_type *oldAnc,
+                                                            node_type * newAnc,
+                                                            const std::set<node_type *> & movedTips,
+                                                            const PhyloStatement & ps) {
+    assert(0);
+}
+
 bool PhyloStatement::debugCheck() const {
 #ifdef DEBUGGING_PHYLO_STATEMENTS
     const OttIdSet ie = set_union_as_set(includeGroup, excludeGroup);
@@ -272,13 +280,6 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     return newNode;
 }
 
-template<typename T>
-void InterTreeBandBookkeeping<T>::updateToReflectResolution(node_type *oldAnc,
-                                                            node_type * newAnc,
-                                                            const std::set<node_type *> & movedTips,
-                                                            const PhyloStatement & ps) {
-    assert(0);
-}
 
 template<typename T, typename U>
 OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 

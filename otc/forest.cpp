@@ -256,12 +256,13 @@ bool RootedForest<T,U>::hasNodesExcludedFromIt(const node_type * nd) const {
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
-                                                                   const PhyloStatement &ps) {
-    std::list<node_type * > nonTrivMRCAs;
-    OttIdSet attachedElsewhere;
-    std::vector<bool> shouldResolveVec;
-    std::vector<bool> shouldCreateDeeperVec;
+bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
+            const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
+            const PhyloStatement &ps,
+            std::list<node_type * > nonTrivMRCAs,
+            OttIdSet attachedElsewhere,
+            std::vector<bool> shouldResolveVec,
+            std::vector<bool> shouldCreateDeeperVec) const {
     for (const auto & incPair : byIncCardinality) {
         const auto & incGroupIntersection = incPair.first;
         attachedElsewhere.insert(incGroupIntersection.begin(), incGroupIntersection.end());
@@ -309,6 +310,19 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
         shouldCreateDeeperVec.push_back(forceDeeperRoot);
         shouldResolveVec.push_back(!excInc.empty());
         nonTrivMRCAs.push_back(includeGroupA);
+    }
+    return true;
+}
+
+template<typename T, typename U>
+bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
+                                                                   const PhyloStatement &ps) {
+    std::list<node_type * > nonTrivMRCAs;
+    OttIdSet attachedElsewhere;
+    std::vector<bool> shouldResolveVec;
+    std::vector<bool> shouldCreateDeeperVec;
+    if (!checkCanAddIngroupOverlappingPhyloStatementToGraph(byIncCardinality, ps, nonTrivMRCAs, attachedElsewhere, shouldResolveVec, shouldCreateDeeperVec)) {
+        return false;
     }
     // all non trivial overlapping trees have approved this split...
     auto ntmIt = begin(nonTrivMRCAs);
