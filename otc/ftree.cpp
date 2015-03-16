@@ -39,6 +39,7 @@ bool ExcludeConstraints<T>::addExcludeStatement(const node_type * nd2Exclude,
         purgeExcludeRaw(np.first, np.second);
     }
     ingestExcludeRaw(nd2Exclude, forbiddenAttach);
+    return true;
 }
 
 template<typename T>
@@ -280,27 +281,36 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     return newNode;
 }
 
+template<typename T, typename U>
+bool FTree<T,U>::insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp,
+                                    RootedTreeNode<T> * connectedNode,
+                                    long phantomID) {
+    assert(connectedNode != nullptr);
+    assert(itbp != nullptr);
+    auto noid = ottIdToNodeMap.at(phantomID);
+    itbp->insert(connectedNode, noid);
+    return true;
+}
 
 template<typename T, typename U>
 OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
                                              RootedTreeNode<T> * includeGroupA,
-                                             const OttIdSet & attachedElsewhere) {
+                                             const OttIdSet & attachedElsewhere,
+                                             InterTreeBand<T> * itbp) {
     dbWriteOttSet(" FTree<T,U>::addPhyloStatementAtNode inc", ps.includeGroup);
     LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA;
     dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
-    NOT_IMPLEMENTED; // refactoring to banded
-    /*
     OttIdSet r;
+    if (itbp != nullptr) {
+        bands._addRefToBand(itbp, includeGroupA);
+    }
     for (auto oid : ps.includeGroup) {
         if (!ottIdIsConnected(oid)) {
             LOG(DEBUG) << " not connected " << oid;
             if (contains(attachedElsewhere, oid)) {
+                assert(itbp != nullptr);
                 LOG(DEBUG) << " attachedElsewhere " << oid;
-                addIncludeStatement(oid, includeGroupA, ps.provenance);
-                auto ifIt = includesConstraints.find(ottIdToNodeMap.at(oid));
-                if (ifIt != includesConstraints.end()) {
-                    LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA << " ic = " << (long) ifIt->second.first << " isAnc" << isAncestorDesNoIter(includeGroupA, ifIt->second.first);
-                }
+                insertIntoBandNoDesUpdate(itbp, includeGroupA, oid);
             } else {
                 LOG(DEBUG) << " adding leaf " << oid;
                 addLeafNoDesUpdate(includeGroupA, oid);
@@ -326,7 +336,6 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
     forest.debugInvariantsCheck();
     LOG(DEBUG) << "bout to addPhyloStatementAtNode exit";
     return r;
-    */
 }
 
 template<typename T, typename U>

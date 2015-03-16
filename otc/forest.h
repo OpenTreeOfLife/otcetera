@@ -155,6 +155,9 @@ class RootedForest {
             OttIdSet attachedElsewhere,
             std::vector<bool> shouldResolveVec,
             std::vector<bool> shouldCreateDeeperVec) const;
+    InterTreeBand<T> * createNewBand(FTree<T, U> & ftree,
+                                     RootedTreeNode<T> &nd,
+                                     const PhyloStatement &ps);
     tree_type & createNewTree();
     protected:
     void attachAllKnownTipsAsNewTree();
@@ -164,7 +167,7 @@ class RootedForest {
     std::size_t nextTreeId;
     OttIdSet ottIdSet;
     std::map<OttId, node_type *> & ottIdToNodeMap; // alias to this data field in nodeSrc for convenience
-    
+    std::list<InterTreeBand<T> > allBands;
     // addedSplitsByLeafSet
     // TMP, store every PhlyoStatement that we have accepted. This may become too memory inefficient
     // If we can do this, we can reject a new split based on conflict with another split that was

@@ -65,12 +65,12 @@ class InterTreeBand {
     using node_set = std::set<node_type *>;
     InterTreeBand(node_type * nd1,
                   const node_set & n1set,
-                  node_type *nd2,
-                  const node_set & n2set,
                   const PhyloStatement & ps)
         :statement(ps) {
         addNode(nd1, n1set);
-        addNode(nd2, n2set);
+    }
+    void insert(node_type * nd, node_type * phantom) {
+        nd2phantom.at(nd).insert(phantom);
     }
     void addNode(node_type * nd, const node_set & nset) {
         assert(nd != nullptr);
@@ -146,6 +146,12 @@ class InterTreeBandBookkeeping {
                                    node_type * newAnc,
                                    const std::set<node_type *> & movedTips,
                                    const PhyloStatement & ps);
+    void _addRefToBand(band_type * band, node_type * nd) {
+        assert(nd != nullptr);
+        assert(band != nullptr);
+        band2Node[band] = nd;
+        node2Band[nd].insert(band);
+    }
     private:
     std::map<const band_type *, node_type *> band2Node;
     std::map<const node_type *, band_set > node2Band;
@@ -210,12 +216,14 @@ class FTree {
     // this is greedy, we should be building separate FTree instances in many cases....
     OttIdSet addPhyloStatementAtNode(const PhyloStatement & ps, 
                                      node_type * includeGroupMRCA,
-                                     const OttIdSet & attachedElsewhere);
+                                     const OttIdSet & attachedElsewhere,
+                                     InterTreeBand<T> * itbp);
     bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     bool anyPhantomNodesAtNode(const node_type *, const OttIdSet &) const ;
     bool anyIncludedAtNode(const node_type *, const OttIdSet &) const ;
     void createDeeperRoot();
     node_type * getMRCA(const OttIdSet &id);
+    bool insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp, RootedTreeNode<T> * connectedNode, long phantomID);
     RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const PhyloStatement & ps);
     
     friend class RootedForest<T, U>;

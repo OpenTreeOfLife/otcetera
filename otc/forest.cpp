@@ -236,7 +236,7 @@ bool RootedForest<T,U>::isInABand(const node_type * nd) const {
     node_type * ncn = const_cast<node_type *>(nd);
     for (const auto & tp : trees) {
         const auto & tree = tp.second;
-        if (tree.isInABand(nd)) {
+        if (tree.isInABand(ncn)) {
             return true;
         }
     }
@@ -315,6 +315,16 @@ bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
     return true;
 }
 
+ 
+template<typename T, typename U>
+InterTreeBand<T> * RootedForest<T,U>::createNewBand(FTree<T, U> & ,
+                                                 RootedTreeNode<T> &nd,
+                                                 const PhyloStatement &ps) {
+    std::set<RootedTreeNode<T> *> emptySet;
+    allBands.emplace_back(&nd, emptySet, ps);
+    return &(*allBands.rbegin());
+}
+
 template<typename T, typename U>
 bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
                                                                    const PhyloStatement &ps) {
@@ -330,6 +340,7 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
     auto srIt = begin(shouldResolveVec);
     auto scdIt = begin(shouldCreateDeeperVec);
     unsigned i = 0;
+    InterTreeBand<T> * itbp = nullptr;
     for (const auto & incPair : byIncCardinality) {
         LOG(DEBUG) << "   addIngroupOverlappingPhyloStatementToGraph mod for loop round " << ++i;
         debugInvariantsCheck();
@@ -348,7 +359,10 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
             LOG(DEBUG) << "   back from createDeeperRoot for loop round " << i;
             debugInvariantsCheck();
         }
-        auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere);
+        if (byIncCardinality.size() > 1 && itbp == nullptr) {
+            itbp = createNewBand(*f, *includeGroupA, ps);
+        }
+        auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere, itbp);
         if (!connectedHere.empty()) {
             attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
         }
