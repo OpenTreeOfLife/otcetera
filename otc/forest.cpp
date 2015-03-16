@@ -63,7 +63,7 @@ void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
     for (auto & o2n : ottIdToNodeMap) {
         if (o2n.first == rootID) {
             assert(false);
-            continue;
+            throw OTCError("root as tip");
         }
         auto nd = o2n.second;
         if (!nodeIsAttached(*nd)) {
@@ -87,7 +87,7 @@ void RootedForest<T,U>::attachAllDetachedTips() {
     for (auto & o2n : ottIdToNodeMap) {
         if (o2n.first == rootID) {
             assert(false);
-            continue;
+            throw OTCError("root as tip");
         }
         auto nd = o2n.second;
         if (!nodeIsAttached(*nd)) {
@@ -255,6 +255,7 @@ bool RootedForest<T,U>::hasNodesExcludedFromIt(const node_type * nd) const {
     return false;
 }
 
+// should not modify the forest if returning false
 template<typename T, typename U>
 bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
             const std::list<OverlapFTreePair<T, U> > & byIncCardinality,

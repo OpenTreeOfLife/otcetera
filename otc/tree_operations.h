@@ -134,7 +134,7 @@ typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet
         assert(cn != nullptr);
     }
     assert(false);
-    return nullptr;
+    throw OTCError("asserts disabled, but false");
 }
 
 template<typename T>
@@ -566,7 +566,7 @@ template<typename T>
 inline const typename T::node_type * findMRCAUsingDesIds(const T & tree, const std::set<long> & idSet) {
     if (idSet.empty()) {
         assert(false);
-        return nullptr;
+        throw OTCError("asserts disabled but false");
     }
     const long lowestID = *idSet.begin();
     const typename T::node_type * aTip = tree.getData().getNodeForOttId(lowestID);
@@ -651,7 +651,8 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
         // nd has a different set of descendants than child.
         //  nd was not actually monotypic
         assert(false);
-        eraseMappingsToNode<T>(child, tree);
+        throw OTCError("asserts disabled, but false");
+        //eraseMappingsToNode<T>(child, tree);
     } else {
         replaceMappingsToNodeWithAlias<T>(child, nd, tree);
     }

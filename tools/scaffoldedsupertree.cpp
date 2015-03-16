@@ -50,6 +50,7 @@ std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree
                 newMap[nd->getOttId()] = nn;
             } else {
                 assert(false);
+                throw OTCError("asserts false but not enabled");
             }
             nn->getData().desIds = nd->getData().desIds;
         }
@@ -198,6 +199,7 @@ class ScaffoldedSupertree
                 } else if ((!before) && u->isTip()) {
                     LOG(ERROR) << "Node for OTT" << u->getOttId() << " has become a tip after processing OTT" << nd->getOttId();
                     assert(false);
+                    throw OTCError("false assertion disabled.");
                 }
             }
             if (nd->getOttId() == verboseLoggingTarget) {

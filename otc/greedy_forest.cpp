@@ -247,7 +247,7 @@ std::map<T, std::set<T> > invertGCListMap(const std::map<T, std::list<std::pair<
 
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::mergeForest(SupertreeContextWithSplits &) {
-    assert(false);
+    NOT_IMPLEMENTED; // refactoring to banded
 /*
     auto roots = getRoots();
     assert(roots.size() > 1);
@@ -371,7 +371,7 @@ void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *, //rr,
                                                        NodeWithSplits *, //delo,
                                                        const OttIdSet & , //incGroup,
                                                        const OttIdSet & ){  //leafSet
-    assert(false);
+    NOT_IMPLEMENTED; // refactoring to banded
 }
 
 template class GreedyPhylogeneticForest<NodeWithSplits, NodeWithSplits>; // force explicit instantiaion of this template.

@@ -32,10 +32,10 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                               SupertreeContextWithSplits &sc);
     void finalizeTree(SupertreeContextWithSplits &sc);
     void setPossibleMonophyletic(U & /*scaffoldNode*/) {
-        assert(false);
+        NOT_IMPLEMENTED; //
     }
     bool possibleMonophyleticGroupStillViable() {
-        assert(false);
+        NOT_IMPLEMENTED; //
     }
     void finishResolutionOfEmbeddedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits & sc);
     private:

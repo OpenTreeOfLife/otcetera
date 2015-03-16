@@ -288,7 +288,7 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
     dbWriteOttSet(" FTree<T,U>::addPhyloStatementAtNode inc", ps.includeGroup);
     LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA;
     dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
-    assert(false);
+    NOT_IMPLEMENTED; // refactoring to banded
     /*
     OttIdSet r;
     for (auto oid : ps.includeGroup) {
@@ -333,7 +333,7 @@ template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
     if (ottIdSet.empty()) {
         assert(false);
-        return nullptr;
+        throw OTCError("empty MRCA");
     }
     checkAllNodePointersIter(*root);
     const auto con = getConnectedOttIds();

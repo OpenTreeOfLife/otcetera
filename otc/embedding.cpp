@@ -105,7 +105,7 @@ OttIdSet NodeEmbedding<T, U>::getRelevantDesIdsFromPathPairSet(const PathPairSet
 template<typename T, typename U>
 void NodeEmbedding<T, U>::collapseSourceEdge(const T * , //phyloParent,
                                                  PathPairing<T, U> * ) { //path
-    assert(false);
+    NOT_IMPLEMENTED; // until we check for "high ranks preserve contested monophyly optimization"
 }
 
 template<typename T, typename U>
@@ -113,6 +113,7 @@ void NodeEmbedding<T, U>::collapseSourceEdgesToForceOneEntry(U & ,
                                                              PathPairSet & pps,
                                                              std::size_t treeIndex,
                                                              SupertreeContextWithSplits & sc) {
+    NOT_IMPLEMENTED; // until we check for "high ranks preserve contested monophyly optimization"
     if (pps.size() < 2) {
         return;
     }
@@ -391,7 +392,7 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextW
     sc.detachedScaffoldNodes.insert(&scaffoldNode);
     if (cv.empty()) {
         assert(false);
-        return;
+        throw OTCError("disabled assert is false");
     }
     for (auto c : cv) {
         c->_setParent(p);
@@ -503,7 +504,7 @@ void reportOnConflicting(std::ostream & out,
                         const OttIdSet & phyloLeafSet) {
     if (exitPaths.size() < 2) {
         assert(false);
-        return;
+        throw OTCError("asserts are disabled, but one is not true");
     }
     const auto scaffoldDes = set_intersection_as_set(scaffold->getData().desIds, phyloLeafSet);
     auto epIt = begin(exitPaths);
@@ -537,7 +538,7 @@ void reportOnConflicting(std::ostream & out,
     if (desIdSet2NdConflicting.empty()) {
         out << "VERY ODD " << prefix << ", desIdSet2NdConflicting but desIdSet2NdConflicting is empty()!\n";
         //assert(false); // not reachable if we are calling isContested first as a test.
-        return;
+        throw OTCError("Expecting isContested to have guarded call to reportOnConflicting");
     }
     for (const auto & mIt : desIdSet2NdConflicting) {
         const auto & di = mIt.first;
