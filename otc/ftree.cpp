@@ -113,7 +113,7 @@ bool PhyloStatement::debugCheck() const {
 
 template<typename T, typename U>
 void FTree<T, U>::createDeeperRoot() {
-    auto nr = forest.createNode(nullptr);
+    auto nr = forest.createNode(nullptr, this);
     nr->addChild(root);
     nr->getData().desIds = root->getData().desIds;
     root = nr;
@@ -222,7 +222,7 @@ bool FTree<T,U>::anyPhantomNodesAtNode(const node_type * nd, const OttIdSet &ott
 template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId) {
     //connectedIds.insert(ottId);
-    return forest.createLeaf(par, ottId);
+    return forest.createLeaf(par, ottId, this);
 }
 
 
@@ -257,8 +257,9 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
             continue;
         }
     }
-    auto newNode = forest.createNode(par); // parent of includeGroup
+    auto newNode = forest.createNode(par, this); // parent of includeGroup
     for (auto c : orderedToMove) {
+        forest.registerTreeForNode(c, this);
         c->_detachThisNode();
         c->_setNextSib(nullptr);
         newNode->addChild(c);
@@ -376,7 +377,7 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
 template<typename T, typename U>
 void FTree<T, U>::mirrorPhyloStatement(const PhyloStatement &ps) {
     assert(root == nullptr);
-    root = forest.createNode(nullptr);
+    root = forest.createNode(nullptr, this);
     addPhyloStatementAsChildOfRoot(ps);
 }
 
@@ -392,7 +393,7 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
         assert(!root->isTip());
     }
     assert(root != nullptr);
-    auto parOfIncGroup = forest.createNode(root); // parent of includeGroup
+    auto parOfIncGroup = forest.createNode(root, this); // parent of includeGroup
     assert(ps.excludeGroup.size() > 0);
     for (auto i : ps.excludeGroup) {
         if (!forest.isAttached(i)) { // greedy

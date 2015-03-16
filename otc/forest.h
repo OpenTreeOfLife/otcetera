@@ -138,8 +138,11 @@ class RootedForest {
     InterTreeBand<T> * _createNewBand(FTree<T, U> & ftree,
                                      RootedTreeNode<T> &nd,
                                      const PhyloStatement &ps);
-    node_type * createNode(node_type * par);
-    node_type * createLeaf(node_type * par, const OttId & oid);
+    node_type * createNode(node_type * par, FTree<T, U> * ftree);
+    node_type * createLeaf(node_type * par, const OttId & oid, FTree<T, U> * ftree);
+    void registerTreeForNode(node_type * nd, FTree<T, U> * ftree) {
+        nd2Tree[nd] = ftree;
+    }
     void registerLeaf(long ottId);
     void writeForestDOTToFN(const std::string &fn) const;
     void debugInvariantsCheck() const;
@@ -166,6 +169,7 @@ class RootedForest {
     std::size_t nextTreeId;
     OttIdSet ottIdSet;
     std::map<OttId, node_type *> & ottIdToNodeMap; // alias to this data field in nodeSrc for convenience
+    std::map<node_type *, tree_type*> nd2Tree; // alias to this data field in nodeSrc for convenience
     std::list<InterTreeBand<T> > allBands;
     // addedSplitsByLeafSet
     // TMP, store every PhlyoStatement that we have accepted. This may become too memory inefficient
@@ -180,27 +184,30 @@ class RootedForest {
 
 template<typename T, typename U>
 inline RootedTreeNode<T> * RootedForest<T,U>::addDetachedLeaf(const OttId & ottId) {
-    return createLeaf(nullptr, ottId);
+    return createLeaf(nullptr, ottId, nullptr);
 }
 
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T,U>::createNode(RootedTreeNode<T> * p) {
+inline RootedTreeNode<T> * RootedForest<T,U>::createNode(RootedTreeNode<T> * p, FTree<T, U> *ftree) {
     auto r = nodeSrc.getRoot();
     if (r == nullptr) {
         auto c = nodeSrc.createRoot();
         if (p != nullptr) {
             p->addChild(c);
         }
+        registerTreeForNode(c, ftree);
         return c;
     }
-    return nodeSrc.createNode(p);
+    auto n = nodeSrc.createNode(p);
+    registerTreeForNode(n, ftree);
+    return n;
 }
 
 // does NOT update anc desIds!
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T,U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid) {
+inline RootedTreeNode<T> * RootedForest<T,U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid, FTree<T, U> *ftree) {
     assert(oid != rootID);
-    auto n = createNode(p);
+    auto n = createNode(p, ftree);
     n->setOttId(oid);
     ottIdToNodeMap[oid] = n;
     n->getData().desIds.insert(oid);

@@ -36,7 +36,7 @@ void RootedForest<T,U>::registerLeaf(long ottId) {
     if (f != ottIdToNodeMap.end()) {
         return;
     }
-    createLeaf(nullptr, ottId);
+    createLeaf(nullptr, ottId, nullptr);
 }
 
 // TMP could be faster by storing node->tree lookup
@@ -59,7 +59,7 @@ bool RootedForest<T,U>::nodeIsAttached(RootedTreeNode<T> & n) const {
 template<typename T, typename U>
 void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
     tree_type & t = createNewTree();
-    t.root = createNode(nullptr);
+    t.root = createNode(nullptr, &t);
     for (auto & o2n : ottIdToNodeMap) {
         if (o2n.first == rootID) {
             assert(false);
@@ -99,12 +99,13 @@ void RootedForest<T,U>::attachAllDetachedTips() {
         }
     }
     if (!excludedFromRoot.empty()) {
-        auto nr = createNode(nullptr);
+        auto nr = createNode(nullptr, &t);
         nr->addChild(t.root);
         nr->getData().desIds = t.root->getData().desIds;
         t.root = nr;
         for (auto n : excludedFromRoot) {
             //t.connectedIds.insert(n->getOttId());
+            registerTreeForNode(n, &t);
             nr->addChild(n);
             nr->getData().desIds.insert(n->getOttId());
         }
