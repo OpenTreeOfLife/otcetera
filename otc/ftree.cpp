@@ -310,11 +310,8 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
             LOG(DEBUG) << " connected " << oid;
         }
     }
-    includeGroupA->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
+    addDesIdsToNdAndAnc(includeGroupA, ps.includeGroup);
     dbWriteOttSet("    later includeGroupA->getData().desIds", includeGroupA->getData().desIds);
-    for (auto anc : iter_anc(*includeGroupA)) {
-        anc->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
-    }
     for (auto oid : ps.excludeGroup) {
         if (!ottIdIsConnected(oid)) {
             addExcludeStatement(oid, includeGroupA, ps.provenance);

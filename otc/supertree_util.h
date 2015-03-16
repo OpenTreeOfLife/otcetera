@@ -5,6 +5,8 @@
 #include <set>
 #include "otc/otc_base_includes.h"
 #include "otc/util.h"
+#include "otc/tree_iter.h"
+#include "otc/tree_data.h"
 namespace otc {
 template<typename T, typename U>
 void updateAncestralPathOttIdSet(T * nd,
@@ -41,6 +43,14 @@ template<typename T>
 inline bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet) {
     const OttIdSet excGroup = set_difference_as_set(leafSet, incGroup);
     return canBeResolvedToDisplayExcGroup(nd, incGroup, excGroup);
+}
+
+template<typename T>
+void addDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
+    nd->getData().desIds.insert(begin(oid), end(oid));
+    for (auto anc : iter_anc(*nd)) {
+        anc->getData().desIds.insert(begin(oid), end(oid));
+    }
 }
 
 } // namespace

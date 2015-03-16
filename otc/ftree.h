@@ -213,6 +213,10 @@ class FTree {
     void debugInvariantsCheckFT() const;
     void debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const;
     std::set<RootedTreeNode<T> *> ottIdSetToNodeSet(const OttIdSet &ottIdSet) const;
+    bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
+    void createDeeperRoot();
+    void stealExclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
+    void registerExclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
     private:
     void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {
@@ -225,10 +229,8 @@ class FTree {
                                      node_type * includeGroupMRCA,
                                      const OttIdSet & attachedElsewhere,
                                      InterTreeBand<T> * itbp);
-    bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     bool anyPhantomNodesAtNode(const node_type *, const OttIdSet &) const ;
     bool anyIncludedAtNode(const node_type *, const OttIdSet &) const ;
-    void createDeeperRoot();
     node_type * getMRCA(const OttIdSet &id);
     bool insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp, RootedTreeNode<T> * connectedNode, long phantomID);
     RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const PhyloStatement & ps);

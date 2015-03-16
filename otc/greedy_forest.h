@@ -10,6 +10,9 @@
 #include "otc/supertree_context.h"
 
 namespace otc {
+
+using MergeStartInfo = std::tuple<bool, std::set<NodeWithSplits *>, std::set<NodeWithSplits *> >; // banded, unbanded
+
 using CouldAddResult = std::tuple<bool, NodeWithSplits *, NodeWithSplits *>;
 template<typename T, typename U>
 class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
@@ -39,6 +42,10 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     }
     void finishResolutionOfEmbeddedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits & sc);
     private:
+    void mergeBandedTrees(FTree<RTSplits, MappedWithSplitsData> & donor,
+                     FTree<RTSplits, MappedWithSplitsData> & recipient,
+                     const MergeStartInfo & mi,
+                     SupertreeContextWithSplits &);
     void mergeForest(SupertreeContextWithSplits &);
     CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & incGroup, const OttIdSet & leafSet);
@@ -55,6 +62,15 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                            int treeIndex,
                            long groupIndex);
     std::vector<T *> getRoots();
+    void mergePathToNextBand(FTree<RTSplits, MappedWithSplitsData> & donor,
+                             NodeWithSplits * spikeDes,
+                             FTree<RTSplits, MappedWithSplitsData> & recipient, 
+                             SupertreeContextWithSplits &sc);
+    void transferSubtreeInForest(NodeWithSplits * des,
+                             FTree<RTSplits, MappedWithSplitsData> & possDonor,
+                                                    NodeWithSplits * newPar,
+                                                 FTree<RTSplits, MappedWithSplitsData> & recipientTree,
+                                                 FTree<RTSplits, MappedWithSplitsData> *donorTree);
 };
 
 using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSplits>;
