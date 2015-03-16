@@ -66,13 +66,36 @@ void ExcludeConstraints<T>::ingestExcludeRaw(const node_type * nd2Exclude,
     byNdWithConstraints[forbiddenAttach].insert(nd2Exclude);
 }
 
-
 template<typename T>
-void InterTreeBandBookkeeping<T>::updateToReflectResolution(node_type *oldAnc,
-                                                            node_type * newAnc,
-                                                            const std::set<node_type *> & movedTips,
+void InterTreeBandBookkeeping<T>::reassignAttachmentNode(InterTreeBand<T> * b,
+                                         RootedTreeNode<T> * oldAnc,
+                                         RootedTreeNode<T> * newAnc,
+                                         const PhyloStatement & ps) {
+    assert(b != nullptr);
+    assert(oldAnc != nullptr);
+    assert(newAnc != nullptr);
+    band2Node[b] = newAnc;
+    node2Band.at(oldAnc).erase(b);
+    node2Band[newAnc].insert(b);
+    b->reassignAttachmentNode(oldAnc, newAnc);
+}
+
+template<typename T, typename U>
+void FTree<T, U>::updateToReflectResolution(node_type *oldAnc,
+                                            node_type * newAnc,
+                                            const std::set<node_type *> & movedTips,
                                                             const PhyloStatement & ps) {
-    assert(0);
+    auto relevantBands = bands.getBandsForNode(oldAnc);
+    for (auto & b : relevantBands) {
+        if (b->isTheSetOfPhantomNodes(oldAnc, movedTips)) {
+            bands.reassignAttachmentNode(b, oldAnc, newAnc, ps);
+        } else {
+            auto nitbp = forest._createNewBand(*this, *newAnc, ps);
+            assert(nitbp != nullptr);
+            bands._addRefToBand(nitbp, newAnc);
+            nitbp->insertSet(newAnc, movedTips);
+        }
+    }
 }
 
 bool PhyloStatement::debugCheck() const {
@@ -201,40 +224,7 @@ RootedTreeNode<T> * FTree<T,U>::addLeafNoDesUpdate(RootedTreeNode<T> * par, long
     //connectedIds.insert(ottId);
     return forest.createLeaf(par, ottId);
 }
-/*
-template<typename T, typename U>
-void FTree<T,U>::addIncludeStatement(long ottId,
-                                     RootedTreeNode<T> * includedIn,
-                                     const PhyloStatementSource &pss) {
-    assert(includedIn != nullptr);
-    if (contains(includedIn->getData().desIds, ottId)) {
-        LOG(DEBUG) << "  addIncludeStatement early return";
-        return; // must be included in a des
-    }
-    RootedTreeNode<T> * eNode = ottIdToNodeMap.at(ottId);
-    // If any of the ancestors include this node, we can remove those include statements,
-    //  because they'll be "dominated by this one"
-    auto icIt = includesConstraints.find(eNode);
-    if (icIt != includesConstraints.end()) {
-        auto & gcPair = icIt->second;
-        auto aen = gcPair.first;
-        if (aen == includedIn || isAncestorDesNoIter(includedIn, aen)) {
-            LOG(DEBUG) << "  addIncludeStatement is redundant early return";
-            return; // prev constraint at least as specific
-        }
-        if (!isAncestorDesNoIter(aen, includedIn)) {
-            LOG(ERROR) << "Cannot move an inclusion constraint to a different subtree";
-            assert(false);
-            throw OTCError("err in FTree");
-        }
-    }
-    includesConstraints.emplace(eNode, GroupingConstraint(includedIn, pss));
-    // Since we know that the node will be a descendant of includedIn we add its Id to desIds
-    includedIn->getData().desIds.insert(ottId);
-    for (auto anc : iter_anc(*includedIn)) {
-        anc->getData().desIds.insert(ottId);
-    }
-}*/
+
 
 template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par,
@@ -275,7 +265,7 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
         const auto & di = c->getData().desIds;
         newNode->getData().desIds.insert(begin(di), end(di));
     }
-    bands.updateToReflectResolution(par, newNode, cToMove, ps);
+    updateToReflectResolution(par, newNode, cToMove, ps);
     assert(!par->isOutDegreeOneNode());
     debugInvariantsCheckFT();
     return newNode;

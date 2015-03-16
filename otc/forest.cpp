@@ -317,7 +317,7 @@ bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
 
  
 template<typename T, typename U>
-InterTreeBand<T> * RootedForest<T,U>::createNewBand(FTree<T, U> & ,
+InterTreeBand<T> * RootedForest<T,U>::_createNewBand(FTree<T, U> & ,
                                                  RootedTreeNode<T> &nd,
                                                  const PhyloStatement &ps) {
     std::set<RootedTreeNode<T> *> emptySet;
@@ -360,7 +360,7 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
             debugInvariantsCheck();
         }
         if (byIncCardinality.size() > 1 && itbp == nullptr) {
-            itbp = createNewBand(*f, *includeGroupA, ps);
+            itbp = _createNewBand(*f, *includeGroupA, ps);
         }
         auto connectedHere = f->addPhyloStatementAtNode(ps, includeGroupA, attachedElsewhere, itbp);
         if (!connectedHere.empty()) {

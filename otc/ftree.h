@@ -69,6 +69,9 @@ class InterTreeBand {
         :statement(ps) {
         addNode(nd1, n1set);
     }
+    void insertSet(node_type * nd, const node_set & phantom) {
+        nd2phantom.at(nd).insert(begin(phantom), end(phantom));
+    }
     void insert(node_type * nd, node_type * phantom) {
         nd2phantom.at(nd).insert(phantom);
     }
@@ -90,6 +93,14 @@ class InterTreeBand {
             }
         }
         return r;
+    }
+    void reassignAttachmentNode(node_type * oldAnc, node_type *newAnc) {
+        assert(!contains(nd2phantom, newAnc));
+        nd2phantom[newAnc] = nd2phantom.at(oldAnc);
+        nd2phantom.erase(oldAnc);
+    }
+    bool isTheSetOfPhantomNodes(node_type * nd, const node_set & t) const {
+        return nd2phantom.at(nd) == t;
     }
     void debugInvariantsCheckITB() const;
     private:
@@ -132,6 +143,7 @@ class InterTreeBandBookkeeping {
         }
         return r;
     }
+    void reassignAttachmentNode(band_type * b, node_type * oldAnc, node_type * newAnc, const PhyloStatement & ps);
     const band_set & getBandsForNode(const node_type *n) const {
         const auto nit = node2Band.find(n);
         if (nit == node2Band.end()) {
@@ -142,10 +154,6 @@ class InterTreeBandBookkeeping {
     bool isInABand(const node_type *n) const {
         return contains(node2Band, n);
     }
-    void updateToReflectResolution(node_type *oldAnc,
-                                   node_type * newAnc,
-                                   const std::set<node_type *> & movedTips,
-                                   const PhyloStatement & ps);
     void _addRefToBand(band_type * band, node_type * nd) {
         assert(nd != nullptr);
         assert(band != nullptr);
@@ -210,7 +218,6 @@ class FTree {
     void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {
         addPhyloStatementAsChildOfRoot(ps);
     }
-    void addIncludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     RootedTreeNode<T> * addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId);
     void addPhyloStatementAsChildOfRoot(const PhyloStatement &);
     // this is greedy, we should be building separate FTree instances in many cases....
@@ -225,6 +232,10 @@ class FTree {
     node_type * getMRCA(const OttIdSet &id);
     bool insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp, RootedTreeNode<T> * connectedNode, long phantomID);
     RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const PhyloStatement & ps);
+    void updateToReflectResolution(node_type *oldAnc,
+                                   node_type * newAnc,
+                                   const std::set<node_type *> & movedTips,
+                                   const PhyloStatement & ps);
     
     friend class RootedForest<T, U>;
     friend class GreedyPhylogeneticForest<T, U>;

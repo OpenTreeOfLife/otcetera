@@ -135,7 +135,9 @@ class RootedForest {
     std::pair<bool, bool> checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
     //modifiers
     bool addPhyloStatement(const PhyloStatement &);
-    // return <conflicts, redundant> pair based on cache of previously added groups.
+    InterTreeBand<T> * _createNewBand(FTree<T, U> & ftree,
+                                     RootedTreeNode<T> &nd,
+                                     const PhyloStatement &ps);
     node_type * createNode(node_type * par);
     node_type * createLeaf(node_type * par, const OttId & oid);
     void registerLeaf(long ottId);
@@ -155,9 +157,6 @@ class RootedForest {
             OttIdSet attachedElsewhere,
             std::vector<bool> shouldResolveVec,
             std::vector<bool> shouldCreateDeeperVec) const;
-    InterTreeBand<T> * createNewBand(FTree<T, U> & ftree,
-                                     RootedTreeNode<T> &nd,
-                                     const PhyloStatement &ps);
     tree_type & createNewTree();
     protected:
     void attachAllKnownTipsAsNewTree();
