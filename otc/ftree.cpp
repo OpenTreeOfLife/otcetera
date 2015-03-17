@@ -23,7 +23,7 @@ void PhyloStatement::writeAsNewick(std::ofstream & out) const {
     }
     out << ')';
     if (!excludeGroup.empty()) {
-        for (const auto & oid : includeGroup) {
+        for (const auto & oid : excludeGroup) {
             out << ",ott" << oid;
         }
         out << ")";
