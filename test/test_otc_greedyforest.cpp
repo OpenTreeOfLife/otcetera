@@ -65,6 +65,7 @@ class TestValidTreeStruct {
                     return 'F';
                 }
                 const OttIdSet & leafSet = tree.getRoot()->getData().desIds;
+                std::cerr << groupInd + 1 << '\n';
                 gpf.attemptToAddGrouping(nullptr, *incGroup, leafSet, treeInd, groupInd++, nullptr);
             }
             NodeEmbeddingWithSplits emptyEmbedding(r);
@@ -74,7 +75,7 @@ class TestValidTreeStruct {
 };
 
 int main(int argc, char *argv[]) {
-    std::vector<std::string> validfilenames = {"phylo-statements.tre"};
+    std::vector<std::string> validfilenames = {"shorter-phylo-statements.tre"};
     TestHarness th(argc, argv);
     TestsVec tests;
     for (auto fn : validfilenames) {
