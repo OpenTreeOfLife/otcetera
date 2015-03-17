@@ -25,7 +25,9 @@ class TestValidTreeStruct {
                 }
                 tv.push_back(std::move(nt));
             }
-            std::cerr << "tv.size() == " << tv.size() << "\n";
+            if (tv.size() != 164) {
+              return 'F';
+            }
             return '.';
         }
 };
