@@ -140,7 +140,7 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
         return false;
     }
     if (incompatRedundant.second) { // we have added an identical group before
-        LOG(DEBUG) << "    hit redundandt w/ prev added shortcircuit";
+        LOG(DEBUG) << "    hit redundant w/ prev added shortcircuit";
         return true;
     }
     LOG(DEBUG) << "    checking compat w/ graph";
@@ -151,6 +151,17 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
     }
     LOG(DEBUG) << "    incompat w/ graph";
     return false;
+}
+
+template<typename T, typename U>
+void RootedForest<T,U>::dumpAcceptedPhyloStatements(const char *fn) {
+    std::ofstream phyloStatementOut;
+    phyloStatementOut.open(fn);
+    for (const auto & ps : novelAcceptedPSInOrder) {
+        ps.writeAsNewick(phyloStatementOut);
+        phyloStatementOut << '\n';
+    }
+    phyloStatementOut.close();
 }
 
 template<typename T, typename U>
@@ -336,6 +347,7 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
     if (!checkCanAddIngroupOverlappingPhyloStatementToGraph(byIncCardinality, ps, nonTrivMRCAs, attachedElsewhere, shouldResolveVec, shouldCreateDeeperVec)) {
         return false;
     }
+    novelAcceptedPSInOrder.push_back(ps); //TMP DEBUGGING
     // all non trivial overlapping trees have approved this split...
     auto ntmIt = begin(nonTrivMRCAs);
     auto srIt = begin(shouldResolveVec);
@@ -382,6 +394,7 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         dbWriteOttSet(" leafSet", ps.leafSet);
     }
     if (ps.isTrivial()) {
+        novelAcceptedPSInOrder.push_back(ps); //TMP DEBUGGING
         auto newOttIds = set_difference_as_set(ps.includeGroup, ottIdSet);
         for (auto noid : newOttIds) {
             addDetachedLeaf(noid);
@@ -389,12 +402,14 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         return true;
     }
     if (areDisjoint(ps.leafSet, ottIdSet)) {
+        novelAcceptedPSInOrder.push_back(ps); //TMP DEBUGGING
         addDisjointTree(ps);
         return true;
     }
     auto byIncCardinality = getSortedOverlappingTrees(ps.includeGroup);
     LOG(DEBUG) << byIncCardinality.size() << " FTree instance referred to in byIncCardinality";
     if (byIncCardinality.empty()) {
+        novelAcceptedPSInOrder.push_back(ps); //TMP DEBUGGING
         for (auto o : ps.includeGroup) {
             assert(!isAttached(o));
         }

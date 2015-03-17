@@ -149,6 +149,7 @@ class RootedForest {
     void registerLeaf(long ottId);
     void writeForestDOTToFN(const std::string &fn) const;
     void debugInvariantsCheck() const;
+    void dumpAcceptedPhyloStatements(const char *fn);
     private:
     std::list<OverlapFTreePair<T,U> > getSortedOverlappingTrees(const OttIdSet &inc);
     node_type * addDetachedLeaf(const OttId & ottId);
@@ -182,6 +183,7 @@ class RootedForest {
     //  addedSplitsByLeafSet is not sufficient to know if we can keep a split
     typedef std::set<OttIdSet> SetOfOTTIdSets;
     std::map<OttIdSet, SetOfOTTIdSets> addedSplitsByLeafSet;
+    std::vector<PhyloStatement> novelAcceptedPSInOrder;// TMP debugging
     const long rootID;
 };
 

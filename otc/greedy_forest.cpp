@@ -376,7 +376,7 @@ void GreedyPhylogeneticForest<T, U>::mergeBandedTrees(FTree<RTSplits, MappedWith
                                                  FTree<RTSplits, MappedWithSplitsData> & recipient, 
                                                  const MergeStartInfo & mi,
                                                  SupertreeContextWithSplits &sc) {
-    NOT_IMPLEMENTED 
+    NOT_IMPLEMENTED;
     /*
     const std::set<NodeWithSplits *> & desBands = std::get<1>(mi);
     const std::set<NodeWithSplits *> & unbandedChildren = std::get<2>(mi);
@@ -431,6 +431,7 @@ void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits &sc)
         FTreeType & toDie = *sortedTrees[i];
         std::set<InterTreeBand<typename T::data_type> *> itbSet = collectBandsForSubtree(toDie, toDie.getRoot());
         if (!itbSet.empty()) {
+            dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
             NOT_IMPLEMENTED;
         }
     }

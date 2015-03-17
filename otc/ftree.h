@@ -43,6 +43,7 @@ struct PhyloStatement {
         provenance(pss) {
         debugCheck();
     }
+    void writeAsNewick(std::ofstream & out) const;
     bool debugCheck() const;
     bool isTrivial() const {
         return includeGroup.size() < 2 || includeGroup.size() == leafSet.size();

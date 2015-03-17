@@ -187,7 +187,8 @@ const std::string getForestDOTFilename(const std::string & prefix,
 }
 
 template<typename T, typename U>
-void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc) {
+void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
+                                                           SupertreeContextWithSplits & sc) {
     const OttIdSet EMPTY_SET;
     LOG(DEBUG) << "resolveGivenUncontestedMonophyly for " << scaffoldNode.getOttId();
     GreedyPhylogeneticForest<T,U> gpf{scaffoldNode.getOttId()};
@@ -225,6 +226,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
                 gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex, sc);
                 gpf.debugInvariantsCheck();
                 if (scaffOTTId == ottIDBeingDebugged) {
+                    gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
                     gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeInd, bogusGroupIndex -1));
                 }
                 considered.insert(ppptr);
@@ -237,6 +239,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
             const auto ppptr = triv.second;
             gpf.addLeaf(ppptr, *inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
             if (scaffOTTId == ottIDBeingDebugged) {
+                gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeInd, bogusGroupIndex -1));
             }
             gpf.debugInvariantsCheck();
@@ -257,6 +260,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode, Sup
         if (!contains(considered, pathPtr)) {
             gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, (int)bogusTreeIndex, bogusGroupIndex++, sc);
             if (scaffOTTId == ottIDBeingDebugged) {
+                gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, NONEMBEDDED_SPLIT, bogusTreeIndex, bogusGroupIndex -1));
             }
             gpf.debugInvariantsCheck();

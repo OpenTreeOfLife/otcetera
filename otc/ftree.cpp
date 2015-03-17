@@ -8,6 +8,28 @@
 #include "otc/write_dot.h"
 namespace otc {
 
+void PhyloStatement::writeAsNewick(std::ofstream & out) const {
+    if (!excludeGroup.empty()) {
+        out << '(';
+    }
+    out << "(";
+    bool first = true;
+    for (const auto & oid : includeGroup) {
+        if (!first) {
+            out << ',';
+        }
+        out << "ott" << oid;
+        first = false;
+    }
+    out << ')';
+    if (!excludeGroup.empty()) {
+        for (const auto & oid : includeGroup) {
+            out << ",ott" << oid;
+        }
+        out << ")";
+    }
+    out << ';';
+}
 template<typename T>
 bool ExcludeConstraints<T>::isExcludedFrom(const node_type * ndToCheck,
                                          const node_type * potentialAttachment) const {
