@@ -105,6 +105,13 @@ class InterTreeBand {
     bool isTheSetOfPhantomNodes(node_type * nd, const node_set & t) const {
         return nd2phantom.at(nd) == t;
     }
+    std::set<const node_type *> getBandedNodes() const {
+        std::set<const node_type *> r;
+        for (const auto & m : nd2phantom) {
+            r.insert(m.first);
+        }
+        return r;
+    }
     void debugInvariantsCheckITB() const;
     private:
     std::map<const node_type *, node_set> nd2phantom;
@@ -124,6 +131,13 @@ class ExcludeConstraints {
     bool hasNodesExcludedFromIt(const node_type *n) const {
         return contains(byNdWithConstraints, n);
     }
+    const cnode_set & getNodesExcludedFromNode(const node_type * nd) const {
+        auto bc = byNdWithConstraints.find(nd);
+        if (bc == byNdWithConstraints.end()) {
+            return emptySet;
+        }
+        return bc->second;
+    }
     cnode_set stealExclusions(node_type *nd) {
         auto bc = byNdWithConstraints.find(nd);
         if (bc == byNdWithConstraints.end()) {
@@ -140,6 +154,7 @@ class ExcludeConstraints {
     void ingestExcludeRaw(const node_type * nd2Exclude, const node_type * forbiddenAttach);
     node2many_map byExcludedNd;
     node2many_map byNdWithConstraints;
+    const cnode_set emptySet;
 };
 
 template<typename T>
@@ -183,6 +198,7 @@ class InterTreeBandBookkeeping {
 template<typename T, typename U>
 class FTree {
     public:
+    using node_data_type = T;
     using node_type = RootedTreeNode<T>;
     using GroupingConstraint = std::pair<node_type*, PhyloStatementSource>;
     using NdToConstrainedAt = std::map<node_type *, std::set<node_type *> >;
@@ -218,6 +234,12 @@ class FTree {
     }
     bool ottIdIsConnected(long ottId) const {
         return contains(getConnectedOttIds(), ottId);
+    }
+    const ExcludeConstraints<T> & getExclusions() const {
+        return exclude;
+    }
+    const std::set<InterTreeBand<T> *> & getBandsForNode(const node_type *n) const {
+        return bands.getBandsForNode(n);
     }
     // non-const
     node_type * getRoot() {

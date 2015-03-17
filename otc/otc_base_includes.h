@@ -7,6 +7,8 @@
 #pragma clang diagnostic ignored  "-Wweak-vtables"
 #define ELPP_CUSTOM_COUT std::cerr
 #define NOT_IMPLEMENTED assert("not implemented"[0] == 'f');
+#define UNREACHABLE assert(false);
+
 #include "otc/easylogging++.hpp"
 
 namespace otc {

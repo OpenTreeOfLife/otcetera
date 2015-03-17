@@ -122,6 +122,9 @@ class RootedForest {
     bool empty() const {
         return trees.empty();
     }
+    const std::list<InterTreeBand<T> > & getAllBands() const {
+        return allBands;
+    }
     const std::map<OttId, node_type *> & getOttIdToNodeMapping() const {
         return ottIdToNodeMap;
     }

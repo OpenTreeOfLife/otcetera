@@ -76,6 +76,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                                                     NodeWithSplits * newPar,
                                                  FTree<RTSplits, MappedWithSplitsData> & recipientTree,
                                                  FTree<RTSplits, MappedWithSplitsData> *donorTree);
+    void mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits &sc);
 };
 
 using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSplits>;

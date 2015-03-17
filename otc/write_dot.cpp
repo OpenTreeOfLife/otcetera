@@ -306,24 +306,21 @@ template<typename T>
 using NdToGCListMapping = std::map<T*, GCList<T> >;
 template<typename T>
 using NdToGCMapping = std::map<T*, std::pair<T *, PhyloStatementSource> >;
-template<typename T>
-void writeDOTGroupingConstraints(std::ostream & out,
-                                 const NdToGCListMapping<T> & ndToGCList,
-                                 const std::string & prefix,
-                                 const std::string & connPrefix,
-                                 NodeToDotNames & nd2name,
-                                 const std::string & ndStyle,
-                                 const std::string & style) {
-    for (const auto & incNdGCPair : ndToGCList ) {
-        const auto & ind = incNdGCPair.first;
-        const auto & incList = incNdGCPair.second;
-        if (incList.empty()) {
-            continue;
-        }
-        const ToDotKey desK{incNdGCPair.first, prefix};
-        writeNodeDOT(out, desK, nd2name, ndStyle, false, true, false);
-        for (const auto & igc : incList) {
-            const ToDotKey ancK{igc.first, connPrefix}; // use connPrefix for the prefix to connect to a connected node
+template<typename T, typename U>
+void writeDOTExclusion(std::ostream & out,
+                       const T * node,
+                       const U & exclusion,
+                       const std::string & prefix,
+                       const std::string & connPrefix,
+                       NodeToDotNames & nd2name,
+                       const std::string & ndStyle,
+                       const std::string & style) {
+    for (auto n : iter_pre_n_const(node)) {
+        const auto & excForThisNode = exclusion.getNodesExcludedFromNode(n);
+        const ToDotKey ancK{n, connPrefix};
+        for (auto en : excForThisNode) {
+            const ToDotKey desK{en, prefix};
+            writeNodeDOT(out, desK, nd2name, ndStyle, false, true, false);
             writeDOTEdge(out, ancK, desK, nd2name, style, false);
         }
     }
@@ -377,13 +374,40 @@ void writeDOTForFtree(std::ostream & out,
     incStyle += color;
     incStyle += "\"";
     writeDOTGroupingConstraintSingle(out, inc, itn, tn, nd2name, incStyle, esty);
+    */
     const std::string etn = std::string("exc") + tn;
-    const auto & exc = tree.getExcluded2ConstraintMap();
+    const auto & exc = tree.getExclusions();
     std::string excStyle = "shape=octagon color=\"";
     excStyle += color;
     excStyle += "\"";
-    writeDOTGroupingConstraints(out, exc, etn, tn, nd2name, excStyle, esty);
-    */
+    writeDOTExclusion(out, r, exc, etn, tn, nd2name, excStyle, esty);
+}
+
+ToDotKey findAnyKey(const NodeWithSplits *nd, const NodeToDotNames & nd2name) {
+    for (auto kv : nd2name) {
+        if (kv.first.first == nd) {
+            return kv.first;
+        }
+    }
+    UNREACHABLE;
+}
+template<typename T>
+void writeDOTBandsForForest(std::ostream & out, const T & bandList, NodeToDotNames & nd2name) {
+    const std::string esty = "style=\"dotted\"";
+    for (const auto & b : bandList) {
+        if (b.isSingleTreeBand()) {
+            continue;
+        }
+        const NodeWithSplits * prev = nullptr;
+        for (auto n : b.getBandedNodes()) {
+            if (prev != nullptr) {
+                ToDotKey ancK = findAnyKey(prev, nd2name);
+                ToDotKey desK = findAnyKey(n, nd2name);
+                writeDOTEdge(out, ancK, desK, nd2name, esty, false);
+            }
+            prev = n;
+        }
+    }
 }
 
 void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
@@ -405,13 +429,13 @@ void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithS
     const auto & trees = forest.getTrees();
     auto i = 0U;
     for (const auto & tiTrPair : trees) {
-        const std::string tP = std::string("t") + std::to_string(i);
         auto colorIndex = std::min(LAST_COLOR_IND, i);
         const char * color = COLORS[colorIndex];
         const auto & tree = tiTrPair.second;
         writeDOTForFtree(out, tree, nd2name, color, i);
         ++i;
     }
+    writeDOTBandsForForest(out, forest.getAllBands(), nd2name);
     out << "}\n";
 }
 
