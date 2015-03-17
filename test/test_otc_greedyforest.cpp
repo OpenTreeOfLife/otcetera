@@ -1,6 +1,7 @@
 #include "otc/newick.h"
 #include "otc/util.h"
 #include "otc/test_harness.h"
+#include "otc/greedy_forest.h"
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
@@ -28,6 +29,26 @@ class TestValidTreeStruct {
             if (tv.size() != 164) {
               return 'F';
             }
+            GreedyPhylogeneticForest<NodeWithSplits, NodeWithSplits> gpf{-1};
+            int treeInd = 0;
+            long groupInd = 0;
+            for (const auto & tp : tv) {
+                const Tree_t & tree = *tp;
+                const OttIdSet * incGroup = nullptr;
+                for (auto nd : iter_child(*tree.getRoot())) {
+                    if (!nd->isTip()) {
+                        if (incGroup != nullptr) {
+                            return 'F';
+                        }
+                        incGroup = &(nd->getData().desIds);
+                    }
+                }
+                if (incGroup == nullptr) {
+                    return 'F';
+                }
+                //gpf.attemptToAddGrouping(nullptr, incGroup, leafSet, treeInd, groupInd++, nullptr);
+            }
+    
             return '.';
         }
 };

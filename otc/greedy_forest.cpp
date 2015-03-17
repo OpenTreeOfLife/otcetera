@@ -13,7 +13,8 @@ template<typename T, typename U>
 void copyStructureToResolvePolytomy(const T * srcPoly,
                                     U & destTree,
                                     typename U::node_type * destPoly,
-                                    SupertreeContextWithSplits & sc) {
+                                    SupertreeContextWithSplits * sc) {
+    assert(sc != nullptr);
     std::map<const T *, typename U::node_type *> gpf2scaff;
     std::map<long, typename U::node_type *> & dOttIdToNode = destTree.getData().ottIdToNode;
     LOG(DEBUG) << " adding " << srcPoly;
@@ -32,16 +33,16 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             dn = dOttIdToNode.at(nid);
             //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->getOttId();
             assert(dn != destPoly);
-            if (contains(sc.detachedScaffoldNodes, dn)) {
+            if (contains(sc->detachedScaffoldNodes, dn)) {
                 dn->_setLChild(nullptr);
                 dn->_setNextSib(nullptr);
-                sc.detachedScaffoldNodes.erase(dn);
-                sc.scaffoldTree.markAsAttached(dn);
+                sc->detachedScaffoldNodes.erase(dn);
+                sc->scaffoldTree.markAsAttached(dn);
             }
             if (dn->getParent() != dp) {
                 if (dn->getParent() != nullptr) {
                     dn->_detachThisNode();
-                    sc.scaffoldTree.markAsDetached(dn);
+                    sc->scaffoldTree.markAsDetached(dn);
                 }
                 assert(dn->getNextSib() == nullptr);
                 dp->addChild(dn);
@@ -74,7 +75,8 @@ bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, cons
 template<typename T, typename U>
 void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
                                                                     NodeEmbedding<T, U> * embedding,
-                                                                    SupertreeContextWithSplits & sc) {
+                                                                    SupertreeContextWithSplits * sc) {
+    assert(sc != nullptr);
     const auto snoid = scaffoldNode.getOttId();
     LOG(DEBUG) << "finishResolutionOfEmbeddedClade for " << snoid;
     debugInvariantsCheck();
@@ -84,7 +86,7 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffold
     auto & resolvedTree = begin(trees)->second;
     const auto beforePar = scaffoldNode.getParent();
     checkAllNodePointersIter(scaffoldNode);
-    copyStructureToResolvePolytomy(resolvedTree.getRoot(), sc.scaffoldTree, &scaffoldNode, sc);
+    copyStructureToResolvePolytomy(resolvedTree.getRoot(), sc->scaffoldTree, &scaffoldNode, sc);
     checkAllNodePointersIter(scaffoldNode);
     assert(beforePar == scaffoldNode.getParent());
     // remap all path pairings out of this node...
@@ -92,7 +94,7 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffold
         for (auto eout : treeInd2eout.second) {
             LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << snoid<< ')';
             eout->scaffoldDes = &scaffoldNode;
-            eout->setOttIdSet(snoid, sc.scaffold2NodeEmbedding);
+            eout->setOttIdSet(snoid, sc->scaffold2NodeEmbedding);
         }
     }
 }
@@ -117,7 +119,7 @@ bool GreedyPhylogeneticForest<T,U>::addLeaf(PathPairing<T, U> * ,
                       const OttIdSet & ,
                       int ,
                       long ,
-                      SupertreeContextWithSplits &) {
+                      SupertreeContextWithSplits *) {
     assert(incGroup.size() == 1);
     const auto ottId = *incGroup.begin();
     registerLeaf(ottId);
@@ -130,7 +132,7 @@ bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppp
                                                         const OttIdSet & leafSet,
                                                         int treeIndex,
                                                         long groupIndex,
-                                                        SupertreeContextWithSplits &sc) {
+                                                        SupertreeContextWithSplits *sc) {
     if (incGroup.size() == 1) {
         addLeaf(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
         return true;
@@ -319,7 +321,7 @@ void GreedyPhylogeneticForest<T, U>::mergePathToNextBand(
             FTree<RTSplits, MappedWithSplitsData> & donor,
             NodeWithSplits * spikeDes,
             FTree<RTSplits, MappedWithSplitsData> & recipient, 
-            SupertreeContextWithSplits &sc) {
+            SupertreeContextWithSplits *sc) {
     NOT_IMPLEMENTED;
 }
 
@@ -375,7 +377,7 @@ template<typename T, typename U>
 void GreedyPhylogeneticForest<T, U>::mergeBandedTrees(FTree<RTSplits, MappedWithSplitsData> & donor,
                                                  FTree<RTSplits, MappedWithSplitsData> & recipient, 
                                                  const MergeStartInfo & mi,
-                                                 SupertreeContextWithSplits &sc) {
+                                                 SupertreeContextWithSplits *sc) {
     NOT_IMPLEMENTED;
     /*
     const std::set<NodeWithSplits *> & desBands = std::get<1>(mi);
@@ -413,7 +415,7 @@ void GreedyPhylogeneticForest<T, U>::mergeBandedTrees(FTree<RTSplits, MappedWith
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits &sc) {
+void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc) {
     if (trees.size() == 1) {
         return;
     }
@@ -479,7 +481,7 @@ void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits &sc)
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits &sc) {
+void GreedyPhylogeneticForest<T, U>::mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits *sc) {
     if (trees.size() == 1) {
         return;
     }
@@ -505,7 +507,7 @@ void GreedyPhylogeneticForest<T, U>::mergeTreesToFirstPostBandHandling(Supertree
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits &sc) {
+void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits *sc) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     debugInvariantsCheck();
     auto roots = getRoots();

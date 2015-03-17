@@ -223,7 +223,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
                 const auto & d = mpoIt->first;
                 gpf.debugInvariantsCheck();
                 LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex << " out of " << mapToProvideOrder.size() << " (some of which may be skipped as trivial)";
-                gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex, sc);
+                gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex, &sc);
                 gpf.debugInvariantsCheck();
                 if (scaffOTTId == ottIDBeingDebugged) {
                     gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
@@ -237,7 +237,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
             const q_t triv = trivialQ.front();
             const OttIdSet * inc = triv.first;
             const auto ppptr = triv.second;
-            gpf.addLeaf(ppptr, *inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+            gpf.addLeaf(ppptr, *inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, &sc);
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeInd, bogusGroupIndex -1));
@@ -258,7 +258,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
     auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc);
     for (auto pathPtr : childExitPaths) {
         if (!contains(considered, pathPtr)) {
-            gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, (int)bogusTreeIndex, bogusGroupIndex++, sc);
+            gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, (int)bogusTreeIndex, bogusGroupIndex++, &sc);
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, NONEMBEDDED_SPLIT, bogusTreeIndex, bogusGroupIndex -1));
@@ -277,7 +277,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
         fn += "BeforeFinalize.dot";
         gpf.writeForestDOTToFN(fn);
     }
-    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, sc);
+    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, &sc);
     if (scaffOTTId == ottIDBeingDebugged) {
         std::string fn = forestDOTfile;
         fn += "AfterFinalize.dot";
@@ -444,7 +444,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
             const auto & d = mpoIt.first;
             auto ppptr = mpoIt.second;
             LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex;
-            gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, sc);
+            gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, &sc);
             if (!gpf.possibleMonophyleticGroupStillViable()) {
                 collapseGroup(scaffoldNode, sc);
                 return;
@@ -452,7 +452,7 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
             gpf.debugInvariantsCheck();
         }
     }
-    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, sc);
+    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, &sc);
 }
 
 template<typename T, typename U>

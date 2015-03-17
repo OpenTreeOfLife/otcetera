@@ -31,27 +31,27 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                               const OttIdSet & leafSet,
                               int treeIndex,
                               long groupIndex,
-                              SupertreeContextWithSplits &sc);
+                              SupertreeContextWithSplits *sc);
     bool addLeaf(PathPairing<T, U> * ppptr,
                               const OttIdSet & incGroup,
                               const OttIdSet & leafSet,
                               int treeIndex,
                               long groupIndex,
-                              SupertreeContextWithSplits &sc);
-    void finalizeTree(SupertreeContextWithSplits &sc);
+                              SupertreeContextWithSplits *sc);
+    void finalizeTree(SupertreeContextWithSplits *sc);
     void setPossibleMonophyletic(U & /*scaffoldNode*/) {
         NOT_IMPLEMENTED; //
     }
     bool possibleMonophyleticGroupStillViable() {
         NOT_IMPLEMENTED; //
     }
-    void finishResolutionOfEmbeddedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits & sc);
+    void finishResolutionOfEmbeddedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits * sc);
     private:
     void mergeBandedTrees(FTree<RTSplits, MappedWithSplitsData> & donor,
                      FTree<RTSplits, MappedWithSplitsData> & recipient,
                      const MergeStartInfo & mi,
-                     SupertreeContextWithSplits &);
-    void mergeForest(SupertreeContextWithSplits &);
+                     SupertreeContextWithSplits *);
+    void mergeForest(SupertreeContextWithSplits *);
     CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,
@@ -70,13 +70,13 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     void mergePathToNextBand(FTree<RTSplits, MappedWithSplitsData> & donor,
                              NodeWithSplits * spikeDes,
                              FTree<RTSplits, MappedWithSplitsData> & recipient, 
-                             SupertreeContextWithSplits &sc);
+                             SupertreeContextWithSplits *sc);
     void transferSubtreeInForest(NodeWithSplits * des,
                              FTree<RTSplits, MappedWithSplitsData> & possDonor,
                                                     NodeWithSplits * newPar,
                                                  FTree<RTSplits, MappedWithSplitsData> & recipientTree,
                                                  FTree<RTSplits, MappedWithSplitsData> *donorTree);
-    void mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits &sc);
+    void mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits *sc);
 };
 
 using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSplits>;
