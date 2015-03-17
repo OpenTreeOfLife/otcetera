@@ -222,6 +222,9 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
             } else {
                 const auto & d = mpoIt->first;
                 gpf.debugInvariantsCheck();
+                if (scaffOTTId == ottIDBeingDebugged) {
+                    appendIncludeLeafSetAsNewick("phyloStatementAttempt", d, relevantIds);
+                }
                 LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex << " out of " << mapToProvideOrder.size() << " (some of which may be skipped as trivial)";
                 gpf.attemptToAddGrouping(ppptr, d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex, &sc);
                 gpf.debugInvariantsCheck();
@@ -237,6 +240,9 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
             const q_t triv = trivialQ.front();
             const OttIdSet * inc = triv.first;
             const auto ppptr = triv.second;
+            if (scaffOTTId == ottIDBeingDebugged) {
+                appendIncludeLeafSetAsNewick("phyloStatementAttempt", *inc, relevantIds);
+            }
             gpf.addLeaf(ppptr, *inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, &sc);
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
@@ -258,6 +264,9 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(U & scaffoldNode,
     auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc);
     for (auto pathPtr : childExitPaths) {
         if (!contains(considered, pathPtr)) {
+            if (scaffOTTId == ottIDBeingDebugged) {
+                appendIncludeLeafSetAsNewick("phyloStatementAttempt", pathPtr->getOttIdSet(), pathPtr->getOttIdSet());
+            }
             gpf.attemptToAddGrouping(pathPtr, pathPtr->getOttIdSet(), EMPTY_SET, (int)bogusTreeIndex, bogusGroupIndex++, &sc);
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");

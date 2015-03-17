@@ -30,9 +30,6 @@ class TestValidTreeStruct {
                 }
                 tv.push_back(std::move(nt));
             }
-            if (tv.size() != 164) {
-              return 'F';
-            }
             EmbeddedTree et;
             Tree_t fakeScaffold;
             auto r = fakeScaffold.createRoot();

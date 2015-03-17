@@ -164,6 +164,17 @@ void RootedForest<T,U>::dumpAcceptedPhyloStatements(const char *fn) {
     phyloStatementOut.close();
 }
 
+void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const OttIdSet & ls) {
+    PhyloStatementSource pss(-1, -1);
+    const OttIdSet exc = set_difference_as_set(ls, inc);
+    std::ofstream phyloStatementOut;
+    PhyloStatement ps{inc, exc, ls, pss};
+    phyloStatementOut.open(fn, std::ios::app);
+    ps.writeAsNewick(phyloStatementOut);
+    phyloStatementOut << '\n';
+    phyloStatementOut.close();
+}
+
 template<typename T, typename U>
 std::pair<bool, bool> RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
     if (false && debuggingOutputEnabled) {

@@ -434,6 +434,7 @@ inline std::size_t sizeOfSymmetricDifference(const T & first, const T &sec) {
     return diff.size();
 }
 
+void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const OttIdSet & ls);
 
 } //namespace otc
 #endif
