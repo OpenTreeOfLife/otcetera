@@ -32,18 +32,31 @@ void PhyloStatement::writeAsNewick(std::ofstream & out) const {
 }
 template<typename T>
 bool ExcludeConstraints<T>::isExcludedFrom(const node_type * ndToCheck,
-                                         const node_type * potentialAttachment) const {
-    auto nit = byExcludedNd.find(ndToCheck);
-    if (nit == byExcludedNd.end()) {
-        return false;
+                                           const node_type * potentialAttachment,
+                                           const std::map<long, node_type*> * o2n) const {
+    const auto & ndi = ndToCheck->getData().desIds;
+    if (ndi.size() == 1) {
+        auto nit = byExcludedNd.find(ndToCheck);
+        if (nit == byExcludedNd.end()) {
+            return false;
+        }
+        return contains(nit->second, potentialAttachment);
     }
-    return contains(nit->second, potentialAttachment);
+    assert(o2n != nullptr);
+    for (auto oid : ndi) {
+        auto tn = o2n->at(oid);
+        auto nit = byExcludedNd.find(tn);
+        if (nit != byExcludedNd.end() && contains(nit->second, potentialAttachment)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 template<typename T>
 bool ExcludeConstraints<T>::addExcludeStatement(const node_type * nd2Exclude,
                                                 const node_type * forbiddenAttach) {
-    if (isExcludedFrom(nd2Exclude, forbiddenAttach)) {
+    if (isExcludedFrom(nd2Exclude, forbiddenAttach, nullptr)) {
         return false; // already excluded from this subtree
     }
     // If any of the descendants exclude this node, we can remove those exclude statements,
@@ -210,7 +223,7 @@ void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
 template<typename T, typename U>
 bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
     for (auto oid : ottIdSet) {
-        if (exclude.isExcludedFrom(ottIdToNodeMap.at(oid), nd)) {
+        if (exclude.isExcludedFrom(ottIdToNodeMap.at(oid), nd, nullptr)) {
             return true;
         }
     }
@@ -496,7 +509,7 @@ void FTree<T, U>::debugInvariantsCheckFT() const {
             // Make sure that our ancestors do not exclude us.
             const std::set<const node_type *> ancSet = getAncSet(n);
             for (auto a : ancSet) {
-                assert(!exclude.isExcludedFrom(n, a));
+                assert(!exclude.isExcludedFrom(n, a, &ottIdToNodeMap));
             }
         } else {
             assert(!n->hasOttId());

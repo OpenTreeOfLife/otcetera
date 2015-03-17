@@ -127,7 +127,9 @@ class ExcludeConstraints {
     using cnode_set = std::set<const node_type *>;
     using node2many_map = std::map<const node_type *, cnode_set >;
     bool addExcludeStatement(const node_type * nd2Exclude, const node_type * forbiddenAttach);
-    bool isExcludedFrom(const node_type * ndToCheck, const node_type * potentialAttachment) const;
+    bool isExcludedFrom(const node_type * ndToCheck,
+                        const node_type * potentialAttachment,
+                        const std::map<long, node_type*> * ottIdToNodeMap) const;
     void debugInvariantsCheckEC() const;
     bool hasNodesExcludedFromIt(const node_type *n) const {
         return contains(byNdWithConstraints, n);
@@ -225,8 +227,12 @@ class FTree {
         return isExcludedFromRoot(ottIdToNodeMap.at(oid));
     }
     bool isExcludedFromRoot(const node_type *n) const {
-        return exclude.isExcludedFrom(n, root);
+        return exclude.isExcludedFrom(n, root, &ottIdToNodeMap);
     }
+    bool isExcludedFrom(const node_type * ndToCheck, const node_type * potentialAttachment) const {
+        return exclude.isExcludedFrom(ndToCheck, potentialAttachment, &ottIdToNodeMap);
+    }
+    
     // OTT Ids of nodes on the graph only....
     const OttIdSet getConnectedOttIds() const;
     // includes OTT Ids of nodes in includesConstraints
