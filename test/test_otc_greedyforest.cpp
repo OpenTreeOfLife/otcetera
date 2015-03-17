@@ -1,7 +1,11 @@
 #include "otc/newick.h"
 #include "otc/util.h"
 #include "otc/test_harness.h"
+#include "otc/tree_data.h"
+#include "otc/embedding.h"
+#include "otc/tree_iter.h"
 #include "otc/greedy_forest.h"
+#include "otc/embedded_tree.h"
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
@@ -29,6 +33,22 @@ class TestValidTreeStruct {
             if (tv.size() != 164) {
               return 'F';
             }
+            EmbeddedTree et;
+            Tree_t fakeScaffold;
+            auto r = fakeScaffold.createRoot();
+            std::set<long> ids;
+            for (const auto & tp : tv) {
+                const Tree_t & tree = *tp;
+                const OttIdSet & td = tree.getRoot()->getData().desIds;
+                for (auto oid : td) {
+                    if (!contains(ids, oid)) {
+                        fakeScaffold.createChild(r);
+                        ids.insert(oid);
+                    }
+                }
+            }
+
+            SupertreeContextWithSplits sc{1, et.taxoToEmbedding, fakeScaffold};
             GreedyPhylogeneticForest<NodeWithSplits, NodeWithSplits> gpf{-1};
             int treeInd = 0;
             long groupInd = 0;
@@ -49,7 +69,8 @@ class TestValidTreeStruct {
                 const OttIdSet & leafSet = tree.getRoot()->getData().desIds;
                 gpf.attemptToAddGrouping(nullptr, *incGroup, leafSet, treeInd, groupInd++, nullptr);
             }
-    
+            NodeEmbeddingWithSplits emptyEmbedding(r);
+            gpf.finishResolutionOfEmbeddedClade(*r, &emptyEmbedding, &sc);
             return '.';
         }
 };

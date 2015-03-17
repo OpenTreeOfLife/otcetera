@@ -13,9 +13,9 @@ class EmbeddedTree {
     protected:
     std::list<NodePairingWithSplits> nodePairings;
     std::list<PathPairingWithSplits> pathPairings;
+    public:
     std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> taxoToEmbedding;
     
-    public:
     EmbeddedTree() {
     }
 
