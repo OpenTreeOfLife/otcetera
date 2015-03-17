@@ -25,8 +25,11 @@ int TestHarness::runTests(const TestsVec & tests) {
     for (const auto & tpIt : tests) {
         const auto & fn = tpIt.second;
         char resp;
+#if defined(SUPPRESS_TEST_EXCEPTIONS)
         try {
+#endif
             resp = fn(*this);
+#if defined(SUPPRESS_TEST_EXCEPTIONS)
         } catch (std::exception & x) {
             std::cerr << "exception in test: " << x.what() << '\n';
             resp = 'E';
@@ -34,6 +37,7 @@ int TestHarness::runTests(const TestsVec & tests) {
             std::cerr << "unrecognized exception in test.\n";
             resp = 'E';
         }
+#endif
         std::cerr << resp;
         if (resp != '.') {
             failures.push_back(tpIt.first);

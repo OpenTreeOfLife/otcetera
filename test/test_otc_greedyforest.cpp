@@ -36,13 +36,14 @@ class TestValidTreeStruct {
             EmbeddedTree et;
             Tree_t fakeScaffold;
             auto r = fakeScaffold.createRoot();
+            auto & fsd = fakeScaffold.getData().ottIdToNode;
             std::set<long> ids;
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
                 const OttIdSet & td = tree.getRoot()->getData().desIds;
                 for (auto oid : td) {
                     if (!contains(ids, oid)) {
-                        fakeScaffold.createChild(r);
+                        fsd[oid] = fakeScaffold.createChild(r);
                         ids.insert(oid);
                     }
                 }

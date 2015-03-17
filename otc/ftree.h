@@ -77,13 +77,13 @@ class InterTreeBand {
         nd2phantom.at(nd).insert(begin(phantom), end(phantom));
     }
     void insert(node_type * nd, node_type * phantom) {
-        nd2phantom.at(nd).insert(phantom);
+        nd2phantom[nd].insert(phantom);
     }
     void addNode(node_type * nd, const node_set & nset) {
         assert(nd != nullptr);
         const auto s = nd2phantom.size();
         nd2phantom[nd] = nset;
-        assert(s == nd2phantom.size());
+        assert((s + 1)== nd2phantom.size());
     }
     bool bandPointHasAny(const node_type * nd, const node_set & ns) const {
         return !(areDisjoint(nd2phantom.at(nd), ns));
