@@ -69,6 +69,9 @@ class InterTreeBand {
         :statement(ps) {
         addNode(nd1, n1set);
     }
+    bool isSingleTreeBand() const {
+        return (nd2phantom.size() == 1);
+    }
     void insertSet(node_type * nd, const node_set & phantom) {
         nd2phantom.at(nd).insert(begin(phantom), end(phantom));
     }
@@ -120,6 +123,17 @@ class ExcludeConstraints {
     void debugInvariantsCheckEC() const;
     bool hasNodesExcludedFromIt(const node_type *n) const {
         return contains(byNdWithConstraints, n);
+    }
+    cnode_set stealExclusions(node_type *nd) {
+        auto bc = byNdWithConstraints.find(nd);
+        if (bc == byNdWithConstraints.end()) {
+            return cnode_set{};
+        }
+        cnode_set r = bc->second;
+        for (auto n : r) {
+            byExcludedNd[n].erase(nd);
+        }
+        return r;
     }
     private:
     void purgeExcludeRaw(const node_type * nd2Exclude, const node_type * forbiddenAttach);

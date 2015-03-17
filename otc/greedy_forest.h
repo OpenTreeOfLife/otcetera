@@ -10,8 +10,13 @@
 #include "otc/supertree_context.h"
 
 namespace otc {
-
-using MergeStartInfo = std::tuple<bool, std::set<NodeWithSplits *>, std::set<NodeWithSplits *> >; // banded, unbanded
+class MRCABandedPaths{
+    public:
+    NodeWithSplits * mrcaF;
+    NodeWithSplits * mrcaS;
+    std::set<std::pair<NodeWithSplits *, NodeWithSplits *> > bandedPairs;
+};
+using MergeStartInfo = std::tuple<bool, std::list<MRCABandedPaths>, std::set<NodeWithSplits *> >; // banded, unbanded
 
 using CouldAddResult = std::tuple<bool, NodeWithSplits *, NodeWithSplits *>;
 template<typename T, typename U>

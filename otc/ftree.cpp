@@ -382,6 +382,26 @@ void FTree<T, U>::mirrorPhyloStatement(const PhyloStatement &ps) {
 }
 
 template<typename T, typename U>
+void FTree<T, U>::stealExclusionStatements(node_type * newPar,
+                                           node_type * srcNode,
+                                           FTree<T, U>  & donorTree) {
+    auto e = donorTree.exclude.stealExclusions(srcNode);
+    for (auto nd : e) {
+        this->exclude.addExcludeStatement(nd, newPar);
+    }
+}
+
+// moves the exclusion statements to a different FTree (but with the same nodes)
+template<typename T, typename U>
+void FTree<T, U>::registerExclusionStatementForTransferringNode(node_type * srcNode,
+                                                                FTree<T, U>  & donorTree) {
+    auto e = donorTree.exclude.stealExclusions(srcNode);
+    for (auto nd : e) {
+        this->exclude.addExcludeStatement(nd, srcNode);
+    }
+}
+
+template<typename T, typename U>
 void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     dbWriteOttSet(" addPhyloStatementAsChildOfRoot", ps.includeGroup);
     assert(root != nullptr);

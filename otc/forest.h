@@ -156,10 +156,10 @@ class RootedForest {
     bool checkCanAddIngroupOverlappingPhyloStatementToGraph(
             const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
             const PhyloStatement &ps,
-            std::list<node_type * > nonTrivMRCAs,
-            OttIdSet attachedElsewhere,
-            std::vector<bool> shouldResolveVec,
-            std::vector<bool> shouldCreateDeeperVec) const;
+            std::list<node_type * > & nonTrivMRCAs,
+            OttIdSet & attachedElsewhere,
+            std::vector<bool> & shouldResolveVec,
+            std::vector<bool> & shouldCreateDeeperVec) const;
     tree_type & createNewTree();
     protected:
     void attachAllKnownTipsAsNewTree();

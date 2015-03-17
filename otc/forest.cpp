@@ -261,10 +261,10 @@ template<typename T, typename U>
 bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
             const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
             const PhyloStatement &ps,
-            std::list<node_type * > nonTrivMRCAs,
-            OttIdSet attachedElsewhere,
-            std::vector<bool> shouldResolveVec,
-            std::vector<bool> shouldCreateDeeperVec) const {
+            std::list<node_type * > & nonTrivMRCAs,
+            OttIdSet & attachedElsewhere,
+            std::vector<bool> & shouldResolveVec,
+            std::vector<bool> & shouldCreateDeeperVec) const {
     for (const auto & incPair : byIncCardinality) {
         const auto & incGroupIntersection = incPair.first;
         attachedElsewhere.insert(incGroupIntersection.begin(), incGroupIntersection.end());
