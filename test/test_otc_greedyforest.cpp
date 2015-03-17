@@ -46,7 +46,8 @@ class TestValidTreeStruct {
                 if (incGroup == nullptr) {
                     return 'F';
                 }
-                //gpf.attemptToAddGrouping(nullptr, incGroup, leafSet, treeInd, groupInd++, nullptr);
+                const OttIdSet & leafSet = tree.getRoot()->getData().desIds;
+                gpf.attemptToAddGrouping(nullptr, *incGroup, leafSet, treeInd, groupInd++, nullptr);
             }
     
             return '.';
