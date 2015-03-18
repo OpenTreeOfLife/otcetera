@@ -75,10 +75,11 @@ class TestValidTreeStruct {
 };
 
 int main(int argc, char *argv[]) {
-    std::vector<std::string> validfilenames = { "shortest-crash-phylo-statements.tre"
-                                               /*, "shorter-phylo-statements.tre"
-                                               , "mid-phylo-statements.tre"
-                                               */};
+    std::vector<std::string> validfilenames = { "shortest-crash-phylo-statements-small-tax.tre"
+                                               //,"shortest-crash-phylo-statements.tre"
+                                               //, "shorter-phylo-statements.tre"
+                                               //, "mid-phylo-statements.tre"
+                                               };
     TestHarness th(argc, argv);
     TestsVec tests;
     for (auto fn : validfilenames) {
