@@ -371,6 +371,7 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
         } else {
             NOT_IMPLEMENTED;
         }
+        assert(!recipientTree.isExcludedFrom(des, newPar));
     }
     if (donorTree != &recipientTree) {
         auto p = des->getParent();
@@ -503,23 +504,31 @@ void GreedyPhylogeneticForest<T, U>::mergeTreesToFirstPostBandHandling(Supertree
     assert(trees.size() > 0);
     auto trIt = begin(trees);
     auto & firstTree = trIt->second;
-    auto firstRoot = firstTree.getRoot();
-    OttIdSet idsIncluded = firstRoot->getData().desIds;
+    auto firstTreeRoot = firstTree.getRoot();
+    OttIdSet idsIncluded = firstTreeRoot->getData().desIds;
     for (++trIt; trIt != end(trees); trIt = trees.erase(trIt)) {
         debugInvariantsCheck();
         auto & currTree = trIt->second;
-        auto currRoot = currTree.getRoot();
-        assert(currRoot->getParent() == nullptr);
-        assert(!currRoot->isTip());
+        auto currTreeRoot = currTree.getRoot();
+        assert(currTreeRoot->getParent() == nullptr);
+        assert(!currTreeRoot->isTip());
+        if (firstTree.isExcludedFrom(currTreeRoot, firstTreeRoot)) {
+            firstTree.createDeeperRoot();
+            firstTreeRoot = firstTree.getRoot();
+        }
+        auto attachmentPoint = firstTreeRoot;
+        if (currTree.isExcludedFrom(firstTreeRoot, currTreeRoot)) {
+            attachmentPoint = createNode(firstTreeRoot, &firstTree);
+        }
         std::list<node_type *> rc;
-        for (auto currChild : iter_child(*currRoot)) {
+        for (auto currChild : iter_child(*currTreeRoot)) {
             rc.push_back(currChild);
         }
         for (auto currChild : rc) {
             debugInvariantsCheck();
-            transferSubtreeInForest(currChild, currTree, firstRoot, firstTree, &currTree);
+            transferSubtreeInForest(currChild, currTree, attachmentPoint, firstTree, &currTree);
         }
-        currRoot->_setLChild(nullptr);
+        currTreeRoot->_setLChild(nullptr);
     }
     debugInvariantsCheck();
 }

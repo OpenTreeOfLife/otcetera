@@ -482,7 +482,9 @@ template<typename T, typename U>
 void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const{
     OttIdSet ois;
     if (nd->isTip()) {
-        ois.insert(nd->getOttId());
+        if (nd->hasOttId()) {
+            ois.insert(nd->getOttId());
+        }
     } else {
         for (auto c : iter_child_const(*nd)) {
             const auto & coids = c->getData().desIds;
@@ -492,7 +494,7 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
     const auto pids = bands.getPhantomIds(nd);
     ois.insert(pids.begin(), pids.end());
     if(s != ois) {
-        dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming s", s);
+        dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming", s);
         dbWriteOttSet("calculated:", ois);
         assert(s == ois);
     }
