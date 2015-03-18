@@ -322,49 +322,33 @@ bool FTree<T,U>::insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp,
     return true;
 }
 
-template<typename T, typename U>
-OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
-                                             RootedTreeNode<T> * includeGroupA,
-                                             const OttIdSet & attachedElsewhere,
-                                             InterTreeBand<T> * itbp) {
-    dbWriteOttSet(" FTree<T,U>::addPhyloStatementAtNode inc", ps.includeGroup);
-    LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA;
-    dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
-    OttIdSet r;
-    if (itbp != nullptr) {
-        bands._addRefToBand(itbp, includeGroupA);
-    }
-    for (auto oid : ps.includeGroup) {
-        if (!ottIdIsConnected(oid)) {
-            LOG(DEBUG) << " not connected " << oid;
-            if (contains(attachedElsewhere, oid)) {
-                assert(itbp != nullptr);
-                LOG(DEBUG) << " attachedElsewhere " << oid;
-                insertIntoBandNoDesUpdate(itbp, includeGroupA, oid);
-            } else {
-                LOG(DEBUG) << " adding leaf " << oid;
-                addLeafNoDesUpdate(includeGroupA, oid);
-                r.insert(oid);
+template<typename T>
+T * rootToTipSearchByDesIds(T * nd, const OttIdSet &oids) {
+    assert(nd);
+    T * curr = nd;
+    for (;;) {
+        const auto & di = curr->getData().desIds;
+        assert(isSubset(oids, di));
+        if (curr->isTip()) {
+            return curr;
+        }
+        T * nextNd = nullptr;
+        for (auto c : iter_child(*curr)) {
+            const auto & chdi = c->getData().desIds;
+            if (!areDisjoint(oids, chdi)) {
+                if (nextNd == nullptr) {
+                    nextNd = &(*c);
+                } else {
+                    return curr;
+                }
             }
-        } else {
-            LOG(DEBUG) << " connected " << oid;
         }
-    }
-    addDesIdsToNdAndAnc(includeGroupA, ps.includeGroup);
-    dbWriteOttSet("    later includeGroupA->getData().desIds", includeGroupA->getData().desIds);
-    for (auto oid : ps.excludeGroup) {
-        if (!ottIdIsConnected(oid)) {
-            addExcludeStatement(oid, includeGroupA, ps.provenance);
+        if (nextNd == nullptr) {
+            return curr;
         }
+        curr = nextNd;
     }
-    LOG(DEBUG) << "before addPhyloStatementAtNode exit";
-    debugInvariantsCheckFT();
-    LOG(DEBUG) << "foreset level check";
-    forest.debugInvariantsCheck();
-    LOG(DEBUG) << "bout to addPhyloStatementAtNode exit";
-    return r;
 }
-
 template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
     if (ottIdSet.empty()) {
@@ -384,6 +368,7 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
         auto x = ottIdToNodeMap.find(nextOttId);
         assert(x != ottIdToNodeMap.end());
         node_type * aTip = x->second;
+        assert(forest.getTreeForNode(aTip) == this);
         if (!isAncestorDesNoIter(root, aTip)) {
             LOG(ERROR) << "aTip->getOttId() = " << aTip->getOttId();
             for (auto a : iter_anc(*aTip)) {
@@ -398,19 +383,9 @@ RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
         }
         return searchAncForMRCAOfDesIds(aTip, rel);
     }
-    // reach here if none are connected.
-    for (auto oid : ottIdSet) {
-        auto x = ottIdToNodeMap.find(oid);
-        assert(x != ottIdToNodeMap.end());
-        node_type * aTip = x->second;
-        assert(aTip != nullptr);
-        if (ottIdSet.size() == 1) {
-            return aTip;
-        }
-        return searchAncForMRCAOfDesIds(aTip, rel);
-    }
-    assert(false);
-    return nullptr;
+    const auto referredTo = set_intersection_as_set(ottIdSet, root->getData().desIds);
+    assert(!referredTo.empty());
+    return rootToTipSearchByDesIds(root, referredTo);
 }
 
 template<typename T, typename U>
@@ -502,6 +477,55 @@ std::set<T *> getAncSet(T *nd) {
     }
     return r;
 }
+
+
+template<typename T, typename U>
+OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
+                                             RootedTreeNode<T> * includeGroupA,
+                                             const OttIdSet & attachedElsewhere,
+                                             InterTreeBand<T> * itbp) {
+    dbWriteOttSet(" FTree<T,U>::addPhyloStatementAtNode inc", ps.includeGroup);
+    LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA  << " " << std::hex << (long) includeGroupA << std::dec;
+    LOG(DEBUG) << "itbp = " << (long) itbp << " " << std::hex << (long) itbp << std::dec;
+    LOG(DEBUG) << "FTree = " << (long) this << " " << std::hex << (long) this << std::dec;
+    dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
+    assert(forest.getTreeForNode(includeGroupA) == this);
+    OttIdSet r;
+    if (itbp != nullptr) {
+        bands._addRefToBand(itbp, includeGroupA);
+    }
+    for (auto oid : ps.includeGroup) {
+        if (!ottIdIsConnected(oid)) {
+            LOG(DEBUG) << " not connected " << oid;
+            if (contains(attachedElsewhere, oid)) {
+                assert(itbp != nullptr);
+                LOG(DEBUG) << " attachedElsewhere " << oid;
+                insertIntoBandNoDesUpdate(itbp, includeGroupA, oid);
+            } else {
+                LOG(DEBUG) << " adding leaf " << oid;
+                addLeafNoDesUpdate(includeGroupA, oid);
+                r.insert(oid);
+            }
+        } else {
+            LOG(DEBUG) << " connected " << oid;
+            assert(contains(includeGroupA->getData().desIds, oid));
+        }
+    }
+    addDesIdsToNdAndAnc(includeGroupA, ps.includeGroup);
+    dbWriteOttSet("    later includeGroupA->getData().desIds", includeGroupA->getData().desIds);
+    for (auto oid : ps.excludeGroup) {
+        if (!ottIdIsConnected(oid)) {
+            addExcludeStatement(oid, includeGroupA, ps.provenance);
+        }
+    }
+    LOG(DEBUG) << "before addPhyloStatementAtNode exit";
+    debugInvariantsCheckFT();
+    LOG(DEBUG) << "foreset level check";
+    forest.debugInvariantsCheck();
+    LOG(DEBUG) << "bout to addPhyloStatementAtNode exit";
+    return r;
+}
+
 template<typename T, typename U>
 void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const{
     OttIdSet ois;
@@ -518,6 +542,8 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
     const auto pids = bands.getPhantomIds(nd);
     ois.insert(pids.begin(), pids.end());
     if(s != ois) {
+        LOG(DEBUG) << "FTree = " << (long) this << " " << std::hex << (long) this << std::dec;
+        LOG(DEBUG) << "nd = " << (long) nd << " " << std::hex << (long) nd << std::dec;
         dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming", s);
         dbWriteOttSet("calculated:", ois);
         assert(s == ois);
@@ -526,6 +552,7 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
 template<typename T, typename U>
 void FTree<T, U>::debugInvariantsCheckFT() const {
     for (auto n : iter_post_n_const(*root)) {
+        assert(forest.getTreeForNode(n) == this);
         OttIdSet noids;
         if (n->isTip()) {
             if (n->hasOttId()) {

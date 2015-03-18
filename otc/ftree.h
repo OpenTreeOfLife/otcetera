@@ -170,6 +170,7 @@ class InterTreeBandBookkeeping {
         OttIdSet r;
         const band_set & bs =  getBandsForNode(nd);
         for (const auto & b : bs) {
+            LOG(DEBUG) << "  reading from band " << (long) b << ' ' << std::hex << (long) b << std::dec;
             const OttIdSet bo = b->getPhantomIds(nd);
             r.insert(begin(bo), end(bo));
         }

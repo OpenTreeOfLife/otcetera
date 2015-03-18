@@ -294,10 +294,12 @@ bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
         node_type * includeGroupA = nullptr;
         includeGroupA = f->getMRCA(incGroupIntersection);
         assert(includeGroupA != nullptr);
+        assert(getTreeForNode(includeGroupA) == f);
         if (includeGroupA->isTip()) {
             // this can happen if the overlap is one taxon.
             includeGroupA = includeGroupA->getParent();
             assert(includeGroupA != nullptr);
+            assert(getTreeForNode(includeGroupA) == f);
         }
         // If any of the ingroup are specifically excluded, then we have move deeper in the tree.
         // TMP this could be more efficient and avoid the while loop.
@@ -312,12 +314,14 @@ bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
             if (includeGroupA == nullptr) {
                 break;
             }
+            assert(getTreeForNode(includeGroupA) == f);
         }
         OttIdSet excInc;
         bool forceDeeperRoot = false;
         if (includeGroupA == nullptr) {
             includeGroupA = f->getRoot();
             forceDeeperRoot = true;
+            assert(getTreeForNode(includeGroupA) == f);
         } else {
             excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
             if (debuggingOutputEnabled) {
@@ -375,13 +379,17 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
         const bool shouldCreateDeeperRoot = *scdIt;
         if (addNode) {
             includeGroupA = f->resolveToCreateCladeOfIncluded(includeGroupA, ps);
+            assert(getTreeForNode(includeGroupA) == f);
             LOG(DEBUG) << "   back from resolveToCreateCladeOfIncluded for loop round " << i;
             debugInvariantsCheck();
         } else if (shouldCreateDeeperRoot) {
             f->createDeeperRoot();
             includeGroupA = f->getRoot();
+            assert(getTreeForNode(includeGroupA) == f);
             LOG(DEBUG) << "   back from createDeeperRoot for loop round " << i;
             debugInvariantsCheck();
+        } else {
+            assert(getTreeForNode(includeGroupA) == f);
         }
         if (byIncCardinality.size() > 1 && itbp == nullptr) {
             itbp = _createNewBand(*f, *includeGroupA, ps);

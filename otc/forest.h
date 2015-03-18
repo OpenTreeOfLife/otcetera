@@ -150,6 +150,9 @@ class RootedForest {
     void writeForestDOTToFN(const std::string &fn) const;
     void debugInvariantsCheck() const;
     void dumpAcceptedPhyloStatements(const char *fn);
+    const tree_type * getTreeForNode(const node_type * nd) const {
+        return nd2Tree.at(const_cast<node_type *>(nd));
+    }
     private:
     std::list<OverlapFTreePair<T,U> > getSortedOverlappingTrees(const OttIdSet &inc);
     node_type * addDetachedLeaf(const OttId & ottId);
@@ -173,7 +176,7 @@ class RootedForest {
     std::size_t nextTreeId;
     OttIdSet ottIdSet;
     std::map<OttId, node_type *> & ottIdToNodeMap; // alias to this data field in nodeSrc for convenience
-    std::map<node_type *, tree_type*> nd2Tree; // alias to this data field in nodeSrc for convenience
+    std::map<node_type *, tree_type*> nd2Tree; 
     std::list<InterTreeBand<T> > allBands;
     // addedSplitsByLeafSet
     // TMP, store every PhlyoStatement that we have accepted. This may become too memory inefficient
