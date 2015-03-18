@@ -307,7 +307,7 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     }
     updateToReflectResolution(par, newNode, cToMove, ps);
     assert(!par->isOutDegreeOneNode());
-    debugInvariantsCheckFT();
+    forest.debugInvariantsCheck();
     return newNode;
 }
 
@@ -440,7 +440,7 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     dbWriteOttSet(" addPhyloStatementAsChildOfRoot", ps.includeGroup);
     assert(root != nullptr);
     if (!root->isTip()) {
-        debugInvariantsCheckFT();
+        forest.debugInvariantsCheck();
     }
     if (anyExcludedAtNode(root, ps.includeGroup)) {
         createDeeperRoot();
@@ -463,7 +463,7 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     }
     root->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
     parOfIncGroup->getData().desIds = ps.includeGroup;
-    debugInvariantsCheckFT();
+    forest.debugInvariantsCheck();
     LOG(DEBUG) << "Leaving addPhyloStatementAsChildOfRoot";
 }
 
@@ -551,8 +551,21 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
 }
 template<typename T, typename U>
 void FTree<T, U>::debugInvariantsCheckFT() const {
+    //LOG(DEBUG) << " start of debugInvariantsCheckFT for " << (long) this << " " << std::hex << (long)this << std::dec;
+    //dbWriteNewick(root);
+    checkAllNodePointersIter(*root);
     for (auto n : iter_post_n_const(*root)) {
-        assert(forest.getTreeForNode(n) == this);
+        if(forest.getTreeForNode(n) != this) {
+            long x = (long) forest.getTreeForNode(n);
+            long p = (long) n->getParent();
+            LOG(DEBUG) << getDesignator(*n) << " in the wrong tree reporting " << x << " " << std::hex << x << std::dec << " p = " << p << " " << std::hex << p << std::dec;
+            if (n->getParent() != nullptr) {
+                std::cerr << "the parent newick\n";
+                dbWriteNewick(n->getParent());
+                std::cerr << std::endl;
+            }
+            assert(false);
+        }
         OttIdSet noids;
         if (n->isTip()) {
             if (n->hasOttId()) {

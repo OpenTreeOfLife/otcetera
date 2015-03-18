@@ -113,6 +113,7 @@ void RootedForest<T,U>::attachAllDetachedTips() {
     // these could be attached one node more tipward (old root), but there is no basis for that.
     for (auto n : attachableAtRoot) {
         //t.connectedIds.insert(n->getOttId());
+        registerTreeForNode(n, &t);
         t.root->addChild(n);
         t.root->getData().desIds.insert(n->getOttId());
     }
@@ -418,11 +419,13 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         for (auto noid : newOttIds) {
             addDetachedLeaf(noid);
         }
+        debugInvariantsCheck();
         return true;
     }
     if (areDisjoint(ps.leafSet, ottIdSet)) {
         novelAcceptedPSInOrder.push_back(ps); //TMP DEBUGGING
         addDisjointTree(ps);
+        debugInvariantsCheck();
         return true;
     }
     auto byIncCardinality = getSortedOverlappingTrees(ps.includeGroup);
@@ -434,6 +437,7 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         }
         LOG(DEBUG) << "No intersection between includeGroup of an existing FTree.";
         addIngroupDisjointPhyloStatementToGraph(ps);
+        debugInvariantsCheck();
         return true;
     }
     auto & attachmentPair = *byIncCardinality.begin();
@@ -442,7 +446,10 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
         //  less greedy: make include/exclude statements at that node
         LOG(DEBUG) << "Missing opportunity to special case ingroups that only overlap with leaves of current trees.\n";
     }
-    return addIngroupOverlappingPhyloStatementToGraph(byIncCardinality, ps); 
+    debugInvariantsCheck();
+    auto rc = addIngroupOverlappingPhyloStatementToGraph(byIncCardinality, ps);
+    debugInvariantsCheck();
+    return rc;
 }
 
 template<typename T, typename U>
@@ -494,6 +501,9 @@ void RootedForest<T, U>::debugInvariantsCheck() const {
                 assert(contains(root2tree, n));
             }
             internal2Tree[n] = root2tree.at(d);
+        }
+        if (n->getParent() != nullptr) {
+            assert(nullptr != getTreeForNode(n));
         }
     }
     std::set<long> connectedIdSet;

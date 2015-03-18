@@ -216,6 +216,7 @@ template<typename T, typename U>
 inline RootedTreeNode<T> * RootedForest<T,U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid, FTree<T, U> *ftree) {
     assert(oid != rootID);
     auto n = createNode(p, ftree);
+    assert(n->getNextSib() == nullptr);
     n->setOttId(oid);
     ottIdToNodeMap[oid] = n;
     n->getData().desIds.insert(oid);

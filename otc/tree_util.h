@@ -77,7 +77,9 @@ inline std::string getDesignator(const T &nd) {
         std::string r = "ott";
         return r + std::to_string(nd.getOttId());
     }
-    assert(!nd.isTip());
+    if (nd.isTip()) {
+        return std::string("EMPTY_NODE");
+    }
     auto p = getMRCAOttIdPair(&nd);
     std::string pf = std::to_string(p.first);
     std::string ps = std::to_string(p.second);
