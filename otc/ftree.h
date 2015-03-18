@@ -74,12 +74,19 @@ class InterTreeBand {
         return (nd2phantom.size() == 1);
     }
     void insertSet(node_type * nd, const node_set & phantom) {
+        for (auto p : phantom) {
+            assert(p->hasOttId());
+        }
         nd2phantom.at(nd).insert(begin(phantom), end(phantom));
     }
     void insert(node_type * nd, node_type * phantom) {
+        assert(phantom->hasOttId());
         nd2phantom[nd].insert(phantom);
     }
     void addNode(node_type * nd, const node_set & nset) {
+        for (auto p : nset) {
+            assert(p->hasOttId());
+        }
         assert(nd != nullptr);
         const auto s = nd2phantom.size();
         nd2phantom[nd] = nset;
@@ -170,7 +177,7 @@ class InterTreeBandBookkeeping {
         OttIdSet r;
         const band_set & bs =  getBandsForNode(nd);
         for (const auto & b : bs) {
-            LOG(DEBUG) << "  reading from band " << (long) b << ' ' << std::hex << (long) b << std::dec;
+            //LOG(DEBUG) << "  reading from band " << (long) b << ' ' << std::hex << (long) b << std::dec;
             const OttIdSet bo = b->getPhantomIds(nd);
             r.insert(begin(bo), end(bo));
         }
@@ -272,7 +279,7 @@ class FTree {
     bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     void createDeeperRoot();
     void stealExclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
-    void stealInclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
+    OttIdSet stealInclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
     void registerExclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
     void registerInclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
     private:

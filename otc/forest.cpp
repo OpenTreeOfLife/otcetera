@@ -78,9 +78,14 @@ void RootedForest<T,U>::addAndUpdateChild(RootedTreeNode<T> *p,
                                                     RootedTreeNode<T> *c,
                                                     FTree<T, U> &tree) {
     p->addChild(c);
-    const auto & cd = c->getData().desIds;
-    p->getData().desIds.insert(begin(cd), end(cd));
     registerTreeForNode(c, &tree);
+    const auto & cd = c->getData().desIds;
+    if (cd.size() == 1 && !c->hasOttId()) {
+        if (*begin(cd) == c->getOttId()) {
+            return;
+        }
+    }
+    p->getData().desIds.insert(begin(cd), end(cd));
 }
 
 template<typename T, typename U>

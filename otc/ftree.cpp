@@ -118,17 +118,29 @@ void InterTreeBandBookkeeping<T>::reassignAttachmentNode(InterTreeBand<T> * b,
 template<typename T, typename U>
 void FTree<T, U>::updateToReflectResolution(node_type *oldAnc,
                                             node_type * newAnc,
-                                            const std::set<node_type *> & movedTips,
+                                            const std::set<node_type *> & movedNodes,
                                                             const PhyloStatement & ps) {
+    std::set<node_type *> bn;
+    for (auto np : movedNodes) {
+        if (np->isTip()
+            && np->hasOttId()
+            && contains(ps.includeGroup, np->getOttId())
+            && (!ottIdIsConnected(np->getOttId()))) {
+            bn.insert(np);
+        }
+    }
+    if (bn.empty()) {
+        return;
+    }
     auto relevantBands = bands.getBandsForNode(oldAnc);
     for (auto & b : relevantBands) {
-        if (b->isTheSetOfPhantomNodes(oldAnc, movedTips)) {
+        if (b->isTheSetOfPhantomNodes(oldAnc, bn)) {
             bands.reassignAttachmentNode(b, oldAnc, newAnc, ps);
         } else {
             auto nitbp = forest._createNewBand(*this, *newAnc, ps);
             assert(nitbp != nullptr);
             bands._addRefToBand(nitbp, newAnc);
-            nitbp->insertSet(newAnc, movedTips);
+            nitbp->insertSet(newAnc, bn);
         }
     }
 }
@@ -217,7 +229,7 @@ template<typename T, typename U>
 RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par,
                                                                const PhyloStatement & ps) {
     const OttIdSet & oids = ps.includeGroup;
-    dbWriteOttSet("  resolveToCreateCladeOfIncluded oids = ", oids);
+    dbWriteOttSet("  ottIdIsConnected oids = ", oids);
     dbWriteOttSet("                                 nd->getData().desIds = ", par->getData().desIds);
     std::set<RootedTreeNode<T> *> cToMove;
     std::list<RootedTreeNode<T> *> orderedToMove;
@@ -247,12 +259,12 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     auto newNode = forest.createNode(par, this); // parent of includeGroup
     for (auto c : orderedToMove) {
         c->_detachThisNode();
-        c->_setNextSib(nullptr);
         forest.addAndUpdateChild(newNode, c, *this);
     }
     updateToReflectResolution(par, newNode, cToMove, ps);
-    assert(!par->isOutDegreeOneNode());
+    LOG(DEBUG) << "resolveToCreateCladeOfIncluded postcondition check";
     forest.debugInvariantsCheck();
+    LOG(DEBUG) << "resolveToCreateCladeOfIncluded exiting";
     return newNode;
 }
 
@@ -351,14 +363,19 @@ void FTree<T, U>::stealExclusionStatements(node_type * newPar,
 }
 
 template<typename T, typename U>
-void FTree<T, U>::stealInclusionStatements(node_type * newPar,
+OttIdSet FTree<T, U>::stealInclusionStatements(node_type * newPar,
                                            node_type * srcNode,
                                            FTree<T, U>  & donorTree) {
+    assert(newPar != nullptr);
     auto bandSet = donorTree.bands.stealBands(srcNode);
+    OttIdSet r;
     for (auto bandPtr : bandSet) {
+        const OttIdSet pis = bandPtr->getPhantomIds(srcNode);
+        r.insert(begin(pis), end(pis));
         bandPtr->reassignAttachmentNode(srcNode, newPar);
         this->bands._addRefToBand(bandPtr, newPar);
     }
+    return r;
 }
 
 // moves the exclusion statements to a different FTree (but with the same nodes)
@@ -481,10 +498,12 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
     } else {
         for (auto c : iter_child_const(*nd)) {
             const auto & coids = c->getData().desIds;
+            assert(coids.find(LONG_MAX) == coids.end());
             ois.insert(begin(coids), end(coids));
         }
     }
     const auto pids = bands.getPhantomIds(nd);
+    assert(pids.find(LONG_MAX) == pids.end());
     ois.insert(pids.begin(), pids.end());
     if(s != ois) {
         LOG(DEBUG) << "FTree = " << (long) this << " " << std::hex << (long) this << std::dec;

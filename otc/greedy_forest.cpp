@@ -314,7 +314,11 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
                 NodeWithSplits * newPar,
                 FTree<RTSplits, MappedWithSplitsData> & recipientTree, 
                 FTree<RTSplits, MappedWithSplitsData> *donorTree) {
-    LOG(DEBUG) << "top transferSubtreeInForest pre des == " << getDesignator(*des);
+    LOG(DEBUG) << "top transferSubtreeInForest pre des == " << getDesignator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
+    LOG(DEBUG) << "                            newPar " << (long) newPar << " " << std::hex << (long) newPar << std::dec;
+    assert(des != nullptr);
+    auto oldPar = des->getParent();
+    LOG(DEBUG) << "                            oldPar " << (long) oldPar << " " << std::hex << (long) oldPar << std::dec;
     debugInvariantsCheck();
     assert(des != nullptr);
     assert(newPar != nullptr);
@@ -326,18 +330,24 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
             donorTree = &recipientTree;
         }
     }
-    auto oldPar = des->getParent();
     assert(!recipientTree.isExcludedFrom(des, newPar));
     assert(getTreeForNode(des) == donorTree);
     des->_detachThisNode();
+    dbWriteOttSet(" des pre addAndUpdateChild", des->getData().desIds);
+    dbWriteOttSet(" newPar pre addAndUpdateChild", newPar->getData().desIds);
     addAndUpdateChild(newPar, des, recipientTree);
-    dbWriteOttSet(" pre loop", des->getData().desIds);
+    dbWriteOttSet(" des pre loop", des->getData().desIds);
+    dbWriteOttSet(" newPar pre loop", newPar->getData().desIds);
+    if (oldPar != nullptr) {
+        removeDesIdsToNdAndAnc(oldPar, des->getData().desIds);
+    }
     if (donorTree != &recipientTree) {
-        if (oldPar != nullptr) {
-            removeDesIdsToNdAndAnc(oldPar, des->getData().desIds);
-        }
         recipientTree.stealExclusionStatements(newPar, oldPar, *donorTree);
-        recipientTree.stealInclusionStatements(newPar, oldPar, *donorTree);
+        const auto oids = recipientTree.stealInclusionStatements(newPar, oldPar, *donorTree);
+        if (oldPar != nullptr) {
+            removeDesIdsToNdAndAnc(oldPar, oids);
+        }
+        newPar->getData().desIds.insert(begin(oids), end(oids));
         for (auto nd : iter_pre_n(des)) {
             registerTreeForNode(nd, &recipientTree);
             recipientTree.registerExclusionStatementForTransferringNode(nd, *donorTree);
@@ -347,6 +357,8 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
     if (newPar->getParent()) {
         addDesIdsToNdAndAnc(newPar->getParent(), newPar->getData().desIds);
     }
+    LOG(DEBUG) << "after actions of transferSubtreeInForest";
+    dbWriteNewick(newPar);
     LOG(DEBUG) << "transferSubtreeInForest post";
     debugInvariantsCheck();
     LOG(DEBUG) << "transferSubtreeInForest exiting";
