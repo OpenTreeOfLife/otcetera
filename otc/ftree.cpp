@@ -149,8 +149,7 @@ bool PhyloStatement::debugCheck() const {
 template<typename T, typename U>
 void FTree<T, U>::createDeeperRoot() {
     auto nr = forest.createNode(nullptr, this);
-    nr->addChild(root);
-    nr->getData().desIds = root->getData().desIds;
+    forest.addAndUpdateChild(nr, root, *this);
     root = nr;
 }
 
@@ -171,58 +170,7 @@ const OttIdSet FTree<T, U>::getConnectedOttIds() const {
     return r;
 }
 
-/*
-template<typename T, typename U>
-void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
-                const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedInc,
-                const std::map<node_type *, std::set<RootedTreeNode<T> *> > & otherInvertedExc,
-                const std::map<node_type *, std::pair<node_type*, PhyloStatementSource> > & otherIC,
-                const std::map<node_type *, std::list<std::pair<node_type*, PhyloStatementSource> > > & otherEC) {
-    assert(subtreeRoot);
-    auto par = subtreeRoot->getParent();
-    assert(par);
-    const OttIdSet & sroids = subtreeRoot->getData().desIds;
-    OttIdSet overlapIds = set_intersection_as_set(root->getData().desIds, sroids);
-    if (overlapIds.empty()) {
-        //the new tree does not have any leaves with include statements in the current tree...
-        bool needDeeperRoot = false;
-        for (auto oid : sroids) {
-            if (ottIdIsExcludedFromRoot(oid)) {
-                needDeeperRoot = true;
-                break;
-            }
-        }
-        if (needDeeperRoot) {
-            createDeeperRoot();
-        }
-        root->addChild(subtreeRoot);
-        for (auto c : iter_leaf_n_const(*subtreeRoot)) {
-            //connectedIds.insert(c->getOttId());
-        }
-        root->getData().desIds.insert(begin(subtreeRoot->getData().desIds), end(subtreeRoot->getData().desIds));
-        const PhyloStatementSource bogusPSS{-1, -1};
-        for (auto sn : iter_pre_n(subtreeRoot)) { //TMP need iter_node_n
-            const auto esn = otherInvertedExc.find(sn);
-            if (esn != otherInvertedExc.end()) {
-                for (auto eValNd : esn->second) {
-                    excludesConstraints[eValNd].push_back(GroupingConstraint{sn, bogusPSS});
-                }
-            }
-            const auto isn = otherInvertedInc.find(sn);
-            if (isn != otherInvertedInc.end()) {
-                for (auto eValNd : isn->second) {
-                    auto pinP = includesConstraints.find(eValNd);
-                    if (pinP == includesConstraints.end() || isAncestorDesNoIter(pinP->first, eValNd)) {
-                        includesConstraints.emplace(eValNd, GroupingConstraint{sn, bogusPSS});
-                    }
-                }
-            }
-        }
-        return;
-    }
-    assert(false);
-}
-*/
+
 
 template<typename T, typename U>
 bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
@@ -298,12 +246,9 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
     }
     auto newNode = forest.createNode(par, this); // parent of includeGroup
     for (auto c : orderedToMove) {
-        forest.registerTreeForNode(c, this);
         c->_detachThisNode();
         c->_setNextSib(nullptr);
-        newNode->addChild(c);
-        const auto & di = c->getData().desIds;
-        newNode->getData().desIds.insert(begin(di), end(di));
+        forest.addAndUpdateChild(newNode, c, *this);
     }
     updateToReflectResolution(par, newNode, cToMove, ps);
     assert(!par->isOutDegreeOneNode());
@@ -544,8 +489,11 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
     if(s != ois) {
         LOG(DEBUG) << "FTree = " << (long) this << " " << std::hex << (long) this << std::dec;
         LOG(DEBUG) << "nd = " << (long) nd << " " << std::hex << (long) nd << std::dec;
+        dbWriteNewick(nd);
         dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming", s);
         dbWriteOttSet("calculated:", ois);
+        dbWriteOttSet("inc - calc:", set_difference_as_set(s, ois));
+        dbWriteOttSet("calc - inc:", set_difference_as_set(ois, s));
         assert(s == ois);
     }
 }

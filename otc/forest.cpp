@@ -68,10 +68,19 @@ void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
         auto nd = o2n.second;
         if (!nodeIsAttached(*nd)) {
             //t.connectedIds.insert(o2n.first);
-            t.root->addChild(nd);
-            t.root->getData().desIds.insert(o2n.first);
+            addAndUpdateChild(t.root, nd, t);
         }
     }
+}
+
+template<typename T, typename U>
+void RootedForest<T,U>::addAndUpdateChild(RootedTreeNode<T> *p,
+                                                    RootedTreeNode<T> *c,
+                                                    FTree<T, U> &tree) {
+    p->addChild(c);
+    const auto & cd = c->getData().desIds;
+    p->getData().desIds.insert(begin(cd), end(cd));
+    registerTreeForNode(c, &tree);
 }
 
 template<typename T, typename U>
@@ -100,22 +109,15 @@ void RootedForest<T,U>::attachAllDetachedTips() {
     }
     if (!excludedFromRoot.empty()) {
         auto nr = createNode(nullptr, &t);
-        nr->addChild(t.root);
-        nr->getData().desIds = t.root->getData().desIds;
+        addAndUpdateChild(nr, t.root, t);
         t.root = nr;
         for (auto n : excludedFromRoot) {
-            //t.connectedIds.insert(n->getOttId());
-            registerTreeForNode(n, &t);
-            nr->addChild(n);
-            nr->getData().desIds.insert(n->getOttId());
+            addAndUpdateChild(nr, n, t);
         }
     }
     // these could be attached one node more tipward (old root), but there is no basis for that.
     for (auto n : attachableAtRoot) {
-        //t.connectedIds.insert(n->getOttId());
-        registerTreeForNode(n, &t);
-        t.root->addChild(n);
-        t.root->getData().desIds.insert(n->getOttId());
+        addAndUpdateChild(t.root, n, t);
     }
     
 }

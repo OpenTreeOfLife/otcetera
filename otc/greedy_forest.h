@@ -53,6 +53,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                      SupertreeContextWithSplits *);
     void mergeForest(SupertreeContextWithSplits *);
     CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & incGroup, const OttIdSet & leafSet);
+    /*
     void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *ri,
@@ -61,6 +62,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                             NodeWithSplits *delo,
                             const OttIdSet & incGroup,
                             const OttIdSet & leafSet);
+    */
     std::set<OttIdSet> encountered; // used so that the PhyloStatement  have refs that outlive them
     bool addGroupToNewTree(const OttIdSet & incGroup,
                            const OttIdSet & leafSet,
