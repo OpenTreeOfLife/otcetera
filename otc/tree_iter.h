@@ -21,6 +21,7 @@ bool isAncestorDesNoIter(const T *a, const T *d) {
     }
     return false;
 }
+
 template<typename T>
 inline T * getDeepestAnc(T *nd) {
     auto p = nd->getParent();

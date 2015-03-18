@@ -157,12 +157,16 @@ void FTree<T, U>::createDeeperRoot() {
 template<typename T, typename U>
 const OttIdSet FTree<T, U>::getConnectedOttIds() const {
     OttIdSet r;
-    if (root == nullptr) {
+    // root can be a tip but not a named node, in the process of stealing
+    //  children from one tree in the merging of the forests
+    if (root == nullptr || (root->isTip() && !root->hasOttId())) {
         return r;
     }
     for (auto t : iter_leaf_n_const(*root)) {
         assert(isAncestorDesNoIter(root, t));
-        r.insert(t->getOttId());
+        if (t->hasOttId()) {
+            r.insert(t->getOttId());
+        }
     }
     return r;
 }
@@ -426,6 +430,17 @@ void FTree<T, U>::stealExclusionStatements(node_type * newPar,
     }
 }
 
+template<typename T, typename U>
+void FTree<T, U>::stealInclusionStatements(node_type * newPar,
+                                           node_type * srcNode,
+                                           FTree<T, U>  & donorTree) {
+    auto bandSet = donorTree.bands.stealBands(srcNode);
+    for (auto bandPtr : bandSet) {
+        bandPtr->reassignAttachmentNode(srcNode, newPar);
+        this->bands._addRefToBand(bandPtr, newPar);
+    }
+}
+
 // moves the exclusion statements to a different FTree (but with the same nodes)
 template<typename T, typename U>
 void FTree<T, U>::registerExclusionStatementForTransferringNode(node_type * srcNode,
@@ -433,6 +448,15 @@ void FTree<T, U>::registerExclusionStatementForTransferringNode(node_type * srcN
     auto e = donorTree.exclude.stealExclusions(srcNode);
     for (auto nd : e) {
         this->exclude.addExcludeStatement(nd, srcNode);
+    }
+}
+// moves the inclusion statements to a different FTree (but with the same nodes)
+template<typename T, typename U>
+void FTree<T, U>::registerInclusionStatementForTransferringNode(node_type * srcNode,
+                                                                FTree<T, U>  & donorTree) {
+    auto bandSet = donorTree.bands.stealBands(srcNode);
+    for (auto bandPtr : bandSet) {
+        this->bands._addRefToBand(bandPtr, srcNode);
     }
 }
 

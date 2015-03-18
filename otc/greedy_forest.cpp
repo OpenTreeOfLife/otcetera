@@ -364,27 +364,22 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
             donorTree = &recipientTree;
         }
     }
-    if (recipientTree.isExcludedFrom(des, newPar)) {
-        if (newPar == recipientTree.getRoot()) {
-            recipientTree.createDeeperRoot();
-            newPar = recipientTree.getRoot();
-        } else {
-            NOT_IMPLEMENTED;
-        }
-        assert(!recipientTree.isExcludedFrom(des, newPar));
-    }
-    if (donorTree != &recipientTree) {
-        auto p = des->getParent();
-        recipientTree.stealExclusionStatements(newPar, p, *donorTree);
-        for (auto nd : iter_pre_n(des)) {
-            recipientTree.registerExclusionStatementForTransferringNode(nd, *donorTree);
-        }
-    }
-    LOG(DEBUG) << "transferSubtreeInForest pre";
-    debugInvariantsCheck();
+    auto oldPar = des->getParent();
+    assert(!recipientTree.isExcludedFrom(des, newPar));
     des->_detachThisNode();
     newPar->addChild(des);
     addDesIdsToNdAndAnc(newPar, des->getData().desIds);
+    if (donorTree != &recipientTree) {
+        if (oldPar != nullptr) {
+            removeDesIdsToNdAndAnc(oldPar, des->getData().desIds);
+        }
+        recipientTree.stealExclusionStatements(newPar, oldPar, *donorTree);
+        recipientTree.stealInclusionStatements(newPar, oldPar, *donorTree);
+        for (auto nd : iter_pre_n(des)) {
+            recipientTree.registerExclusionStatementForTransferringNode(nd, *donorTree);
+            recipientTree.registerInclusionStatementForTransferringNode(nd, *donorTree);
+        }
+    }
     LOG(DEBUG) << "transferSubtreeInForest pre";
     debugInvariantsCheck();
 }

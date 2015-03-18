@@ -183,6 +183,18 @@ class InterTreeBandBookkeeping {
         }
         return nit->second;
     }
+    band_set stealBands(const node_type *n) {
+        const auto nit = node2Band.find(n);
+        if (nit == node2Band.end()) {
+            return emptySet;
+        }
+        band_set bs = nit->second;
+        node2Band.erase(n);
+        for (auto bandPtr : bs) {
+            band2Node.erase(bandPtr);
+        }
+        return bs;
+    }
     bool isInABand(const node_type *n) const {
         return contains(node2Band, n);
     }
@@ -259,7 +271,9 @@ class FTree {
     bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     void createDeeperRoot();
     void stealExclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
+    void stealInclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
     void registerExclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
+    void registerInclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
     private:
     void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {

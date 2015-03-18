@@ -492,6 +492,7 @@ void RootedForest<T, U>::debugInvariantsCheck() const {
     for (const auto & t : trees) {
         for (const auto o : t.second.getConnectedOttIds()) {
             assert(!contains(connectedIdSet, o));
+            //LOG(DEBUG) << "checkint ott" << o;
             assert(ottId2Tree.at(o) == &(t.second));
             connectedIdSet.insert(o);
         }

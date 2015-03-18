@@ -14,7 +14,6 @@ testotctreeiter_SOURCES = test_otc_tree_iter.cpp
 testotctreeiter_CPPFLAGS = $(AM_CPPFLAGS)
 
 check:
-	./testotcgreedyforest $(abs_top_srcdir)/data
 	./testotcnewicktoken $(abs_top_srcdir)/data
 	./testotctreefromnewick $(abs_top_srcdir)/data
 	./testotctreeiter $(abs_top_srcdir)/data

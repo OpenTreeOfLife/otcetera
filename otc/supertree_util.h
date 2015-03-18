@@ -53,5 +53,13 @@ void addDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
     }
 }
 
+template<typename T>
+void removeDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
+    nd->getData().desIds = set_difference_as_set(nd->getData().desIds, oid);
+    for (auto anc : iter_anc(*nd)) {
+        anc->getData().desIds = set_difference_as_set(anc->getData().desIds, oid);
+    }
+}
+
 } // namespace
 #endif
