@@ -543,8 +543,21 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
         dbWriteNewick(nd);
         dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming", s);
         dbWriteOttSet("calculated:", ois);
-        dbWriteOttSet("inc - calc:", set_difference_as_set(s, ois));
-        dbWriteOttSet("calc - inc:", set_difference_as_set(ois, s));
+        const auto extras = set_difference_as_set(s, ois);
+        dbWriteOttSet("inc - calc:", extras);
+        const auto missing = set_difference_as_set(ois, s);
+        dbWriteOttSet("calc - inc:", missing);
+        for (auto m : missing) {
+            if (contains(pids, m)) {
+                LOG(DEBUG) << m << " is from the phantomIDs";
+            } else {
+                LOG(DEBUG) << m << " is from a descendant ottIdIsConnected returns " << ottIdIsConnected(m);
+                for (auto c : iter_child_const(*nd)) {
+                    LOG(DEBUG) << "child " << getDesignator(*c);
+                    dbWriteOttSet("   a child desIds", c->getData().desIds);
+                }
+            }
+        }
         assert(s == ois);
     }
 }
