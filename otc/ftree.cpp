@@ -554,6 +554,12 @@ void FTree<T, U>::debugInvariantsCheckFT() const {
     //dbWriteNewick(root);
     checkAllNodePointersIter(*root);
     for (auto n : iter_post_n_const(*root)) {
+         auto & b = bands.getBandsForNode(n);
+         if (!b.empty()) {
+            for (auto ob : b) {
+                assert(contains(ob->getBandedNodes(), n));
+            }
+        }
         if(forest.getTreeForNode(n) != this) {
             long x = (long) forest.getTreeForNode(n);
             long p = (long) n->getParent();

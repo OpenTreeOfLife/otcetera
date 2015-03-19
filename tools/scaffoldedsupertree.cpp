@@ -166,7 +166,7 @@ class ScaffoldedSupertree
             if (nd->getOttId() == verboseLoggingTarget) {
                 otCLI.turnOnVerboseMode();
             }
-            if (ancToAnalyze != nullptr && (ancToAnalyze == nd || !isAncestorDesNoIter(ancToAnalyze, nd))) {
+            if (ancToAnalyze != nullptr && (ancToAnalyze != nd && !isAncestorDesNoIter(ancToAnalyze, nd))) {
                 continue;
             }
             auto p = nd->getParent();
