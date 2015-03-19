@@ -399,11 +399,121 @@ void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc)
 }
 
 template<typename T, typename U>
+NodeWithSplits * GreedyPhylogeneticForest<T, U>::moveAllSibs(
+            NodeWithSplits * donorC,
+            FTree<RTSplits, MappedWithSplitsData> &donorTree,
+            NodeWithSplits * attachPoint,
+            FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+            SupertreeContextWithSplits *) {
+    auto dp = donorC->getParent();
+    assert(dp != nullptr);
+    OttIdSet dpoids;
+    for (auto c :iter_child(*dp)) {
+        dpoids.insert(begin(c->getData().desIds), end(c->getData().desIds));
+    }
+    donorC->_detachThisNode();
+    auto p = moveAllChildren(dp, donorTree, attachPoint, recipientTree, nullptr);
+    dp->_setFirstChild(nullptr);
+    dbWriteOttSet("   dpoids =", dpoids);
+    removeDesIdsToNdAndAnc(dp, dpoids);
+    registerTreeForNode(donorC, nullptr);
+    if (dp == nullptr) {
+        donorTree._setRoot(nullptr);
+        registerTreeForNode(dp, nullptr);
+    }
+    return p.first;
+}
+
+
+template<typename T, typename U>
+bool GreedyPhylogeneticForest<T, U>::zipPathsFromBarrenNode(
+            FTree<RTSplits, MappedWithSplitsData> &donorTree,
+            NodeWithSplits * donorDes,
+            NodeWithSplits * donorAnc,
+            FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+            NodeWithSplits * recipientDes,
+            NodeWithSplits * recipientAnc,
+            SupertreeContextWithSplits *sc) {
+    auto currDoomedChild = donorDes;
+    auto currAttachPoint = recipientDes;
+    bool hitDeepest = false;
+    while (currDoomedChild != donorAnc) {
+        auto nextDoomedChild = currDoomedChild->getParent();
+        if (hitDeepest || currAttachPoint == recipientAnc) {
+            hitDeepest = true;
+            currAttachPoint = recipientTree.createDeeperNode(currAttachPoint);
+        } else {
+            currAttachPoint = currAttachPoint->getParent();
+            assert(currAttachPoint != nullptr);
+        }
+        currAttachPoint = moveAllSibs(currDoomedChild, donorTree, currAttachPoint, recipientTree, sc);
+        if (nextDoomedChild == nullptr) {
+            assert(false);
+        }
+        currDoomedChild = nextDoomedChild;
+    }
+    if (hitDeepest || currAttachPoint == recipientAnc) {
+        hitDeepest = true;
+        currAttachPoint = recipientTree.createDeeperNode(currAttachPoint);
+    } else {
+        currAttachPoint = currAttachPoint->getParent();
+        assert(currAttachPoint != nullptr);
+    }
+    auto dp = donorAnc->getParent();
+    OttIdSet dpoids = donorAnc->getData().desIds;
+    auto p = moveAllChildren(donorAnc, donorTree, currAttachPoint, recipientTree, nullptr);
+    dbWriteOttSet("   donorAnc =", dpoids);
+    removeDesIdsToNdAndAnc(donorAnc, dpoids);
+    if (dp == nullptr) {
+        donorTree._setRoot(nullptr);
+        registerTreeForNode(dp, nullptr);
+    }
+    return true;
+}
+
+
+// If the parent of a banded node that was just removed is also banded to
+//  the same tree, or is the root, then the subsequent handling of nodes attached
+//  to a band or the root should work.
+// But if there are intervening unbannded nodes, we want to zip the path from
+//  nd to the next relevant ancestor onto the existing path...
+template<typename T, typename U>
+std::pair<NodeWithSplits *, NodeWithSplits *>
+GreedyPhylogeneticForest<T, U>::findGrandparentThatIsRootOrBandSharing(
+            FTree<RTSplits, MappedWithSplitsData> & donorTree,
+            NodeWithSplits * nd,
+            FTree<RTSplits, MappedWithSplitsData> &recipientTree) {
+    assert(nd != nullptr);
+    std::pair<NodeWithSplits *, NodeWithSplits *> r{nullptr, nullptr};
+    auto anc = nd->getParent();
+    if (anc == nullptr || anc->getParent() == nullptr) {
+        return r;
+    }
+    for (auto a : iter_anc(*nd)) {
+        if (a->getParent() == nullptr) {
+            r.first = a;
+            r.second = recipientTree.getRoot();
+            return r;
+        }
+        const auto & bfn = donorTree.getBandsForNode(a);
+        for (auto & b : bfn) {
+            const auto m = getTreeToNodeMapForBand(*b);
+            if (contains(m, &recipientTree)) {
+                r.first = a;
+                r.second = const_cast<NodeWithSplits *>(m.at(&recipientTree));
+                return r;
+            }
+        }
+    }
+    UNREACHABLE;
+}
+
+template<typename T, typename U>
 bool GreedyPhylogeneticForest<T, U>::mergeSingleBandedTree(
             FTree<RTSplits, MappedWithSplitsData> &donorTree,
             InterTreeBand<RTSplits> * band,
             FTree<RTSplits, MappedWithSplitsData> &recipientTree,
-            SupertreeContextWithSplits *) {
+            SupertreeContextWithSplits *sc) {
     LOG(DEBUG) << "pre mergeSingleBandedTree check";
     debugInvariantsCheck();
     const auto t2n = getTreeToNodeMapForBand(*band);
@@ -431,12 +541,24 @@ bool GreedyPhylogeneticForest<T, U>::mergeSingleBandedTree(
     if (p.second != rn) {
         NOT_IMPLEMENTED;
     }
-    registerTreeForNode(dn, nullptr);
-    if (dp == nullptr) {
-        donorTree._setRoot(nullptr);
-        return false;
+    auto anc = findGrandparentThatIsRootOrBandSharing(donorTree, dn, recipientTree);
+    if (anc.first == nullptr) {
+        // dn is a child of the root
+        registerTreeForNode(dn, nullptr);
+        if (dp == nullptr) {
+            donorTree._setRoot(nullptr);
+            return false;
+        }
+        dn->_detachThisNode();
+    } else {
+        zipPathsFromBarrenNode(donorTree,
+                               dn,
+                               anc.first,
+                               recipientTree,
+                               p.first,
+                               anc.second,
+                               sc);
     }
-    dn->_detachThisNode();
     LOG(DEBUG) << "post mergeSingleBandedTree check";
     debugInvariantsCheck();
     LOG(DEBUG) << "  exiting mergeSingleBandedTree";

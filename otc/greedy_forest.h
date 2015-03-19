@@ -79,29 +79,47 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                            long groupIndex);
     std::vector<T *> getRoots();
     void transferSubtreeInForest(
-                  NodeWithSplits * des,
-                  FTree<RTSplits, MappedWithSplitsData> & possDonor,
-                  NodeWithSplits * newPar,
-                  FTree<RTSplits, MappedWithSplitsData> & recipientTree,
-                  FTree<RTSplits, MappedWithSplitsData> *donorTree,
-                  InterTreeBand<RTSplits> * bandBeingMerged);
+                      NodeWithSplits * des,
+                      FTree<RTSplits, MappedWithSplitsData> & possDonor,
+                      NodeWithSplits * newPar,
+                      FTree<RTSplits, MappedWithSplitsData> & recipientTree,
+                      FTree<RTSplits, MappedWithSplitsData> *donorTree,
+                      InterTreeBand<RTSplits> * bandBeingMerged);
     void mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits *sc);
     std::pair<NodeWithSplits *, NodeWithSplits*> moveAllChildren(
-                  NodeWithSplits * donorParent,
-                  FTree<RTSplits, MappedWithSplitsData> &donorTree,
-                  NodeWithSplits * recipientNode,
-                  FTree<RTSplits, MappedWithSplitsData> &recipientTree,
-                  InterTreeBand<RTSplits> * bandBeingMerged);
+                      NodeWithSplits * donorParent,
+                      FTree<RTSplits, MappedWithSplitsData> &donorTree,
+                      NodeWithSplits * recipientNode,
+                      FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+                      InterTreeBand<RTSplits> * bandBeingMerged);
     bool performSingleBandMerge(
-                  std::size_t treeInd,
-                  InterTreeBand<RTSplits> * itb,
-                  const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
-                  SupertreeContextWithSplits *sc);
+                      std::size_t treeInd,
+                      InterTreeBand<RTSplits> * itb,
+                      const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
+                      SupertreeContextWithSplits *sc);
     bool performSetOfSingleBandMerges(
-                  std::size_t treeInd,
-                  std::set<InterTreeBand<typename T::data_type> *> & itbSet,
-                  const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
-                  SupertreeContextWithSplits *sc);
+                      std::size_t treeInd,
+                      std::set<InterTreeBand<typename T::data_type> *> & itbSet,
+                      const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
+                      SupertreeContextWithSplits *sc);
+    std::pair<NodeWithSplits *, NodeWithSplits *> findGrandparentThatIsRootOrBandSharing(
+                      FTree<RTSplits, MappedWithSplitsData> & donorTree,
+                      NodeWithSplits * nd,
+                      FTree<RTSplits, MappedWithSplitsData> &recipientTree);
+    bool zipPathsFromBarrenNode(
+                      FTree<RTSplits, MappedWithSplitsData> &donorTree,
+                      NodeWithSplits * donorDes,
+                      NodeWithSplits * donorAnc,
+                      FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+                      NodeWithSplits * recipientDes,
+                      NodeWithSplits * recipientAnc,
+                      SupertreeContextWithSplits *);
+    NodeWithSplits* moveAllSibs(
+                      NodeWithSplits * donorC,
+                      FTree<RTSplits, MappedWithSplitsData> &donorTree,
+                      NodeWithSplits * attachPoint,
+                      FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+                      SupertreeContextWithSplits *);
 };
 
 using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSplits>;
