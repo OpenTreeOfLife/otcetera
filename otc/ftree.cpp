@@ -392,12 +392,16 @@ void FTree<T, U>::stealExclusionStatements(node_type * newPar,
 
 template<typename T, typename U>
 OttIdSet FTree<T, U>::stealInclusionStatements(node_type * newPar,
-                                           node_type * srcNode,
-                                           FTree<T, U>  & donorTree) {
+                                               node_type * srcNode,
+                                               FTree<T, U>  & donorTree,
+                                               InterTreeBand<T> * bandToSkip) {
     assert(newPar != nullptr);
     auto bandSet = donorTree.bands.stealBands(srcNode);
     OttIdSet r;
     for (auto bandPtr : bandSet) {
+        if (bandToSkip == bandPtr) {
+            continue;
+        }
         const OttIdSet pis = bandPtr->getPhantomIds(srcNode);
         r.insert(begin(pis), end(pis));
         bandPtr->reassignAttachmentNode(srcNode, newPar);

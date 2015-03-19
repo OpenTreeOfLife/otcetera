@@ -79,15 +79,18 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                            long groupIndex);
     std::vector<T *> getRoots();
     void transferSubtreeInForest(NodeWithSplits * des,
-                             FTree<RTSplits, MappedWithSplitsData> & possDonor,
-                                                    NodeWithSplits * newPar,
-                                                 FTree<RTSplits, MappedWithSplitsData> & recipientTree,
-                                                 FTree<RTSplits, MappedWithSplitsData> *donorTree);
+                                 FTree<RTSplits, MappedWithSplitsData> & possDonor,
+                                 NodeWithSplits * newPar,
+                                 FTree<RTSplits, MappedWithSplitsData> & recipientTree,
+                                 FTree<RTSplits, MappedWithSplitsData> *donorTree,
+                                 InterTreeBand<RTSplits> * bandBeingMerged);
     void mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits *sc);
-    NodeWithSplits * moveAllChildren(NodeWithSplits * donorParent,
-                                     FTree<RTSplits, MappedWithSplitsData> &donorTree,
-                                     NodeWithSplits * recipientNode,
-                                     FTree<RTSplits, MappedWithSplitsData> &recipientTree);
+    std::pair<NodeWithSplits *, NodeWithSplits*> moveAllChildren(
+                      NodeWithSplits * donorParent,
+                      FTree<RTSplits, MappedWithSplitsData> &donorTree,
+                      NodeWithSplits * recipientNode,
+                      FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+                      InterTreeBand<RTSplits> * bandBeingMerged);
 };
 
 using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSplits>;

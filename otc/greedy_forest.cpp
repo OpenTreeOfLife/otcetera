@@ -228,13 +228,23 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
                 FTree<RTSplits, MappedWithSplitsData> & possDonor,
                 NodeWithSplits * newPar,
                 FTree<RTSplits, MappedWithSplitsData> & recipientTree, 
-                FTree<RTSplits, MappedWithSplitsData> *donorTree) {
-    LOG(DEBUG) << "top transferSubtreeInForest pre des == " << getDesignator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
-    LOG(DEBUG) << "                            newPar " << (long) newPar << " " << std::hex << (long) newPar << std::dec;
+                FTree<RTSplits, MappedWithSplitsData> *donorTree,
+                InterTreeBand<RTSplits> * bandBeingMerged) {
     assert(des != nullptr);
     auto oldPar = des->getParent();
+    LOG(DEBUG) << "top transferSubtreeInForest pre des == " << getDesignator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
+    LOG(DEBUG) << "                            newPar " << (long) newPar << " " << std::hex << (long) newPar << std::dec;
     LOG(DEBUG) << "                            oldPar " << (long) oldPar << " " << std::hex << (long) oldPar << std::dec;
-    debugInvariantsCheck();
+    LOG(DEBUG) << "    newick of newPar before actions of transferSubtreeInForest";
+    dbWriteNewick(newPar);
+    LOG(DEBUG) << "    newick of oldPar before actions of transferSubtreeInForest";
+    dbWriteNewick(oldPar);
+    dbWriteOttSet("    on entry des->desIds", des->getData().desIds);
+    dbWriteOttSet("    on entry newPar->desIds", newPar->getData().desIds);
+    dbWriteOttSet("    on entry oldPar->desIds", oldPar->getData().desIds);
+    if (bandBeingMerged == nullptr) {
+        debugInvariantsCheck();
+    }
     assert(des != nullptr);
     assert(newPar != nullptr);
     if (donorTree == nullptr) {
@@ -248,17 +258,24 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
     assert(!recipientTree.isExcludedFrom(des, newPar));
     assert(getTreeForNode(des) == donorTree);
     des->_detachThisNode();
-    dbWriteOttSet(" des pre addAndUpdateChild", des->getData().desIds);
-    dbWriteOttSet(" newPar pre addAndUpdateChild", newPar->getData().desIds);
+    if (bandBeingMerged == nullptr) {
+        dbWriteOttSet(" des pre addAndUpdateChild", des->getData().desIds);
+        dbWriteOttSet(" newPar pre addAndUpdateChild", newPar->getData().desIds);
+    }
     addAndUpdateChild(newPar, des, recipientTree);
-    dbWriteOttSet(" des pre loop", des->getData().desIds);
-    dbWriteOttSet(" newPar pre loop", newPar->getData().desIds);
+    if (bandBeingMerged == nullptr) {
+        dbWriteOttSet(" des pre loop", des->getData().desIds);
+        dbWriteOttSet(" newPar pre loop", newPar->getData().desIds);
+    }
     if (oldPar != nullptr) {
         removeDesIdsToNdAndAnc(oldPar, des->getData().desIds);
     }
+    if (bandBeingMerged == nullptr) {
+        dbWriteOttSet(" oldPar post removeDesIdsToNdAndAnc", oldPar->getData().desIds);
+    }
     if (donorTree != &recipientTree) {
         recipientTree.stealExclusionStatements(newPar, oldPar, *donorTree);
-        const auto oids = recipientTree.stealInclusionStatements(newPar, oldPar, *donorTree);
+        const auto oids = recipientTree.stealInclusionStatements(newPar, oldPar, *donorTree, bandBeingMerged);
         if (oldPar != nullptr) {
             removeDesIdsToNdAndAnc(oldPar, oids);
         }
@@ -272,11 +289,13 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
     if (newPar->getParent()) {
         addDesIdsToNdAndAnc(newPar->getParent(), newPar->getData().desIds);
     }
-    LOG(DEBUG) << "after actions of transferSubtreeInForest";
-    dbWriteNewick(newPar);
-    LOG(DEBUG) << "transferSubtreeInForest post";
-    debugInvariantsCheck();
-    LOG(DEBUG) << "transferSubtreeInForest exiting";
+    if (bandBeingMerged == nullptr) {
+        LOG(DEBUG) << "after actions of transferSubtreeInForest";
+        dbWriteNewick(newPar);
+        LOG(DEBUG) << "transferSubtreeInForest post";
+        debugInvariantsCheck();
+        LOG(DEBUG) << "transferSubtreeInForest exiting";
+    }
 }
 
 template<typename T, typename U>
@@ -340,25 +359,51 @@ bool GreedyPhylogeneticForest<T, U>::mergeSingleBandedTree(
             InterTreeBand<RTSplits> * band,
             FTree<RTSplits, MappedWithSplitsData> &recipientTree,
             SupertreeContextWithSplits *) {
+    LOG(DEBUG) << "pre mergeSingleBandedTree check";
+    debugInvariantsCheck();
     const auto t2n = getTreeToNodeMapForBand(*band);
     auto dn = const_cast<NodeWithSplits *>(t2n.at(&donorTree));
     auto dp = dn->getParent();
     auto rn = const_cast<NodeWithSplits *>(t2n.at(&recipientTree));
-    rn = moveAllChildren(dn, donorTree, rn, recipientTree);
+    const auto & beforePhantomsRN = band->getPhantomNodes(rn);
+    const auto & beforePhantomsDN = band->getPhantomNodes(dn);
+    // any phantom nodes in common between dn and rn must be attached
+    //  to a different tree. So they will remain "phantom" wrt rn
+    auto movedNodeSet = set_difference_as_set(beforePhantomsRN, beforePhantomsDN);
+    auto p = moveAllChildren(dn, donorTree, rn, recipientTree, band);
+    OttIdSet movedIDSet;
+    for (auto mel : movedNodeSet) {
+        movedIDSet.insert(mel->getOttId());
+    }
+    for (auto mel : beforePhantomsDN) {
+        movedIDSet.insert(mel->getOttId());
+    }
+    removeDesIdsToNdAndAnc(dn, movedIDSet);
+    dbWriteOttSet(" movedIDSet =", movedIDSet);
+    rn = p.first;
+    band->removeNode(dn);
+    band->removeFromSet(rn, movedNodeSet);
+    if (p.second != rn) {
+        NOT_IMPLEMENTED;
+    }
     registerTreeForNode(dn, nullptr);
     if (dp == nullptr) {
         donorTree._setRoot(nullptr);
         return false;
     }
     dn->_detachThisNode();
+    LOG(DEBUG) << "post mergeSingleBandedTree check";
+    debugInvariantsCheck();
+    LOG(DEBUG) << "  exiting mergeSingleBandedTree";
     return true;
 }
 
 template<typename T, typename U>
-NodeWithSplits * GreedyPhylogeneticForest<T, U>::moveAllChildren(NodeWithSplits * donorParent,
+std::pair<NodeWithSplits *, NodeWithSplits*> GreedyPhylogeneticForest<T, U>::moveAllChildren(NodeWithSplits * donorParent,
                                                      FTree<RTSplits, MappedWithSplitsData> &donorTree,
                                                      NodeWithSplits * recipientNode,
-                                                     FTree<RTSplits, MappedWithSplitsData> &recipientTree) {
+                                                     FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+                                                     InterTreeBand<RTSplits> * bandBeingMerged) {
     if (recipientTree.isExcludedFrom(donorParent, recipientNode)) {
         if (recipientNode == recipientTree.getRoot()) {
             recipientTree.createDeeperRoot();
@@ -378,12 +423,14 @@ NodeWithSplits * GreedyPhylogeneticForest<T, U>::moveAllChildren(NodeWithSplits 
         rc.push_back(currChild);
     }
     for (auto currChild : rc) {
-        debugInvariantsCheck();
-        transferSubtreeInForest(currChild, donorTree, attachmentPoint, recipientTree, &donorTree);
+        if (bandBeingMerged == nullptr) {
+            debugInvariantsCheck();
+        }
+        transferSubtreeInForest(currChild, donorTree, attachmentPoint, recipientTree, &donorTree, bandBeingMerged);
         LOG(DEBUG) << "Back from transferSubtreeInForest";
     }
     donorParent->_setFirstChild(nullptr);
-    return recipientNode;
+    return std::pair<NodeWithSplits *, NodeWithSplits*>{recipientNode, attachmentPoint};
 }
 
 template<typename T, typename U>
@@ -402,7 +449,8 @@ void GreedyPhylogeneticForest<T, U>::mergeTreesToFirstPostBandHandling(Supertree
         auto currTreeRoot = currTree.getRoot();
         assert(currTreeRoot->getParent() == nullptr);
         assert(!currTreeRoot->isTip());
-        firstTreeRoot = moveAllChildren(currTreeRoot, currTree, firstTreeRoot, firstTree);
+        auto p = moveAllChildren(currTreeRoot, currTree, firstTreeRoot, firstTree, nullptr);
+        firstTreeRoot = p.first;
         currTreeRoot = currTree.getRoot();
         for (auto j : nd2Tree) {
             assert((j.first == currTreeRoot || j.second != &currTree));

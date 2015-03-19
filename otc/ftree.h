@@ -83,6 +83,13 @@ class InterTreeBand {
         assert(phantom->hasOttId());
         nd2phantom[nd].insert(phantom);
     }
+    void removeNode(node_type * nd) {
+        nd2phantom.erase(nd);
+    }
+    void removeFromSet(node_type * nd, const node_set & nset) {
+        node_set r = set_difference_as_set(nd2phantom.at(nd), nset);
+        nd2phantom[nd] = r;
+    }
     void addNode(node_type * nd, const node_set & nset) {
         for (auto p : nset) {
             assert(p->hasOttId());
@@ -95,13 +102,15 @@ class InterTreeBand {
     bool bandPointHasAny(const node_type * nd, const node_set & ns) const {
         return !(areDisjoint(nd2phantom.at(nd), ns));
     }
-    OttIdSet getPhantomIds(const node_type * nd) const {
-        OttIdSet r;
+    const node_set & getPhantomNodes(const node_type * nd) const {
         auto npIt = nd2phantom.find(nd);
-        if (npIt != nd2phantom.end()) {
-            for (auto np : npIt->second) {
-                r.insert(np->getOttId());
-            }
+        return (npIt == nd2phantom.end() ? emptySet : npIt->second);
+    }
+    OttIdSet getPhantomIds(const node_type * nd) const {
+        const auto & ns = getPhantomNodes(nd);
+        OttIdSet r;
+        for (auto np : ns) {
+            r.insert(np->getOttId());
         }
         return r;
     }
@@ -124,6 +133,7 @@ class InterTreeBand {
     private:
     std::map<const node_type *, node_set> nd2phantom;
     const PhyloStatement & statement;
+    const node_set emptySet;
 };
 
 template<typename T>
@@ -284,7 +294,10 @@ class FTree {
     // puts a node between nd and its parent and returns the new node
     node_type * createDeeperNode(node_type *nd);
     void stealExclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
-    OttIdSet stealInclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
+    OttIdSet stealInclusionStatements(node_type * newPar, 
+                                      node_type * srcNode,
+                                      FTree<T, U>  & donorTree,
+                                      InterTreeBand<T> * bandToSkip);
     void registerExclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
     void registerInclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
     private:
