@@ -413,7 +413,7 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(U & scaffoldNode, SupertreeContextW
     auto firstMovingChild = cv[0];
     auto lastMovingChild = *cv.rbegin();
     if (entrySib == nullptr) {
-        p->_setLChild(firstMovingChild);
+        p->_setFirstChild(firstMovingChild);
     } else {
         assert(entrySib->getNextSib() == exitSib); // _detachThisNode guarantees this
         entrySib->_setNextSib(firstMovingChild);

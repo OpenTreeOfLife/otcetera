@@ -1,3 +1,34 @@
+Code that can probably be thrown away
+This file is NOT part of the build!
+It was helpful to have it around for reference
+
+std::set<NodeWithSplits *> detectExclusionsToMoveDown(FTree<RTSplits, MappedWithSplitsData> & donor,
+                                                    NodeWithSplits *dr,
+                                                    FTree<RTSplits, MappedWithSplitsData> & recipient,
+                                                    NodeWithSplits *rr) {
+    assert(dr != nullptr);
+    assert(rr != nullptr);
+    std::set<NodeWithSplits *> r;
+    for (auto c : iter_child(*rr)) {
+        if (donor.anyExcludedAtNode(dr, c->getData().desIds)) {
+            r.insert(c);
+        }
+    }for (auto c : iter_child(*dr)) {
+        if (recipient.anyExcludedAtNode(rr, c->getData().desIds)) {
+            r.insert(c);
+        }
+    }
+    return r;
+}
+
+template<typename T, typename U>
+void GreedyPhylogeneticForest<T, U>::mergePathToNextBand(
+            FTree<RTSplits, MappedWithSplitsData> & donor,
+            NodeWithSplits * spikeDes,
+            FTree<RTSplits, MappedWithSplitsData> & recipient, 
+            SupertreeContextWithSplits *sc) {
+    NOT_IMPLEMENTED;
+}
 
 
 // addIngroupAtNode adds leaves for all "new" ottIds to:
@@ -170,3 +201,185 @@ void FTree<T, U>::addSubtree(RootedTreeNode<T> * subtreeRoot,
     }
     assert(false);
 }
+
+template<typename T, typename U>
+MergeStartInfo calcTreePairMergeStartInfo(T & tdt, U* toDie, const std::set<InterTreeBand<T> *> &, T & tt, U* target);
+std::set<NodeWithSplits *> detectExclusionsToMoveDown(FTree<RTSplits, MappedWithSplitsData> & donor,
+                                                    NodeWithSplits *dr,
+                                                    FTree<RTSplits, MappedWithSplitsData> & recipient,
+                                                    NodeWithSplits *rr);
+
+template<typename T, typename U>
+MergeStartInfo calcTreePairMergeStartInfo(T & tdt, U* toDie, const std::set<InterTreeBand<T> *> & bands, T & tt, U* target) {
+    const std::set<NodeWithSplits *> emptySet;
+    std::list<MRCABandedPaths> emptyList;
+    MergeStartInfo r{false, emptyList, emptySet};
+    std::list<MRCABandedPaths> & desBands = std::get<1>(r);
+    std::set<NodeWithSplits *> & unbandedChildren = std::get<2>(r);
+    std::map<NodeWithSplits *, InterTreeBand<T> * > targetNd2ITB;
+    for (auto b : bands) {
+        auto n = b->nodeForTree(tt);
+        if (n != nullptr) {
+            targetNd2ITB[n] = b;
+        }
+    }
+    std::map<NodeWithSplits *, std::set<InterTreeBand<T> *> > childNd2DesITB;
+    for (auto nd : iter_child(target)) {
+        childNd2DesITB = std::set<InterTreeBand<T> *>{};
+    }
+    for (auto tp : targetNd2ITB) {
+        for (auto & cp : childNd2DesITB) {
+            if (isAncestorDesNoIter(cp.first, tp.first)) {
+                cp.second.insert(tp.second);
+            }
+        }
+    }
+    NOT_IMPLEMENTED
+    /*for (auto & cp :childNd2DesITB) {
+        if (cp.second.empty()) {
+            unbandedChildren.insert(cp.first);
+        } else {
+            MRCABandedPaths mbp;
+            std::set<NodeWithSplits *> tdns;
+            std::set<NodeWithSplits *> ttns;
+            for (auto bpp : cp.second) {
+                auto tdn = bpp->nodeForTree(tdt);
+                auto n = bpp->nodeForTree(tt);
+                tdns.insert(tdn);
+                ttns.insert(n);
+                mbp.bandedPairs.insert(std::pair<NodeWithSplits *, NodeWithSplits *>(tdn, n));
+            }
+            mbp.mrcaF = getMRCA(tdns);
+            mbp.mrcaS = getMRCA(ttns);
+            desBands.push_back(mbp);
+        }
+    }*/
+    return r;
+}
+
+
+template<typename T, typename U>
+void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc) {
+    if (trees.size() == 1) {
+        return;
+    }
+    using FTreeType = FTree<RTSplits, MappedWithSplitsData>;
+    std::vector<FTreeType *> sortedTrees;
+    sortedTrees.reserve(trees.size());
+    for (auto & t : trees) {
+        FTreeType & tre = t.second;
+        sortedTrees.push_back(&tre);
+    }
+    const std::size_t nTrees = sortedTrees.size();
+    bool hasLeafInit = true;
+    std::vector<bool> stillHasLeaves (nTrees, hasLeafInit);
+    for (auto i = sortedTrees.size() - 1 ; i > 0; --i) {
+        FTreeType & toDie = *sortedTrees.at(i);
+        std::set<InterTreeBand<typename T::data_type> *> itbSet = collectBandsForSubtree(toDie, toDie.getRoot());
+        if (!itbSet.empty()) {
+            if (itbSet.size() == 1) {
+                InterTreeBand<typename T::data_type> * itb = *itbSet.begin();
+                FTreeType * toMergeTo = nullptr;
+                for (auto j = 0U; j < i; ++j) {
+                    auto btp = sortedTrees.at(j);
+                    if (bts.find(ntp) != bts.end()) {
+                        toMergeTo = btp;
+                        break;
+                    }
+                }
+                assert(toMergeTo != nullptr);
+                stillHasLeaves[i] = mergeSingleBandedTree(toDie, itb, *toMergeTo, sc);
+            } else {
+                LOG(DEBUG) <<  << "bands for a tree";
+                writeForestDOTToFN("writingForestMerge.dot");
+                NOT_IMPLEMENTED;
+            }
+        }
+    }
+    // clean up all trees with no leaves...
+    assert(stillHasLeaves[0]);
+    
+    auto trIt = begin(trees);
+    for (unsigned i = 0; trIt != end(trees); ++i) {
+        if (stillHasLeaves.at(i)) {
+            ++trIt;
+        } else {
+            trIt = trees.erase(trIt);
+        }
+    }
+    mergeTreesToFirstPostBandHandling(sc);
+    LOG(DEBUG) << "exiting mergeForest";
+    /*
+    const std::set<NodeWithSplits *> emptySet;
+    const std::set<NodeWithSplits *> emptyList;
+    for (auto i = sortedTrees.size() -1 ; i > 0; --i) {
+        FTreeType & toDie = *sortedTrees[i];
+
+        std::set<InterTreeBand<T> *> itbSet = collectBandsForSubtree(toDie, toDie.getRoot());
+        MergeStartInfo bmi{false, emptySet, emptySet};
+        FTreeType * bestTarget  = nullptr;
+        for (auto j = 0U; j < i; ++j) {
+            FTreeType & target = *sortedTrees[i];
+            const auto mi = calcTreePairMergeStartInfo(toDie, toDie.getRoot(), itbSet, target, target.getRoot());
+            if (j == 0 || std::get<0>(mi) || std::get<1>(mi).size() >  std::get<1>(bmi).size()) {
+                bestTarget = &target;
+                bmi = mi;
+                if (std::get<0>(mi)) {
+                    break;
+                }
+            }
+        }
+        assert(bestTarget != nullptr);
+        mergeBandedTrees(toDie, *bestTarget, bmi, sc);
+    }
+    auto tmIt = trees.begin();
+    ++tmIt; // keep the first tree this is the final target
+    while (tmIt != trees.end()) {
+        tmIt = trees.erase(tmIt);
+    }
+    */
+}
+
+
+
+template<typename T, typename U>
+void GreedyPhylogeneticForest<T, U>::mergeBandedTrees(FTree<RTSplits, MappedWithSplitsData> & donor,
+                                                 FTree<RTSplits, MappedWithSplitsData> & recipient, 
+                                                 const MergeStartInfo & mi,
+                                                 SupertreeContextWithSplits *sc) {
+    NOT_IMPLEMENTED;
+    /*
+    const std::set<NodeWithSplits *> & desBands = std::get<1>(mi);
+    const std::set<NodeWithSplits *> & unbandedChildren = std::get<2>(mi);
+    if (std::get<0>(mi)) {
+        //merge root of donor recipient
+        auto dr = donor.getRoot();
+        auto rr = recipient.getRoot();
+        auto & rdi = rr->getData().desIds;
+        const auto toPushDown = detectExclusionsToMoveDown(donor, dr, recipient, rr);
+        NodeWithSplits * rrr = nullptr;
+        if (!toPushDown.empty()) {
+            recipient.createDeeperRoot();
+            rrr = recipient.getRoot();
+            assert(rr->getParent() == rrr);
+            rrr->getData().desIds = rdi;
+            for (auto nd : toPushDown) {
+                transferSubtreeInForest(nd, donor, rrr, recipient, nullptr);
+            }
+        }
+        for (auto spikeDes : desBands) {
+            mergePathToNextBand(donor, spikeDes, recipient, sc);
+        }
+        for (auto c : iter_child(*dr)) {
+            if (contains(toPushDown, c)) {
+                continue;
+            }
+            transferSubtreeInForest(c, donor, rrr, recipient, &donor);
+        }
+        if (rrr != nullptr) {
+            rrr->getData().desIds.insert(begin(rdi), end(rdi));
+        }
+        return;
+    }*/
+}
+

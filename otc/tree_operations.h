@@ -640,11 +640,11 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
         }
     } else {
         if (f != nullptr) {
-            nd->_setLChild(f);
+            nd->_setFirstChild(f);
             assert(c != nullptr);
             c->_setNextSib(exitChild);
         } else {
-            nd->_setLChild(exitChild);
+            nd->_setFirstChild(exitChild);
         }
     }
     if (entryChild != nullptr || exitChild != nullptr) {

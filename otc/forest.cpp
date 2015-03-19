@@ -74,10 +74,9 @@ void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::addAndUpdateChild(RootedTreeNode<T> *p,
+void RootedForest<T,U>::_AndUpdateChild(RootedTreeNode<T> *p,
                                                     RootedTreeNode<T> *c,
                                                     FTree<T, U> &tree) {
-    p->addChild(c);
     registerTreeForNode(c, &tree);
     const auto & cd = c->getData().desIds;
     if (cd.size() == 1 && !c->hasOttId()) {
@@ -458,6 +457,21 @@ bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     debugInvariantsCheck();
     return rc;
 }
+
+template<typename T, typename U>
+std::map<const FTree<T, U> *, const RootedTreeNode<T> *>
+RootedForest<T, U>::getTreeToNodeMapForBand(const InterTreeBand<T> & itb) const {
+    std::set<const node_type *> bns = itb.getBandedNodes();
+    std::map<const FTree<T, U> *, const RootedTreeNode<T> *> r;
+    for (auto bnp : bns) {
+        auto t = getTreeForNode(bnp);
+        assert(t != nullptr);
+        assert(!contains(r, t));
+        r[t] = bnp;
+    }
+    return r;
+}
+
 
 template<typename T, typename U>
 FTree<T, U> & RootedForest<T,U>::addDisjointTree(const PhyloStatement &ps) {

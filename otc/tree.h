@@ -45,7 +45,7 @@ class RootedTreeNode {
             return rSib;
         }
         // low-level
-        void _setLChild(node_type *s) {
+        void _setFirstChild(node_type *s) {
             lChild = s;
         }
         void _setNextSib(node_type *s) {
@@ -210,7 +210,7 @@ class RootedTreeNode {
             if (ls == nullptr) {
                 auto p = getParent();
                 if (p != nullptr) {
-                    p->_setLChild(getNextSib());
+                    p->_setFirstChild(getNextSib());
                 }
             } else {
                 ls->_setNextSib(getNextSib());

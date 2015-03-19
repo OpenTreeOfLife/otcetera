@@ -272,12 +272,17 @@ class FTree {
     node_type * getRoot() {
         return root;
     }
+    void _setRoot(node_type *r) {
+        root = r;
+    }
     void mirrorPhyloStatement(const PhyloStatement & ps);
     void debugInvariantsCheckFT() const;
     void debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const;
     std::set<RootedTreeNode<T> *> ottIdSetToNodeSet(const OttIdSet &ottIdSet) const;
     bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     void createDeeperRoot();
+    // puts a node between nd and its parent and returns the new node
+    node_type * createDeeperNode(node_type *nd);
     void stealExclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
     OttIdSet stealInclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
     void registerExclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);

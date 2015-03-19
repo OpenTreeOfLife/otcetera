@@ -105,7 +105,7 @@ template<typename T>
 void InterTreeBandBookkeeping<T>::reassignAttachmentNode(InterTreeBand<T> * b,
                                          RootedTreeNode<T> * oldAnc,
                                          RootedTreeNode<T> * newAnc,
-                                         const PhyloStatement & ps) {
+                                         const PhyloStatement & ) {
     assert(b != nullptr);
     assert(oldAnc != nullptr);
     assert(newAnc != nullptr);
@@ -163,6 +163,34 @@ void FTree<T, U>::createDeeperRoot() {
     auto nr = forest.createNode(nullptr, this);
     forest.addAndUpdateChild(nr, root, *this);
     root = nr;
+}
+
+template<typename T, typename U>
+RootedTreeNode<T> * FTree<T, U>::createDeeperNode(RootedTreeNode<T> *nd) {
+    if (nd == root) {
+        createDeeperRoot();
+        return root;
+    }
+    auto p = nd->getParent();
+    assert(p != nullptr);
+    // manually place the new node nn in the same spot as nd occupies
+    auto nn = forest.createNode(nullptr, this);
+    auto ps = nd->getPrevSib();
+    if (ps == nullptr) {
+        assert(p->getFirstChild() == nd);
+        p->_setFirstChild(nn);
+    } else {
+        ps->_setNextSib(nn);
+    }
+    nn->_setNextSib(nd->getNextSib());
+    nn->_setNextSib(nullptr);
+    nn->_setParent(p);
+    // we can add nd to nn in the normal way
+    forest.addAndUpdateChild(nd, nn, *this);
+    // but we placed nn in the exact spot that nd used to occupy, so
+    //  we don't want to call an addChild... method.
+    forest._AndUpdateChild(nn, p, *this);
+    return nn;
 }
 
 template<typename T, typename U>

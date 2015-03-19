@@ -47,13 +47,18 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
     }
     void finishResolutionOfEmbeddedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits * sc);
     private:
+    void mergeForest(SupertreeContextWithSplits *);
+    bool mergeSingleBandedTree(
+                FTree<RTSplits, MappedWithSplitsData> &donorTree,
+                InterTreeBand<RTSplits> * band,
+                FTree<RTSplits, MappedWithSplitsData> &recipientTree,
+                SupertreeContextWithSplits *sc);
+    CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & incGroup, const OttIdSet & leafSet);
+    /*
     void mergeBandedTrees(FTree<RTSplits, MappedWithSplitsData> & donor,
                      FTree<RTSplits, MappedWithSplitsData> & recipient,
                      const MergeStartInfo & mi,
                      SupertreeContextWithSplits *);
-    void mergeForest(SupertreeContextWithSplits *);
-    CouldAddResult couldAddToTree(NodeWithSplits *r, const OttIdSet & incGroup, const OttIdSet & leafSet);
-    /*
     void addIngroupAtNode(NodeWithSplits *r, NodeWithSplits *ing, NodeWithSplits *outg, const OttIdSet & incGroup, const OttIdSet & leafSet);
     void graftTreesTogether(NodeWithSplits *rr,
                             NodeWithSplits *ri,
@@ -62,6 +67,10 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                             NodeWithSplits *delo,
                             const OttIdSet & incGroup,
                             const OttIdSet & leafSet);
+    void mergePathToNextBand(FTree<RTSplits, MappedWithSplitsData> & donor,
+                             NodeWithSplits * spikeDes,
+                             FTree<RTSplits, MappedWithSplitsData> & recipient, 
+                             SupertreeContextWithSplits *sc);
     */
     std::set<OttIdSet> encountered; // used so that the PhyloStatement  have refs that outlive them
     bool addGroupToNewTree(const OttIdSet & incGroup,
@@ -69,16 +78,16 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                            int treeIndex,
                            long groupIndex);
     std::vector<T *> getRoots();
-    void mergePathToNextBand(FTree<RTSplits, MappedWithSplitsData> & donor,
-                             NodeWithSplits * spikeDes,
-                             FTree<RTSplits, MappedWithSplitsData> & recipient, 
-                             SupertreeContextWithSplits *sc);
     void transferSubtreeInForest(NodeWithSplits * des,
                              FTree<RTSplits, MappedWithSplitsData> & possDonor,
                                                     NodeWithSplits * newPar,
                                                  FTree<RTSplits, MappedWithSplitsData> & recipientTree,
                                                  FTree<RTSplits, MappedWithSplitsData> *donorTree);
     void mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits *sc);
+    NodeWithSplits * moveAllChildren(NodeWithSplits * donorParent,
+                                     FTree<RTSplits, MappedWithSplitsData> &donorTree,
+                                     NodeWithSplits * recipientNode,
+                                     FTree<RTSplits, MappedWithSplitsData> &recipientTree);
 };
 
 using SupertreeContextWithSplits = SupertreeContext<NodeWithSplits, NodeWithSplits>;

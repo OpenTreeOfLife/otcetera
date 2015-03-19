@@ -153,7 +153,12 @@ class RootedForest {
     const tree_type * getTreeForNode(const node_type * nd) const {
         return nd2Tree.at(const_cast<node_type *>(nd));
     }
-    void addAndUpdateChild(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree);
+    void addAndUpdateChild(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree) {
+        p->addChild(c);
+        _AndUpdateChild(p, c, tree);
+    }
+    void _AndUpdateChild(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree);
+    std::map<const tree_type *, const node_type *> getTreeToNodeMapForBand(const InterTreeBand<T> &) const;
     private:
     std::list<OverlapFTreePair<T,U> > getSortedOverlappingTrees(const OttIdSet &inc);
     node_type * addDetachedLeaf(const OttId & ottId);
