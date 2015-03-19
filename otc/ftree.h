@@ -122,6 +122,9 @@ class InterTreeBand {
     bool isTheSetOfPhantomNodes(node_type * nd, const node_set & t) const {
         return nd2phantom.at(nd) == t;
     }
+    bool isABandedNodeInThis(const node_type *q) const {
+        return contains(nd2phantom, q);
+    }
     std::set<const node_type *> getBandedNodes() const {
         std::set<const node_type *> r;
         for (const auto & m : nd2phantom) {
@@ -130,6 +133,9 @@ class InterTreeBand {
         return r;
     }
     void debugInvariantsCheckITB() const;
+    const std::map<const node_type *, node_set> & getRawMap() const {
+        return nd2phantom;
+    }
     private:
     std::map<const node_type *, node_set> nd2phantom;
     const PhyloStatement & statement;
@@ -221,6 +227,10 @@ class InterTreeBandBookkeeping {
         assert(band != nullptr);
         band2Node[band] = nd;
         node2Band[nd].insert(band);
+        if (!contains(band->getRawMap(), nd)) {
+            const std::set<node_type *> emptyNodeSet;
+            band->addNode(nd, emptyNodeSet);
+        }
     }
     private:
     std::map<const band_type *, node_type *> band2Node;

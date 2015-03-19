@@ -299,6 +299,65 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
 }
 
 template<typename T, typename U>
+bool GreedyPhylogeneticForest<T, U>::performSingleBandMerge(
+            std::size_t treeInd,
+            InterTreeBand<RTSplits> * itb,
+            const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
+            SupertreeContextWithSplits *sc) {
+    assert(itb != nullptr);
+    auto btm = getTreeToNodeMapForBand(*itb);
+    FTree<RTSplits, MappedWithSplitsData> * toMergeTo = nullptr;
+    for (auto j = 0U; j < treeInd; ++j) {
+        auto btp = sortedTrees.at(j);
+        if (contains(btm, btp)) {
+            toMergeTo = btp;
+            break;
+        }
+    }
+    assert(toMergeTo != nullptr);
+    FTree<RTSplits, MappedWithSplitsData> & toDie = *sortedTrees.at(treeInd);
+    return mergeSingleBandedTree(toDie, itb, *toMergeTo, sc);
+}
+
+template<typename T, typename U>
+bool GreedyPhylogeneticForest<T, U>::performSetOfSingleBandMerges(
+            std::size_t treeInd,
+            std::set<InterTreeBand<typename T::data_type> *> & itbSet,
+            const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
+            SupertreeContextWithSplits *sc) {
+    LOG(WARNING) << itbSet.size() <<  " bands for a tree. It is not a great idea to merge these one at at time...";
+    LOG(DEBUG) << itbSet.size() <<  " bands for a tree. It is not a great idea to merge these one at at time...";
+    //            writeForestDOTToFN("writingForestMerge.dot");
+    //            NOT_IMPLEMENTED;
+    std::vector<InterTreeBand<typename T::data_type> * > postOrd;
+    postOrd.reserve(itbSet.size());
+    FTree<RTSplits, MappedWithSplitsData> & toDie = *sortedTrees.at(treeInd);
+    std::set<InterTreeBand<typename T::data_type> *> toOrganize = itbSet;
+    for (auto nd : iter_post(toDie)) {
+        if (toOrganize.empty()) {
+            break;
+        }
+        auto itbIt = begin(toOrganize);
+        for (; itbIt != end(toOrganize);) {
+            InterTreeBand<typename T::data_type> * ip = *itbIt;
+            if (ip->isABandedNodeInThis(nd)) {
+                postOrd.push_back(ip);
+                itbIt = toOrganize.erase(itbIt);
+            } else {
+                ++itbIt;
+            }
+        }
+    }
+    assert(toOrganize.empty());
+    for (auto sit : postOrd) {
+        if (!performSingleBandMerge(treeInd, sit, sortedTrees, sc)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template<typename T, typename U>
 void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc) {
     if (trees.size() == 1) {
         return;
@@ -313,28 +372,14 @@ void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc)
     const std::size_t nTrees = sortedTrees.size();
     bool hasLeafInit = true;
     std::vector<bool> stillHasLeaves (nTrees, hasLeafInit);
-    for (auto i = sortedTrees.size() - 1 ; i > 0; --i) {
-        FTreeType & toDie = *sortedTrees.at(i);
+    for (auto treeInd = sortedTrees.size() - 1 ; treeInd > 0; --treeInd) {
+        FTreeType & toDie = *sortedTrees.at(treeInd);
         std::set<InterTreeBand<typename T::data_type> *> itbSet = collectBandsForSubtree(toDie, toDie.getRoot());
         if (!itbSet.empty()) {
             if (itbSet.size() == 1) {
-                InterTreeBand<RTSplits> * itb = *itbSet.begin();
-                assert(itb != nullptr);
-                auto btm = getTreeToNodeMapForBand(*itb);
-                FTreeType * toMergeTo = nullptr;
-                for (auto j = 0U; j < i; ++j) {
-                    auto btp = sortedTrees.at(j);
-                    if (contains(btm, btp)) {
-                        toMergeTo = btp;
-                        break;
-                    }
-                }
-                assert(toMergeTo != nullptr);
-                stillHasLeaves[i] = mergeSingleBandedTree(toDie, itb, *toMergeTo, sc);
+                stillHasLeaves[treeInd] = performSingleBandMerge(treeInd, *itbSet.begin(), sortedTrees, sc);
             } else {
-                LOG(DEBUG) << itbSet.size() <<  "bands for a tree";
-                writeForestDOTToFN("writingForestMerge.dot");
-                NOT_IMPLEMENTED;
+                stillHasLeaves[treeInd] = performSetOfSingleBandMerges(treeInd, itbSet, sortedTrees, sc);
             }
         }
     }

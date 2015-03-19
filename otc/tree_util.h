@@ -65,10 +65,13 @@ inline std::pair<long, long> getMRCAOttIdPair(T nd) {
         r = findLeftmostInSubtree(r);
     }
     assert(f->isTip());
-    assert(f->hasOttId());
     assert(r->isTip());
-    assert(r->hasOttId());
-    return std::pair<long, long>(f->getOttId(), r->getOttId());
+    if (f->hasOttId() && r->hasOttId()) {
+        return std::pair<long, long>(f->getOttId(), r->getOttId());
+    }
+    long fl = (f->hasOttId() ? f->getOttId() : -1);
+    long rl = (r->hasOttId() ? r->getOttId() : -2);
+    return std::pair<long, long>(fl, rl);
 }
 
 template<typename T>
@@ -85,6 +88,7 @@ inline std::string getDesignator(const T &nd) {
     std::string ps = std::to_string(p.second);
     return std::string("MRCA(ott") + pf + std::string{", ott"} + ps + std::string{")"};
 }
+
 template<typename T>
 inline std::string getMRCADesignator(const T &nd) {
     if (nd.isTip()) {
@@ -96,7 +100,6 @@ inline std::string getMRCADesignator(const T &nd) {
     std::string ps = std::to_string(p.second);
     return std::string("MRCA(ott") + pf + std::string{", ott"} + ps + std::string{")"};
 }
-
 
 template<typename T>
 void emitConflictDetails(std::ostream & out, const T & ndRef, const std::set<long> & extras,  const std::set<long> & missing) {

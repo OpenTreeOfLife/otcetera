@@ -64,21 +64,24 @@ def merge_redundant(p, ls, statements):
             red_statements.append(news)
     return ls, red_statements
 
-while True:
+lsl = list(leafset)
+foid = lsl.pop()
+while lsl:
     red_pair = None
-    for foid in leafset:
-        for soid in leafset:
-            if soid == foid:
-                continue
-            if pair_redundant(foid, soid, ps):
-                red_pair = (foid, soid)
-                break
+    for soid in lsl:
+        if soid == foid:
+            continue
+        if pair_redundant(foid, soid, ps):
+            red_pair = (foid, soid)
+            break
         if red_pair is not None:
             break
     if red_pair is None:
-        break
-    leafset, ps = merge_redundant(red_pair, leafset, ps)
-    sys.stderr.write('ls size = {} # statements = {}\n'.format(len(leafset), len(ps)))
+        foid = lsl.pop()
+    else:
+        leafset, ps = merge_redundant(red_pair, leafset, ps)
+        lsl.remove(soid)
+        sys.stderr.write('foid = {} ls size = {} # statements = {}\n'.format(foid, len(leafset), len(ps)))
 
 
 for statement in ps:

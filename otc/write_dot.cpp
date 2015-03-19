@@ -320,6 +320,10 @@ void writeDOTExclusion(std::ostream & out,
         const ToDotKey ancK{n, connPrefix};
         for (auto en : excForThisNode) {
             const ToDotKey desK{en, prefix};
+            if ((!contains(nd2name, ancK)) || (!contains(nd2name, desK))) {
+                LOG(DEBUG) << "in writeDOTExclusion edge skipped...";
+                continue;
+            }
             writeNodeDOT(out, desK, nd2name, ndStyle, false, true, false);
             writeDOTEdge(out, ancK, desK, nd2name, style, false);
         }
