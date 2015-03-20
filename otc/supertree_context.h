@@ -26,6 +26,7 @@ class SupertreeContext {
 
         std::list<LogEvent> events;
         std::set<const U *> detachedScaffoldNodes;
+        std::vector<const TreeMappedWithSplits *> treesByIndex;
         const std::size_t numTrees;
         std::map<const NodeWithSplits *, NodeEmbedding<T, U> > & scaffold2NodeEmbedding;
         std::map<long, typename U::node_type *> & scaffoldOttId2Node;
@@ -38,13 +39,17 @@ class SupertreeContext {
                 events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
             }
         }
-        SupertreeContext(std::size_t nt,
+        SupertreeContext(const std::vector<TreeMappedWithSplits *> & tv,
                          std::map<const RootedTreeNode<RTSplits> *, NodeEmbedding<T, U> > & taxoToEmbedding,
                          TreeMappedWithSplits & scaffTree)
-            :numTrees(nt),
+            :numTrees(tv.size()),
             scaffold2NodeEmbedding(taxoToEmbedding),
             scaffoldOttId2Node(scaffTree.getData().ottIdToNode),
             scaffoldTree(scaffTree) {
+            treesByIndex.reserve(numTrees); 
+            for (auto tp : tv) {
+                treesByIndex.push_back(const_cast<const TreeMappedWithSplits *>(tp));
+            }
         }
 };
 

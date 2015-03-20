@@ -87,6 +87,7 @@ class ScaffoldedSupertree
     long verboseLoggingTarget;
     std::map<long, long> monotypicRemapping;
     long ancToBeConsidered;
+    std::string exportDir;
 
     void writeEmbeddingDOT(SuperTreeDOTStep sts, const NodeWithSplits * nd, const NodeWithSplits * actionNd) {
         std::string fn = "ScaffSuperTree_num";
@@ -138,13 +139,16 @@ class ScaffoldedSupertree
             }
         } else {
             LOG(INFO) << "    Uncontested";
-            thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
+            if (exportDir.empty()) {
+                thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
+            } else {
+                thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, sc);
+            }
         }
     }
     void constructSupertree(OTCLI &otCLI) {
-        const auto numTrees = treePtrByIndex.size();
         TreeMappedWithSplits * tax = taxonomy.get();
-        SupertreeContextWithSplits sc{numTrees, taxoToEmbedding, *tax};
+        SupertreeContextWithSplits sc{treePtrByIndex, taxoToEmbedding, *tax};
         if (debuggingOutput) {
             if (emitScaffoldDotFiles) {
                 writeEmbeddingDOT(BEFORE_ND_W_TAXO, taxonomy->getRoot(), nullptr);
@@ -255,7 +259,7 @@ class ScaffoldedSupertree
     }
     
     bool summarize(OTCLI &otCLI) override {
-        if (doConstructSupertree) {
+        if (doConstructSupertree || (!exportDir.empty())) {
             cloneTaxonomyAsASourceTree();
             constructSupertree(otCLI);
             writeTreeAsNewick(otCLI.out, *taxonomy);
@@ -381,7 +385,24 @@ bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
     return true;
 }
 
-bool handleOttForestDOTFlag(OTCLI & otCLI, const std::string &narg) {
+bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg);
+bool handleOttForestDOTFlag(OTCLI & otCLI, const std::string &narg);
+bool handleAncFlag(OTCLI & otCLI, const std::string &narg);
+bool handleOttVerboseLogTargetFlag(OTCLI & otCLI, const std::string &narg);
+bool handleOttScaffoldDOTFlag(OTCLI & otCLI, const std::string &);
+bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg);
+
+bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg) {
+    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
+    assert(proc != nullptr);
+    if (narg.empty()) {
+        throw OTCError("Expecting a list of IDs after the -b argument.");
+    }
+    proc->exportDir = narg;
+    return true;
+}
+
+bool handleOttForestDOTFlag(OTCLI & , const std::string &narg) {
     long conv = -1;
     if (!char_ptr_to_long(narg.c_str(), &conv) || conv < 0) {
         throw OTCError(std::string("Expecting a positive number as an ott ID after -z flag. Offending word: ") + narg);
@@ -449,6 +470,10 @@ int main(int argc, char *argv[]) {
                   "Compute a supertree",
                   handleSuperTreeFlag,
                   false);
+    otCLI.addFlag('e',
+                  "ARG should be the name of a directory. A .tre file will be written to that directory for each subproblem",
+                  handleExportSubproblems,
+                  true);
     otCLI.addFlag('b',
                   "ARG should be a list of OTT IDs. A status report will be generated for those nodes",
                   handleReportOnNodesFlag,

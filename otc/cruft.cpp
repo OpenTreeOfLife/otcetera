@@ -22,7 +22,7 @@ std::set<NodeWithSplits *> detectExclusionsToMoveDown(FTree<RTSplits, MappedWith
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::mergePathToNextBand(
+void GreedyBandedForest<T, U>::mergePathToNextBand(
             FTree<RTSplits, MappedWithSplitsData> & donor,
             NodeWithSplits * spikeDes,
             FTree<RTSplits, MappedWithSplitsData> & recipient, 
@@ -40,7 +40,7 @@ void GreedyPhylogeneticForest<T, U>::mergePathToNextBand(
 //   ing is the MRCA of the incGroup in this tree
 //
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *, //delete root param?
+void GreedyBandedForest<T,U>::addIngroupAtNode(NodeWithSplits *, //delete root param?
                                                      NodeWithSplits *ing,
                                                      NodeWithSplits *outg,
                                                      const OttIdSet & incGroup,
@@ -88,7 +88,7 @@ void GreedyPhylogeneticForest<T,U>::addIngroupAtNode(NodeWithSplits *, //delete 
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *, //rr,
+void GreedyBandedForest<T,U>::graftTreesTogether(NodeWithSplits *, //rr,
                                                        NodeWithSplits *, //ri,
                                                        NodeWithSplits *, //delr,
                                                        NodeWithSplits *, //deli,
@@ -99,14 +99,13 @@ void GreedyPhylogeneticForest<T,U>::graftTreesTogether(NodeWithSplits *, //rr,
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
-                                                        const OttIdSet & incGroup,
+bool GreedyBandedForest<T,U>::attemptToAddGrouping(const OttIdSet & incGroup,
                                                         const OttIdSet & leafSet,
                                                         int treeIndex,
                                                         long groupIndex,
                                                         SupertreeContextWithSplits *sc) {
     if (incGroup.size() == 1) {
-        addLeaf(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
+        addLeaf(incGroup, leafSet, treeIndex, groupIndex, sc);
         return true;
     }
     return addGroupToNewTree(incGroup, leafSet, treeIndex, groupIndex);
@@ -259,7 +258,7 @@ MergeStartInfo calcTreePairMergeStartInfo(T & tdt, U* toDie, const std::set<Inte
 
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc) {
+void GreedyBandedForest<T, U>::mergeForest(SupertreeContextWithSplits *sc) {
     if (trees.size() == 1) {
         return;
     }
@@ -343,7 +342,7 @@ void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc)
 
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::mergeBandedTrees(FTree<RTSplits, MappedWithSplitsData> & donor,
+void GreedyBandedForest<T, U>::mergeBandedTrees(FTree<RTSplits, MappedWithSplitsData> & donor,
                                                  FTree<RTSplits, MappedWithSplitsData> & recipient, 
                                                  const MergeStartInfo & mi,
                                                  SupertreeContextWithSplits *sc) {

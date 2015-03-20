@@ -10,7 +10,7 @@
 #include "otc/tree.h"
 #include "otc/util.h"
 namespace otc {
-template<typename T, typename U> class GreedyPhylogeneticForest;
+template<typename T, typename U> class GreedyBandedForest;
 template<typename T, typename U> class RootedForest;
 template<typename T, typename U> class FTree;
 
@@ -333,7 +333,7 @@ class FTree {
                                    const PhyloStatement & ps);
     
     friend class RootedForest<T, U>;
-    friend class GreedyPhylogeneticForest<T, U>;
+    friend class GreedyBandedForest<T, U>;
     FTree(const FTree &) = delete;
     FTree & operator=(const FTree &) = delete;
     // data members

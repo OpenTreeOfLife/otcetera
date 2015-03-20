@@ -45,9 +45,12 @@ class TestValidTreeStruct {
                     }
                 }
             }
+            Tree_t fakePhylo;
+            std::vector<Tree_t *> ftv;
+            ftv.push_back(&fakePhylo);
 
-            SupertreeContextWithSplits sc{1, et.taxoToEmbedding, fakeScaffold};
-            GreedyPhylogeneticForest<NodeWithSplits, NodeWithSplits> gpf{-1};
+            SupertreeContextWithSplits sc{ftv, et.taxoToEmbedding, fakeScaffold};
+            GreedyBandedForest<NodeWithSplits, NodeWithSplits> gpf{-1};
             int treeInd = 0;
             long groupInd = 0;
             for (const auto & tp : tv) {
@@ -66,7 +69,7 @@ class TestValidTreeStruct {
                 }
                 const OttIdSet & leafSet = tree.getRoot()->getData().desIds;
                 std::cerr << groupInd + 1 << '\n';
-                gpf.attemptToAddGrouping(nullptr, *incGroup, leafSet, treeInd, groupInd++, nullptr);
+                gpf.attemptToAddGrouping(*incGroup, leafSet, treeInd, groupInd++, nullptr);
             }
             NodeEmbeddingWithSplits emptyEmbedding(r);
             gpf.finishResolutionOfEmbeddedClade(*r, &emptyEmbedding, &sc);

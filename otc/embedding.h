@@ -218,7 +218,7 @@ class NodeEmbedding {
     void resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
     std::set<PathPairing<T, U> *> getAllChildExitPaths(U & scaffoldNode, SupertreeContextWithSplits & sc);
     void resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
-
+    void exportSubproblemAndFakeResolution(U & scaffoldNode, const std::string & exportDir, SupertreeContextWithSplits & sc);
     void collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc);
     void pruneCollapsedNode(U & scaffoldNode, SupertreeContextWithSplits & sc);
     void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, SupertreeContextWithSplits  & sc);

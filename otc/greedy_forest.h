@@ -20,25 +20,20 @@ using MergeStartInfo = std::tuple<bool, std::list<MRCABandedPaths>, std::set<Nod
 
 using CouldAddResult = std::tuple<bool, NodeWithSplits *, NodeWithSplits *>;
 template<typename T, typename U>
-class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsData> {
+class GreedyBandedForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
-    GreedyPhylogeneticForest(long rootOttId)
+    GreedyBandedForest(long rootOttId)
       :RootedForest<RTSplits, MappedWithSplitsData>(rootOttId) {}
-    GreedyPhylogeneticForest(const GreedyPhylogeneticForest &) = delete;
-    GreedyPhylogeneticForest & operator=(const GreedyPhylogeneticForest &) = delete;
-    bool attemptToAddGrouping(PathPairing<T, U> * ppptr,
-                              const OttIdSet & incGroup,
+    GreedyBandedForest(const GreedyBandedForest &) = delete;
+    GreedyBandedForest & operator=(const GreedyBandedForest &) = delete;
+    bool attemptToAddGrouping(const OttIdSet & incGroup,
                               const OttIdSet & leafSet,
                               int treeIndex,
                               long groupIndex,
                               SupertreeContextWithSplits *sc);
-    bool addLeaf(PathPairing<T, U> * ppptr,
-                              const OttIdSet & incGroup,
-                              const OttIdSet & leafSet,
-                              int treeIndex,
-                              long groupIndex,
-                              SupertreeContextWithSplits *sc);
+    bool addLeaf(const OttIdSet & incGroup, const OttIdSet & leafSet, int treeIndex, long groupIndex, SupertreeContextWithSplits *sc);
     void finalizeTree(SupertreeContextWithSplits *sc);
+    void writeFirstTree(std::ostream & treeFileStream);
     void setPossibleMonophyletic(U & /*scaffoldNode*/) {
         NOT_IMPLEMENTED; //
     }
@@ -73,7 +68,7 @@ class GreedyPhylogeneticForest: public RootedForest<RTSplits, MappedWithSplitsDa
                              SupertreeContextWithSplits *sc);
     */
     std::set<OttIdSet> encountered; // used so that the PhyloStatement  have refs that outlive them
-    bool addGroupToNewTree(const OttIdSet & incGroup,
+    bool createAndAddPhyloStatement(const OttIdSet & incGroup,
                            const OttIdSet & leafSet,
                            int treeIndex,
                            long groupIndex);

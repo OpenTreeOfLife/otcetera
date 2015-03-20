@@ -28,6 +28,7 @@ NodePairingWithSplits * EmbeddedTree::_addNodeMapping(NodeWithSplits *taxo, Node
     _getEmdeddingForNode(taxo).nodeEmbeddings[treeIndex].insert(ndPairPtr);
     return ndPairPtr;
 }
+
 PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * parentPairing,
                                         NodePairingWithSplits * childPairing,
                                         std::size_t treeIndex) {
@@ -49,6 +50,7 @@ PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * pa
     }
     return pathPairPtr;
 }
+
 void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
     // do embedding
     std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
@@ -86,7 +88,6 @@ void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedW
             taxoDes = ndPairPtr->scaffoldNode;
             assert(taxoDes != nullptr);
         }
-
         NodePairingWithSplits * parPairPtr = nullptr;
         auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
         if (prevAddedNodePairingIt == currTreeNodePairings.end()) {

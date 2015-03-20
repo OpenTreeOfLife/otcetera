@@ -66,12 +66,17 @@ bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, cons
     return true;
 }
 
+template<typename T, typename U>
+void GreedyBandedForest<T,U>::writeFirstTree(std::ostream & treeFileStream) {
+    writeNewick(treeFileStream, getRoots().at(0));
+}
+
 // 1. finalizeTree
 // 2. copy the structure into the scaffold tree
 // 3. update all of the outgoing paths so that they map
 //      to this taxon
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
+void GreedyBandedForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
                                                                     NodeEmbedding<T, U> * embedding,
                                                                     SupertreeContextWithSplits * sc) {
     assert(sc != nullptr);
@@ -98,10 +103,11 @@ void GreedyPhylogeneticForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffold
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T,U>::addGroupToNewTree(const OttIdSet & incGroup,
-                                                      const OttIdSet & leafSet,
-                                                      int treeIndex,
-                                                      long groupIndex) {
+bool GreedyBandedForest<T,U>::createAndAddPhyloStatement(
+                const OttIdSet & incGroup,
+                const OttIdSet & leafSet,
+                int treeIndex,
+                long groupIndex) {
     const auto & i = *(encountered.insert(incGroup).first);
     const auto & ls = (leafSet.empty() ? i : *(encountered.insert(leafSet).first));
     const OttIdSet exc = set_difference_as_set(ls, i);
@@ -112,7 +118,7 @@ bool GreedyPhylogeneticForest<T,U>::addGroupToNewTree(const OttIdSet & incGroup,
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T,U>::addLeaf(PathPairing<T, U> * ,
+bool GreedyBandedForest<T,U>::addLeaf(
                       const OttIdSet & incGroup,
                       const OttIdSet & ,
                       int ,
@@ -125,17 +131,16 @@ bool GreedyPhylogeneticForest<T,U>::addLeaf(PathPairing<T, U> * ,
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppptr,
-                                                        const OttIdSet & incGroup,
+bool GreedyBandedForest<T,U>::attemptToAddGrouping(const OttIdSet & incGroup,
                                                         const OttIdSet & leafSet,
                                                         int treeIndex,
                                                         long groupIndex,
                                                         SupertreeContextWithSplits *sc) {
     if (incGroup.size() == 1) {
-        addLeaf(ppptr, incGroup, leafSet, treeIndex, groupIndex, sc);
+        addLeaf(incGroup, leafSet, treeIndex, groupIndex, sc);
         return true;
     }
-    return addGroupToNewTree(incGroup, leafSet, treeIndex, groupIndex);
+    return createAndAddPhyloStatement(incGroup, leafSet, treeIndex, groupIndex);
 }
 
 
@@ -146,7 +151,7 @@ bool GreedyPhylogeneticForest<T,U>::attemptToAddGrouping(PathPairing<T, U> * ppp
 //      true, incGroup-MRCA, excGroup-MRCA if there is an intersection the leafset and the incGroup and the incGroup could be added
 //          to this tree of the forest
 template<typename T, typename U>
-CouldAddResult GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *root, const OttIdSet & incGroup, const OttIdSet & leafSet) {
+CouldAddResult GreedyBandedForest<T,U>::couldAddToTree(NodeWithSplits *root, const OttIdSet & incGroup, const OttIdSet & leafSet) {
     if (areDisjoint(root->getData().desIds, leafSet)) {
         return std::make_tuple(true, nullptr, nullptr);
     }
@@ -177,7 +182,7 @@ CouldAddResult GreedyPhylogeneticForest<T,U>::couldAddToTree(NodeWithSplits *roo
 }
 
 template<typename T, typename U>
-std::vector<T *> GreedyPhylogeneticForest<T,U>::getRoots(){
+std::vector<T *> GreedyBandedForest<T,U>::getRoots(){
     std::vector<T *> r;
     r.reserve(trees.size());
     for (auto & t : trees) {
@@ -223,7 +228,7 @@ std::set<InterTreeBand<typename T::data_type> * > collectBandsForSubtree(U & tre
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
+void GreedyBandedForest<T, U>::transferSubtreeInForest(
                 NodeWithSplits * des,
                 FTree<RTSplits, MappedWithSplitsData> & possDonor,
                 NodeWithSplits * newPar,
@@ -299,7 +304,7 @@ void GreedyPhylogeneticForest<T, U>::transferSubtreeInForest(
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T, U>::performSingleBandMerge(
+bool GreedyBandedForest<T, U>::performSingleBandMerge(
             std::size_t treeInd,
             InterTreeBand<RTSplits> * itb,
             const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
@@ -320,7 +325,7 @@ bool GreedyPhylogeneticForest<T, U>::performSingleBandMerge(
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T, U>::performSetOfSingleBandMerges(
+bool GreedyBandedForest<T, U>::performSetOfSingleBandMerges(
             std::size_t treeInd,
             std::set<InterTreeBand<typename T::data_type> *> & itbSet,
             const std::vector<FTree<RTSplits, MappedWithSplitsData> *> & sortedTrees,
@@ -358,7 +363,7 @@ bool GreedyPhylogeneticForest<T, U>::performSetOfSingleBandMerges(
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc) {
+void GreedyBandedForest<T, U>::mergeForest(SupertreeContextWithSplits *sc) {
     if (trees.size() == 1) {
         return;
     }
@@ -399,7 +404,7 @@ void GreedyPhylogeneticForest<T, U>::mergeForest(SupertreeContextWithSplits *sc)
 }
 
 template<typename T, typename U>
-NodeWithSplits * GreedyPhylogeneticForest<T, U>::moveAllSibs(
+NodeWithSplits * GreedyBandedForest<T, U>::moveAllSibs(
             NodeWithSplits * donorC,
             FTree<RTSplits, MappedWithSplitsData> &donorTree,
             NodeWithSplits * attachPoint,
@@ -426,7 +431,7 @@ NodeWithSplits * GreedyPhylogeneticForest<T, U>::moveAllSibs(
 
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T, U>::zipPathsFromBarrenNode(
+bool GreedyBandedForest<T, U>::zipPathsFromBarrenNode(
             FTree<RTSplits, MappedWithSplitsData> &donorTree,
             NodeWithSplits * donorDes,
             NodeWithSplits * donorAnc,
@@ -465,7 +470,7 @@ bool GreedyPhylogeneticForest<T, U>::zipPathsFromBarrenNode(
         auto & dacdi = dac->getData().desIds;
         dpoids.insert(begin(dacdi), end(dacdi));
     }
-    auto p = moveAllChildren(donorAnc, donorTree, currAttachPoint, recipientTree, nullptr);
+    moveAllChildren(donorAnc, donorTree, currAttachPoint, recipientTree, nullptr);
     dbWriteOttSet("   donorAnc = ", dpoids);
     removeDesIdsToNdAndAnc(donorAnc, dpoids);
     if (dp == nullptr) {
@@ -484,7 +489,7 @@ bool GreedyPhylogeneticForest<T, U>::zipPathsFromBarrenNode(
 //  nd to the next relevant ancestor onto the existing path...
 template<typename T, typename U>
 std::pair<NodeWithSplits *, NodeWithSplits *>
-GreedyPhylogeneticForest<T, U>::findGrandparentThatIsRootOrBandSharing(
+GreedyBandedForest<T, U>::findGrandparentThatIsRootOrBandSharing(
             FTree<RTSplits, MappedWithSplitsData> & donorTree,
             NodeWithSplits * nd,
             FTree<RTSplits, MappedWithSplitsData> &recipientTree) {
@@ -514,7 +519,7 @@ GreedyPhylogeneticForest<T, U>::findGrandparentThatIsRootOrBandSharing(
 }
 
 template<typename T, typename U>
-bool GreedyPhylogeneticForest<T, U>::mergeSingleBandedTree(
+bool GreedyBandedForest<T, U>::mergeSingleBandedTree(
             FTree<RTSplits, MappedWithSplitsData> &donorTree,
             InterTreeBand<RTSplits> * band,
             FTree<RTSplits, MappedWithSplitsData> &recipientTree,
@@ -573,7 +578,7 @@ bool GreedyPhylogeneticForest<T, U>::mergeSingleBandedTree(
 }
 
 template<typename T, typename U>
-std::pair<NodeWithSplits *, NodeWithSplits*> GreedyPhylogeneticForest<T, U>::moveAllChildren(NodeWithSplits * donorParent,
+std::pair<NodeWithSplits *, NodeWithSplits*> GreedyBandedForest<T, U>::moveAllChildren(NodeWithSplits * donorParent,
                                                      FTree<RTSplits, MappedWithSplitsData> &donorTree,
                                                      NodeWithSplits * recipientNode,
                                                      FTree<RTSplits, MappedWithSplitsData> &recipientTree,
@@ -608,7 +613,7 @@ std::pair<NodeWithSplits *, NodeWithSplits*> GreedyPhylogeneticForest<T, U>::mov
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T, U>::mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits *) {
+void GreedyBandedForest<T, U>::mergeTreesToFirstPostBandHandling(SupertreeContextWithSplits *) {
     if (trees.size() == 1) {
         return;
     }
@@ -643,7 +648,7 @@ void GreedyPhylogeneticForest<T, U>::mergeTreesToFirstPostBandHandling(Supertree
 }
 
 template<typename T, typename U>
-void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits *sc) {
+void GreedyBandedForest<T,U>::finalizeTree(SupertreeContextWithSplits *sc) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     debugInvariantsCheck();
     auto roots = getRoots();
@@ -672,7 +677,7 @@ void GreedyPhylogeneticForest<T,U>::finalizeTree(SupertreeContextWithSplits *sc)
     LOG(DEBUG)<< " finalized-tree-from-forest = "; dbWriteNewick(onlyRoot);
 }
 
-template class GreedyPhylogeneticForest<NodeWithSplits, NodeWithSplits>; // force explicit instantiaion of this template.
+template class GreedyBandedForest<NodeWithSplits, NodeWithSplits>; // force explicit instantiaion of this template.
 
 } // namespace otc
 
