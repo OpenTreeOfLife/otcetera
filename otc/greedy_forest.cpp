@@ -460,13 +460,18 @@ bool GreedyPhylogeneticForest<T, U>::zipPathsFromBarrenNode(
         assert(currAttachPoint != nullptr);
     }
     auto dp = donorAnc->getParent();
-    OttIdSet dpoids = donorAnc->getData().desIds;
+    OttIdSet dpoids;
+    for (auto dac : iter_anc(*donorAnc)) {
+        auto & dacdi = dac->getData().desIds;
+        dpoids.insert(begin(dacdi), end(dacdi));
+    }
     auto p = moveAllChildren(donorAnc, donorTree, currAttachPoint, recipientTree, nullptr);
-    dbWriteOttSet("   donorAnc =", dpoids);
+    dbWriteOttSet("   donorAnc = ", dpoids);
     removeDesIdsToNdAndAnc(donorAnc, dpoids);
     if (dp == nullptr) {
         donorTree._setRoot(nullptr);
         registerTreeForNode(dp, nullptr);
+        return false;
     }
     return true;
 }
@@ -542,27 +547,29 @@ bool GreedyPhylogeneticForest<T, U>::mergeSingleBandedTree(
         NOT_IMPLEMENTED;
     }
     auto anc = findGrandparentThatIsRootOrBandSharing(donorTree, dn, recipientTree);
+    bool r = true;
     if (anc.first == nullptr) {
         // dn is a child of the root
         registerTreeForNode(dn, nullptr);
         if (dp == nullptr) {
             donorTree._setRoot(nullptr);
-            return false;
+            r = false;
+        } else {
+            dn->_detachThisNode();
         }
-        dn->_detachThisNode();
     } else {
-        zipPathsFromBarrenNode(donorTree,
-                               dn,
-                               anc.first,
-                               recipientTree,
-                               p.first,
-                               anc.second,
-                               sc);
+        r = zipPathsFromBarrenNode(donorTree,
+                                   dn,
+                                   anc.first,
+                                   recipientTree,
+                                   p.first,
+                                   anc.second,
+                                   sc);
     }
     LOG(DEBUG) << "post mergeSingleBandedTree check";
     debugInvariantsCheck();
     LOG(DEBUG) << "  exiting mergeSingleBandedTree";
-    return true;
+    return r;
 }
 
 template<typename T, typename U>
