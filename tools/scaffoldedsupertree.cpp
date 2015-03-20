@@ -262,8 +262,10 @@ class ScaffoldedSupertree
         if (doConstructSupertree || (!exportDir.empty())) {
             cloneTaxonomyAsASourceTree();
             constructSupertree(otCLI);
-            writeTreeAsNewick(otCLI.out, *taxonomy);
-            otCLI.out << '\n';
+            if (exportDir.empty()) {
+                writeTreeAsNewick(otCLI.out, *taxonomy);
+                otCLI.out << '\n';
+            }
         }
         std::ostream & out{otCLI.out};
         assert (taxonomy != nullptr);
