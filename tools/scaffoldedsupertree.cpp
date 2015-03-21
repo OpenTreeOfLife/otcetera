@@ -1,65 +1,5 @@
-#include <tuple>
-#include "otc/otcli.h"
-#include "otc/debug.h"
-#include "otc/greedy_forest.h"
-#include "otc/embedding.h"
-#include "otc/embedded_tree.h"
+#include "otc/embeddingCLI.h"
 using namespace otc;
-std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
-
-template<typename T>
-inline std::map<long, long> generateIdRemapping(const T & tree) {
-    const auto & id2ndMap = tree.getData().ottIdToNode;
-    std::map<long, long> r;
-    for (const auto & idNdPair : id2ndMap) {
-        const auto & inID = idNdPair.first;
-        const auto outID = idNdPair.second->getOttId();
-        if (outID != inID) {
-            assert(!contains(r, inID));
-            r[inID] = outID;
-        }
-    }
-    return r;
-}
-
-//currently not copying names
-std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
-    TreeMappedWithSplits * rawTreePtr = new TreeMappedWithSplits();
-    try {
-        NodeWithSplits * newRoot = rawTreePtr->createRoot();
-        auto r = tree.getRoot();
-        assert(r->hasOttId());
-        newRoot->setOttId(r->getOttId());
-        std::map<const NodeWithSplits *, NodeWithSplits *> templateToNew;
-        templateToNew[r]= newRoot;
-        std::map<long, NodeWithSplits *> & newMap = rawTreePtr->getData().ottIdToNode;
-        rawTreePtr->getData().desIdSetsContainInternals = tree.getData().desIdSetsContainInternals;
-        for (auto nd : iter_pre_const(tree)) {
-            auto p = nd->getParent();
-            if (p == nullptr) {
-                continue;
-            }
-            auto t2nIt = templateToNew.find(p);
-            assert(t2nIt != templateToNew.end());
-            auto ntp = t2nIt->second;
-            auto nn = rawTreePtr->createChild(ntp);
-            assert(templateToNew.find(nd) == templateToNew.end());
-            templateToNew[nd] = nn;
-            if (nd->hasOttId()) {
-                nn->setOttId(nd->getOttId());
-                newMap[nd->getOttId()] = nn;
-            } else {
-                assert(false);
-                throw OTCError("asserts false but not enabled");
-            }
-            nn->getData().desIds = nd->getData().desIds;
-        }
-    } catch (...) {
-        delete rawTreePtr;
-        throw;
-    }
-    return std::unique_ptr<TreeMappedWithSplits>(rawTreePtr);
-}
 
 enum SuperTreeDOTStep {
     BEFORE_ND_WO_TAXO,
@@ -68,26 +8,26 @@ enum SuperTreeDOTStep {
     AFTER_ND_W_TAXO
 };
 
-class ScaffoldedSupertree
-    : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits>,
-    public EmbeddedTree {
+class ScaffoldedSupertree : public EmbeddingCLI {
     public:
-    int numErrors;
-    OttIdSet tabooIds;
-    std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
-    std::vector<TreeMappedWithSplits *> treePtrByIndex;
     bool doReportAllContested;
     bool doConstructSupertree;
     std::list<long> idsListToReportOn;
     std::list<long> idListForDotExport;
-    TreeMappedWithSplits * taxonomyAsSource;
     int currDotFileIndex;
-    bool debuggingOutput;
     bool emitScaffoldDotFiles;
     long verboseLoggingTarget;
-    std::map<long, long> monotypicRemapping;
     long ancToBeConsidered;
-    std::string exportDir;
+
+    virtual ~ScaffoldedSupertree(){}
+    ScaffoldedSupertree()
+        :EmbeddingCLI(),
+         doReportAllContested(false),
+         doConstructSupertree(false),
+         currDotFileIndex(0),
+         emitScaffoldDotFiles(false),
+         ancToBeConsidered(-1) {
+    }
 
     void writeEmbeddingDOT(SuperTreeDOTStep sts, const NodeWithSplits * nd, const NodeWithSplits * actionNd) {
         std::string fn = "ScaffSuperTree_num";
@@ -116,6 +56,7 @@ class ScaffoldedSupertree
         const auto & thr = _getEmdeddingForNode(nd);
         writeDOTExport(out, thr, nd, treePtrByIndex, true, includeLastTree);
     }
+
     void writeNumberedDOT(NodeWithSplits * nd, bool entireSubtree, bool includeLastTree) {
         std::string fn = "ScaffSuperTree" + std::to_string(currDotFileIndex++) + ".dot";
         LOG(DEBUG) << "writing DOT file \"" << fn << "\"";
@@ -139,13 +80,10 @@ class ScaffoldedSupertree
             }
         } else {
             LOG(INFO) << "    Uncontested";
-            if (exportDir.empty()) {
-                thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
-            } else {
-                thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, sc);
-            }
+            thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
         }
     }
+
     void constructSupertree(OTCLI &otCLI) {
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{treePtrByIndex, taxoToEmbedding, *tax};
@@ -213,20 +151,6 @@ class ScaffoldedSupertree
         }
     }
 
-   
-    virtual ~ScaffoldedSupertree(){}
-    ScaffoldedSupertree()
-        :TaxonomyDependentTreeProcessor<TreeMappedWithSplits>(),
-         numErrors(0),
-         doReportAllContested(false),
-         doConstructSupertree(false),
-         taxonomyAsSource(nullptr),
-         currDotFileIndex(0),
-         debuggingOutput(false), 
-         emitScaffoldDotFiles(false),
-         ancToBeConsidered(-1) {
-    }
-
     void reportAllConflicting(std::ostream & out, bool verbose) {
         std::map<std::size_t, unsigned long> nodeMappingDegree;
         std::map<std::size_t, unsigned long> passThroughDegree;
@@ -257,15 +181,13 @@ class ScaffoldedSupertree
         out << totalNumNodes << " internals\n" << totalContested << " contested\n" << (totalNumNodes - totalContested) << " uncontested\n";
         out << redundContested << " monotypic contested\n";
     }
-    
+
     bool summarize(OTCLI &otCLI) override {
-        if (doConstructSupertree || (!exportDir.empty())) {
+        if (doConstructSupertree ) {
             cloneTaxonomyAsASourceTree();
             constructSupertree(otCLI);
-            if (exportDir.empty()) {
-                writeTreeAsNewick(otCLI.out, *taxonomy);
-                otCLI.out << '\n';
-            }
+            writeTreeAsNewick(otCLI.out, *taxonomy);
+            otCLI.out << '\n';
         }
         std::ostream & out{otCLI.out};
         assert (taxonomy != nullptr);
@@ -292,62 +214,6 @@ class ScaffoldedSupertree
                 writeDOTExport(out, thr, n, treePtrByIndex, false, false);
             }
         }
-        return true;
-    }
-
-    bool processTaxonomyTree(OTCLI & otCLI) override {
-        debuggingOutput = otCLI.verbose;
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
-        checkTreeInvariants(*taxonomy);
-        suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
-        monotypicRemapping = generateIdRemapping(*taxonomy);
-        checkTreeInvariants(*taxonomy);
-        for (NodeWithSplits * nd : iter_node(*taxonomy)) {
-            _getEmdeddingForNode(nd);
-        }
-        otCLI.getParsingRules().setOttIdForInternals = false;
-        otCLI.getParsingRules().idRemapping = &monotypicRemapping;
-        return true;
-    }
-
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> treeup) override {
-        assert(treeup != nullptr);
-        assert(taxonomy != nullptr);
-        // Store the tree pointer with a map to its index, and an alias for fast index->tree.
-        std::size_t treeIndex = inputTreesToIndex.size();
-        assert(treeIndex == treePtrByIndex.size());
-        TreeMappedWithSplits * raw = treeup.get();
-        inputTreesToIndex[std::move(treeup)] = treeIndex;
-        treePtrByIndex.push_back(raw);
-        // Store the tree's filename
-        raw->setName(otCLI.currentFilename);
-        embedNewTree(*taxonomy, *raw, treeIndex);
-        otCLI.err << "# pathPairings = " << pathPairings.size() << '\n';
-        return true;
-    }
-
-    bool cloneTaxonomyAsASourceTree() {
-        assert(taxonomy != nullptr);
-        assert(taxonomyAsSource == nullptr);
-        std::unique_ptr<TreeMappedWithSplits> tree = std::move(cloneTree(*taxonomy));
-        taxonomyAsSource = tree.get();
-        std::size_t treeIndex = inputTreesToIndex.size();
-        inputTreesToIndex[std::move(tree)] = treeIndex;
-        treePtrByIndex.push_back(taxonomyAsSource);
-        // suppress the internal node OTT IDs from the des
-        OttIdSet internalIDs;
-        for (auto nd : iter_post_internal(*taxonomyAsSource)) {
-            if (nd->hasOttId()) {
-                internalIDs.insert(nd->getOttId());
-            }
-            auto & d = nd->getData().desIds;
-            for (auto o : internalIDs) {
-                d.erase(o);
-            }
-        }
-        // Store the tree's filename
-        taxonomyAsSource->setName("TAXONOMY");
-        embedTaxonomyClone(*taxonomy, *taxonomyAsSource, treeIndex);
         return true;
     }
 };
@@ -387,22 +253,11 @@ bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
     return true;
 }
 
-bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg);
 bool handleOttForestDOTFlag(OTCLI & otCLI, const std::string &narg);
 bool handleAncFlag(OTCLI & otCLI, const std::string &narg);
 bool handleOttVerboseLogTargetFlag(OTCLI & otCLI, const std::string &narg);
 bool handleOttScaffoldDOTFlag(OTCLI & otCLI, const std::string &);
 bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg);
-
-bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg) {
-    ScaffoldedSupertree * proc = static_cast<ScaffoldedSupertree *>(otCLI.blob);
-    assert(proc != nullptr);
-    if (narg.empty()) {
-        throw OTCError("Expecting a list of IDs after the -b argument.");
-    }
-    proc->exportDir = narg;
-    return true;
-}
 
 bool handleOttForestDOTFlag(OTCLI & , const std::string &narg) {
     long conv = -1;
@@ -472,10 +327,6 @@ int main(int argc, char *argv[]) {
                   "Compute a supertree",
                   handleSuperTreeFlag,
                   false);
-    otCLI.addFlag('e',
-                  "ARG should be the name of a directory. A .tre file will be written to that directory for each subproblem",
-                  handleExportSubproblems,
-                  true);
     otCLI.addFlag('b',
                   "ARG should be a list of OTT IDs. A status report will be generated for those nodes",
                   handleReportOnNodesFlag,

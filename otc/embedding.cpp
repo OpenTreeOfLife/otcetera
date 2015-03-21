@@ -550,7 +550,6 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(U & scaffold
         long bogusGroupIndex = 200000; // should get this from the node!
         for (auto mpoIt : mapToProvideOrder) {
             const auto & d = mpoIt.first;
-            auto ppptr = mpoIt.second;
             LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex;
             gpf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, &sc);
             if (!gpf.possibleMonophyleticGroupStillViable()) {

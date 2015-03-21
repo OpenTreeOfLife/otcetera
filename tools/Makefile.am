@@ -13,6 +13,7 @@ bin_PROGRAMS = otcassertinvariants \
 				otcmissingsplits \
 				otcpolytomycount \
 				otctaxonconflictreport \
+				otcuncontesteddecompose \
 				otcrf
 
 otcassertinvariants_SOURCES = assertinvariants.cpp
@@ -23,6 +24,9 @@ otcchecktaxonomicnodes_CPPFLAGS = $(AM_CPPFLAGS)
 
 otcdetectcontested_SOURCES = detectcontested.cpp
 otcdetectcontested_CPPFLAGS = $(AM_CPPFLAGS)
+
+otcuncontesteddecompose_SOURCES = uncontesteddecompose.cpp
+otcuncontesteddecompose_CPPFLAGS = $(AM_CPPFLAGS)
 
 otcfindunsupportednodes_SOURCES = findunsupportednodes.cpp
 otcfindunsupportednodes_CPPFLAGS = $(AM_CPPFLAGS)
