@@ -272,6 +272,9 @@ class RootedTree {
         node_type * getRoot() {
             return root;
         }
+        void _setRoot(node_type * r) {
+            root = r;
+        }
         node_type * createRoot() {
             if (root != nullptr) {
                 clear();

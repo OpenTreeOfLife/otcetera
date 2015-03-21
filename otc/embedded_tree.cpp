@@ -32,7 +32,7 @@ NodePairingWithSplits * EmbeddedTree::_addNodeMapping(NodeWithSplits *taxo, Node
 PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * parentPairing,
                                         NodePairingWithSplits * childPairing,
                                         std::size_t treeIndex) {
-    pathPairings.emplace_back(*parentPairing, *childPairing, treeIndex);
+    pathPairings.emplace_back(*parentPairing, *childPairing);
     auto pathPairPtr = &(*pathPairings.rbegin());
     // register a pointer to the path at each traversed...
     auto currTaxo = pathPairPtr->scaffoldDes;

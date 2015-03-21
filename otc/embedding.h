@@ -57,7 +57,6 @@ class PathPairing {
     U * phyloChild;
     U * phyloParent;
     OttIdSet currChildOttIdSet;
-    std::size_t treeIndex;
     bool pathIsNowTrivial() {
         return currChildOttIdSet.size() == 1;
     }
@@ -83,14 +82,12 @@ class PathPairing {
     }
     bool updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
     PathPairing(const NodePairing<T,U> & parent,
-                const NodePairing<T,U> & child,
-                std::size_t phyloTreeIndex)
+                const NodePairing<T,U> & child)
         :scaffoldDes(child.scaffoldNode),
         scaffoldAnc(parent.scaffoldNode),
         phyloChild(child.phyloNode),
         phyloParent(parent.phyloNode),
-        currChildOttIdSet(child.phyloNode->getData().desIds),
-        treeIndex(phyloTreeIndex) {
+        currChildOttIdSet(child.phyloNode->getData().desIds) {
     }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 
@@ -221,6 +218,7 @@ class NodeEmbedding {
     void collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex, SupertreeContextWithSplits &);
     void resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
     std::set<PathPairing<T, U> *> getAllChildExitPaths(U & scaffoldNode, SupertreeContextWithSplits & sc);
+    std::set<PathPairing<T, U> *> getAllChildExitPathsForTree(U & scaffoldNode, std::size_t treeIndex, SupertreeContextWithSplits & sc);
     void resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
     void exportSubproblemAndFakeResolution(U & scaffoldNode, const std::string & exportDir, SupertreeContextWithSplits & sc);
     void collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc);

@@ -794,6 +794,46 @@ unsigned long numInducedSplitsMissingInSecond(const T & tree1,
     return nm;
 }
 
+template<typename U, typename T, typename V>
+inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
+                       const std::map<U *, long> & nd2id,
+                       RootedTree<T, V> & toWrite) {
+    std::set<RootedTreeNode<T> *> withParents;
+    std::map<U *, RootedTreeNode<T> *> other2new;
+    for (auto c : nd2par) {
+        auto otherChild = c.first;
+        auto otherParent = c.second;
+        RootedTreeNode<T> * nParent;
+        auto npIt = other2new.find(otherParent);
+        if (npIt == other2new.end()) {
+            nParent = toWrite.createNode(nullptr);
+            other2new[otherParent] = nParent;
+        } else {
+            nParent = npIt->second;
+        }
+        RootedTreeNode<T> * nChild;
+        auto ncIt = other2new.find(otherChild);
+        if (ncIt == other2new.end()) {
+            nChild = toWrite.createNode(nParent);
+            other2new[otherChild] = nChild;
+        } else {
+            nChild = ncIt->second;
+            nParent->addChild(nChild);
+        }
+        auto idIt = nd2id.find(otherChild);
+        if (idIt != nd2id.end()) {
+            nChild->setOttId(idIt->second);
+        }
+        withParents.insert(nChild);
+    }
+    assert(other2new.size() == 1 + withParents.size()); // only the root should be parentless
+    for (auto o2n : other2new) {
+        if (!contains(withParents, o2n.second)) {
+            toWrite._setRoot(o2n.second);
+            return;
+        }
+    }
+}
 
 }// namespace otc
 #endif

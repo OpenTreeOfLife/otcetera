@@ -144,6 +144,7 @@ void NodeEmbedding<T, U>::resolveGivenContestedMonophyly(U & scaffoldNode,
     }
     resolveGivenUncontestedMonophyly(scaffoldNode, sc);
 }
+
 template<typename T, typename U>
 std::set<PathPairing<T, U> *> NodeEmbedding<T, U>::getAllChildExitPaths(U & scaffoldNode, SupertreeContextWithSplits & sc) {
     std::set<PathPairing<T, U> *> r;
@@ -186,7 +187,21 @@ const std::string getForestDOTFilename(const std::string & prefix,
     return base;
 }
 
-
+template<typename T, typename U>
+std::set<PathPairing<T, U> *> NodeEmbedding<T, U>::getAllChildExitPathsForTree(
+                U & scaffoldNode,
+                std::size_t treeIndex,
+                SupertreeContextWithSplits & sc) {
+    std::set<PathPairing<T, U> *> r;
+    for (auto c : iter_child(scaffoldNode)) {
+        const auto & thr = sc.scaffold2NodeEmbedding.at(c);
+        const auto & tebeIt = thr.edgeBelowEmbeddings.find(treeIndex);
+        if (tebeIt != thr.edgeBelowEmbeddings.end()) {
+            r.insert(begin(tebeIt->second), end(tebeIt->second));
+        }
+    }
+    return r;
+}
 // By "fake" the resolution here we mean that on exit, this
 //  subproblem's outgoing edges should be labeled with the scaffoldNode's OTT ID, just
 //  like the outgoing edges would look upon successful completion of the resolution of
@@ -212,64 +227,81 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
     //TMP this could be done a lot more efficiently. Writing the trees through the GBF should
     // exercise some of the code for the scaffolded supertree operation. So this should help
     //  us find bugs in that code...
-    auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc);
+    
     OttIdSet totalLeafSet;
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
         const auto * treePtr = sc.treesByIndex.at(treeInd);
         assert(treePtr != nullptr);
-        const auto * currRoot = treePtr->getRoot();
-        assert(currRoot != nullptr);
-        std::set<PathPairing<T, U> *> childExitForThisTree;
-        for (auto pathPtr : childExitPaths) {
-            if (pathPtr->treeIndex == treeInd) {
-                childExitForThisTree.insert(pathPtr);
-            }
-        }
+        const auto childExitForThisTree = getAllChildExitPathsForTree(scaffoldNode, treeInd, sc);
         const auto laIt = loopEmbeddings.find(treeInd);
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
         }
-        /*
+        
         LOG(INFO) << "      treeInd = " << treeInd;
         const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
-        long bogusGroupIndex = 0; // should get this from the node!
+        std::map<NodeWithSplits *, NodeWithSplits *> nd2par;
+        std::set<NodeWithSplits *> wParSet;
         if (laIt != loopEmbeddings.end()) {
             PathPairSet & pps = laIt->second;
-            std::map<OttIdSet, PathPairing<T,U> *> mapToProvideOrder;
             for (auto pp : pps) {
-                mapToProvideOrder[pp->getOttIdSet()] = pp;
+                assert(!contains(nd2par, pp->phyloChild));
+                nd2par[pp->phyloChild] = pp->phyloParent;
+                wParSet.insert(pp->phyloChild);
             }
-            typedef std::pair<const OttIdSet *, PathPairing<T,U> *>  q_t;
-            std::queue<q_t> trivialQ;
-            for (auto mpoIt = mapToProvideOrder.rbegin(); mpoIt != mapToProvideOrder.rend(); ++mpoIt) {
-                auto ppptr = mpoIt->second;
-                if (ppptr->pathIsNowTrivial()) {
-                    const q_t toQ{&(mpoIt->first), ppptr};
-                    trivialQ.push(toQ);
-                } else {
-                    const auto & d = mpoIt->first;
-                    LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex << " out of " << mapToProvideOrder.size() << " (some of which may be skipped as trivial)";
-                    gbf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex, &sc);
+        }
+        unsigned numParentsWOParentsInMap = 0;
+        NodeWithSplits * root = nullptr;
+        for (auto p : wParSet) {
+            if (!contains(nd2par, p)) {
+                ++numParentsWOParentsInMap;
+                root = p;
+            }
+        }
+        assert(numParentsWOParentsInMap < 2);
+        if (numParentsWOParentsInMap == 0) {
+            assert(laIt == loopEmbeddings.end());
+            // no loops, the tree is just polytomy for this subproblem
+            treeFileStream << '(';
+            bool first = true;
+            for (auto pathPtr : childExitForThisTree) {
+                auto rids = pathPtr->getOttIdSet();
+                assert(rids.size() == 1);
+                long ottId = *rids.begin();
+                assert(ottId != LONG_MAX);
+                totalLeafSet.insert(ottId);
+                if (!first) {
+                    treeFileStream << ',';
                 }
-                bogusGroupIndex++;
+                treeFileStream << "ott" << ottId;
+                first = false;
             }
-            while (!trivialQ.empty()) {
-                const q_t triv = trivialQ.front();
-                const OttIdSet * inc = triv.first;
-                gbf.addLeaf(*inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, &sc);
-                trivialQ.pop();
+            treeFileStream << ");\n";
+        } else {
+            NodeWithSplits * deeperNd = nullptr; // nodes passing through this taxon must all have the same parent (or the taxon would be contested)
+            std::map<NodeWithSplits *, long> nd2id;
+            for (auto pp : childExitForThisTree) {
+                if (pp->phyloParent != root) {
+                    assert(deeperNd == nullptr);
+                    deeperNd = pp->phyloParent;
+                    assert(deeperNd == root->getParent());
+                }
+                assert(!contains(nd2par, pp->phyloChild));
+                nd2par[pp->phyloChild] = root;
+                auto rids = pp->getOttIdSet();
+                assert(rids.size() == 1);
+                long ottId = *rids.begin();
+                assert(ottId != LONG_MAX);
+                totalLeafSet.insert(ottId);
+                nd2id[pp->phyloChild] = ottId;
             }
+            RootedTreeTopologyNoData toWrite;
+            copyTreeStructure(nd2par, nd2id, toWrite);
+            writeTreeAsNewick(treeFileStream, toWrite);
+            treeFileStream << ";\n";
         }
-        for (auto pathPtr : childExitForThisTree) {
-            auto rids = pathPtr->getOttIdSet();
-            leafSet.insert(begin(rids), end(rids));
-            gbf.attemptToAddGrouping(rids, EMPTY_SET, (int)treeInd, bogusGroupIndex++, &sc);
-        }
-        gbf.finalizeTree(&sc);
-        provFileStream << treePtr->getName() << '\n';
-        gbf.writeFirstTree(treeFileStream);
-        treeFileStream << '\n';*/
+        provFileStream << treePtr->getName() << "\n";
     }
     GreedyBandedForest<T,U> gpf{scaffoldNode.getOttId()};
     gpf.attemptToAddGrouping(totalLeafSet, EMPTY_SET, 0, 1, &sc);

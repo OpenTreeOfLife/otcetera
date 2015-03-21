@@ -51,7 +51,9 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         return true;
     }
 };
+
 bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg);
+
 bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg) {
     UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
     assert(proc != nullptr);
