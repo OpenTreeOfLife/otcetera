@@ -296,8 +296,15 @@ class FTree {
         root = r;
     }
     void mirrorPhyloStatement(const PhyloStatement & ps);
+#if defined(DO_DEBUG_CHECKS)
     void debugInvariantsCheckFT() const;
     void debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const;
+#else
+    void debugInvariantsCheckFT() const{
+    }
+    void debugVerifyDesIdsAssumingDes(const OttIdSet &, const RootedTreeNode<T> *) const {
+    }
+#endif
     std::set<RootedTreeNode<T> *> ottIdSetToNodeSet(const OttIdSet &ottIdSet) const;
     bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
     void createDeeperRoot();

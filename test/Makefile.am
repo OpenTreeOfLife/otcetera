@@ -1,6 +1,6 @@
 LDADD       = @top_builddir@/otc/libotcetera.la
 AM_CPPFLAGS = -I@top_srcdir@/otc
-noinst_PROGRAMS = testotcgreedyforest \
+bin_PROGRAMS = testotcgreedyforest \
 					testotcnewicktoken \
 					testotctreefromnewick \
 					testotctreeiter

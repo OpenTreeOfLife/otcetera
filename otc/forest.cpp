@@ -27,6 +27,7 @@ RootedForest<T,U>::RootedForest(long rootOttId)
     ottIdToNodeMap(nodeSrc.getData().ottIdToNode),
     rootID(rootOttId) {
 }
+
 template<typename T, typename U>
 void RootedForest<T,U>::registerLeaf(long ottId) {
     if (ottId == rootID) {
@@ -487,6 +488,8 @@ void RootedForest<T, U>::writeForestDOTToFN(const std::string &fn) const {
     writeDOTForest(outf, *this);
 }
 
+#if defined(DO_DEBUG_CHECKS)
+
 template<typename T, typename U>
 void RootedForest<T, U>::debugInvariantsCheck() const {
     std::map<const node_type *, const tree_type *> root2tree;
@@ -538,7 +541,7 @@ void RootedForest<T, U>::debugInvariantsCheck() const {
     }
     assert(connectedIdSet.size() == ottId2Tree.size()); 
 }
-
+#endif
 template class RootedForest<RTSplits, MappedWithSplitsData>; // force explicit instantiaion of this template.
 
 }// namespace

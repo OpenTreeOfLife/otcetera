@@ -148,7 +148,13 @@ class RootedForest {
     }
     void registerLeaf(long ottId);
     void writeForestDOTToFN(const std::string &fn) const;
+#if defined(DO_DEBUG_CHECKS)
     void debugInvariantsCheck() const;
+#else
+    void debugInvariantsCheck() const {
+    }
+#endif
+
     void dumpAcceptedPhyloStatements(const char *fn);
     const tree_type * getTreeForNode(const node_type * nd) const {
         return nd2Tree.at(const_cast<node_type *>(nd));

@@ -30,6 +30,7 @@ void PhyloStatement::writeAsNewick(std::ofstream & out) const {
     }
     out << ';';
 }
+
 template<typename T>
 bool ExcludeConstraints<T>::isExcludedFrom(const node_type * ndToCheck,
                                            const node_type * potentialAttachment,
@@ -193,6 +194,7 @@ RootedTreeNode<T> * FTree<T, U>::createDeeperNode(RootedTreeNode<T> *nd) {
     return nn;
 }
 
+// profiling indicates that this is a big problem spot. We should cache this...
 template<typename T, typename U>
 const OttIdSet FTree<T, U>::getConnectedOttIds() const {
     OttIdSet r;
@@ -519,7 +521,7 @@ OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps,
     LOG(DEBUG) << "bout to addPhyloStatementAtNode exit";
     return r;
 }
-
+#if defined(DO_DEBUG_CHECKS)
 template<typename T, typename U>
 void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const{
     OttIdSet ois;
@@ -604,6 +606,7 @@ void FTree<T, U>::debugInvariantsCheckFT() const {
         debugVerifyDesIdsAssumingDes(n->getData().desIds, n);
     }
 }
+#endif
 
 template class ExcludeConstraints<RTSplits>; // force explicit instantiaion of this template.
 template class InterTreeBand<RTSplits>; // force explicit instantiaion of this template.
