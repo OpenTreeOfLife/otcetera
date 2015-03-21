@@ -213,7 +213,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
     // exercise some of the code for the scaffolded supertree operation. So this should help
     //  us find bugs in that code...
     auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc);
-    OttIdSet leafSet;
+    OttIdSet totalLeafSet;
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
         const auto * treePtr = sc.treesByIndex.at(treeInd);
         assert(treePtr != nullptr);
@@ -221,9 +221,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         assert(currRoot != nullptr);
         std::set<PathPairing<T, U> *> childExitForThisTree;
         for (auto pathPtr : childExitPaths) {
-            const U * pp = pathPtr->phyloParent;
-            assert(pp != nullptr);
-            if (currRoot == getDeepestAnc(pp)) {
+            if (pathPtr->treeIndex == treeInd) {
                 childExitForThisTree.insert(pathPtr);
             }
         }
@@ -231,10 +229,10 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
         }
-        GreedyBandedForest<T, U> gbf{scaffoldNode.getOttId()};
+        /*
         LOG(INFO) << "      treeInd = " << treeInd;
         const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
-        leafSet.insert(begin(relevantIds), end(relevantIds));
+        totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         long bogusGroupIndex = 0; // should get this from the node!
         if (laIt != loopEmbeddings.end()) {
             PathPairSet & pps = laIt->second;
@@ -271,10 +269,10 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         gbf.finalizeTree(&sc);
         provFileStream << treePtr->getName() << '\n';
         gbf.writeFirstTree(treeFileStream);
-        treeFileStream << '\n';
+        treeFileStream << '\n';*/
     }
     GreedyBandedForest<T,U> gpf{scaffoldNode.getOttId()};
-    gpf.attemptToAddGrouping(leafSet, EMPTY_SET, 0, 1, &sc);
+    gpf.attemptToAddGrouping(totalLeafSet, EMPTY_SET, 0, 1, &sc);
     for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
         for (auto snc : iter_child(scaffoldNode)) {
             assert(snc != nullptr);

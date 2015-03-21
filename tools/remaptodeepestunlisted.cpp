@@ -19,15 +19,16 @@ struct RemapToDeepestUnlistedState {
     std::set<long> ottIds;
     std::set<const Node_t *> contestedNodes;
     std::set<long> tabooIds;
-    std::list<std::unique_ptr<Tree_t> > inputTrees;
     std::list<NodePairing<Node_t, Node_t> > nodePairings;
     std::list<PathPairing<Node_t, Node_t> > pathPairings;
     std::map<const Node_t*, Embeddings> taxoToEmbedding;
+    std::size_t sourceTreeIndex;
 
 
     RemapToDeepestUnlistedState()
         :taxonomy(nullptr),
-         numErrors(0) {
+         numErrors(0),
+         sourceTreeIndex(0) {
     }
 
     void summarize(OTCLI &otCLI) {
@@ -53,8 +54,9 @@ struct RemapToDeepestUnlistedState {
         aembedding.nodeEmbeddings[tree].insert(ndPairPtr);
         return ndPairPtr;
     }
+
     PathPairing<Node_t, Node_t>  * _addPathMapping(NodePairing<Node_t, Node_t>  * parentPairing, NodePairing<Node_t, Node_t>  * childPairing, Tree_t *tree) {
-        pathPairings.emplace_back(*parentPairing, *childPairing);
+        pathPairings.emplace_back(*parentPairing, *childPairing, sourceTreeIndex);
         auto pathPairPtr = &(*pathPairings.rbegin());
         // register a pointer to the path at each traversed...
         auto currTaxo = pathPairPtr->scaffoldDes;
@@ -105,6 +107,7 @@ struct RemapToDeepestUnlistedState {
             }
             _addPathMapping(parPairPtr, ndPairPtr, tree.get());
         }
+        ++sourceTreeIndex;
         return true;
     }
 
