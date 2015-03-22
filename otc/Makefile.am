@@ -27,6 +27,7 @@ libotcetera_la_SOURCES = \
 	node_embedding.cpp \
 	otcetera.cpp \
 	otcli.cpp \
+	supertree_util.cpp \
 	test_harness.cpp \
 	tree.cpp \
 	util.cpp \
