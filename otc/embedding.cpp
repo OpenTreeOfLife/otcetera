@@ -61,8 +61,6 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbed
     return r;
 }
 
-
-
 template<typename T, typename U>
 bool PathPairing<T,U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
     if (false && debuggingOutputEnabled) {
@@ -233,19 +231,21 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         const auto * treePtr = sc.treesByIndex.at(treeInd);
         assert(treePtr != nullptr);
         const auto childExitForThisTree = getAllChildExitPathsForTree(scaffoldNode, treeInd, sc);
-        const auto laIt = loopEmbeddings.find(treeInd);
+        auto laIt = loopEmbeddings.find(treeInd);
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
         }
-        
+        const auto firstLaIt = laIt;
         LOG(INFO) << "      treeInd = " << treeInd;
         const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         std::map<NodeWithSplits *, NodeWithSplits *> nd2par;
         std::set<NodeWithSplits *> wParSet;
-        if (laIt != loopEmbeddings.end()) {
+        for (; laIt != loopEmbeddings.end(); ++laIt) {
             PathPairSet & pps = laIt->second;
             for (auto pp : pps) {
+                LOG(DEBUG) << " considering the edge from the child "  << (long)pp->phyloChild << ": "; dbWriteNewick(pp->phyloChild);
+                LOG(DEBUG) << "             to its parent "  << (long)pp->phyloParent << ": "; dbWriteNewick(pp->phyloParent);
                 assert(!contains(nd2par, pp->phyloChild));
                 nd2par[pp->phyloChild] = pp->phyloParent;
                 wParSet.insert(pp->phyloChild);
@@ -253,15 +253,17 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         }
         unsigned numParentsWOParentsInMap = 0;
         NodeWithSplits * root = nullptr;
-        for (auto p : wParSet) {
-            if (!contains(nd2par, p)) {
+        for (auto c2p : nd2par) {
+            auto p = c2p.second;
+            if (p != root && !contains(nd2par, p)) {
                 ++numParentsWOParentsInMap;
+                LOG(DEBUG)  << " parentless " << getDesignator(*p) << ' ' << (long) p;
                 root = p;
             }
         }
         assert(numParentsWOParentsInMap < 2);
         if (numParentsWOParentsInMap == 0) {
-            assert(laIt == loopEmbeddings.end());
+            assert(firstLaIt == loopEmbeddings.end());
             // no loops, the tree is just polytomy for this subproblem
             treeFileStream << '(';
             bool first = true;
@@ -283,9 +285,8 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             std::map<NodeWithSplits *, long> nd2id;
             for (auto pp : childExitForThisTree) {
                 if (pp->phyloParent != root) {
-                    assert(deeperNd == nullptr);
+                    assert(deeperNd == nullptr || deeperNd == pp->phyloParent);
                     deeperNd = pp->phyloParent;
-                    assert(deeperNd == root->getParent());
                 }
                 assert(!contains(nd2par, pp->phyloChild));
                 nd2par[pp->phyloChild] = root;
