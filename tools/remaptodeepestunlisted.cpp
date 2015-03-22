@@ -1,5 +1,5 @@
 #include "otc/otcli.h"
-#include "otc/embedding.h"
+#include "otc/node_embedding.h"
 using namespace otc;
 
 typedef otc::RootedTreeNode<RTSplits> Node_t;

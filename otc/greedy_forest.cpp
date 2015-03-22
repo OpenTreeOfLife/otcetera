@@ -1,5 +1,5 @@
 #include "otc/greedy_forest.h"
-#include "otc/embedding.h"
+#include "otc/node_embedding.h"
 #include "otc/util.h"
 #include "otc/tree_data.h"
 #include "otc/tree_iter.h"

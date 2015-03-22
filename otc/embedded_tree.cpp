@@ -1,6 +1,6 @@
 #include <algorithm>
 #include "otc/embedded_tree.h"
-#include "otc/embedding.h"
+#include "otc/node_embedding.h"
 #include "otc/tree.h"
 #include "otc/tree_data.h"
 #include "otc/tree_iter.h"

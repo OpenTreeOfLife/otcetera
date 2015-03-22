@@ -1,7 +1,7 @@
 #include "otc/write_dot.h"
 #include <algorithm>
 #include "otc/embedded_tree.h"
-#include "otc/embedding.h"
+#include "otc/node_embedding.h"
 #include "otc/tree.h"
 #include "otc/tree_data.h"
 #include "otc/tree_iter.h"
@@ -67,6 +67,13 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
                                      const char * prefix);
 void writeDOTForNodeWithoutEmbedding(std::ostream & out, const NodeWithSplits *nd , NodeToDotNames & nd2name);
 std::string edgeStyleForColor(const char * color);
+ToDotKey findAnyKey(const NodeWithSplits *nd, const NodeToDotNames & nd2name);
+void writeDOTForFtree(std::ostream & out,
+                              const FTree<RTSplits, MappedWithSplitsData> & tree, 
+                              NodeToDotNames & nd2name,
+                              const char * color,
+                              std::size_t treeIndex
+                              );
 // IMPL
 std::string edgeStyleForColor(const char * color) {
     std::string bstyle = "fontcolor=\"";
@@ -160,24 +167,24 @@ void writeDOTCrossEdge(std::ostream & out,
 void writeOneSideOfPathPairingToDOT(std::ostream & out,
                            const NodeWithSplits * sidePar,
                            const NodeWithSplits * sideDes,
-                           const NodeWithSplits * scaffAnc,
+                           const NodeWithSplits * ,//scaffAnc,
                            const NodeWithSplits * scaffDes,
                            const ToDotKey & midPointKey,
                            const NamePair & namePair,
                            NodeToDotNames & nd2name,
-                           const NodeWithSplits * focalNode,
+                           const NodeWithSplits * ,//focalNode,
                            const std::string & style,
                            const char * prefix) {
     const bool isScaffoldSide = (sideDes == scaffDes);
-    constexpr bool mergeScPhAnc = false;
-    const char * ancPref = (isScaffoldSide || (mergeScPhAnc && focalNode != scaffAnc) ? "" : prefix);
-    const char * desPref = (isScaffoldSide || sideDes->isTip() ? "" : prefix);
+    //constexpr bool mergeScPhAnc = false;
+    const char * ancPref = (isScaffoldSide ? "" : prefix); // = (isScaffoldSide || (mergeScPhAnc && focalNode != scaffAnc)) ...
+    const char * desPref = ((isScaffoldSide || sideDes->isTip()) ? "" : prefix);
     // If we have a tip or a node outside of this focal node, use the scaffold node for the 
     //  phylo side of the graph. Not accurate, but cuts down on the # of nodes.
     ToDotKey ancK{sidePar, ancPref};
-    if (mergeScPhAnc && focalNode != scaffAnc) {
+    /*if (mergeScPhAnc && focalNode != scaffAnc) {
         ancK = ToDotKey{scaffAnc, ""};
-    }
+    }*/
     ToDotKey desK{sideDes, desPref};
     if (scaffDes->isTip()) {
         desK = ToDotKey{scaffDes, ""};
