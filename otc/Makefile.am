@@ -19,12 +19,12 @@ libotcetera_la_HEADERS = \
 	util.h
 
 libotcetera_la_SOURCES = \
-	embedding.cpp \
 	embedded_tree.cpp \
 	forest.cpp \
 	ftree.cpp \
 	greedy_forest.cpp \
 	newick.cpp \
+	node_embedding.cpp \
 	otcetera.cpp \
 	otcli.cpp \
 	test_harness.cpp \
