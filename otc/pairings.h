@@ -81,8 +81,8 @@ class PathPairing {
         dbWriteOttSet(" updateDesIdsForSelfAndAnc onExit currChildOttIdSet = ", currChildOttIdSet);
     }
     bool updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
-    PathPairing(const NodePairing<T,U> & parent,
-                const NodePairing<T,U> & child)
+    PathPairing(const NodePairing<T, U> & parent,
+                const NodePairing<T, U> & child)
         :scaffoldDes(child.scaffoldNode),
         scaffoldAnc(parent.scaffoldNode),
         phyloChild(child.phyloNode),

@@ -9,8 +9,8 @@
 #include "otc/write_dot.h"
 namespace otc {
 template<typename T, typename U>
-typename RootedForest<T,U>::tree_type &
-RootedForest<T,U>::createNewTree() {
+typename RootedForest<T, U>::tree_type &
+RootedForest<T, U>::createNewTree() {
     std::size_t i = nextTreeId++;
     auto r = trees.emplace(std::piecewise_construct,
                            std::forward_as_tuple(i),
@@ -22,14 +22,14 @@ RootedForest<T,U>::createNewTree() {
 }
    
 template<typename T, typename U>
-RootedForest<T,U>::RootedForest(long rootOttId)
+RootedForest<T, U>::RootedForest(long rootOttId)
     :nextTreeId(0U),
     ottIdToNodeMap(nodeSrc.getData().ottIdToNode),
     rootID(rootOttId) {
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::registerLeaf(long ottId) {
+void RootedForest<T, U>::registerLeaf(long ottId) {
     if (ottId == rootID) {
         return;
     }
@@ -42,7 +42,7 @@ void RootedForest<T,U>::registerLeaf(long ottId) {
 
 // TMP could be faster by storing node->tree lookup
 template<typename T, typename U>
-bool RootedForest<T,U>::isAttached(long ottId) const {
+bool RootedForest<T, U>::isAttached(long ottId) const {
     auto f = ottIdToNodeMap.find(ottId);
     if (f == ottIdToNodeMap.end()) {
         return false;
@@ -53,12 +53,12 @@ bool RootedForest<T,U>::isAttached(long ottId) const {
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::nodeIsAttached(RootedTreeNode<T> & n) const {
+bool RootedForest<T, U>::nodeIsAttached(RootedTreeNode<T> & n) const {
     return (n.getParent() != nullptr);
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
+void RootedForest<T, U>::attachAllKnownTipsAsNewTree() {
     tree_type & t = createNewTree();
     t.root = createNode(nullptr, &t);
     for (auto & o2n : ottIdToNodeMap) {
@@ -75,7 +75,7 @@ void RootedForest<T,U>::attachAllKnownTipsAsNewTree() {
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::_AndUpdateChild(RootedTreeNode<T> *p,
+void RootedForest<T, U>::_AndUpdateChild(RootedTreeNode<T> *p,
                                                     RootedTreeNode<T> *c,
                                                     FTree<T, U> &tree) {
     registerTreeForNode(c, &tree);
@@ -89,7 +89,7 @@ void RootedForest<T,U>::_AndUpdateChild(RootedTreeNode<T> *p,
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::attachAllDetachedTips() {
+void RootedForest<T, U>::attachAllDetachedTips() {
     if (trees.empty()) {
         attachAllKnownTipsAsNewTree();
         return;
@@ -128,7 +128,7 @@ void RootedForest<T,U>::attachAllDetachedTips() {
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
+bool RootedForest<T, U>::addPhyloStatement(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
         dbWriteOttSet(" RootedForest::addPhyloStatement\nincGroup ", ps.includeGroup);
         dbWriteOttSet(" leafSet", ps.leafSet);
@@ -162,7 +162,7 @@ bool RootedForest<T,U>::addPhyloStatement(const PhyloStatement &ps) {
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::dumpAcceptedPhyloStatements(const char *fn) {
+void RootedForest<T, U>::dumpAcceptedPhyloStatements(const char *fn) {
     std::ofstream phyloStatementOut;
     phyloStatementOut.open(fn);
     for (const auto & ps : novelAcceptedPSInOrder) {
@@ -184,7 +184,7 @@ void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const Ot
 }
 
 template<typename T, typename U>
-std::pair<bool, bool> RootedForest<T,U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
+std::pair<bool, bool> RootedForest<T, U>::checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const {
     if (false && debuggingOutputEnabled) {
         dbWriteOttSet(" RootedForest::conflictsWithPreviouslyAddedStatement incGroup ", ps.includeGroup);
         dbWriteOttSet(" leafSet", ps.leafSet);
@@ -220,7 +220,7 @@ void consumeMapToList(std::map<T, std::list<U> > &m, std::list<U> & out) {
 }
 
 template<typename T, typename U>
-std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlappingTrees(const OttIdSet &inc) {
+std::list<OverlapFTreePair<T, U> > RootedForest<T, U>::getSortedOverlappingTrees(const OttIdSet &inc) {
     typedef OverlapFTreePair<T, U> MyOverlapFTreePair;
     std::map<std::size_t, std::list<MyOverlapFTreePair> > byOverlapSize;
     for (auto & tpIt : trees) {
@@ -239,7 +239,7 @@ std::list<OverlapFTreePair<T, U> > RootedForest<T,U>::getSortedOverlappingTrees(
 }
 
 template<typename T, typename U>
-void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloStatement &ps) {
+void RootedForest<T, U>::addIngroupDisjointPhyloStatementToGraph(const PhyloStatement &ps) {
     // this ingroup does not overlap with any ftree. find the FTree with the most overlap
     //  with the excludeGroup...
     auto byExcCardinality = getSortedOverlappingTrees(ps.excludeGroup);
@@ -263,7 +263,7 @@ void RootedForest<T,U>::addIngroupDisjointPhyloStatementToGraph(const PhyloState
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::isInABand(const node_type * nd) const {
+bool RootedForest<T, U>::isInABand(const node_type * nd) const {
     node_type * ncn = const_cast<node_type *>(nd);
     for (const auto & tp : trees) {
         const auto & tree = tp.second;
@@ -275,7 +275,7 @@ bool RootedForest<T,U>::isInABand(const node_type * nd) const {
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::hasNodesExcludedFromIt(const node_type * nd) const {
+bool RootedForest<T, U>::hasNodesExcludedFromIt(const node_type * nd) const {
     node_type * ncn = const_cast<node_type *>(nd);
     for (const auto & tp : trees) {
         const auto & tree = tp.second;
@@ -288,7 +288,7 @@ bool RootedForest<T,U>::hasNodesExcludedFromIt(const node_type * nd) const {
 
 // should not modify the forest if returning false
 template<typename T, typename U>
-bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
+bool RootedForest<T, U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
             const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
             const PhyloStatement &ps,
             std::list<node_type * > & nonTrivMRCAs,
@@ -352,7 +352,7 @@ bool RootedForest<T,U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
 
  
 template<typename T, typename U>
-InterTreeBand<T> * RootedForest<T,U>::_createNewBand(FTree<T, U> & ,
+InterTreeBand<T> * RootedForest<T, U>::_createNewBand(FTree<T, U> & ,
                                                  RootedTreeNode<T> &nd,
                                                  const PhyloStatement &ps) {
     std::set<RootedTreeNode<T> *> emptySet;
@@ -361,7 +361,7 @@ InterTreeBand<T> * RootedForest<T,U>::_createNewBand(FTree<T, U> & ,
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
+bool RootedForest<T, U>::addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
                                                                    const PhyloStatement &ps) {
     std::list<node_type * > nonTrivMRCAs;
     OttIdSet attachedElsewhere;
@@ -415,7 +415,7 @@ bool RootedForest<T,U>::addIngroupOverlappingPhyloStatementToGraph(const std::li
 }
 
 template<typename T, typename U>
-bool RootedForest<T,U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
+bool RootedForest<T, U>::addPhyloStatementToGraph(const PhyloStatement &ps) {
     if (debuggingOutputEnabled) {
         dbWriteOttSet(" RootedForest::addPhyloStatementToGraph incGroup ", ps.includeGroup);
         dbWriteOttSet(" leafSet", ps.leafSet);
@@ -475,7 +475,7 @@ RootedForest<T, U>::getTreeToNodeMapForBand(const InterTreeBand<T> & itb) const 
 
 
 template<typename T, typename U>
-FTree<T, U> & RootedForest<T,U>::addDisjointTree(const PhyloStatement &ps) {
+FTree<T, U> & RootedForest<T, U>::addDisjointTree(const PhyloStatement &ps) {
     tree_type & r = createNewTree();
     r.mirrorPhyloStatement(ps);
     return r;

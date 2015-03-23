@@ -114,7 +114,7 @@ template<typename T, typename U>
 class RootedForest {
     public:
     using node_type = RootedTreeNode<T>;
-    using tree_type = FTree<T,U>;
+    using tree_type = FTree<T, U>;
     RootedForest(long rootOttID);
     RootedForest(const RootedForest &) = delete;
     RootedForest & operator=(const RootedForest &) = delete;
@@ -166,10 +166,10 @@ class RootedForest {
     void _AndUpdateChild(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree);
     std::map<const tree_type *, const node_type *> getTreeToNodeMapForBand(const InterTreeBand<T> &) const;
     private:
-    std::list<OverlapFTreePair<T,U> > getSortedOverlappingTrees(const OttIdSet &inc);
+    std::list<OverlapFTreePair<T, U> > getSortedOverlappingTrees(const OttIdSet &inc);
     node_type * addDetachedLeaf(const OttId & ottId);
     tree_type & addDisjointTree(const PhyloStatement &);
-    bool addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T,U> > &, const PhyloStatement &);
+    bool addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > &, const PhyloStatement &);
     void addIngroupDisjointPhyloStatementToGraph(const PhyloStatement &);
     bool addPhyloStatementToGraph(const PhyloStatement &ps);
     bool checkCanAddIngroupOverlappingPhyloStatementToGraph(
@@ -203,12 +203,12 @@ class RootedForest {
 };
 
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T,U>::addDetachedLeaf(const OttId & ottId) {
+inline RootedTreeNode<T> * RootedForest<T, U>::addDetachedLeaf(const OttId & ottId) {
     return createLeaf(nullptr, ottId, nullptr);
 }
 
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T,U>::createNode(RootedTreeNode<T> * p, FTree<T, U> *ftree) {
+inline RootedTreeNode<T> * RootedForest<T, U>::createNode(RootedTreeNode<T> * p, FTree<T, U> *ftree) {
     auto r = nodeSrc.getRoot();
     if (r == nullptr) {
         auto c = nodeSrc.createRoot();
@@ -225,7 +225,7 @@ inline RootedTreeNode<T> * RootedForest<T,U>::createNode(RootedTreeNode<T> * p, 
 
 // does NOT update anc desIds!
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T,U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid, FTree<T, U> *ftree) {
+inline RootedTreeNode<T> * RootedForest<T, U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid, FTree<T, U> *ftree) {
     assert(oid != rootID);
     auto n = createNode(p, ftree);
     assert(n->getNextSib() == nullptr);

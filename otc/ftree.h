@@ -356,7 +356,7 @@ class FTree {
 };
 
 template<typename T, typename U>
-inline std::set<RootedTreeNode<T> *> FTree<T,U>::ottIdSetToNodeSet(const OttIdSet &ottIdSet) const {
+inline std::set<RootedTreeNode<T> *> FTree<T, U>::ottIdSetToNodeSet(const OttIdSet &ottIdSet) const {
     std::set<RootedTreeNode<T> *> ns;
     for (auto oid :ottIdSet) {
         ns.insert(ottIdToNodeMap.at(oid));
@@ -365,7 +365,7 @@ inline std::set<RootedTreeNode<T> *> FTree<T,U>::ottIdSetToNodeSet(const OttIdSe
 }
 
 template<typename T, typename U>
-inline void FTree<T,U>::addExcludeStatement(long ottId,
+inline void FTree<T, U>::addExcludeStatement(long ottId,
                                             RootedTreeNode<T> * excludedFrom,
                                             const PhyloStatementSource &) {
     auto eNode = ottIdToNodeMap.at(ottId);

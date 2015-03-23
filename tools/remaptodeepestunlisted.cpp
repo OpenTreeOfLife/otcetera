@@ -41,7 +41,7 @@ struct RemapToDeepestUnlistedState {
         return true;
     }
 
-    NodePairing<Node_t, Node_t> * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
+    NodePairing<Node_t, Node_t> * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *) {
         nodePairings.emplace_back(taxo, nd);
         auto ndPairPtr = &(*nodePairings.rbegin());
         auto & aembedding = scaffoldNdToNodeEmbedding.at(taxo);
@@ -49,7 +49,7 @@ struct RemapToDeepestUnlistedState {
         return ndPairPtr;
     }
 
-    PathPairing<Node_t, Node_t>  * _addPathMapping(NodePairing<Node_t, Node_t>  * parentPairing, NodePairing<Node_t, Node_t>  * childPairing, Tree_t *tree) {
+    PathPairing<Node_t, Node_t>  * _addPathMapping(NodePairing<Node_t, Node_t>  * parentPairing, NodePairing<Node_t, Node_t>  * childPairing, Tree_t *) {
         pathPairings.emplace_back(*parentPairing, *childPairing);
         auto pathPairPtr = &(*pathPairings.rbegin());
         // register a pointer to the path at each traversed...

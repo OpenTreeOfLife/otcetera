@@ -130,28 +130,28 @@ class NodeEmbedding {
 
     void collapseSourceEdge(const T * phyloParent,
                             PathPairing<T, U> * path);
-    void collapseSourceEdgesToForceOneEntry(U & ,
+    void collapseSourceEdgesToForceOneEntry(T & ,
                                             PathPairSet & pps,
                                             std::size_t treeIndex,
                                             SupertreeContextWithSplits &);
-    void resolveGivenContestedMonophyly(U & scaffoldNode,
+    void resolveGivenContestedMonophyly(T & scaffoldNode,
                                         SupertreeContextWithSplits & sc);
-    std::set<PathPairPtr> getAllChildExitPaths(U & scaffoldNode,
+    std::set<PathPairPtr> getAllChildExitPaths(T & scaffoldNode,
                                                SupertreeContextWithSplits & sc);
-    std::set<PathPairPtr> getAllChildExitPathsForTree(U & scaffoldNode,
+    std::set<PathPairPtr> getAllChildExitPathsForTree(T & scaffoldNode,
                                                       std::size_t treeIndex,
                                                       SupertreeContextWithSplits & sc);
-    void resolveGivenUncontestedMonophyly(U & scaffoldNode,
+    void resolveGivenUncontestedMonophyly(T & scaffoldNode,
                                           SupertreeContextWithSplits & sc);
-    void exportSubproblemAndFakeResolution(U & scaffoldNode,
+    void exportSubproblemAndFakeResolution(T & scaffoldNode,
                                            const std::string & exportDir,
                                            SupertreeContextWithSplits & sc);
-    void collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc);
-    void pruneCollapsedNode(U & scaffoldNode, SupertreeContextWithSplits & sc);
-    void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, SupertreeContextWithSplits  & sc);
+    void collapseGroup(T & scaffoldNode, SupertreeContext<T, U> & sc);
+    void pruneCollapsedNode(T & scaffoldNode, SupertreeContextWithSplits & sc);
+    void constructPhyloGraphAndCollapseIfNecessary(T & scaffoldNode, SupertreeContextWithSplits  & sc);
     
     bool reportIfContested(std::ostream & out,
-                           const U * nd,
+                           const T * nd,
                            const std::vector<TreeMappedWithSplits *> & treePtrByIndex,
                            const std::vector<NodeWithSplits *> & aliasedBy,
                            bool verbose) const;
@@ -173,12 +173,14 @@ class NodeEmbedding {
         edgeBelowEmbeddings[treeIndex].insert(pp);
     }
     void setOttIdForExitEmbeddings(
-                        U * newScaffDes,
+                        T * newScaffDes,
                         long ottId,
-                        std::map<const U *, NodeEmbedding<T, U> > & n2ne);
+                        std::map<const T *, NodeEmbedding<T, U> > & n2ne);
     const TreeToPathPairs & getExitEmbeddings() const {
         return edgeBelowEmbeddings;
     }
+    private:
+    std::map<U *, U*> getLoopedPhyloNd2Par(std::size_t treeInd) const;
 
 };
 

@@ -215,7 +215,7 @@ const OttIdSet FTree<T, U>::getConnectedOttIds() const {
 
 
 template<typename T, typename U>
-bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
+bool FTree<T, U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
     for (auto oid : ottIdSet) {
         if (exclude.isExcludedFrom(ottIdToNodeMap.at(oid), nd, nullptr)) {
             return true;
@@ -225,7 +225,7 @@ bool FTree<T,U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
 }
 
 template<typename T, typename U>
-bool FTree<T,U>::anyIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
+bool FTree<T, U>::anyIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
     if (!areDisjoint(nd->getData().desIds, ottIdSet)) {
         return true;
     }
@@ -235,7 +235,7 @@ bool FTree<T,U>::anyIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSe
 }
 
 template<typename T, typename U>
-bool FTree<T,U>::anyPhantomNodesAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
+bool FTree<T, U>::anyPhantomNodesAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
     const auto & b = bands.getBandsForNode(nd);
     if (!b.empty()) {
        const auto ns = ottIdSetToNodeSet(ottIdSet);
@@ -249,14 +249,14 @@ bool FTree<T,U>::anyPhantomNodesAtNode(const node_type * nd, const OttIdSet &ott
 }
 
 template<typename T, typename U>
-RootedTreeNode<T> * FTree<T,U>::addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId) {
+RootedTreeNode<T> * FTree<T, U>::addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId) {
     //connectedIds.insert(ottId);
     return forest.createLeaf(par, ottId, this);
 }
 
 
 template<typename T, typename U>
-RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par,
+RootedTreeNode<T> * FTree<T, U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par,
                                                                const PhyloStatement & ps) {
     const OttIdSet & oids = ps.includeGroup;
     dbWriteOttSet("  ottIdIsConnected oids = ", oids);
@@ -299,7 +299,7 @@ RootedTreeNode<T> * FTree<T,U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T>
 }
 
 template<typename T, typename U>
-bool FTree<T,U>::insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp,
+bool FTree<T, U>::insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp,
                                     RootedTreeNode<T> * connectedNode,
                                     long phantomID) {
     assert(connectedNode != nullptr);
@@ -337,7 +337,7 @@ T * rootToTipSearchByDesIds(T * nd, const OttIdSet &oids) {
     }
 }
 template<typename T, typename U>
-RootedTreeNode<T> * FTree<T,U>::getMRCA(const OttIdSet &ottIdSet) {
+RootedTreeNode<T> * FTree<T, U>::getMRCA(const OttIdSet &ottIdSet) {
     if (ottIdSet.empty()) {
         assert(false);
         throw OTCError("empty MRCA");
@@ -476,11 +476,11 @@ std::set<T *> getAncSet(T *nd) {
 
 
 template<typename T, typename U>
-OttIdSet FTree<T,U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
+OttIdSet FTree<T, U>::addPhyloStatementAtNode(const PhyloStatement & ps, 
                                              RootedTreeNode<T> * includeGroupA,
                                              const OttIdSet & attachedElsewhere,
                                              InterTreeBand<T> * itbp) {
-    dbWriteOttSet(" FTree<T,U>::addPhyloStatementAtNode inc", ps.includeGroup);
+    dbWriteOttSet(" FTree<T, U>::addPhyloStatementAtNode inc", ps.includeGroup);
     LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA  << " " << std::hex << (long) includeGroupA << std::dec;
     LOG(DEBUG) << "itbp = " << (long) itbp << " " << std::hex << (long) itbp << std::dec;
     LOG(DEBUG) << "FTree = " << (long) this << " " << std::hex << (long) this << std::dec;

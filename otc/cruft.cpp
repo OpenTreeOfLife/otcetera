@@ -40,7 +40,7 @@ void GreedyBandedForest<T, U>::mergePathToNextBand(
 //   ing is the MRCA of the incGroup in this tree
 //
 template<typename T, typename U>
-void GreedyBandedForest<T,U>::addIngroupAtNode(NodeWithSplits *, //delete root param?
+void GreedyBandedForest<T, U>::addIngroupAtNode(NodeWithSplits *, //delete root param?
                                                      NodeWithSplits *ing,
                                                      NodeWithSplits *outg,
                                                      const OttIdSet & incGroup,
@@ -88,7 +88,7 @@ void GreedyBandedForest<T,U>::addIngroupAtNode(NodeWithSplits *, //delete root p
 }
 
 template<typename T, typename U>
-void GreedyBandedForest<T,U>::graftTreesTogether(NodeWithSplits *, //rr,
+void GreedyBandedForest<T, U>::graftTreesTogether(NodeWithSplits *, //rr,
                                                        NodeWithSplits *, //ri,
                                                        NodeWithSplits *, //delr,
                                                        NodeWithSplits *, //deli,
@@ -99,7 +99,7 @@ void GreedyBandedForest<T,U>::graftTreesTogether(NodeWithSplits *, //rr,
 }
 
 template<typename T, typename U>
-bool GreedyBandedForest<T,U>::attemptToAddGrouping(const OttIdSet & incGroup,
+bool GreedyBandedForest<T, U>::attemptToAddGrouping(const OttIdSet & incGroup,
                                                         const OttIdSet & leafSet,
                                                         int treeIndex,
                                                         long groupIndex,

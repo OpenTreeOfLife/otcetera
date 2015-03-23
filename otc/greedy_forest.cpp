@@ -67,7 +67,7 @@ bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, cons
 }
 
 template<typename T, typename U>
-void GreedyBandedForest<T,U>::writeFirstTree(std::ostream & treeFileStream) {
+void GreedyBandedForest<T, U>::writeFirstTree(std::ostream & treeFileStream) {
     writeNewick(treeFileStream, getRoots().at(0));
 }
 
@@ -76,7 +76,7 @@ void GreedyBandedForest<T,U>::writeFirstTree(std::ostream & treeFileStream) {
 // 3. update all of the outgoing paths so that they map
 //      to this taxon
 template<typename T, typename U>
-void GreedyBandedForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
+void GreedyBandedForest<T, U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
                                                                     NodeEmbedding<T, U> * embedding,
                                                                     SupertreeContextWithSplits * sc) {
     assert(sc != nullptr);
@@ -97,7 +97,7 @@ void GreedyBandedForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
 }
 
 template<typename T, typename U>
-bool GreedyBandedForest<T,U>::createAndAddPhyloStatement(
+bool GreedyBandedForest<T, U>::createAndAddPhyloStatement(
                 const OttIdSet & incGroup,
                 const OttIdSet & leafSet,
                 int treeIndex,
@@ -112,7 +112,7 @@ bool GreedyBandedForest<T,U>::createAndAddPhyloStatement(
 }
 
 template<typename T, typename U>
-bool GreedyBandedForest<T,U>::addLeaf(
+bool GreedyBandedForest<T, U>::addLeaf(
                       const OttIdSet & incGroup,
                       const OttIdSet & ,
                       int ,
@@ -125,7 +125,7 @@ bool GreedyBandedForest<T,U>::addLeaf(
 }
 
 template<typename T, typename U>
-bool GreedyBandedForest<T,U>::attemptToAddGrouping(const OttIdSet & incGroup,
+bool GreedyBandedForest<T, U>::attemptToAddGrouping(const OttIdSet & incGroup,
                                                         const OttIdSet & leafSet,
                                                         int treeIndex,
                                                         long groupIndex,
@@ -145,7 +145,7 @@ bool GreedyBandedForest<T,U>::attemptToAddGrouping(const OttIdSet & incGroup,
 //      true, incGroup-MRCA, excGroup-MRCA if there is an intersection the leafset and the incGroup and the incGroup could be added
 //          to this tree of the forest
 template<typename T, typename U>
-CouldAddResult GreedyBandedForest<T,U>::couldAddToTree(NodeWithSplits *root, const OttIdSet & incGroup, const OttIdSet & leafSet) {
+CouldAddResult GreedyBandedForest<T, U>::couldAddToTree(NodeWithSplits *root, const OttIdSet & incGroup, const OttIdSet & leafSet) {
     if (areDisjoint(root->getData().desIds, leafSet)) {
         return std::make_tuple(true, nullptr, nullptr);
     }
@@ -176,7 +176,7 @@ CouldAddResult GreedyBandedForest<T,U>::couldAddToTree(NodeWithSplits *root, con
 }
 
 template<typename T, typename U>
-std::vector<T *> GreedyBandedForest<T,U>::getRoots(){
+std::vector<T *> GreedyBandedForest<T, U>::getRoots(){
     std::vector<T *> r;
     r.reserve(trees.size());
     for (auto & t : trees) {
@@ -642,7 +642,7 @@ void GreedyBandedForest<T, U>::mergeTreesToFirstPostBandHandling(SupertreeContex
 }
 
 template<typename T, typename U>
-void GreedyBandedForest<T,U>::finalizeTree(SupertreeContextWithSplits *sc) {
+void GreedyBandedForest<T, U>::finalizeTree(SupertreeContextWithSplits *sc) {
     LOG(DEBUG) << "finalizeTree for a forest with " << trees.size() << " roots:";
     debugInvariantsCheck();
     auto roots = getRoots();
