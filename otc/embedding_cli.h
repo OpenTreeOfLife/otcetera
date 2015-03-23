@@ -39,7 +39,7 @@ class EmbeddingCLI
         debuggingOutput = otCLI.verbose;
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
         checkTreeInvariants(*taxonomy);
-        suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy);
+        suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy, false);
         monotypicRemapping = generateIdRemapping(*taxonomy);
         checkTreeInvariants(*taxonomy);
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
@@ -61,6 +61,7 @@ class EmbeddingCLI
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
         raw->setName(otCLI.currentFilename);
+        suppressMonotypicTaxaPreserveDeepestDangle(*raw, true);
         embedNewTree(*taxonomy, *raw, treeIndex);
         otCLI.err << "# pathPairings = " << pathPairings.size() << '\n';
         return true;

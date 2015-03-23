@@ -664,7 +664,9 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
 //  their former parent (before culling). But note that you may have to 
 //  call it muliple times to find the first ancestor that has not been deleted.
 template<typename T>
-inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDangle(T & tree) {
+inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDangle(
+                    T & tree,
+                    bool resetOttId) {
     std::set<typename T::node_type *> monotypic;
     for (auto nd : iter_node_internal(tree)) {
         if (nd->isOutDegreeOneNode()) {
@@ -680,6 +682,9 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDan
             if (!contains(toProcess, child)) {
                 suppressMonotypyByStealingGrandchildren<T>(tpn, child, tree);
                 toProcess.erase(toPIt++);
+                if (resetOttId && child->hasOttId()) {
+                    tpn->setOttId(child->getOttId());
+                }
                 removed.insert(child);
             } else {
                 ++toPIt;
