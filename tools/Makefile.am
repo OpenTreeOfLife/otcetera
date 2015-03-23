@@ -14,7 +14,11 @@ bin_PROGRAMS = otcassertinvariants \
 				otcpolytomycount \
 				otctaxonconflictreport \
 				otcuncontesteddecompose \
-				otcrf
+				otcrf \
+				otcsuppressmonotypic
+
+otcsuppressmonotypic_SOURCES = suppressmonotypic.cpp
+otcsuppressmonotypic_CPPFLAGS = $(AM_CPPFLAGS)
 
 otcassertinvariants_SOURCES = assertinvariants.cpp
 otcassertinvariants_CPPFLAGS = $(AM_CPPFLAGS)

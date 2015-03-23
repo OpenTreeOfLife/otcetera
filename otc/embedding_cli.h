@@ -61,8 +61,14 @@ class EmbeddingCLI
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
         raw->setName(otCLI.currentFilename);
-        suppressMonotypicTaxaPreserveDeepestDangle(*raw, true);
+        if (treeIndex == 471) {
+            otCLI.turnOnVerboseMode();
+        }
+        suppressMonotypicTaxaPreserveShallowDangle(*raw);
         embedNewTree(*taxonomy, *raw, treeIndex);
+        if (treeIndex == 471) {
+            otCLI.turnOffVerboseMode();
+        }
         otCLI.err << "# pathPairings = " << pathPairings.size() << '\n';
         return true;
     }

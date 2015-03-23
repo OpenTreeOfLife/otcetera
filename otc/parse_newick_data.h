@@ -35,6 +35,9 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
                                 const ParsingRules &parsingRules) {
     if (labelToken) {
         node.setName(labelToken->content());
+        if ((!parsingRules.setOttIdForInternals) && node.isInternal()) {
+            return;
+        }
         long ottID = ottIDFromName(labelToken->content());
         if (ottID >= 0) {
             if (parsingRules.idRemapping != nullptr) {

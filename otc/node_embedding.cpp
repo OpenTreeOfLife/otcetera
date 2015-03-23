@@ -561,6 +561,8 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
             parEmbedding.loopEmbeddings[treeIndex].insert(lp);
         }
     }
+    std::set<std::size_t> indsOfTreesWithNewLoops;
+    std::set<std::size_t> indsOfTreesMappedToInternal;
     // every exit edge for this node becomes a loop for its parent if it is not trivial
     for (auto ebai : edgeBelowEmbeddings) {
         const auto & treeIndex = ebai.first;
@@ -580,22 +582,21 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
                         OttIdSet n = scaffoldNode.getData().desIds; // expand the internal name to it taxonomic content
                         n.erase(lp->phyloChild->getOttId());
                         lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sc.scaffold2NodeEmbedding);
+                        indsOfTreesMappedToInternal.insert(treeIndex);
                         // we'll let the path pairing be lost (since it is attached to a node that will be detached...)
                     } else {
                         lp->scaffoldDes = p;
                         parEmbedding.loopEmbeddings[treeIndex].insert(lp);
+                        indsOfTreesWithNewLoops.insert(treeIndex);
                     }
-                } else {
-                    if (lp->phyloChild->isTip()) {
-                        if (lp->scaffoldDes->getParent() != &scaffoldNode) {
-                            LOG(ERROR) << " Anbandonding a path that ends at ott" << lp->scaffoldDes->getOttId() << " when collapsing ott" << scaffoldNode.getOttId();
-                            assert(false);
-                        }
-                    }
+                } /*else {
                     if (lp->scaffoldDes->getParent() != &scaffoldNode) {
-                        parEmbedding.loopEmbeddings[treeIndex].insert(lp);
+                        LOG(ERROR) << " Anbandonding a path that ends at ott" << lp->scaffoldDes->getOttId();
+                        LOG(ERROR) << "                    and starts at ott" << lp->scaffoldAnc->getOttId() << " when collapsing ott" << scaffoldNode.getOttId();
+                        LOG(ERROR) << " lp->scaffoldDes->getParent() ott" << lp->scaffoldDes->getParent()->getOttId();
+                        assert(false);
                     }
-                }
+                } */
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par
                 assert(contains(parEmbedding.edgeBelowEmbeddings[treeIndex], lp));
@@ -611,6 +612,19 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
         for (auto ceabi : childEmbedding.edgeBelowEmbeddings) {
             for (auto clp : ceabi.second) {
                 if (clp->scaffoldAnc == &scaffoldNode) {
+                    if (clp->phyloParent->getParent() != nullptr
+                           && !contains(indsOfTreesWithNewLoops, ceabi.first)
+                           && !contains(indsOfTreesMappedToInternal, ceabi.first)) {
+                        LOG(ERROR) << " Moving back a path  that starts at ott" << clp->scaffoldAnc->getOttId();
+                        writeNewick(std::cerr, clp->scaffoldAnc); std::cerr << std::endl;
+                        LOG(ERROR) << "                    so that it starts at ott" << p->getOttId() << " when collapsing ott" << scaffoldNode.getOttId();
+                        LOG(ERROR) << "                     des " << clp->scaffoldDes->getOttId();
+                        writeNewick(std::cerr, clp->scaffoldDes); std::cerr << std::endl;
+                        LOG(ERROR) << "                     phyloChild ott" << clp->phyloChild->getOttId();
+                        writeNewick(std::cerr, clp->phyloChild); std::cerr << std::endl;
+                        LOG(ERROR) << " treeIndex = " << ceabi.first;
+                        assert(false);
+                    }
                     clp->scaffoldAnc = p;
                 }
             }

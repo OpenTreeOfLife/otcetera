@@ -584,6 +584,15 @@ inline void eraseMappingsToNode(typename T::node_type * nd, T & tree) {
     tree.markAsDetached(nd);
 }
 template<typename T>
+void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename T::node_type * alias, T & tree);
+
+template<>
+inline void replaceMappingsToNodeWithAlias(typename RootedTreeTopologyNoData::node_type *,
+                                           typename RootedTreeTopologyNoData::node_type * ,
+                                           RootedTreeTopologyNoData & ) {
+}
+
+template<typename T>
 inline void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename T::node_type * alias, T & tree) {
     if (nd->hasOttId()) {
         tree.getData().ottIdToDetachedNode[nd->getOttId()] = nd;
@@ -658,6 +667,33 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
     }
 }
 
+
+
+template<typename T>
+inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * nd,
+                                                       typename T::node_type * child,
+                                                       T & tree) {
+    assert(nd);
+    assert(child);
+    assert(child->getParent() == nd);
+    assert(nd->getFirstChild() == child);
+    assert(child->getNextSib() == nullptr);
+    auto gp = nd->getParent();
+    assert(gp);
+    LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd)) << " by claiming grandparent as parent for node " << getDesignator(*child) ;
+    auto entryChild = nd->getPrevSib();
+    auto exitChild = nd->getNextSib();
+    child->_setParent(gp);
+    if (entryChild != nullptr) {
+        assert(entryChild->getNextSib() == nd);
+        entryChild->_setNextSib(child);
+    } else {
+        gp->_setFirstChild(child);
+    }
+    child->_setNextSib(exitChild);
+    replaceMappingsToNodeWithAlias<T>(nd, child, tree);
+}
+
 // in some context we need to preserve the deepest because the desIds may need 
 // the internal nodes IDs (even if the IDs correspond to monotypic taxa)
 // returns set of nodes deleted. Their getParent() calls will tell the caller
@@ -686,6 +722,40 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDan
                     tpn->setOttId(child->getOttId());
                 }
                 removed.insert(child);
+            } else {
+                ++toPIt;
+            }
+        }
+    }
+    return removed;
+}
+
+
+// in some context we need to preserve the deepest because the desIds may need 
+// the internal nodes IDs (even if the IDs correspond to monotypic taxa)
+// returns set of nodes deleted. Their getParent() calls will tell the caller
+//  their former parent (before culling). But note that you may have to 
+//  call it muliple times to find the first ancestor that has not been deleted.
+template<typename T>
+inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDangle(
+                    T & tree) {
+    std::set<typename T::node_type *> monotypic;
+    for (auto nd : iter_node_internal(tree)) {
+        assert(!nd->hasOttId()); // not a good place for this assert... true in how we use this fund
+        if (nd->isOutDegreeOneNode()) {
+            monotypic.insert(nd);
+        }
+    }
+    std::set<typename T::node_type *> removed;
+    auto toProcess = monotypic;
+    while (!toProcess.empty()) {
+        for (auto toPIt = toProcess.begin(); toPIt != toProcess.end();) {
+            auto tpn = *toPIt;
+            auto par = tpn->getParent();
+            if (!contains(toProcess, par)) {
+                suppressMonotypyByClaimingGrandparentAsPar<T>(tpn, tpn->getFirstChild(), tree);
+                toProcess.erase(toPIt++);
+                removed.insert(tpn);
             } else {
                 ++toPIt;
             }
