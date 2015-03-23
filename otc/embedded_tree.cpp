@@ -8,19 +8,9 @@
 #include "otc/write_dot.h"
 namespace otc {
 
-NodeEmbeddingWithSplits & EmbeddedTree::_getEmdeddingForNode(NodeWithSplits * nd) {
-    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits>::iterator sIt = taxoToEmbedding.find(nd);
-    if (sIt == taxoToEmbedding.end()) {
-        auto eres = taxoToEmbedding.emplace(std::piecewise_construct,
-                                            std::forward_as_tuple(nd),
-                                            std::forward_as_tuple(nd));
-        assert(eres.second);
-        return eres.first->second;
-    }
-    return sIt->second;
-}
-
-NodePairingWithSplits * EmbeddedTree::_addNodeMapping(NodeWithSplits *taxo, NodeWithSplits *nd, std::size_t treeIndex) {
+NodePairingWithSplits * EmbeddedTree::_addNodeMapping(
+                NodeWithSplits *taxo,
+                NodeWithSplits *nd, std::size_t treeIndex) {
     assert(taxo != nullptr);
     assert(nd != nullptr);
     nodePairings.emplace_back(NodePairingWithSplits(taxo, nd));
@@ -29,9 +19,10 @@ NodePairingWithSplits * EmbeddedTree::_addNodeMapping(NodeWithSplits *taxo, Node
     return ndPairPtr;
 }
 
-PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * parentPairing,
-                                        NodePairingWithSplits * childPairing,
-                                        std::size_t treeIndex) {
+PathPairingWithSplits * EmbeddedTree::_addPathMapping(
+                NodePairingWithSplits * parentPairing,
+                NodePairingWithSplits * childPairing,
+                std::size_t treeIndex) {
     pathPairings.emplace_back(*parentPairing, *childPairing);
     auto pathPairPtr = &(*pathPairings.rbegin());
     // register a pointer to the path at each traversed...
@@ -39,19 +30,22 @@ PathPairingWithSplits * EmbeddedTree::_addPathMapping(NodePairingWithSplits * pa
     auto ancTaxo = pathPairPtr->scaffoldAnc;
     if (currTaxo != ancTaxo) {
         while (currTaxo != ancTaxo) {
-            _getEmdeddingForNode(currTaxo).edgeBelowEmbeddings[treeIndex].insert(pathPairPtr);
+            auto & ne = _getEmdeddingForNode(currTaxo).edgeBelowEmbeddings[treeIndex];
+            ne.insert(pathPairPtr);
             currTaxo = currTaxo->getParent();
             if (currTaxo == nullptr) {
                 break;
             }
         }
     } else {
-        _getEmdeddingForNode(currTaxo).loopEmbeddings[treeIndex].insert(pathPairPtr);
+        auto & ne =_getEmdeddingForNode(currTaxo).loopEmbeddings[treeIndex];
+        ne.insert(pathPairPtr);
     }
     return pathPairPtr;
 }
 
-void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
+void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree,
+                                TreeMappedWithSplits & tree, std::size_t treeIndex) {
     // do embedding
     std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
     std::set<NodePairingWithSplits *> tipPairings;
@@ -63,7 +57,8 @@ void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedW
         NodePairingWithSplits * ndPairPtr = nullptr;
         NodeWithSplits * taxoDes = nullptr;
         if (nd->isTip()) {
-            assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end()); // TMP, Remove this to save time?
+             // TMP, Remove this next assert to save time?
+            assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end());
             assert(nd->hasOttId());
             auto ottId = nd->getOttId();
             taxoDes = scaffoldTree.getData().getNodeForOttId(ottId);
@@ -103,7 +98,9 @@ void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedW
     }
 }
 
-void EmbeddedTree::embedTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex) {
+void EmbeddedTree::embedScaffoldClone(TreeMappedWithSplits & scaffoldTree,
+                                      TreeMappedWithSplits & tree,
+                                      std::size_t treeIndex) {
     // do embedding
     std::map<NodeWithSplits *, NodePairingWithSplits *> currTreeNodePairings;
     for (auto nd : iter_post(tree)) {
@@ -114,7 +111,8 @@ void EmbeddedTree::embedTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeM
         NodePairingWithSplits * ndPairPtr = nullptr;
         NodeWithSplits * taxoDes = nullptr;
         if (nd->isTip()) {
-            assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end()); // TMP, Remove this to save time?
+            // TMP, Remove this next assert to save time?
+            assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end());
             assert(nd->hasOttId());
             auto ottId = nd->getOttId();
             taxoDes = scaffoldTree.getData().getNodeForOttId(ottId);
@@ -131,7 +129,8 @@ void EmbeddedTree::embedTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeM
         NodePairingWithSplits * parPairPtr = nullptr;
         auto prevAddedNodePairingIt = currTreeNodePairings.find(par);
         if (prevAddedNodePairingIt == currTreeNodePairings.end()) {
-            auto pottId = par->getOttId(); // since it is a taxonomy, it will have internal node labels
+             // since it is a taxonomy, it will have internal node labels
+            auto pottId = par->getOttId();
             auto taxoAnc = scaffoldTree.getData().getNodeForOttId(pottId);
             assert(taxoAnc != nullptr);
             parPairPtr = _addNodeMapping(taxoAnc, par, treeIndex);
@@ -149,7 +148,7 @@ void EmbeddedTree::writeDOTExport(std::ostream & out,
                        const std::vector<TreeMappedWithSplits *> &t,
                        bool entireSubtree,
                        bool includeLastTree) const {
-    writeDOTForEmbedding(out, nd, t, taxoToEmbedding, entireSubtree, includeLastTree);
+    writeDOTForEmbedding(out, nd, t, scaffoldNdToNodeEmbedding, entireSubtree, includeLastTree);
 }
 
 } // namespace otc

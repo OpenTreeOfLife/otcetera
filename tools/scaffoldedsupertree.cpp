@@ -86,7 +86,7 @@ class ScaffoldedSupertree : public EmbeddingCLI {
 
     void constructSupertree(OTCLI &otCLI) {
         TreeMappedWithSplits * tax = taxonomy.get();
-        SupertreeContextWithSplits sc{treePtrByIndex, taxoToEmbedding, *tax};
+        SupertreeContextWithSplits sc{treePtrByIndex, scaffoldNdToNodeEmbedding, *tax};
         if (debuggingOutput) {
             if (emitScaffoldDotFiles) {
                 writeEmbeddingDOT(BEFORE_ND_W_TAXO, taxonomy->getRoot(), nullptr);

@@ -33,7 +33,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 
     void exportSubproblems(OTCLI &) {
         TreeMappedWithSplits * tax = taxonomy.get();
-        SupertreeContextWithSplits sc{treePtrByIndex, taxoToEmbedding, *tax};
+        SupertreeContextWithSplits sc{treePtrByIndex, scaffoldNdToNodeEmbedding, *tax};
         std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post_internal(*taxonomy)) {
             assert(!nd->isTip());

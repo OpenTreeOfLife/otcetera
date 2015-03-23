@@ -21,7 +21,7 @@ struct RemapToDeepestUnlistedState {
     std::set<long> tabooIds;
     std::list<NodePairing<Node_t, Node_t> > nodePairings;
     std::list<PathPairing<Node_t, Node_t> > pathPairings;
-    std::map<const Node_t*, Embeddings> taxoToEmbedding;
+    std::map<const Node_t*, Embeddings> scaffoldNdToNodeEmbedding;
     std::size_t sourceTreeIndex;
 
 
@@ -41,7 +41,7 @@ struct RemapToDeepestUnlistedState {
     bool processTaxonomyTree(OTCLI & otCLI) {
         ottIds = keys(taxonomy->getData().ottIdToNode);
         for (auto nd : iter_node(*taxonomy)) {
-            taxoToEmbedding.emplace(nd, Embeddings{});
+            scaffoldNdToNodeEmbedding.emplace(nd, Embeddings{});
         }
         otCLI.getParsingRules().ottIdValidator = &ottIds;
         return true;
@@ -50,7 +50,7 @@ struct RemapToDeepestUnlistedState {
     NodePairing<Node_t, Node_t> * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
         nodePairings.emplace_back(taxo, nd);
         auto ndPairPtr = &(*nodePairings.rbegin());
-        auto & aembedding = taxoToEmbedding[taxo];
+        auto & aembedding = scaffoldNdToNodeEmbedding[taxo];
         aembedding.nodeEmbeddings[tree].insert(ndPairPtr);
         return ndPairPtr;
     }
@@ -63,14 +63,14 @@ struct RemapToDeepestUnlistedState {
         auto ancTaxo = pathPairPtr->scaffoldAnc;
         if (currTaxo != ancTaxo) {
             while (currTaxo != ancTaxo) {
-                taxoToEmbedding[currTaxo].edgeBelowEmbeddings[tree].insert(pathPairPtr);
+                scaffoldNdToNodeEmbedding[currTaxo].edgeBelowEmbeddings[tree].insert(pathPairPtr);
                 currTaxo = currTaxo->getParent();
                 if (currTaxo == nullptr) {
                     break;
                 }
             }
         } else {
-            taxoToEmbedding[currTaxo].loopEmbeddings[tree].insert(pathPairPtr);
+            scaffoldNdToNodeEmbedding[currTaxo].loopEmbeddings[tree].insert(pathPairPtr);
         }
         return pathPairPtr;
     }

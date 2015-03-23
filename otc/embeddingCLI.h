@@ -87,7 +87,7 @@ class EmbeddingCLI
         }
         // Store the tree's filename
         taxonomyAsSource->setName("TAXONOMY");
-        embedTaxonomyClone(*taxonomy, *taxonomyAsSource, treeIndex);
+        embedScaffoldClone(*taxonomy, *taxonomyAsSource, treeIndex);
         return true;
     }
 };

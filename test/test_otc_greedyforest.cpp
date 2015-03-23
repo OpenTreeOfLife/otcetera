@@ -49,7 +49,9 @@ class TestValidTreeStruct {
             std::vector<Tree_t *> ftv;
             ftv.push_back(&fakePhylo);
 
-            SupertreeContextWithSplits sc{ftv, et.taxoToEmbedding, fakeScaffold};
+            SupertreeContextWithSplits sc{ftv,
+                                          et._getScaffoldNdToNodeEmbedding(),
+                                          fakeScaffold};
             GreedyBandedForest<NodeWithSplits, NodeWithSplits> gpf{-1};
             int treeInd = 0;
             long groupInd = 0;

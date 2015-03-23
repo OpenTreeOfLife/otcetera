@@ -7,42 +7,57 @@
 #include <set>
 #include "otc/otc_base_includes.h"
 #include "otc/tree_data.h"
+#include "otc/node_embedding.h"
 
 namespace otc {
 class EmbeddedTree {
     protected:
     std::list<NodePairingWithSplits> nodePairings;
     std::list<PathPairingWithSplits> pathPairings;
+    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> scaffoldNdToNodeEmbedding;
     public:
-    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> taxoToEmbedding;
-    
     EmbeddedTree() {
     }
-
-
+    void embedNewTree(TreeMappedWithSplits & scaffoldTree,
+                      TreeMappedWithSplits & tree,
+                      std::size_t treeIndex);
+    void embedScaffoldClone(TreeMappedWithSplits & scaffoldTree,
+                            TreeMappedWithSplits & tree,
+                            std::size_t treeIndex);
+    void writeDOTExport(std::ostream & out,
+                        const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
+                        const NodeWithSplits * nd,
+                        const std::vector<TreeMappedWithSplits *> &,
+                        bool entireSubtree,
+                        bool includeLastTree) const;
+    // for testing...
+    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> &_getScaffoldNdToNodeEmbedding() {
+        return scaffoldNdToNodeEmbedding;
+    }
+    protected:
     NodePairingWithSplits * _addNodeMapping(NodeWithSplits *taxo,
                                             NodeWithSplits *nd,
                                             std::size_t treeIndex);
     PathPairingWithSplits * _addPathMapping(NodePairingWithSplits * parentPairing,
                                             NodePairingWithSplits * childPairing,
                                             std::size_t treeIndex);
-    void embedNewTree(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex);
-    void embedTaxonomyClone(TreeMappedWithSplits & scaffoldTree, TreeMappedWithSplits & tree, std::size_t treeIndex);
-    void writeDOTExport(std::ostream & out,
-                           const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
-                           const NodeWithSplits * nd,
-                           const std::vector<TreeMappedWithSplits *> &,
-                           bool entireSubtree,
-                           bool includeLastTree) const;
-    protected:
     NodeEmbeddingWithSplits & _getEmdeddingForNode(NodeWithSplits * nd);
     const NodeEmbeddingWithSplits & _getEmdeddingForNode(const NodeWithSplits * nd) const {
-        return taxoToEmbedding.at(nd);
+        return scaffoldNdToNodeEmbedding.at(nd);
     }
 };
 
-
-
+inline NodeEmbeddingWithSplits & EmbeddedTree::_getEmdeddingForNode(NodeWithSplits * nd) {
+    const auto sIt = scaffoldNdToNodeEmbedding.find(nd);
+    if (sIt == scaffoldNdToNodeEmbedding.end()) {
+        auto eres = scaffoldNdToNodeEmbedding.emplace(std::piecewise_construct,
+                                                      std::forward_as_tuple(nd),
+                                                      std::forward_as_tuple(nd));
+        assert(eres.second);
+        return eres.first->second;
+    }
+    return sIt->second;
+}
 
 } // namespace
 #endif

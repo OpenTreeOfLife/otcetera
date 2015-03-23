@@ -40,10 +40,10 @@ class SupertreeContext {
             }
         }
         SupertreeContext(const std::vector<TreeMappedWithSplits *> & tv,
-                         std::map<const RootedTreeNode<RTSplits> *, NodeEmbedding<T, U> > & taxoToEmbedding,
+                         std::map<const RootedTreeNode<RTSplits> *, NodeEmbedding<T, U> > & scaffoldNdToNodeEmbedding,
                          TreeMappedWithSplits & scaffTree)
             :numTrees(tv.size()),
-            scaffold2NodeEmbedding(taxoToEmbedding),
+            scaffold2NodeEmbedding(scaffoldNdToNodeEmbedding),
             scaffoldOttId2Node(scaffTree.getData().ottIdToNode),
             scaffoldTree(scaffTree) {
             treesByIndex.reserve(numTrees); 
