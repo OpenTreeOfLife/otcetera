@@ -93,13 +93,7 @@ void GreedyBandedForest<T,U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
     checkAllNodePointersIter(scaffoldNode);
     assert(beforePar == scaffoldNode.getParent());
     // remap all path pairings out of this node...
-    for (auto treeInd2eout : embedding->edgeBelowEmbeddings) {
-        for (auto eout : treeInd2eout.second) {
-            LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << snoid<< ')';
-            eout->scaffoldDes = &scaffoldNode;
-            eout->setOttIdSet(snoid, sc->scaffold2NodeEmbedding);
-        }
-    }
+    embedding->setOttIdForExitEmbeddings(&scaffoldNode, snoid, sc->scaffold2NodeEmbedding);
 }
 
 template<typename T, typename U>

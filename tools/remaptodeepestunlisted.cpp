@@ -7,12 +7,6 @@ typedef otc::RootedTree<typename Node_t::data_type, RTreeOttIDMapping<typename N
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 bool handleTabooOTTIdListFile(OTCLI & otCLI, const std::string &nextArg);
 
-struct Embeddings {
-    std::map<Tree_t *, std::set<NodePairing<Node_t, Node_t> *> > nodeEmbeddings;
-    std::map<Tree_t *, std::set<PathPairing<Node_t, Node_t> *> > edgeBelowEmbeddings;
-    std::map<Tree_t *, std::set<PathPairing<Node_t, Node_t> *> > loopEmbeddings;
-};
-
 struct RemapToDeepestUnlistedState {
     std::unique_ptr<Tree_t> taxonomy;
     int numErrors;
@@ -21,7 +15,7 @@ struct RemapToDeepestUnlistedState {
     std::set<long> tabooIds;
     std::list<NodePairing<Node_t, Node_t> > nodePairings;
     std::list<PathPairing<Node_t, Node_t> > pathPairings;
-    std::map<const Node_t*, Embeddings> scaffoldNdToNodeEmbedding;
+    std::map<const Node_t*, NodeEmbeddingWithSplits> scaffoldNdToNodeEmbedding;
     std::size_t sourceTreeIndex;
 
 
@@ -41,7 +35,7 @@ struct RemapToDeepestUnlistedState {
     bool processTaxonomyTree(OTCLI & otCLI) {
         ottIds = keys(taxonomy->getData().ottIdToNode);
         for (auto nd : iter_node(*taxonomy)) {
-            scaffoldNdToNodeEmbedding.emplace(nd, Embeddings{});
+            scaffoldNdToNodeEmbedding.emplace(nd, NodeEmbeddingWithSplits{nd});
         }
         otCLI.getParsingRules().ottIdValidator = &ottIds;
         return true;
@@ -50,8 +44,8 @@ struct RemapToDeepestUnlistedState {
     NodePairing<Node_t, Node_t> * _addNodeMapping(Node_t *taxo, Node_t *nd, Tree_t *tree) {
         nodePairings.emplace_back(taxo, nd);
         auto ndPairPtr = &(*nodePairings.rbegin());
-        auto & aembedding = scaffoldNdToNodeEmbedding[taxo];
-        aembedding.nodeEmbeddings[tree].insert(ndPairPtr);
+        auto & aembedding = scaffoldNdToNodeEmbedding.at(taxo);
+        aembedding.addNodeEmbedding(sourceTreeIndex, ndPairPtr);
         return ndPairPtr;
     }
 
@@ -61,16 +55,17 @@ struct RemapToDeepestUnlistedState {
         // register a pointer to the path at each traversed...
         auto currTaxo = pathPairPtr->scaffoldDes;
         auto ancTaxo = pathPairPtr->scaffoldAnc;
+        auto & ne = scaffoldNdToNodeEmbedding.at(currTaxo);
         if (currTaxo != ancTaxo) {
             while (currTaxo != ancTaxo) {
-                scaffoldNdToNodeEmbedding[currTaxo].edgeBelowEmbeddings[tree].insert(pathPairPtr);
+                ne.addExitEmbedding(sourceTreeIndex, pathPairPtr);
                 currTaxo = currTaxo->getParent();
                 if (currTaxo == nullptr) {
                     break;
                 }
             }
         } else {
-            scaffoldNdToNodeEmbedding[currTaxo].loopEmbeddings[tree].insert(pathPairPtr);
+            ne.addLoopEmbedding(sourceTreeIndex, pathPairPtr);
         }
         return pathPairPtr;
     }

@@ -32,36 +32,40 @@ inline void updateAncestralPathOttIdSet(T * nd,
 }
 
 /* A NodeEmbedding object holds pointers to all of the NodePairs and PathPairs
-        relevant to a node (nodeWithEmbedding) in the scaffold Tree.
+        relevant to a node (embeddedNode) in the scaffold Tree.
     These are stored in a map in which the key is the index of the phylo tree 
         involved in the mapping.
     The relevant pairings are:
-        1. all node pairings for nodeWithEmbedding,
-        2. all paths that are loops for nodeWithEmbedding (nodeWithEmbedding is the scaffoldDes
+        1. all node pairings for embeddedNode,
+        2. all paths that are loops for embeddedNode (embeddedNode is the scaffoldDes
             and the scaffoldAnc for the PathPair), and
         3. all paths the leave this node. ie. those that paths that:
-            A. have a scaffoldDes that is nodeWithEmbedding or one of its descendants, AND
-            B. have scaffoldAnc set to an ancestor of nodeWithEmbedding
-    Note that if you want all of the paths that intersect with nodeWithEmbedding, you have
-        to check the edgeBelowEmbeddings field of all of nodeWithEmbedding's children. This
-        is because any PathPairing that has nodeWithEmbedding as the scaffoldAnc will not
-        be found in the edgeBelowEmbeddings for nodeWithEmbedding. And if it is not a loop
-        node for nodeWithEmbedding, the path will not be in loopEmbeddings either. These
-        paths are trivial wrt resolving the tree for nodeWithEmbedding, but they do 
+            A. have a scaffoldDes that is embeddedNode or one of its descendants, AND
+            B. have scaffoldAnc set to an ancestor of embeddedNode
+    Note that if you want all of the paths that intersect with embeddedNode, you have
+        to check the edgeBelowEmbeddings field of all of embeddedNode's children. This
+        is because any PathPairing that has embeddedNode as the scaffoldAnc will not
+        be found in the edgeBelowEmbeddings for embeddedNode. And if it is not a loop
+        node for embeddedNode, the path will not be in loopEmbeddings either. These
+        paths are trivial wrt resolving the tree for embeddedNode, but they do 
         contribute to the relevant leaf sets
 */
 template<typename T, typename U>
 class NodeEmbedding {
+    using NodePairPtr = NodePairing<T, U> *;
+    using PathPairPtr = PathPairing<T, U> *;
+    using NodePairSet = std::set<NodePairPtr>;
+    using PathPairSet = std::set<PathPairPtr>;
+    using TreeToNodePairs = std::map<std::size_t, NodePairSet>;
+    using TreeToPathPairs = std::map<std::size_t, PathPairSet>;
+    T * embeddedNode;
+    TreeToNodePairs nodeEmbeddings;
+    TreeToPathPairs edgeBelowEmbeddings;
+    TreeToPathPairs loopEmbeddings;
     public:
-    using NodePairSet = std::set<NodePairing<T, U> *>;
-    using PathPairSet = std::set<PathPairing<T, U> *>;
-    T * nodeWithEmbedding;
     NodeEmbedding(T * scaffNode)
-        :nodeWithEmbedding(scaffNode) {
+        :embeddedNode(scaffNode) {
     }
-    std::map<std::size_t, NodePairSet> nodeEmbeddings;
-    std::map<std::size_t, PathPairSet> edgeBelowEmbeddings;
-    std::map<std::size_t, PathPairSet > loopEmbeddings;
     std::size_t getTotalNumNodeMappings() const {
         unsigned long t = 0U;
         for (auto i : nodeEmbeddings) {
@@ -113,24 +117,35 @@ class NodeEmbedding {
         assert(el != edgeBelowEmbeddings.end());
         return el->second;
     }
-
     // some trees contest monophyly. Return true if these trees are obviously overruled
     //   by higher ranking trees so that we can avoid the more expensive unconstrained phylo graph 
     bool highRankingTreesPreserveMonophyly(std::size_t ) {
         return false;
     }
-
     const OttIdSet & getRelevantDesIdsFromPath(const PathPairing<T, U> & pps);
     OttIdSet getRelevantDesIdsFromPathPairSet(const PathPairSet & pps);
-    OttIdSet getRelevantDesIds(const std::map<const T *, NodeEmbedding<T, U> > & eForNd, std::size_t treeIndex);
+    OttIdSet getRelevantDesIds(const std::map<const T *,
+                               NodeEmbedding<T, U> > & eForNd,
+                               std::size_t treeIndex);
 
-    void collapseSourceEdge(const T * phyloParent, PathPairing<T, U> * path);
-    void collapseSourceEdgesToForceOneEntry(U & , PathPairSet & pps, std::size_t treeIndex, SupertreeContextWithSplits &);
-    void resolveGivenContestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
-    std::set<PathPairing<T, U> *> getAllChildExitPaths(U & scaffoldNode, SupertreeContextWithSplits & sc);
-    std::set<PathPairing<T, U> *> getAllChildExitPathsForTree(U & scaffoldNode, std::size_t treeIndex, SupertreeContextWithSplits & sc);
-    void resolveGivenUncontestedMonophyly(U & scaffoldNode, SupertreeContextWithSplits & sc);
-    void exportSubproblemAndFakeResolution(U & scaffoldNode, const std::string & exportDir, SupertreeContextWithSplits & sc);
+    void collapseSourceEdge(const T * phyloParent,
+                            PathPairing<T, U> * path);
+    void collapseSourceEdgesToForceOneEntry(U & ,
+                                            PathPairSet & pps,
+                                            std::size_t treeIndex,
+                                            SupertreeContextWithSplits &);
+    void resolveGivenContestedMonophyly(U & scaffoldNode,
+                                        SupertreeContextWithSplits & sc);
+    std::set<PathPairPtr> getAllChildExitPaths(U & scaffoldNode,
+                                               SupertreeContextWithSplits & sc);
+    std::set<PathPairPtr> getAllChildExitPathsForTree(U & scaffoldNode,
+                                                      std::size_t treeIndex,
+                                                      SupertreeContextWithSplits & sc);
+    void resolveGivenUncontestedMonophyly(U & scaffoldNode,
+                                          SupertreeContextWithSplits & sc);
+    void exportSubproblemAndFakeResolution(U & scaffoldNode,
+                                           const std::string & exportDir,
+                                           SupertreeContextWithSplits & sc);
     void collapseGroup(U & scaffoldNode, SupertreeContext<T,U> & sc);
     void pruneCollapsedNode(U & scaffoldNode, SupertreeContextWithSplits & sc);
     void constructPhyloGraphAndCollapseIfNecessary(U & scaffoldNode, SupertreeContextWithSplits  & sc);
@@ -144,10 +159,28 @@ class NodeEmbedding {
         bool r = updateAllMappedPathsOttIdSets(loopEmbeddings, oldEls, newEls);
         return updateAllMappedPathsOttIdSets(edgeBelowEmbeddings, oldEls, newEls) || r;
     }
-    std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
-                                                                  std::size_t treeIndex) const;
-};
+    std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(
+                        const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
+                        std::size_t treeIndex) const;
+    bool debugNodeEmbedding(bool isUncontested) const;
+    void addNodeEmbedding(std::size_t treeIndex, NodePairPtr npp) {
+        nodeEmbeddings[treeIndex].insert(npp);
+    }
+    void addLoopEmbedding(std::size_t treeIndex, PathPairPtr pp) {
+        loopEmbeddings[treeIndex].insert(pp);
+    }
+    void addExitEmbedding(std::size_t treeIndex, PathPairPtr pp) {
+        edgeBelowEmbeddings[treeIndex].insert(pp);
+    }
+    void setOttIdForExitEmbeddings(
+                        U * newScaffDes,
+                        long ottId,
+                        std::map<const U *, NodeEmbedding<T, U> > & n2ne);
+    const TreeToPathPairs & getExitEmbeddings() const {
+        return edgeBelowEmbeddings;
+    }
 
+};
 
 template<typename T, typename U>
 inline bool NodeEmbedding<T, U>::treeContestsMonophyly(const std::set<PathPairing<T, U> *> & edgesBelowForTree) {

@@ -11,13 +11,34 @@
 namespace otc {
 constexpr bool COLLAPSE_IF_CONFLICT = true;
 
+template<typename T, typename U>
+bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested) const {
+    if (isContested) {
+        return true; // any invariants for contested nodes?
+    }
+    NOT_IMPLEMENTED;
+}
+
+template<typename T, typename U>
+void NodeEmbedding<T, U>::setOttIdForExitEmbeddings(
+                    U * newScaffDes,
+                    long ottId,
+                    std::map<const U *, NodeEmbedding<T, U> > & n2ne) {
+    for (auto treeInd2eout : edgeBelowEmbeddings) {
+        for (auto eout : treeInd2eout.second) {
+            LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << ottId<< ')';
+            eout->scaffoldDes = newScaffDes;
+            eout->setOttIdSet(ottId, n2ne);
+        }
+    }
+}
 
 // Returns all loop paths for nd and all edgeBelowEmbeddings of its children
 template<typename T, typename U>
 std::vector<const PathPairing<T, U> *>
 NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
                                                  std::size_t treeIndex) const {
-    const T *nd = nodeWithEmbedding;
+    const T *nd = embeddedNode;
     std::vector<const PathPairingWithSplits *> r;
     const auto lait = loopEmbeddings.find(treeIndex);
     if (lait != loopEmbeddings.end()) {

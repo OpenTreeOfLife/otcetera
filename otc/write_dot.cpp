@@ -245,8 +245,9 @@ void writeDOTEmbeddingForNode(std::ostream & out,
                               const char * prefix,
                               std::size_t treeIndex
                               ) {
-    const auto eait = thr.edgeBelowEmbeddings.find(treeIndex);
-    if (eait != thr.edgeBelowEmbeddings.end()) {
+    auto & exits = thr.getExitEmbeddings();
+    const auto eait = exits.find(treeIndex);
+    if (eait != exits.end()) {
         for (const auto & pp : eait->second) {
             writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
         }
