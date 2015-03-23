@@ -1,0 +1,38 @@
+[
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["three-genus-taxonomy.tre", "three-genus-taxonomy-resolved.tre"],
+    "expected": "export-just-resolving"
+  },
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "three-genus-oubsample-higher.tre",
+                    "three-genus-taxonomy-resolved.tre"],
+    "expected": "export-non-mono-AC"
+  },
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "three-genus-Anotmonophyletic.tre",
+                    "three-genus-BclosertoA1.tre"],
+    "expected": "export-B-C-higher-A-nonmono"
+  },
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "ACvB.tre",
+                    "three-genus-Anotmonophyletic.tre"
+                    ],
+    "expected": "export-non-mono-tip"
+  },
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["A-Gtaxonomy.tre",
+                    "ABvC.tre",
+                    "DEvF.tre"],
+    "expected": "export-disjoint"
+  },
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "three-genus-BclosertoA1.tre",
+                    "three-genus-Anotmonophyletic.tre"
+                    ],
+    "expected": "export-B-C-higher-A-nonmono"
+  }
+]

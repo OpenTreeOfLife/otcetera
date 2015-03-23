@@ -18,18 +18,10 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         LOG(INFO) << "  outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
             LOG(INFO) << "    Contested";
-            if (thr.highRankingTreesPreserveMonophyly(sc.numTrees)) {
-                thr.resolveGivenContestedMonophyly(*scaffoldNd, sc);
-            } else {
-                thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
-            }
+            thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
         } else {
             LOG(INFO) << "    Uncontested";
-            if (exportDir.empty()) {
-                thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
-            } else {
-                thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, exportStream, sc);
-            }
+            thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, exportStream, sc);
         }
     }
 

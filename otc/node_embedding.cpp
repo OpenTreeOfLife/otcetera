@@ -345,13 +345,24 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         } else {
             NodeWithSplits * deeperNd = nullptr; // nodes passing through this taxon must all have the same parent (or the taxon would be contested)
             std::map<NodeWithSplits *, long> nd2id;
+            LOG(DEBUG) << "Before adding child exits...";
+            for (auto np : nd2par) {
+                LOG(DEBUG) << "   mapping " << np.first << " " << getDesignator(*np.first);
+                LOG(DEBUG) << "   to par  " << np.second << " " << getDesignator(*np.second);
+            }
             for (auto pp : childExitForThisTree) {
-                if (pp->phyloParent != root) {
-                    assert(deeperNd == nullptr || deeperNd == pp->phyloParent);
-                    deeperNd = pp->phyloParent;
-                }
                 assert(!contains(nd2par, pp->phyloChild));
-                nd2par[pp->phyloChild] = root;
+                if (pp->phyloParent == root) {
+                    nd2par[pp->phyloChild] = root;
+                } else {
+                    if (!contains(nd2par, pp->phyloParent)) {
+                        assert(deeperNd == nullptr || deeperNd == pp->phyloParent);
+                        deeperNd = pp->phyloParent;
+                        nd2par[pp->phyloChild] = root;
+                    } else {
+                        nd2par[pp->phyloChild] = pp->phyloParent;
+                    }
+                }
                 auto rids = pp->getOttIdSet();
                 assert(rids.size() == 1);
                 long ottId = *rids.begin();
@@ -360,9 +371,14 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                 nd2id[pp->phyloChild] = ottId;
             }
             RootedTreeTopologyNoData toWrite;
+            LOG(DEBUG) << "After adding child exits...";
+            for (auto np : nd2par) {
+                LOG(DEBUG) << "   mapping " << np.first << " " << getDesignator(*np.first);
+                LOG(DEBUG) << "   to par  " << np.second << " " << getDesignator(*np.second);
+            }
             copyTreeStructure(nd2par, nd2id, toWrite);
             writeTreeAsNewick(*treeExpStream, toWrite);
-            *treeExpStream << ";\n";
+            *treeExpStream << "\n";
         }
         *provExpStream << treePtr->getName() << "\n";
     }
@@ -620,7 +636,9 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(T & scaffold
     LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
     LOG(DEBUG) << "TEMP collapsing if conflict..." ;
     if (COLLAPSE_IF_CONFLICT) {
+        debugNodeEmbedding(true, sc.scaffold2NodeEmbedding);
         collapseGroup(scaffoldNode, sc);
+        debugNodeEmbedding(true, sc.scaffold2NodeEmbedding);
         return;
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.getOttId()};
