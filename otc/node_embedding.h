@@ -186,6 +186,26 @@ class NodeEmbedding {
     private:
     std::map<U *, U*> getLoopedPhyloNd2Par(std::size_t treeInd) const;
     std::map<U *, U*> getExitPhyloNd2Par(std::size_t treeInd) const;
+    PathPairSet refersToNode(std::size_t treeInd, U *n) const {
+        PathPairSet r;
+        auto pit = edgeBelowEmbeddings.find(treeInd);
+        if (pit != edgeBelowEmbeddings.end()) {
+            for (auto i : pit->second) {
+                if (i->phyloParent == n || i->phyloChild == n) {
+                    r.insert(i);
+                }
+            }
+        }
+        pit = loopEmbeddings.find(treeInd);
+        if (pit != loopEmbeddings.end()) {
+            for (auto i : pit->second) {
+                if (i->phyloParent == n || i->phyloChild == n) {
+                    r.insert(i);
+                }
+            }
+        }
+        return r;
+    }
 
 };
 

@@ -15,13 +15,23 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
     void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
         assert(!scaffoldNd->isTip());
         auto & thr = _getEmbeddingForNode(scaffoldNd);
-        LOG(INFO) << "  outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
+
+        LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->getOttId() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
+            thr.debugNodeEmbedding(true, scaffoldNdToNodeEmbedding);
             LOG(INFO) << "    Contested";
             thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
+            _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(true, scaffoldNdToNodeEmbedding);
         } else {
+            thr.debugNodeEmbedding(false, scaffoldNdToNodeEmbedding);
+            if (scaffoldNd->getParent()) {
+                _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(true, scaffoldNdToNodeEmbedding);
+            }
             LOG(INFO) << "    Uncontested";
             thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, exportStream, sc);
+            if (scaffoldNd->getParent()) {
+                _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(true, scaffoldNdToNodeEmbedding);
+            }
         }
     }
 
@@ -40,10 +50,14 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             } else {
                 postOrder.push_back(nd);
             }
+            _getEmbeddingForNode(nd).debugNodeEmbedding(true, scaffoldNdToNodeEmbedding);
         }
         for (auto nd : postOrder) {
             assert(!nd->isTip());
             exportOrCollapse(nd, sc);
+            for (auto nnd : postOrder) {
+                _getEmbeddingForNode(nnd).debugNodeEmbedding(true, scaffoldNdToNodeEmbedding);
+            }
         }
     }
 

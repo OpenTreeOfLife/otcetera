@@ -13,7 +13,7 @@ constexpr bool COLLAPSE_IF_CONFLICT = true;
 
 template<typename T, typename U>
 bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
-                                            const std::map<const T *, NodeEmbedding<T, U> > &sn2ne) const {
+                                             const std::map<const T *, NodeEmbedding<T, U> > &sn2ne) const {
     for (const auto & t2l : loopEmbeddings) {
         auto treeIndex = t2l.first;
         const auto childExitForThisTree = getAllChildExitPathsForTree(embeddedNode,
@@ -35,7 +35,23 @@ bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
                     assert(isContested || parentsOfExits.size() < 2);
                 } else {
                     LOG(DEBUG)  << " parentless " << getDesignator(*p) << ' ' << (long) p;
-                    assert(p->getParent() == nullptr);
+                    if (p->getParent() != nullptr) {
+                        auto gp = p->getParent();
+                        LOG(ERROR)  << " Failing on treeIndex " << treeIndex;
+                        LOG(ERROR)  << " parent of " << getDesignator(*p) << ' ' << (long) p << " is not in loop or exit edges";
+                        writeNewick(std::cerr, p);
+                        std::cerr << std::endl;
+                        LOG(ERROR)  << " parent: " << getDesignator(*gp) << ' ' << (long) gp;
+                        writeNewick(std::cerr, gp);
+                        std::cerr << std::endl;
+                        for (auto anc : iter_anc(*embeddedNode)) {
+                            auto pathPairings = sn2ne.at(anc).refersToNode(treeIndex, gp);
+                            if (!pathPairings.empty()) {
+                                LOG(ERROR) << " ancestor ott" << anc->getOttId() << "refers to the parent";
+                            }
+                        }
+                        assert(false);
+                    }
                     assert(parentsOfExits.empty());
                 }
                 root = p;
@@ -69,8 +85,6 @@ bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
     }
     return true;
 }
-
-
 
 template<typename T, typename U>
 void NodeEmbedding<T, U>::setOttIdForExitEmbeddings(
@@ -553,7 +567,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
         for (auto lp : ebai.second) {
             if (lp->scaffoldAnc == p) {
                 if (lp->scaffoldDes == &scaffoldNode) {
-                    if(lp->phyloChild->isTip()) {
+                    if (lp->phyloChild->isTip()) {
                         // this only happens if a terminal was mapped to this higher level taxon
                         // we don't know how to interpret this label any more, so we'll drop that 
                         // leaf. The taxa will be included by other relationships (the taxonomy as
@@ -569,6 +583,16 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
                         // we'll let the path pairing be lost (since it is attached to a node that will be detached...)
                     } else {
                         lp->scaffoldDes = p;
+                        parEmbedding.loopEmbeddings[treeIndex].insert(lp);
+                    }
+                } else {
+                    if (lp->phyloChild->isTip()) {
+                        if (lp->scaffoldDes->getParent() != &scaffoldNode) {
+                            LOG(ERROR) << " Anbandonding a path that ends at ott" << lp->scaffoldDes->getOttId() << " when collapsing ott" << scaffoldNode.getOttId();
+                            assert(false);
+                        }
+                    }
+                    if (lp->scaffoldDes->getParent() != &scaffoldNode) {
                         parEmbedding.loopEmbeddings[treeIndex].insert(lp);
                     }
                 }
