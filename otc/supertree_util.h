@@ -119,5 +119,48 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
     return std::unique_ptr<TreeMappedWithSplits>(rawTreePtr);
 }
 
+template<typename T>
+void sortChildOrderByLowestDesOttId(T *nd);
+
+template<typename T>
+void sortChildOrderByLowestDesOttId(T *deepest) {
+    std::map<T *, long> node2Id;
+    std::set<T *> internals;
+    for (auto nd : iter_post_n(*deepest)) {
+        if (nd->isTip()) {
+            assert(nd->hasOttId());
+            node2Id[nd] = nd->getOttId();
+        } else {
+            long lm = LONG_MAX;
+            for (auto c : iter_child_const(*nd)) {
+                auto coid = node2Id.at(const_cast<T *>(c));
+                lm = std::min(lm, coid);
+            }
+            node2Id[nd] = lm;
+            internals.insert(nd);
+        }
+    }
+    for (auto nd : internals) {
+        std::map<long, T *> id2child;
+        for (auto c : iter_child(*nd)) {
+            auto coid = node2Id.at(c);
+            auto i2csize = id2child.size();
+            id2child[coid] = c;
+            assert(id2child.size() == 1 + i2csize); // assumes tip IDs are unique
+        }
+        assert(!id2child.empty());
+        auto i2cIt = begin(id2child);
+        T * prev = i2cIt->second;
+        nd->_setFirstChild(prev);
+        for (++i2cIt; i2cIt != id2child.end(); ++i2cIt) {
+            T * curr = i2cIt->second;
+            prev->_setNextSib(curr);
+            prev = curr;
+        }
+        prev->_setNextSib(nullptr);
+        assert(node2Id.at(nd->getFirstChild()) == node2Id.at(nd));
+    }
+}
+
 } // namespace
 #endif

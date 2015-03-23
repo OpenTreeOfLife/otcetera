@@ -330,13 +330,17 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             assert(firstLaIt == loopEmbeddings.end());
             // no loops, the tree is just polytomy for this subproblem
             *treeExpStream << '(';
+            OttIdSet ois;
             bool first = true;
             for (auto pathPtr : childExitForThisTree) {
                 auto rids = pathPtr->getOttIdSet();
                 assert(rids.size() == 1);
                 long ottId = *rids.begin();
                 assert(ottId != LONG_MAX);
-                totalLeafSet.insert(ottId);
+                ois.insert(ottId);
+            }
+            totalLeafSet.insert(ois.begin(), ois.end());
+            for (long ottId : ois) {
                 if (!first) {
                     *treeExpStream << ',';
                 }
@@ -379,6 +383,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                 LOG(DEBUG) << "   to par  " << np.second << " " << getDesignator(*np.second);
             }
             copyTreeStructure(nd2par, nd2id, toWrite);
+            sortChildOrderByLowestDesOttId(toWrite.getRoot());
             writeTreeAsNewick(*treeExpStream, toWrite);
             *treeExpStream << "\n";
         }

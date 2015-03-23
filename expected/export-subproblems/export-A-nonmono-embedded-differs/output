@@ -11,5 +11,5 @@ ott14
 three-genus-BclosertoA1.tre
 ((ott1,ott12),ott2);
 three-genus-Anotmonophyletic.tre
-(ott8,ott12,(ott2,ott3,ott1));
+((ott1,ott2,ott3),ott8,ott12);
 TAXONOMY

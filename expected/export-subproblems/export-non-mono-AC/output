@@ -4,9 +4,9 @@ three-genus-taxonomy-resolved.tre
 (ott5,ott6,ott7);
 TAXONOMY
 ott14
-((ott1,ott11),ott8,(ott9,ott3));
+((ott1,ott11),(ott3,ott9),ott8);
 three-genus-subsample-higher.tre
 ((((ott1,ott2),ott3),ott8),((ott9,ott11),ott10));
 three-genus-taxonomy-resolved.tre
-(ott8,(ott9,ott10,ott11),(ott2,ott3,ott1));
+((ott1,ott2,ott3),ott8,(ott9,ott10,ott11));
 TAXONOMY

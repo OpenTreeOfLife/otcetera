@@ -7,9 +7,9 @@ three-genus-Anotmonophyletic.tre
 (ott9,ott10,ott11);
 TAXONOMY
 ott14
-((ott12),ott8);
+(ott8,(ott12));
 ACvB.tre
 ((ott1,ott12),ott2);
 three-genus-Anotmonophyletic.tre
-(ott8,ott12,(ott3,ott2,ott1));
+((ott1,ott2,ott3),ott8,ott12);
 TAXONOMY
