@@ -268,21 +268,31 @@ template<typename T, typename U>
 void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                             T & scaffoldNode,
                             const std::string & exportDir,
+                            std::ostream * exportStream,
                             SupertreeContextWithSplits & sc) {
     debugNodeEmbedding(false, sc.scaffold2NodeEmbedding);
     const OttIdSet EMPTY_SET;
     LOG(DEBUG) << "exportSubproblemAndFakeResolution for " << scaffoldNode.getOttId();
     const auto scaffOTTId = scaffoldNode.getOttId();
-    std::string outFilename = exportDir;
-    outFilename.append("/ott");
-    outFilename += std::to_string(scaffOTTId);
-    outFilename += ".tre";
-    std::string provOutFilename = exportDir;
-    provOutFilename.append("/ott");
-    provOutFilename += std::to_string(scaffOTTId);
-    provOutFilename += "-tree-names.txt";
-    std::ofstream treeFileStream(outFilename);
-    std::ofstream provFileStream(provOutFilename);
+    std::ofstream treeFileStream;
+    std::ofstream provFileStream;
+    std::ostream * treeExpStream = exportStream;
+    std::ostream * provExpStream = exportStream;
+    if (exportStream == nullptr) {
+        std::string outFilename = exportDir;
+        outFilename.append("/ott");
+        outFilename += std::to_string(scaffOTTId);
+        outFilename += ".tre";
+        std::string provOutFilename = exportDir;
+        provOutFilename.append("/ott");
+        provOutFilename += std::to_string(scaffOTTId);
+        provOutFilename += "-tree-names.txt";
+        treeFileStream.open(outFilename);
+        treeExpStream = &treeFileStream;
+        provFileStream.open(provOutFilename);
+        provExpStream = &provFileStream;
+    }
+    
     //TMP this could be done a lot more efficiently. Writing the trees through the GBF should
     // exercise some of the code for the scaffolded supertree operation. So this should help
     //  us find bugs in that code...
@@ -317,7 +327,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         if (numParentsWOParentsInMap == 0) {
             assert(firstLaIt == loopEmbeddings.end());
             // no loops, the tree is just polytomy for this subproblem
-            treeFileStream << '(';
+            *treeExpStream << '(';
             bool first = true;
             for (auto pathPtr : childExitForThisTree) {
                 auto rids = pathPtr->getOttIdSet();
@@ -326,12 +336,12 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                 assert(ottId != LONG_MAX);
                 totalLeafSet.insert(ottId);
                 if (!first) {
-                    treeFileStream << ',';
+                    *treeExpStream << ',';
                 }
-                treeFileStream << "ott" << ottId;
+                *treeExpStream << "ott" << ottId;
                 first = false;
             }
-            treeFileStream << ");\n";
+            *treeExpStream << ");\n";
         } else {
             NodeWithSplits * deeperNd = nullptr; // nodes passing through this taxon must all have the same parent (or the taxon would be contested)
             std::map<NodeWithSplits *, long> nd2id;
@@ -351,10 +361,10 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             }
             RootedTreeTopologyNoData toWrite;
             copyTreeStructure(nd2par, nd2id, toWrite);
-            writeTreeAsNewick(treeFileStream, toWrite);
-            treeFileStream << ";\n";
+            writeTreeAsNewick(*treeExpStream, toWrite);
+            *treeExpStream << ";\n";
         }
-        provFileStream << treePtr->getName() << "\n";
+        *provExpStream << treePtr->getName() << "\n";
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.getOttId()};
     gpf.attemptToAddGrouping(totalLeafSet, EMPTY_SET, 0, 1, &sc);
@@ -364,8 +374,10 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         }
     }
     gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, &sc);
-    provFileStream.close();
-    treeFileStream.close();
+    if (exportStream == nullptr) {
+        provFileStream.close();
+        treeFileStream.close();
+    }
 }
 
 

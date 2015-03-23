@@ -4,10 +4,12 @@ using namespace otc;
 class UncontestedTaxonDecompose : public EmbeddingCLI {
     public:
     std::string exportDir;
+    std::ostream * exportStream;
 
     virtual ~UncontestedTaxonDecompose(){}
     UncontestedTaxonDecompose()
-        :EmbeddingCLI() {
+        :EmbeddingCLI(),
+        exportStream(nullptr) {
     }
 
     void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
@@ -26,7 +28,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             if (exportDir.empty()) {
                 thr.resolveGivenUncontestedMonophyly(*scaffoldNd, sc);
             } else {
-                thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, sc);
+                thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, exportStream, sc);
             }
         }
     }
@@ -53,6 +55,14 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 };
 
 bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg);
+bool handleExportToStdoutSubproblems(OTCLI & otCLI, const std::string &narg);
+
+bool handleExportToStdoutSubproblems(OTCLI & otCLI, const std::string &) {
+    UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->exportStream = &(otCLI.out);
+    return true;
+}
 
 bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg) {
     UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
@@ -73,6 +83,10 @@ int main(int argc, char *argv[]) {
                   "ARG should be the name of a directory. A .tre file will be written to that directory for each subproblem",
                   handleExportSubproblems,
                   true);
+    otCLI.addFlag('o',
+                  "If present, the trees will be exported to standard output",
+                  handleExportToStdoutSubproblems,
+                  false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
 

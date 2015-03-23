@@ -147,6 +147,7 @@ class NodeEmbedding {
                                           SupertreeContextWithSplits & sc);
     void exportSubproblemAndFakeResolution(T & scaffoldNode,
                                            const std::string & exportDir,
+                                           std::ostream * exportStream, // nonnull to override exportdir
                                            SupertreeContextWithSplits & sc);
     void collapseGroup(T & scaffoldNode, SupertreeContext<T, U> & sc);
     void pruneCollapsedNode(T & scaffoldNode, SupertreeContextWithSplits & sc);
