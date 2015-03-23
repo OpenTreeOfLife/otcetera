@@ -96,9 +96,17 @@ class ScaffoldedSupertree : public EmbeddingCLI {
             }
         }
         std::list<NodeWithSplits * > postOrder;
-        for (auto nd : iter_post_internal(*taxonomy)) {
-            assert(!nd->isTip());
-            postOrder.push_back(nd);
+        for (auto nd : iter_post(*taxonomy)) {
+            if (nd->isTip()) {
+                assert(nd->hasOttId());
+                // this is only needed for monotypic cases in which a tip node
+                //  may have multiple OTT Ids in its desIds set
+                _getEmbeddingForNode(nd).setOttIdForExitEmbeddings(nd,
+                                                                   nd->getOttId(),
+                                                                   scaffoldNdToNodeEmbedding);
+            } else {
+                postOrder.push_back(nd);
+            }
         }
         NodeWithSplits * ancToAnalyze = nullptr;
         if (ancToBeConsidered >= 0) {

@@ -334,7 +334,11 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             bool first = true;
             for (auto pathPtr : childExitForThisTree) {
                 auto rids = pathPtr->getOttIdSet();
-                assert(rids.size() == 1);
+                if (rids.size() != 1) {
+                    LOG(DEBUG) << "crashing while exporting OTT ID " << scaffoldNode.getOttId() << " for tree " << treePtr->getName();
+                    dbWriteOttSet(" rids = ", rids);
+                    assert(false);
+                }
                 long ottId = *rids.begin();
                 assert(ottId != LONG_MAX);
                 ois.insert(ottId);

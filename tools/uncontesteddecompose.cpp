@@ -29,9 +29,17 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{treePtrByIndex, scaffoldNdToNodeEmbedding, *tax};
         std::list<NodeWithSplits * > postOrder;
-        for (auto nd : iter_post_internal(*taxonomy)) {
-            assert(!nd->isTip());
-            postOrder.push_back(nd);
+        for (auto nd : iter_post(*taxonomy)) {
+            if (nd->isTip()) {
+                assert(nd->hasOttId());
+                // this is only needed for monotypic cases in which a tip node
+                //  may have multiple OTT Ids in its desIds set
+                _getEmbeddingForNode(nd).setOttIdForExitEmbeddings(nd,
+                                                                   nd->getOttId(),
+                                                                   scaffoldNdToNodeEmbedding);
+            } else {
+                postOrder.push_back(nd);
+            }
         }
         for (auto nd : postOrder) {
             assert(!nd->isTip());

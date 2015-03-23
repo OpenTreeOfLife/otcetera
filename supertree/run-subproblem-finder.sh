@@ -17,5 +17,5 @@ then
     fi
 fi
 mkdir "${exportdir}" || exit
-otcuncontesteddecompose -e"${exportdir}" $@ || exit
+otcuncontesteddecompose -v -e"${exportdir}" $@ || exit
 python $"{scriptdir}"/move-subproblems-if-differing.py exportsubtemp "${destdir}"
