@@ -58,7 +58,8 @@ struct RemapToDeepestUnlistedState {
         auto & ne = scaffoldNdToNodeEmbedding.at(currTaxo);
         if (currTaxo != ancTaxo) {
             while (currTaxo != ancTaxo) {
-                ne.addExitEmbedding(sourceTreeIndex, pathPairPtr);
+                auto & lne = scaffoldNdToNodeEmbedding.at(currTaxo);
+                lne.addExitEmbedding(sourceTreeIndex, pathPairPtr);
                 currTaxo = currTaxo->getParent();
                 if (currTaxo == nullptr) {
                     break;

@@ -43,7 +43,7 @@ class EmbeddingCLI
         monotypicRemapping = generateIdRemapping(*taxonomy);
         checkTreeInvariants(*taxonomy);
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
-            _getEmdeddingForNode(nd);
+            _getEmbeddingForNode(nd); // side effect is introducint a new, empty embedding
         }
         otCLI.getParsingRules().setOttIdForInternals = false;
         otCLI.getParsingRules().idRemapping = &monotypicRemapping;

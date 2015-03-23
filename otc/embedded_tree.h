@@ -41,13 +41,13 @@ class EmbeddedTree {
     PathPairingWithSplits * _addPathMapping(NodePairingWithSplits * parentPairing,
                                             NodePairingWithSplits * childPairing,
                                             std::size_t treeIndex);
-    NodeEmbeddingWithSplits & _getEmdeddingForNode(NodeWithSplits * nd);
-    const NodeEmbeddingWithSplits & _getEmdeddingForNode(const NodeWithSplits * nd) const {
+    NodeEmbeddingWithSplits & _getEmbeddingForNode(NodeWithSplits * nd);
+    const NodeEmbeddingWithSplits & _getEmbeddingForNode(const NodeWithSplits * nd) const {
         return scaffoldNdToNodeEmbedding.at(nd);
     }
 };
 
-inline NodeEmbeddingWithSplits & EmbeddedTree::_getEmdeddingForNode(NodeWithSplits * nd) {
+inline NodeEmbeddingWithSplits & EmbeddedTree::_getEmbeddingForNode(NodeWithSplits * nd) {
     const auto sIt = scaffoldNdToNodeEmbedding.find(nd);
     if (sIt == scaffoldNdToNodeEmbedding.end()) {
         auto eres = scaffoldNdToNodeEmbedding.emplace(std::piecewise_construct,

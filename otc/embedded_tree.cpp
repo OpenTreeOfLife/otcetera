@@ -15,7 +15,7 @@ NodePairingWithSplits * EmbeddedTree::_addNodeMapping(
     assert(nd != nullptr);
     nodePairings.emplace_back(NodePairingWithSplits(taxo, nd));
     auto ndPairPtr = &(*nodePairings.rbegin());
-    _getEmdeddingForNode(taxo).addNodeEmbedding(treeIndex, ndPairPtr);
+    _getEmbeddingForNode(taxo).addNodeEmbedding(treeIndex, ndPairPtr);
     return ndPairPtr;
 }
 
@@ -28,10 +28,10 @@ PathPairingWithSplits * EmbeddedTree::_addPathMapping(
     // register a pointer to the path at each traversed...
     auto currTaxo = pathPairPtr->scaffoldDes;
     auto ancTaxo = pathPairPtr->scaffoldAnc;
-    auto & ne = _getEmdeddingForNode(currTaxo);
+    auto & ne = _getEmbeddingForNode(currTaxo);
     if (currTaxo != ancTaxo) {
         while (currTaxo != ancTaxo) {
-            ne.addExitEmbedding(treeIndex, pathPairPtr);
+             _getEmbeddingForNode(currTaxo).addExitEmbedding(treeIndex, pathPairPtr);
             currTaxo = currTaxo->getParent();
             if (currTaxo == nullptr) {
                 break;

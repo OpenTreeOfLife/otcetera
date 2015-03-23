@@ -53,7 +53,7 @@ class ScaffoldedSupertree : public EmbeddingCLI {
         fn += ".dot";
         std::ofstream out;
         out.open(fn);
-        const auto & thr = _getEmdeddingForNode(nd);
+        const auto & thr = _getEmbeddingForNode(nd);
         writeDOTExport(out, thr, nd, treePtrByIndex, true, includeLastTree);
     }
 
@@ -62,14 +62,14 @@ class ScaffoldedSupertree : public EmbeddingCLI {
         LOG(DEBUG) << "writing DOT file \"" << fn << "\"";
         std::ofstream out;
         out.open(fn);
-        const auto & thr = _getEmdeddingForNode(nd);
+        const auto & thr = _getEmbeddingForNode(nd);
         writeDOTExport(out, thr, nd, treePtrByIndex, entireSubtree, includeLastTree);
         LOG(DEBUG) << "finished DOT file \"" << fn << "\"";
     }
 
     void resolveOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
         assert(!scaffoldNd->isTip());
-        auto & thr = _getEmdeddingForNode(scaffoldNd);
+        auto & thr = _getEmbeddingForNode(scaffoldNd);
         LOG(INFO) << "  outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
             LOG(INFO) << "    Contested";
@@ -159,7 +159,7 @@ class ScaffoldedSupertree : public EmbeddingCLI {
         unsigned long redundContested = 0;
         unsigned long totalNumNodes = 0;
         for (auto nd : iter_node_internal(*taxonomy)) {
-            const auto & thr = _getEmdeddingForNode(nd);
+            const auto & thr = _getEmbeddingForNode(nd);
             nodeMappingDegree[thr.getTotalNumNodeMappings()] += 1;
             passThroughDegree[thr.getTotalNumEdgeBelowTraversals()] += 1;
             loopDegree[thr.getTotalNumLoops()] += 1;
@@ -199,7 +199,7 @@ class ScaffoldedSupertree : public EmbeddingCLI {
                 if (nd == nullptr) {
                     throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to report on: ") + std::to_string(tr));
                 }
-                const auto & thr = _getEmdeddingForNode(nd);
+                const auto & thr = _getEmbeddingForNode(nd);
                 std::vector<NodeWithSplits *> aliasedBy = getNodesAliasedBy(nd, *taxonomy);
                 thr.reportIfContested(out, nd, treePtrByIndex, aliasedBy, otCLI.verbose);
             }
@@ -210,7 +210,7 @@ class ScaffoldedSupertree : public EmbeddingCLI {
                 throw OTCError(std::string("Unrecognized OTT ID in list of OTT IDs to export to DOT: ") + std::to_string(tr));
             }
             for (auto n : iter_pre_n_const(nd)) {
-                const auto & thr = _getEmdeddingForNode(n);
+                const auto & thr = _getEmbeddingForNode(n);
                 writeDOTExport(out, thr, n, treePtrByIndex, false, false);
             }
         }

@@ -12,7 +12,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 
     void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
         assert(!scaffoldNd->isTip());
-        auto & thr = _getEmdeddingForNode(scaffoldNd);
+        auto & thr = _getEmbeddingForNode(scaffoldNd);
         LOG(INFO) << "  outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
             LOG(INFO) << "    Contested";
