@@ -136,11 +136,13 @@ class NodeEmbedding {
                                             SupertreeContextWithSplits &);
     void resolveGivenContestedMonophyly(T & scaffoldNode,
                                         SupertreeContextWithSplits & sc);
-    std::set<PathPairPtr> getAllChildExitPaths(T & scaffoldNode,
-                                               SupertreeContextWithSplits & sc);
-    std::set<PathPairPtr> getAllChildExitPathsForTree(T & scaffoldNode,
-                                                      std::size_t treeIndex,
-                                                      SupertreeContextWithSplits & sc);
+    std::set<PathPairPtr> getAllChildExitPaths(
+                            const T & scaffoldNode,
+                            const std::map<const T *, NodeEmbedding<T, U> > & sc) const;
+    std::set<PathPairPtr> getAllChildExitPathsForTree(
+                            const T & scaffoldNode,
+                            std::size_t treeIndex,
+                            const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const;
     void resolveGivenUncontestedMonophyly(T & scaffoldNode,
                                           SupertreeContextWithSplits & sc);
     void exportSubproblemAndFakeResolution(T & scaffoldNode,
@@ -162,7 +164,8 @@ class NodeEmbedding {
     std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(
                         const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
                         std::size_t treeIndex) const;
-    bool debugNodeEmbedding(bool isUncontested) const;
+    bool debugNodeEmbedding(bool isUncontested,
+                            const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const;
     void addNodeEmbedding(std::size_t treeIndex, NodePairPtr npp) {
         nodeEmbeddings[treeIndex].insert(npp);
     }
@@ -181,6 +184,7 @@ class NodeEmbedding {
     }
     private:
     std::map<U *, U*> getLoopedPhyloNd2Par(std::size_t treeInd) const;
+    std::map<U *, U*> getExitPhyloNd2Par(std::size_t treeInd) const;
 
 };
 
@@ -202,7 +206,6 @@ inline bool NodeEmbedding<T, U>::treeContestsMonophyly(const std::set<PathPairin
     return false;
 }
 
-
 template<typename T>
 inline bool updateAllMappedPathsOttIdSets(T & mPathSets, const OttIdSet & oldEls, const OttIdSet & newEls) {
     bool r = false;
@@ -214,7 +217,34 @@ inline bool updateAllMappedPathsOttIdSets(T & mPathSets, const OttIdSet & oldEls
     return r;
 }
 
+template<typename T, typename U, typename V>
+inline std::map<U *, U*> getNd2ParForKey(const V & treeInd,
+                                         const std::map<V, std::set<PathPairing<T, U> *> >& m);
+template<typename T, typename U, typename V>
+inline std::map<U *, U*> getNd2ParForKey(const V & treeInd,
+                                         const std::map<V, std::set<PathPairing<T, U> *> >& m) {
+    std::map<U *, U*> nd2par;
+    if (!contains(m, treeInd)) {
+        return nd2par;
+    }
+    for (const auto & pp : m.at(treeInd)) {
+        LOG(DEBUG) << " considering the edge from the child "  << (long)pp->phyloChild << ": "; dbWriteNewick(pp->phyloChild);
+        LOG(DEBUG) << "             to its parent "  << (long)pp->phyloParent << ": "; dbWriteNewick(pp->phyloParent);
+        assert(!contains(nd2par, pp->phyloChild));
+        nd2par[pp->phyloChild] = pp->phyloParent;
+    }
+    return nd2par;
+}
 
+template<typename T, typename U>
+inline std::map<U *, U*> NodeEmbedding<T, U>::getLoopedPhyloNd2Par(std::size_t treeInd) const {
+    return getNd2ParForKey(treeInd, loopEmbeddings);
+}
+
+template<typename T, typename U>
+inline std::map<U *, U*> NodeEmbedding<T, U>::getExitPhyloNd2Par(std::size_t treeInd) const {
+    return getNd2ParForKey(treeInd, edgeBelowEmbeddings);
+}
 
 } // namespace
 #endif
