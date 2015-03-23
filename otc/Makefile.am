@@ -4,6 +4,7 @@ libotcetera_la_LDFLAGS = -release @PACKAGE_VERSION@
 
 
 libotcetera_la_HEADERS = \
+	embedding_cli.h \
 	error.h \
 	ftree.h \
 	newick.h \
