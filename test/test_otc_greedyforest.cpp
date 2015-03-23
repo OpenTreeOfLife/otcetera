@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
                                                ,"shortest-crash-phylo-statements.tre"
                                                , "shorter-phylo-statements.tre"
                                                , */
-                                               "phylo-statements.tre"
+                                               //"phylo-statements.tre"
                                                };
     TestHarness th(argc, argv);
     TestsVec tests;
