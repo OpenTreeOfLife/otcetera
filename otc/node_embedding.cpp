@@ -311,7 +311,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             continue;
         }
         const auto firstLaIt = laIt;
-        LOG(INFO) << "      treeInd = " << treeInd;
+        LOG(INFO) << "      treeInd = " << treeInd << " name =" << treePtr->getName();
         const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         auto nd2par = getLoopedPhyloNd2Par(treeInd);

@@ -45,6 +45,10 @@ class EmbeddedTree {
     const NodeEmbeddingWithSplits & _getEmbeddingForNode(const NodeWithSplits * nd) const {
         return scaffoldNdToNodeEmbedding.at(nd);
     }
+    void embedTree(TreeMappedWithSplits & scaffoldTree,
+                   TreeMappedWithSplits & tree,
+                   std::size_t treeIndex,
+                   bool isScaffoldClone);
 };
 
 inline NodeEmbeddingWithSplits & EmbeddedTree::_getEmbeddingForNode(NodeWithSplits * nd) {
@@ -57,6 +61,18 @@ inline NodeEmbeddingWithSplits & EmbeddedTree::_getEmbeddingForNode(NodeWithSpli
         return eres.first->second;
     }
     return sIt->second;
+}
+
+inline void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree,
+                                TreeMappedWithSplits & tree,
+                                std::size_t treeIndex) {
+    embedTree(scaffoldTree, tree, treeIndex, false);
+}
+
+inline void EmbeddedTree::embedScaffoldClone(TreeMappedWithSplits & scaffoldTree,
+                                      TreeMappedWithSplits & tree,
+                                      std::size_t treeIndex) {
+    embedTree(scaffoldTree, tree, treeIndex, true);
 }
 
 } // namespace
