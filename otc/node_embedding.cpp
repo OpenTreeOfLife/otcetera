@@ -291,6 +291,8 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         treeExpStream = &treeFileStream;
         provFileStream.open(provOutFilename);
         provExpStream = &provFileStream;
+    } else {
+        *exportStream << "ott" << scaffOTTId << '\n';
     }
     
     //TMP this could be done a lot more efficiently. Writing the trees through the GBF should

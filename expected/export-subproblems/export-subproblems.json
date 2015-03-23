@@ -5,7 +5,7 @@
   },
   { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
-                    "three-genus-oubsample-higher.tre",
+                    "three-genus-subsample-higher.tre",
                     "three-genus-taxonomy-resolved.tre"],
     "expected": "export-non-mono-AC"
   },
@@ -20,7 +20,7 @@
                     "ACvB.tre",
                     "three-genus-Anotmonophyletic.tre"
                     ],
-    "expected": "export-non-mono-tip"
+    "expected": "export-B-C-higher-A-nonmono-diff-order"
   },
   { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
     "infile_list": ["A-Gtaxonomy.tre",
@@ -33,6 +33,6 @@
                     "three-genus-BclosertoA1.tre",
                     "three-genus-Anotmonophyletic.tre"
                     ],
-    "expected": "export-B-C-higher-A-nonmono"
+    "expected": "export-A-nonmono-embedded-differs"
   }
 ]
