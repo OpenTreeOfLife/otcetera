@@ -826,6 +826,20 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         }
         withParents.insert(nChild);
     }
+    for (auto nn : withParents) {
+        if ((nn->isTip()) && !nn->hasOttId()) {
+            for (auto o2n : other2new) {
+                if (o2n.second == nn) {
+                    LOG(ERROR) << "tip node " << (long) o2n.first << " had no OTT ID";
+                    LOG(ERROR) <<  "  template: " << o2n.first->hasOttId() << " OTT ID = " << o2n.first->getOttId();
+                    LOG(ERROR) << "   template getDesignator " << getDesignator(*o2n.first);
+                    LOG(ERROR) << "   template newick ";
+                    writeNewick(std::cerr, o2n.first);
+                    assert(false);
+                }
+            }
+        }
+    }
     assert(other2new.size() == 1 + withParents.size()); // only the root should be parentless
     for (auto o2n : other2new) {
         if (!contains(withParents, o2n.second)) {

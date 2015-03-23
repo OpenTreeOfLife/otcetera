@@ -11,12 +11,6 @@
   },
   { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
-                    "three-genus-Anotmonophyletic.tre",
-                    "three-genus-BclosertoA1.tre"],
-    "expected": "export-B-C-higher-A-nonmono"
-  },
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
-    "infile_list": ["three-genus-taxonomy.tre",
                     "ACvB.tre",
                     "three-genus-Anotmonophyletic.tre"
                     ],
@@ -27,6 +21,12 @@
                     "ABvC.tre",
                     "DEvF.tre"],
     "expected": "export-disjoint"
+  },
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["A-Gmonotypic-taxonomy.tre",
+                    "ABvC.tre",
+                    "DEvF.tre"],
+    "expected": "export-disjoint-monotypic"
   },
   { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
