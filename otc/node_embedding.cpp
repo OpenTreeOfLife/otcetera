@@ -304,6 +304,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                             std::ostream * exportStream,
                             SupertreeContextWithSplits & sc) {
     debugNodeEmbedding(false, sc.scaffold2NodeEmbedding);
+    debugPrint(scaffoldNode, 461, sc.scaffold2NodeEmbedding);
     const OttIdSet EMPTY_SET;
     LOG(DEBUG) << "exportSubproblemAndFakeResolution for " << scaffoldNode.getOttId();
     const auto scaffOTTId = scaffoldNode.getOttId();
@@ -641,6 +642,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
     // every exit edge for this node becomes a loop for its parent if it is not trivial
     for (auto ebai : edgeBelowEmbeddings) {
         const auto & treeIndex = ebai.first;
+        std::set<PathPairPtr> exitsConvertedToLoops;
         for (auto lp : ebai.second) {
             if (lp->scaffoldAnc == p) {
                 //if (lp->scaffoldDes == &scaffoldNode) {
@@ -661,7 +663,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
                         indsOfTreesMappedToInternal.insert(treeIndex);
                         // we'll let the path pairing be lost (since it is attached to a node that will be detached...)
                     }
-                } else {
+                } else if (lp->scaffoldDes == &scaffoldNode) {
                     lp->scaffoldDes = p;
                     parEmbedding.loopEmbeddings[treeIndex].insert(lp);
                     indsOfTreesWithNewLoops.insert(treeIndex);
@@ -677,6 +679,9 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par
                 assert(contains(parEmbedding.edgeBelowEmbeddings[treeIndex], lp));
+                if (lp->scaffoldDes == &scaffoldNode) {
+                    lp->scaffoldDes = p;
+                }
             }
         }
     }
