@@ -215,7 +215,7 @@ class NodeEmbedding {
         assert(contains(pps, toDel));
         pps.erase(toDel);
     }
-
+    void pruneSuppressed(std::size_t treeIndex, U * phyloPar, U * phyloChild);
 };
 
 template<typename T, typename U>

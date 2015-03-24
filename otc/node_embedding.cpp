@@ -340,8 +340,20 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         provOutFilename += std::to_string(scaffOTTId);
         provOutFilename += "-tree-names.txt";
         treeFileStream.open(outFilename);
+        if (!treeFileStream.good()) {
+            std::string m = "Could not open \"";
+            m += outFilename;
+            m += '\"';
+            throw OTCError(m);
+        }
         treeExpStream = &treeFileStream;
         provFileStream.open(provOutFilename);
+        if (!provFileStream.good()) {
+            std::string m = "Could not open \"";
+            m += provOutFilename;
+            m += '\"';
+            throw OTCError(m);
+        }
         provExpStream = &provFileStream;
     } else {
         *exportStream << "ott" << scaffOTTId << '\n';
@@ -389,6 +401,9 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             OttIdSet ois;
             bool first = true;
             for (auto pathPtr : childExitForThisTree) {
+                if (contains(sc.prunedSubtrees[treeIndex], pathPtr->phyloChild)) {
+                    continue;
+                }
                 auto rids = pathPtr->getOttIdSet();
                 if (rids.size() != 1) {
                     LOG(DEBUG) << "crashing while exporting OTT ID " << scaffoldNode.getOttId() << " for tree " << treePtr->getName();
@@ -420,7 +435,19 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
              // if the node is uncontested, then all exit paths must have the same parent
             U * const deeperNd = (parentsOfExits.empty() ? nullptr : *begin(parentsOfExits));
             std::map<NodeWithSplits *, long> nd2id;
+            std::set<NodeWithSplits *> toDel;
+            for (auto n2pEl : lnd2par) {
+                if (contains(sc.prunedSubtrees[treeIndex], n2pEl.first)) {
+                    toDel.insert(n2pEl.first);
+                }
+            }
+            for (auto td : toDel) {
+                lnd2par.erase(td);
+            }
             for (auto pp : childExitForThisTree) {
+                if (contains(sc.prunedSubtrees[treeIndex], pp->phyloChild)) {
+                    continue;
+                }
                 assert(!contains(lnd2par, pp->phyloChild));
                 if (pp->phyloParent == root) {
                     lnd2par[pp->phyloChild] = root;
@@ -464,7 +491,13 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                 LOG(DEBUG) << "   mapping " << np.first << " " << getDesignator(*np.first);
                 LOG(DEBUG) << "   to par  " << np.second << " " << getDesignator(*np.second);
             }
-            copyTreeStructure(lnd2par, nd2id, toWrite);
+            try {
+                copyTreeStructure(lnd2par, nd2id, toWrite);
+            } catch (const OTCError & ) {
+                LOG(ERROR) << "could not construct a valid tree";
+                debugPrint(scaffoldNode, treeIndex, sn2ne);
+                assert(false);
+            }
             sortChildOrderByLowestDesOttId(toWrite.getRoot());
             writeTreeAsNewick(*treeExpStream, toWrite);
             *treeExpStream << "\n";
@@ -483,7 +516,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         provFileStream.close();
         treeFileStream.close();
     }
-    debugPrint(scaffoldNode, 462, sn2ne);
+    debugPrint(scaffoldNode, 7, sn2ne);
     //debugNodeEmbedding("leaving exportSubproblemAndFakeResolution", false, sn2ne);
 }
 
@@ -648,6 +681,37 @@ void NodeEmbedding<T, U>::debugPrint(T & scaffoldNode,
 }
 
 template<typename T, typename U>
+void NodeEmbedding<T, U>::pruneSuppressed(std::size_t treeIndex, U * phyloPar, U * phyloChild) {
+    if (phyloPar->getOutDegree() == 2) {
+        auto & pps = loopEmbeddings.at(treeIndex);
+        PathPairSet toDel;
+        for (auto pp : pps) {
+            if (pp->phyloChild == phyloPar) {
+                toDel.insert(pp);
+            }
+        }
+        assert(toDel.size() < 2);
+        for (auto pp : toDel) {
+            pps.erase(pp);
+        }
+    }
+    auto rc = phyloPar->removeChild(phyloChild);
+    assert(rc);
+}
+
+template<typename T, typename U>
+void registerAsPruned(std::size_t treeIndex, T * phyloChild, U & sc) {
+    auto & ps = sc.prunedSubtrees[treeIndex];
+    ps.insert(phyloChild);
+    auto p = phyloChild->getParent();
+    for (auto c : iter_child(*p)) {
+        if (!contains(ps, c)) {
+            return;
+        }
+    }
+    registerAsPruned(treeIndex, p, sc);
+}
+template<typename T, typename U>
 void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U> & sc) {
     assert(&scaffoldNode == embeddedNode);
     sc.log(COLLAPSE_TAXON, scaffoldNode);
@@ -663,7 +727,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
     std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
     NodeEmbedding<T, U> & parEmbedding = const_cast<NodeEmbedding<T, U> &>(sn2ne.at(p));
     LOG(DEBUG) << "TOP of collapseGroup";
-    parEmbedding.debugPrint(scaffoldNode, 462, sn2ne);
+    parEmbedding.debugPrint(scaffoldNode, 7, sn2ne);
     //const auto beforePL = copyAllLoopPathPairing(p, sn2ne);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
@@ -681,13 +745,15 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
     // every exit edge for this node becomes a loop for its parent if it is not trivial
     for (auto ebai : edgeBelowEmbeddings) {
         const auto & treeIndex = ebai.first;
-        std::set<PathPairPtr> pathsOblated;
+        std::set<PathPairPtr> pathsAblated;
         for (auto lp : ebai.second) {
             if (lp->phyloChild->isTip() && lp->scaffoldDes == &scaffoldNode) {
                 // this only happens if a terminal was mapped to this higher level taxon
                 // we don't know how to interpret this label any more, so we'll drop that 
                 // leaf. The taxa will be included by other relationships (the taxonomy as
                 // a last resort), so we don't need to worry about losing leaves by skipping this...
+                LOG(INFO) << "Used to ablate path leading to ott" << lp->phyloChild->getOttId();;
+                
                 LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
                 assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
                 sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
@@ -697,13 +763,9 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
                 n.erase(lp->phyloChild->getOttId());
                 lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sn2ne);
                 indsOfTreesMappedToInternal.insert(treeIndex);
-                if (lp->scaffoldAnc == p) {
-                    // PASS we'll let the path pairing be lost (since it is attached to a node that will be detached...)
-                } else {
-                    pathsOblated.insert(lp);
-                }
-            }
-            if (lp->scaffoldAnc == p) {
+                pathsAblated.insert(lp);
+                registerAsPruned(treeIndex, lp->phyloChild, sc);
+            } else if (lp->scaffoldAnc == p) {
                 //if (lp->scaffoldDes == &scaffoldNode) {
                 if ((!lp->phyloChild->isTip()) && lp->scaffoldDes == &scaffoldNode) {
                     lp->scaffoldDes = p;
@@ -726,13 +788,19 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
                 }
             }
         }
-        if (!pathsOblated.empty()) {
-            for (auto deadPathPtr : pathsOblated) {
+        if (!pathsAblated.empty()) {
+            for (auto deadPathPtr : pathsAblated) {
+                debugPrintPathPairing(*deadPathPtr);
+                /*T * ablatedScaffAnc = deadPathPtr->scaffoldAnc;
+                U * ablatedPhyloChild = deadPathPtr->phyloChild;
+                U * ablatedPhyloPar = deadPathPtr->phyloParent;
                 U * curr = &scaffoldNode;
                 while (curr != deadPathPtr->scaffoldAnc) {
                     sn2ne.at(curr).removeRefToExitPath(treeIndex, deadPathPtr);
                     curr = curr->getParent();
                 }
+                //sn2ne.at(ablatedScaffAnc).pruneSuppressed(treeIndex, ablatedPhyloPar, ablatedPhyloChild);
+                */
             }
         }
     }
