@@ -347,20 +347,24 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         LOG(INFO) << "      treeInd = " << treeInd << " name =" << treePtr->getName();
         const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
-        auto nd2par = getLoopedPhyloNd2Par(treeInd);
-        unsigned numParentsWOParentsInMap = 0;
-        NodeWithSplits * root = nullptr;
-        for (auto c2p : nd2par) {
+        auto lnd2par = getLoopedPhyloNd2Par(treeInd);
+        auto end2par = getExitPhyloNd2Par(treeInd);
+        U * root = nullptr;
+        std::set<U *> parentsOfExits;
+        for (const auto & c2p : lnd2par) {
             auto p = c2p.second;
-            if (p != root && !contains(nd2par, p)) {
-                ++numParentsWOParentsInMap;
-                LOG(DEBUG)  << " parentless " << getDesignator(*p) << ' ' << (long) p;
+            if (p != root && !contains(lnd2par, p)) {
+                if (contains(end2par, p)) {
+                    parentsOfExits.insert(end2par.at(p));
+                    assert(root == nullptr || !parentsOfExits.empty());
+                    assert(parentsOfExits.size() < 2);
+                } else {
+                    assert(p->getParent() == nullptr);
+                }
                 root = p;
             }
         }
-        assert(numParentsWOParentsInMap < 2);
-        if (numParentsWOParentsInMap == 0) {
-            assert(firstLaIt == loopEmbeddings.end());
+        if (root == nullptr && firstLaIt == loopEmbeddings.end()) {
             // no loops, the tree is just polytomy for this subproblem
             *treeExpStream << '(';
             OttIdSet ois;
@@ -386,24 +390,27 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             }
             *treeExpStream << ");\n";
         } else {
-            NodeWithSplits * deeperNd = nullptr; // nodes passing through this taxon must all have the same parent (or the taxon would be contested)
-            std::map<NodeWithSplits *, long> nd2id;
             LOG(DEBUG) << "Before adding child exits...";
-            for (auto np : nd2par) {
+            for (auto np : lnd2par) {
                 LOG(DEBUG) << "   mapping " << np.first << " " << getDesignator(*np.first);
                 LOG(DEBUG) << "   to par  " << np.second << " " << getDesignator(*np.second);
             }
+            LOG(DEBUG) << " root = " << (long) root  << "  parentsOfExits.size() = " << parentsOfExits.size();
+            assert(parentsOfExits.empty() || root != nullptr);
+            assert(parentsOfExits.size() < 2 );
+             // if the node is uncontested, then all exit paths must have the same parent
+            U * const deeperNd = (parentsOfExits.empty() ? nullptr : *begin(parentsOfExits));
+            std::map<NodeWithSplits *, long> nd2id;
             for (auto pp : childExitForThisTree) {
-                assert(!contains(nd2par, pp->phyloChild));
+                assert(!contains(lnd2par, pp->phyloChild));
                 if (pp->phyloParent == root) {
-                    nd2par[pp->phyloChild] = root;
+                    lnd2par[pp->phyloChild] = root;
                 } else {
-                    if (!contains(nd2par, pp->phyloParent)) {
-                        assert(deeperNd == nullptr || deeperNd == pp->phyloParent);
-                        deeperNd = pp->phyloParent;
-                        nd2par[pp->phyloChild] = root;
+                    if (deeperNd == pp->phyloParent) {
+                        lnd2par[pp->phyloChild] = root;
                     } else {
-                        nd2par[pp->phyloChild] = pp->phyloParent;
+                        assert(contains(lnd2par, pp->phyloParent));
+                        lnd2par[pp->phyloChild] = pp->phyloParent;
                     }
                 }
                 auto rids = pp->getOttIdSet();
@@ -415,11 +422,11 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
             }
             RootedTreeTopologyNoData toWrite;
             LOG(DEBUG) << "After adding child exits...";
-            for (auto np : nd2par) {
+            for (auto np : lnd2par) {
                 LOG(DEBUG) << "   mapping " << np.first << " " << getDesignator(*np.first);
                 LOG(DEBUG) << "   to par  " << np.second << " " << getDesignator(*np.second);
             }
-            copyTreeStructure(nd2par, nd2id, toWrite);
+            copyTreeStructure(lnd2par, nd2id, toWrite);
             sortChildOrderByLowestDesOttId(toWrite.getRoot());
             writeTreeAsNewick(*treeExpStream, toWrite);
             *treeExpStream << "\n";
