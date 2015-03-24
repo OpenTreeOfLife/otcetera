@@ -38,4 +38,6 @@ fi
 mkdir "${exportdir}" || exit
 otcuncontesteddecompose -e"${exportdir}" $@ || exit
 fi
-python $"{scriptdir}"/move-subproblems-if-differing.py exportsubtemp "${rawsubproblems}" "${simplifiedsubproblems}" "${solutions}"
+cd "${exportdir}"
+ls *.tre | sort > ../dumped-subproblem-ids.txt
+

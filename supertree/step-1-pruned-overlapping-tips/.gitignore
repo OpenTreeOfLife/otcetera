@@ -1,2 +1,4 @@
 *.tre
 tree-ranking.txt
+dumped-subproblem-ids.txt
+subproblem-ids.txt
