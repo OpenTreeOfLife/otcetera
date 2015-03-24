@@ -13,7 +13,7 @@ constexpr bool COLLAPSE_IF_CONFLICT = true;
 
 template<typename T, typename U>
 bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
-                                             const std::map<const T *, NodeEmbedding<T, U> > &sn2ne) const {
+                                             const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const {
     for (const auto & t2l : loopEmbeddings) {
         auto treeIndex = t2l.first;
         const auto childExitForThisTree = getAllChildExitPathsForTree(embeddedNode,
@@ -38,10 +38,12 @@ bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
                     if (p->getParent() != nullptr) {
                         auto gp = p->getParent();
                         LOG(ERROR)  << " Failing on treeIndex " << treeIndex;
-                        LOG(ERROR)  << " parent of " << getDesignator(*p) << ' ' << (long) p << " is not in loop or exit edges";
+                        LOG(ERROR)  << " phylo parent node (@" << (long)p << ") = " << getDesignator(*p) << ' ' << (long) p << " is not in loop or exit edges";
                         writeNewick(std::cerr, p);
                         std::cerr << std::endl;
-                        LOG(ERROR)  << " parent: " << getDesignator(*gp) << ' ' << (long) gp;
+                        LOG(ERROR)  << " the phylo child was (@" << (long)c2p.first << ") = " << getDesignator(*c2p.first);
+                        writeNewick(std::cerr, c2p.first);
+                        LOG(ERROR)  << " phylo grandparent (@" << (long)gp << ") = " << getDesignator(*gp) << ' ' << (long) gp;
                         writeNewick(std::cerr, gp);
                         std::cerr << std::endl;
                         for (auto anc : iter_anc(*embeddedNode)) {
@@ -50,6 +52,7 @@ bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
                                 LOG(ERROR) << " ancestor ott" << anc->getOttId() << "refers to the parent";
                             }
                         }
+                        debugPrint(*embeddedNode, treeIndex, sn2ne);
                         assert(false);
                     }
                     assert(parentsOfExits.empty());
@@ -92,6 +95,7 @@ void NodeEmbedding<T, U>::setOttIdForExitEmbeddings(
                     long ottId,
                     std::map<const T *, NodeEmbedding<T, U> > & n2ne) {
     for (auto treeInd2eout : edgeBelowEmbeddings) {
+        assert(treeInd2eout.second.size() < 2);
         for (auto eout : treeInd2eout.second) {
             LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << ottId<< ')';
             eout->scaffoldDes = newScaffDes;
@@ -99,6 +103,21 @@ void NodeEmbedding<T, U>::setOttIdForExitEmbeddings(
         }
     }
 }
+/*
+template<typename T, typename U>
+void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple(
+                    T * newScaffDes,
+                    long ottId,
+                    std::map<const T *, NodeEmbedding<T, U> > & n2ne) {
+    for (auto treeInd2eout : edgeBelowEmbeddings) {
+        if 
+        for (auto eout : treeInd2eout.second) {
+            LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << ottId<< ')';
+            eout->scaffoldDes = newScaffDes;
+            eout->setOttIdSet(ottId, n2ne);
+        }
+    }
+}*/
 
 // Returns all loop paths for nd and all edgeBelowEmbeddings of its children
 template<typename T, typename U>
@@ -419,6 +438,8 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         provFileStream.close();
         treeFileStream.close();
     }
+    //debugPrint(scaffoldNode, 461, sc.scaffold2NodeEmbedding);
+    
 }
 
 
@@ -537,7 +558,53 @@ std::map<std::size_t, std::set<PathPairing<T, U> *> > copyAllLoopPathPairing(con
 }
 
 template<typename T, typename U>
+void debugPrintPathPairing(const PathPairing<T,U> & clp) {
+    std::cerr << "  PathPairing " << (long) &clp << " scaffoldAnc (@" << (long)clp.scaffoldAnc << ") = ott" << clp.scaffoldAnc->getOttId() << "\n      ";
+    //writeNewick(std::cerr, clp.scaffoldAnc);
+    std::cerr << "            scaffoldDes (@" << (long)clp.scaffoldDes << ") = ott" << clp.scaffoldDes->getOttId() << "\n      ";
+    //writeNewick(std::cerr, clp.scaffoldDes);
+    std::cerr << "            phyloParent (@" << (long)clp.phyloParent << ") = " << getDesignator(*clp.phyloParent) << "\n      ";
+    //writeNewick(std::cerr, clp.phyloParent);
+    std::cerr << "            phyloChild (@" << (long)clp.phyloChild << ") = " << getDesignator(*clp.phyloChild) << "\n";
+    //writeNewick(std::cerr, clp.phyloChild);
+    
+}
+
+template<typename T, typename U>
+void NodeEmbedding<T, U>::debugPrint(T & scaffoldNode,
+                                     std::size_t treeIndex,
+                                     const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const {
+    for (auto child : iter_child(scaffoldNode)) {
+        auto & cne = sn2ne.at(child);
+        auto cneIt = cne.edgeBelowEmbeddings.find(treeIndex);
+        if (cneIt == cne.edgeBelowEmbeddings.end()) {
+            continue;
+        }
+        std::cerr << " Child ott" << child->getOttId() << "\n";
+        for (const auto & cneExit : cneIt->second) {
+            debugPrintPathPairing(*cneExit);
+        }
+    }
+    auto & sne = sn2ne.at(&scaffoldNode);
+    std::cerr << " Loops for parent ott" << scaffoldNode.getOttId() << "\n";
+    auto sneIt = sne.loopEmbeddings.find(treeIndex);
+    if (sneIt != sne.loopEmbeddings.end()) {
+        for (auto & snExit : sneIt->second) {
+            debugPrintPathPairing(*snExit);
+        }
+    }
+    std::cerr << " Exits for parent ott" << scaffoldNode.getOttId() << "\n";
+    sneIt = sne.edgeBelowEmbeddings.find(treeIndex);
+    if (sneIt != sne.edgeBelowEmbeddings.end()) {
+        for (auto & snExit : sneIt->second) {
+            debugPrintPathPairing(*snExit);
+        }
+    }
+}
+
+template<typename T, typename U>
 void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U> & sc) {
+    assert(&scaffoldNode == embeddedNode);
     sc.log(COLLAPSE_TAXON, scaffoldNode);
     assert(!scaffoldNode.isTip());
     U * p = scaffoldNode.getParent();
@@ -549,6 +616,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
         }
     }
     NodeEmbedding<T, U>& parEmbedding = sc.scaffold2NodeEmbedding.at(p);
+    parEmbedding.debugPrint(scaffoldNode, 461, sc.scaffold2NodeEmbedding);
     //const auto beforePL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
@@ -568,8 +636,9 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
         const auto & treeIndex = ebai.first;
         for (auto lp : ebai.second) {
             if (lp->scaffoldAnc == p) {
-                if (lp->scaffoldDes == &scaffoldNode) {
-                    if (lp->phyloChild->isTip()) {
+                //if (lp->scaffoldDes == &scaffoldNode) {
+                if (lp->phyloChild->isTip()) {
+                    if (lp->scaffoldDes == &scaffoldNode) {
                         // this only happens if a terminal was mapped to this higher level taxon
                         // we don't know how to interpret this label any more, so we'll drop that 
                         // leaf. The taxa will be included by other relationships (the taxonomy as
@@ -584,19 +653,20 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
                         lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sc.scaffold2NodeEmbedding);
                         indsOfTreesMappedToInternal.insert(treeIndex);
                         // we'll let the path pairing be lost (since it is attached to a node that will be detached...)
-                    } else {
-                        lp->scaffoldDes = p;
-                        parEmbedding.loopEmbeddings[treeIndex].insert(lp);
-                        indsOfTreesWithNewLoops.insert(treeIndex);
                     }
-                } /*else {
+                } else {
+                    lp->scaffoldDes = p;
+                    parEmbedding.loopEmbeddings[treeIndex].insert(lp);
+                    indsOfTreesWithNewLoops.insert(treeIndex);
+                }
+                /*} else {
                     if (lp->scaffoldDes->getParent() != &scaffoldNode) {
                         LOG(ERROR) << " Anbandonding a path that ends at ott" << lp->scaffoldDes->getOttId();
                         LOG(ERROR) << "                    and starts at ott" << lp->scaffoldAnc->getOttId() << " when collapsing ott" << scaffoldNode.getOttId();
                         LOG(ERROR) << " lp->scaffoldDes->getParent() ott" << lp->scaffoldDes->getParent()->getOttId();
                         assert(false);
                     }
-                } */
+                }*/
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par
                 assert(contains(parEmbedding.edgeBelowEmbeddings[treeIndex], lp));
@@ -612,19 +682,6 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
         for (auto ceabi : childEmbedding.edgeBelowEmbeddings) {
             for (auto clp : ceabi.second) {
                 if (clp->scaffoldAnc == &scaffoldNode) {
-                    if (clp->phyloParent->getParent() != nullptr
-                           && !contains(indsOfTreesWithNewLoops, ceabi.first)
-                           && !contains(indsOfTreesMappedToInternal, ceabi.first)) {
-                        LOG(ERROR) << " Moving back a path  that starts at ott" << clp->scaffoldAnc->getOttId();
-                        writeNewick(std::cerr, clp->scaffoldAnc); std::cerr << std::endl;
-                        LOG(ERROR) << "                    so that it starts at ott" << p->getOttId() << " when collapsing ott" << scaffoldNode.getOttId();
-                        LOG(ERROR) << "                     des " << clp->scaffoldDes->getOttId();
-                        writeNewick(std::cerr, clp->scaffoldDes); std::cerr << std::endl;
-                        LOG(ERROR) << "                     phyloChild ott" << clp->phyloChild->getOttId();
-                        writeNewick(std::cerr, clp->phyloChild); std::cerr << std::endl;
-                        LOG(ERROR) << " treeIndex = " << ceabi.first;
-                        assert(false);
-                    }
                     clp->scaffoldAnc = p;
                 }
             }
@@ -682,6 +739,7 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextW
 
 template<typename T, typename U>
 void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(T & scaffoldNode, SupertreeContextWithSplits & sc) {
+    assert(&scaffoldNode == embeddedNode);
     LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
     LOG(DEBUG) << "TEMP collapsing if conflict..." ;
     if (COLLAPSE_IF_CONFLICT) {

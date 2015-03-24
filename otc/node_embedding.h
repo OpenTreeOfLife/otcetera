@@ -183,6 +183,8 @@ class NodeEmbedding {
     const TreeToPathPairs & getExitEmbeddings() const {
         return edgeBelowEmbeddings;
     }
+    void debugPrint(T & scaffoldNode, std::size_t treeIndex, const std::map<const T *, NodeEmbedding<T, U> > & sc) const;
+
     private:
     std::map<U *, U*> getLoopedPhyloNd2Par(std::size_t treeInd) const;
     std::map<U *, U*> getExitPhyloNd2Par(std::size_t treeInd) const;
