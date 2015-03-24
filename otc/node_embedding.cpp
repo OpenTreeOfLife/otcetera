@@ -241,13 +241,13 @@ void NodeEmbedding<T, U>::collapseSourceEdgesToForceOneEntry(T & ,
 template<typename T, typename U>
 void NodeEmbedding<T, U>::resolveGivenContestedMonophyly(T & scaffoldNode,
                                                          SupertreeContextWithSplits & sc) {
-    for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-        const auto ebaIt = edgeBelowEmbeddings.find(treeInd);
+    for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
+        const auto ebaIt = edgeBelowEmbeddings.find(treeIndex);
         if (ebaIt == edgeBelowEmbeddings.end()) {
             continue;
         }
         PathPairSet & pps = ebaIt->second;
-        collapseSourceEdgesToForceOneEntry(scaffoldNode, pps, treeInd, sc);
+        collapseSourceEdgesToForceOneEntry(scaffoldNode, pps, treeIndex, sc);
     }
     resolveGivenUncontestedMonophyly(scaffoldNode, sc);
 }
@@ -273,11 +273,11 @@ enum DOTFileStep {
 };
 const std::string getForestDOTFilename(const std::string & prefix,
                                        const DOTFileStep step,
-                                       std::size_t treeInd,
+                                       std::size_t treeIndex,
                                        long groupIndex);
 const std::string getForestDOTFilename(const std::string & prefix,
                                        const DOTFileStep step,
-                                       std::size_t treeInd,
+                                       std::size_t treeIndex,
                                        long groupIndex) {
     std::string base = prefix;
     if (step == INFORMATIVE_SPLIT) {
@@ -288,7 +288,7 @@ const std::string getForestDOTFilename(const std::string & prefix,
         base += "AfterXChildSplit";
     }
     if (step == INFORMATIVE_SPLIT || step == TRIVIAL_SPLIT || step == NONEMBEDDED_SPLIT) {
-        base += std::to_string(treeInd);
+        base += std::to_string(treeIndex);
         base += "Split";
         base += std::to_string(groupIndex);
     }
@@ -323,7 +323,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                             SupertreeContextWithSplits & sc) {
     const std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
     debugNodeEmbedding("top of export", false, sn2ne);
-    debugPrint(scaffoldNode, 462, sn2ne);
+    debugPrint(scaffoldNode, 215, sn2ne);
     const OttIdSet EMPTY_SET;
     const auto scaffOTTId = scaffoldNode.getOttId();
     std::ofstream treeFileStream;
@@ -352,22 +352,22 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
     //  us find bugs in that code...
     
     OttIdSet totalLeafSet;
-    for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-        const auto * treePtr = sc.treesByIndex.at(treeInd);
+    for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
+        const auto * treePtr = sc.treesByIndex.at(treeIndex);
         assert(treePtr != nullptr);
         const auto childExitForThisTree = getAllChildExitPathsForTree(scaffoldNode,
-                                                                      treeInd,
+                                                                      treeIndex,
                                                                       sn2ne);
-        auto laIt = loopEmbeddings.find(treeInd);
+        auto laIt = loopEmbeddings.find(treeIndex);
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
         }
         const auto firstLaIt = laIt;
-        LOG(INFO) << "     exporting ott" << scaffOTTId << "  treeInd = " << treeInd << " name =" << treePtr->getName();
-        const OttIdSet relevantIds = getRelevantDesIds(sn2ne, treeInd);
+        LOG(INFO) << "     exporting ott" << scaffOTTId << "  treeIndex = " << treeIndex << " name =" << treePtr->getName();
+        const OttIdSet relevantIds = getRelevantDesIds(sn2ne, treeIndex);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
-        auto lnd2par = getLoopedPhyloNd2Par(treeInd);
-        auto end2par = getExitPhyloNd2Par(treeInd);
+        auto lnd2par = getLoopedPhyloNd2Par(treeIndex);
+        auto end2par = getExitPhyloNd2Par(treeIndex);
         U * root = nullptr;
         std::set<U *> parentsOfExits;
         for (const auto & c2p : lnd2par) {
@@ -428,7 +428,26 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                     if (deeperNd == pp->phyloParent) {
                         lnd2par[pp->phyloChild] = root;
                     } else {
-                        assert(contains(lnd2par, pp->phyloParent));
+                        if (!contains(lnd2par, pp->phyloParent)) {
+                            if (!contains(end2par, pp->phyloParent)) {
+                                LOG(ERROR) << "crashing on treeIndex " << treeIndex;
+                                LOG(ERROR) << "deeperNd is set to  " << (long)deeperNd;
+                                debugPrintPathPairing(*pp);
+                                assert(false);
+                            }
+                            // necessary if we have node maps to scaffold node and is also
+                            //  the child of a polytomy that is compatible with scaffoldnode
+                            auto ep = end2par[pp->phyloParent];
+                            lnd2par[pp->phyloParent] = ep;
+                            while (!contains(lnd2par, ep) && contains(end2par, ep)) {
+                                auto nep = end2par[ep];
+                                lnd2par[ep] = nep;
+                                ep = nep;
+                            }
+                            if (root != nullptr && !contains(lnd2par, root) && contains(end2par, root)) {
+                                lnd2par[root] = end2par[root];
+                            }
+                        }
                         lnd2par[pp->phyloChild] = pp->phyloParent;
                     }
                 }
@@ -454,7 +473,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.getOttId()};
     gpf.attemptToAddGrouping(totalLeafSet, EMPTY_SET, 0, 1, &sc);
-    for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
+    for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
         for (auto snc : iter_child(scaffoldNode)) {
             assert(snc != nullptr);
         }
@@ -479,13 +498,13 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
     const auto scaffOTTId = scaffoldNode.getOttId();
     std::string forestDOTfile = "forestForOTT";
     forestDOTfile += std::to_string(scaffOTTId);
-    for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-        const auto laIt = loopEmbeddings.find(treeInd);
+    for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
+        const auto laIt = loopEmbeddings.find(treeIndex);
         if (laIt == loopEmbeddings.end()) {
             continue;
         }
-        LOG(INFO) << "      treeInd = " << treeInd;
-        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
+        LOG(INFO) << "      treeIndex = " << treeIndex;
+        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeIndex);
         PathPairSet & pps = laIt->second;
         // leaf set of this tree for this subtree
         // for repeatability, we'll try to add groupings in reverse order of desIds sets (deeper first)
@@ -509,11 +528,11 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
                     appendIncludeLeafSetAsNewick("phyloStatementAttempt", d, relevantIds);
                 }
                 LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex << " out of " << mapToProvideOrder.size() << " (some of which may be skipped as trivial)";
-                gpf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex, &sc);
+                gpf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex, &sc);
                 gpf.debugInvariantsCheck();
                 if (scaffOTTId == ottIDBeingDebugged) {
                     gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
-                    gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeInd, bogusGroupIndex -1));
+                    gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeIndex, bogusGroupIndex -1));
                 }
                 considered.insert(ppptr);
             }
@@ -526,10 +545,10 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
             if (scaffOTTId == ottIDBeingDebugged) {
                 appendIncludeLeafSetAsNewick("phyloStatementAttempt", *inc, relevantIds);
             }
-            gpf.addLeaf(*inc, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, &sc);
+            gpf.addLeaf(*inc, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex++, &sc);
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
-                gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeInd, bogusGroupIndex -1));
+                gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeIndex, bogusGroupIndex -1));
             }
             gpf.debugInvariantsCheck();
             considered.insert(ppptr);
@@ -559,7 +578,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
             considered.insert(pathPtr); // @TMP not needed
         }
     }
-    for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
+    for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
         for (auto snc : iter_child(scaffoldNode)) {
             assert(snc != nullptr);
         }
@@ -794,13 +813,13 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(T & scaffold
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.getOttId()};
     gpf.setPossibleMonophyletic(scaffoldNode);
-    for (std::size_t treeInd = 0 ; treeInd < sc.numTrees; ++treeInd) {
-        const auto laIt = loopEmbeddings.find(treeInd);
-        const auto ebaIt = edgeBelowEmbeddings.find(treeInd);
+    for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
+        const auto laIt = loopEmbeddings.find(treeIndex);
+        const auto ebaIt = edgeBelowEmbeddings.find(treeIndex);
         if (laIt == loopEmbeddings.end() && ebaIt == edgeBelowEmbeddings.end()) {
             continue;
         }
-        LOG(INFO) << "      treeInd = " << treeInd;
+        LOG(INFO) << "      treeIndex = " << treeIndex;
         /* order the groupings */
         std::map<OttIdSet, PathPairing<T, U> *> mapToProvideOrder;
         for (auto pp : laIt->second) {
@@ -809,13 +828,13 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(T & scaffold
         for (auto pp : ebaIt->second) {
             mapToProvideOrder[pp->getOttIdSet()] = pp;
         }
-        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
+        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeIndex);
         /* try to add groups bail out when we know that the possible group is not monophyletic */
         long bogusGroupIndex = 200000; // should get this from the node!
         for (auto mpoIt : mapToProvideOrder) {
             const auto & d = mpoIt.first;
             LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex;
-            gpf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeInd), bogusGroupIndex++, &sc);
+            gpf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex++, &sc);
             if (!gpf.possibleMonophyleticGroupStillViable()) {
                 collapseGroup(scaffoldNode, sc);
                 return;
