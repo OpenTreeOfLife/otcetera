@@ -1,13 +1,14 @@
 # make-based supertree pipeline
 
-The initial thoughts for this are at https://github.com/OpenTreeOfLife/opentree/wiki/pseudo-code-supertree but that is likely to be a bit out-of-sync as this is a work in progress.
+The initial thoughts for this are at https://github.com/OpenTreeOfLife/opentree/wiki/pseudo-code-supertree
+but that is likely to be a bit out-of-sync as this is a work in progress.
 
 
 ## usage
 
 ### eventually...
 
-The tree will be buildable by:
+The tree will be build-able by:
 
   1. downloading the files described in [input/README.md](./input/README.md)
   2. and putting the otcetera tools on your path with something like:

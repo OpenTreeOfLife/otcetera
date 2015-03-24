@@ -2,13 +2,32 @@
 set -x
 scriptdir="$(dirname $0)"
 exportdir="export-sub-temp"
-destdir="$1"
+rawsubproblems="$1"
 shift
-if ! test -d $destdir
+if ! test -d $rawsubproblems
 then
-    echo "expecting a destination directory as the first argument"
+    echo "expecting a raw subproblems output directory as the first argument"
     exit 1
 fi
+
+simplifiedsubproblems="$1"
+shift
+if ! test -d $simplifiedsubproblems
+then
+    echo "expecting a simplified subproblems output directory as the second argument"
+    exit 1
+fi
+
+solutionsdir="$1"
+shift
+if ! test -d $solutionsdir
+then
+    echo "expecting a solutions output directory as the third argument"
+    exit 1
+fi
+
+if false
+then
 if test -d "${exportdir}"
 then
     if ! rmdir  "${exportdir}"
@@ -18,4 +37,5 @@ then
 fi
 mkdir "${exportdir}" || exit
 otcuncontesteddecompose -e"${exportdir}" $@ || exit
-python $"{scriptdir}"/move-subproblems-if-differing.py exportsubtemp "${destdir}"
+fi
+python $"{scriptdir}"/move-subproblems-if-differing.py exportsubtemp "${rawsubproblems}" "${simplifiedsubproblems}" "${solutions}"

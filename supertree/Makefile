@@ -2,6 +2,8 @@ STEP_1_DIR=step-1-pruned-overlapping-tips
 STEP_2_DIR=step-2-pruned-taxonomy
 STEP_3_DIR=step-3-contested-tips
 STEP_4_DIR=step-4-subproblems
+STEP_5_DIR=step-5-simplified-subproblems
+STEP_6_DIR=step-6-subsolutions
 
 # $(STEP_3_DIR)/contested-ott-ids.txt is not (currently) a part of the pipeline
 # so we go from step2 to step4
@@ -32,7 +34,8 @@ $(STEP_3_DIR)/contested-ott-ids.txt : $(STEP_2_DIR)/taxonomy.tre $(STEP_1_INPUTS
 
 $(STEP_4_DIR)/subproblem-ids.txt :$(STEP_2_DIR)/taxonomy.tre $(STEP_1_INPUTS) $(STEP_1_DIR)/tree-ranking.txt
 	cd $(STEP_1_DIR) ; pwd; \
-	bash ../run-subproblem-finder.sh ../$(STEP_4_DIR) ../$(STEP_2_DIR)/taxonomy.tre -ftree-ranking.txt
+	bash ../run-subproblem-finder.sh ../$(STEP_4_DIR) ../$(STEP_5_DIR) ../$(STEP_6_DIR) ../$(STEP_2_DIR)/taxonomy.tre -ftree-ranking.txt
+
 clean:
 	rm $(STEP_2_DIR)/taxonomy.tre
 	rm $(STEP_3_DIR)/contested-ott-ids.txt
