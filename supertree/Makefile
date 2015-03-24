@@ -40,7 +40,7 @@ $(STEP_1_DIR)/subproblem-ids.txt : $(STEP_1_DIR)/dumped-subproblem-ids.txt
 	cd $(STEP_1_DIR)/export-sub-temp ; bash ../../checksum-tree-files.sh && cp ../dumped-subproblem-ids.txt ../subproblem-ids.txt
 
 $(STEP_4_DIR)/subproblem-ids.txt : $(STEP_1_DIR)/subproblem-ids.txt
-	python move-subproblems-if-differing.py $(STEP_1_DIR)/export-sub-temp $(STEP_4_DIR) $(STEP_5_DIR) $(STEP_6_DIR)
+	python move-subproblems-if-differing.py $(STEP_1_DIR)/subproblem-ids.txt $(STEP_1_DIR)/export-sub-temp $(STEP_4_DIR) $(STEP_5_DIR) $(STEP_6_DIR)
 clean:
 	rm $(STEP_2_DIR)/taxonomy.tre
 	rm $(STEP_3_DIR)/contested-ott-ids.txt
