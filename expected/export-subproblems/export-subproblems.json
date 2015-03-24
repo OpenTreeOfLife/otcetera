@@ -17,6 +17,12 @@
     "expected": "export-B-C-higher-A-nonmono-diff-order"
   },
   { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "three-genus-taxonomy-less-resolved.tre"
+                    ],
+    "expected": "export-deeper-polytomy"
+  },
+  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
     "infile_list": ["A-Gtaxonomy.tre",
                     "ABvC.tre",
                     "DEvF.tre"],

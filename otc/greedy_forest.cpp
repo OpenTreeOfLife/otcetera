@@ -92,7 +92,8 @@ void GreedyBandedForest<T, U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
     copyStructureToResolvePolytomy(resolvedTree.getRoot(), sc->scaffoldTree, &scaffoldNode, sc);
     checkAllNodePointersIter(scaffoldNode);
     assert(beforePar == scaffoldNode.getParent());
-    // remap all path pairings out of this node...
+    // merge multiple exit paths (if needed) and remap all path pairings out of this node...
+    embedding->mergeExitEmbeddingsIfMultiple();
     embedding->setOttIdForExitEmbeddings(&scaffoldNode, snoid, sc->scaffold2NodeEmbedding);
 }
 

@@ -103,21 +103,37 @@ void NodeEmbedding<T, U>::setOttIdForExitEmbeddings(
         }
     }
 }
-/*
+
 template<typename T, typename U>
-void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple(
-                    T * newScaffDes,
-                    long ottId,
-                    std::map<const T *, NodeEmbedding<T, U> > & n2ne) {
+void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple() {
+    std::map<std::size_t, std::set<PathPairPtr> > toCull;
     for (auto treeInd2eout : edgeBelowEmbeddings) {
-        if 
-        for (auto eout : treeInd2eout.second) {
-            LOG(DEBUG) << "for tree " << treeInd2eout.first << " setOttId(" << ottId<< ')';
-            eout->scaffoldDes = newScaffDes;
-            eout->setOttIdSet(ottId, n2ne);
+        if (treeInd2eout.second.size() > 1) {
+            // If an input tree has a polytomy with members of a taxon as well as its "outgroup" taxa,
+            //  then the polytomy does not contest the monophyly.
+            //  this function will be called after resolution of the polytomy. 
+            //  TODO: We might want to add a node for the resolved node should be added to the source tree to reflect
+            //      that its ambiguity has been resolved in one particular way.
+            //  The crucial thing for the continuation of the export/supertree operation
+            //      is the set of exit nodes from embeddedNode be reduced to 1 exit node
+            U * resolvedPolyParent = nullptr;
+            for (auto eout : treeInd2eout.second) {
+                if (resolvedPolyParent == nullptr) {
+                    resolvedPolyParent = eout->phyloParent;
+                } else {
+                    assert(resolvedPolyParent == eout->phyloParent);
+                    toCull[treeInd2eout.first].insert(eout); //TMP just keeping the first node
+                }
+            }
         }
     }
-}*/
+    for (const auto & toCullEl : toCull) {
+        for (auto doomedPath : toCullEl.second) {
+            removeRefToExitPath(toCullEl.first, doomedPath);
+        }
+    }
+}
+
 
 // Returns all loop paths for nd and all edgeBelowEmbeddings of its children
 template<typename T, typename U>

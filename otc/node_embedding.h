@@ -180,6 +180,7 @@ class NodeEmbedding {
                         T * newScaffDes,
                         long ottId,
                         std::map<const T *, NodeEmbedding<T, U> > & n2ne);
+    void mergeExitEmbeddingsIfMultiple();
     const TreeToPathPairs & getExitEmbeddings() const {
         return edgeBelowEmbeddings;
     }
