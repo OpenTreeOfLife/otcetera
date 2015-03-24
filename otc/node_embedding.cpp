@@ -322,8 +322,8 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                             std::ostream * exportStream,
                             SupertreeContextWithSplits & sc) {
     const std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
-    debugNodeEmbedding("top of export", false, sn2ne);
-    debugPrint(scaffoldNode, 215, sn2ne);
+    //debugNodeEmbedding("top of export", false, sn2ne);
+    //debugPrint(scaffoldNode, 215, sn2ne);
     const OttIdSet EMPTY_SET;
     const auto scaffOTTId = scaffoldNode.getOttId();
     std::ofstream treeFileStream;
@@ -516,7 +516,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         provFileStream.close();
         treeFileStream.close();
     }
-    debugPrint(scaffoldNode, 7, sn2ne);
+    //debugPrint(scaffoldNode, 7, sn2ne);
     //debugNodeEmbedding("leaving exportSubproblemAndFakeResolution", false, sn2ne);
 }
 
@@ -727,7 +727,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
     std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
     NodeEmbedding<T, U> & parEmbedding = const_cast<NodeEmbedding<T, U> &>(sn2ne.at(p));
     LOG(DEBUG) << "TOP of collapseGroup";
-    parEmbedding.debugPrint(scaffoldNode, 7, sn2ne);
+    //parEmbedding.debugPrint(scaffoldNode, 7, sn2ne);
     //const auto beforePL = copyAllLoopPathPairing(p, sn2ne);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
@@ -874,9 +874,9 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(T & scaffold
     LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
     LOG(DEBUG) << "TEMP collapsing if conflict..." ;
     if (COLLAPSE_IF_CONFLICT) {
-        debugNodeEmbedding("before collapse", true, sc.scaffold2NodeEmbedding);
+        //debugNodeEmbedding("before collapse", true, sc.scaffold2NodeEmbedding);
         collapseGroup(scaffoldNode, sc);
-        debugNodeEmbedding("after collapse", true, sc.scaffold2NodeEmbedding);
+        //debugNodeEmbedding("after collapse", true, sc.scaffold2NodeEmbedding);
         return;
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.getOttId()};

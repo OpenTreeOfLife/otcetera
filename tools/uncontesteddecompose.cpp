@@ -18,21 +18,21 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 
         LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->getOttId() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
-            thr.debugNodeEmbedding("before thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
+            //thr.debugNodeEmbedding("before thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
+            //auto p = scaffoldNd->getParent();
             LOG(INFO) << "    Contested";
-            auto p = scaffoldNd->getParent();
             thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
-            _getEmbeddingForNode(p).debugNodeEmbedding("after thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
+            //_getEmbeddingForNode(p).debugNodeEmbedding("after thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
         } else {
-            thr.debugNodeEmbedding(" focal node before export", false, scaffoldNdToNodeEmbedding);
-            if (scaffoldNd->getParent()) {
-                _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
-            }
+            //thr.debugNodeEmbedding(" focal node before export", false, scaffoldNdToNodeEmbedding);
+            //if (scaffoldNd->getParent()) {
+            //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
+            //}
             LOG(INFO) << "    Uncontested";
             thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, exportStream, sc);
-            if (scaffoldNd->getParent()) {
-                _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
-            }
+            //if (scaffoldNd->getParent()) {
+            //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
+            //}
         }
     }
 
@@ -51,7 +51,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             } else {
                 postOrder.push_back(nd);
             }
-            _getEmbeddingForNode(nd).debugNodeEmbedding(" getting postorder", true, scaffoldNdToNodeEmbedding);
+            //_getEmbeddingForNode(nd).debugNodeEmbedding(" getting postorder", true, scaffoldNdToNodeEmbedding);
         }
         for (auto nd : postOrder) {
             assert(!nd->isTip());
