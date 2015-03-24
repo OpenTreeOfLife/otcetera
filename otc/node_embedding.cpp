@@ -12,7 +12,8 @@ namespace otc {
 constexpr bool COLLAPSE_IF_CONFLICT = true;
 
 template<typename T, typename U>
-bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
+bool NodeEmbedding<T, U>::debugNodeEmbedding(const char * tag, 
+                                             bool isContested,
                                              const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const {
     for (const auto & t2l : loopEmbeddings) {
         auto treeIndex = t2l.first;
@@ -37,7 +38,7 @@ bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
                     LOG(DEBUG)  << " parentless " << getDesignator(*p) << ' ' << (long) p;
                     if (p->getParent() != nullptr) {
                         auto gp = p->getParent();
-                        LOG(ERROR)  << " Failing on treeIndex " << treeIndex;
+                        LOG(ERROR)  << " Failing on scaffold ott" << embeddedNode->getOttId() << " treeIndex " << treeIndex;
                         LOG(ERROR)  << " phylo parent node (@" << (long)p << ") = " << getDesignator(*p) << ' ' << (long) p << " is not in loop or exit edges";
                         writeNewick(std::cerr, p);
                         std::cerr << std::endl;
@@ -49,10 +50,11 @@ bool NodeEmbedding<T, U>::debugNodeEmbedding(bool isContested,
                         for (auto anc : iter_anc(*embeddedNode)) {
                             auto pathPairings = sn2ne.at(anc).refersToNode(treeIndex, gp);
                             if (!pathPairings.empty()) {
-                                LOG(ERROR) << " ancestor ott" << anc->getOttId() << "refers to the parent";
+                                LOG(ERROR) << " ancestor ott" << anc->getOttId() << " refers to the parent";
                             }
                         }
                         debugPrint(*embeddedNode, treeIndex, sn2ne);
+                        LOG(ERROR) << "Failure context is " << tag;
                         assert(false);
                     }
                     assert(parentsOfExits.empty());
@@ -319,10 +321,10 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                             const std::string & exportDir,
                             std::ostream * exportStream,
                             SupertreeContextWithSplits & sc) {
-    debugNodeEmbedding(false, sc.scaffold2NodeEmbedding);
-    debugPrint(scaffoldNode, 461, sc.scaffold2NodeEmbedding);
+    const std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
+    debugNodeEmbedding("top of export", false, sn2ne);
+    debugPrint(scaffoldNode, 462, sn2ne);
     const OttIdSet EMPTY_SET;
-    LOG(DEBUG) << "exportSubproblemAndFakeResolution for " << scaffoldNode.getOttId();
     const auto scaffOTTId = scaffoldNode.getOttId();
     std::ofstream treeFileStream;
     std::ofstream provFileStream;
@@ -355,14 +357,14 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         assert(treePtr != nullptr);
         const auto childExitForThisTree = getAllChildExitPathsForTree(scaffoldNode,
                                                                       treeInd,
-                                                                      sc.scaffold2NodeEmbedding);
+                                                                      sn2ne);
         auto laIt = loopEmbeddings.find(treeInd);
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
         }
         const auto firstLaIt = laIt;
-        LOG(INFO) << "      treeInd = " << treeInd << " name =" << treePtr->getName();
-        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeInd);
+        LOG(INFO) << "     exporting ott" << scaffOTTId << "  treeInd = " << treeInd << " name =" << treePtr->getName();
+        const OttIdSet relevantIds = getRelevantDesIds(sn2ne, treeInd);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         auto lnd2par = getLoopedPhyloNd2Par(treeInd);
         auto end2par = getExitPhyloNd2Par(treeInd);
@@ -462,8 +464,8 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         provFileStream.close();
         treeFileStream.close();
     }
-    //debugPrint(scaffoldNode, 461, sc.scaffold2NodeEmbedding);
-    
+    debugPrint(scaffoldNode, 462, sn2ne);
+    //debugNodeEmbedding("leaving exportSubproblemAndFakeResolution", false, sn2ne);
 }
 
 
@@ -641,7 +643,8 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
     }
     std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
     NodeEmbedding<T, U> & parEmbedding = const_cast<NodeEmbedding<T, U> &>(sn2ne.at(p));
-    parEmbedding.debugPrint(scaffoldNode, 461, sn2ne);
+    LOG(DEBUG) << "TOP of collapseGroup";
+    parEmbedding.debugPrint(scaffoldNode, 462, sn2ne);
     //const auto beforePL = copyAllLoopPathPairing(p, sn2ne);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
@@ -784,9 +787,9 @@ void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(T & scaffold
     LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.getOttId();
     LOG(DEBUG) << "TEMP collapsing if conflict..." ;
     if (COLLAPSE_IF_CONFLICT) {
-        debugNodeEmbedding(true, sc.scaffold2NodeEmbedding);
+        debugNodeEmbedding("before collapse", true, sc.scaffold2NodeEmbedding);
         collapseGroup(scaffoldNode, sc);
-        debugNodeEmbedding(true, sc.scaffold2NodeEmbedding);
+        debugNodeEmbedding("after collapse", true, sc.scaffold2NodeEmbedding);
         return;
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.getOttId()};

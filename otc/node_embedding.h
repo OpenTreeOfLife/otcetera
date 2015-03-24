@@ -165,7 +165,8 @@ class NodeEmbedding {
     std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(
                         const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
                         std::size_t treeIndex) const;
-    bool debugNodeEmbedding(bool isUncontested,
+    bool debugNodeEmbedding(const char * tag,
+                            bool isUncontested,
                             const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const;
     void addNodeEmbedding(std::size_t treeIndex, NodePairPtr npp) {
         nodeEmbeddings[treeIndex].insert(npp);
