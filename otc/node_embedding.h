@@ -208,6 +208,11 @@ class NodeEmbedding {
         }
         return r;
     }
+    void removeRefToExitPath(std::size_t treeIndex, PathPairPtr toDel) {
+        auto & pps = edgeBelowEmbeddings.at(treeIndex);
+        assert(contains(pps, toDel));
+        pps.erase(toDel);
+    }
 
 };
 

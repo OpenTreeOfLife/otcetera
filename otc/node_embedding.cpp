@@ -623,9 +623,10 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
             np->scaffoldNode = p;
         }
     }
-    NodeEmbedding<T, U>& parEmbedding = sc.scaffold2NodeEmbedding.at(p);
-    parEmbedding.debugPrint(scaffoldNode, 461, sc.scaffold2NodeEmbedding);
-    //const auto beforePL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
+    std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
+    NodeEmbedding<T, U> & parEmbedding = const_cast<NodeEmbedding<T, U> &>(sn2ne.at(p));
+    parEmbedding.debugPrint(scaffoldNode, 461, sn2ne);
+    //const auto beforePL = copyAllLoopPathPairing(p, sn2ne);
     // every loop for this node becomes a loop for its parent
     for (auto lai : loopEmbeddings) {
         const auto & treeIndex = lai.first;
@@ -642,28 +643,31 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
     // every exit edge for this node becomes a loop for its parent if it is not trivial
     for (auto ebai : edgeBelowEmbeddings) {
         const auto & treeIndex = ebai.first;
-        std::set<PathPairPtr> exitsConvertedToLoops;
+        std::set<PathPairPtr> pathsOblated;
         for (auto lp : ebai.second) {
+            if (lp->phyloChild->isTip() && lp->scaffoldDes == &scaffoldNode) {
+                // this only happens if a terminal was mapped to this higher level taxon
+                // we don't know how to interpret this label any more, so we'll drop that 
+                // leaf. The taxa will be included by other relationships (the taxonomy as
+                // a last resort), so we don't need to worry about losing leaves by skipping this...
+                LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
+                assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
+                sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
+                OttIdSet innerOTTId;
+                innerOTTId.insert(lp->phyloChild->getOttId());
+                OttIdSet n = scaffoldNode.getData().desIds; // expand the internal name to it taxonomic content
+                n.erase(lp->phyloChild->getOttId());
+                lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sn2ne);
+                indsOfTreesMappedToInternal.insert(treeIndex);
+                if (lp->scaffoldAnc == p) {
+                    // PASS we'll let the path pairing be lost (since it is attached to a node that will be detached...)
+                } else {
+                    pathsOblated.insert(lp);
+                }
+            }
             if (lp->scaffoldAnc == p) {
                 //if (lp->scaffoldDes == &scaffoldNode) {
-                if (lp->phyloChild->isTip()) {
-                    if (lp->scaffoldDes == &scaffoldNode) {
-                        // this only happens if a terminal was mapped to this higher level taxon
-                        // we don't know how to interpret this label any more, so we'll drop that 
-                        // leaf. The taxa will be included by other relationships (the taxonomy as
-                        // a last resort), so we don't need to worry about losing leaves by skipping this...
-                        LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
-                        assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
-                        sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
-                        OttIdSet innerOTTId;
-                        innerOTTId.insert(lp->phyloChild->getOttId());
-                        OttIdSet n = scaffoldNode.getData().desIds; // expand the internal name to it taxonomic content
-                        n.erase(lp->phyloChild->getOttId());
-                        lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sc.scaffold2NodeEmbedding);
-                        indsOfTreesMappedToInternal.insert(treeIndex);
-                        // we'll let the path pairing be lost (since it is attached to a node that will be detached...)
-                    }
-                } else if (lp->scaffoldDes == &scaffoldNode) {
+                if ((!lp->phyloChild->isTip()) && lp->scaffoldDes == &scaffoldNode) {
                     lp->scaffoldDes = p;
                     parEmbedding.loopEmbeddings[treeIndex].insert(lp);
                     indsOfTreesWithNewLoops.insert(treeIndex);
@@ -679,15 +683,24 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
             } else {
                 // if the anc isn't the parent, then it must pass through scaffoldNode's par
                 assert(contains(parEmbedding.edgeBelowEmbeddings[treeIndex], lp));
-                if (lp->scaffoldDes == &scaffoldNode) {
+                if (lp->scaffoldDes == &scaffoldNode && !lp->phyloChild->isTip()) {
                     lp->scaffoldDes = p;
+                }
+            }
+        }
+        if (!pathsOblated.empty()) {
+            for (auto deadPathPtr : pathsOblated) {
+                U * curr = &scaffoldNode;
+                while (curr != deadPathPtr->scaffoldAnc) {
+                    sn2ne.at(curr).removeRefToExitPath(treeIndex, deadPathPtr);
+                    curr = curr->getParent();
                 }
             }
         }
     }
     for (auto child : iter_child(scaffoldNode)) {
-        auto cit = sc.scaffold2NodeEmbedding.find(child);
-        if (cit == sc.scaffold2NodeEmbedding.end()) {
+        auto cit = sn2ne.find(child);
+        if (cit == sn2ne.end()) {
             continue;
         }
         NodeEmbedding<T, U>& childEmbedding = cit->second;
@@ -701,11 +714,11 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
     }
     pruneCollapsedNode(scaffoldNode, sc);
     /*
-    const auto afterPL = copyAllLoopPathPairing(p, sc.scaffold2NodeEmbedding);
+    const auto afterPL = copyAllLoopPathPairing(p, sn2ne);
 
     for (auto bpl : beforePL) {
         const auto & afterVal = afterPL.at(bpl.first);
-        const auto tv = parEmbedding.getAllIncomingPathPairs(sc.scaffold2NodeEmbedding, bpl.first);
+        const auto tv = parEmbedding.getAllIncomingPathPairs(sn2ne, bpl.first);
         assert(isSubset(bpl.second, afterVal));
         for (auto pp : bpl.second) {
             const PathPairing<T, U> * cpp = pp;
