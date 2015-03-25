@@ -1,20 +1,29 @@
 #!/usr/bin/env python
-import shutil
+try:
+    from peyotl.supertree import OtcPipelineContext, OtcArtifact
+except ImportError:
+    sys.exit('Depends on some "bleeding edge" feature on the peyotl supertree branch')
+import sys
+import os
 
-if __name__ == '__main__':
-    import sys
-    import os
-    args = sys.argv[1:]
-    for i in args[1:]:
-        if not os.path.isdir(i):
-            sys.exit('Expecting "{}" to be a directory'.format(i))
-    subprob_list_fp, fresh_decomp, full_subprob, simple_subprob, solutions = args
-    context = {'raw': fresh_decomp,
-               'full': full_subprob,
-               'simple': simple_subprob,
-               'solution': solutions}
-    subprob_list_fn = os.path.split(subprob_list_fp)[1]
-    id_list = [i.strip() for i in open(subprob_list_fn, 'rU').readlines() if i.strip()]
+SCRIPT_NAME = os.path.split(sys.argv[0])[1]
+args = sys.argv[1:]
+for i in args[1:]:
+    if not os.path.isdir(i):
+        sys.exit('{}: Expecting "{}" to be a directory'.format(SCRIPT_NAME, i))
+subprob_list_fp, fresh_decomp, full_subprob, simple_subprob, solutions = args
+subprob_list_fn = os.path.split(subprob_list_fp)[1]
+context = OtcPipelineContext(raw_output_dir=fresh_decomp,
+                             stage_output_dir=full_subprob,
+                             simplified_output_dir=simple_subprob,
+                             solution_dir=solutions)
+id_list = context.read_artifact_id_list_file(subprob_list_fp)
+id_list.sort()
+try:
     for fid in id_list:
-        classify_raw_prob(context, fid)
+        context.process_raw_subproblem_output(fid)
+except Exception as x:
+    sys.exit('{}: Exiting due to an excetion:\n{}\n'.format(SCRIPT_NAME, x))
+    if 'OTC_VERBOSE' in os.environ: # stacktrace for developers
+        raise
 

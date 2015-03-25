@@ -1,5 +1,7 @@
 #!/bin/bash
+set -x
 for i in *.tre
 do
-    md5sum $i | awk '{print $1}' > $i.md5
+    b=$(echo $i | sed -e 's/\.tre$//')
+    md5sum $i "${b}"-tree-names.txt > "${b}".md5
 done
