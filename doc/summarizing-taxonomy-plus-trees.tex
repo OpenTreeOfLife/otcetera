@@ -11,10 +11,17 @@
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{definition}{Definition}
 \usepackage{xspace}
+\usepackage{paralist}
 \usepackage{setspace}
+
 \singlespacing
-% Make document double-spaced
-\renewcommand{\baselinestretch}{2.0}
+
+% Abbreviations
+\newcommand{\otol}{Open Tree of Life\xspace}
+
+% Notation
+\newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
+
 \usepackage{hyperref}
 \hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
 \begin{document}
@@ -23,5 +30,30 @@
 {Mark T.~Holder$^{1,2,\ast}$. feel free to contribute and add your name}
 \end{center}
 \section{Background}
+The \otol project is attempting to build a platform for summarizing what is known
+    about phylogenetic relationships across all of Life.
+Presenting an easy-to-interpret summary of trees that have been ``curated''
+    is one component of that effort.
+The project has decided that this summary should include a tree which
+\begin{compactenum}
+    \item can be served and browsed;
+    \item contains annotations indicating which input trees support a particular grouping;
+    \item has all of the tips of the taxonomy;
+    \item displays as many of the groups in the input trees as is feasible;
+    \item may utilize ranking of trees;
+    \item (tentative) has no unsupported groups;
+    \item (tentative) does not ``prefer'' lack of resolution (defined more thoroughly below)
+\end{compactenum}
+This is results in a new form of a supertree problem described below as the ``taxonomy-based tree summary'' problem.
+\section{Glossary}
+\input{glossary.tex}
+
+\section{Taxonomy-based tree summary}
+This is a special form of the supertree problem with the following 2 unusual features:
+\begin{compactenum}
+    \item at least one input (the taxonomic tree) is complete
+    \item the taxonomic tree is considered to be the lowest ranked input
+\end{compactenum}
+
 \bibliography{otcetera}
 \end{document}
