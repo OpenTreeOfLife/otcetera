@@ -136,7 +136,7 @@ will write out a tab-separated pair of columns of "out degree" and "count" that
 shows how many nodes in the tree tree have each outdegree (0 are leaves. 1 are
 redundant nodes. 2 are fully resolved internals...)
 
-### decomposing a tree down 
+### decomposing set of  trees into subproblems based on uncontested taxa
 
     otc-uncontested-decompose -eEXPORT taxonomy.tre -ftree-list.txt
 
