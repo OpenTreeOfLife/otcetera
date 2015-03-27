@@ -152,7 +152,7 @@ should be an input tree filepath. Each output will have:
 *NOTE*: phylogenetic tips mapped to internal labels in the taxonomy will be pruned if 
    the taxon is contested. This is probably not what one usually wants to do...
 
-### decomposing a set of trees into subproblems by uncontested taxonomic group
+### counting the number of polytomies in a tree
 
     otc-polytomy-count sometree.tre
 
