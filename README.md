@@ -93,7 +93,7 @@ OTT id is used to associate labels in different trees)
 
 ### Checking for incorrect internal labels in a full tree
 
-    otcchecktaxonomicnodes synth.tre taxonomy.tre
+    otc-check-taxonomic-nodes synth.tre taxonomy.tre
 
 will check every labelled internal node is correctly labelled. To do this, it 
 verifies that the set of OTT ids associated with tips that descend from the 
@@ -108,7 +108,7 @@ Assumptions:
 
 ### Checking for unnamed nodes in a full tree that have no tree supporting them
 
-    otcfindunsupportednodes taxonomy.tre synth.tre inp1.tre inp2.tre ...
+    otc-find-unsupported-nodes taxonomy.tre synth.tre inp1.tre inp2.tre ...
 
 will report any nodes in `synth.tre` that are not named and which do not have
 any [ITEB support](https://github.com/OpenTreeOfLife/treemachine/blob/nonsense-1/nonsense/iteb_support_theorem.md)
@@ -119,7 +119,7 @@ can help identify problems with those nodes).
 
 ### pruning a taxonomy
 
-    otcprunetaxonomy taxonomy.tre inp1.tre inp2.tre ...
+    otc-prune-taxonomy taxonomy.tre inp1.tre inp2.tre ...
 
 will write (to stdout) a newick version of the taxonomy that has been pruned to 
 not include subtrees that do not include any of the tips of the input trees.  See
@@ -130,23 +130,38 @@ for a more precise description of the pruning rules. This is intended to be used
 
 ### getting the full distribution of out degree counts for a tree
 
-    otcdegreedistribution sometree.tre
+    otc-degree-distribution sometree.tre
 
 will write out a tab-separated pair of columns of "out degree" and "count" that
 shows how many nodes in the tree tree have each outdegree (0 are leaves. 1 are
 redundant nodes. 2 are fully resolved internals...)
 
-### counting polytomies in a tree
+### decomposing a tree down 
 
-    otcpolytomycount sometree.tre
+    otc-uncontested-decompose -eEXPORT taxonomy.tre -ftree-list.txt
+
+will create subproblems in the (existing) subdirectory EXPORT using the taxonomy.tre
+as the taxonomy and every tree listed in tree-list.txt. (each line of that file)
+should be an input tree filepath. Each output will have:
+  * a name that corresponds to the OTT taxon,
+  * the trees pruned down for each subproblem (in the) same order as the trees were
+      provided in the invocation, and
+  * a corresponding ott###-tree-names.txt file that list the input filenames for each 
+    tree (or "TAXONOMY" for taxonomy, which will always be the last tree).
+
+*NOTE*: phylogenetic tips mapped to internal labels in the taxonomy will be pruned if 
+   the taxon is contested. This is probably not what one usually wants to do...
+
+### decomposing a set of trees into subproblems by uncontested taxonomic group
+
+    otc-polytomy-count sometree.tre
 
 will write out the number of nodes with out degree greater than 2 to stdout. This
 is just a summary of the info reported by `otcdegreedistribution`.
 
-
 ### debugging otcetera handling of trees
 
-    otcassertinvariants sometree.tre
+    otc-assert-invariants sometree.tre
 
 will parse a tree and run through lots of traversals, asserting various
 invariants. Should exit silently if there are no bugs.
