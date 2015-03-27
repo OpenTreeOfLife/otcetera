@@ -1,34 +1,34 @@
 [
-  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+  { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["three-genus-taxonomy.tre", "three-genus-taxonomy-resolved.tre"],
     "expected": "just-resolving"
   },
-  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+  { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-subsample-higher.tre",
                     "three-genus-taxonomy-resolved.tre"],
     "expected": "non-mono-AC"
   },
-  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+  { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-Anotmonophyletic.tre",
                     "three-genus-BclosertoA1.tre"],
     "expected": "B-C-higher-A-nonmono"
   },
-  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+  { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "ACvB.tre",
                     "three-genus-Anotmonophyletic.tre"
                     ],
     "expected": "non-mono-tip"
   },
-  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+  { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["A-Gtaxonomy.tre",
                     "ABvC.tre",
                     "DEvF.tre"],
     "expected": "disjoint"
   },
-  { "invocation" : ["otcscaffoldedsupertree", "<INFILELIST>", "-s"],
+  { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-BclosertoA1.tre",
                     "three-genus-Anotmonophyletic.tre"

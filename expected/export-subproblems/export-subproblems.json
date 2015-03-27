@@ -1,40 +1,40 @@
 [
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre", "three-genus-taxonomy-resolved.tre"],
     "expected": "export-just-resolving"
   },
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-subsample-higher.tre",
                     "three-genus-taxonomy-resolved.tre"],
     "expected": "export-non-mono-AC"
   },
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "ACvB.tre",
                     "three-genus-Anotmonophyletic.tre"
                     ],
     "expected": "export-B-C-higher-A-nonmono-diff-order"
   },
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-taxonomy-less-resolved.tre"
                     ],
     "expected": "export-deeper-polytomy"
   },
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["A-Gtaxonomy.tre",
                     "ABvC.tre",
                     "DEvF.tre"],
     "expected": "export-disjoint"
   },
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["A-Gmonotypic-taxonomy.tre",
                     "ABvC.tre",
                     "DEvF.tre"],
     "expected": "export-disjoint-monotypic"
   },
-  { "invocation" : ["otcuncontesteddecompose", "<INFILELIST>", "-o"],
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-BclosertoA1.tre",
                     "three-genus-Anotmonophyletic.tre"

@@ -1,19 +1,35 @@
 \newcommand{\defitem}[2]{\item[{\bf #1}]\label{itm:#2} }
+\newcommand{\notitem}[1]{\item[]#1}
+\section{Glossary}
 \begin{compactenum}
-    \defitem{as complete}{defAsComplete} a phrase contrasting 2 trees.
+\defitem{as complete}{defAsComplete} a phrase contrasting 2 trees.
     Tree $A$ is as complete as tree $B$ $\iff$
-    leaf label set of $B$ is a subset of the leaf label set of $A$.
+    leaf label set of $B$ is a subset of the leaf label set of $A$.\\
     In notation: $\leafLabels{B} \subseteq \leafLabels{A}$.
+\defitem{cluster}{defCluster} the set of leaf nodes that are descendants
+    of a node, $x$, is the cluster of $x$
 \defitem{complete}{defComplete} as an adjective for a tree. Tree $A$ is complete $\iff$ the leaf label set
     of tree $A$ is identical to the the set of terminal taxa.
+    In notation: $\leafLabels{B} = \leafLabels{\taxonomy}$
 \defitem{display}{defDisplay} Tree $A$ displays an group, $x$, from tree $B$ $\iff$
     that $A$ is as complete as tree $B$ and the induced tree of $A$ limited to the 
     leaf label set of $B$ contains a cluster with labels identical to the label set of the cluster of $x$
+\defitem{internal node}{defInternalNode} a node that is not the root or a leaf.
 \defitem{leaf labels}{defLeafLabels} For our problems, the input trees have been aligned to a common
-    taxonomy. So referring to the leaf labels of the tree can be interpreted as
+    taxonomy. 
+    So referring to the leaf label set of a tree can be interpreted as
     ``the set of taxonomic identifiers that are mapped to the leaves of the tree''.
+    The leaf label set of a node is the set of labels associated with the cluster of the node.\\
     Note that a leaf label is not necessarily a terminal taxon.
+    In notation, $\leafLabels{x}$ is the leaf label set of $x$.
 \defitem{more complete}{defMoreComplete} tree $A$ is {\em more complete} than tree $B$ $\iff$ the leaf
-    label set of $B$ is a proper subset of the leaf label set of $A$
-    \defitem{terminal taxon}{defTerminalTaxon} a terminal taxon has no children {\em in the taxonomy}
+    label set of $B$ is a proper subset of the leaf label set of $A$. \\
+    In notation, $\leafLabels{B} \subset \leafLabels{A}$.
+\defitem{terminal taxon}{defTerminalTaxon} a taxonimic identifier for at taxon that
+    has no children {\em in the taxonomy}.
+\end{compactenum}
+\section{Notation}
+\begin{compactenum}
+    \notitem{\leafLabels{x}} is the leaf label set of $x$.
+    \notitem{\taxonomy} the taxonomic tree.
 \end{compactenum}
