@@ -163,7 +163,11 @@ If we demand that a summary tree contains no unsupported groups (in the previous
     there is at least one \pss in the input set that supports it.
 This is indeed restrictive, as the sum of the number of internal nodes in the inputs becomes an upper bound
     on the number of internal nodes in the summary tree.
-
+However, restricting the summary to only contain supported groups does not decrease the 
+    number of \pss from the inputs that are displayed.
+If $\mathcal{S}_s$ is the subset of $\mathcal{S}_w$ which do not contain any unsupported nodes,
+    then $\mathcat{S}_s$ is never empty, but may be much smaller than $\mathcal{S}_w$ because
+    every resolution of $\mathcal{S}_s$ is a member of $\mathcal{S}_w$.
 \input{glossary.tex}
 
 \bibliography{otcetera}
