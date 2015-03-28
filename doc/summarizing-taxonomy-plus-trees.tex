@@ -1,5 +1,6 @@
 \documentclass[11pt]{article}
 \usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage[authoryear,round]{natbib}
 \bibliographystyle{plainnat}
 \usepackage{bm}
@@ -25,6 +26,8 @@
 
 % Notation
 \newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
+\newcommand{\parent}[1]{\ensuremath{\mbox{par}(#1)}}
+\newcommand{\children}[1]{\ensuremath{\mbox{children}(#1)}}
 \newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}}
 % verbatim, verbatim notation for a \ps
 \newcommand{\vvps}[2]{\ensuremath{{#1}\downarrow{#2}}}
@@ -32,6 +35,8 @@
 \newcommand{\lvps}[2]{\ensuremath{\leafLabels{#1}\uparrow{#2}}}
 \newcommand{\leafComp}[2]{\ensuremath{\widetilde{\mathcal{L}_{#2}}\left({#1}\right)}}
 \newcommand{\displaysPred}[2]{\ensuremath{\mathbb{I}_d(#1, #2)}}
+
+\DeclareMathOperator*{\argmax}{\arg\!\max}
 
 \usepackage{hyperref}
 \hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
@@ -91,7 +96,7 @@ Nevertheless, tree-rank based summaries represent a reasonable starting point
     because they are easy to explain and the ranking permits some algorithmic
     simplifications.
 
-\section{Details of some important concepts}
+\section{More Background}
 \subsection{The Sum of Weighted Input \PSs Displayed Score}
 Let $\mathcal{P}$ be a multiset of \pss.
 If each member, $i$, this set is assigned a weight, $w_i$, then the 
@@ -104,7 +109,11 @@ where {\displaysPred{T}{x}} is an identity function that evaluates to 1 if tree 
 
 Trying to find the set of trees that maximize $S_w$ is one natural
     goal for a summarization procedure.
-We can call this the ``maximum sum of weighted input \pss displayed'' problem.
+We can call this the ``maximum sum of weighted input \pss displayed'' problem,
+    and the set of trees that maximize the score are denoted:
+\begin{equation}
+    \mathcal{S}_{w}(\mathcal{P}) = \argmax_T S_w(T,\mathcal{P}) 
+\end{equation}
 
 Tree-based ranking can be viewed as a means providing weights to \pss.
 Each tree is converted to a set of \pss, and the tree's weight is 
@@ -112,13 +121,48 @@ Each tree is converted to a set of \pss, and the tree's weight is
 The union of the tree's sets becomes the multiset, $\mathcal{P}$, referred to
     in the definition of the score above.
 
-\url{https://github.com/OpenTreeOfLife/treemachine/wiki/MaxWeightOfInputTreeEdgesDisplayed}
+\href{https://github.com/OpenTreeOfLife/treemachine/wiki/MaxWeightOfInputTreeEdgesDisplayed}{This link}
     sketches out a proof of how an extreme form of tree-based ranks
     can lead to greedy tree addition strategy can be guaranteed to 
     find the set of trees that solve the maximimum sum of weighted input
     \pss displayed problem.
+If the difference in tree ranks are sufficiently large from one tree to the next,
+    then there is no need to consider skipping a \ps from a high ranking tree
+    even if not considering that grouping would result in all of the \ps
+    from the lower ranking trees being displayed.
 
+Unfortunately, that proof only applies to an exact algorithm which returns
+    all possible trees that maximize the score.
+We do not know of a polynomial-time algorithm for solving that problem.
 
+\subsection{Trees without unsupported groups}
+Consider an edge connecting parent $\parent{V}$ to it child $V$ in a complete tree $T$.
+This edge is supported (or ``the node $V$ is supported'') in the sense of the maximum sum of 
+    weighted input \pss displayed score if
+    collapsing the edge leads to a lower (worse) score.
+For an edge to be supported in this sense, it must display in input \pss, and
+    the tree that woudld be created by collapsing the edge to a polytomy must
+    {\em not} display the \pss.
+
+Equivalently, we can state the conditions node $V$ (or it subtending) begin supported
+    by an input \pss derived from node $x$ of tree $t$ as:
+\begin{eqnarray}
+    \leafLabels{V} \cap \leafLabels{t} & = & \leafLabels{x}\\
+    \left(\leafLabels{\parent{V}} \cap \leafLabels{t}\right) - \leafLabels{x} & \neq &\emptyset\\
+    \leafLabels{c} \cap \leafLabels{t} & \neq & \leafLabels{x} \hskip 2em \forall c \in \children{V}
+\end{eqnarray}
+where $\children{V}$ is the set of nodes that are children of $V$.
+The first condition guarantees that the node $V$ displays the \ps made by $x$.
+The second condition assures that if the edge leading to $V$ were collapsed, the resulting polytomy would not display the \ps.
+The final condition assures that none of the children of $V$ also display this \ps from $x$;
+    if any child displayed the \ps, then collapsing the edge leading to $V$ would still
+    yield a tree that still displays the \ps derived from $x$.
+
+If we demand that a summary tree contains no unsupported groups (in the previous sense of support), we 
+    are constraining the set of summary trees such that, for every internal node in the summary tree
+    there is at least one \pss in the input set that supports it.
+This is indeed restrictive, as the sum of the number of internal nodes in the inputs becomes an upper bound
+    on the number of internal nodes in the summary tree.
 
 \input{glossary.tex}
 
