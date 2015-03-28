@@ -23,7 +23,8 @@
 \newcommand{\pss}{phylogenetic statements\xspace}
 \newcommand{\PSs}{Phylogenetic Statements\xspace}
 \newcommand{\PS}{Phylogenetic Statement\xspace}
-
+\newcommand{\SWIPSD}{Sum of Weighted Input \PSs Displayed\xspace}
+\newcommand{\MSWIPSD}{Maximum \SWIPSD \xspace}
 % Notation
 \newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
 \newcommand{\parent}[1]{\ensuremath{\mbox{par}(#1)}}
@@ -109,7 +110,8 @@ where {\displaysPred{T}{x}} is an identity function that evaluates to 1 if tree 
 
 Trying to find the set of trees that maximize $S_w$ is one natural
     goal for a summarization procedure.
-We can call this the ``maximum sum of weighted input \pss displayed'' problem,
+We can call this the ``\MSWIPSD''
+problem,
     and the set of trees that maximize the score are denoted:
 \begin{equation}
     \mathcal{S}_{w}(\mathcal{P}) = \argmax_T S_w(T,\mathcal{P}) 
@@ -124,8 +126,7 @@ The union of the tree's sets becomes the multiset, $\mathcal{P}$, referred to
 \href{https://github.com/OpenTreeOfLife/treemachine/wiki/MaxWeightOfInputTreeEdgesDisplayed}{This link}
     sketches out a proof of how an extreme form of tree-based ranks
     can lead to greedy tree addition strategy can be guaranteed to 
-    find the set of trees that solve the maximimum sum of weighted input
-    \pss displayed problem.
+    find the set of trees that solve the \MSWIPSD problem.
 If the difference in tree ranks are sufficiently large from one tree to the next,
     then there is no need to consider skipping a \ps from a high ranking tree
     even if not considering that grouping would result in all of the \ps
@@ -137,8 +138,7 @@ We do not know of a polynomial-time algorithm for solving that problem.
 
 \subsection{Trees without unsupported groups}
 Consider an edge connecting parent $\parent{V}$ to it child $V$ in a complete tree $T$.
-This edge is supported (or ``the node $V$ is supported'') in the sense of the maximum sum of 
-    weighted input \pss displayed score if
+This edge is supported (or ``the node $V$ is supported'') in the sense of the \MSWIPSD score if
     collapsing the edge leads to a lower (worse) score.
 For an edge to be supported in this sense, it must display in input \pss, and
     the tree that woudld be created by collapsing the edge to a polytomy must
@@ -161,13 +161,45 @@ The final condition assures that none of the children of $V$ also display this \
 If we demand that a summary tree contains no unsupported groups (in the previous sense of support), we 
     are constraining the set of summary trees such that, for every internal node in the summary tree
     there is at least one \pss in the input set that supports it.
-This is indeed restrictive, as the sum of the number of internal nodes in the inputs becomes an upper bound
+This restricts the number of edges in the tree: as the sum of the number of internal nodes in the inputs becomes an upper bound
     on the number of internal nodes in the summary tree.
 However, restricting the summary to only contain supported groups does not decrease the 
     number of \pss from the inputs that are displayed.
+Furthermore, any maximal scoring solution can be converted to a maximal scoring
+    solution by collapsing edges one at a time and checking for the existence of further
+    unsupported groups.
 If $\mathcal{S}_s$ is the subset of $\mathcal{S}_w$ which do not contain any unsupported nodes,
     then $\mathcat{S}_s$ is never empty, but may be much smaller than $\mathcal{S}_w$ because
     every resolution of $\mathcal{S}_s$ is a member of $\mathcal{S}_w$.
+
+\subsection{Evaluating how well a tree summarizes a set of trees}
+As discussed above, we might try to seek the set of trees that contain no unsupported nodes and that
+    maximize the \SWIPSD score.
+However, one of the requirements is that we return a single tree.
+
+One can interpret an unresolved tree as a set of trees - specifically the set of trees that 
+    can be produced by resolving the tree.
+We may be able to formalize a score for a single summary trees, $T$, by considering
+    the set of trees that can be produced by resolving it, calling this set $\mathcal{R}(T)$.
+Specifically, if our primary summary is a set of trees $\mathcal{S}$, we may want
+    to evaluate $T$ by the number of trees in $\mathcal{S}$ which are not found
+    in $\mathcal{R}(T)$ 
+    and the number (or proportion) of trees in $\mathcal{R}(T)$ which
+    are not in $\mathcal{S}$.
+Both of these statistics would be small if $T$ is a good summary of $\mathcal{S}$; they 
+    would be zero if the set of trees to be summarized is identical to the resolutions
+    of the tree.
+Note this pair of sets (the ``false negative'' and ``false positive'' sets) are the
+    sets that are calculate in when calculating the symmetric difference between 
+    sets (and related statistics such as the Robinson-Foulds distance in phylogenetics).
+
+Given the difficulty enumerating either $\mathcal{S}$ or $\mathcal{R}(T)$, we may not be able to easily 
+    apply this method of scoring trees often.
+It would also be difficult to figure out an appropriate weighting of false positives vs false negatives.
+However, there may be cases in which we compare two very similar trees and it is obvious
+    that one of them is clearly better because it has a lower value for one statistic and an equal-or-lower
+    value for the other.
+
 \input{glossary.tex}
 
 \bibliography{otcetera}
