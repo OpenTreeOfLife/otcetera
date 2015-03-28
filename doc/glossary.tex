@@ -10,11 +10,19 @@
     of a node, $x$, is the cluster of $x$
 \defitem{complete}{defComplete} as an adjective for a tree. Tree $A$ is complete $\iff$ the leaf label set
     of tree $A$ is identical to the the set of terminal taxa.
-    In notation: $\leafLabels{B} = \leafLabels{\taxonomy}$
-\defitem{display}{defDisplay} Tree $A$ displays an group, $x$, from tree $B$ $\iff$
+    In notation: $\leafLabels{A} = \leafLabels{\taxonomy}$
+\defitem{display}{defDisplay} Tree $A$ displays a node, $x$, from tree $B$ $\iff$
     that $A$ is as complete as tree $B$ and the induced tree of $A$ limited to the 
-    leaf label set of $B$ contains a cluster with labels identical to the label set of the cluster of $x$
+    leaf label set of $B$ contains a cluster with labels identical to the label set of the cluster of $x$.\\
+    An equivalent characterization in terms of the full leaf set of $A$ would be:
+    tree $A$ is as complete as $B$ and there is a node in $A$ which has a leaf label set 
+    that is a superset of \leafLabels{x} and which does not contain any member of $\leafLabels{B} \setminus \leafLabels{x}$.\\
+    We say that a tree $A$ displays a \ps $x$, if you were to translate
+        $x$ tree with single internal node $y$, and tree $A$ displays $y$.
 \defitem{internal node}{defInternalNode} a node that is not the root or a leaf.
+\defitem{label}{defLabel} When speaking of the label of a node in this document, we are referring to unique taxonomic
+    identifier for that node.
+    This document does not discuss any issues associated with mapping strings to taxonomic names.
 \defitem{leaf labels}{defLeafLabels} For our problems, the input trees have been aligned to a common
     taxonomy. 
     So referring to the leaf label set of a tree can be interpreted as
@@ -25,11 +33,40 @@
 \defitem{more complete}{defMoreComplete} tree $A$ is {\em more complete} than tree $B$ $\iff$ the leaf
     label set of $B$ is a proper subset of the leaf label set of $A$. \\
     In notation, $\leafLabels{B} \subset \leafLabels{A}$.
-\defitem{terminal taxon}{defTerminalTaxon} a taxonimic identifier for at taxon that
-    has no children {\em in the taxonomy}.
+\defitem{phylogenetic statement}{defPS} (we are considering ``rooted split'' or ``rooted bipartition'' for this phrase)
+    This is a pair of sets of taxonomic id sets: the include set and the exclude set (called ``ingroup'' and ``outgroup''
+    on the google doc).\\
+    The interpretation of a \ps is: if the statement is true, then 
+    any pair of elements in the include are more closely related to each
+        other than they are to any element in the the exclude set.
+    Thus if there are $N$ labels in the include set, and $M$ in the exclude set, the \ps implies
+    ${N \choose 2}M$ distinct rooted triples.\\
+    The include set and the exclude set must be disjunct. Their union is referred to as the leaf label set
+        for the \ps.
+    When we use the phrase ``\ps'' without qualifier, we mean a nontrivial statement.
+    For a \ps to be nontrivial there must be at least 2 elements in the include group and at least 
+        1 in the exclude group.\\
+    We use ``\vvps{\mbox{include}}{\mbox{exclude}}'' to denote a \ps. 
+    This is very similar to split syntax in unrooted phylogenetics, but with the arrow 
+        in place of $\mid$ to emphasize that the statement is oriented.\\
+    Each internal node in a tree maps to a nontrivial \ps that can created by setting
+        the include set equal to the leaf labels of node and setting the exclude set equal
+        to the leaf label set of the tree minus the leaf labels of the node.
+        In notation, node $x$ in tree $T$, maps to: $\lvps{x}{[\leafLabels{T} \setminus \leafLabels{x}]}$.\\
+    A tree can be converted to a set of \pss: one for each internal node in the tree.
+\defitem{terminal taxon}{defTerminalTaxon} a taxonomic identifier for at taxonomic node that
+    has no children {\em in the taxonomic tree}.
+\defitem{trivial}{defTrivial} a trivial \ps is one which must be found and any tree that has
+    the leaf labels set of the \ps.
+    This includes
+
 \end{compactenum}
 \section{Notation}
 \begin{compactenum}
     \notitem{\leafLabels{x}} is the leaf label set of $x$.
     \notitem{\taxonomy} the taxonomic tree.
+    \notitem{\leafComp{x}{T}} is the exclude group for node $x$ on tree $T$. It is the 
+        set complement of \leafLabels{x} with respect to the 
+    \notitem{\displaysPred{T}{x}} is an identity function that evaluates to 1 if tree $T$
+        displays $x$, and to 0 otherwise.
 \end{compactenum}
