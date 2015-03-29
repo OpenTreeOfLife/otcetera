@@ -11,6 +11,20 @@
 \defitem{complete}{defComplete} as an adjective for a tree. Tree $A$ is complete $\iff$ the leaf label set
     of tree $A$ is identical to the the set of terminal taxa.
     In notation: $\leafLabels{A} = \leafLabels{\taxonomy}$
+\defitem{conflicting}{defConflicting}. 2 \pss conflict with each other if there does not exist
+    any tree that displays both of them.\\
+    Since we are dealing with rooted statements that can partially overlap in term of their leaf sets, 
+    a procedure for checking for conflict: restrict both statements to just the overlapping labels 
+    (remove any labels that are not in the intersection of the leaf sets of the two statements), the
+    \pss are in conflict if their include groups overlap but neither include group is a subset of the
+    other.
+\defitem{contested}{defContested} as an adjective for a non-terminal taxon. Taxon $A$ is contested $\iff$ 
+    there is at least one tree in the set of input trees that has a node which is in conflict
+    with the taxon.
+    Note that if a tree has members of taxon as children of a polytomy that also contains other taxa, then
+        the tree does not display the taxon, but it is also does not contest the taxon.
+    Thus ``contests'' is not equivalent to ''does not display'' (though, if a tree displays a taxon, then 
+        it cannot contest that taxon).
 \defitem{display}{defDisplay} Tree $A$ displays a node, $x$, from tree $B$ $\iff$
     that $A$ is as complete as tree $B$ and the induced tree of $A$ limited to the 
     leaf label set of $B$ contains a cluster with labels identical to the label set of the cluster of $x$.\\
@@ -65,8 +79,8 @@
 \begin{compactenum}
     \notitem{\leafLabels{x}} is the leaf label set of $x$.
     \notitem{\taxonomy} the taxonomic tree.
-    \notitem{\leafComp{x}{T}} is the exclude group for node $x$ on tree $T$. It is the 
-        set complement of \leafLabels{x} with respect to the 
+    %\notitem{\leafComp{x}{T}} is the exclude group for node $x$ on tree $T$. It is the 
+        %set complement of \leafLabels{x} with respect to the 
     \notitem{\displaysPred{T}{x}} is an identity function that evaluates to 1 if tree $T$
         displays $x$, and to 0 otherwise.
 \end{compactenum}
