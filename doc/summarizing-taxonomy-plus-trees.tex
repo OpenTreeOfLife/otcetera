@@ -25,6 +25,9 @@
 \newcommand{\PS}{Phylogenetic Statement\xspace}
 \newcommand{\SWIPSD}{Sum of Weighted Input \PSs Displayed\xspace}
 \newcommand{\MSWIPSD}{Maximum \SWIPSD \xspace}
+\newcommand{\newick}[1]{\texttt{#1}\xspace}
+\newcommand{\comment}[1]{{\color{red} \textsc{#1}}\xspace}
+\newcommand{\NeedsAlgorithmicWork}{{\comment{This needs algorithmic work.}}}
 % Notation
 \newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
 \newcommand{\parent}[1]{\ensuremath{\mbox{par}(#1)}}
@@ -48,6 +51,7 @@ The source for this in the doc subdirectory of the otcetera
     {\bf Summarizing a taxonomy and multiple estimates of phylogenetic trees} \\
 {Mark T.~Holder$^{1,2,\ast}$. feel free to contribute and add your name}
 \end{center}
+\tableofcontents
 \section{Background}
 The \otol project is attempting to build a platform for summarizing what is known
     about phylogenetic relationships across all of Life.
@@ -67,7 +71,7 @@ This is results in a new form of a supertree problem described below as the ``ta
 \subsection{Taxonomy-based supertree}
 This is a novel name for a special form of the supertree problem.
 A taxonomy-base supertree has at least one input (the taxonomic tree) is complete.
-\subsection{Taxonomy-based summary tree}
+\subsubsection{Taxonomy-based summary tree}
 Many supertree approaches seek to maximize accuracy according to some notion
     of distance between the true tree and estimated true.
 The summary that we seek has requirements (e.g. \ref{noUnsupportedReq})
@@ -80,7 +84,7 @@ Thus, the phrase ``Taxonomy-based summary tree'' is used here to describe a
     explaining the set of input trees (rather than a supertree designed to
     display the highest number of groups in the inputs, or some other criterion).
 
-\subsection{Taxonomy-based summary of ranked input trees}
+\subsubsection{Taxonomy-based summary of ranked input trees}
 We have been pursuing a strategy that uses a ranking of trees.
 In cases of conflict, the grouping that is compatible with the 
     higher ranked tree is shown in the tree (if it is not contradicted by 
@@ -97,7 +101,6 @@ Nevertheless, tree-rank based summaries represent a reasonable starting point
     because they are easy to explain and the ranking permits some algorithmic
     simplifications.
 
-\section{More Background}
 \subsection{The Sum of Weighted Input \PSs Displayed Score}
 Let $\mathcal{P}$ be a multiset of \pss.
 If each member, $i$, this set is assigned a weight, $w_i$, then the 
@@ -108,6 +111,7 @@ sum of weighted input \pss displayed score, $S_w$, for a tree $T$ is:
 where {\displaysPred{T}{x}} is an identity function that evaluates to 1 if tree $T$
         displays $x$, and to 0 otherwise.
 
+\subsubsection{\MSWIPSD problem}
 Trying to find the set of trees that maximize $S_w$ is one natural
     goal for a summarization procedure.
 We can call this the ``\MSWIPSD''
@@ -172,7 +176,7 @@ If $\mathcal{S}_s$ is the subset of $\mathcal{S}_w$ which do not contain any uns
     then $\mathcat{S}_s$ is never empty, but may be much smaller than $\mathcal{S}_w$ because
     every resolution of $\mathcal{S}_s$ is a member of $\mathcal{S}_w$.
 
-\subsection{Evaluating how well a tree summarizes a set of trees}
+\subsection{Evaluating how well a single summary tree summarizes a set of summary trees}\label{treeAdmissibility}
 As discussed above, we might try to seek the set of trees that contain no unsupported nodes and that
     maximize the \SWIPSD score.
 However, one of the requirements is that we return a single tree.
@@ -196,9 +200,173 @@ Note this pair of sets (the ``false negative'' and ``false positive'' sets) are 
 Given the difficulty enumerating either $\mathcal{S}$ or $\mathcal{R}(T)$, we may not be able to easily 
     apply this method of scoring trees often.
 It would also be difficult to figure out an appropriate weighting of false positives vs false negatives.
-However, there may be cases in which we compare two very similar trees and it is obvious
-    that one of them is clearly better because it has a lower value for one statistic and an equal-or-lower
-    value for the other.
+
+However, there may be cases in which we compare two very similar trees, $A$ and $B$, it is obvious
+    that $A$ has a lower value than $B$ for one statistic and an equal-or-lower value for the other.
+Using an analogy to statistics, we would say that $A$ dominates $B$ and that $B$ is an inadmissible summary.
+
+\subsection{Relationship between a series of trees and a series \pss}
+In terms of the \MSWIPSD problem, the set of input trees can converted to a multiset of input \pss without 
+    altering the solution because no aspect of the scoring system depends on whether the input \ps
+    which are displayed were derived from the same tree.
+
+As mentioned above, using a ranking system that very strongly favors the more highly ranked trees
+    simplifies the search for a solution to the \MSWIPSD problem.
+Thus a ranked list of trees (highest priority to lowest) can be mapped to a list of sets of \pss.
+A greedy approach that tries builds up a solution by adding one \ps at a time could generate the optimal
+    set of summary trees could be guaranteed to work if the input order is correct.
+The greedy solver would have to accept as many splits as possible, and avoid rejecting a \ps unnecessarily,
+    but it would be greedy in the sense that it does not have to ``look ahead'' or reconsider a split
+    that it has accepted or rejected.
+
+Unfortunately, it is not clear how to convert the ranked list of trees to a ordering of the splits.
+The ranked list of sets of \pss that can be naturally derived from the rankes list of trees only provides
+    a partial order.
+
+I need to dig through my notes, but I think that there are cases for which the order of adding trees within
+    a tree affects the output.
+
+Checking all possible input orders would be one solution. 
+
+Currently, otcetera and peyotl-based supertree steps just use a postorder traversal (which is arbitrary with
+    respect to the order of sister groups). \NeedsAlgorithmicWork
+
+\subsection{The interpretation of input trees with tips mapped to non-terminal taxa}
+Some of the input phylogenetic estimates may have leaves that are not mapped to terminal taxa.
+The correct biological interpretation of such labels is not clear.
+
+Some possible meanings of a leaf in a tree being mapped to a non-terminal taxon, $A$:
+\begin{compactenum}
+    \item $A$ should be a terminal taxon - the reference taxonomy is incorrect.
+    \item the taxon $A$ is asserted or assumed by the authors of the study to be monophyletic.\label{itmMonophyleticTip}
+    \item at least one descendant taxon of $A$ occurs at this point in the tree, but it is not know which descendant.\label{itmUnknownTip}
+    \item the phylogenetic analysis was conducted using a ``chimeric'' set of character data drawn from multiple
+        members of the taxon $A$.
+    \item a non-extant lineage was sampled and included in the phylogenetic analysis. That tip is thought to be:
+    \begin{compactenum}
+        \item the most recent common ancestor of taxon $A$,
+        \item an anestor of taxa that are descendants of $A$ (but we don't know which one), OR
+        \item an extinct taxon that is a member of $A$.
+    \end{compactenum}
+\end{compactenum}
+Presumably case \ref{itmUnknownTip} is the most common case in our corpus.
+Even if case \ref{itmMonophyleticTip} is the case for some trees+leaf combinations, I presume
+    that we would want the source of such phylogenetic claims to be more transparent.
+Thus, I assume that we do {\em not} want such tips to be interpreted as providing evidence
+    for monophyly of the non-terminal tip.
+
+\subsubsection{expanding non-terminals to the contained terminals}
+If the taxon is monophyletic based on other trees in the corpus, these cases are not too not problematic.
+One could simply transform the tip to a polytomy containing all of the terminal taxa that are
+    descendants of the mapped taxon as children of the polytomy.
+This input representation would imply that the input tree supported the monophyly of the taxon, but 
+    that could be rectified by making note of the fact that the polytomy was an expansion of a tip
+    and later suppressing any annotation that claims that the tree supports monophyly.
+
+One could also follow this expansion procedure in the case of contested taxa.
+However, that would presumable entail more care to ensue that the \ps that corresponds
+    to the polytomy does not contribute to the topological decisions during the 
+    tree construction.
+
+\subsubsection{expanding non-terminals to the contained terminals attached to the parent of the leaf}
+As described above, expanding the non-terminals to their contained terminals requires 
+    some bookkeeping to note that the internal node produced should not generate a \ps that
+    is taken to be an input.
+If we are calculated ``supported by'' statements about the summary tree as a post-processing step (rather
+    than propagating that information at every step of the pipeline), it is sufficient
+    to transform the input tree with a non-terminal taxon mapping to tree that does not
+    claim monophyly non-terminal taxon.
+This can be done by creating the polytomy of terminal leaves at the parent node of the node that is
+    mapped to a non-terminal taxon (and pruning the ``barren'' leaf that is the remnant of the tip
+    mapped to the non-terminal taxon).
+
+\subsubsection{optimizing the assignment to a terminal taxon}
+Under the unknown tip case (case \ref{itmUnknownTip} above), we could treat the
+    correct assignment of the non-terminal tip to a terminal tip as an
+    unknown, latent variable to be optimized.
+In other words, we would try to make the assignments in such a way as to
+    maximize the \SWIPSD score.
+This sounds like it would lead to a combinatorial explosion in complexity when 
+    we have multiple trees that use the same non-terminal taxon in the corpus.
+So, as far as I know, we have not seriously considered this.
+
+\subsubsection{pruning non-terminal taxon tips}
+We have many tips that are pruned from the input trees because they are 
+    not correctly mapped to a taxon in the reference taxonomy.
+We could adopt the unknown tip (case \ref{itmUnknownTip} above) interpretation,
+    and prune these tips.
+This seems a bit draconian and wasteful - particularly given the the study
+    curation tool does not warn about non-terminal mapping.
+
+\subsubsection{pruning non-terminal taxon tips if the terminal taxon is not monophyletic}
+We might view leaves mapped to non-terminal taxa as hopelessly ambiguous Whenever the non-terminal
+    taxon is not monophyletic (based on other trees).
+Thus, we could prune these cases when other trees reject monophyly.
+
+This seems more reasonable that unconditionally pruning them, but more difficult to implement.
+A higher ranked \ps might contest the monophyly of the taxon, but that \pss might be 
+    in conflict with even more highly ranked \pss.
+There may be some clever trick for determining whether a taxon will be monophyletic in the
+    final tree without performing synthesis iteratively.
+
+\subsubsection{pruning non-terminal taxon tips if the terminal taxon is contested}
+This is a proposal that is intermediate between the previous 2 proposals.
+It is easy to test for whether or not a taxon is contested.
+However, if their are high ranking \pss that supprot the monophyly of the taxon,
+    then this procedure may prune tips that are not really ambiguous given 
+    the full data.
+
+\subsection{Proposed formalization of the goal}
+It would be great if the summary draf tree would be:
+    an admissible summary tree ({\em sensu} section \ref{treeAdmissibility}) of the set of trees
+    that maximize the ranked-tree \SWIPSD score.
+
+Unfortunately that is probably infeasible.  I think that a reasonable back up would be to 
+    produce a summary tree which:
+\begin{compactenum}
+    \item displays every uncontested taxon, and
+    \item shows an admissable summary of the \MSWIPSD set for each subproblem that is
+       created by tiling the tree into the contested subproblems.
+\end{compactenum}
+\subsection{Decomposition into uncontested taxon subproblems}
+One can efficiently:
+\begin{compactenum}
+    \item determine whether a taxon context is contested,
+    \item resolve any polytomy in an input tree which can be resolved by constraining
+        the set of uncontested taxa, and
+    \item produce a subproblem or each uncontested taxon. Each subproblem just contains
+        a subset of each input tree that overlaps with this subproblem
+\end{compactenum}
+
+MTH conjectures that constraining uncontested taxa will not force the \SWIPSD score to decrease.
+
+Note that in general, enforcing the presence of a contested \pss may increase the 
+    \SWIPSD score.
+For example, consider the ranked inputs:
+\begin{compactenum}
+\item \newick{((A,B),C)}
+\item \newick{((A,C),D)}
+\item \newick{((A,D),B)}
+\end{compactenum}
+The third tree displays a grouping that is not contested by either of the other 2 groups, but
+    if we force that grouping to be present in the full tree, that full tree cannot 
+    display both of the higher ranked \pss.
+
+MTH's conjecture is: If a complete \pss is uncontested by any input, then there exists 
+a summary tree which both displays the \ps and attains the highest possible \SWIPSD score.
+
+
+\subsubsection{implementation notes: otc-uncontested-decompose}
+This operation is implement in the {\tt otc-uncontested-decompose}.
+It takes a taxonomic tree and each of the input trees (in ranked order), and a flag
+    that specifies which output directory should hold the subproblems.
+It uses an embedding approach
+The subproblem is simply a induced
+        tree for the resolved input trees.
+        The nodes used to induce the subtree are the set of 
+
+\section{Pipeline}
+
 
 \input{glossary.tex}
 
