@@ -31,6 +31,7 @@
 \newcommand{\newick}[1]{\texttt{#1}\xspace}
 \newcommand{\comment}[1]{{\color{red} \textsc{#1}}\xspace}
 \newcommand{\NeedsAlgorithmicWork}{{\comment{This needs algorithmic work.}}}
+\newcommand{\ProofWriteupNeeded}{{\comment{Need to write up this proof}}}
 % Notation
 \newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
 \newcommand{\parent}[1]{\ensuremath{\mbox{parent}(#1)}}
@@ -373,12 +374,46 @@ based on all other input \pss that could be attained before the \ps was consider
 This operation is implement in the {\tt otc-uncontested-decompose}.
 It takes a taxonomic tree and each of the input trees (in ranked order), and a flag
     that specifies which output directory should hold the subproblems.
-    It uses an embedding approach outlined in algorithm \ref{embedTree}.
+It uses an embedding approach outlined in algorithm \ref{embedTree}.
+When that procedure is over, every non-leaf node in the taxonomic tree
+    has data structures that store information about every edge in 
+    an input tree that connects a child which aligns to this node or one of its descendants
+    to its parent.
+If the input tree has more structure about the taxon, then the pairing of paths will be in the 
+    LoopPaths lookup table, and if the pairing just passes through a node it will be listed in
+    the ExitPaths lookup table.
 
-The taxonomic tree is read.
-The subproblem is simply a induced
-        tree for the resolved input trees.
-        The nodes used to induce the subtree are the set of 
+We can detect whether or not a node is contested by counting the number of nodes deeper in the 
+    taxonomy serve as ancestral nodes in the ExitPaths for a particular input tree.
+If there is only one such node, then the input tree does not contest the taxon.
+If there are no such nodes, then the input tree's root maps to this taxon.
+If there are multiple nodes, then the input tree contests this taxon.
+\ProofWriteupNeeded
+
+The traversal to decompose the tree will alter the taxonomic tree, so the taxonomic tree 
+     is cloned and embedded into the original taxonomic tree.
+This assures that none of the taxonomic information is lost.
+
+After producing the embedding for all of the trees, the taxonomy is traversed in post-order
+    fashion.
+If a node is contested, then the branch that leads to its parent is collapsed and
+    all of its path pairing are moved deeper in the tree.
+This may cause them to go from the category of ExitPaths to LoopPaths (if the parent of the
+    taxon is also the ancestral taxonomic node of the path pairing, then it will become
+    a loop of that parental taxon).
+All of the LoopPaths of the collapsed taxon become LoopPaths of the parent.
+
+If the taxon is not contested, then all of the trees that are embedded in the node
+    are written out (in their ranked order) as subproblems.
+The path pairing that exit the node are then assigned the OTT ID of the uncontested taxon.
+When the subproblem trees are written out, any edge of an input tree that ends is an uncontested
+    taxon is treated as a terminal edge.
+The OTT ID associated with the path pairing (the ID of the uncontested taxon) is what is
+    written as the leaf label for the tree.
+In this way the slices of the input trees are tiled into different subproblems and the tips
+    of the subproblems refer either to a true tip in the taxonomy, or two an uncontested taxon.
+This will enable grafting of the solved subproblems back together by simple ID matching.
+
 
 \section{Pipeline}
 
