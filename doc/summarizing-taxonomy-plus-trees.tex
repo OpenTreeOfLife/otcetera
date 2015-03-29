@@ -2,6 +2,7 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage[authoryear,round]{natbib}
+\usepackage{algorithm,algorithmic}
 \bibliographystyle{plainnat}
 \usepackage{bm}
 \usepackage{color}
@@ -14,7 +15,9 @@
 \usepackage{paralist}
 \usepackage{setspace}
 \textwidth 6.5in
+\textheight 10in
 \hoffset -1in
+\voffset -1.4in
 \singlespacing
 
 % Abbreviations
@@ -30,8 +33,10 @@
 \newcommand{\NeedsAlgorithmicWork}{{\comment{This needs algorithmic work.}}}
 % Notation
 \newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
-\newcommand{\parent}[1]{\ensuremath{\mbox{par}(#1)}}
+\newcommand{\parent}[1]{\ensuremath{\mbox{parent}(#1)}}
 \newcommand{\children}[1]{\ensuremath{\mbox{children}(#1)}}
+\newcommand{\nodes}[1]{\ensuremath{\mbox{nodes}(#1)}}
+\newcommand{\treeRoot}[1]{\ensuremath{\mbox{root}(#1)}}
 \newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}}
 % verbatim, verbatim notation for a \ps
 \newcommand{\vvps}[2]{\ensuremath{{#1}\downarrow{#2}}}
@@ -338,6 +343,8 @@ One can efficiently:
         a subset of each input tree that overlaps with this subproblem
 \end{compactenum}
 
+\subsubsection{Conjecture: constraining uncontested taxa does not prevent any other
+    \pss from being displayed}
 MTH conjectures that constraining uncontested taxa will not force the \SWIPSD score to decrease.
 
 Note that in general, enforcing the presence of a contested \pss may increase the 
@@ -351,22 +358,72 @@ For example, consider the ranked inputs:
 The third tree displays a grouping that is not contested by either of the other 2 groups, but
     if we force that grouping to be present in the full tree, that full tree cannot 
     display both of the higher ranked \pss.
+In essence, the set of \pss implied by the first 2 tree is larger than the union of each tree's set
+    of \pss; in this case, a novel \pss: \vvps{A,B,C}{D} must be true of every 
+    tree that displays the \pss from the first 2 trees.
 
+However, these examples of ``implied'' or ``emergent'' \pss seem to require that the certain
+    patterns of overlap and omission of leaves in the 2 statements that are being combined.
 MTH's conjecture is: If a complete \pss is uncontested by any input, then there exists 
-a summary tree which both displays the \ps and attains the highest possible \SWIPSD score.
+a summary tree which both displays the \ps and attains the highest possible \SWIPSD score (the maximum score
+based on all other input \pss that could be attained before the \ps was considered).
 
 
 \subsubsection{implementation notes: otc-uncontested-decompose}
 This operation is implement in the {\tt otc-uncontested-decompose}.
 It takes a taxonomic tree and each of the input trees (in ranked order), and a flag
     that specifies which output directory should hold the subproblems.
-It uses an embedding approach
+    It uses an embedding approach outlined in algorithm \ref{embedTree}.
+
+The taxonomic tree is read.
 The subproblem is simply a induced
         tree for the resolved input trees.
         The nodes used to induce the subtree are the set of 
 
 \section{Pipeline}
 
+
+\newpage
+\begin{algorithm} \caption{EmbedPhyloIntoTaxonomicScaffold}\label{embedTree} \begin{algorithmic}
+\REQUIRE the taxonomic tree $\taxonomy$.
+\REQUIRE an input tree, $T$ with a unique identifier $\mbox{id}(T)$
+\FOR{each node $n_i$ in $\nodes{T}$}
+    \STATE{$z(n_i) \leftarrow \mbox{AlignNodes}(\taxonomy, n_i)$
+\ENDFOR
+\FOR{each node $n_i$ in $\nodes{T}$}
+    \IF{$n_i \neq \treeRoot{T}$}
+    \STATE $y_i \leftarrow \parent{n_i}$
+    \STATE$\mbox{EmbedEdge}(\taxonomy, {y_i}, z(y_i), n_i, z(n_i), \mbox{id}(T))$
+    \ENDIF
+\ENDFOR
+\end{algorithmic}\end{algorithm}
+\begin{algorithm} \caption{AlignNodes}\label{alignNodes} \begin{algorithmic}
+\REQUIRE the taxonomic tree $\taxonomy$.
+\REQUIRE a node from input tree, $n$.
+\IF{isLeaf($n$)}
+    \RETURN the node in $\taxonomy$ that is mapped to the same taxonomic identifier that $n$ is mapped to.
+\ELSE
+    \RETURN the node in $\taxonomy$ that is the least inclusive taxon that is an ancestor of all of 
+    taxonomic labels in $\leafLabels{n}$.
+\ENDIF
+\end{algorithmic}\end{algorithm}
+\begin{algorithm} \caption{EmbedEdge}\label{embedEdge} \begin{algorithmic}
+\REQUIRE the taxonomic tree $\taxonomy$.
+\REQUIRE a node from input tree, $n$, and it pair node in $\taxonomy$, $z(n)$
+\REQUIRE the parent node of $n$, called $y$ and its pair node in $\taxonomy$, $z(y)$
+\REQUIRE an identifier, $t$, that uniquely identifies the tree that contains $n$ and $y$.
+\REQUIRE Each non-leaf node in $\taxomony$ has 2 lookup tables: \textsc{LoopPaths} and \textsc{ExitPaths}
+\STATE $p \leftarrow \left[n, z(n), y, z(y)\right]$ \COMMENT{$p$ is called the ``path pairing'' information}
+\IF{$z(n) = z(y)$}
+    \STATE $z(y).\textsc{LoopPaths}[t] \leftarrow p$
+\ELSE
+    \STATE $c\leftarrow z(n)$
+    \WHILE{$c \neq z(y)$}
+        \STATE $c.\textsc{ExitPaths}[t] \leftarrow p$
+        \STATE $c \leftarrow \parent{c}$
+    \ENDWHILE
+\ENDIF
+\end{algorithmic}\end{algorithm}
 
 \input{glossary.tex}
 
