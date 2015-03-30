@@ -46,7 +46,7 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-prune-taxonomy",
-                "takes at least 2 newick file paths: a full taxonomy tree some number of input trees. Prune subtrees from the taxonomy if they are not represented in the inputs.",
+                "takes at least 2 newick file paths: a full taxonomy tree some number of input trees. Prune subtrees from the taxonomy if they are not represented in the inputs",
                 "taxonomy.tre inp1.tre inp2.tre");
     PruneTaxonomyState proc;
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);

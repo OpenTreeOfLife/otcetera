@@ -100,7 +100,7 @@ inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-check-taxonomic-nodes",
-                "takes 2 newick file paths: to a tree with internal node names and a tree form of a taxonomy. Reports on any taxonomic names that do not map to the correct place in the first tree.",
+                "takes 2 newick file paths: to a tree with internal node names and a tree form of a taxonomy. Reports on any taxonomic names that do not map to the correct place in the first tree",
                 "some.tre taxonomy.tre");
     CheckTaxonState cts;
     otCLI.blob = static_cast<void *>(&cts);

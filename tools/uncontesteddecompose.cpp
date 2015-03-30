@@ -88,7 +88,7 @@ bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg) {
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-uncontested-decompose",
-                "takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees, and -e flag to specify an export directory.",
+                "takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees, and -e flag to specify an export directory",
                 "taxonomy.tre inp1.tre inp2.tre");
     UncontestedTaxonDecompose proc;
     otCLI.addFlag('e',
