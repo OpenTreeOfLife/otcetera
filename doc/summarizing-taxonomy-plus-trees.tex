@@ -30,6 +30,7 @@
 \newcommand{\MSWIPSD}{Maximum \SWIPSD \xspace}
 \newcommand{\newick}[1]{\texttt{#1}\xspace}
 \newcommand{\otc}[0]{\texttt{otcetera}\xspace}
+\newcommand{\otcprune}[0]{\texttt{otc-prune-taxonomy}\xspace}
 \newcommand{\nexson}[0]{\texttt{otNexSON}\xspace}
 \newcommand{\gcmdr}[0]{\texttt{gcmdr}\xspace}
 \newcommand{\stepExplanation}[0]{\\\noindent\textsc{Explanation}:\xspace}
@@ -48,8 +49,10 @@
 \newcommand{\children}[1]{\ensuremath{\mbox{children}(#1)}}
 \newcommand{\nodes}[1]{\ensuremath{\mbox{nodes}(#1)}}
 \newcommand{\treeRoot}[1]{\ensuremath{\mbox{root}(#1)}}
-\newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}}
+\newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}\xspace}
+\newcommand{\prunedTaxonomy}[0]{\ensuremath{\mathbb{T}_P}\xspace}
 \newcommand{\phyloInputs}[0]{\ensuremath{\mathcal{T}}}
+\newcommand{\expandedPhylo}[0]{\ensuremath{\mathcal{T}_{E}}\xspace}
 % verbatim, verbatim notation for a \ps
 \newcommand{\vvps}[2]{\ensuremath{{#1}\downarrow{#2}}}
 % leaf set, verbatim notation for a \ps
@@ -285,7 +288,7 @@ However, that would presumable entail more care to ensue that the \ps that corre
     to the polytomy does not contribute to the topological decisions during the 
     tree construction.
 
-\subsubsection{expanding non-terminals to the contained terminals attached to the parent of the leaf}
+\subsubsection{expanding non-terminals to the contained terminals attached to the parent of the leaf}\label{expandNonTermPar}
 As described above, expanding the non-terminals to their contained terminals requires 
     some bookkeeping to note that the internal node produced should not generate a \ps that
     is taken to be an input.
@@ -507,14 +510,41 @@ This will determine the leaf label set of the final summary tree.
     out-degree=1 (obtained from either Joseph Brown or Ruchi Chaudhary via email) which MTH has been
     using as \phyloInputs.
 
-\subsection{}
-\stepExplanation
-\stepInput
-\stepOutput
-\currImpl 
-\implTODO 
-\currURL 
+\subsection{Expand tips mapped to non-terminal taxa}
+\stepExplanation As explained in section \ref{expandNonTermPar}, expanding tips that are mapped
+    to non-terminal taxa to the full set of their terminal descendants and attaching these
+    tips to the parent of the taxon should generate a tree that correctly represents
+    what the input tree says (without erroneously claiming that the tree supports monophyly).
+    
+    A clever implementation would note whether a descendant terminal taxon occurs in other
+        trees in the $\phyloInputs$ corpus. 
+    If there are multiple terminal descendant taxa in the expansion that only occur in the 
+        taxonomy, then it should be fine to let the expansions just contain 1 of these tips, $x$.
+    This would mean that the others are pruned in the next step, but will be placed in the 
+    correct spot in the final summary tree because they should attach at the same parent node
+    as the single exemplar, $x$. Failing to take this optimization will only mean that the 
+    pruned taxonomy is too large.
+\stepInput \taxonomy and \phyloInputs
+\stepOutput \expandedPhylo -- the set of phylogenetic inputs expanded such that no leaf is mapped 
+    to a non-terminal taxon.
+    \currImpl None
+    \implTODO \TODO{write this}
+\currURL We should probably post this set of trees, as many tools don't deal with tips that 
+are mapped to non-terminal taxa. So these trees may be the most accessible set of inputs
+for most interested parties.
  
+\subsection{Prune taxonomy down to tips represented in \expandedPhylo}
+\stepExplanation This is just an optimization step.
+Each terminal taxon that is only found in \taxonomy, can be placed on the 
+    final summary tree by creating a tree for the overlapping taxonomic
+    inputs and then grafting on the ``taxonomy only'' lineages.
+This pruning makes the inputs for the subsequent steps smaller
+\stepInput \taxonomy and \expandedPhylo
+\stepOutput \prunedTaxonomy the pruned taxonomy
+\currImpl \otcprune can perform this
+\implTODO
+\currURL may want to post this somewhere. 
+
 \subsection{}
 \stepExplanation
 \stepInput
