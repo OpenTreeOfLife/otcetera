@@ -16,9 +16,11 @@ class TestValidTreeStruct {
             if (!openUTF8File(fp, inp)) {
                 return 'U';
             }
+            ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
+            FilePosStruct pos(filenamePtr);
             for (;;) {
                 ParsingRules pr;
-                auto nt = readNextNewick<Tree_t>(inp, filename, pr);
+                auto nt = readNextNewick<Tree_t>(inp, pos, pr);
                 return (nt != nullptr ? '.': 'F');
             }
         }

@@ -44,6 +44,17 @@ struct FilePosStruct {
         colNumber(column),
         filepath(fp) {
     }
+    FilePosStruct(const FilePosStruct &other)
+        :pos(other.pos),
+        lineNumber(other.lineNumber),
+        colNumber(other.colNumber),
+        filepath(other.filepath) {
+    }
+    void setLocationInFile(const FilePosStruct & other) {
+        pos = other.pos;
+        lineNumber = other.lineNumber;
+        colNumber = other.colNumber;
+    }
     std::string describe() const {
         std::string message;
         message = "At line ";
@@ -147,13 +158,9 @@ class NewickTokenizer {
                 NWK_LABEL, // token was text (but not after a :)
                 NWK_SEMICOLON
             };
-        NewickTokenizer(std::istream &inp, const std::string & filepath)
+        NewickTokenizer(std::istream &inp, const FilePosStruct & initialPos)
             :inputStream(inp),
-            inpFilepath(nullptr) {
-            if (filepath.length() > 0) {
-                const std::string * raw = new std::string(filepath);
-                inpFilepath = std::shared_ptr<const std::string>(raw);
-            }
+            initPos(initialPos) {
         }
         class iterator;
         class Token {
@@ -224,6 +231,9 @@ class NewickTokenizer {
                     }
                     return *this;
                 }
+                const FilePosStruct & getCurrPos() const {
+                    return *this->currentPos;
+                }
             private:
                 void consumeNextToken();
                 bool advanceToNextNonWhitespace(char &);
@@ -292,12 +302,12 @@ class NewickTokenizer {
                     currentPos->colNumber = prevPos->colNumber;
                     comments.clear();
                 }
-                iterator(std::istream &inp, ConstStrPtr filepath)
+                iterator(std::istream &inp, const FilePosStruct & initialPos)
                     :inputStream(inp),
-                    inpFilepath(filepath),
+                    inpFilepath(initialPos.filepath),
                     atEnd(!inp.good()),
-                    firstPosSlot(filepath),
-                    secondPosSlot(filepath),
+                    firstPosSlot(initialPos),
+                    secondPosSlot(initialPos.filepath),
                     currTokenState(NWK_NOT_IN_TREE),
                     prevTokenState(NWK_NOT_IN_TREE),
                     numUnclosedParens(0) {
@@ -335,7 +345,7 @@ class NewickTokenizer {
                 friend class NewickTokenizer;
         };
         iterator begin() {
-            iterator b(this->inputStream, this->inpFilepath);
+            iterator b(this->inputStream, initPos);
             return b;
         }
         iterator end() {
@@ -344,7 +354,7 @@ class NewickTokenizer {
         }
     private:
         std::istream & inputStream;
-        ConstStrPtr inpFilepath;
+        FilePosStruct initPos;
 };
 
 inline long ottIDFromName(const std::string & n) {

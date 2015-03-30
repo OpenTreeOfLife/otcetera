@@ -13,12 +13,12 @@
 namespace otc {
 //Takes wide istream and (optional) filepath (just used for error reporting if not empty)
 template<typename T>
-std::unique_ptr<T> readNextNewick(std::istream &inp, const std::string & filepath, const ParsingRules &parsingRules);
+std::unique_ptr<T> readNextNewick(std::istream &inp, FilePosStruct & pos, const ParsingRules &parsingRules);
 
 template<typename T>
-inline std::unique_ptr<T> readNextNewick(std::istream &inp, const std::string & filepath, const ParsingRules &parsingRules) {
+inline std::unique_ptr<T> readNextNewick(std::istream &inp, FilePosStruct & pos, const ParsingRules &parsingRules) {
     assert(inp.good());
-    NewickTokenizer tokenizer(inp, filepath);
+    NewickTokenizer tokenizer(inp, pos);
     auto tokenIt = tokenizer.begin();
     if (tokenIt == tokenizer.end()) {
         return std::unique_ptr<T>(nullptr);
@@ -69,6 +69,7 @@ inline std::unique_ptr<T> readNextNewick(std::istream &inp, const std::string & 
         }
     }
     postParseHook(*treePtr, parsingRules);
+    pos.setLocationInFile(tokenIt.getCurrPos());
     return treePtr;
 }
 

@@ -21,10 +21,12 @@ class TestValidTreeStruct {
             if (!openUTF8File(fp, inp)) {
                 return 'U';
             }
+            ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
+            FilePosStruct pos(filenamePtr);
             std::list<std::unique_ptr<TreeMappedWithSplits> > tv;
             for (;;) {
                 ParsingRules pr;
-                auto nt = readNextNewick<Tree_t>(inp, filename, pr);
+                auto nt = readNextNewick<Tree_t>(inp, pos, pr);
                 if (nt == nullptr) {
                     break;
                 }
