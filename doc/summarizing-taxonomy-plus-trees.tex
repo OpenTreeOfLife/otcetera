@@ -344,9 +344,9 @@ One can efficiently:
         a subset of each input tree that overlaps with this subproblem
 \end{compactenum}
 
-\subsubsection{Conjecture: constraining uncontested taxa does not prevent any other
-    \pss from being displayed}
-MTH conjectures that constraining uncontested taxa will not force the \SWIPSD score to decrease.
+\subsubsection{Constraining uncontested taxa may force the \SWIPSD score to decrease.
+\footnote{there used to be a conjecture by MTH to the contrary of this statement here.
+A little thought revealed the case that is described here.}}
 
 Note that in general, enforcing the presence of a contested \pss may increase the 
     \SWIPSD score.
@@ -362,13 +362,25 @@ The third tree displays a grouping that is not contested by either of the other 
 In essence, the set of \pss implied by the first 2 tree is larger than the union of each tree's set
     of \pss; in this case, a novel \pss: \vvps{A,B,C}{D} must be true of every 
     tree that displays the \pss from the first 2 trees.
-
-However, these examples of ``implied'' or ``emergent'' \pss seem to require that the certain
+These examples of ``implied'' or ``emergent'' \pss seem to require that the certain
     patterns of overlap and omission of leaves in the 2 statements that are being combined.
-MTH's conjecture is: If a complete \pss is uncontested by any input, then there exists 
-a summary tree which both displays the \ps and attains the highest possible \SWIPSD score (the maximum score
-based on all other input \pss that could be attained before the \ps was considered).
 
+Enforcing an uncontested taxon into the final tree can decrease the score in cases like this:
+\begin{compactenum}
+\item \newick{((A,B1),C)}
+\item \newick{((C,B2),A)}
+\item taxonomy: \newick{(A,(B1,B2)B,C)}
+\end{compactenum}
+Neither input contests the monophyly of \texttt{B}, but the first 2 statements cannot 
+    both be true if \texttt{B} is monophyletic.
+
+Thus the decomposition into uncontested groups is not a trick to speed up
+    the identification of an optimal summary tree.
+Rather, it is a way to make the summary transparent and easy to fix:
+    if a biologist sees that a taxon which they know to be non-monophyletic
+    is uncontested, then he/she only needs to upload a tree demonstrating
+    non-monophyly to cause this group to be treated differently in the next 
+    construction of the summay tree.
 
 \subsubsection{implementation notes: otc-uncontested-decompose}
 This operation is implement in the {\tt otc-uncontested-decompose}.
