@@ -29,7 +29,21 @@
 \newcommand{\SWIPSD}{Sum of Weighted Input \PSs Displayed\xspace}
 \newcommand{\MSWIPSD}{Maximum \SWIPSD \xspace}
 \newcommand{\newick}[1]{\texttt{#1}\xspace}
+\newcommand{\otc}[0]{\texttt{otcetera}\xspace}
+\newcommand{\otcprune}[0]{\texttt{otc-prune-taxonomy}\xspace}
+\newcommand{\otcdecompose}[0]{\texttt{otc-uncontested-decompose}\xspace}
+\newcommand{\nexson}[0]{\texttt{otNexSON}\xspace}
+\newcommand{\gcmdr}[0]{\texttt{gcmdr}\xspace}
+\newcommand{\simplification}[0]{\\\noindent\textsc{Simplification Action(s)}:\xspace}
+\newcommand{\undoActions}[0]{\\\noindent\textsc{``Undo'' Simplification Action(s)}:\xspace}
+\newcommand{\stepExplanation}[0]{\\\noindent\textsc{Explanation}:\xspace}
+\newcommand{\stepInput}[0]{\\\noindent\textsc{Input}:\xspace}
+\newcommand{\stepOutput}[0]{\\\noindent\textsc{Output}:\xspace}
+\newcommand{\currImpl}[0]{\\\noindent\textsc{Current Impl.}:\xspace}
+\newcommand{\implTODO}[0]{\\\noindent\textsc{TODO for Impl.}:\xspace}
+\newcommand{\currURL}[0]{\\\noindent\textsc{URL for output}:\xspace}
 \newcommand{\comment}[1]{{\color{red} \textsc{#1}}\xspace}
+\newcommand{\TODO}[1]{\comment{TODO: #1}}
 \newcommand{\NeedsAlgorithmicWork}{{\comment{This needs algorithmic work.}}}
 \newcommand{\ProofWriteupNeeded}{{\comment{Need to write up this proof}}}
 % Notation
@@ -38,7 +52,12 @@
 \newcommand{\children}[1]{\ensuremath{\mbox{children}(#1)}}
 \newcommand{\nodes}[1]{\ensuremath{\mbox{nodes}(#1)}}
 \newcommand{\treeRoot}[1]{\ensuremath{\mbox{root}(#1)}}
-\newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}}
+\newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}\xspace}
+\newcommand{\prunedTaxonomy}[0]{\ensuremath{\mathbb{T}_P}\xspace}
+\newcommand{\phyloInputs}[0]{\ensuremath{\mathcal{T}}}
+\newcommand{\expandedPhylo}[0]{\ensuremath{\mathcal{T}_{E}}\xspace}
+\newcommand{\prunedSummary}[0]{\ensuremath{\mathcal{S}_{P}}\xspace}
+\newcommand{\summaryTree}[0]{\ensuremath{\mathcal{S}}\xspace}
 % verbatim, verbatim notation for a \ps
 \newcommand{\vvps}[2]{\ensuremath{{#1}\downarrow{#2}}}
 % leaf set, verbatim notation for a \ps
@@ -146,7 +165,7 @@ Unfortunately, that proof only applies to an exact algorithm which returns
     all possible trees that maximize the score.
 We do not know of a polynomial-time algorithm for solving that problem.
 
-\subsection{Trees without unsupported groups}
+\subsection{Trees without unsupported groups}\label{unsupportedTheory}
 Consider an edge connecting parent $\parent{V}$ to it child $V$ in a complete tree $T$.
 This edge is supported (or ``the node $V$ is supported'') in the sense of the \MSWIPSD score if
     collapsing the edge leads to a lower (worse) score.
@@ -211,7 +230,7 @@ However, there may be cases in which we compare two very similar trees, $A$ and 
     that $A$ has a lower value than $B$ for one statistic and an equal-or-lower value for the other.
 Using an analogy to statistics, we would say that $A$ dominates $B$ and that $B$ is an inadmissible summary.
 
-\subsection{Relationship between a series of trees and a series \pss}
+\subsection{Relationship between a series of trees and a series \pss}\label{orderPSsTheory}
 In terms of the \MSWIPSD problem, the set of input trees can converted to a multiset of input \pss without 
     altering the solution because no aspect of the scoring system depends on whether the input \ps
     which are displayed were derived from the same tree.
@@ -274,7 +293,7 @@ However, that would presumable entail more care to ensue that the \ps that corre
     to the polytomy does not contribute to the topological decisions during the 
     tree construction.
 
-\subsubsection{expanding non-terminals to the contained terminals attached to the parent of the leaf}
+\subsubsection{expanding non-terminals to the contained terminals attached to the parent of the leaf}\label{expandNonTermPar}
 As described above, expanding the non-terminals to their contained terminals requires 
     some bookkeeping to note that the internal node produced should not generate a \ps that
     is taken to be an input.
@@ -344,9 +363,9 @@ One can efficiently:
         a subset of each input tree that overlaps with this subproblem
 \end{compactenum}
 
-\subsubsection{Conjecture: constraining uncontested taxa does not prevent any other
-    \pss from being displayed}
-MTH conjectures that constraining uncontested taxa will not force the \SWIPSD score to decrease.
+\subsubsection{Constraining uncontested taxa may force the \SWIPSD score to decrease.}
+See footnote\footnote{there used to be a conjecture by MTH to the contrary of this section header.
+A little thought revealed the case that is described here.}
 
 Note that in general, enforcing the presence of a contested \pss may increase the 
     \SWIPSD score.
@@ -362,13 +381,25 @@ The third tree displays a grouping that is not contested by either of the other 
 In essence, the set of \pss implied by the first 2 tree is larger than the union of each tree's set
     of \pss; in this case, a novel \pss: \vvps{A,B,C}{D} must be true of every 
     tree that displays the \pss from the first 2 trees.
-
-However, these examples of ``implied'' or ``emergent'' \pss seem to require that the certain
+These examples of ``implied'' or ``emergent'' \pss seem to require that the certain
     patterns of overlap and omission of leaves in the 2 statements that are being combined.
-MTH's conjecture is: If a complete \pss is uncontested by any input, then there exists 
-a summary tree which both displays the \ps and attains the highest possible \SWIPSD score (the maximum score
-based on all other input \pss that could be attained before the \ps was considered).
 
+Enforcing an uncontested taxon into the final tree can decrease the score in cases like this:
+\begin{compactenum}
+\item \newick{((A,B1),C)}
+\item \newick{((C,B2),A)}
+\item taxonomy: \newick{(A,(B1,B2)B,C)}
+\end{compactenum}
+Neither input contests the monophyly of \texttt{B}, but the first 2 statements cannot 
+    both be true if \texttt{B} is monophyletic.
+
+Thus the decomposition into uncontested groups is not a trick to speed up
+    the identification of an optimal summary tree.
+Rather, it is a way to make the summary transparent and easy to fix:
+    if a biologist sees that a taxon which they know to be non-monophyletic
+    is uncontested, then he/she only needs to upload a tree demonstrating
+    non-monophyly to cause this group to be treated differently in the next 
+    construction of the summay tree.
 
 \subsubsection{implementation notes: otc-uncontested-decompose}
 This operation is implement in the {\tt otc-uncontested-decompose}.
@@ -414,11 +445,311 @@ In this way the slices of the input trees are tiled into different subproblems a
     of the subproblems refer either to a true tip in the taxonomy, or two an uncontested taxon.
 This will enable grafting of the solved subproblems back together by simple ID matching.
 
+\subsection{Subproblem simplifications}\label{simplificationTheory}
+Consider the case of having a series of \pss to add in ranked order (where the
+    rank-based are extreme enough to allow a greedy addition strategy).
+This elides the problem of ordering statements discussed in section \ref{orderPSsTheory}. 
+Here we assume that an order has been established.
+They are designed assuming a greedy solver that is given a list of \pss and must decide
+    for each whether to add it to the solution or reject it as incompatible with the 
+    current solution.
 
+There are some simplification steps which should be applicable in a stack-based
+    approach to produce a smaller subproblem.
+By stack-based we mean:
+\begin{compactenum}
+    \item apply simplification 1 to reduce the problem size.
+    \item apply simplification 1 to reduce the problem size.
+    \item[$\ldots]
+    \item[$n$] apply simplification $n$ to reduce the problem size.
+    \item[$n + 1$] solve the reduced subproblem
+    \item[$n + 2$]``undo'' simplification $n$ to augment the solution
+    \item[$n + 3$] ``undo'' simplification $n-1$ to augment the solution
+    \item[$\ldots]
+    \item[$2n + 1$] ``undo'' simplification $1$ to augment the solution
+    \item[$2n +2$] assure that all mentioned tips are present in the soluion.
+\end{compactenum}
+
+These simplifications should not result in a different set of \MSWIPSD trees
+    being attainable.
+However, we lack any guarantees about how they interact with heuristic solutions
+    of the reduced subproblem 
+Furthermore, we lack guarantees about how the simplifications affect a strategy that always
+    returns an optimal summary tree, but which does not guarantee that it will
+    find the full set of optimal summary trees.
+
+The simplifications can be applied iteratively until no more simplifications are possible.
+They are designed assuming a greedy solver that is given a list of \pss and must decide
+    for each whether to add it to the solution or reject it as incompatible with the 
+    current solution.
+
+The input set of \ps subproblems is simply in that all of the labelled tips are treated
+    as terminal taxa for the purpose of the summary.
+The inputs do contain trivial statements to assure that all leaves are include (e.g. 
+     the taxonomic tree is often a polytomy of all tips).
+
+\subsubsection{Prune tips that only occur in trivial \ps or exclude groups}
+No \ps has any support for these tips attaching anywhere above the root of the tree.
+So attaching them all a tree the attaches them all at the  root of the subproblem will
+    be among the optimal solutions.
+\simplification (1) find the set of tips that only occur in trivial \ps or in the exclude
+    groups of \pss;
+    (2) record these taxon labels;
+    (3) record a copy of all \pss that are affected by pruning of these IDs and a mapping
+        of the \ps that will result from the pruning
+    (4) prune all such tips;
+\undoActions (1) restore the original statements
+
+\subsubsection{Remove any trivial \ps}
+\simplification (1) record any trivial split
+\undoActions (1) restore the original statements
+
+\subsubsection{Remove any redundant \ps}
+\simplification if a \ps occurs twice in the list (1) record the second and subsequent positions. (2) remove the lower ranked \ps
+\undoActions (1) restore the original statements
+
+\subsubsection{Conditional addition of any ``dominated'' \pss}
+Consider a pair of \pss: $a=\vvps{a_i}{a_e}$ and $b=\vvps{b_i}{b_e}$.
+We say that $a$ is dominated by $b$ iff: 
+    $a_i \subset b_i$ and $a_e\subset b_e$.
+If $a$ is dominated by $b$ and $b$ is higher ranked than $a$, then we can 
+    note that $a$ need not be attempted if $b$ is accepted into the solution.
+$a$ contains less information, so adding it will not alter the solution.
+If $b$ is rejected, then it is possible that $a$ will be add-able, however.
+
+
+\simplification if a \ps occurs twice in the list (1) record the second and subsequent positions. (2) remove the lower ranked \ps
+\undoActions (1) restore the original statements
+
+\subsubsection{Prune ``dominated'' tips}
+Note that all of the compatibility/conflict decisions rely on tests for whether or not
+    set of labels is empty -- the presence of multiple tips rather than 1 tip in a
+    required or prohibited set will not affect a decision about whether or not any
+    \ps will be accepted into the solution or rejected.
+
+Consider a pair of tip labels $a$ and $b$ and a set of \pss $\mathcal{P}$.
+We say that $a$ is dominated by $b$ iff, $\forall (\vvps{i}{e}) \in \mathcal{P}$ one of the 
+    following applies:
+    $a\notin \leafLabels{p}$
+    or $(a \in i \mbox{ and } b \in i)$
+    or $(a \in e \mbox{ and } b \in e)$.
+
+In other words, if $b$ is on the same ``side'' as $a$ for every \ps that $a$ occurs in, then
+ $a$ is dominated by $b$.
+ \simplification  If there exists a tip label $a$ that is dominated by $b$:
+    (1) copy every \ps that $a$ occurs in and record how it will map to a \ps with $a$ pruned.
+    (2) prune $a$ from all of the \ps
+    (3) set up bookkeeping to note whether any affected \ps is accepted or rejected for the solution.
+\undoActions for every affected \ps that was accepted. Add the stored \ps. This should place $a$ correctly on the solution.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Pipeline}
+\stepInput reference taxonomy and a ranked list of trees (study ID + tree ID pairs).
+\stepOutput a summary tree and annotations about which input trees supports each branch.
+
+\comment{the step numbering here does \textem{not} agree with the sub dir numbering in
+    the \otc supertree subdir. That dir structure needs to be updated.}
+
+\subsection{Prune the reference taxonomy to remove some flags}
+\stepExplanation Not all taxa in OTT are reliable enough to belong in the 
+    summary tree.
+The reference taxonomy producing software flags taxa in several ways 
+(\href{https://github.com/OpenTreeOfLife/reference-taxonomy/wiki/taxon-flags}{which are listed here}
+\TODO{we still need real documentation of the flagging system}).
+
+\stepInput ``raw'' reference taxonomy with flags produced by \url{https://github.com/OpenTreeOfLife/reference-taxonomy}
+\stepOutput $\taxonomy$, the complete taxonomy for synthesis with some taxa pruned.
+This will determine the leaf label set of the final summary tree.
+\currImpl has been performed by treemachine. Note that there appear to be
+    a couple of issues with that impl. See 
+\href{https://github.com/OpenTreeOfLife/treemachine/commit/48211803f137ad0b7c096c28d1c10d32f671194f}{this comment} and
+\href{https://github.com/OpenTreeOfLife/treemachine/issues/168}{issue 168}.
+\implTODO (1) there should probably be a simple tool to just print this out without requiring a db.\\
+(2) Documentation needed on which flags are pruned and why.\\
+(3) We should serve this tree somewhere as it is a crucial input for the rest of the pipeline.
+\currURL \TODO{Temp url} \url{http://phylo.bio.ku.edu/ot/taxonomy.tre} holds the tree (obtained
+    from either Joseph Brown or Ruchi Chaudhary via email) which MTH has been using as \taxonomy.
+
+\subsection{Snapshot input studies}
+\stepExplanation For a make-based system it would be useful to copy the incoming \nexson files
+    to a snapshot location if they differ from the version of that study that is already found
+    in that staging location.
+\stepInput local copy of \texttt{phylesystem} git repo, list of trees (study+tree ID + optional git SHA) to be used
+\stepOutput (1) copies of the \nexson files from the specified SHA. (2) record of tree identifiers
+\currImpl None - similar operation done by \gcmdr.
+\implTODO Flat file implementation needed
+\currURL None
+ 
+\subsection{Snapshot of input trees}
+\stepExplanation The study files may contain multiple trees, for a make-base system it would
+    be good to have a timestamped file for each tree
+\stepInput snapshot of \nexson from previous step. list of tree identifiers.
+\stepOutput (1) one \nexson for each tree. The current naming convention of studyID\_treeID.nexson could
+    be used - there is no need to support multiple git-SHAs per tree.
+\currImpl None - similar operation done by \gcmdr.
+\implTODO Flat file implementation needed
+\currURL None
+ 
+\subsection{Pruning of input trees}
+\stepExplanation To improve the chance of having a correct rooting, we prune
+    the trees to just the ingroup.
+    We also prune the tree down such that they contain no more than 1 exemplar of any
+    terminal taxon and there are no cases of the taxon for one tip containing
+    the taxon mapped to another tip.
+\stepInput snapshot of \nexson trees from previous step.
+\stepOutput (1) \phyloInputs, the input set of tree represented as
+    one newick tree for each input tree with internal node labels that 
+    correspond to the node ID in the \nexson of the MRCA node.
+    (2) a record of the pruning edits performed.
+\currImpl None - similar operation done by \gcmdr.
+\implTODO (1) Flat file implementation needed. 
+    (2) record of edits needed. 
+    (3) identifiers for the internal nodes would be nice for reporting the provenance of edges in the 
+    summary tree. 
+    (4) We should serve these trees somewhere as they are crucial inputs for the rest of the pipeline.
+\currURL \TODO{Temp url} \url{http://phylo.bio.ku.edu/ot/pruned-input-trees.tar.gz} is an
+    archive of a set of these tree - without the noded identifiers and with nodes that have 
+    out-degree=1 (obtained from either Joseph Brown or Ruchi Chaudhary via email) which MTH has been
+    using as \phyloInputs.
+
+    \subsection{Expand tips mapped to non-terminal taxa}\label{expandedPhyloStep}
+\stepExplanation As explained in section \ref{expandNonTermPar}, expanding tips that are mapped
+    to non-terminal taxa to the full set of their terminal descendants and attaching these
+    tips to the parent of the taxon should generate a tree that correctly represents
+    what the input tree says (without erroneously claiming that the tree supports monophyly).
+    
+    A clever implementation would note whether a descendant terminal taxon occurs in other
+        trees in the $\phyloInputs$ corpus. 
+    If there are multiple terminal descendant taxa in the expansion that only occur in the 
+        taxonomy, then it should be fine to let the expansions just contain 1 of these tips, $x$.
+    This would mean that the others are pruned in the next step, but will be placed in the 
+    correct spot in the final summary tree because they should attach at the same parent node
+    as the single exemplar, $x$. Failing to take this optimization will only mean that the 
+    pruned taxonomy is too large.
+\stepInput \taxonomy and \phyloInputs
+\stepOutput \expandedPhylo -- the set of phylogenetic inputs expanded such that no leaf is mapped 
+    to a non-terminal taxon.
+    \currImpl None
+    \implTODO \TODO{write this}
+\currURL We should probably post this set of trees, as many tools don't deal with tips that 
+are mapped to non-terminal taxa. So these trees may be the most accessible set of inputs
+for most interested parties.
+ 
+\subsection{Prune taxonomy down to tips represented in \expandedPhylo}\label{prunedTaxonomyStep}
+\stepExplanation This is just an optimization step.
+Each terminal taxon that is only found in \taxonomy, can be placed on the 
+    final summary tree by creating a tree for the overlapping taxonomic
+    inputs and then grafting on the ``taxonomy only'' lineages.
+This pruning makes the inputs for the subsequent steps smaller
+\stepInput \taxonomy and \expandedPhylo
+\stepOutput \prunedTaxonomy the pruned taxonomy
+\currImpl \otcprune can perform this
+\implTODO
+\currURL may want to post this somewhere. 
+
+\subsection{Decompose the inputs into subproblems of uncontested taxa}\label{decomposeStep}
+\stepExplanation The decision to force uncontested taxa in the final
+    summary means that we can separate the problems into non-overlapping
+    subproblems.
+\stepInput \prunedTaxonomy and \expandedPhylo
+\stepOutput subproblems. Currently expressed (1) as one newick tree file  per subproblem
+    with the name \texttt{SUBPROBLEMID.tre}, and
+    (2) a file called \texttt{SUBPROBLEMID-tree-names.txt} with a treefile name 
+    on each line or ``TAXONOMY'' indicating the source of each tree. 
+    the \texttt{SUBPROBLEMID} is `ott' followed by the OTT ID.
+\currImpl \otcdecompose
+\implTODO 
+\currURL \url{http://phylo.bio.ku.edu/ot/export-sub-temp.tar.gz} has a snapshot, but
+those subproblems were not produced with the non-terminal tips expanded to terminals
+so there is some wonkiness - such tips are pruned if the taxon is contested, but their
+ID sets still affect the embedding of the deeper nodes in the tree. This needs 
+to be rerun after step \ref{expandedPhyloStep} is completed.
+ 
+\subsection{Simplify subproblems}\label{simplifyStep}
+\stepExplanation As (to be) described in section \ref{simplificationTheory} there
+    are several operations that can be performed that will reduce the size of the
+    subproblems but which should not compromise our ability to obtain the same
+    subproblem solution.
+    Many subproblems are trivially solvable, so the tool that does this
+    will also be a crude solver.
+\stepInput The set of subproblems, a simplified-problems directory, and a solutions directory
+\stepOutput When possible, subproblem solutions and simplifications will be written to the 2 output directories.
+\currImpl an implementation is started, but far from complete \href{https://github.com/OpenTreeOfLife/peyotl/blob/supertree/scripts/supertree/simplify_subproblems.py}{in the supertree branch of peyotl}
+\implTODO \TODO {finish}
+\currURL 
+ 
+\subsection{Solve subproblems}
+\stepExplanation Attempt to find an admissible summary tree for the set of 
+    summaries that are the \MSWIPSD set.
+    We probably want (1) a brute force implementation that we can use for small
+    subproblems so we do not have to worry about errors from finding local 
+    optima, and (2) one or more heuristics.
+\stepInput a ``raw'' subproblem from step \ref{decomposeStep} or a simplified 
+    subproblem from step \ref{simplifyStep}.
+\stepOutput a tree for each subproblem - stored in a solutions dir under the name
+    \texttt{SUBPROBLEMID.tre}
+\currImpl treemachine may provide one solver.
+\implTODO exact impl and, perhaps we need another approximate solver
+\currURL 
+ 
+\subsection{Collapse unsupported nodes}
+\stepExplanation If the solver does not guarantee that no unsupported nodes will
+    be introduced, then we can collapse them at this point.
+    As noted in section \ref{unsupportedTheory}, this should be done
+    iteratively rather than by identifying all unsupported edges and 
+    collapsing all of them.
+    The latter approach would collapse too many edges.
+\stepInput the solutions directory holding all of the subproblem solution trees.
+\stepOutput a supported solutions directory holding all of the subproblem solution trees
+    which contain no unsupported nodes.
+\currImpl None
+\implTODO \TODO{write this}
+
+\subsection{Assemble pruned summary tree from subproblem solutions}\label{assemblyStep}
+\stepExplanation Because the problems do not overlap, and the file names 
+    match the tip labels (when a tip of one subproblem is actually an uncontested
+    non-terminal taxon in \prunedTaxonomy), this is a simple grafting procedure.\\
+    Note that each subproblem is supported by the taxonomy (at a minimum), so this
+    step cannot introduce unsupported groups.
+\stepInput the solutions directory holding all of the subproblem solution trees.
+\stepOutput \prunedSummary -- the summary tree pruned down to the leaf set of \prunedTaxonomy.
+\currImpl None
+\implTODO \TODO{write this}
+ 
+\subsection{Graft the pruned taxonomy-only taxa back onto the tree}
+\stepExplanation ``phylo-referencing'' style logic can be used to place the
+    taxa that were pruned in \ref{prunedTaxonomyStep}
+\stepInput \prunedSummary and \taxonomy
+\stepOutput \summaryTree -- the final summary tree
+\currImpl None
+\implTODO \TODO{write this}
+
+\subsection{Create annotations for nodes in $\summaryTree$}\label{annotationsStep}
+\stepExplanation At minimum, we would want statement of which
+    input nodes supporte which nodes in $\summaryTree$.
+    But we could also noted nodes displayed, nodes in conflict, 
+    and whether or not the node was constrained because it was a contested taxon.
+\stepInput \summaryTree and \expandedPhylo
+\stepOutput some as yet undefined format for expressing these annotations.
+\currImpl None
+\implTODO \TODO{write this}
+
+\subsection{Serve \summaryTree and the annotations}
+\stepExplanation we may be able to compile the annotations into a set of
+    static files to be served up to the current tree browser.
+    Or we may wish have a full database-driven web service
+    \stepInput \summaryTree and annotations from \ref{annotationsStep}
+\stepOutput a web services API comparable to the
+    \href{https://github.com/OpenTreeOfLife/opentree/wiki/Open-Tree-of-Life-APIs#tree-of-life}{tree-of-life part of the API}.//
+    some of the services in that API would definitely require a db rather than just flat-files (e.g the MRCA and induced\_subtree)
+\currImpl None unless we load the tree into treemachine and add methods for
+    serving up the annotations that are not coming from the graph-of-life
+\implTODO \TODO{write this}
 
 
 \newpage
+\section{Algorithms}
 \begin{algorithm} \caption{EmbedPhyloIntoTaxonomicScaffold}\label{embedTree} \begin{algorithmic}
 \REQUIRE the taxonomic tree $\taxonomy$.
 \REQUIRE an input tree, $T$ with a unique identifier $\mbox{id}(T)$
