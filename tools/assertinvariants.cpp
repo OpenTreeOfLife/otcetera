@@ -13,7 +13,7 @@ bool processNextTree(OTCLI & , std::unique_ptr<Tree_t> tree) {
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otcassertinvariants",
+    OTCLI otCLI("otc-assert-invariants",
                 "takes a tree file, parses it and runs a series of checks of invariants of the tree operations.",
                 "test.tre");
     return treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);

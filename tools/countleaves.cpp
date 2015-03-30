@@ -17,7 +17,7 @@ bool writeNumLeaves(OTCLI & , std::unique_ptr<T> tree) {
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otccountleaves",
+    OTCLI otCLI("otc-count-leaves",
                  "takes a filepath to a newick file and reports the number of leaves",
                  {"some.tre"});
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnl = writeNumLeaves<Tree_t>;

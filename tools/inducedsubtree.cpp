@@ -31,7 +31,7 @@ struct InducedSubtreeState
 };
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otcinducedsubtree",
+    OTCLI otCLI("otc-induced-subtree",
                 "takes at least 2 newick file paths: a full tree, and some number of input trees. Writes the topology of the first tree if it is pruned down to the leafset of the inputs (without removing internal nodes)",
                 "taxonomy.tre inp1.tre inp2.tre");
     InducedSubtreeState proc;

@@ -15,7 +15,7 @@ struct RFState : public TaxonomyDependentTreeProcessor<Tree_t> {
 };
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otcmissingsplits",
+    OTCLI otCLI("otc-missing-splits",
                 "takes at least 2 newick file paths: a full tree, and some number of input trees. Writes the number of splits in the induced full tree that are missing from the each other tree.",
                 "taxonomy.tre inp1.tre inp2.tre");
     RFState proc;

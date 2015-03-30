@@ -225,7 +225,7 @@ bool handleDesignator(OTCLI & otCLI, const std::string &nextArg) {
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otcfindunsupportednodes",
+    OTCLI otCLI("otc-find-unsupported-nodes",
                 "takes at least 2 newick file paths: a full taxonomy tree, a full supertree, and some number of input trees",
                 "taxonomy.tre synth.tre inp1.tre inp2.tre");
     FindUnsupportedState proc;

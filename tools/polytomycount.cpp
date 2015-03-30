@@ -12,7 +12,7 @@ inline bool writeNumPolytomies(OTCLI & otCLI, std::unique_ptr<T> tree) {
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otcpolytomycount",
+    OTCLI otCLI("otc-polytomy-count",
                  "takes a filepath to a newick file and reports the number of polytomies in each tree (one line per tree)",
                  {"some.tre"});
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnp = writeNumPolytomies<Tree_t>;

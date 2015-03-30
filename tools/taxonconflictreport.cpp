@@ -103,7 +103,7 @@ struct ConflictReporterProc : public TaxonomyDependentTreeProcessor<TreeMappedWi
 };
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otctaxonconflictreport",
+    OTCLI otCLI("otc-taxon-conflict-report",
                 "takes at least 2 newick file paths: a full tree, and some number of input trees. Writes a summary of the difference in taxonomic inclusion for nodes that are in conflict.",
                 "taxonomy.tre inp1.tre inp2.tre");
     ConflictReporterProc proc;

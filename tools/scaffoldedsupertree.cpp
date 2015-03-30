@@ -323,7 +323,7 @@ bool handleDotNodesFlag(OTCLI & otCLI, const std::string &narg) {
 
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otcscaffoldedsupertree",
+    OTCLI otCLI("otc-scaffolded-supertree",
                 "takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. Crashes or emits bogus output.",
                 "taxonomy.tre inp1.tre inp2.tre");
     ScaffoldedSupertree proc;
