@@ -34,6 +34,8 @@
 \newcommand{\otcdecompose}[0]{\texttt{otc-uncontested-decompose}\xspace}
 \newcommand{\nexson}[0]{\texttt{otNexSON}\xspace}
 \newcommand{\gcmdr}[0]{\texttt{gcmdr}\xspace}
+\newcommand{\simplification}[0]{\\\noindent\textsc{Simplification Action(s)}:\xspace}
+\newcommand{\undoActions}[0]{\\\noindent\textsc{``Undo'' Simplification Action(s)}:\xspace}
 \newcommand{\stepExplanation}[0]{\\\noindent\textsc{Explanation}:\xspace}
 \newcommand{\stepInput}[0]{\\\noindent\textsc{Input}:\xspace}
 \newcommand{\stepOutput}[0]{\\\noindent\textsc{Output}:\xspace}
@@ -228,7 +230,7 @@ However, there may be cases in which we compare two very similar trees, $A$ and 
     that $A$ has a lower value than $B$ for one statistic and an equal-or-lower value for the other.
 Using an analogy to statistics, we would say that $A$ dominates $B$ and that $B$ is an inadmissible summary.
 
-\subsection{Relationship between a series of trees and a series \pss}
+\subsection{Relationship between a series of trees and a series \pss}\label{orderPSsTheory}
 In terms of the \MSWIPSD problem, the set of input trees can converted to a multiset of input \pss without 
     altering the solution because no aspect of the scoring system depends on whether the input \ps
     which are displayed were derived from the same tree.
@@ -361,9 +363,9 @@ One can efficiently:
         a subset of each input tree that overlaps with this subproblem
 \end{compactenum}
 
-\subsubsection{Constraining uncontested taxa may force the \SWIPSD score to decrease.
-\footnote{there used to be a conjecture by MTH to the contrary of this statement here.
-A little thought revealed the case that is described here.}}
+\subsubsection{Constraining uncontested taxa may force the \SWIPSD score to decrease.}
+See footnote\footnote{there used to be a conjecture by MTH to the contrary of this section header.
+A little thought revealed the case that is described here.}
 
 Note that in general, enforcing the presence of a contested \pss may increase the 
     \SWIPSD score.
@@ -443,7 +445,105 @@ In this way the slices of the input trees are tiled into different subproblems a
     of the subproblems refer either to a true tip in the taxonomy, or two an uncontested taxon.
 This will enable grafting of the solved subproblems back together by simple ID matching.
 
+\subsection{Subproblem simplifications}\label{simplificationTheory}
+Consider the case of having a series of \pss to add in ranked order (where the
+    rank-based are extreme enough to allow a greedy addition strategy).
+This elides the problem of ordering statements discussed in section \ref{orderPSsTheory}. 
+Here we assume that an order has been established.
+They are designed assuming a greedy solver that is given a list of \pss and must decide
+    for each whether to add it to the solution or reject it as incompatible with the 
+    current solution.
 
+There are some simplification steps which should be applicable in a stack-based
+    approach to produce a smaller subproblem.
+By stack-based we mean:
+\begin{compactenum}
+    \item apply simplification 1 to reduce the problem size.
+    \item apply simplification 1 to reduce the problem size.
+    \item[$\ldots]
+    \item[$n$] apply simplification $n$ to reduce the problem size.
+    \item[$n + 1$] solve the reduced subproblem
+    \item[$n + 2$]``undo'' simplification $n$ to augment the solution
+    \item[$n + 3$] ``undo'' simplification $n-1$ to augment the solution
+    \item[$\ldots]
+    \item[$2n + 1$] ``undo'' simplification $1$ to augment the solution
+    \item[$2n +2$] assure that all mentioned tips are present in the soluion.
+\end{compactenum}
+
+These simplifications should not result in a different set of \MSWIPSD trees
+    being attainable.
+However, we lack any guarantees about how they interact with heuristic solutions
+    of the reduced subproblem 
+Furthermore, we lack guarantees about how the simplifications affect a strategy that always
+    returns an optimal summary tree, but which does not guarantee that it will
+    find the full set of optimal summary trees.
+
+The simplifications can be applied iteratively until no more simplifications are possible.
+They are designed assuming a greedy solver that is given a list of \pss and must decide
+    for each whether to add it to the solution or reject it as incompatible with the 
+    current solution.
+
+The input set of \ps subproblems is simply in that all of the labelled tips are treated
+    as terminal taxa for the purpose of the summary.
+The inputs do contain trivial statements to assure that all leaves are include (e.g. 
+     the taxonomic tree is often a polytomy of all tips).
+
+\subsubsection{Prune tips that only occur in trivial \ps or exclude groups}
+No \ps has any support for these tips attaching anywhere above the root of the tree.
+So attaching them all a tree the attaches them all at the  root of the subproblem will
+    be among the optimal solutions.
+\simplification (1) find the set of tips that only occur in trivial \ps or in the exclude
+    groups of \pss;
+    (2) record these taxon labels;
+    (3) record a copy of all \pss that are affected by pruning of these IDs and a mapping
+        of the \ps that will result from the pruning
+    (4) prune all such tips;
+\undoActions (1) restore the original statements
+
+\subsubsection{Remove any trivial \ps}
+\simplification (1) record any trivial split
+\undoActions (1) restore the original statements
+
+\subsubsection{Remove any redundant \ps}
+\simplification if a \ps occurs twice in the list (1) record the second and subsequent positions. (2) remove the lower ranked \ps
+\undoActions (1) restore the original statements
+
+\subsubsection{Conditional addition of any ``dominated'' \pss}
+Consider a pair of \pss: $a=\vvps{a_i}{a_e}$ and $b=\vvps{b_i}{b_e}$.
+We say that $a$ is dominated by $b$ iff: 
+    $a_i \subset b_i$ and $a_e\subset b_e$.
+If $a$ is dominated by $b$ and $b$ is higher ranked than $a$, then we can 
+    note that $a$ need not be attempted if $b$ is accepted into the solution.
+$a$ contains less information, so adding it will not alter the solution.
+If $b$ is rejected, then it is possible that $a$ will be add-able, however.
+
+
+\simplification if a \ps occurs twice in the list (1) record the second and subsequent positions. (2) remove the lower ranked \ps
+\undoActions (1) restore the original statements
+
+\subsubsection{Prune ``dominated'' tips}
+Note that all of the compatibility/conflict decisions rely on tests for whether or not
+    set of labels is empty -- the presence of multiple tips rather than 1 tip in a
+    required or prohibited set will not affect a decision about whether or not any
+    \ps will be accepted into the solution or rejected.
+
+Consider a pair of tip labels $a$ and $b$ and a set of \pss $\mathcal{P}$.
+We say that $a$ is dominated by $b$ iff, $\forall (\vvps{i}{e}) \in \mathcal{P}$ one of the 
+    following applies:
+    $a\notin \leafLabels{p}$
+    or $(a \in i \mbox{ and } b \in i)$
+    or $(a \in e \mbox{ and } b \in e)$.
+
+In other words, if $b$ is on the same ``side'' as $a$ for every \ps that $a$ occurs in, then
+ $a$ is dominated by $b$.
+ \simplification  If there exists a tip label $a$ that is dominated by $b$:
+    (1) copy every \ps that $a$ occurs in and record how it will map to a \ps with $a$ pruned.
+    (2) prune $a$ from all of the \ps
+    (3) set up bookkeeping to note whether any affected \ps is accepted or rejected for the solution.
+\undoActions for every affected \ps that was accepted. Add the stored \ps. This should place $a$ correctly on the solution.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Pipeline}
 \stepInput reference taxonomy and a ranked list of trees (study ID + tree ID pairs).
 \stepOutput a summary tree and annotations about which input trees supports each branch.
@@ -649,6 +749,7 @@ to be rerun after step \ref{expandedPhyloStep} is completed.
 
 
 \newpage
+\section{Algorithms}
 \begin{algorithm} \caption{EmbedPhyloIntoTaxonomicScaffold}\label{embedTree} \begin{algorithmic}
 \REQUIRE the taxonomic tree $\taxonomy$.
 \REQUIRE an input tree, $T$ with a unique identifier $\mbox{id}(T)$
