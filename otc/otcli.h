@@ -105,8 +105,10 @@ inline int treeProcessingMain(OTCLI & otCLI,
                 }
                 LOG(INFO) << "reading \"" << filename << "\"...";
                 otCLI.currentFilename = filepathToFilename(filename);
+                ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
+                FilePosStruct pos(filenamePtr);
                 for (;;) {
-                    std::unique_ptr<T> nt = readNextNewick<T>(inp, filename, otCLI.getParsingRules());
+                    std::unique_ptr<T> nt = readNextNewick<T>(inp, pos, otCLI.getParsingRules());
                     if (nt == nullptr) {
                         break;
                     }
