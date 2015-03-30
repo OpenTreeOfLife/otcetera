@@ -29,7 +29,17 @@
 \newcommand{\SWIPSD}{Sum of Weighted Input \PSs Displayed\xspace}
 \newcommand{\MSWIPSD}{Maximum \SWIPSD \xspace}
 \newcommand{\newick}[1]{\texttt{#1}\xspace}
+\newcommand{\otc}[0]{\texttt{otcetera}\xspace}
+\newcommand{\nexson}[0]{\texttt{otNexSON}\xspace}
+\newcommand{\gcmdr}[0]{\texttt{gcmdr}\xspace}
+\newcommand{\stepExplanation}[0]{\\\noindent\textsc{Explanation}:\xspace}
+\newcommand{\stepInput}[0]{\\\noindent\textsc{Input}:\xspace}
+\newcommand{\stepOutput}[0]{\\\noindent\textsc{Output}:\xspace}
+\newcommand{\currImpl}[0]{\\\noindent\textsc{Current Impl.}:\xspace}
+\newcommand{\implTODO}[0]{\\\noindent\textsc{TODO for Impl.}:\xspace}
+\newcommand{\currURL}[0]{\\\noindent\textsc{URL for output}:\xspace}
 \newcommand{\comment}[1]{{\color{red} \textsc{#1}}\xspace}
+\newcommand{\TODO}[1]{\comment{TODO: #1}}
 \newcommand{\NeedsAlgorithmicWork}{{\comment{This needs algorithmic work.}}}
 \newcommand{\ProofWriteupNeeded}{{\comment{Need to write up this proof}}}
 % Notation
@@ -39,6 +49,7 @@
 \newcommand{\nodes}[1]{\ensuremath{\mbox{nodes}(#1)}}
 \newcommand{\treeRoot}[1]{\ensuremath{\mbox{root}(#1)}}
 \newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}}
+\newcommand{\phyloInputs}[0]{\ensuremath{\mathcal{T}}}
 % verbatim, verbatim notation for a \ps
 \newcommand{\vvps}[2]{\ensuremath{{#1}\downarrow{#2}}}
 % leaf set, verbatim notation for a \ps
@@ -428,8 +439,114 @@ This will enable grafting of the solved subproblems back together by simple ID m
 
 
 \section{Pipeline}
+\stepInput reference taxonomy and a ranked list of trees (study ID + tree ID pairs).
+\stepOutput a summary tree and annotations about which input trees supports each branch.
 
+\comment{the step numbering here does \textem{not} agree with the sub dir numbering in
+    the \otc supertree subdir. That dir structure needs to be updated.}
 
+\subsection{Prune the reference taxonomy to remove some flags}
+\stepExplanation Not all taxa in OTT are reliable enough to belong in the 
+    summary tree.
+The reference taxonomy producing software flags taxa in several ways 
+(\href{https://github.com/OpenTreeOfLife/reference-taxonomy/wiki/taxon-flags}{which are listed here}
+\TODO{we still need real documentation of the flagging system}).
+
+\stepInput ``raw'' reference taxonomy with flags produced by \url{https://github.com/OpenTreeOfLife/reference-taxonomy}
+\stepOutput $\taxonomy$, the complete taxonomy for synthesis with some taxa pruned.
+This will determine the leaf label set of the final summary tree.
+\currImpl has been performed by treemachine. Note that there appear to be
+    a couple of issues with that impl. See 
+\href{https://github.com/OpenTreeOfLife/treemachine/commit/48211803f137ad0b7c096c28d1c10d32f671194f}{this comment} and
+\href{https://github.com/OpenTreeOfLife/treemachine/issues/168}{issue 168}.
+\implTODO (1) there should probably be a simple tool to just print this out without requiring a db.\\
+(2) Documentation needed on which flags are pruned and why.\\
+(3) We should serve this tree somewhere as it is a crucial input for the rest of the pipeline.
+\currURL \TODO{Temp url} \url{http://phylo.bio.ku.edu/ot/taxonomy.tre} holds the tree (obtained
+    from either Joseph Brown or Ruchi Chaudhary via email) which MTH has been using as \taxonomy.
+
+\subsection{Snapshot input studies}
+\stepExplanation For a make-based system it would be useful to copy the incoming \nexson files
+    to a snapshot location if they differ from the version of that study that is already found
+    in that staging location.
+\stepInput local copy of \texttt{phylesystem} git repo, list of trees (study+tree ID + optional git SHA) to be used
+\stepOutput (1) copies of the \nexson files from the specified SHA. (2) record of tree identifiers
+\currImpl None - similar operation done by \gcmdr.
+\implTODO Flat file implementation needed
+\currURL None
+ 
+\subsection{Snapshot of input trees}
+\stepExplanation The study files may contain multiple trees, for a make-base system it would
+    be good to have a timestamped file for each tree
+\stepInput snapshot of \nexson from previous step. list of tree identifiers.
+\stepOutput (1) one \nexson for each tree. The current naming convention of studyID\_treeID.nexson could
+    be used - there is no need to support multiple git-SHAs per tree.
+\currImpl None - similar operation done by \gcmdr.
+\implTODO Flat file implementation needed
+\currURL None
+ 
+\subsection{Pruning of input trees}
+\stepExplanation To improve the chance of having a correct rooting, we prune
+    the trees to just the ingroup.
+    We also prune the tree down such that they contain no more than 1 exemplar of any
+    terminal taxon and there are no cases of the taxon for one tip containing
+    the taxon mapped to another tip.
+\stepInput snapshot of \nexson trees from previous step.
+\stepOutput (1) \phyloInputs, the input set of tree represented as
+    one newick tree for each input tree with internal node labels that 
+    correspond to the node ID in the \nexson of the MRCA node.
+    (2) a record of the pruning edits performed.
+\currImpl None - similar operation done by \gcmdr.
+\implTODO (1) Flat file implementation needed. 
+    (2) record of edits needed. 
+    (3) identifiers for the internal nodes would be nice for reporting the provenance of edges in the 
+    summary tree. 
+    (4) We should serve these trees somewhere as they are crucial inputs for the rest of the pipeline.
+\currURL \TODO{Temp url} \url{http://phylo.bio.ku.edu/ot/pruned-input-trees.tar.gz} is an
+    archive of a set of these tree - without the noded identifiers and with nodes that have 
+    out-degree=1 (obtained from either Joseph Brown or Ruchi Chaudhary via email) which MTH has been
+    using as \phyloInputs.
+
+\subsection{}
+\stepExplanation
+\stepInput
+\stepOutput
+\currImpl 
+\implTODO 
+\currURL 
+ 
+\subsection{}
+\stepExplanation
+\stepInput
+\stepOutput
+\currImpl 
+\implTODO 
+\currURL 
+ 
+\subsection{}
+\stepExplanation
+\stepInput
+\stepOutput
+\currImpl 
+\implTODO 
+\currURL 
+ 
+\subsection{}
+\stepExplanation
+\stepInput
+\stepOutput
+\currImpl 
+\implTODO 
+\currURL 
+ 
+\subsection{}
+\stepExplanation
+\stepInput
+\stepOutput
+\currImpl 
+\implTODO 
+\currURL 
+ 
 \newpage
 \begin{algorithm} \caption{EmbedPhyloIntoTaxonomicScaffold}\label{embedTree} \begin{algorithmic}
 \REQUIRE the taxonomic tree $\taxonomy$.
