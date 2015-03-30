@@ -31,6 +31,7 @@
 \newcommand{\newick}[1]{\texttt{#1}\xspace}
 \newcommand{\otc}[0]{\texttt{otcetera}\xspace}
 \newcommand{\otcprune}[0]{\texttt{otc-prune-taxonomy}\xspace}
+\newcommand{\otcdecompose}[0]{\texttt{otc-uncontested-decompose}\xspace}
 \newcommand{\nexson}[0]{\texttt{otNexSON}\xspace}
 \newcommand{\gcmdr}[0]{\texttt{gcmdr}\xspace}
 \newcommand{\stepExplanation}[0]{\\\noindent\textsc{Explanation}:\xspace}
@@ -53,6 +54,8 @@
 \newcommand{\prunedTaxonomy}[0]{\ensuremath{\mathbb{T}_P}\xspace}
 \newcommand{\phyloInputs}[0]{\ensuremath{\mathcal{T}}}
 \newcommand{\expandedPhylo}[0]{\ensuremath{\mathcal{T}_{E}}\xspace}
+\newcommand{\prunedSummary}[0]{\ensuremath{\mathcal{S}_{P}}\xspace}
+\newcommand{\summaryTree}[0]{\ensuremath{\mathcal{S}}\xspace}
 % verbatim, verbatim notation for a \ps
 \newcommand{\vvps}[2]{\ensuremath{{#1}\downarrow{#2}}}
 % leaf set, verbatim notation for a \ps
@@ -160,7 +163,7 @@ Unfortunately, that proof only applies to an exact algorithm which returns
     all possible trees that maximize the score.
 We do not know of a polynomial-time algorithm for solving that problem.
 
-\subsection{Trees without unsupported groups}
+\subsection{Trees without unsupported groups}\label{unsupportedTheory}
 Consider an edge connecting parent $\parent{V}$ to it child $V$ in a complete tree $T$.
 This edge is supported (or ``the node $V$ is supported'') in the sense of the \MSWIPSD score if
     collapsing the edge leads to a lower (worse) score.
@@ -510,7 +513,7 @@ This will determine the leaf label set of the final summary tree.
     out-degree=1 (obtained from either Joseph Brown or Ruchi Chaudhary via email) which MTH has been
     using as \phyloInputs.
 
-\subsection{Expand tips mapped to non-terminal taxa}
+    \subsection{Expand tips mapped to non-terminal taxa}\label{expandedPhyloStep}
 \stepExplanation As explained in section \ref{expandNonTermPar}, expanding tips that are mapped
     to non-terminal taxa to the full set of their terminal descendants and attaching these
     tips to the parent of the taxon should generate a tree that correctly represents
@@ -533,7 +536,7 @@ This will determine the leaf label set of the final summary tree.
 are mapped to non-terminal taxa. So these trees may be the most accessible set of inputs
 for most interested parties.
  
-\subsection{Prune taxonomy down to tips represented in \expandedPhylo}
+\subsection{Prune taxonomy down to tips represented in \expandedPhylo}\label{prunedTaxonomyStep}
 \stepExplanation This is just an optimization step.
 Each terminal taxon that is only found in \taxonomy, can be placed on the 
     final summary tree by creating a tree for the overlapping taxonomic
@@ -545,38 +548,106 @@ This pruning makes the inputs for the subsequent steps smaller
 \implTODO
 \currURL may want to post this somewhere. 
 
-\subsection{}
-\stepExplanation
-\stepInput
-\stepOutput
-\currImpl 
+\subsection{Decompose the inputs into subproblems of uncontested taxa}\label{decomposeStep}
+\stepExplanation The decision to force uncontested taxa in the final
+    summary means that we can separate the problems into non-overlapping
+    subproblems.
+\stepInput \prunedTaxonomy and \expandedPhylo
+\stepOutput subproblems. Currently expressed (1) as one newick tree file  per subproblem
+    with the name \texttt{SUBPROBLEMID.tre}, and
+    (2) a file called \texttt{SUBPROBLEMID-tree-names.txt} with a treefile name 
+    on each line or ``TAXONOMY'' indicating the source of each tree. 
+    the \texttt{SUBPROBLEMID} is `ott' followed by the OTT ID.
+\currImpl \otcdecompose
 \implTODO 
+\currURL \url{http://phylo.bio.ku.edu/ot/export-sub-temp.tar.gz} has a snapshot, but
+those subproblems were not produced with the non-terminal tips expanded to terminals
+so there is some wonkiness - such tips are pruned if the taxon is contested, but their
+ID sets still affect the embedding of the deeper nodes in the tree. This needs 
+to be rerun after step \ref{expandedPhyloStep} is completed.
+ 
+\subsection{Simplify subproblems}\label{simplifyStep}
+\stepExplanation As (to be) described in section \ref{simplificationTheory} there
+    are several operations that can be performed that will reduce the size of the
+    subproblems but which should not compromise our ability to obtain the same
+    subproblem solution.
+    Many subproblems are trivially solvable, so the tool that does this
+    will also be a crude solver.
+\stepInput The set of subproblems, a simplified-problems directory, and a solutions directory
+\stepOutput When possible, subproblem solutions and simplifications will be written to the 2 output directories.
+\currImpl an implementation is started, but far from complete \href{https://github.com/OpenTreeOfLife/peyotl/blob/supertree/scripts/supertree/simplify_subproblems.py}{in the supertree branch of peyotl}
+\implTODO \TODO {finish}
 \currURL 
  
-\subsection{}
-\stepExplanation
-\stepInput
-\stepOutput
-\currImpl 
-\implTODO 
+\subsection{Solve subproblems}
+\stepExplanation Attempt to find an admissible summary tree for the set of 
+    summaries that are the \MSWIPSD set.
+    We probably want (1) a brute force implementation that we can use for small
+    subproblems so we do not have to worry about errors from finding local 
+    optima, and (2) one or more heuristics.
+\stepInput a ``raw'' subproblem from step \ref{decomposeStep} or a simplified 
+    subproblem from step \ref{simplifyStep}.
+\stepOutput a tree for each subproblem - stored in a solutions dir under the name
+    \texttt{SUBPROBLEMID.tre}
+\currImpl treemachine may provide one solver.
+\implTODO exact impl and, perhaps we need another approximate solver
 \currURL 
  
-\subsection{}
-\stepExplanation
-\stepInput
-\stepOutput
-\currImpl 
-\implTODO 
-\currURL 
+\subsection{Collapse unsupported nodes}
+\stepExplanation If the solver does not guarantee that no unsupported nodes will
+    be introduced, then we can collapse them at this point.
+    As noted in section \ref{unsupportedTheory}, this should be done
+    iteratively rather than by identifying all unsupported edges and 
+    collapsing all of them.
+    The latter approach would collapse too many edges.
+\stepInput the solutions directory holding all of the subproblem solution trees.
+\stepOutput a supported solutions directory holding all of the subproblem solution trees
+    which contain no unsupported nodes.
+\currImpl None
+\implTODO \TODO{write this}
+
+\subsection{Assemble pruned summary tree from subproblem solutions}\label{assemblyStep}
+\stepExplanation Because the problems do not overlap, and the file names 
+    match the tip labels (when a tip of one subproblem is actually an uncontested
+    non-terminal taxon in \prunedTaxonomy), this is a simple grafting procedure.\\
+    Note that each subproblem is supported by the taxonomy (at a minimum), so this
+    step cannot introduce unsupported groups.
+\stepInput the solutions directory holding all of the subproblem solution trees.
+\stepOutput \prunedSummary -- the summary tree pruned down to the leaf set of \prunedTaxonomy.
+\currImpl None
+\implTODO \TODO{write this}
  
-\subsection{}
-\stepExplanation
-\stepInput
-\stepOutput
-\currImpl 
-\implTODO 
-\currURL 
- 
+\subsection{Graft the pruned taxonomy-only taxa back onto the tree}
+\stepExplanation ``phylo-referencing'' style logic can be used to place the
+    taxa that were pruned in \ref{prunedTaxonomyStep}
+\stepInput \prunedSummary and \taxonomy
+\stepOutput \summaryTree -- the final summary tree
+\currImpl None
+\implTODO \TODO{write this}
+
+\subsection{Create annotations for nodes in $\summaryTree$}\label{annotationsStep}
+\stepExplanation At minimum, we would want statement of which
+    input nodes supporte which nodes in $\summaryTree$.
+    But we could also noted nodes displayed, nodes in conflict, 
+    and whether or not the node was constrained because it was a contested taxon.
+\stepInput \summaryTree and \expandedPhylo
+\stepOutput some as yet undefined format for expressing these annotations.
+\currImpl None
+\implTODO \TODO{write this}
+
+\subsection{Serve \summaryTree and the annotations}
+\stepExplanation we may be able to compile the annotations into a set of
+    static files to be served up to the current tree browser.
+    Or we may wish have a full database-driven web service
+    \stepInput \summaryTree and annotations from \ref{annotationsStep}
+\stepOutput a web services API comparable to the
+    \href{https://github.com/OpenTreeOfLife/opentree/wiki/Open-Tree-of-Life-APIs#tree-of-life}{tree-of-life part of the API}.//
+    some of the services in that API would definitely require a db rather than just flat-files (e.g the MRCA and induced\_subtree)
+\currImpl None unless we load the tree into treemachine and add methods for
+    serving up the annotations that are not coming from the graph-of-life
+\implTODO \TODO{write this}
+
+
 \newpage
 \begin{algorithm} \caption{EmbedPhyloIntoTaxonomicScaffold}\label{embedTree} \begin{algorithmic}
 \REQUIRE the taxonomic tree $\taxonomy$.
