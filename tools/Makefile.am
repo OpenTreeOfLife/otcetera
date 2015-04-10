@@ -5,7 +5,6 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-detect-contested \
 				otc-find-unsupported-nodes \
 				otc-prune-taxonomy \
-				otc-remap-to-deepest-unlisted \
 				otc-scaffolded-supertree \
 				otc-count-leaves \
 				otc-degree-distribution \
@@ -37,9 +36,6 @@ otc_find_unsupported_nodes_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_prune_taxonomy_SOURCES = prunetaxonomy.cpp
 otc_prune_taxonomy_CPPFLAGS = $(AM_CPPFLAGS)
-
-otc_remap_to_deepest_unlisted_SOURCES = remaptodeepestunlisted.cpp
-otc_remap_to_deepest_unlisted_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_scaffolded_supertree_SOURCES = scaffoldedsupertree.cpp
 otc_scaffolded_supertree_CPPFLAGS = $(AM_CPPFLAGS)
