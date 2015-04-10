@@ -95,7 +95,7 @@ The project has decided that this summary should include a tree which
 This is results in a new form of a supertree problem described below as the ``taxonomy-based tree summary'' problem.
 \subsection{Taxonomy-based supertree}
 This is a novel name for a special form of the supertree problem.
-A taxonomy-base supertree has at least one input (the taxonomic tree) is complete.
+A taxonomy-base supertree has at least one input (the taxonomic tree) which is complete.
 \subsubsection{Taxonomy-based summary tree}
 Many supertree approaches seek to maximize accuracy according to some notion
     of distance between the true tree and estimated true.
@@ -169,15 +169,15 @@ We do not know of a polynomial-time algorithm for solving that problem.
 Consider an edge connecting parent $\parent{V}$ to it child $V$ in a complete tree $T$.
 This edge is supported (or ``the node $V$ is supported'') in the sense of the \MSWIPSD score if
     collapsing the edge leads to a lower (worse) score.
-For an edge to be supported in this sense, it must display in input \pss, and
+For an edge to be supported in this sense, it must display at least 1 input \pss, and
     the tree that woudld be created by collapsing the edge to a polytomy must
-    {\em not} display the \pss.
+    {\em not} display those \ps.
 
 Equivalently, we can state the conditions node $V$ (or it subtending) begin supported
     by an input \pss derived from node $x$ of tree $t$ as:
 \begin{eqnarray}
     \leafLabels{V} \cap \leafLabels{t} & = & \leafLabels{x}\\
-    \left(\leafLabels{\parent{V}} \cap \leafLabels{t}\right) - \leafLabels{x} & \neq &\emptyset\\
+    \left(\leafLabels{\parent{V}} \cap \leafLabels{t}\right) - \leafLabels{x} & \neq &\emptyset\hskip 5em \mbox{and}\\
     \leafLabels{c} \cap \leafLabels{t} & \neq & \leafLabels{x} \hskip 2em \forall c \in \children{V}
 \end{eqnarray}
 where $\children{V}$ is the set of nodes that are children of $V$.
@@ -189,7 +189,7 @@ The final condition assures that none of the children of $V$ also display this \
 
 If we demand that a summary tree contains no unsupported groups (in the previous sense of support), we 
     are constraining the set of summary trees such that, for every internal node in the summary tree
-    there is at least one \pss in the input set that supports it.
+    there is at least one \ps in the input set that supports it.
 This restricts the number of edges in the tree: as the sum of the number of internal nodes in the inputs becomes an upper bound
     on the number of internal nodes in the summary tree.
 However, restricting the summary to only contain supported groups does not decrease the 
@@ -245,7 +245,7 @@ The greedy solver would have to accept as many splits as possible, and avoid rej
     that it has accepted or rejected.
 
 Unfortunately, it is not clear how to convert the ranked list of trees to a ordering of the splits.
-The ranked list of sets of \pss that can be naturally derived from the rankes list of trees only provides
+The ranked list of sets of \pss that can be naturally derived from the ranked list of trees only provides
     a partial order.
 
 I need to dig through my notes, but I think that there are cases for which the order of adding trees within
@@ -470,8 +470,7 @@ By stack-based we mean:
     \item[$2n +2$] assure that all mentioned tips are present in the soluion.
 \end{compactenum}
 
-These simplifications should not result in a different set of \MSWIPSD trees
-    being attainable.
+These simplifications should not result in a worse \SWIPSD score for the set trees.
 However, we lack any guarantees about how they interact with heuristic solutions
     of the reduced subproblem 
 Furthermore, we lack guarantees about how the simplifications affect a strategy that always
@@ -483,7 +482,7 @@ They are designed assuming a greedy solver that is given a list of \pss and must
     for each whether to add it to the solution or reject it as incompatible with the 
     current solution.
 
-The input set of \ps subproblems is simply in that all of the labelled tips are treated
+The input set of \ps subproblems is simple in that all of the labelled tips are treated
     as terminal taxa for the purpose of the summary.
 The inputs do contain trivial statements to assure that all leaves are include (e.g. 
      the taxonomic tree is often a polytomy of all tips).
@@ -565,8 +564,7 @@ This will determine the leaf label set of the final summary tree.
     a couple of issues with that impl. See 
 \href{https://github.com/OpenTreeOfLife/treemachine/commit/48211803f137ad0b7c096c28d1c10d32f671194f}{this comment} and
 \href{https://github.com/OpenTreeOfLife/treemachine/issues/168}{issue 168}.
-\implTODO (1) there should probably be a simple tool to just print this out without requiring a db.\\
-(2) Documentation needed on which flags are pruned and why.\\
+(2) Documentation needed on which flags are pruned and why.
 (3) We should serve this tree somewhere as it is a crucial input for the rest of the pipeline.
 \currURL \TODO{Temp url} \url{http://phylo.bio.ku.edu/ot/taxonomy.tre} holds the tree (obtained
     from either Joseph Brown or Ruchi Chaudhary via email) which MTH has been using as \taxonomy.
