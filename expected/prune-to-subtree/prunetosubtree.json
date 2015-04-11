@@ -1,0 +1,7 @@
+[
+  {
+    "invocation" : ["otc-prune-taxonomy", "<INFILELIST>", "-c1"],
+    "infile_list": ["three-genus-subsample-higher.tre"],
+    "expected": "prunenochild"
+  }
+]
