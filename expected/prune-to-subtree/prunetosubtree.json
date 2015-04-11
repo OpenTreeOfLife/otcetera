@@ -8,5 +8,10 @@
     "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-n1"],
     "infile_list": ["three-genus-subsample-higher.tre"],
     "expected": "prunetooneleaf"
+  },
+  {
+    "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-p1"],
+    "infile_list": ["three-genus-subsample-higher.tre"],
+    "expected": "prunetoparofoneleaf"
   }
 ]
