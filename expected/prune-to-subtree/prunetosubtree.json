@@ -1,7 +1,12 @@
 [
   {
-    "invocation" : ["otc-prune-taxonomy", "<INFILELIST>", "-c1"],
+    "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-c1"],
     "infile_list": ["three-genus-subsample-higher.tre"],
     "expected": "prunenochild"
+  },
+  {
+    "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-n1"],
+    "infile_list": ["three-genus-subsample-higher.tre"],
+    "expected": "prunetooneleaf"
   }
 ]
