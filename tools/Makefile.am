@@ -11,6 +11,7 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-induced-subtree \
 				otc-missing-splits \
 				otc-polytomy-count \
+				otc-prune-to-subtree \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
 				otc-rf \
@@ -36,6 +37,9 @@ otc_find_unsupported_nodes_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_prune_taxonomy_SOURCES = prunetaxonomy.cpp
 otc_prune_taxonomy_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_prune_to_subtree_SOURCES = prunetosubtree.cpp
+otc_prune_to_subtree_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_scaffolded_supertree_SOURCES = scaffoldedsupertree.cpp
 otc_scaffolded_supertree_CPPFLAGS = $(AM_CPPFLAGS)

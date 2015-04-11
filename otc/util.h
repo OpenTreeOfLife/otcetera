@@ -64,6 +64,7 @@ template<typename T>
 inline bool vcontains(const std::vector<T> & container, const T & key);
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
+std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimiter);
 
 template<typename T>
 inline std::string getContestedPreambleFromName(const T & nd, const std::string & treeName) {

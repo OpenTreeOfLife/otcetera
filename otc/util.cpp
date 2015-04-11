@@ -142,6 +142,21 @@ std::list<std::string> split_string(const std::string &s, const char delimiter)
     return r;
 }
 
+std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimiter) {
+    std::set<long> ottIds;
+    std::list<std::string> idList = split_string(str, delimiter);
+    for (const auto & ids : idList) {
+        long p = ottIDFromName(ids);
+        if (p < 1) {
+            std::string m = "Expecting each line to end with an OTT Id. Found: ";
+            m +=  ids;
+            throw OTCError(m);
+        }
+        ottIds.insert(p);
+    }
+    return ottIds;
+}
+
 std::set<long> parseListOfOttIds(const std::string &fp) {
     std::ifstream inpf;
     if (!openUTF8File(fp, inpf)) {
