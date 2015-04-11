@@ -46,6 +46,11 @@ struct SubtreePrunerState {
             numErrors = 1;
             return;
         }
+        if (emitChildren && toEmit->isTip()) {
+            otCLI.err << "MRCA has no children\n";
+            numErrors = 1;
+            return;
+        }
         if ((!emitSiblings) && (!emitChildren)) {
             writeNewick<Node_t>(otCLI.out, toEmit);
             otCLI.out << ";\n";
