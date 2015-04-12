@@ -31,9 +31,9 @@ inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otc-prune-to-subtree",
-                "takes a -p or -n argument followed by one filepath to a newick. Writes the specified subtree to standard output stream.",
-                "-n5315,3512 some.tre");
+    OTCLI otCLI("otc-union-of-ids",
+                "takes a series of newick file paths and writes the union of the OTT Ids found in all trees",
+                "some.tre");
     UnionOfIdsState cts;
     otCLI.blob = static_cast<void *>(&cts);
     auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
