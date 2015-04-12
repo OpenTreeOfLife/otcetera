@@ -14,8 +14,12 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-prune-to-subtree \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
+				otc-union-of-ids \
 				otc-rf \
 				otc-suppress-monotypic
+
+otc_union_of_ids_SOURCES = unionofids.cpp
+otc_union_of_ids_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_suppress_monotypic_SOURCES = suppressmonotypic.cpp
 otc_suppress_monotypic_CPPFLAGS = $(AM_CPPFLAGS)
