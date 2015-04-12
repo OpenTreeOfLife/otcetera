@@ -16,7 +16,16 @@ The tree will be build-able by:
   3. and then building with:
     `$ make`
 
-### currently
+## step_ series
+I'm in the process of refactoring to agree with the pipeline described in the doc subdir:
+`../doc/summarizing-taxonomy-plus-trees.pdf`
+
+Each of the steps in section 2 of that doc are mapped to step_# directories in this new
+system.  So step_1 is described in section 2.1 of that doc; step_2 is section 2.2; etc.
+
+
+
+## Cruft from previous version
 
 You need to prime the process by:
 
