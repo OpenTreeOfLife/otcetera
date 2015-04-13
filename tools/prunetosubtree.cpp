@@ -128,7 +128,7 @@ bool handleSiblingsFlag(OTCLI & otCLI, const std::string &nextArg) {
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-prune-to-subtree",
-                "takes a -p or -n argument followed by one filepath to a newick. Writes the specified subtree to standard output stream.",
+                "takes a -c, -n, -s or -p argument followed by one filepath to a newick. Writes the specified subtree to standard output stream.",
                 "-n5315,3512 some.tre");
     SubtreePrunerState cts;
     otCLI.blob = static_cast<void *>(&cts);
