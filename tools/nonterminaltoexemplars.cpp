@@ -41,6 +41,8 @@ inline OttIdSet findIncludedTipIds(const T & nd, const Y & container) {
 template<typename T, typename Y>
 inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
     Y * p = nd->getParent();
+    Y * nps = nd->getPrevSib();
+    Y * nns = nd->getNextSib();
     assert(p != nullptr);
     assert(!oids.empty());
     Y * firstC = nullptr;
@@ -55,8 +57,6 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
     assert(firstC != nullptr);
     assert(lastC != nullptr);
     assert(lastC->getNextSib() == nullptr);
-    Y * nps = nd->getPrevSib();
-    Y * nns = nd->getNextSib();
     Y * fcps = firstC->getPrevSib();
     assert(fcps != nullptr);
     // remove firstChild from the sib array

@@ -1,0 +1,6 @@
+taxonomy.tre
+((A1_ott1,A3_ott3)A_ott4,(B2_ott6)B_ott8,(C1_ott9,C3_ott11)C_ott12)life_ott14;
+three-genus-subsample-higher.tre
+((A1_ott1,C3_ott11),ott6,(C1_ott9,A3_ott3)C_ott12);
+three-genus-complementing-higher.tre
+((ott1,ott3,B2_ott6),ott9,ott11);
