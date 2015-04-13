@@ -13,5 +13,10 @@
     "invocation" : ["otc-nonterminals-to-exemplars", "<INFILELIST>", "-o"],
     "infile_list": ["3-level-taxonomy.tre", "3-level-subsample-higher.tre", "3-level-complementing-higher.tre"],
     "expected": "expandnested"
+  },
+  {
+    "invocation" : ["otc-nonterminals-to-exemplars", "<INFILELIST>", "-o"],
+    "infile_list": ["3-level-taxonomy.tre", "3-level-subsample-higher.tre", "3-level-AC.tre"],
+    "expected": "expandAC"
   }
 ]
