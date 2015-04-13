@@ -111,6 +111,7 @@ void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple() {
     std::map<std::size_t, std::set<PathPairPtr> > toCull;
     for (auto treeInd2eout : edgeBelowEmbeddings) {
         if (treeInd2eout.second.size() > 1) {
+            UNREACHABLE; // now resolving earlier...
             // If an input tree has a polytomy with members of a taxon as well as its "outgroup" taxa,
             //  then the polytomy does not contest the monophyly.
             //  this function will be called after resolution of the polytomy. 
@@ -142,7 +143,7 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
                 std::size_t treeIndex,
                 SupertreeContextWithSplits & sc) {
     auto exitForThisTreeIt = edgeBelowEmbeddings.find(treeIndex);
-    if (exitForThisTreeIt != edgeBelowEmbeddings.end()) {
+    if (exitForThisTreeIt == edgeBelowEmbeddings.end()) {
         return;
     }
     PathPairSet & exitSetForThisTree{exitForThisTreeIt->second};
@@ -210,6 +211,7 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
     }
     // insert the new (and only) exit path...
     edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
+    assert(edgeBelowEmbeddings[treeIndex].size() == 1);
 }
 
 
@@ -388,12 +390,11 @@ std::set<PathPairing<T, U> *> NodeEmbedding<T, U>::getAllChildExitPathsForTree(
     }
     return r;
 }
-// By "fake" the resolution here we mean that on exit, this
-//  subproblem's outgoing edges should be labeled with the scaffoldNode's OTT ID, just
-//  like the outgoing edges would look upon successful completion of the resolution of
-//  the clade. This allows export of deeper subproblems to be performed.
+// Only resolves cases in which there is a deeper polytomy that is compatible with 
+//  the taxon - resolved to make the taxon monophyletic...
+// This allows export of deeper subproblems to be performed.
 template<typename T, typename U>
-void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
+void NodeEmbedding<T, U>::exportSubproblemAndResolve(
                             T & scaffoldNode,
                             const std::string & exportDir,
                             std::ostream * exportStream,
@@ -448,6 +449,8 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
                                                                       treeIndex,
                                                                       sn2ne);
         resolveParentInFavorOfThisNode(scaffoldNode, treeIndex, sc);
+        const auto tempDBIt = edgeBelowEmbeddings.find(treeIndex);
+        assert(tempDBIt == edgeBelowEmbeddings.end() || tempDBIt->second.size() < 2);
         auto laIt = loopEmbeddings.find(treeIndex);
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
@@ -595,7 +598,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         treeFileStream.close();
     }
     //debugPrint(scaffoldNode, 7, sn2ne);
-    //debugNodeEmbedding("leaving exportSubproblemAndFakeResolution", false, sn2ne);
+    //debugNodeEmbedding("leaving exportSubproblemAndResolve", false, sn2ne);
 }
 
 
