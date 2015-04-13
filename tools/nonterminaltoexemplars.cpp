@@ -225,10 +225,10 @@ int main(int argc, char *argv[]) {
         "taxon in the taxonomy and (b) occur, or are used as an exemplar, in another input tree. The modified " \
         "version of each input will be written in the export directory. Trees with no non-terminal tips should " \
         "be unaltered. The taxonomy written out will be the taxonomy restricted to the set of leaves that are " \
-        "leaves of the exported trees.";
+        "leaves of the exported trees";
     OTCLI otCLI("otc-nonterminals-to-exemplars",
                 helpMsg,
-                "taxonomy.tre inp1.tre inp2.tre");
+                "-estep_5 taxonomy.tre inp1.tre inp2.tre");
     NonTerminalsToExemplarsState proc;
     otCLI.addFlag('e',
                   "ARG should be the name of a directory. A .tre file will be written to this directory for each input tree",

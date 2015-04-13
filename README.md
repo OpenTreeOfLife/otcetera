@@ -70,6 +70,10 @@ To use g++, substitute `reconf-gcc.sh` for `reconf-clang.sh` in that work flow.
 Python 2 (recent enough to have the subprocess module as part of the standard lib)
 is required for the `make check` operation to succeed.
 
+# Documentation
+A LaTeX documentation file is [./doc/summarizing-taxonomy-plus-trees.tex](./doc/summarizing-taxonomy-plus-trees.tex)
+periodically, that is compiled and posted.
+The currently URL for that compiled documentation is http://phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf
 
 # Usage
 See the [supertree/README.md](./supertree/README.md) for instructions on using
@@ -109,6 +113,20 @@ the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
 can help identify problems with those nodes).
 
 ## Tools used in the supertree pipeline
+### expanding tips mapped to higher taxa and pruning the taxonomy
+`otc-nonterminals-to-exemplars` takes an -e flag specifying an export diretory and at least 2 newick file paths: a full taxonomy tree some number of input trees.
+Any tip in non-taxonomic input that is mapped to non-terminal taoxn will be remapped such
+that the parent of the non-terminal tip will hold all of the expanded exemplars.
+The exemplars will be the union of tips that (a) occur below this non-terminal taxon in the taxonomy
+and (b) occur, or are used as an exemplar, in another input tree.
+The modified version of each input will be written in the export directory.
+Trees with no non-terminal tips should be unaltered.
+The taxonomy written out will be the taxonomy restricted to the set of leaves that are leaves of the exported trees:
+
+    otc-nonterminals-to-exemplars -estep_5 taxonomy.tre inp1.tre inp2.tre ...
+
+This is intended to perform steps 2.5 and 2.6 of the supertree pipeline mentioned in the `doc` subdirectory.
+
 ### pruning a taxonomy
 
     otc-prune-taxonomy taxonomy.tre inp1.tre inp2.tre ...
