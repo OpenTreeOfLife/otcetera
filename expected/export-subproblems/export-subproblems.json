@@ -46,5 +46,11 @@
                     "chlorella-case-phylo.tre"
                     ],
     "expected": "chlorella-case"
+  },
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
+    "infile_list": ["chlorella-case-taxonomy.tre",
+                    "chlorella-case-structured.tre"
+                    ],
+    "expected": "chlorella-case-structured"
   }
 ]
