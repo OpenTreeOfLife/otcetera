@@ -1,18 +1,122 @@
 #include "otc/otcli.h"
 using namespace otc;
 
+template<typename T>
+bool writeTreeOrDie(OTCLI & otCLI, const std::string & fp, const T & tree) {
+    LOG(INFO) << "writing \"" << fp << "\"";
+    std::ofstream outp(fp);
+    if (!outp.good()) {
+        otCLI.err << "Could not open \"" << fp << "\" to write output.\n";
+        return false;
+    }
+    writeTreeAsNewick(outp, tree);
+    outp << "\n";
+    outp.close();
+    return true;
+}
+
+template<typename T, typename Y>
+inline OttIdSet findIncludedTipIds(const T & nd, const Y & container) {
+    OttIdSet r;
+    for (auto t : iter_leaf_n_const(nd)) {
+        if (contains(container, t)) {
+            assert(t->hasOttId());
+            r.insert(t->getOttId());
+        }
+    }
+    return r;
+}
+
+
+
+template<typename T, typename Y>
+inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
+    Y * p = nd->getParent();
+    assert(p != nullptr);
+    assert(!oids.empty());
+    Y * firstC = nullptr;
+    Y * lastC = nullptr;
+    for (auto oid : oids) {
+        lastC = tree.createChild(p);
+        if (firstC == nullptr) {
+            firstC = lastC;
+        }
+        lastC->setOttId(oid);
+    }
+    assert(firstC != nullptr);
+    assert(lastC != nullptr);
+    assert(lastC->getNextSib() == nullptr);
+    Y * nps = nd->getPrevSib();
+    Y * nns = nd->getNextSib();
+    Y * fcps = firstC->getPrevSib();
+    assert(fcps != nullptr);
+    // remove firstChild from the sib array
+    fcps->_setNextSib(nullptr);
+    // Add it in place of nd
+    if (nps == nullptr) {
+        p->_setFirstChild(firstC);
+    } else {
+        assert(nps->getNextSib() == nd);
+        nps->_setNextSib(firstC);
+    }
+    // make sure that the next sib of the last child is the same as the incoming exit node.
+    lastC->_setNextSib(nns);
+}
+
 struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
     int numErrors;
     std::set<const RootedTreeNodeNoData *> includedNodes;
     std::map<std::unique_ptr<TreeMappedEmptyNodes>, std::size_t> inputTreesToIndex;
     std::vector<TreeMappedEmptyNodes *> treePtrByIndex;
+    using TreeNdPair = std::pair<TreeMappedEmptyNodes *, RootedTreeNodeNoData *>;
+    using ListTreeNdPair = std::list<TreeNdPair>;
+    std::map<RootedTreeNodeNoData *, ListTreeNdPair> nonTermToMappedPhylo;
     std::string exportDir;
     virtual ~NonTerminalsToExemplarsState(){}
     NonTerminalsToExemplarsState()
         :numErrors(0) {
     }
 
-    bool summarize(OTCLI &otCLI) override {
+    // here we walk through the taxonomy in postorder in case we have tips like:
+    //  tree 1: Homo
+    //  tree 2: Hominidae
+    // and no other tree with a tip that is under either Homo or Hominidae.
+    // In such cases, we want to expand both 'Homo' and 'Hominidae' to the same terminal taxon.
+    // this is not hard to do if we are walking in post order
+    void exemplifyNonterminals() {
+        for (auto nd : iter_post(*taxonomy)) {
+            auto mappedPhyloListIt = nonTermToMappedPhylo.find(nd);
+            if (mappedPhyloListIt == nonTermToMappedPhylo.end()) {
+                continue;
+            }
+            const ListTreeNdPair & treeNdPairList{mappedPhyloListIt->second};
+            std::cerr << nd->getOttId() << " " << treeNdPairList.size() << '\n';
+            assert(!nd->isTip());
+            bool hasIncludedDes = false;
+            for (auto c : iter_child(*nd)) {
+                if (contains(includedNodes, c)) {
+                    hasIncludedDes = true;
+                    break;
+                }
+            }
+            OttIdSet exemplarIDs;
+            if (hasIncludedDes) {
+                exemplarIDs = findIncludedTipIds(*nd, includedNodes);
+            } else {
+                const RootedTreeNodeNoData * n = findLeftmostInSubtree(nd);
+                includedNodes.insert(n);
+                insertAncestorsToParaphyleticSet(n, includedNodes);
+                exemplarIDs.insert(n->getOttId());
+            }
+            for (auto treeNdPair : treeNdPairList) {
+                TreeMappedEmptyNodes * treeP = treeNdPair.first;
+                RootedTreeNodeNoData * nodeP = treeNdPair.second;
+                replaceTipWithSet(*treeP, nodeP, exemplarIDs);
+            }
+        }
+    }
+
+    void pruneTaxonomyToIncludedLeaves() {
         assert(taxonomy != nullptr && !includedNodes.empty());
         std::set<RootedTreeNodeNoData *> toPrune;
         for (auto nd : iter_node(*taxonomy)) {
@@ -24,8 +128,32 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         for (auto nd : toPrune) {
             pruneAndDelete(*taxonomy, nd);
         }
-        writeTreeAsNewick(otCLI.out, *taxonomy);
-        otCLI.out << '\n';
+    }
+
+    bool summarize(OTCLI &otCLI) override {
+        if (exportDir.empty()) {
+            otCLI.err << "The -e flag to specify and export directory is mandatory\n";
+            return false;
+        }
+        if (exportDir[exportDir.length() - 1] != '/') {
+            exportDir += '/';
+        }
+        // replace non-terminal tips with their expansion
+        exemplifyNonterminals();
+        // prune down the taxonomy to the set of used leaves
+        pruneTaxonomyToIncludedLeaves();
+        // write the output
+        const std::string tn = "taxonomy.tre";
+        auto tp = exportDir + tn;
+        if (!writeTreeOrDie(otCLI, tp, *taxonomy)) {
+            return false;
+        }
+        for (auto treePtr : treePtrByIndex) {
+            auto pp = exportDir + treePtr->getName();
+            if (!writeTreeOrDie(otCLI, pp, *treePtr)) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -41,7 +169,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         // Store the tree's filename
         raw->setName(otCLI.currentFilename);
         std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
-        for (auto nd : iter_leaf_const(*raw)) {
+        for (auto nd : iter_leaf(*raw)) {
             auto ottId = nd->getOttId();
             auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
             assert(taxoNode != nullptr);
@@ -50,7 +178,8 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 insertAncestorsToParaphyleticSet(taxoNode, includedNodes);
             }
             if (!taxoNode->isTip()) {
-                assert(false); // expecting this to trip...
+                TreeNdPair tnp{raw, nd};
+                nonTermToMappedPhylo[taxoNode].push_back(tnp);
             }
         }
         return true;

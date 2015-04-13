@@ -30,7 +30,6 @@ $(STEP_5_DIR)/taxonomy.tre : $(STEP_5_PHYLO_PATHS) $(STEP_1_DIR)/taxonomy.tre $(
 $(STEP_6_DIR)/taxonomy.tre : $(STEP_5_DIR)/taxonomy.tre
 	cp $(STEP_5_DIR)/taxonomy.tre $(STEP_6_DIR)/taxonomy.tre
 
-
 clean:
 	rm -f $(ARTIFACTS)
 
