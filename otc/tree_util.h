@@ -15,9 +15,9 @@ bool isInternalNode(const T & nd);
 template<typename T>
 bool isLeaf(const T & nd);
 template<typename T>
-T findLeftmostInSubtreeM(T nd);
+T findLeftmostInSubtree(T nd);
 template<typename T>
-T findRightmostInSubtreeM(T nd);
+T findRightmostInSubtree(T nd);
 
 template<typename T>
 inline bool isInternalNode(const T & nd) {

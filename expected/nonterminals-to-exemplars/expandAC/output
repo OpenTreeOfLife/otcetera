@@ -1,0 +1,6 @@
+taxonomy.tre
+((A1_ott1,A3_ott3)A_ott4,(B3_ott7)B_ott8,(C1_ott9,C3_ott11)C_ott12)life_ott14;
+3-level-subsample-higher.tre
+((A1_ott1,C3_ott11),ott7,(C1_ott9,A3_ott3)C_ott12);
+3-level-AC.tre
+((ott1,ott3,ott9,ott11),B3_ott7);
