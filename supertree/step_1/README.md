@@ -1,6 +1,12 @@
-# Clean taxonomy
+# Clean taxonomy and tree-ranking
 
-Currently obtained from Joseph Brown's repo (the tree comes from treemachine)
+The tree-ranking.txt file that MTH has been using can be obtained by
+
+    $ wget http://phylo.bio.ku.edu/ot/tree-ranking.txt
+
+**NOTE**: need to verify with the gcmdr folks that this the correct ranking!
+
+Currently the taxonomy is obtained from Joseph Brown's repo (the tree comes from treemachine)
 
     $ git clone git@bitbucket.org:josephwb/synthesis_trees.git
     $ cd synthesis_trees/Source_info/

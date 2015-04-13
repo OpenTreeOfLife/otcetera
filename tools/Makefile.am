@@ -10,6 +10,7 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-degree-distribution \
 				otc-induced-subtree \
 				otc-missing-splits \
+				otc-nonterminals-to-exemplars \
 				otc-polytomy-count \
 				otc-prune-to-subtree \
 				otc-taxon-conflict-report \
@@ -17,6 +18,10 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-union-of-ids \
 				otc-rf \
 				otc-suppress-monotypic
+
+
+otc_nonterminals_to_exemplars_SOURCES = nonterminaltoexemplars.cpp
+otc_nonterminals_to_exemplars_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_union_of_ids_SOURCES = unionofids.cpp
 otc_union_of_ids_CPPFLAGS = $(AM_CPPFLAGS)
