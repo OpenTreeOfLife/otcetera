@@ -73,6 +73,17 @@ class NodeEmbedding {
         }
         return t;
     }
+    std::set<U *> getPhyloNodes(std::size_t treeIndex) const {
+        auto neIt = nodeEmbeddings.find(treeIndex);
+        std::set<U *> r;
+        if (neIt == nodeEmbeddings.end()) {
+            return r;
+        }
+        for (const auto & np : neIt->second) {
+            r.insert(np->phyloNode);
+        }
+        return r;
+    }
     std::size_t getNumLoopTrees() const {
         std::set<std::size_t> keys;
         for (auto i : loopEmbeddings) {
@@ -182,6 +193,10 @@ class NodeEmbedding {
                         long ottId,
                         std::map<const T *, NodeEmbedding<T, U> > & n2ne);
     void mergeExitEmbeddingsIfMultiple();
+    void resolveParentInFavorOfThisNode(
+                        T & scaffoldNode,
+                        std::size_t treeIndex,
+                        SupertreeContextWithSplits & sc);
     const TreeToPathPairs & getExitEmbeddings() const {
         return edgeBelowEmbeddings;
     }
@@ -272,7 +287,7 @@ inline std::map<U *, U*> NodeEmbedding<T, U>::getLoopedPhyloNd2Par(std::size_t t
 }
 
 template<typename T, typename U>
-inline std::map<U *, U*> NodeEmbedding<T, U>::getExitPhyloNd2Par(std::size_t treeInd) const {
+inline std::map<U *, U *> NodeEmbedding<T, U>::getExitPhyloNd2Par(std::size_t treeInd) const {
     return getNd2ParForKey(treeInd, edgeBelowEmbeddings);
 }
 

@@ -32,7 +32,8 @@ class SupertreeContext {
         std::map<long, typename U::node_type *> & scaffoldOttId2Node;
         RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & scaffoldTree; // should adjust the templating to make more generic
         std::map<std::size_t, std::set<NodeWithSplits *> > prunedSubtrees; // when a tip is mapped to a non-monophyletc terminal it is pruned
-
+        std::list<NodePairingWithSplits> nodePairingsFromResolve;
+        std::list<PathPairingWithSplits> pathPairingsFromResolve;
         void log(SupertreeCtorEvent e, const U & node) {
             if (e == COLLAPSE_TAXON) {
                 events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});

@@ -91,6 +91,17 @@ class PathPairing {
         assert(phyloChild->getParent() == phyloParent);
         assert(scaffoldAnc == scaffoldDes || isAncestorDesNoIter(scaffoldAnc, scaffoldDes));
     }
+    PathPairing(T * scafPar,
+                U * phyPar,
+                const NodePairing<T, U> & child)
+        :scaffoldDes(child.scaffoldNode),
+        scaffoldAnc(scafPar),
+        phyloChild(child.phyloNode),
+        phyloParent(phyPar),
+        currChildOttIdSet(child.phyloNode->getData().desIds) {
+        assert(phyloChild->getParent() == phyloParent);
+        assert(scaffoldAnc == scaffoldDes || isAncestorDesNoIter(scaffoldAnc, scaffoldDes));
+    }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 
     // descendant Ott Id set. But may change to reflect this remapping to the effective

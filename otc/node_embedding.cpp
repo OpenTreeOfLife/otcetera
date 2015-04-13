@@ -136,6 +136,83 @@ void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple() {
     }
 }
 
+template<typename T, typename U>
+void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
+                T & scaffoldNode,
+                std::size_t treeIndex,
+                SupertreeContextWithSplits & sc) {
+    auto exitForThisTreeIt = edgeBelowEmbeddings.find(treeIndex);
+    if (exitForThisTreeIt != edgeBelowEmbeddings.end()) {
+        return;
+    }
+    PathPairSet & exitSetForThisTree{exitForThisTreeIt->second};
+    const auto origNumExits = exitSetForThisTree.size();
+    if (origNumExits < 2) {
+        return;
+    }
+    const TreeMappedWithSplits * cTreePtr = sc.treesByIndex.at(treeIndex);
+    // this is the only way that we modify the embedded tree. So for now, we'll
+    //      tolerate the const cast, which is in very poor form...
+    // @TMP @TODO
+    TreeMappedWithSplits * treePtr = const_cast<TreeMappedWithSplits *>(cTreePtr);
+    const std::map<U *, U *> phyloNode2PhyloPar = getExitPhyloNd2Par(treeIndex);
+    // resolve the phylo tree
+    U * phPar = nullptr;
+    for (auto p2p : phyloNode2PhyloPar) {
+        if (phPar == nullptr) {
+            phPar = p2p.second;
+        } else {
+            assert(phPar == p2p.second); // there should only be one par.
+        }
+    }
+    assert(phPar != nullptr);
+    U * insertedNodePtr = treePtr->createNode(phPar);
+    for (auto p2p : phyloNode2PhyloPar) {
+        U * phChild = p2p.first;
+        phChild->_detachThisNode();
+        insertedNodePtr->addChild(phChild);
+        const OttIdSet & cd = phChild->getData().desIds;
+        insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());
+    }
+    // create the new node pairing and path pairing objects
+    sc.nodePairingsFromResolve.emplace_back(NodePairingWithSplits(&scaffoldNode, insertedNodePtr));
+    NodePairingWithSplits & newNodePairing{*sc.nodePairingsFromResolve.rbegin()};
+    nodeEmbeddings[treeIndex].insert(&newNodePairing);
+    T * scaffoldPar = scaffoldNode.getParent();
+    sc.pathPairingsFromResolve.emplace_back(PathPairingWithSplits(scaffoldPar, phPar, newNodePairing));
+    PathPairingWithSplits & newPathPairing{*sc.pathPairingsFromResolve.rbegin()};
+    // fix every exit path to treat scaffoldNode as the scaffoldAnc node.
+    // If the scaffoldDes is the scaffoldNode, then this exit is becoming a loop...
+    PathPairSet toMoveToLoops;
+    std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
+    for (auto epp : exitSetForThisTree) {
+        assert(epp->phyloParent == phPar);
+        for (auto n : iter_anc(scaffoldNode)) {
+            if (n != epp->scaffoldAnc) {
+                sn2ne.at(n).removeRefToExitPath(treeIndex, epp);
+            }
+        }
+        epp->scaffoldAnc = &scaffoldNode;
+        if (epp->scaffoldDes == &scaffoldNode) {
+            toMoveToLoops.insert(epp);
+        }
+    }
+    // all of the former exit paths for this tree are invalid...
+    exitSetForThisTree.clear();
+    // add the new loops...
+    if (!toMoveToLoops.empty()) {
+        auto laIt = loopEmbeddings.find(treeIndex);
+        if (laIt == loopEmbeddings.end()) {
+            loopEmbeddings[treeIndex] = toMoveToLoops;
+        } else {
+            laIt->second.insert(begin(toMoveToLoops), end(toMoveToLoops));
+        }
+    }
+    // insert the new (and only) exit path...
+    edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
+}
+
+
 
 // Returns all loop paths for nd and all edgeBelowEmbeddings of its children
 template<typename T, typename U>
@@ -370,6 +447,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         const auto childExitForThisTree = getAllChildExitPathsForTree(scaffoldNode,
                                                                       treeIndex,
                                                                       sn2ne);
+        resolveParentInFavorOfThisNode(scaffoldNode, treeIndex, sc);
         auto laIt = loopEmbeddings.find(treeIndex);
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
