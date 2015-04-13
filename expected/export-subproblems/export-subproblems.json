@@ -40,5 +40,11 @@
                     "three-genus-Anotmonophyletic.tre"
                     ],
     "expected": "export-A-nonmono-embedded-differs"
+  },
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
+    "infile_list": ["chlorella-case-taxonomy.tre",
+                    "chlorella-case-phylo.tre"
+                    ],
+    "expected": "chlorella-case"
   }
 ]
