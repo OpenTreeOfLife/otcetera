@@ -1,0 +1,7 @@
+[
+  {
+    "invocation" : ["otc-nonterminals-to-exemplars", "<INFILELIST>", "-o"],
+    "infile_list": ["three-genus-taxonomy.tre", "three-genus-subsample-higher.tre"],
+    "expected": "expandunsampled"
+  }
+]

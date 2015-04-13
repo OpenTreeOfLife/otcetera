@@ -2,16 +2,25 @@
 using namespace otc;
 
 template<typename T>
-bool writeTreeOrDie(OTCLI & otCLI, const std::string & fp, const T & tree) {
-    LOG(INFO) << "writing \"" << fp << "\"";
-    std::ofstream outp(fp);
-    if (!outp.good()) {
-        otCLI.err << "Could not open \"" << fp << "\" to write output.\n";
-        return false;
+bool writeTreeOrDie(OTCLI & otCLI, const std::string & fp, const T & tree, bool useStdOut) {
+    std::ostream *outPtr = &std::cout;
+    std::ofstream outp;
+    if (!useStdOut) {
+        LOG(INFO) << "writing \"" << fp << "\"";
+        outp.open(fp);
+        if (!outp.good()) {
+            otCLI.err << "Could not open \"" << fp << "\" to write output.\n";
+            return false;
+        }
+        outPtr = &outp;
+    } else {
+        *outPtr << fp << '\n';
     }
-    writeTreeAsNewick(outp, tree);
-    outp << "\n";
-    outp.close();
+    writeTreeAsNewick(*outPtr, tree);
+    *outPtr << "\n";
+    if (!useStdOut) {
+        outp.close();
+    }
     return true;
 }
 
@@ -65,6 +74,7 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
 
 struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
     int numErrors;
+    bool useStdOut;
     std::set<const RootedTreeNodeNoData *> includedNodes;
     std::map<std::unique_ptr<TreeMappedEmptyNodes>, std::size_t> inputTreesToIndex;
     std::vector<TreeMappedEmptyNodes *> treePtrByIndex;
@@ -74,7 +84,8 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     std::string exportDir;
     virtual ~NonTerminalsToExemplarsState(){}
     NonTerminalsToExemplarsState()
-        :numErrors(0) {
+        :numErrors(0),
+        useStdOut(false) {
     }
 
     // here we walk through the taxonomy in postorder in case we have tips like:
@@ -90,7 +101,6 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 continue;
             }
             const ListTreeNdPair & treeNdPairList{mappedPhyloListIt->second};
-            std::cerr << nd->getOttId() << " " << treeNdPairList.size() << '\n';
             assert(!nd->isTip());
             bool hasIncludedDes = false;
             for (auto c : iter_child(*nd)) {
@@ -131,11 +141,11 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     }
 
     bool summarize(OTCLI &otCLI) override {
-        if (exportDir.empty()) {
-            otCLI.err << "The -e flag to specify and export directory is mandatory\n";
+        if ((!useStdOut) && exportDir.empty()) {
+            otCLI.err << "Either the -e flag to specify and export directory or the -o flag mandatory\n";
             return false;
         }
-        if (exportDir[exportDir.length() - 1] != '/') {
+        if ((!useStdOut) && exportDir[exportDir.length() - 1] != '/') {
             exportDir += '/';
         }
         // replace non-terminal tips with their expansion
@@ -145,12 +155,12 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         // write the output
         const std::string tn = "taxonomy.tre";
         auto tp = exportDir + tn;
-        if (!writeTreeOrDie(otCLI, tp, *taxonomy)) {
+        if (!writeTreeOrDie(otCLI, tp, *taxonomy, useStdOut)) {
             return false;
         }
         for (auto treePtr : treePtrByIndex) {
             auto pp = exportDir + treePtr->getName();
-            if (!writeTreeOrDie(otCLI, pp, *treePtr)) {
+            if (!writeTreeOrDie(otCLI, pp, *treePtr, useStdOut)) {
                 return false;
             }
         }
@@ -187,6 +197,14 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
 };
 
 bool handleExportModified(OTCLI & otCLI, const std::string &narg);
+bool handleStdout(OTCLI & otCLI, const std::string &narg);
+
+bool handleStdout(OTCLI & otCLI, const std::string &) {
+    NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->useStdOut = true;
+    return true;
+}
 
 bool handleExportModified(OTCLI & otCLI, const std::string &narg) {
     NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
@@ -216,5 +234,9 @@ int main(int argc, char *argv[]) {
                   "ARG should be the name of a directory. A .tre file will be written to this directory for each input tree",
                   handleExportModified,
                   true);
+    otCLI.addFlag('o',
+                  " requests that standard output stream, rather than the export directory, be used for all output.",
+                  handleStdout,
+                  false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);
 }
