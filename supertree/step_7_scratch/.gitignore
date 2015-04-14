@@ -1,3 +1,4 @@
 export-sub-temp
 checksummed-subproblem-ids.txt
 dumped-subproblem-ids.txt
+*.tar.gz
