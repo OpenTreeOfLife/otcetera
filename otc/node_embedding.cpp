@@ -442,7 +442,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
                             std::ostream * exportStream,
                             SupertreeContextWithSplits & sc) {
     const std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
-    debugNodeEmbedding("top of export", false, sn2ne);
+    //debugNodeEmbedding("top of export", false, sn2ne);
     //debugPrint(scaffoldNode, 215, sn2ne);
     const OttIdSet EMPTY_SET;
     const auto scaffOTTId = scaffoldNode.getOttId();
@@ -646,7 +646,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
         treeFileStream.close();
     }
     //debugPrint(scaffoldNode, 7, sn2ne);
-    debugNodeEmbedding("leaving exportSubproblemAndResolve", false, sn2ne);
+    //debugNodeEmbedding("leaving exportSubproblemAndResolve", false, sn2ne);
 }
 
 
