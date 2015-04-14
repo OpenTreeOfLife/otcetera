@@ -1,1 +1,4 @@
 step-7-phylo-args.txt
+*.tre
+*.md5
+*-tree-names.txt

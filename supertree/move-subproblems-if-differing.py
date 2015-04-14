@@ -23,7 +23,8 @@ try:
     for fid in id_list:
         context.process_raw_subproblem_output(fid)
 except Exception as x:
-    sys.exit('{}: Exiting due to an excetion:\n{}\n'.format(SCRIPT_NAME, x))
     if 'OTC_VERBOSE' in os.environ: # stacktrace for developers
         raise
+    sys.exit('{}: Exiting due to an excetion:\n{}\n'.format(SCRIPT_NAME, x))
+    
 
