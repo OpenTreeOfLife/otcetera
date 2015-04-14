@@ -175,12 +175,19 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
         const OttIdSet & cd = phChild->getData().desIds;
         insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());
     }
+    T * scaffoldAncestor = nullptr;
+    for (auto epp : exitSetForThisTree) {
+        if (scaffoldAncestor == nullptr) {
+            scaffoldAncestor = epp->scaffoldAnc;
+        } else {
+            assert(scaffoldAncestor == epp->scaffoldAnc); // to be a resolution case all exits must have the same parent
+        }
+    }
     // create the new node pairing and path pairing objects
     sc.nodePairingsFromResolve.emplace_back(NodePairingWithSplits(&scaffoldNode, insertedNodePtr));
     NodePairingWithSplits & newNodePairing{*sc.nodePairingsFromResolve.rbegin()};
     nodeEmbeddings[treeIndex].insert(&newNodePairing);
-    T * scaffoldPar = scaffoldNode.getParent();
-    sc.pathPairingsFromResolve.emplace_back(PathPairingWithSplits(scaffoldPar, phPar, newNodePairing));
+    sc.pathPairingsFromResolve.emplace_back(PathPairingWithSplits(scaffoldAncestor, phPar, newNodePairing));
     PathPairingWithSplits & newPathPairing{*sc.pathPairingsFromResolve.rbegin()};
     // fix every exit path to treat scaffoldNode as the scaffoldAnc node.
     // If the scaffoldDes is the scaffoldNode, then this exit is becoming a loop...
@@ -209,8 +216,13 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
             laIt->second.insert(begin(toMoveToLoops), end(toMoveToLoops));
         }
     }
-    // insert the new (and only) exit path...
+    // insert the new (and only) exit path for this node and its ancestors...
     edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
+    for (auto n : iter_anc(scaffoldNode)) {
+        if (n != scaffoldAncestor) {
+            sn2ne.at(n).edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
+        }
+    }
     assert(edgeBelowEmbeddings[treeIndex].size() == 1);
 }
 
