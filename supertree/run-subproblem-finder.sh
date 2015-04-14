@@ -1,43 +1,21 @@
 #!/usr/bash
+# Takes 2 script args  and then the args that will be passed to otc-uncontested-decompose
+#   1. the export dir (any .tre files here will be removed, and new ones will be written here
+#   2. a filepath to store the .tre filenames for all of the tree files created by the
+#       the decomposition. This will only be created if the decomposition exits without error.
+exportdir="$1"
+shift
+dumpedidfile="$1"
+shift
 set -x
-scriptdir="$(dirname $0)"
-exportdir="export-sub-temp"
-rawsubproblems="$1"
-shift
-if ! test -d $rawsubproblems
-then
-    echo "expecting a raw subproblems output directory as the first argument"
-    exit 1
-fi
-
-simplifiedsubproblems="$1"
-shift
-if ! test -d $simplifiedsubproblems
-then
-    echo "expecting a simplified subproblems output directory as the second argument"
-    exit 1
-fi
-
-solutionsdir="$1"
-shift
-if ! test -d $solutionsdir
-then
-    echo "expecting a solutions output directory as the third argument"
-    exit 1
-fi
-
-if false
-then
 if test -d "${exportdir}"
 then
-    if ! rmdir  "${exportdir}"
-    then
-        echo "${PWD}/${exportdir} is in the way (and not empty). empty it or remove it"
-    fi
+    rm -f "${exportdir}"/*.tre || exit
+else
+    mkdir "${exportdir}" || exit
 fi
-mkdir "${exportdir}" || exit
-otcuncontesteddecompose -e"${exportdir}" $@ || exit
+otc-uncontested-decompose -e"${exportdir}" $@ || exit
 fi
 cd "${exportdir}"
-ls *.tre | sort > ../dumped-subproblem-ids.txt
+ls *.tre | sort > "${dumpedidfile}"
 

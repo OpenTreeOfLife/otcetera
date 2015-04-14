@@ -4,34 +4,72 @@ STEP_3_DIR=step_3
 STEP_4_DIR=step_4
 STEP_5_DIR=step_5
 STEP_6_DIR=step_6
+STEP_7_DIR=step_7
+STEP_7_SCRATCH_DIR=step_7_scratch
+STEP_8_DIR=step_8
+STEP_9_DIR=step_9
+SUBPROB_RAW_EXPORT_DIR=$(STEP_7_SCRATCH_DIR)/export-sub-temp
+TREE_RANKING_FILE=$(STEP_1_DIR)/tree-ranking.txt
+PHYLO_INPUT_FILENAMES=$(shell cat $(TREE_RANKING_FILE))
+STEP_5_PHYLO_PATHS=$(addprefix $(STEP_4_DIR)/, $(PHYLO_INPUT_FILENAMES))
+STEP_7_PHYLO_PATHS=$(addprefix $(STEP_5_DIR)/, $(PHYLO_INPUT_FILENAMES))
 
-# $(STEP_3_DIR)/contested-ott-ids.txt is not (currently) a part of the pipeline
-# so we go from step2 to step4
-#	$(STEP_3_DIR)/contested-ott-ids.txt
-
-ARTIFACTS=$(STEP_4_DIR)/step-5-phylo-args.txt \
+ARTIFACTS=$(STEP_5_DIR)/step-5-phylo-args.txt \
 	$(STEP_5_DIR)/taxonomy.tre \
-	$(STEP_6_DIR)/taxonomy.tre
+	$(STEP_6_DIR)/taxonomy.tre \
+	$(STEP_7_DIR)/step-7-phylo-args.txt \
+	$(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt \
+	$(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt \
+	$(STEP_7_DIR)/subproblem-ids.txt
 
 # default is "all"
 all: $(ARTIFACTS)
 	
 
-STEP_5_INPUT_FILENAMES=$(shell cat $(STEP_1_DIR)/tree-ranking.txt)
-STEP_5_PHYLO_PATHS=$(addprefix $(STEP_4_DIR)/, $(STEP_5_INPUT_FILENAMES))
-
-$(STEP_4_DIR)/step-5-phylo-args.txt : $(STEP_1_DIR)/taxonomy.tre $(STEP_1_DIR)/tree-ranking.txt
-	rm -f $(STEP_4_DIR)/step-5-phylo-args.txt
-	for f in $(STEP_5_PHYLO_PATHS) ; do echo $$f >> $(STEP_4_DIR)/step-5-phylo-args.txt ; done
-
-$(STEP_5_DIR)/taxonomy.tre : $(STEP_5_PHYLO_PATHS) $(STEP_1_DIR)/taxonomy.tre $(STEP_4_DIR)/step-5-phylo-args.txt
-	otc-nonterminals-to-exemplars -e$(STEP_5_DIR) $(STEP_1_DIR)/taxonomy.tre -f$(STEP_4_DIR)/step-5-phylo-args.txt
-
-$(STEP_6_DIR)/taxonomy.tre : $(STEP_5_DIR)/taxonomy.tre
-	cp $(STEP_5_DIR)/taxonomy.tre $(STEP_6_DIR)/taxonomy.tre
-
 clean:
 	rm -f $(ARTIFACTS)
 
+# step-5-phylo-args is a list of the relative filepaths to the phylo inputs for step 5 (higher level tip expansion)
+#	relative to the supertree dir.  
+# It simplifies the invocation of otc-nonterminals-to-exemplars
+$(STEP_5_DIR)/step-5-phylo-args.txt : $(TREE_RANKING_FILE)
+	rm -f $(STEP_5_DIR)/step-5-phylo-args.txt
+	for f in $(STEP_5_PHYLO_PATHS) ; do echo $$f >> $(STEP_5_DIR)/step-5-phylo-args.txt ; done
+
+# otc-nonterminals-to-exemplars expands tips mapped to higher level taxa and produced a pruned tree.
+# 	This target is expressed in terms of the taxonomy (which is copied in step 6) because the filenames of the
+#	phylo inputs are runtime variables
+$(STEP_5_DIR)/taxonomy.tre : $(STEP_5_PHYLO_PATHS) $(STEP_1_DIR)/taxonomy.tre $(STEP_4_DIR)/step-5-phylo-args.txt
+	otc-nonterminals-to-exemplars -e$(STEP_5_DIR) $(STEP_1_DIR)/taxonomy.tre -f$(STEP_4_DIR)/step-5-phylo-args.txt
+
+# currently the pruned taxonomy is produced jointly in step 5 with the tip expansion. 
+#	so we just copy it. Logically this is a separate step, so this (kind of silly) cp
+#	is retained as a separte step.
+$(STEP_6_DIR)/taxonomy.tre : $(STEP_5_DIR)/taxonomy.tre
+	cp $(STEP_5_DIR)/taxonomy.tre $(STEP_6_DIR)/taxonomy.tre
 
 
+# Step 7 is a bit complex. It can be expensive. So we output to SUBPROB_RAW_EXPORT_DIR, checksum the 
+#	results, and copy the changed artifacts to their final. The steps:
+#  (A) create the step-7-phylo-args.txt file of the relative paths to the inputs listed in order
+#  (B) use run-subproblem-finder.sh to do the decomposition to write all of the subproblems to
+#			$(SUBPROB_RAW_EXPORT_DIR) and list of $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt
+#  (C) create checksums for all of the subproblems, and write $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt
+#			as a successful-completion signal.
+#  (D) use move-subproblems-if-differing.py to move changed subproblems to $(STEP_7_DIR) and update the subproblems-ids.txt
+#			in that dir to signal completion.
+# step-7-phylo-args is a list of the relative filepaths to the phylo inputs for step 7 (higher level tip expansion)
+#	relative to the supertree dir.  
+# It simplifies the invocation of the decomposition
+$(STEP_7_DIR)/step-7-phylo-args.txt : $(STEP_5_DIR)/taxonomy.tre $(TREE_RANKING_FILE)
+	rm -f $(STEP_7_DIR)/step-7-phylo-args.txt
+	for f in $(STEP_7_PHYLO_PATHS) ; do echo $$f >> $(STEP_7_DIR)/step-7-phylo-args.txt ; done
+
+$(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt : $(STEP_7_DIR)/step-7-phylo-args.txt $(STEP_6_DIR)/taxonomy.tre $(STEP_7_PHYLO_PATHS)
+	bash run-subproblem-finder.sh $(SUBPROB_RAW_EXPORT_DIR) $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt $(STEP_6_DIR)/taxonomy.tre -f$(STEP_7_DIR)/step-7-phylo-args.txt
+
+$(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt : $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt
+	bash checksum-tree-files.sh $(SUBPROB_RAW_EXPORT_DIR) && cp $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt
+
+$(STEP_7_DIR)/subproblem-ids.txt : $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt 
+	python move-subproblems-if-differing.py $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt $(SUBPROB_RAW_EXPORT_DIR) $(STEP_7_DIR) $(STEP_8_DIR) $(STEP_9_DIR)
