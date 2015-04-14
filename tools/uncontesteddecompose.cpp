@@ -29,7 +29,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
             //}
             LOG(INFO) << "    Uncontested";
-            thr.exportSubproblemAndFakeResolution(*scaffoldNd, exportDir, exportStream, sc);
+            thr.exportSubproblemAndResolve(*scaffoldNd, exportDir, exportStream, sc);
             //if (scaffoldNd->getParent()) {
             //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
             //}

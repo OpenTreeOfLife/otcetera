@@ -111,6 +111,7 @@ void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple() {
     std::map<std::size_t, std::set<PathPairPtr> > toCull;
     for (auto treeInd2eout : edgeBelowEmbeddings) {
         if (treeInd2eout.second.size() > 1) {
+            UNREACHABLE; // now resolving earlier...
             // If an input tree has a polytomy with members of a taxon as well as its "outgroup" taxa,
             //  then the polytomy does not contest the monophyly.
             //  this function will be called after resolution of the polytomy. 
@@ -135,6 +136,84 @@ void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple() {
         }
     }
 }
+
+template<typename T, typename U>
+void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
+                T & scaffoldNode,
+                std::size_t treeIndex,
+                SupertreeContextWithSplits & sc) {
+    auto exitForThisTreeIt = edgeBelowEmbeddings.find(treeIndex);
+    if (exitForThisTreeIt == edgeBelowEmbeddings.end()) {
+        return;
+    }
+    PathPairSet & exitSetForThisTree{exitForThisTreeIt->second};
+    const auto origNumExits = exitSetForThisTree.size();
+    if (origNumExits < 2) {
+        return;
+    }
+    const TreeMappedWithSplits * cTreePtr = sc.treesByIndex.at(treeIndex);
+    // this is the only way that we modify the embedded tree. So for now, we'll
+    //      tolerate the const cast, which is in very poor form...
+    // @TMP @TODO
+    TreeMappedWithSplits * treePtr = const_cast<TreeMappedWithSplits *>(cTreePtr);
+    const std::map<U *, U *> phyloNode2PhyloPar = getExitPhyloNd2Par(treeIndex);
+    // resolve the phylo tree
+    U * phPar = nullptr;
+    for (auto p2p : phyloNode2PhyloPar) {
+        if (phPar == nullptr) {
+            phPar = p2p.second;
+        } else {
+            assert(phPar == p2p.second); // there should only be one par.
+        }
+    }
+    assert(phPar != nullptr);
+    U * insertedNodePtr = treePtr->createNode(phPar);
+    for (auto p2p : phyloNode2PhyloPar) {
+        U * phChild = p2p.first;
+        phChild->_detachThisNode();
+        insertedNodePtr->addChild(phChild);
+        const OttIdSet & cd = phChild->getData().desIds;
+        insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());
+    }
+    // create the new node pairing and path pairing objects
+    sc.nodePairingsFromResolve.emplace_back(NodePairingWithSplits(&scaffoldNode, insertedNodePtr));
+    NodePairingWithSplits & newNodePairing{*sc.nodePairingsFromResolve.rbegin()};
+    nodeEmbeddings[treeIndex].insert(&newNodePairing);
+    T * scaffoldPar = scaffoldNode.getParent();
+    sc.pathPairingsFromResolve.emplace_back(PathPairingWithSplits(scaffoldPar, phPar, newNodePairing));
+    PathPairingWithSplits & newPathPairing{*sc.pathPairingsFromResolve.rbegin()};
+    // fix every exit path to treat scaffoldNode as the scaffoldAnc node.
+    // If the scaffoldDes is the scaffoldNode, then this exit is becoming a loop...
+    PathPairSet toMoveToLoops;
+    std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
+    for (auto epp : exitSetForThisTree) {
+        assert(epp->phyloParent == phPar);
+        for (auto n : iter_anc(scaffoldNode)) {
+            if (n != epp->scaffoldAnc) {
+                sn2ne.at(n).removeRefToExitPath(treeIndex, epp);
+            }
+        }
+        epp->scaffoldAnc = &scaffoldNode;
+        if (epp->scaffoldDes == &scaffoldNode) {
+            toMoveToLoops.insert(epp);
+        }
+    }
+    // all of the former exit paths for this tree are invalid...
+    exitSetForThisTree.clear();
+    // add the new loops...
+    if (!toMoveToLoops.empty()) {
+        auto laIt = loopEmbeddings.find(treeIndex);
+        if (laIt == loopEmbeddings.end()) {
+            loopEmbeddings[treeIndex] = toMoveToLoops;
+        } else {
+            laIt->second.insert(begin(toMoveToLoops), end(toMoveToLoops));
+        }
+    }
+    // insert the new (and only) exit path...
+    edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
+    assert(edgeBelowEmbeddings[treeIndex].size() == 1);
+}
+
 
 
 // Returns all loop paths for nd and all edgeBelowEmbeddings of its children
@@ -311,12 +390,11 @@ std::set<PathPairing<T, U> *> NodeEmbedding<T, U>::getAllChildExitPathsForTree(
     }
     return r;
 }
-// By "fake" the resolution here we mean that on exit, this
-//  subproblem's outgoing edges should be labeled with the scaffoldNode's OTT ID, just
-//  like the outgoing edges would look upon successful completion of the resolution of
-//  the clade. This allows export of deeper subproblems to be performed.
+// Only resolves cases in which there is a deeper polytomy that is compatible with 
+//  the taxon - resolved to make the taxon monophyletic...
+// This allows export of deeper subproblems to be performed.
 template<typename T, typename U>
-void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
+void NodeEmbedding<T, U>::exportSubproblemAndResolve(
                             T & scaffoldNode,
                             const std::string & exportDir,
                             std::ostream * exportStream,
@@ -370,6 +448,9 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         const auto childExitForThisTree = getAllChildExitPathsForTree(scaffoldNode,
                                                                       treeIndex,
                                                                       sn2ne);
+        resolveParentInFavorOfThisNode(scaffoldNode, treeIndex, sc);
+        const auto tempDBIt = edgeBelowEmbeddings.find(treeIndex);
+        assert(tempDBIt == edgeBelowEmbeddings.end() || tempDBIt->second.size() < 2);
         auto laIt = loopEmbeddings.find(treeIndex);
         if (laIt == loopEmbeddings.end() && childExitForThisTree.empty()) {
             continue;
@@ -517,7 +598,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndFakeResolution(
         treeFileStream.close();
     }
     //debugPrint(scaffoldNode, 7, sn2ne);
-    //debugNodeEmbedding("leaving exportSubproblemAndFakeResolution", false, sn2ne);
+    //debugNodeEmbedding("leaving exportSubproblemAndResolve", false, sn2ne);
 }
 
 
