@@ -52,7 +52,10 @@ class PathPairing {
     T * scaffoldDes;
     T * scaffoldAnc;
     U * const phyloChild;
-    U * const phyloParent;
+    U * phyloParent; //@TMP used to be const, but the resolving step edits
+                     // rather than creating a new path pairing... 
+                     // that is probably the best way to do this (const was
+                     // probably to retrictive). But more careful consideration may be needed
     OttIdSet currChildOttIdSet;
     bool pathIsNowTrivial() {
         return currChildOttIdSet.size() == 1;

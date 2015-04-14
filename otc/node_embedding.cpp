@@ -15,6 +15,23 @@ template<typename T, typename U>
 bool NodeEmbedding<T, U>::debugNodeEmbedding(const char * tag, 
                                              bool isContested,
                                              const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const {
+    for (const auto  & t2exit : edgeBelowEmbeddings) {
+        const auto treeIndex = t2exit.first;
+        const auto & exitPaths =  t2exit.second;
+        for (const auto epref : exitPaths) {
+            const auto & sNERef = sn2ne.at(epref->scaffoldDes);
+            assert(contains(sNERef.edgeBelowEmbeddings, treeIndex));
+            assert(contains(sNERef.edgeBelowEmbeddings.at(treeIndex), epref));
+            for (auto aNode : iter_anc(*(epref->scaffoldDes))) {
+                if (aNode == epref->scaffoldAnc) {
+                    break;
+                }
+                const auto & saNERef = sn2ne.at(epref->scaffoldDes);
+                assert(contains(saNERef.edgeBelowEmbeddings, treeIndex));
+                assert(contains(saNERef.edgeBelowEmbeddings.at(treeIndex), epref));
+            }
+        }
+    }
     for (const auto & t2l : loopEmbeddings) {
         auto treeIndex = t2l.first;
         const auto childExitForThisTree = getAllChildExitPathsForTree(embeddedNode,
@@ -156,6 +173,7 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
     //      tolerate the const cast, which is in very poor form...
     // @TMP @TODO
     TreeMappedWithSplits * treePtr = const_cast<TreeMappedWithSplits *>(cTreePtr);
+    LOG(INFO) << "Resolving treeIndex = " << treeIndex << " name = " << treePtr->getName() << " for OTT " << scaffoldNode.getOttId() << '\n';
     const std::map<U *, U *> phyloNode2PhyloPar = getExitPhyloNd2Par(treeIndex);
     // resolve the phylo tree
     U * phPar = nullptr;
@@ -195,10 +213,13 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
     std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
     for (auto epp : exitSetForThisTree) {
         assert(epp->phyloParent == phPar);
+        epp->phyloParent = insertedNodePtr;
+        assert(epp->scaffoldAnc != &scaffoldNode);
         for (auto n : iter_anc(scaffoldNode)) {
-            if (n != epp->scaffoldAnc) {
-                sn2ne.at(n).removeRefToExitPath(treeIndex, epp);
+            if (n == epp->scaffoldAnc) {
+                break;
             }
+            sn2ne.at(n).removeRefToExitPath(treeIndex, epp);
         }
         epp->scaffoldAnc = &scaffoldNode;
         if (epp->scaffoldDes == &scaffoldNode) {
@@ -219,9 +240,10 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
     // insert the new (and only) exit path for this node and its ancestors...
     edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
     for (auto n : iter_anc(scaffoldNode)) {
-        if (n != scaffoldAncestor) {
-            sn2ne.at(n).edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
+        if (n == scaffoldAncestor) {
+            break;
         }
+        sn2ne.at(n).edgeBelowEmbeddings[treeIndex].insert(&newPathPairing);
     }
     assert(edgeBelowEmbeddings[treeIndex].size() == 1);
 }
@@ -402,6 +424,14 @@ std::set<PathPairing<T, U> *> NodeEmbedding<T, U>::getAllChildExitPathsForTree(
     }
     return r;
 }
+
+template<typename T>
+void debugPrintNd2Par(const char * p, const T & m) {
+    std::cerr << "debugPrintNd2Par " << p << ": ";
+    for (auto mp : m) {
+        std::cerr << "  " << (long) mp.first << " -> " << (long) mp.second << '\n';
+    }
+}
 // Only resolves cases in which there is a deeper polytomy that is compatible with 
 //  the taxon - resolved to make the taxon monophyletic...
 // This allows export of deeper subproblems to be performed.
@@ -412,7 +442,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
                             std::ostream * exportStream,
                             SupertreeContextWithSplits & sc) {
     const std::map<const T *, NodeEmbedding<T, U> > & sn2ne = sc.scaffold2NodeEmbedding;
-    //debugNodeEmbedding("top of export", false, sn2ne);
+    debugNodeEmbedding("top of export", false, sn2ne);
     //debugPrint(scaffoldNode, 215, sn2ne);
     const OttIdSet EMPTY_SET;
     const auto scaffOTTId = scaffoldNode.getOttId();
@@ -457,10 +487,14 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
     for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
         const auto * treePtr = sc.treesByIndex.at(treeIndex);
         assert(treePtr != nullptr);
+        //auto prelnd2par = getLoopedPhyloNd2Par(treeIndex);
+        //debugPrintNd2Par("preloops", prelnd2par);
+        //auto preend2par = getExitPhyloNd2Par(treeIndex);
+        //debugPrintNd2Par("preexits", preend2par);
+        resolveParentInFavorOfThisNode(scaffoldNode, treeIndex, sc);
         const auto childExitForThisTree = getAllChildExitPathsForTree(scaffoldNode,
                                                                       treeIndex,
                                                                       sn2ne);
-        resolveParentInFavorOfThisNode(scaffoldNode, treeIndex, sc);
         const auto tempDBIt = edgeBelowEmbeddings.find(treeIndex);
         assert(tempDBIt == edgeBelowEmbeddings.end() || tempDBIt->second.size() < 2);
         auto laIt = loopEmbeddings.find(treeIndex);
@@ -472,7 +506,9 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
         const OttIdSet relevantIds = getRelevantDesIds(sn2ne, treeIndex);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         auto lnd2par = getLoopedPhyloNd2Par(treeIndex);
+        //debugPrintNd2Par("loops", lnd2par);
         auto end2par = getExitPhyloNd2Par(treeIndex);
+        //debugPrintNd2Par("exits", end2par);
         U * root = nullptr;
         std::set<U *> parentsOfExits;
         for (const auto & c2p : lnd2par) {
@@ -610,7 +646,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
         treeFileStream.close();
     }
     //debugPrint(scaffoldNode, 7, sn2ne);
-    //debugNodeEmbedding("leaving exportSubproblemAndResolve", false, sn2ne);
+    debugNodeEmbedding("leaving exportSubproblemAndResolve", false, sn2ne);
 }
 
 
