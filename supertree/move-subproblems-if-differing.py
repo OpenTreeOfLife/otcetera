@@ -26,5 +26,10 @@ except Exception as x:
     if 'OTC_VERBOSE' in os.environ: # stacktrace for developers
         raise
     sys.exit('{}: Exiting due to an excetion:\n{}\n'.format(SCRIPT_NAME, x))
-    
+
+klist = context.summary_stats.keys()
+klist.sort()
+for k in klist:
+    s = context.summary_stats[k]
+    print 'summary_stats[', k, '] -> ', len(s)
 
