@@ -3,10 +3,10 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: pharse
-Description: pharse is a C++ library for parsing some formats used in phylogenetics
+Name: otcetera
+Description: otcetera is a C++ library for parsing some formats used in phylogenetics
 Version: 2.1
-Libs: -L${libdir}/pharse -llibpharse.la
-Cflags: -I${includedir}/pharse
+Libs: -L${libdir}/otcetera -llibpharse.la
+Cflags: -I${includedir}/otcetera
 
 
