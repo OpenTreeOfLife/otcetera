@@ -18,7 +18,7 @@ The tree will be build-able by:
 This pipeline is not working yet. Running `make` will ultimately exit with an error, 
 but it should run long enough to produce the decomposition into subproblems
 
-There is some cruft from a previous stab at the pipeline (see below).
+There is some cruft from a previous stab at the pipeline (see [here](./cruft/README.md)).
 I'm in the process of refactoring to agree with the pipeline described in the doc subdir:
 `../doc/summarizing-taxonomy-plus-trees.tex` (also occasionally posted to
     [this spot](phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf) on the Holder lab site).
