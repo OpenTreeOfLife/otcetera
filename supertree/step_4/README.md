@@ -7,7 +7,7 @@ Assuming that you cloned this in [step_1](../step_1/README.md)
     $ cd synthesis_trees/Source_info
     $ tar xfvz Newicks_OTTID.tgz
     $ cd ../../step_4
-    $ for f in $(cat ../step-1-pruned-overlapping-tips/tree-ranking.txt) ; do ln -s ../synthesis_trees/Source_info/Newicks_OTTID/$f . ; done
+    $ for f in $(cat ../step_1/tree-ranking.txt) ; do ln -s ../synthesis_trees/Source_info/Newicks_OTTID/$f . ; done
 
 
 Quoting from the synthesis_tree/Source_info/Notes.txt:
