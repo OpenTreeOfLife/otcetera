@@ -1,9 +1,9 @@
 #!/usr/bin/env python
+import sys
 try:
     from peyotl.supertree import OtcPipelineContext, OtcArtifact
 except ImportError:
     sys.exit('Depends on some "bleeding edge" feature on the peyotl supertree branch')
-import sys
 import os
 
 SCRIPT_NAME = os.path.split(sys.argv[0])[1]
