@@ -53,7 +53,7 @@ $(STEP_5_DIR)/step-5-phylo-args.txt : $(TREE_RANKING_FILE)
 # otc-nonterminals-to-exemplars expands tips mapped to higher level taxa and produced a pruned tree.
 # 	This target is expressed in terms of the taxonomy (which is copied in step 6) because the filenames of the
 #	phylo inputs are runtime variables
-$(STEP_5_DIR)/taxonomy.tre : $(STEP_5_PHYLO_INPUT_PATHS) $(STEP_1_DIR)/taxonomy.tre $(STEP_4_DIR)/step-5-phylo-args.txt
+$(STEP_5_DIR)/taxonomy.tre : $(STEP_5_PHYLO_INPUT_PATHS) $(STEP_1_DIR)/taxonomy.tre $(STEP_5_DIR)/step-5-phylo-args.txt
 	otc-nonterminals-to-exemplars -e$(STEP_5_DIR) $(STEP_1_DIR)/taxonomy.tre -f$(STEP_4_DIR)/step-5-phylo-args.txt
 
 # currently the pruned taxonomy is produced jointly in step 5 with the tip expansion. 
