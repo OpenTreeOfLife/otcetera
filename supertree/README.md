@@ -18,7 +18,7 @@ The tree will be build-able by:
 This pipeline is not working yet. Running `make` will ultimately exit with an error, 
 but it should run long enough to produce the decomposition into subproblems
 
-There is some cruft from a previous stab at the pipeline (see below).
+There is some cruft from a previous stab at the pipeline (see [here](./cruft/README.md)).
 I'm in the process of refactoring to agree with the pipeline described in the doc subdir:
 `../doc/summarizing-taxonomy-plus-trees.tex` (also occasionally posted to
     [this spot](phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf) on the Holder lab site).
@@ -39,7 +39,7 @@ The instructions are in [./step_1/README.md](./step_1/README.md) and
   3. run `make` from the supertree directory.
 
 ## Expected outcome
-It shold eventually crash with a message like:
+It should eventually crash with a message like:
 
     python move-subproblems-if-differing.py step_7_scratch/checksummed-subproblem-ids.txt step_7_scratch/export-sub-temp step_7 step_8 step_9
     Depends on some "bleeding edge" feature on the peyotl supertree branch
