@@ -4,7 +4,7 @@ Remove unmapped tips, and prune tips with repeted OTT IDs.
 Currently obtained from Joseph Brown's repo (the tree comes from treemachine).
 Assuming that you cloned this in [step_1](../step_1/README.md)
 
-    $ cd synthesis_tree/Source_info
+    $ cd synthesis_trees/Source_info
     $ tar xfvz Newicks_OTTID.tgz
     $ cd ../../step_4
     $ for f in $(cat ../step-1-pruned-overlapping-tips/tree-ranking.txt) ; do ln -s ../synthesis_trees/Source_info/Newicks_OTTID/$f . ; done
