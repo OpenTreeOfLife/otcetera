@@ -39,7 +39,7 @@ The instructions are in [./step_1/README.md](./step_1/README.md) and
   3. run `make` from the supertree directory.
 
 ## Expected outcome
-It shold eventually crash with a message like:
+It should eventually crash with a message like:
 
     python move-subproblems-if-differing.py step_7_scratch/checksummed-subproblem-ids.txt step_7_scratch/export-sub-temp step_7 step_8 step_9
     Depends on some "bleeding edge" feature on the peyotl supertree branch
