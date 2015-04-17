@@ -13,7 +13,7 @@ Currently the taxonomy is obtained from Joseph Brown's repo (the tree comes from
     $ tar xfvz Filtered_OTT_taxonomy.tre.tgz
     $ chmod -w Filtered_OTT_taxonomy.tre
     $ cd ../../step_1
-    $ ln -s ../synthesis_tree/Source_info/Filtered_OTT_taxonomy.tre taxonomy.tre
+    $ ln -s ../synthesis_trees/Source_info/Filtered_OTT_taxonomy.tre taxonomy.tre
 
 
 
