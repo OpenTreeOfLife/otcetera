@@ -54,13 +54,13 @@ $(STEP_5_DIR)/step-5-phylo-args.txt : $(TREE_RANKING_FILE)
 # 	This target is expressed in terms of the taxonomy (which is copied in step 6) because the filenames of the
 #	phylo inputs are runtime variables
 $(STEP_5_DIR)/taxonomy.tre : $(STEP_5_PHYLO_INPUT_PATHS) $(STEP_1_DIR)/taxonomy.tre $(STEP_5_DIR)/step-5-phylo-args.txt
-	otc-nonterminals-to-exemplars -e$(STEP_5_DIR) $(STEP_1_DIR)/taxonomy.tre -f$(STEP_5_DIR)/step-5-phylo-args.txt
+	for f in $(STEP_5_PHYLO_INPUT_PATHS) ; do cp $$f step_5/ ; done
 
 # currently the pruned taxonomy is produced jointly in step 5 with the tip expansion. 
 #	so we just copy it. Logically this is a separate step, so this (kind of silly) cp
 #	is retained as a separte step.
 $(STEP_6_DIR)/taxonomy.tre : $(STEP_5_DIR)/taxonomy.tre
-	cp $(STEP_5_DIR)/taxonomy.tre $(STEP_6_DIR)/taxonomy.tre
+	otc-prune-taxonomy $(STEP_1_DIR)/taxonomy.tre -f$(STEP_5_DIR)/step-5-phylo-args.txt > $(STEP_6_DIR)/taxonomy.tre
 
 
 # Step 7 is a bit complex. It can be expensive. So we output to SUBPROB_RAW_EXPORT_DIR, checksum the 
