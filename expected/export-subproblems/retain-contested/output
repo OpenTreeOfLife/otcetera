@@ -1,0 +1,15 @@
+ott8
+(ott5,ott6,ott7);
+TAXONOMY
+ott12
+(ott11);
+three-genus-Anotmonophyletic.tre
+(ott9,ott10,ott11);
+TAXONOMY
+ott14
+(ott8,(ott4,ott12));
+ACvB.tre
+((ott1,ott12),ott2);
+three-genus-Anotmonophyletic.tre
+((ott1,ott2,ott3),ott8,ott12);
+TAXONOMY
