@@ -5,11 +5,13 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
     public:
     std::string exportDir;
     std::ostream * exportStream;
+    bool userRequestsRetentionOfTipsMappedToContestedTaxa;
 
     virtual ~UncontestedTaxonDecompose(){}
     UncontestedTaxonDecompose()
         :EmbeddingCLI(),
-        exportStream(nullptr) {
+        exportStream(nullptr),
+        userRequestsRetentionOfTipsMappedToContestedTaxa(false) {
     }
 
     void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
@@ -39,6 +41,9 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
     void exportSubproblems(OTCLI &) {
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{treePtrByIndex, scaffoldNdToNodeEmbedding, *tax};
+        if (userRequestsRetentionOfTipsMappedToContestedTaxa) {
+            sc.pruneTipsMappedToContestedTaxa = false;
+        }
         std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post(*taxonomy)) {
             if (nd->isTip()) {
@@ -68,11 +73,19 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 
 bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg);
 bool handleExportToStdoutSubproblems(OTCLI & otCLI, const std::string &narg);
+bool handleRetainTipsMapToContestedTaxaSubproblems(OTCLI & otCLI, const std::string &narg);
 
 bool handleExportToStdoutSubproblems(OTCLI & otCLI, const std::string &) {
     UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
     assert(proc != nullptr);
     proc->exportStream = &(otCLI.out);
+    return true;
+}
+
+bool handleRetainTipsMapToContestedTaxaSubproblems(OTCLI & otCLI, const std::string &) {
+    UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->userRequestsRetentionOfTipsMappedToContestedTaxa = true;
     return true;
 }
 
@@ -98,6 +111,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('o',
                   "If present, the trees will be exported to standard output",
                   handleExportToStdoutSubproblems,
+                  false);
+    otCLI.addFlag('r',
+                  "If present, the tips in input trees which are mapped to contested taxa. The default behavior is to prune these tips",
+                  handleRetainTipsMapToContestedTaxaSubproblems,
                   false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }

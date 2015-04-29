@@ -876,13 +876,14 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
         const auto & treeIndex = ebai.first;
         std::set<PathPairPtr> pathsAblated;
         for (auto lp : ebai.second) {
-            if (lp->phyloChild->isTip() && lp->scaffoldDes == &scaffoldNode) {
+            if (sc.pruneTipsMappedToContestedTaxa
+                && lp->phyloChild->isTip()
+                && lp->scaffoldDes == &scaffoldNode) {
                 // this only happens if a terminal was mapped to this higher level taxon
                 // we don't know how to interpret this label any more, so we'll drop that 
                 // leaf. The taxa will be included by other relationships (the taxonomy as
                 // a last resort), so we don't need to worry about losing leaves by skipping this...
-                LOG(INFO) << "Used to ablate path leading to ott" << lp->phyloChild->getOttId();;
-                
+                LOG(INFO) << "Ablating path leading to ott" << lp->phyloChild->getOttId();;
                 LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
                 assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
                 sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
