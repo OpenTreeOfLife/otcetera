@@ -507,6 +507,19 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         auto lnd2par = getLoopedPhyloNd2Par(treeIndex);
         //debugPrintNd2Par("loops", lnd2par);
+        const auto shouldHaveBeenPrunedNd2Par = getUnEmbeddedPhyloNd2Par(treeIndex);
+        std::map<NodeWithSplits *, long> nd2id;
+        OttIdSet shouldHaveBeenPrunedIds;
+        for (auto unembeddedPair : shouldHaveBeenPrunedNd2Par) {
+            auto uDes = unembeddedPair.first;
+            auto uPar = unembeddedPair.second;
+            assert(!contains(lnd2par, uDes));
+            lnd2par[uDes] = uPar;
+            auto shbpId = uDes->getOttId();
+            nd2id[uDes] = shbpId;
+            shouldHaveBeenPrunedIds.insert(shbpId);
+        }
+        
         auto end2par = getExitPhyloNd2Par(treeIndex);
         //debugPrintNd2Par("exits", end2par);
         U * root = nullptr;
@@ -527,7 +540,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
         if (root == nullptr && firstLaIt == loopEmbeddings.end()) {
             // no loops, the tree is just polytomy for this subproblem
             *treeExpStream << '(';
-            OttIdSet ois;
+            OttIdSet ois = shouldHaveBeenPrunedIds;
             bool first = true;
             for (auto pathPtr : childExitForThisTree) {
                 if (contains(sc.prunedSubtrees[treeIndex], pathPtr->phyloChild)) {
@@ -563,7 +576,6 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
             assert(parentsOfExits.size() < 2 );
              // if the node is uncontested, then all exit paths must have the same parent
             U * const deeperNd = (parentsOfExits.empty() ? nullptr : *begin(parentsOfExits));
-            std::map<NodeWithSplits *, long> nd2id;
             std::set<NodeWithSplits *> toDel;
             for (auto n2pEl : lnd2par) {
                 if (contains(sc.prunedSubtrees[treeIndex], n2pEl.first)) {
@@ -614,13 +626,6 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
                 totalLeafSet.insert(ottId);
                 nd2id[pp->phyloChild] = ottId;
             }
-            const auto shouldHaveBeenPrunedNd2Par = getUnEmbeddedPhyloNd2Par(treeIndex);
-            for (auto unembeddedPair : shouldHaveBeenPrunedNd2Par) {
-                auto uDes = unembeddedPair.first;
-                auto uPar = unembeddedPair.second;
-                assert(!contains(lnd2par, uDes));
-                lnd2par[uDes] = uPar;
-            }
             RootedTreeTopologyNoData toWrite;
             LOG(DEBUG) << "After adding child exits...";
             for (auto np : lnd2par) {
@@ -632,6 +637,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
             } catch (const OTCError & ) {
                 LOG(ERROR) << "could not construct a valid tree";
                 debugPrint(scaffoldNode, treeIndex, sn2ne);
+                debugPrintNd2Par("lnd2par", lnd2par);
                 assert(false);
             }
             sortChildOrderByLowestDesOttId(toWrite.getRoot());
