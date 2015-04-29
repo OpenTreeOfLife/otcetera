@@ -507,6 +507,19 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         auto lnd2par = getLoopedPhyloNd2Par(treeIndex);
         //debugPrintNd2Par("loops", lnd2par);
+        const auto shouldHaveBeenPrunedNd2Par = getUnEmbeddedPhyloNd2Par(treeIndex);
+        std::map<NodeWithSplits *, long> nd2id;
+        OttIdSet shouldHaveBeenPrunedIds;
+        for (auto unembeddedPair : shouldHaveBeenPrunedNd2Par) {
+            auto uDes = unembeddedPair.first;
+            auto uPar = unembeddedPair.second;
+            assert(!contains(lnd2par, uDes));
+            lnd2par[uDes] = uPar;
+            auto shbpId = uDes->getOttId();
+            nd2id[uDes] = shbpId;
+            shouldHaveBeenPrunedIds.insert(shbpId);
+        }
+        
         auto end2par = getExitPhyloNd2Par(treeIndex);
         //debugPrintNd2Par("exits", end2par);
         U * root = nullptr;
@@ -527,7 +540,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
         if (root == nullptr && firstLaIt == loopEmbeddings.end()) {
             // no loops, the tree is just polytomy for this subproblem
             *treeExpStream << '(';
-            OttIdSet ois;
+            OttIdSet ois = shouldHaveBeenPrunedIds;
             bool first = true;
             for (auto pathPtr : childExitForThisTree) {
                 if (contains(sc.prunedSubtrees[treeIndex], pathPtr->phyloChild)) {
@@ -563,7 +576,6 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
             assert(parentsOfExits.size() < 2 );
              // if the node is uncontested, then all exit paths must have the same parent
             U * const deeperNd = (parentsOfExits.empty() ? nullptr : *begin(parentsOfExits));
-            std::map<NodeWithSplits *, long> nd2id;
             std::set<NodeWithSplits *> toDel;
             for (auto n2pEl : lnd2par) {
                 if (contains(sc.prunedSubtrees[treeIndex], n2pEl.first)) {
@@ -625,6 +637,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
             } catch (const OTCError & ) {
                 LOG(ERROR) << "could not construct a valid tree";
                 debugPrint(scaffoldNode, treeIndex, sn2ne);
+                debugPrintNd2Par("lnd2par", lnd2par);
                 assert(false);
             }
             sortChildOrderByLowestDesOttId(toWrite.getRoot());
@@ -876,24 +889,29 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
         const auto & treeIndex = ebai.first;
         std::set<PathPairPtr> pathsAblated;
         for (auto lp : ebai.second) {
-            if (lp->phyloChild->isTip() && lp->scaffoldDes == &scaffoldNode) {
+            if (lp->phyloChild->isTip()
+                && lp->scaffoldDes == &scaffoldNode) {
                 // this only happens if a terminal was mapped to this higher level taxon
-                // we don't know how to interpret this label any more, so we'll drop that 
-                // leaf. The taxa will be included by other relationships (the taxonomy as
+                // we don't know how to interpret this label any more, so we should drop that 
+                // leaf. Unless specifically requested not to by the user.
+                // The taxa will be included by other relationships (the taxonomy as
                 // a last resort), so we don't need to worry about losing leaves by skipping this...
-                LOG(INFO) << "Used to ablate path leading to ott" << lp->phyloChild->getOttId();;
-                
-                LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
-                assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
-                sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
-                OttIdSet innerOTTId;
-                innerOTTId.insert(lp->phyloChild->getOttId());
-                OttIdSet n = scaffoldNode.getData().desIds; // expand the internal name to it taxonomic content
-                n.erase(lp->phyloChild->getOttId());
-                lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sn2ne);
-                indsOfTreesMappedToInternal.insert(treeIndex);
-                pathsAblated.insert(lp);
-                registerAsPruned(treeIndex, lp->phyloChild, sc);
+                if (sc.pruneTipsMappedToContestedTaxa) {
+                    LOG(INFO) << "Ablating path leading to ott" << lp->phyloChild->getOttId();;
+                    LOG(DEBUG) << "IGNORING scaff = " << scaffoldNode.getOttId() << " == phylo " << lp->phyloChild->getOttId();
+                    assert(scaffoldNode.getOttId() == lp->phyloChild->getOttId());
+                    sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
+                    OttIdSet innerOTTId;
+                    innerOTTId.insert(lp->phyloChild->getOttId());
+                    OttIdSet n = scaffoldNode.getData().desIds; // expand the internal name to it taxonomic content
+                    n.erase(lp->phyloChild->getOttId());
+                    lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sn2ne);
+                    indsOfTreesMappedToInternal.insert(treeIndex);
+                    pathsAblated.insert(lp);
+                    registerAsPruned(treeIndex, lp->phyloChild, sc);
+                } else {
+                    phyloNd2ParForUnembeddedTrees[treeIndex][lp->phyloChild] = lp->phyloParent;
+                }
             } else if (lp->scaffoldAnc == p) {
                 //if (lp->scaffoldDes == &scaffoldNode) {
                 if ((!lp->phyloChild->isTip()) && lp->scaffoldDes == &scaffoldNode) {
@@ -967,7 +985,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
 template<typename T, typename U>
 void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextWithSplits & sc) {
     checkAllNodePointersIter(scaffoldNode);
-    LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", adding child to parent";
+     LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", adding child to parent";
     // NOTE: it is important that we add the children of scaffoldNode the left of its location
     //  in the tree so that the postorder traversal will not iterate over them.
     assert(!scaffoldNode.isTip());
@@ -975,6 +993,23 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextW
     assert(entrySib == nullptr || entrySib->getNextSib() == &scaffoldNode);
     auto exitSib = scaffoldNode.getNextSib();
     auto p = scaffoldNode.getParent();
+    assert(p);
+    if (!phyloNd2ParForUnembeddedTrees.empty()) {
+        auto & scaffoldPar = sc.scaffold2NodeEmbedding.at(p);
+        // We have a hacky data structure to pass along to our parent if
+        //  we were asked to retain terminal nodes that are mapped to this
+        //  these tips will no longer be embedded in the scaffold... Ugh.
+        for (auto pmfu : phyloNd2ParForUnembeddedTrees) {
+            if (pmfu.second.empty()) {
+                continue;
+            }
+            const auto treeIndex = pmfu.first;
+            auto & ppmfuForTree =  scaffoldPar.phyloNd2ParForUnembeddedTrees[treeIndex];
+            for (auto dpmfuForTree : pmfu.second) {
+                ppmfuForTree[dpmfuForTree.first] = dpmfuForTree.second;
+            }
+        }
+    }
     const auto cv = scaffoldNode.getChildren();
     scaffoldNode._detachThisNode();
     sc.scaffoldTree.markAsDetached(&scaffoldNode);

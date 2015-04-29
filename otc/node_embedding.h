@@ -62,6 +62,17 @@ class NodeEmbedding {
     TreeToNodePairs nodeEmbeddings;
     TreeToPathPairs edgeBelowEmbeddings;
     TreeToPathPairs loopEmbeddings;
+    //
+    //  If we are requested to retain nodes mapped to non-terminal nodes in the scaffold, and
+    //      these scaffold nodes are contested we run into some ugliness.
+    //  The code was not designed for this case. The scaffold node is pruned by
+    //      of collapseGroup. This means that these phyloNodes will be "unembedded".
+    //  The hack for covering this case is to simply propagate pointers to such nodes (and their
+    //      parent nodes) back in the scaffold every time a group is collapsed. 
+    //  This allows these retained tips to be emitted as a part of the subproblem when
+    //      the root of the phyloTree or an uncontested node is found.
+    //  It is not clear if there are some corner cases for when this would be problematic.
+    std::map<std::size_t, std::map<U *, U *> > phyloNd2ParForUnembeddedTrees;
     public:
     NodeEmbedding(T * scaffNode)
         :embeddedNode(scaffNode) {
@@ -200,6 +211,7 @@ class NodeEmbedding {
     const TreeToPathPairs & getExitEmbeddings() const {
         return edgeBelowEmbeddings;
     }
+    std::map<U *, U *> getUnEmbeddedPhyloNd2Par(std::size_t treeInd) const;
     void debugPrint(T & scaffoldNode, std::size_t treeIndex, const std::map<const T *, NodeEmbedding<T, U> > & sc) const;
 
     private:
@@ -290,6 +302,17 @@ template<typename T, typename U>
 inline std::map<U *, U *> NodeEmbedding<T, U>::getExitPhyloNd2Par(std::size_t treeInd) const {
     return getNd2ParForKey(treeInd, edgeBelowEmbeddings);
 }
+
+template<typename T, typename U>
+inline std::map<U *, U *> NodeEmbedding<T, U>::getUnEmbeddedPhyloNd2Par(std::size_t treeInd) const {
+    if (contains(phyloNd2ParForUnembeddedTrees, treeInd)) {
+        return phyloNd2ParForUnembeddedTrees.at(treeInd);
+    }
+    std::map<U *, U *> r;
+    return r;
+}
+
+
 
 } // namespace
 #endif

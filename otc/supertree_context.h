@@ -34,6 +34,7 @@ class SupertreeContext {
         std::map<std::size_t, std::set<NodeWithSplits *> > prunedSubtrees; // when a tip is mapped to a non-monophyletc terminal it is pruned
         std::list<NodePairingWithSplits> nodePairingsFromResolve;
         std::list<PathPairingWithSplits> pathPairingsFromResolve;
+        bool pruneTipsMappedToContestedTaxa;
         void log(SupertreeCtorEvent e, const U & node) {
             if (e == COLLAPSE_TAXON) {
                 events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
@@ -47,7 +48,8 @@ class SupertreeContext {
             :numTrees(tv.size()),
             scaffold2NodeEmbedding(scaffoldNdToNodeEmbedding),
             scaffoldOttId2Node(scaffTree.getData().ottIdToNode),
-            scaffoldTree(scaffTree) {
+            scaffoldTree(scaffTree),
+            pruneTipsMappedToContestedTaxa(true) {
             treesByIndex.reserve(numTrees); 
             for (auto tp : tv) {
                 treesByIndex.push_back(const_cast<const TreeMappedWithSplits *>(tp));

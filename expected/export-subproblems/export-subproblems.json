@@ -16,6 +16,13 @@
                     ],
     "expected": "export-B-C-higher-A-nonmono-diff-order"
   },
+  { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o", "-r"],
+    "infile_list": ["three-genus-taxonomy.tre",
+                    "ACvB.tre",
+                    "three-genus-Anotmonophyletic.tre"
+                    ],
+    "expected": "retain-contested"
+  },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["three-genus-taxonomy.tre",
                     "three-genus-taxonomy-less-resolved.tre"
