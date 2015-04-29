@@ -80,7 +80,7 @@ $(STEP_7_DIR)/step-7-phylo-args.txt : $(STEP_5_DIR)/taxonomy.tre $(TREE_RANKING_
 	for f in $(STEP_7_PHYLO_INPUT_PATHS) ; do echo $$f >> $(STEP_7_DIR)/step-7-phylo-args.txt ; done
 
 $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt : $(STEP_7_DIR)/step-7-phylo-args.txt $(STEP_6_DIR)/taxonomy.tre $(STEP_7_PHYLO_INPUT_PATHS)
-	bash run-subproblem-finder.sh $(SUBPROB_RAW_EXPORT_DIR) ../dumped-subproblem-ids.txt $(STEP_6_DIR)/taxonomy.tre -f$(STEP_7_DIR)/step-7-phylo-args.txt
+	bash run-subproblem-finder.sh $(SUBPROB_RAW_EXPORT_DIR) ../dumped-subproblem-ids.txt $(STEP_6_DIR)/taxonomy.tre -r -f$(STEP_7_DIR)/step-7-phylo-args.txt
 
 $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt : $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt
 	bash checksum-tree-files.sh $(SUBPROB_RAW_EXPORT_DIR) && cp $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt
