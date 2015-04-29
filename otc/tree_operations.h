@@ -905,6 +905,7 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         if ((nn->isTip()) && !nn->hasOttId()) {
             for (auto o2n : other2new) {
                 if (o2n.second == nn) {
+                    LOG(ERROR) << "tip without label in copyTreeStructure";
                     throw OTCError("tip without label");
                 }
             }
