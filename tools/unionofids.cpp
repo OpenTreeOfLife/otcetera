@@ -6,7 +6,7 @@ typedef otc::RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > Tree_t;
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 
 struct UnionOfIdsState {
-    std::set<long> idsEncountered;
+    OttIdSet idsEncountered;
     int numErrors;
     UnionOfIdsState()
         :numErrors(0) {
@@ -21,7 +21,7 @@ struct UnionOfIdsState {
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
     UnionOfIdsState * ctsp = static_cast<UnionOfIdsState *>(otCLI.blob);
     assert(ctsp != nullptr);
-    std::set<long> & ier = ctsp->idsEncountered;
+    OttIdSet & ier = ctsp->idsEncountered;
     for (const auto nd : iter_node_const(*tree)) {
         if (nd->hasOttId()) {
             ier.insert(nd->getOttId());
