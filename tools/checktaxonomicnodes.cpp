@@ -6,6 +6,7 @@ typedef RTreeOttIDMapping<RTSplits> RootedTreeForNodeType;
 typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
 
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
+bool handlePrintDiff(OTCLI & otCLI, const std::string &);
 extern const char * badNTreesMessage;
 
 const char * badNTreesMessage = "Expecting only 2 trees a tree to check and the taxonomy!\n";
@@ -13,13 +14,16 @@ const char * badNTreesMessage = "Expecting only 2 trees a tree to check and the 
 struct CheckTaxonState {
     std::unique_ptr<Tree_t> toCheck;
     std::unique_ptr<Tree_t> taxonomy;
+    bool printDiff;
     int numErrors;
 
     CheckTaxonState()
         :toCheck(nullptr),
          taxonomy(nullptr),
+         printDiff(false),
          numErrors(0) {
-        }
+    }
+
     bool doCheckEquivalent(std::ostream &out,
                            long ottID,
                            const TaxoCheckNodeType * snode,
@@ -32,8 +36,10 @@ struct CheckTaxonState {
         if (streeDes != taxTreeDes) {
             if (topLevel) {
                 numErrors += 1;
-            //  out << "ottID " << ottID << " incorrect:\n";
-            //  writeOttSetDiff(out, "    ", streeDes, "toCheck", taxTreeDes, "taxonomy");
+                if (printDiff) {
+                    out << "ottID " << ottID << " incorrect:\n";
+                    writeOttSetDiff(out, "    ", streeDes, "toCheck", taxTreeDes, "taxonomy");
+                }
             }
             if (climbSynth && isProperSubset(streeDes, taxTreeDes)) {
                 return doCheckEquivalent(out, ottID, snode->getParent(), tnode, false, true, false);
@@ -79,8 +85,10 @@ struct CheckTaxonState {
             }
             return;
         }
+        if (numErrors > 0) {
+            otCLI.err << numErrors << " errors.\n";
+        }
     }
-
 };
 
 inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
@@ -98,12 +106,23 @@ inline bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) {
     return true;
 }
 
+bool handlePrintDiff(OTCLI & otCLI, const std::string &) {
+    CheckTaxonState * proc = static_cast<CheckTaxonState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->printDiff = true;
+    return true;
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-check-taxonomic-nodes",
                 "takes 2 newick file paths: to a tree with internal node names and a tree form of a taxonomy. Reports on any taxonomic names that do not map to the correct place in the first tree",
                 "some.tre taxonomy.tre");
     CheckTaxonState cts;
     otCLI.blob = static_cast<void *>(&cts);
+    otCLI.addFlag('d',
+                  "print a statement about the diff between a the content and the expected content for incorrect taxa",
+                  handlePrintDiff,
+                  false);
     auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 2);
     if (rc == 0) {
         cts.summarize(otCLI);

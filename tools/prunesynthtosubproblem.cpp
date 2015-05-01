@@ -41,7 +41,6 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
     }
 
     bool processSubproblemTree(OTCLI & otCLI, const TreeMappedWithSplits & tree) {
-        std::cout << "processSubproblemTree from " << otCLI.currentFilename << "\n";
         for (const auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->getOttId();
             if (nd->hasOttId()) {
@@ -53,7 +52,6 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
                     includedNodes.insert(synthNode);
                     insertAncestorsToParaphyleticSet(synthNode, includedNodes);
                 }
-                insertDescendantsOfUnincludedSubtrees(synthNode, includedNodes);
             } else {
                 auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
                 assert(taxoNode != nullptr);
