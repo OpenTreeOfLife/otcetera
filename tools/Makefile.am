@@ -3,13 +3,13 @@ AM_CPPFLAGS = -I@top_srcdir@/otc
 bin_PROGRAMS = otc-assert-invariants \
 				otc-check-taxonomic-nodes \
 				otc-detect-contested \
+				otc-distance \
 				otc-find-unsupported-nodes \
 				otc-prune-taxonomy \
 				otc-scaffolded-supertree \
 				otc-count-leaves \
 				otc-degree-distribution \
 				otc-induced-subtree \
-				otc-missing-splits \
 				otc-nonterminals-to-exemplars \
 				otc-polytomy-count \
 				otc-prune-to-subtree \
@@ -17,7 +17,6 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
 				otc-union-of-ids \
-				otc-rf \
 				otc-suppress-monotypic
 
 
@@ -69,8 +68,8 @@ otc_count_leaves_CPPFLAGS = $(AM_CPPFLAGS)
 otc_induced_subtree_SOURCES = inducedsubtree.cpp
 otc_induced_subtree_CPPFLAGS = $(AM_CPPFLAGS)
 
-otc_rf_SOURCES = rf.cpp
-otc_rf_CPPFLAGS = $(AM_CPPFLAGS)
+otc_distance_SOURCES = distance.cpp
+otc_distance_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_missing_splits_SOURCES = missingsplits.cpp
 otc_missing_splits_CPPFLAGS = $(AM_CPPFLAGS)
