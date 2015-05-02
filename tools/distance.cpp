@@ -63,6 +63,8 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
                 }
             }
             totalNumNotDisplayed += numNotDisplayed;
+            totalNumDisplayed += numDisplayed;
+
         }
         // display
         // header if first comparison
@@ -118,11 +120,61 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
 
 };
 
+bool handleShowRF(OTCLI & otCLI, const std::string &);
+bool handleShowNumDisplayed(OTCLI & otCLI, const std::string &);
+bool handleShowShowNumNotDisplayed(OTCLI & otCLI, const std::string &);
+bool handleShowInternals(OTCLI & otCLI, const std::string &);
+
+bool handleShowRF(OTCLI & otCLI, const std::string &) {
+    DistanceState * proc = static_cast<DistanceState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->showRF = true;
+    return true;
+}
+
+bool handleShowNumDisplayed(OTCLI & otCLI, const std::string &) {
+    DistanceState * proc = static_cast<DistanceState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->showNumDisplayed = true;
+    return true;
+}
+
+bool handleShowShowNumNotDisplayed(OTCLI & otCLI, const std::string &) {
+    DistanceState * proc = static_cast<DistanceState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->showNumNotDisplayed = true;
+    return true;
+}
+
+bool handleShowInternals(OTCLI & otCLI, const std::string &) {
+    DistanceState * proc = static_cast<DistanceState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->showNumInternals = true;
+    return true;
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-distance",
                 "takes at least 2 newick file paths: a supertree and some number of input trees. Writes one line for each input tree with the statistics requested for the comparison of the supertree to each input tree.",
                 "synth.tre inp1.tre inp2.tre");
     DistanceState proc;
+    otCLI.addFlag('r',
+                  "Show RF symmetric distance",
+                  handleShowRF,
+                  false);
+    otCLI.addFlag('d',
+                  "Show number of grouping in each input displayed on full tree",
+                  handleShowNumDisplayed,
+                  false);
+    otCLI.addFlag('n',
+                  "Show number of grouping in each input NOT displayed on full tree",
+                  handleShowShowNumNotDisplayed,
+                  false);
+    otCLI.addFlag('i',
+                  "Show the number of internal groupings in each input tree",
+                  handleShowInternals,
+                  false);
+    
     auto rc = taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
     return rc;
 }
