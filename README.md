@@ -228,24 +228,19 @@ of its siblings (`-s` flag and writing one line per sib):
 
 **Untested**
 
-### Find RF between induced trees.
-`otc-rf` takes at least 2 newick file paths: a full tree, and some number of input trees. 
-It will print the Robinson-Foulds symmetric difference between the induced tree from the full tree to each input tree (one RF distance per line):
+### Find distance between a supertree and the input trees
+`otc-disance` takes at least 2 newick file paths: a supertree, and some number of input trees. 
+It will print the Robinson-Foulds symmetric difference between the induced tree from the full tree to each 
+input tree (one RF distance per line), or the number of groupings in each input tree that are 
+either displayed or not displayed by the supertree
 
-    otc-rf taxonomy.tre inp1.tre inp2.tre
+    otc-distance -r taxonomy.tre inp1.tre inp2.tre
 
-Note the `otc-missing-splits` script reports just the splits in the induced tree that are missing from the subsequent trees.
+Note the `otc-missing-splits` script reports just the splits in the induced tree that are
+missing from the subsequent trees.
 Comparing this number to the RF would reveal the number of groupings that are missing from the induced
 tree but present in a subsequent tree.
 Thus, one can calculate "missing" and "extra" grouping counts from the output of both tools.
-
-**Untested**
-
-### Find groupings that are missing from a set of trees
-
-`otc-missing-splits` takes at least 2 newick file paths: a full tree, and some number of input trees. Writes the number of splits in the induced full tree that are missing from the each other tree:
-
-    otc-missing-splits taxonomy.tre inp1.tre
 
 **Untested**
 
