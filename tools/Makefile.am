@@ -5,6 +5,7 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-detect-contested \
 				otc-distance \
 				otc-find-unsupported-nodes \
+				otc-find-resolution \
 				otc-prune-taxonomy \
 				otc-scaffolded-supertree \
 				otc-count-leaves \
@@ -40,6 +41,9 @@ otc_detect_contested_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_uncontested_decompose_SOURCES = uncontesteddecompose.cpp
 otc_uncontested_decompose_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_find_resolution_SOURCES = findresolution.cpp
+otc_find_resolution_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_find_unsupported_nodes_SOURCES = findunsupportednodes.cpp
 otc_find_unsupported_nodes_CPPFLAGS = $(AM_CPPFLAGS)
