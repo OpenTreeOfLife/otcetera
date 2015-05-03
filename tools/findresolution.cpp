@@ -2,7 +2,6 @@
 #include "otc/supertree_util.h"
 using namespace otc;
 
-// "taxonomy" here is the synthetic tree
 struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
     std::unique_ptr<TreeMappedWithSplits> toCheck;
     std::size_t numIncludable;
@@ -20,12 +19,27 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         return numErrors == 0;
     }
 
+    virtual bool processTaxonomyTree(OTCLI & otCLI) override {
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+        otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
+        // now we get a little cute and reprocess the taxonomy desIds so that they 
+        // exclude internals. So that when we expand source trees, we expand just
+        // to the taxonomy's leaf set
+        clearAndfillDesIdSets(*taxonomy);
+        return true;
+    }
+    
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
+        if (toCheck == nullptr) {
+            toCheck = std::move(tree);
+            otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+            return true;
+        }
         const OttIdSet & treeLeafSet = tree->getRoot()->getData().desIds;
         for (auto nd : iter_pre_internal_const(*tree)) {
             const OttIdSet & incGroup = nd->getData().desIds;
-            auto mrca = findMRCAUsingDesIds(*taxonomy, incGroup);
+            auto mrca = findMRCAUsingDesIds(*toCheck, incGroup);
             OttIdSet md = mrca->getData().desIds;
             OttIdSet rmd;
             for (auto i : md) {
