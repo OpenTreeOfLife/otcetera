@@ -38,7 +38,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         }
         const OttIdSet & treeLeafSet = tree->getRoot()->getData().desIds;
         for (auto nd : iter_pre_internal_const(*tree)) {
-            const OttIdSet & incGroup = nd->getData().desIds;
+            /*const OttIdSet & incGroup = nd->getData().desIds;
             auto mrca = findMRCAUsingDesIds(*toCheck, incGroup);
             OttIdSet md = mrca->getData().desIds;
             OttIdSet rmd;
@@ -57,7 +57,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             if (canBeResolvedToDisplayExcGroup(mrca, incGroup, excGroup)) {
                 numIncludable += 1;
                 otCLI.out << otCLI.currentFilename << " node " << getDesignator(*nd) << " could be added.\n";
-            }
+            }*/
         }
         return true;
     }
