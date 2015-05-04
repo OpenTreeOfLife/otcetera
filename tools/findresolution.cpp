@@ -72,5 +72,5 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a full supertree, and some number of input trees",
                 "synth.tre inp1.tre inp2.tre ...");
     FindResolutionState proc;
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, true);
 }
