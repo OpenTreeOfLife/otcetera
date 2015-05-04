@@ -112,6 +112,30 @@ The taxonomy is just used for the ottID validation (on the assumption that
 the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
 can help identify problems with those nodes).
 
+### Checking for incorrect internal labels in a full tree
+
+    otc-check-taxonomic-nodes synth.tre taxonomy.tre
+
+will check every labelled internal node is correctly labelled. To do this, it 
+verifies that the set of OTT ids associated with tips that descend from the 
+node is identical to the set of OTT ids associated with terminal taxa below
+the corresponding node in the taxonomic tree.
+
+A brief report will be issued for every problematic labeling. 
+`otc-taxon-conflict-report` takes at least 2 newick file paths: a full tree, and some number of input trees.
+It will write a summary of the difference in taxonomic inclusion for nodes that are in conflict:
+
+    otc-taxon-conflict-report taxonomy.tre inp1.tre inp2.tre
+
+
+### Checking for additional splits that could be added
+
+    otc-find-resolution taxonomy.tre synth.tre tree1.tre tree2.tre ...
+
+will look for groups in the input trees (`tree1.tre`, `tree2.tre`...) which could
+resolve polytomies in `synth.tre`.  `taxonomy.tre` is used for label validation
+and expanding any tips in input trees that are mapped to non-terminal taxa.
+
 ## Tools used in the supertree pipeline
 ### expanding tips mapped to higher taxa and pruning the taxonomy
 `otc-nonterminals-to-exemplars` takes an -e flag specifying an export diretory and at least 2 newick file paths: a full taxonomy tree some number of input trees.
@@ -136,21 +160,6 @@ not include subtrees that do not include any of the tips of the input trees.  Se
 [supertree/step-2-pruned-taxonomy/README.md](./supertree/step-2-pruned-taxonomy/README.md)
 for a more precise description of the pruning rules. This is intended to be used in the
 [ranked tree supertree pipeline](./supertree/README.md),
-
-### Checking for incorrect internal labels in a full tree
-
-    otc-check-taxonomic-nodes synth.tre taxonomy.tre
-
-will check every labelled internal node is correctly labelled. To do this, it 
-verifies that the set of OTT ids associated with tips that descend from the 
-node is identical to the set of OTT ids associated with terminal taxa below
-the corresponding node in the taxonomic tree.
-
-A brief report will be issued for every problematic labeling. 
-`otc-taxon-conflict-report` takes at least 2 newick file paths: a full tree, and some number of input trees.
-It will write a summary of the difference in taxonomic inclusion for nodes that are in conflict:
-
-    otc-taxon-conflict-report taxonomy.tre inp1.tre inp2.tre
 
 ### decomposing set of  trees into subproblems based on uncontested taxa
 
