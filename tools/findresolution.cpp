@@ -43,6 +43,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                 return false;
             }
             writeTreeAsNewick(otCLI.out, *toCheck);
+            otCLI.out << '\n';
             return true;
         }
         otCLI.out << numIncludable << " clades found which could be added to the tree.\n";
