@@ -21,7 +21,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
     virtual bool processTaxonomyTree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
-        otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
+        otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set
@@ -36,10 +36,13 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
             return true;
         }
+        expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
+        clearAndfillDesIdSets(*tree);
         const OttIdSet & treeLeafSet = tree->getRoot()->getData().desIds;
         for (auto nd : iter_pre_internal_const(*tree)) {
-            /*const OttIdSet & incGroup = nd->getData().desIds;
+            const OttIdSet & incGroup = nd->getData().desIds;
             auto mrca = findMRCAUsingDesIds(*toCheck, incGroup);
+            assert(mrca);
             OttIdSet md = mrca->getData().desIds;
             OttIdSet rmd;
             for (auto i : md) {
@@ -57,7 +60,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             if (canBeResolvedToDisplayExcGroup(mrca, incGroup, excGroup)) {
                 numIncludable += 1;
                 otCLI.out << otCLI.currentFilename << " node " << getDesignator(*nd) << " could be added.\n";
-            }*/
+            }
         }
         return true;
     }
