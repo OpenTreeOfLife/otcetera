@@ -2,23 +2,23 @@ LDADD       = @top_builddir@/otc/libotcetera.la
 AM_CPPFLAGS = -I@top_srcdir@/otc
 bin_PROGRAMS = otc-assert-invariants \
 				otc-check-taxonomic-nodes \
+				otc-count-leaves \
+				otc-degree-distribution \
 				otc-detect-contested \
 				otc-distance \
 				otc-find-unsupported-nodes \
 				otc-find-resolution \
-				otc-prune-taxonomy \
-				otc-scaffolded-supertree \
-				otc-count-leaves \
-				otc-degree-distribution \
 				otc-induced-subtree \
 				otc-nonterminals-to-exemplars \
 				otc-polytomy-count \
-				otc-prune-to-subtree \
 				otc-prune-synth-to-subproblem \
+				otc-prune-taxonomy \
+				otc-prune-to-subtree \
+				otc-scaffolded-supertree \
+				otc-suppress-monotypic \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
-				otc-union-of-ids \
-				otc-suppress-monotypic
+				otc-union-of-ids
 
 
 otc_nonterminals_to_exemplars_SOURCES = nonterminaltoexemplars.cpp
@@ -74,9 +74,6 @@ otc_induced_subtree_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_distance_SOURCES = distance.cpp
 otc_distance_CPPFLAGS = $(AM_CPPFLAGS)
-
-otc_missing_splits_SOURCES = missingsplits.cpp
-otc_missing_splits_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_taxon_conflict_report_SOURCES = taxonconflictreport.cpp
 otc_taxon_conflict_report_CPPFLAGS = $(AM_CPPFLAGS)
