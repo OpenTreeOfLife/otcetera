@@ -28,10 +28,19 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
         }
         assert(taxonomy != nullptr && !includedNodes.empty());
         std::set<RootedTreeNodeNoData *> toPrune;
+        std::size_t numLeavesPruned = 0;
+        std::size_t numInternalsPruned = 0;
         for (auto nd : iter_node(*taxonomy)) {
             const RootedTreeNodeNoData *  c = const_cast<const RootedTreeNodeNoData *>(nd);
-            if ((!contains(includedNodes, c)) && contains(includedNodes, c->getParent())) {
-                toPrune.insert(nd);
+            if (!contains(includedNodes, c)) {
+                if (contains(includedNodes, c->getParent())) {
+                    toPrune.insert(nd);
+                }
+                if (c->isTip()) {
+                    numLeavesPruned += 1;
+                } else {
+                    numInternalsPruned += 1;
+                }
             }
         }
         for (auto nd : toPrune) {
@@ -39,6 +48,8 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
         }
         writeTreeAsNewick(otCLI.out, *taxonomy);
         otCLI.out << '\n';
+        otCLI.err << numLeavesPruned << " terminal taxa pruned\n";
+        otCLI.err << numInternalsPruned << " non-terminal taxa pruned\n";
         return true;
     }
 

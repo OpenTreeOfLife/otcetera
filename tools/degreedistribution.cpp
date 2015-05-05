@@ -6,16 +6,22 @@ template<typename T>
 bool writeDegreeDistribution(OTCLI & , std::unique_ptr<T> tree);
 
 template<typename T>
-inline bool writeDegreeDistribution(OTCLI & , std::unique_ptr<T> tree) {
+inline bool writeDegreeDistribution(OTCLI & otCLI, std::unique_ptr<T> tree) {
     std::map<unsigned long, unsigned long> degreeDistribution;
     for (auto nd : iter_pre_const(*tree)) {
         auto od = nd->getOutDegree();
         degreeDistribution[od] += 1;
     }
-    std::cout << "Out-degree\tCount\n";
+    otCLI.out << "Out-degree\tCount\n";
+    std::size_t numNodes = 0U;
     for (auto p: degreeDistribution) {
-        std::cout << p.first << "\t" << p.second << "\n";
+        otCLI.out << p.first << "\t" << p.second << "\n";
+        numNodes += p.second;
     }
+    const auto numLeaves = degreeDistribution[0];
+    otCLI.err << numLeaves << " leaves\n";
+    otCLI.err << numNodes - numLeaves << " non-leaf nodes (internals including the root)\n";
+    otCLI.err << numNodes << " total nodes\n";
     return true;
 }
 
