@@ -49,6 +49,7 @@ int summarize(OTCLI & otCLI) {
     otCLI.out << '\t' << "InSp";
     otCLI.out << '\t' << "LSS";
     otCLI.out << '\t' << "ILSS";
+    otCLI.out << '\t' << "NT";
     otCLI.out << '\t' << "TreeSummaryName";
     otCLI.out << '\n';
     
@@ -71,6 +72,7 @@ int summarize(OTCLI & otCLI) {
             otCLI.out << '\t' << pts.numInformativeGroups;
             otCLI.out << '\t' << pts.leafSet.size();
             otCLI.out << '\t' << pts.leavesInIngroupSet.size();
+            otCLI.out << '\t'; // number of trees
             otCLI.out << '\t' << i++;
             otCLI.out << '\n';
             leafSet.insert(begin(pts.leafSet), end(pts.leafSet));
@@ -81,12 +83,14 @@ int summarize(OTCLI & otCLI) {
         otCLI.out << '\t' << allButTaxNumInformativeGroups;
         otCLI.out << '\t' << allButTaxLeafSet.size();
         otCLI.out << '\t' << allButTaxLeavesInIngroupSet.size();
+        otCLI.out << '\t' << pss.pts.size() - 1;
         otCLI.out << '\t' << "Phylo-only";
         otCLI.out << '\n';
         otCLI.out << name ;
         otCLI.out << '\t' << numInformativeGroups;
         otCLI.out << '\t' << leafSet.size();
         otCLI.out << '\t' << leavesInIngroupSet.size();
+        otCLI.out << '\t' << pss.pts.size();
         otCLI.out << '\t' << "Total";
         otCLI.out << '\n';
    }
@@ -101,6 +105,7 @@ int main(int argc, char *argv[]) {
                 "    InSp = # of informative (nontrivial) splits\n" \
                 "    LSS = size of the leaf label set\n" \
                 "    ILSS = size of the set of labels included in at least one \"ingroup\"\n" \
+                "    NT = The number of trees.\n" \
                 "    TreeSummaryName = tree index or summary name\n" \
                 "where the summary name can be Phylo-only or Total. \n" \
                 "  \"Total\" summarizes info all trees in the file (including the taxonomy).\n" \
