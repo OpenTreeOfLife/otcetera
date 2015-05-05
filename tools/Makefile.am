@@ -15,11 +15,14 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-prune-taxonomy \
 				otc-prune-to-subtree \
 				otc-scaffolded-supertree \
+				otc-subproblem-stats \
 				otc-suppress-monotypic \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
 				otc-union-of-ids
 
+otc_subproblem_stats_SOURCES = subproblemstats.cpp
+otc_subproblem_stats_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_nonterminals_to_exemplars_SOURCES = nonterminaltoexemplars.cpp
 otc_nonterminals_to_exemplars_CPPFLAGS = $(AM_CPPFLAGS)
