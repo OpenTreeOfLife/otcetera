@@ -183,6 +183,25 @@ of the its inputs.
 
 ## Miscellaneous tree manipulations and tree statistics
 
+### Calculating stats for the subproblems
+This works on the outputs of `otc-uncontested-decompose`. Running:
+
+    otc-subproblem-stats *.tre > stats.tsv
+
+Will create a tab-separated file of stats for the subproblems.
+As of 5, May 2015, the columns of the report are:
+  *  Subproblem name
+  * InSp = # of informative (nontrivial) splits
+  * LSS = size of the leaf label set
+  * ILSS = size of the set of labels included in at least one "ingroup"
+  * NT = The number of trees.
+  * TreeSummaryName = tree index or summary name where the summary name can be Phylo-only or Total. 
+  "Total" summarizes info all trees in the file (including the taxonomy).
+  "Phylo-only" former summarizes all of the phylogenetic inputs.
+
+Use the `-h` option to see an explanation of the columns if they differ from this list.
+
+
 ### getting the full distribution of out degree counts for a tree
 
     otc-degree-distribution sometree.tre
