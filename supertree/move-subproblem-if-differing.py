@@ -8,20 +8,18 @@ import os
 
 SCRIPT_NAME = os.path.split(sys.argv[0])[1]
 args = sys.argv[1:]
-for i in args[1:]:
+for i in args[2:]:
     if not os.path.isdir(i):
         sys.exit('{}: Expecting "{}" to be a directory'.format(SCRIPT_NAME, i))
-subprob_list_fp, fresh_decomp, full_subprob, simple_subprob, solutions = args
-subprob_list_fn = os.path.split(subprob_list_fp)[1]
+subprob_tree_fn, fresh_decomp, full_subprob, simple_subprob, solutions = args
+subprob_tree_fn = os.path.split(subprob_tree_fn)[1]
 context = OtcPipelineContext(raw_output_dir=fresh_decomp,
                              stage_output_dir=full_subprob,
                              simplified_output_dir=simple_subprob,
                              solution_dir=solutions)
-id_list = context.read_artifact_id_list_file(subprob_list_fp)
-id_list.sort()
+fid = context.subproblem_id_from_filename(subprob_tree_fn)
 try:
-    for fid in id_list:
-        context.process_raw_subproblem_output(fid)
+    context.process_raw_subproblem_output(fid)
 except Exception as x:
     if 'OTC_VERBOSE' in os.environ: # stacktrace for developers
         raise
