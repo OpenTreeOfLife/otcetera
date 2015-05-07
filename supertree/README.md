@@ -15,6 +15,24 @@ The tree will be build-able by:
     `$ make`
 
 # Currently
+**Warning** the 2 Makfiles (`Makefile.exemplar` and `Makefile.synth-v3)
+here clash because they reuse the same set of temporary
+directories!.
+You choose the one you want (via adding a `-f` flag to `make` calls
+below to specify the Makefile or by renaming one to `Makefile`).
+If you change to the other one, you need to clean the temporaries!
+
+`Makefile.exemplar` exemplifies taxa mapped to non-terminal taxa.
+
+`Makefile.synth-v3` is the version used to create the decompositions (on 29 Apr, 2014)
+for the 3rd version of the synthetic tree.
+That version of the decomposition does not replace higher taxa with exemplars.
+The subproblems from that run 
+are posted at http://phylo.bio.ku.edu/ot/subproblems-v3.tar.gz
+for the time being.
+That archive was created by renaming `step_7_scratch/export-sub-temp` and then tar+gzipping it.
+The pruned taxonomy (copied from `step_6/taxonomy.tre`) is posted at http://phylo.bio.ku.edu/ot/synth-v3-pruned-taxonomy.tre
+
 This pipeline is not working yet. Running `make` will ultimately exit with an error, 
 but it should run long enough to produce the decomposition into subproblems
 
