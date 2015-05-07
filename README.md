@@ -112,6 +112,30 @@ The taxonomy is just used for the ottID validation (on the assumption that
 the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
 can help identify problems with those nodes).
 
+### Checking for incorrect internal labels in a full tree
+
+    otc-check-taxonomic-nodes synth.tre taxonomy.tre
+
+will check every labelled internal node is correctly labelled. To do this, it 
+verifies that the set of OTT ids associated with tips that descend from the 
+node is identical to the set of OTT ids associated with terminal taxa below
+the corresponding node in the taxonomic tree.
+
+A brief report will be issued for every problematic labeling. 
+`otc-taxon-conflict-report` takes at least 2 newick file paths: a full tree, and some number of input trees.
+It will write a summary of the difference in taxonomic inclusion for nodes that are in conflict:
+
+    otc-taxon-conflict-report taxonomy.tre inp1.tre inp2.tre
+
+
+### Checking for additional splits that could be added
+
+    otc-find-resolution taxonomy.tre synth.tre tree1.tre tree2.tre ...
+
+will look for groups in the input trees (`tree1.tre`, `tree2.tre`...) which could
+resolve polytomies in `synth.tre`.  `taxonomy.tre` is used for label validation
+and expanding any tips in input trees that are mapped to non-terminal taxa.
+
 ## Tools used in the supertree pipeline
 ### expanding tips mapped to higher taxa and pruning the taxonomy
 `otc-nonterminals-to-exemplars` takes an -e flag specifying an export diretory and at least 2 newick file paths: a full taxonomy tree some number of input trees.
@@ -137,21 +161,6 @@ not include subtrees that do not include any of the tips of the input trees.  Se
 for a more precise description of the pruning rules. This is intended to be used in the
 [ranked tree supertree pipeline](./supertree/README.md),
 
-### Checking for incorrect internal labels in a full tree
-
-    otc-check-taxonomic-nodes synth.tre taxonomy.tre
-
-will check every labelled internal node is correctly labelled. To do this, it 
-verifies that the set of OTT ids associated with tips that descend from the 
-node is identical to the set of OTT ids associated with terminal taxa below
-the corresponding node in the taxonomic tree.
-
-A brief report will be issued for every problematic labeling. 
-`otc-taxon-conflict-report` takes at least 2 newick file paths: a full tree, and some number of input trees.
-It will write a summary of the difference in taxonomic inclusion for nodes that are in conflict:
-
-    otc-taxon-conflict-report taxonomy.tre inp1.tre inp2.tre
-
 ### decomposing set of  trees into subproblems based on uncontested taxa
 
     otc-uncontested-decompose -eEXPORT taxonomy.tre -ftree-list.txt
@@ -173,6 +182,25 @@ should be an input tree filepath. Each output will have:
 of the its inputs.
 
 ## Miscellaneous tree manipulations and tree statistics
+
+### Calculating stats for the subproblems
+This works on the outputs of `otc-uncontested-decompose`. Running:
+
+    otc-subproblem-stats *.tre > stats.tsv
+
+Will create a tab-separated file of stats for the subproblems.
+As of 5, May 2015, the columns of the report are:
+  *  Subproblem name
+  * InSp = # of informative (nontrivial) splits
+  * LSS = size of the leaf label set
+  * ILSS = size of the set of labels included in at least one "ingroup"
+  * NT = The number of trees.
+  * TreeSummaryName = tree index or summary name where the summary name can be Phylo-only or Total. 
+  "Total" summarizes info all trees in the file (including the taxonomy).
+  "Phylo-only" former summarizes all of the phylogenetic inputs.
+
+Use the `-h` option to see an explanation of the columns if they differ from this list.
+
 
 ### getting the full distribution of out degree counts for a tree
 
@@ -228,24 +256,19 @@ of its siblings (`-s` flag and writing one line per sib):
 
 **Untested**
 
-### Find RF between induced trees.
-`otc-rf` takes at least 2 newick file paths: a full tree, and some number of input trees. 
-It will print the Robinson-Foulds symmetric difference between the induced tree from the full tree to each input tree (one RF distance per line):
+### Find distance between a supertree and the input trees
+`otc-disance` takes at least 2 newick file paths: a supertree, and some number of input trees. 
+It will print the Robinson-Foulds symmetric difference between the induced tree from the full tree to each 
+input tree (one RF distance per line), or the number of groupings in each input tree that are 
+either displayed or not displayed by the supertree
 
-    otc-rf taxonomy.tre inp1.tre inp2.tre
+    otc-distance -r taxonomy.tre inp1.tre inp2.tre
 
-Note the `otc-missing-splits` script reports just the splits in the induced tree that are missing from the subsequent trees.
+Note the `otc-missing-splits` script reports just the splits in the induced tree that are
+missing from the subsequent trees.
 Comparing this number to the RF would reveal the number of groupings that are missing from the induced
 tree but present in a subsequent tree.
 Thus, one can calculate "missing" and "extra" grouping counts from the output of both tools.
-
-**Untested**
-
-### Find groupings that are missing from a set of trees
-
-`otc-missing-splits` takes at least 2 newick file paths: a full tree, and some number of input trees. Writes the number of splits in the induced full tree that are missing from the each other tree:
-
-    otc-missing-splits taxonomy.tre inp1.tre
 
 **Untested**
 
