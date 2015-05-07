@@ -47,6 +47,8 @@
 \newcommand{\NeedsAlgorithmicWork}{{\comment{This needs algorithmic work.}}}
 \newcommand{\ProofWriteupNeeded}{{\comment{Need to write up this proof}}}
 % Notation
+\newcommand{\pssInOptimalTree}{\ensuremath{\hat{\mathcal{S}}}\xspace}
+\newcommand{\tripleSetInOptimal}{\ensuremath{\hat{\mathcal{R}}}\xspace}
 \newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
 \newcommand{\parent}[1]{\ensuremath{\mbox{parent}(#1)}}
 \newcommand{\children}[1]{\ensuremath{\mbox{children}(#1)}}
@@ -166,6 +168,20 @@ Unfortunately, that proof only applies to an exact algorithm which returns
 We do not know of a polynomial-time algorithm for solving that problem.
 
 \subsection{Trees without unsupported groups}\label{unsupportedTheory}
+It turns out that our ``no unsupported groups'' rule corresponds to:
+\begin{compactenum}
+    \item Finding a tree, $T$, that maximizes the score by displaying as many high-ranking input \pss as possible.
+    \item Let \pssInOptimalTree denote the set of input \pss displayed by this tree.
+    \item Let \tripleSetInOptimal denote a set of rooted triples that is sufficient to encode the information in \pssInOptimalTree.
+    \item Collapse edges in $T$ to create $T^{\ast}$ which is a minor-minimal tree with respect to \tripleSetInOptimal
+\end{compactenum}
+\citet{JanssonLL2012} define ``minor-minimal'' from \citet{Semple2003}:
+\begin{quote}
+``If $T$ is a phylogenetic tree consistent with $\mathcal{R}$ and it is not possible to obtain a tree consistent with $\mathcal{R}$ by contracting an internal edge of $T$, then $T$ is called minor-minimal with respect to $\mathcal{R}$.''
+\end{quote}
+A minor-minimal tree will display no unsupported groups.
+
+
 Consider an edge connecting parent $\parent{V}$ to it child $V$ in a complete tree $T$.
 This edge is supported (or ``the node $V$ is supported'') in the sense of the \MSWIPSD score if
     collapsing the edge leads to a lower (worse) score.
@@ -212,6 +228,10 @@ They define a minimally resolve supertree (\textsc{MinRS} tree): for ``a set $\m
 They present a polynomial time algorithm for finding the \textsc{MinRS} tree for pectinate tree shapes.
 Their general algorithm for finding \textsc{MinRS} in $2^{O(n\log p)}$ time where $n$ is the number of 
     leaves and $p$ is the largest outdegree of any internal nodes in the output.
+
+\subsubsection{trees that are minor-minimal with respect to set of triples}
+\textsc{Note: I should have read \citet{JanssonLL2012} further before writing the next paragraph.}
+Page 277 of \citet{JanssonLL2012} points out that the concept of minor-minimal trees from \citet{Semple2003} is not the same as minimally resolved trees.
 
 Note that, every internal node of a \textsc{MinRS} tree will be ``supported'', but the
     ``no unsupported nodes'' rule is not the same as the \textsc{MinRS} rule.
@@ -861,6 +881,8 @@ Note that the original BUILD has scaling $O(MN)$ where $N$ is the number of leav
 
 If the number of splits in $\mathcal{C}$ is not too large, then we could use the (exponential) algorithm
     of \citet{JanssonLL2012} to find a \textsc{MinRS} tree to find a solution to the subproblem.
+
+\textsc{Note: it looks like \citet{ByrkaGJ2010} have a method for finding a set of consistent splits}
 
 \subsection{Partial rankings}
 (this section has some crude thoughts and no good solution.)
