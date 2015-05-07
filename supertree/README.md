@@ -14,8 +14,8 @@ The tree will be build-able by:
   3. and then building with:
     `$ make`
 
-# Currently
-**Warning** the 2 Makfiles (`Makefile.exemplar` and `Makefile.synth-v3)
+# Warning about the 2 Makefiles
+**Warning** the 2 Makefiles (`Makefile.exemplar` and `Makefile.synth-v3`)
 here clash because they reuse the same set of temporary
 directories!.
 You choose the one you want (via adding a `-f` flag to `make` calls
@@ -33,15 +33,15 @@ for the time being.
 That archive was created by renaming `step_7_scratch/export-sub-temp` and then tar+gzipping it.
 The pruned taxonomy (copied from `step_6/taxonomy.tre`) is posted at http://phylo.bio.ku.edu/ot/synth-v3-pruned-taxonomy.tre
 
-This pipeline is not working yet. Running `make` will ultimately exit with an error, 
-but it should run long enough to produce the decomposition into subproblems
+# Warning about the fact that `make` will fail
 
-There is some cruft from a previous stab at the pipeline (see [here](./cruft/README.md)).
-I'm in the process of refactoring to agree with the pipeline described in the doc subdir:
-`../doc/summarizing-taxonomy-plus-trees.tex` (also occasionally posted to
-    [this spot](phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf) on the Holder lab site).
-Each of the steps in section 2 of that doc are mapped to `step_#` directories in this new
-system.  So `step_1` is described in section 2.1 of that doc; `step_2` is section 2.2; *etc*.
+The full pipeline is not working yet.
+In version 3 of the synthetic tree, `treemachine` is
+used for the analysis of each subproblem.
+
+So, running `make` here will ultimately exit with an error, 
+but it should run long enough to produce the decomposition into subproblems.
+
 
 ## Usage
 
@@ -77,3 +77,12 @@ If you have the appropriate branch of `peyotl` installed, then you should get at
 subproblems moved from `step_7_scratch/export-sub-temp` to `step_7`, but that directory
 is likely to be incomplete if the `move-subproblems-if-differing.py` step did not succeed.
 Use `step_7_scratch/export-sub-temp` if you just want the subproblems!
+
+
+# Note about old version of the pipeline
+There is some cruft from a previous stab at the pipeline (see [here](./cruft/README.md)).
+I'm in the process of refactoring to agree with the pipeline described in the doc subdir:
+`../doc/summarizing-taxonomy-plus-trees.tex` (also occasionally posted to
+    [this spot](phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf) on the Holder lab site).
+Each of the steps in section 2 of that doc are mapped to `step_#` directories in this new
+system.  So `step_1` is described in section 2.1 of that doc; `step_2` is section 2.2; *etc*.
