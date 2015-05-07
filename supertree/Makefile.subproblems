@@ -1,0 +1,32 @@
+STEP_7_SCRATCH_DIR=step_7_scratch
+STEP_7_DIR=step_7
+STEP_8_DIR=step_8
+STEP_9_DIR=step_9
+SUBPROB_RAW_EXPORT_DIR=$(STEP_7_SCRATCH_DIR)/export-sub-temp
+SUBPROB_LIST=$(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt
+SUBPROB_FILENAMES=$(shell cat $(SUBPROB_LIST))
+PHYLO_TREE_NAMES_FILENAMES=$(shell sed -e 's/.tre$$/-tree-names.txt/' $(SUBPROB_LIST))
+PHYLO_MD5_FILENAMES=$(shell sed -e 's/.tre$$/.md5/' $(SUBPROB_LIST))
+
+STEP_7_PHYLO_OUTPUT_TREE_PATHS=$(addprefix $(STEP_7_DIR)/, $(SUBPROB_FILENAMES))
+STEP_7_PHYLO_OUTPUT_TREE_NAME_PATHS=$(addprefix $(STEP_7_DIR)/, $(PHYLO_TREE_NAMES_FILENAMES))
+STEP_7_PHYLO_OUTPUT_MD5_PATHS=$(addprefix $(STEP_7_DIR)/, $(PHYLO_MD5_FILENAMES))
+
+# Eventually $(STEP_4_PHYLO_OUTPUT_PATHS) should be added to the artifact list...
+ARTIFACTS=$(STEP_7_PHYLO_OUTPUT_TREE_PATHS) \
+	$(STEP_7_PHYLO_OUTPUT_TREE_NAME_PATHS) \
+	$(STEP_7_PHYLO_OUTPUT_MD5_PATHS)
+
+
+# default is "all"
+all: $(ARTIFACTS)
+	
+
+clean:
+	rm -f $(ARTIFACTS)
+
+
+# Here is the rest of step 7 (see Makefile.exempler)
+
+step_7/%.tre : $(SUBPROB_RAW_EXPORT_DIR)/%.tre
+	python move-subproblem-if-differing.py $(SUBPROB_RAW_EXPORT_DIR)/$*.tre $(SUBPROB_RAW_EXPORT_DIR) $(STEP_7_DIR) $(STEP_8_DIR) $(STEP_9_DIR)
