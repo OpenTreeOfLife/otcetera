@@ -52,11 +52,11 @@ The instructions are in [./step_1/README.md](./step_1/README.md) and
   2. put the `otcetera` tools on your `PATH`. I like to:
     1. use the `--prefix="$PWD/installed"` as an argument to configure when I am building `otcetera`. 
     2. run `make && make check && make install` to put all of the tools in `./installed/bin`. 
-    3. `cd ./installed/bin ; export PATH="${PATH}:${PWD}; cd -" to put the installed `bin` on my `PATH`.
+    3. `cd ./installed/bin ; export PATH="${PATH}:${PWD}; cd -"` to put the installed `bin` on my `PATH`.
 
-  3. run `make` from the supertree directory.
+  3. run `make -fMakefile.synth-v3` from the supertree directory.
 
-## Expected outcome
+## Expected outcome of `Makefile.synth-v3`
 It should eventually crash with a message like:
 
     python move-subproblems-if-differing.py step_7_scratch/checksummed-subproblem-ids.txt step_7_scratch/export-sub-temp step_7 step_8 step_9
