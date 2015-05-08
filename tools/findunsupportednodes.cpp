@@ -123,13 +123,13 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         } 
         out << "Final summary:\n";
         out << ss.numSupportedInternals << " internal nodes where flagged as being supported in some sense.\n";
-        out << "   In the run mode you requested, this means each of these nodes was supported by at least";
-        out << " one non-taxonomic input tree has an internal node that supports this node";
+        out << "    This means each of these nodes was:\n    supported by at least";
+        out << " one non-taxonomic input tree ";
         if (considerNamedSupported) {
             out << " or the internal node has a name";
         }
         out << ".\n";
-        out << "The breakdown of the types of supported nodes:";
+        out << "The breakdown of the types of supported nodes:\n";
         out << "    " << ss.supportCounts.at(SEEN_IN_AN_INPUT_INTERNAL) << " unnamed internal nodes supported by an input tree internal node.\n";
         out << "    " << ss.supportCounts.at(SEEN_IN_AN_INPUT_EXPANDED) << " unnamed internal nodes supported by an input tree expanded tip node.\n";
         out << "    " << ss.supportCounts.at(SEEN_IN_AN_INPUT_BOTH) << " unnamed  internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
