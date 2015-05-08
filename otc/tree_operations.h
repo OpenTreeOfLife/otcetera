@@ -186,7 +186,7 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
 }
 
 template<typename T>
-std::vector<typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpand, const T & taxonomy) {
+std::set<const typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpand, const T & taxonomy) {
     const auto & taxData = taxonomy.getData();
     std::map<typename T::node_type *, std::set<long> > replaceNodes;
     for (auto nd : iter_leaf(toExpand)) {
@@ -200,13 +200,12 @@ std::vector<typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpa
             replaceNodes[nd] = leafSet;
         }
     }
-    std::vector<typename T::node_type *> expanded;
-    expanded.reserve(replaceNodes.size());
+    std::set<const typename T::node_type *> expanded;
     for (const auto & r : replaceNodes) {
         const auto & oldNode = r.first;
         const auto & ls = r.second;
         assert(ls.size() > 0);
-        expanded.push_back(oldNode);
+        expanded.insert(oldNode);
         for (auto loid : ls) {
             addChildForOttId<T>(*oldNode, loid, toExpand);
         }
@@ -215,10 +214,16 @@ std::vector<typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpa
     return expanded;
 }
 
+// Starts at the node in `fullTree` identified by `ottId`
+// Walks back to the root, and adds `ottId` to value of the node->OttIdSet mapping `n2m`
+// Creates new entries in that table, as needed.
+// Multiple calls to this by tools like find-unsupported nodes to associate every node in a 
+//      full tree with an OttIdSet which contains all of the descendants for a reduced
+//      leafset.
 template<typename T>
 void markPathToRoot(const T & fullTree,
                     long ottId,
-                    std::map<const typename T::node_type *, std::set<long> > &n2m){
+                    std::map<const typename T::node_type *, OttIdSet > &n2m){
     auto startNd = fullTree.getData().getNodeForOttId(ottId);
     if (startNd == nullptr) {
         std::string m = "OTT id not found ";

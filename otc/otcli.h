@@ -107,11 +107,16 @@ inline int treeProcessingMain(OTCLI & otCLI,
                 otCLI.currentFilename = filepathToFilename(filename);
                 ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
                 FilePosStruct pos(filenamePtr);
+                unsigned treeNumInThisFile = 1;
                 for (;;) {
                     std::unique_ptr<T> nt = readNextNewick<T>(inp, pos, otCLI.getParsingRules());
                     if (nt == nullptr) {
                         break;
                     }
+                    std::string treeName = std::string("tree ") + std::to_string(treeNumInThisFile++);
+                    treeName.append(" from ");
+                    treeName.append(otCLI.currentFilename);
+                    nt->setName(treeName);
                     const auto cbr = treePtr(otCLI, std::move(nt));
                     if (!cbr) {
                         otCLI.exitCode = 2;
