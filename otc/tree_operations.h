@@ -321,30 +321,35 @@ template<typename T>
 inline void describeUnnamedNode(const T & nd,
                                 std::ostream & out,
                                 unsigned int anc,
-                                bool useNdNames) {
+                                bool useNdNames,
+                                bool addNewLine=true) {
     if (useNdNames && !nd.getName().empty()) {
         if (anc > 0) {
-            out << "ancestor " << anc << " node(s) before \"" << nd.getName() << "\"\n";
+            out << "ancestor " << anc << " node(s) before \"" << nd.getName() << "\"";
         } else {
-            out << "the node \"" << nd.getName() << "\"\n";
+            out << "the node \"" << nd.getName() << "\"";
         }
     }
     else if (nd.isTip()) {
         if (anc > 0) {
-            out << "ancestor " << anc << " node(s) before the leaf \"" << nd.getName()  << "\"\n";
+            out << "ancestor " << anc << " node(s) before the leaf \"" << nd.getName()  << "\"";
         } else {
-            out << "the leaf \"" << nd.getName()  << "\"\n";
+            out << "the leaf \"" << nd.getName()  << "\"";
         }
     } else if (nd.isOutDegreeOneNode()) {
         describeUnnamedNode(*nd.getFirstChild(), out, anc + 1, useNdNames);
+        return;
     } else {
         const auto & left = findLeftmostInSubtree(&nd)->getName();
         const auto & right = findRightmostInSubtree(&nd)->getName();
         if (anc > 0) {
-            out << "ancestor " << anc << " node(s) before MRCA of \"" << left << "\" and " << "\"" << right << "\"\n";
+            out << "ancestor " << anc << " node(s) before MRCA of \"" << left << "\" and " << "\"" << right << "\"";
         } else {
-            out <<  "MRCA of \"" << left << "\" and " << "\"" << right << "\"\n";
+            out <<  "MRCA of \"" << left << "\" and " << "\"" << right << "\"";
         }
+    }
+    if (addNewLine) {
+        out << '\n';
     }
 }
 
@@ -565,6 +570,28 @@ inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
     }
     return nullptr;
 }
+
+template<typename T>
+inline const typename T::node_type * findNodeWithMatchingDesIdSet(const T & tree, const OttIdSet & idSet) {
+    assert(!idSet.empty());
+    OttId firstId = *begin(idSet);
+    auto nd = tree.getData().ottIdToNode.at(firstId);
+    assert(nd != nullptr);
+    if (nd->getData().desIds == idSet) {
+        return nd;
+    }
+    for (auto n : iter_anc_const(*nd)) {
+        const auto & ndi = n->getData().desIds;
+        if (ndi == idSet) {
+            return n;
+        }
+        if (ndi.size() > idSet.size()) {
+            return nullptr;
+        }
+    }
+    return nullptr;
+}
+
 
 
 template<typename T>
