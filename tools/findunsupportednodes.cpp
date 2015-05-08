@@ -90,22 +90,22 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 } else {
                     r.numUnsupportedElbows += 1;
                 }
-                continue;
-            }
-            if (aPrioriProblemNodes.empty()) {
-                out << "Unsupported node ";
             } else {
-                auto gaIt = aPrioriProblemNodes.find(nd);
-                if (gaIt == aPrioriProblemNodes.end()) {
-                    out << "Novel unsupported node ";
+                if (aPrioriProblemNodes.empty()) {
+                    out << "Unsupported node ";
                 } else {
-                    out << "Confirmation of unsupported node (designators =";
-                    writeOttSet(out, "", gaIt->second, " ");
-                    out << ") ";
+                    auto gaIt = aPrioriProblemNodes.find(nd);
+                    if (gaIt == aPrioriProblemNodes.end()) {
+                        out << "Novel unsupported node ";
+                    } else {
+                        out << "Confirmation of unsupported node (designators =";
+                        writeOttSet(out, "", gaIt->second, " ");
+                        out << ") ";
+                    }
                 }
+                describeUnnamedNode(*nd, out, 0, false);
+                r.numUnsupportedForking += 1;
             }
-            describeUnnamedNode(*nd, out, 0, false);
-            r.numUnsupportedForking += 1;
         }
         return r;
     }
@@ -149,6 +149,8 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         out << ss.numUnsupportedForking << " unsupported nodes had out-degree > 1\n";
         out << ss.numUnsupportedKnuckles << " unsupported nodes had out-degree == 1 and were along a terminal path.\n";
         out << ss.numUnsupportedElbows << " unsupported nodes had out-degree == 1 and were along an internal path.\n";
+        out << ss.numUnsupportedElbows + ss.numSupportedInternals  + ss.numUnsupportedKnuckles + ss.numUnsupportedForking ;
+        out << " total internal nodes checked.\n";
         out << std::endl;
         if (numErrors < 0) {
             numErrors -= ss.numUnsupportedForking;

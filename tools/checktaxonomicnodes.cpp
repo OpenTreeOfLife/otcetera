@@ -69,7 +69,10 @@ struct CheckTaxonState {
                 continue;
             }
             auto toCheckId = toCheckNd->getOttId();
-            assert(contains(taxOttIdToNode, toCheckId));
+            if (!contains(taxOttIdToNode, toCheckId)) {
+                otCLI.err << "OTT ID " << toCheckId << " not found in taxonomy.\n";
+                assert(contains(taxOttIdToNode, toCheckId));
+            }
             auto taxNd = taxOttIdToNode.find(toCheckId)->second;
             if (!doCheckEquivalent(otCLI.out, toCheckId, toCheckNd, taxNd, true, true, true)) {
                 otCLI.out << "        Could not find this set of leaves named \"" << toCheckNd->getName() <<"\" in the tree to check when searching through the taxonomic node.\n";
