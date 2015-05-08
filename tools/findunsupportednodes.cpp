@@ -137,7 +137,8 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         out << "    " << ss.supportCounts.at(NAMED_SEEN_IN_AN_INPUT_INTERNAL) << " named internal nodes supported by an input tree internal node.\n";
         out << "    " << ss.supportCounts.at(NAMED_SEEN_IN_AN_INPUT_EXPANDED) << " named internal nodes supported by an input tree expanded tip node.\n";
         out << "    " << ss.supportCounts.at(NAMED_SEEN_IN_AN_INPUT_BOTH) << " named internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
-        out << "The following counts refer to internal nodes of out-degree = 1. We count these redundant nodes as supported if their child is supported";
+        out << "The following counts refer to redundant internal nodes (out-degree = 1)";
+        out << ". These are considered supported if their child is supported.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_INTERNAL) << " unnamed redundant internal nodes supported by an input tree internal node.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_EXPANDED) << " unnamed redundant  internal nodes supported by an input tree expanded tip node.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_BOTH) << " unnamed  redundant  internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
@@ -183,6 +184,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         return true;
     }
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+        assert(tree != nullptr);
         assert(taxonomy != nullptr);
         if (toCheck == nullptr) {
             toCheck = std::move(tree);
@@ -193,6 +195,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                     }
                 }
             }
+            return true;
         }
         supportTreeNames.push_back(tree->getName());
         const auto expanded = expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
