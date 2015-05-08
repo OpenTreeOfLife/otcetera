@@ -143,7 +143,7 @@ bool handleResolve(OTCLI & otCLI, const std::string &) {
 
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otc-find-unsupported-nodes",
+    OTCLI otCLI("otc-find-resolution",
                 "takes at least 2 newick file paths: a full supertree, and some number of input trees",
                 "synth.tre inp1.tre inp2.tre ...");
     FindResolutionState proc;
