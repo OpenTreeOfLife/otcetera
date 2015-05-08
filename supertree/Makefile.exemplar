@@ -6,21 +6,15 @@ STEP_5_DIR=step_5
 STEP_6_DIR=step_6
 STEP_7_DIR=step_7
 STEP_7_SCRATCH_DIR=step_7_scratch
-STEP_8_DIR=step_8
-STEP_9_DIR=step_9
 SUBPROB_RAW_EXPORT_DIR=$(STEP_7_SCRATCH_DIR)/export-sub-temp
 TREE_RANKING_FILE=$(STEP_1_DIR)/tree-ranking.txt
 PHYLO_INPUT_FILENAMES=$(shell cat $(TREE_RANKING_FILE))
-PHYLO_TREE_NAMES_FILENAMES=$(shell sed -e 's/.tre$$/-tree-names.txt/' $(TREE_RANKING_FILE))
-PHYLO_MD5_FILENAMES=$(shell sed -e 's/.tre$$/.md5/' $(TREE_RANKING_FILE))
 
 STEP_4_PHYLO_OUTPUT_PATHS=$(addprefix $(STEP_4_DIR)/, $(PHYLO_INPUT_FILENAMES))
 STEP_5_PHYLO_INPUT_PATHS=$(STEP_4_PHYLO_OUTPUT_PATHS)
 STEP_5_PHYLO_OUTPUT_PATHS=$(addprefix $(STEP_5_DIR)/, $(PHYLO_INPUT_FILENAMES))
 STEP_7_PHYLO_INPUT_PATHS=$(STEP_5_PHYLO_OUTPUT_PATHS)
-STEP_7_PHYLO_OUTPUT_TREE_PATHS=$(addprefix $(STEP_7_DIR)/, $(PHYLO_INPUT_FILENAMES))
-STEP_7_PHYLO_OUTPUT_TREE_NAME_PATHS=$(addprefix $(STEP_7_DIR)/, $(PHYLO_TREE_NAMES_FILENAMES))
-STEP_7_PHYLO_OUTPUT_MD5_PATHS=$(addprefix $(STEP_7_DIR)/, $(PHYLO_MD5_FILENAMES))
+
 
 # Eventually $(STEP_4_PHYLO_OUTPUT_PATHS) should be added to the artifact list...
 ARTIFACTS=$(STEP_5_DIR)/step-5-phylo-args.txt \
@@ -30,10 +24,7 @@ ARTIFACTS=$(STEP_5_DIR)/step-5-phylo-args.txt \
 	$(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt \
 	$(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt \
 	$(STEP_7_DIR)/subproblem-ids.txt \
-	$(STEP_5_PHYLO_OUTPUT_PATHS) \
-	$(STEP_7_PHYLO_OUTPUT_TREE_PATHS) \
-	$(STEP_7_PHYLO_OUTPUT_TREE_NAME_PATHS) \
-	$(STEP_7_PHYLO_OUTPUT_MD5_PATHS)
+	$(STEP_5_PHYLO_OUTPUT_PATHS) 
 
 
 # default is "all"
@@ -42,6 +33,7 @@ all: $(ARTIFACTS)
 
 clean:
 	rm -f $(ARTIFACTS)
+	make clean -f Makefile.subproblems
 
 # step-5-phylo-args is a list of the relative filepaths to the phylo inputs for step 5 (higher level tip expansion)
 #	relative to the supertree dir.  
@@ -75,6 +67,8 @@ $(STEP_6_DIR)/taxonomy.tre : $(STEP_5_DIR)/taxonomy.tre
 # step-7-phylo-args is a list of the relative filepaths to the phylo inputs for step 7 (higher level tip expansion)
 #	relative to the supertree dir.  
 # It simplifies the invocation of the decomposition
+#
+# When the list of subproblems-ids.txt is up-to-date we call Makefile.subproblems to solve each subproblem
 $(STEP_7_DIR)/step-7-phylo-args.txt : $(STEP_5_DIR)/taxonomy.tre $(TREE_RANKING_FILE)
 	rm -f $(STEP_7_DIR)/step-7-phylo-args.txt
 	for f in $(STEP_7_PHYLO_INPUT_PATHS) ; do echo $$f >> $(STEP_7_DIR)/step-7-phylo-args.txt ; done
@@ -86,4 +80,4 @@ $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt : $(STEP_7_SCRATCH_DIR)/dum
 	bash checksum-tree-files.sh $(SUBPROB_RAW_EXPORT_DIR) && cp $(STEP_7_SCRATCH_DIR)/dumped-subproblem-ids.txt $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt
 
 $(STEP_7_DIR)/subproblem-ids.txt : $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt 
-	python move-subproblems-if-differing.py $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt $(SUBPROB_RAW_EXPORT_DIR) $(STEP_7_DIR) $(STEP_8_DIR) $(STEP_9_DIR)
+	make -f Makefile.subproblems && cp $(STEP_7_SCRATCH_DIR)/checksummed-subproblem-ids.txt $(STEP_7_DIR)/subproblem-ids.txt
