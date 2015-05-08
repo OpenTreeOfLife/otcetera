@@ -124,7 +124,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         out << "Final summary:\n";
         out << ss.numSupportedInternals << " internal nodes where flagged as being supported in some sense.\n";
         out << "    This means each of these nodes was:\n    supported by at least";
-        out << " one non-taxonomic input tree ";
+        out << " one non-taxonomic input tree";
         if (considerNamedSupported) {
             out << " or the internal node has a name";
         }
@@ -132,20 +132,20 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         out << "The breakdown of the types of supported nodes:\n";
         out << "    " << ss.supportCounts.at(SEEN_IN_AN_INPUT_INTERNAL) << " unnamed internal nodes supported by an input tree internal node.\n";
         out << "    " << ss.supportCounts.at(SEEN_IN_AN_INPUT_EXPANDED) << " unnamed internal nodes supported by an input tree expanded tip node.\n";
-        out << "    " << ss.supportCounts.at(SEEN_IN_AN_INPUT_BOTH) << " unnamed  internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
+        out << "    " << ss.supportCounts.at(SEEN_IN_AN_INPUT_BOTH) << " unnamed internal nodes supported by an input tree internal node and another tree\'s expanded tip node.\n";
         out << "    " << ss.supportCounts.at(NAMED_NODE) << " named internal nodes had no support (other than the name).\n";
         out << "    " << ss.supportCounts.at(NAMED_SEEN_IN_AN_INPUT_INTERNAL) << " named internal nodes supported by an input tree internal node.\n";
         out << "    " << ss.supportCounts.at(NAMED_SEEN_IN_AN_INPUT_EXPANDED) << " named internal nodes supported by an input tree expanded tip node.\n";
-        out << "    " << ss.supportCounts.at(NAMED_SEEN_IN_AN_INPUT_BOTH) << " named internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
+        out << "    " << ss.supportCounts.at(NAMED_SEEN_IN_AN_INPUT_BOTH) << " named internal nodes supported by an input tree internal node and another tree\'s expanded tip node.\n";
         out << "The following counts refer to redundant internal nodes (out-degree = 1)";
         out << ". These are considered supported if their child is supported.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_INTERNAL) << " unnamed redundant internal nodes supported by an input tree internal node.\n";
-        out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_EXPANDED) << " unnamed redundant  internal nodes supported by an input tree expanded tip node.\n";
-        out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_BOTH) << " unnamed  redundant  internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
-        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_NODE) << "  redundant named internal nodes had no support (other than the name).\n";
-        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_INTERNAL) << "  redundant named internal nodes supported by an input tree internal node.\n";
-        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_EXPANDED) << "  redundant named internal nodes supported by an input tree expanded tip node.\n";
-        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_BOTH) << "  redundant named internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
+        out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_EXPANDED) << " unnamed redundant internal nodes supported by an input tree expanded tip node.\n";
+        out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_BOTH) << " unnamed  redundant internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
+        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_NODE) << " redundant named internal nodes had no support (other than the name).\n";
+        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_INTERNAL) << " redundant named internal nodes supported by an input tree internal node.\n";
+        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_EXPANDED) << " redundant named internal nodes supported by an input tree expanded tip node.\n";
+        out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_BOTH) << " redundant named internal nodes supported by an input tree internal node and another tree\'s expanded tip node.\n";
         out << ss.numUnsupportedForking << " unsupported nodes had out-degree > 1\n";
         out << ss.numUnsupportedKnuckles << " unsupported nodes had out-degree == 1 and were along a terminal path.\n";
         out << ss.numUnsupportedElbows << " unsupported nodes had out-degree == 1 and were along an internal path.\n";
