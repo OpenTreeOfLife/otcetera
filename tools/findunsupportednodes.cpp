@@ -51,6 +51,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     bool considerNamedSupported;
     bool recordSupportingTreeIdentity;
     bool processTaxonomyAsInputTree;
+    bool refreshAfterTaxonomy;
     std::vector<std::string> supportTreeNames;
     SupportSummary taxoSummary; // only used if 
 
@@ -60,7 +61,8 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         numErrors(0),
         treatExpandedTipsAsSupporting(true),
         considerNamedSupported(true),
-        processTaxonomyAsInputTree(false) {
+        processTaxonomyAsInputTree(false),
+        refreshAfterTaxonomy(false) {
     }
 
     void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree) {
@@ -252,21 +254,28 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         return true;
     }
 
+    void reinitSupportTemps() {
+        supportedNodes.clear();
+        if (considerNamedSupported) {
+            for (auto nd : iter_pre_internal_const(*toCheck)) {
+                if (nd->hasOttId()) {
+                    supportedNodes[nd] = (nd->isOutDegreeOneNode() ? (REDUNDANT_ND + NAMED_NODE) : NAMED_NODE);
+                }
+            }
+        }
+    }
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
         if (toCheck == nullptr) {
             toCheck = std::move(tree);
-            if (considerNamedSupported) {
-                for (auto nd : iter_pre_internal_const(*toCheck)) {
-                    if (nd->hasOttId()) {
-                        supportedNodes[nd] = (nd->isOutDegreeOneNode() ? (REDUNDANT_ND + NAMED_NODE) : NAMED_NODE);
-                    }
-                }
-            }
+            reinitSupportTemps();
             if (processTaxonomyAsInputTree) {
                 analyzeTreeForSupport(otCLI, *taxonomy, true);
                 calcSupportSummary(nullptr, *toCheck, taxoSummary, true);
+                if (refreshAfterTaxonomy) {
+                   reinitSupportTemps();
+                }
             }
             return true;
         }
@@ -364,6 +373,7 @@ bool handleDesignator(OTCLI & otCLI, const std::string &nextArg);
 bool handleStoreSources(OTCLI & otCLI, const std::string &nextArg);
 bool handleTipsNotSupport(OTCLI & otCLI, const std::string &nextArg);
 bool handleForceTaxonomy(OTCLI & otCLI, const std::string &);
+bool handleForceRefreshAfterTaxonomy(OTCLI & otCLI, const std::string &);
 
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg) {
     FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
@@ -394,6 +404,12 @@ bool handleForceTaxonomy(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
+bool handleForceRefreshAfterTaxonomy(OTCLI & otCLI, const std::string &) {
+    FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
+    assert(fusp != nullptr);
+    fusp->refreshAfterTaxonomy = true;
+    return true;
+}
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-find-unsupported-nodes",
@@ -411,6 +427,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('x',
                   "Automatically treat the taxonomy as an input",
                   handleForceTaxonomy,
+                  false);
+    otCLI.addFlag('r',
+                  "Refresh support stats after analyzing taxonomy so that final summary is only based on phylo inputs",
+                  handleForceRefreshAfterTaxonomy,
                   false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
