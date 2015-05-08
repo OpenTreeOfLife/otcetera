@@ -566,6 +566,28 @@ inline T * searchAncForMRCAOfDesIds(T * nd, const std::set<long> & idSet) {
     return nullptr;
 }
 
+template<typename T>
+inline const typename T::node_type * findNodeWithMatchingDesIdSet(const T & tree, const OttIdSet & idSet) {
+    assert(!idSet.empty());
+    OttId firstId = *begin(idSet);
+    auto nd = tree.getData().ottIdToNode.at(firstId);
+    assert(nd != nullptr);
+    if (nd->getData().desIds == idSet) {
+        return nd;
+    }
+    for (auto n : iter_anc_const(*nd)) {
+        const auto & ndi = n->getData().desIds;
+        if (ndi == idSet) {
+            return n;
+        }
+        if (ndi.size() > idSet.size()) {
+            return nullptr;
+        }
+    }
+    return nullptr;
+}
+
+
 
 template<typename T>
 inline const typename T::node_type * findMRCAUsingDesIds(const T & tree, const std::set<long> & idSet) {

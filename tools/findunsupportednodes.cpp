@@ -214,22 +214,13 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             auto ottId = nd->getOttId();
             markPathToRoot(*toCheck, ottId, restrictedDesIds);
         }
-        std::map<std::set<long>, const NodeWithSplits *> sourceClades;
-        for (auto nd : iter_post_internal_const(tree)) {
-            if (nd->getParent() != nullptr && !nd->isTip()) {
-                if (treatExpandedTipsAsSupporting || contains(expandedTips, nd)) {
-                    sourceClades[nd->getData().desIds] = nd;
-                }
-            }
-        }
-        identifySupportedNodes(otCLI, tree, restrictedDesIds, sourceClades, expandedTips);
+        identifySupportedNodes(otCLI, tree, restrictedDesIds, expandedTips);
         return true;
     }
 
     void identifySupportedNodes(OTCLI & otCLI,
                                 const TreeMappedWithSplits & tree,
                                 const std::map<const NodeWithSplits *, std::set<long> > & inducedNdToEffDesId,
-                                const std::map<std::set<long>, const NodeWithSplits *> & sourceClades,
                                 const std::set<const NodeWithSplits *> & expandedTips) {
         for (auto pd : inducedNdToEffDesId) {
             auto nd = pd.first;
@@ -253,8 +244,8 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             if (anm == nm) {
                 continue;
             }
-            auto scIt = sourceClades.find(nm);
-            if (scIt != sourceClades.end()) {
+            auto srcNode = findNodeWithMatchingDesIdSet(tree, nm);
+            if (srcNode != nullptr) {
                 if (aPrioriProblemNodes.find(nd) != aPrioriProblemNodes.end()) {
                     auto apIt = aPrioriProblemNodes.find(nd);
                     otCLI.out << "ERROR!: a priori unsupported node found. Designators were ";
@@ -262,14 +253,18 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                     otCLI.out << ". A node was found, which (when pruned to the leaf set of an input tree) contained:\n";
                     writeOttSet(otCLI.out, "    ", nm, " ");
                     otCLI.out << "\nThe subtree from the source was: ";
-                    auto srcNd = scIt->second;
-                    writePrunedSubtreeNewickForMarkedNodes(otCLI.out, *srcNd, inducedNdToEffDesId);
+                    writePrunedSubtreeNewickForMarkedNodes(otCLI.out, *srcNode, inducedNdToEffDesId);
                     numErrors += 1;
                 }
-                recordInputTreeSupportForNode(nd, scIt->second, tree, expandedTips);
+                recordInputTreeSupportForNode(nd, srcNode, tree, expandedTips);
             }
         }
     }
+
+    bool treeHasClade(const TreeMappedWithSplits & tree, const OttIdSet & oids) {
+        return nullptr != findNodeWithMatchingDesIdSet(tree, oids);
+    }
+
     void recordInputTreeSupportForNode(const NodeWithSplits * treeToCheckNode,
                                        const NodeWithSplits * srcTreeNode,
                                        const TreeMappedWithSplits & srcTree, 
