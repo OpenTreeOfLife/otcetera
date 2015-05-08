@@ -193,7 +193,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             if (considerNamedSupported) {
                 for (auto nd : iter_pre_internal_const(*toCheck)) {
                     if (nd->hasOttId()) {
-                        supportedNodes[nd] = NAMED_NODE;
+                        supportedNodes[nd] = (nd->isOutDegreeOneNode() ? (REDUNDANT_ND + NAMED_NODE) : NAMED_NODE);
                     }
                 }
             }

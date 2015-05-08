@@ -71,6 +71,9 @@ struct CheckTaxonState {
             auto toCheckId = toCheckNd->getOttId();
             if (!contains(taxOttIdToNode, toCheckId)) {
                 otCLI.err << "OTT ID " << toCheckId << " not found in taxonomy.\n";
+                const auto taxKeys = keys(taxOttIdToNode);
+                writeOttSet(otCLI.err, "  ", taxKeys, "\n");
+                otCLI.err << std::endl;
                 assert(contains(taxOttIdToNode, toCheckId));
             }
             auto taxNd = taxOttIdToNode.find(toCheckId)->second;
