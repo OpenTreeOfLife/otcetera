@@ -112,16 +112,28 @@ The taxonomy is just used for the ottID validation (on the assumption that
 the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
 can help identify problems with those nodes).
 
+
+If you add a `-x` argument to the invocation, then the program will act like the taxonomy 
+is also a source of support for nodes.  Furthermore a report on problems with 
+taxonomic labels in synth.tre will be reported before the summary.
+
+Using both `-x` and `-r` will create the taxonomic report, but then clear the taxonomic
+support stats before analyzing the subsequent inputs. So the final summary should
+be equivalent to what you get by dropping both the `-x` and `-r` args.
+
 ### Checking for incorrect internal labels in a full tree
 
-    otc-check-taxonomic-nodes synth.tre taxonomy.tre
+    otc-check-taxonomic-nodes -d synth.tre taxonomy.tre
 
 will check every labelled internal node is correctly labelled. To do this, it 
 verifies that the set of OTT ids associated with tips that descend from the 
 node is identical to the set of OTT ids associated with terminal taxa below
 the corresponding node in the taxonomic tree.
 
-A brief report will be issued for every problematic labeling. 
+A brief report will be issued for every problematic labeling if the -d arg is omitted.
+
+See the -x argument to `otc-find-unsupported-nodes` above for more taxonomic checks.
+
 `otc-taxon-conflict-report` takes at least 2 newick file paths: a full tree, and some number of input trees.
 It will write a summary of the difference in taxonomic inclusion for nodes that are in conflict:
 
