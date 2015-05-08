@@ -102,25 +102,30 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             auto nd = *nIt;
             const auto snIt = supportedNodes.find(nd);
             if (snIt != supportedNodes.end()) {
-                r.supportCounts[snIt->second] += 1;
-                r.numSupportedInternals += 1;
-                if (isTaxoSummary) {
-                    const OttIdSet & di = nd->getData().desIds;
-                    if (nd->hasOttId()) {
-                        const auto ottId = nd->getOttId();
-                        const auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
-                        if (taxoNode->getData().desIds != di) {
+                const auto t = snIt->second;
+                // not in taxoSummary, or having real (non-name-only) support
+                if ((!isTaxoSummary) || (t & SEEN_IN_AN_INPUT_BOTH)) {
+                    r.supportCounts[t] += 1;
+                    r.numSupportedInternals += 1;
+                    if (isTaxoSummary) {
+                        const OttIdSet & di = nd->getData().desIds;
+                        if (nd->hasOttId()) {
+                            const auto ottId = nd->getOttId();
+                            const auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
+                            if (taxoNode->getData().desIds != di) {
+                                auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
+                                assert(matchingTaxonNode != nullptr);
+                                r.misnamedSupported[nd] = matchingTaxonNode;
+                            }
+                        } else {
                             auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
                             assert(matchingTaxonNode != nullptr);
-                            r.misnamedSupported[nd] = matchingTaxonNode;
+                            r.supportedShouldHaveName[nd] = matchingTaxonNode;
                         }
-                    } else {
-                        auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
-                        assert(matchingTaxonNode != nullptr);
-                        r.supportedShouldHaveName[nd] = matchingTaxonNode;
                     }
+                   continue;
                 }
-                continue;
+                // if in taxo mode and no hasTaxoSupport, then fall through to unsupported
             }
             auto outDegree = nd->getOutDegree();
             if (isTaxoSummary & nd->hasOttId()) {
@@ -272,6 +277,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             reinitSupportTemps();
             if (processTaxonomyAsInputTree) {
                 analyzeTreeForSupport(otCLI, *taxonomy, true);
+                extendSupportedToRedundantNodes(*toCheck);
                 calcSupportSummary(nullptr, *toCheck, taxoSummary, true);
                 if (refreshAfterTaxonomy) {
                    reinitSupportTemps();
@@ -296,6 +302,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                              const std::set<const NodeWithSplits *> & expandedTips) {
         assert(toCheck != nullptr);
         std::map<const NodeWithSplits *, std::set<long> > restrictedDesIds;
+        //TODO: it is silly to do this when we are analyzing the taxonomy...
         for (auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->getOttId();
             markPathToRoot(*toCheck, ottId, restrictedDesIds);
