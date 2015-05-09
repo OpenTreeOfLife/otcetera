@@ -290,12 +290,20 @@ without any nodes that have just one child:
 
     otc-suppress-monotypic taxonomy.tre
 
-### debugging otcetera handling of trees
+### Suppress nodes of outdegree=1
+`otc-suppress-monotypic` takes a filepath to a newick file and writes a newick 
+without any nodes that have just one child:
 
-    otc-assert-invariants sometree.tre
+    otc-suppress-monotypic taxonomy.tre
 
-will parse a tree and run through lots of traversals, asserting various
-invariants. Should exit silently if there are no bugs.
+### finding the union or intersection of the OTT Ids in a set of trees
+
+    otc-set-of-ids tree1.tre tree2.tre
+
+will print out the union of OTT Ids in tree1 and tree2. 
+The `-i` flag requests the intersection rather than the union.
+The `-t` flag requests that only the tips be considered.
+The `-n` flag requests that the output should be a newick tree (a polytomy) rather than a list.
 
 # Testing
 `otcetera` is still very much under development. You can trigger the running of the

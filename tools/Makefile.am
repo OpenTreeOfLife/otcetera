@@ -15,11 +15,11 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-prune-taxonomy \
 				otc-prune-to-subtree \
 				otc-scaffolded-supertree \
+				otc-set-of-ids \
 				otc-subproblem-stats \
 				otc-suppress-monotypic \
 				otc-taxon-conflict-report \
-				otc-uncontested-decompose \
-				otc-union-of-ids
+				otc-uncontested-decompose
 
 otc_subproblem_stats_SOURCES = subproblemstats.cpp
 otc_subproblem_stats_CPPFLAGS = $(AM_CPPFLAGS)
@@ -27,8 +27,8 @@ otc_subproblem_stats_CPPFLAGS = $(AM_CPPFLAGS)
 otc_nonterminals_to_exemplars_SOURCES = nonterminaltoexemplars.cpp
 otc_nonterminals_to_exemplars_CPPFLAGS = $(AM_CPPFLAGS)
 
-otc_union_of_ids_SOURCES = unionofids.cpp
-otc_union_of_ids_CPPFLAGS = $(AM_CPPFLAGS)
+otc_set_of_ids_SOURCES = setofids.cpp
+otc_set_of_ids_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_suppress_monotypic_SOURCES = suppressmonotypic.cpp
 otc_suppress_monotypic_CPPFLAGS = $(AM_CPPFLAGS)
