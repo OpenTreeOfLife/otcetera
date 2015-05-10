@@ -77,6 +77,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     mutable std::size_t numNamesChanged;
     mutable std::size_t numNamesDeleted;
     mutable std::size_t numNodesCollapsed;
+
     void queueFixMisnamed(const NodeWithSplits * nd, const NodeWithSplits * tax) const {
         misnameQ[nd] = tax->getOttId();
     }
@@ -89,8 +90,35 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     void queueFixCollapse(const NodeWithSplits * nd) const {
         toCollapse.insert(nd);
     }
+    // helper for performFixes
+    void _changeName(const std::pair<const NodeWithSplits *, OttId> & nn, std::size_t &x) const {
+            auto nd = const_cast<NodeWithSplits *>(nn.first);
+            auto ottId = nn.second;
+            changeOttIdOfInternal(*toCheck, nd, ottId);
+            x += 1;
+    }
     void performFixes() const {
-
+        // misnamed and toName are supported by taxonomy
+        for (auto nn : misnameQ) {
+            _changeName(nn, numNamesChanged);
+        }
+        misnameQ.clear();
+        for (auto nn : toNameQ) {
+            _changeName(nn, numNamesAdded);
+        }
+        toNameQ.clear();
+        // toDelName might be unsupported nodes, so we check toCollapse..
+        for (auto nn : toDelNameQ) {
+            auto nd = const_cast<NodeWithSplits *>(nn);
+            if (!contains(toCollapse, nd)) {
+                delOttIdOfInternal(*toCheck, nd);
+                ++numNamesDeleted;
+            }
+        }
+        for (auto nn : toCollapse) {
+            auto nd = const_cast<NodeWithSplits *>(nn);
+            collapseNode(*toCheck, nd);
+        }
     }
 
     void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree) {
@@ -408,7 +436,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                              const NodeWithSplits *nd,
                              const OttIdSet & nm,
                              const TreeMappedWithSplits & tree,
-                             const std::map<const NodeWithSplits *, std::set<long> > & inducedNdToEffDesId,
+                             const std::map<const NodeWithSplits *, OttIdSet > & inducedNdToEffDesId,
                              const std::set<const NodeWithSplits *> & expandedTips) {
         auto par = nd->getParent();
         if (par == nullptr) {

@@ -138,6 +138,10 @@ class RootedTreeNode {
         void setOttId(long i) {
             ottId = i;
         }
+        void delOttId() {
+            ottId = LONG_MAX;
+        }
+
         // non-empty only for internals that are labelled with names that are NOT taxLabels
         const namestring_t & getName() const {
             return name;
@@ -325,6 +329,7 @@ class RootedTree {
             p->removeChild(nd);
             deletePrunedSubtreeNodes(nd);
         }
+
     protected:
         std::set<node_type *> allNodes;
         node_type * root;

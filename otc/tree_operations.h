@@ -366,6 +366,8 @@ inline void cullRefsToNodeFromData(RootedTree<RTNodeNoData, RTreeOttIDMapping<RT
     }
 }
 
+
+
 template<>
 inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, 
                                    RootedTreeNode<RTSplits> *nd)  {
@@ -385,6 +387,34 @@ inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSpli
         }
     }
 }
+
+// does NOT correct anc desIds
+template<typename T, typename U>
+inline void delOttIdOfInternal(RootedTree<T, U> & tree, RootedTreeNode<T> *nd) {
+    if (nd->hasOttId()) {
+        tree.getData().ottIdToNode.erase(nd->getOttId());
+        nd->delOttId();
+    }
+}
+
+// does NOT correct anc desIds
+template<typename T, typename U>
+inline void changeOttIdOfInternal(RootedTree<T, U> & tree, RootedTreeNode<T> *nd, OttId ottId) {
+    delOttIdOfInternal(tree, nd);
+    if (ottId > 0) {
+        nd->setOttId(ottId);
+        tree.getData().ottIdToNode[ottId] = nd;
+    }
+}
+
+template<typename T, typename U>
+inline void collapseNode(RootedTree<T, U> & tree, RootedTreeNode<T> *nd) {
+    if (nd->hasOttId()) {
+        delOttIdOfInternal(tree, nd);
+    }
+    collapseInternalIntoPar(nd, tree);
+}
+
 
 template<typename T>
 inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
@@ -592,8 +622,6 @@ inline const typename T::node_type * findNodeWithMatchingDesIdSet(const T & tree
     return nullptr;
 }
 
-
-
 template<typename T>
 inline const typename T::node_type * findMRCAUsingDesIds(const T & tree, const std::set<long> & idSet) {
     if (idSet.empty()) {
@@ -699,8 +727,6 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
     }
 }
 
-
-
 template<typename T>
 inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * nd,
                                                        typename T::node_type * child,
@@ -713,17 +739,52 @@ inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * n
     auto gp = nd->getParent();
     assert(gp);
     LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd)) << " by claiming grandparent as parent for node " << getDesignator(*child) ;
-    auto entryChild = nd->getPrevSib();
-    auto exitChild = nd->getNextSib();
+    auto entrySib = nd->getPrevSib();
+    auto exitSib = nd->getNextSib();
     child->_setParent(gp);
-    if (entryChild != nullptr) {
-        assert(entryChild->getNextSib() == nd);
-        entryChild->_setNextSib(child);
+    if (entrySib != nullptr) {
+        assert(entrySib->getNextSib() == nd);
+        entrySib->_setNextSib(child);
     } else {
         gp->_setFirstChild(child);
     }
-    child->_setNextSib(exitChild);
+    child->_setNextSib(exitSib);
     replaceMappingsToNodeWithAlias<T>(nd, child, tree);
+}
+
+// nd must be unnnamed (or the aliases would not be fixed because we can't call replaceMappingsToNodeWithAlias)
+template<typename T>
+inline void collapseInternalIntoPar(typename T::node_type * nd,
+                                    T & tree) {
+    assert(nd);
+    assert(!nd->hasOttId());
+    auto children = nd->getChildren();
+    assert(!children.empty());
+    auto firstChild = children.at(0);
+    if (children.size() == 1) {
+        suppressMonotypyByClaimingGrandparentAsPar(nd, firstChild, tree);
+        return;
+    }
+    auto p = nd->getParent();
+    assert(p);
+    auto entrySib = nd->getPrevSib();
+    auto exitSib = nd->getNextSib();
+    auto lastChild = children.at(children.size() - 1);
+    typename T::node_type * prev = nullptr;
+    for (auto child : children) {
+        if (prev != nullptr) {
+            prev->_setNextSib(child);
+        }
+        child->_setParent(p);
+        prev = child;
+    }
+     if (entrySib != nullptr) {
+        assert(entrySib->getNextSib() == nd);
+        entrySib->_setNextSib(firstChild);
+    } else {
+        p->_setFirstChild(firstChild);
+    }
+    lastChild->_setNextSib(exitSib);
 }
 
 // in some context we need to preserve the deepest because the desIds may need 
@@ -761,7 +822,6 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDan
     }
     return removed;
 }
-
 
 // in some context we need to preserve the deepest because the desIds may need 
 // the internal nodes IDs (even if the IDs correspond to monotypic taxa)
