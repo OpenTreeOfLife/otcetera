@@ -65,7 +65,11 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         processTaxonomyAsInputTree(false),
         refreshAfterTaxonomy(false),
         inTheProcessOfAnalyzingTax(false),
-        fixInsteadOfReport(false) {
+        fixInsteadOfReport(false),
+        numNamesAdded(0L), 
+        numNamesChanged(0L),
+        numNamesDeleted(0L),
+         numNodesCollapsed(0L) {
     }
 
     // abuse of const because the fixInsteadOfReport was added late.
@@ -95,6 +99,8 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             auto nd = const_cast<NodeWithSplits *>(nn.first);
             auto ottId = nn.second;
             changeOttIdOfInternal(*toCheck, nd, ottId);
+            const auto & newName = taxonomy->getData().ottIdToNode.at(ottId)->getName();
+            nd->setName(newName);
             x += 1;
     }
     void performFixes() const {
@@ -112,13 +118,17 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             auto nd = const_cast<NodeWithSplits *>(nn);
             if (!contains(toCollapse, nd)) {
                 delOttIdOfInternal(*toCheck, nd);
+                nd->setName(std::string());
                 ++numNamesDeleted;
             }
         }
+        toDelNameQ.clear();
         for (auto nn : toCollapse) {
             auto nd = const_cast<NodeWithSplits *>(nn);
             collapseNode(*toCheck, nd);
+            ++numNodesCollapsed;
         }
+        toCollapse.clear();
     }
 
     void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree) {
@@ -233,6 +243,15 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         extendSupportedToRedundantNodes(*toCheck);
         auto & out = otCLI.out;
         const auto ss = describeUnnamedUnsupported(otCLI.out, *toCheck);
+        if (fixInsteadOfReport) {
+            writeTreeAsNewick(otCLI.out, *toCheck);
+            otCLI.out << '\n';
+            otCLI.err << numNamesAdded << " nodes assigned names.\n";
+            otCLI.err << numNamesChanged << " nodes changed names.\n";
+            otCLI.err << numNamesDeleted << " nodes had names deleted.\n";
+            otCLI.err << numNodesCollapsed << " edges collapsed into polytomies.\n";
+            return true;
+        }
         for (auto gaIt : aPrioriProblemNodes) {
             if (supportedNodes.find(gaIt.first) != supportedNodes.end()) {
                 out << "Claim of unsupported apparently refuted for designators: ";
