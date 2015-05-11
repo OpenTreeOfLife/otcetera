@@ -39,6 +39,7 @@ class SupportingIDSets {
                                FindResolutionState & frs,
                                const OttIdSet & incAdded,
                                const OttIdSet & parIncAdded);
+    bool causesChildToBeUnsupported(OTCLI & otCLI, const NodeWithSplits *nd, FindResolutionState & frs);
 };
 
 struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
@@ -160,7 +161,9 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         auto srcNode = findNodeWithMatchingDesIdSet(tree, nm);
         if (srcNode != nullptr) {
             const OttIdSet * sip = &(srcNode->getData().desIds);
-            const OttIdSet * spip = &(srcNode->getParent()->getData().desIds);
+            auto sna = findFirstForkingAnc<const NodeWithSplits>(srcNode);
+            assert(sna != nullptr);
+            const OttIdSet * spip = &(sna->getData().desIds);
             supportedNodes[nd].addSupport(sip, spip);
         }
     }
@@ -232,6 +235,9 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                                             added)) {
                         collapseNode(*toCheck, added);
                     } else {
+                        if (avoidAddingUnsupportedGroups) {
+                            supportedNodes[added].addSupport(&incGroup, &parIncAdded);
+                        }
                         numIncludable += 1;
                         if (otCLI.verbose) {
                             otCLI.err << "tree \"" << tree.getName() << "\" adding split\n  inc. ";
@@ -259,6 +265,9 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         assert(par != nullptr);
         assert(added != nullptr);
         assert(par == added->getParent());
+        if (!contains(supportedNodes, par)) {
+            return false;
+        }
         auto & supids = supportedNodes.at(par);
         SupportingIDSets addedSupIds;
         if (!supids.attemptSplitOfSupport(otCLI,
@@ -288,6 +297,54 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     }
 };
 
+inline bool SupportingIDSets::causesChildToBeUnsupported(OTCLI & , 
+                                                         const NodeWithSplits *nd,
+                                                         FindResolutionState & frs) {
+    std::map<const NodeWithSplits *, SupportingIDSets *> forkingDes;
+    for (auto c : iter_child_const(*nd)) {
+        if (c->isTip()) {
+            continue;
+        }
+        auto fc = findFirstForkingSelfOrDes(c);
+        if (fc->isTip()) {
+            continue;
+        }
+        auto snIt = frs.supportedNodes.find(fc);
+        if (snIt == frs.supportedNodes.end()) {
+            if (!fc->hasOttId()) {
+                return false;
+            }
+        } else {
+            forkingDes[fc] = &(snIt->second);
+        }
+    }
+    const OttIdSet & incAdded = nd->getData().desIds;
+    std::map<const NodeWithSplits *, std::list<std::list<incParIncPair>::iterator> > toDelMap;
+    for (auto fdIt : forkingDes) {
+        const NodeWithSplits * fc = fdIt.first;
+        SupportingIDSets & suppIds = *(fdIt.second);
+        std::list<std::list<incParIncPair>::iterator> & toDel = toDelMap[fc];
+        std::list<incParIncPair>::iterator xIt = begin(suppIds.supporting);
+        for (; xIt != end(suppIds.supporting); ++xIt) {
+            incParIncPair & ipip = *xIt;
+            const auto inInter = set_intersection_as_set(*ipip.first, incAdded);
+            const auto parInInter = set_intersection_as_set(*ipip.second, incAdded);
+            if (inInter == parInInter) {
+                toDel.push_back(xIt);
+            }
+        }
+        if (toDel.size() == suppIds.supporting.size() && (!fc->hasOttId())) {
+            return false;
+        }
+    }
+    for (auto tdmIt : toDelMap) {
+        SupportingIDSets & suppIds = *(forkingDes[tdmIt.first]);
+        for (auto toDelIt : tdmIt.second) {
+            suppIds.supporting.erase(toDelIt);
+        }
+    }
+    return true;
+}
 inline bool SupportingIDSets::attemptSplitOfSupport(OTCLI & otCLI, 
                                                     const NodeWithSplits *nd,
                                                     SupportingIDSets & toAddTo,
@@ -336,10 +393,6 @@ inline bool SupportingIDSets::attemptSplitOfSupport(OTCLI & otCLI,
             }
         }
     }
-    if (toMove.empty()) {
-        assert(false); // the node causing the respolution should support the new node
-        return false;
-    }
     const auto tcs = toMove.size() + toDel.size();
     if (tcs ==  supporting.size()) {
         if (otCLI.verbose) {
@@ -351,7 +404,9 @@ inline bool SupportingIDSets::attemptSplitOfSupport(OTCLI & otCLI,
         otCLI.err << toMove.size() << " moving. " << toDel.size() << " to be del.";
         otCLI.err << supporting.size() - tcs << " to remain.";
     }
-    
+    if (causesChildToBeUnsupported(otCLI, nd, frs)) {
+        return false;
+    }
     for (auto i : toMove) {
         const OttIdSet & suppInc = *(i->first);
         const OttIdSet & suppParInc = *(i->second);

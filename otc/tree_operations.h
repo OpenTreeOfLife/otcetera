@@ -251,6 +251,18 @@ inline T * findFirstForkingAnc(T * nd) {
     return anc;
 }
 
+// find most recent anc of nd with out-degree > 1
+template<typename T>
+inline T * findFirstForkingSelfOrDes(T * nd) {
+    assert(nd);
+    T * des = nd;
+    while (des->isOutDegreeOneNode()) {
+        des = des->getFirstChild();
+    }
+    return des;
+}
+
+
 template<typename T, typename U>
 inline bool multipleChildrenInMap(const T & nd,
                                   const std::map<const T *, U> & markedMap,

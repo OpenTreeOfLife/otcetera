@@ -56,7 +56,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     SupportSummary taxoSummary; // only used if processTaxonomyAsInputTree is true
     bool fixInsteadOfReport;
     bool fixShouldSuppressKnuckles; // only used if fixInsteadOfReport is true
-        
+
     virtual ~FindUnsupportedState(){}
     FindUnsupportedState()
         :toCheck(nullptr),
