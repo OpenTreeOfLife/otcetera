@@ -53,8 +53,9 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     bool refreshAfterTaxonomy;
     bool inTheProcessOfAnalyzingTax;
     std::vector<std::string> supportTreeNames;
-    SupportSummary taxoSummary; // only used if 
+    SupportSummary taxoSummary; // only used if processTaxonomyAsInputTree is true
     bool fixInsteadOfReport;
+    bool fixShouldSuppressKnuckles; // only used if fixInsteadOfReport is true
         
     virtual ~FindUnsupportedState(){}
     FindUnsupportedState()
@@ -66,10 +67,11 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         refreshAfterTaxonomy(false),
         inTheProcessOfAnalyzingTax(false),
         fixInsteadOfReport(false),
+        fixShouldSuppressKnuckles(false),
         numNamesAdded(0L), 
         numNamesChanged(0L),
         numNamesDeleted(0L),
-         numNodesCollapsed(0L) {
+        numNodesCollapsed(0L) {
     }
 
     // abuse of const because the fixInsteadOfReport was added late.
@@ -95,18 +97,28 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         toCollapse.insert(nd);
     }
     // helper for performFixes
-    void _changeName(const std::pair<const NodeWithSplits *, OttId> & nn, std::size_t &x) const {
-            auto nd = const_cast<NodeWithSplits *>(nn.first);
-            auto ottId = nn.second;
-            changeOttIdOfInternal(*toCheck, nd, ottId);
-            const auto & newName = taxonomy->getData().ottIdToNode.at(ottId)->getName();
-            nd->setName(newName);
-            x += 1;
+    NodeWithSplits * _changeName(const std::pair<const NodeWithSplits *, OttId> & nn, std::size_t &x) const {
+        auto nd = const_cast<NodeWithSplits *>(nn.first);
+        auto ottId = nn.second;
+        if (contains(toCheck->getData().ottIdToNode, ottId)) {
+            return nd;
+        }
+        changeOttIdOfInternal(*toCheck, nd, ottId);
+        const auto & newName = taxonomy->getData().ottIdToNode.at(ottId)->getName();
+        nd->setName(newName);
+        x += 1;
+        return nullptr;
     }
     void performFixes() const {
         // misnamed and toName are supported by taxonomy
         for (auto nn : misnameQ) {
-            _changeName(nn, numNamesChanged);
+            auto u = _changeName(nn, numNamesChanged);
+            if (u != nullptr) {
+                toDelNameQ.insert(u);
+                if (fixShouldSuppressKnuckles) {
+                    toCollapse.insert(u);
+                }
+            }
         }
         misnameQ.clear();
         for (auto nn : toNameQ) {
@@ -167,6 +179,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         for (; nIt != eIt; ++nIt) {
             auto nd = *nIt;
             const auto snIt = supportedNodes.find(nd);
+            const auto outDegree = nd->getOutDegree();
             if (snIt != supportedNodes.end()) {
                 const auto t = snIt->second;
                 // not in taxoSummary, or having real (non-name-only) support
@@ -183,27 +196,38 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                                 assert(matchingTaxonNode != nullptr);
                                 r.misnamedSupported[nd] = matchingTaxonNode;
                                 if (fixInsteadOfReport) {
-                                    queueFixMisnamed(nd, matchingTaxonNode);
+                                    if (outDegree == 1) {
+                                        queueFixShouldBeUnnamed(nd);
+                                    } else {
+                                        queueFixMisnamed(nd, matchingTaxonNode);
+                                    }
                                 }
                             }
                         } else {
                             auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
                             assert(matchingTaxonNode != nullptr);
                             r.supportedShouldHaveName[nd] = matchingTaxonNode;
-                            if (fixInsteadOfReport) {
+                            if (fixInsteadOfReport && outDegree > 1) {
                                 queueFixShouldHaveBeenNamed(nd, matchingTaxonNode);
                             }
                         }
+                    }
+                    if (fixInsteadOfReport
+                        && fixShouldSuppressKnuckles
+                        && outDegree == 1
+                        && !nd->hasOttId()) {
+                        queueFixCollapse(nd);
                     }
                    continue;
                 }
                 // if in taxo mode and no hasTaxoSupport, then fall through to unsupported
             }
-            auto outDegree = nd->getOutDegree();
-            if (isTaxoSummary & nd->hasOttId()) {
+            if (isTaxoSummary && nd->hasOttId()) {
                 r.shouldBeUnnamed.insert(nd);
                 if (fixInsteadOfReport) {
-                    queueFixShouldBeUnnamed(nd);
+                    if (!fixShouldSuppressKnuckles || outDegree > 1) {
+                        queueFixShouldBeUnnamed(nd);
+                    }
                 }
             }
             if (outDegree == 1) {
@@ -211,6 +235,9 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                     r.numUnsupportedKnuckles += 1;
                 } else {
                     r.numUnsupportedElbows += 1;
+                }
+                if (fixInsteadOfReport) {
+                    queueFixCollapse(nd);
                 }
             } else {
                 if (!isTaxoSummary && !fixInsteadOfReport) {
@@ -519,6 +546,7 @@ bool handleTipsNotSupport(OTCLI & otCLI, const std::string &nextArg);
 bool handleForceTaxonomy(OTCLI & otCLI, const std::string &);
 bool handleForceRefreshAfterTaxonomy(OTCLI & otCLI, const std::string &);
 bool handleFix(OTCLI & otCLI, const std::string &);
+bool handleFixKnuckles(OTCLI & otCLI, const std::string &);
 
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg) {
     FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
@@ -563,6 +591,13 @@ bool handleFix(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
+bool handleFixKnuckles(OTCLI & otCLI, const std::string &) {
+    FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
+    assert(fusp != nullptr);
+    fusp->fixShouldSuppressKnuckles = true;
+    return true;
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-find-unsupported-nodes",
                 "takes at least 2 newick file paths: a full taxonomy tree, a full supertree, and some number of input trees",
@@ -587,6 +622,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('c',
                   "Fix the problems (clean the tree) rather than reporting on them.",
                   handleFix,
+                  false);
+    otCLI.addFlag('k',
+                  "If the -c is used, then this flag requests that unnamed nodes of out-degree=1 be suppressed.",
+                  handleFixKnuckles,
                   false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
