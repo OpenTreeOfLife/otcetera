@@ -462,7 +462,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             }
             nmp = &(nd->getData().desIds); //
         } else {
-            auto firstBranchingAnc = findFirstBranchingAnc<const NodeWithSplits>(nd);
+            auto firstBranchingAnc = findFirstForkingAnc<const NodeWithSplits>(nd);
             if (firstBranchingAnc == nullptr) {
                 return;
             }
@@ -488,7 +488,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         if (par == nullptr) {
             return;
         }
-        auto firstBranchingAnc = findFirstBranchingAnc<const NodeWithSplits>(nd);
+        auto firstBranchingAnc = findFirstForkingAnc<const NodeWithSplits>(nd);
         if (firstBranchingAnc == nullptr) {
             return;
         }

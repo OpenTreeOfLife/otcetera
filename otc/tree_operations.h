@@ -240,7 +240,7 @@ void markPathToRoot(const T & fullTree,
 
 // find most recent anc of nd with out-degree > 1
 template<typename T>
-inline T * findFirstBranchingAnc(T * nd) {
+inline T * findFirstForkingAnc(T * nd) {
     T * anc = nd->getParent();
     if (anc == nullptr) {
         return nullptr;

@@ -3,7 +3,7 @@
 using namespace otc;
 
 template <typename T, typename U>
-void resolveNode(T & tree, U & parent, const OttIdSet & newInc) {
+U * resolveNode(T & tree, U & parent, const OttIdSet & newInc) {
     std::set<U *> childrenToMove;
     for (auto nd : iter_child(parent)) {
         if (!areDisjoint(nd->getData().desIds, newInc)) {
@@ -21,22 +21,54 @@ void resolveNode(T & tree, U & parent, const OttIdSet & newInc) {
         insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());
     }
     assert(phPar->getOutDegree() > 1);
+    return insertedNodePtr;
 }
+
+struct FindResolutionState;
+
+class SupportingIDSets {
+    public:
+    typedef std::pair<const OttIdSet *, const OttIdSet *> incParIncPair;
+    std::list<incParIncPair> supporting;
+    void addSupport(const OttIdSet *i, const OttIdSet *pi) {
+        supporting.push_back(std::pair<const OttIdSet *, const OttIdSet *>(i, pi));
+    }
+    bool attemptSplitOfSupport(OTCLI & otCLI,
+                               const NodeWithSplits *nd,
+                               SupportingIDSets & toAddTo,
+                               FindResolutionState & frs,
+                               const OttIdSet & incAdded,
+                               const OttIdSet & parIncAdded);
+};
 
 struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
     std::unique_ptr<TreeMappedWithSplits> toCheck;
     std::size_t numIncludable;
     bool addGroups;
     int numErrors;
+    std::map<const NodeWithSplits *, std::set<long> > protectedPolytomy;
+    std::string protectedFilename;
+    bool avoidAddingUnsupportedGroups;
+    std::list<std::unique_ptr<TreeMappedWithSplits> > allInps;
+    std::map<const NodeWithSplits *, SupportingIDSets> supportedNodes;
+    std::list<OttIdSet> ownedIds;
+    OttIdSet * aliasToNewOttIdSet() {
+        ownedIds.push_back(OttIdSet{});
+        return &(*(ownedIds.rbegin()));
+    }
     virtual ~FindResolutionState(){}
     FindResolutionState()
         :toCheck(nullptr),
         numIncludable(0U),
         addGroups(false),
-        numErrors(0) {
+        numErrors(0),
+        avoidAddingUnsupportedGroups(false) {
     }
 
     bool summarize(OTCLI &otCLI) override {
+        if (avoidAddingUnsupportedGroups) {
+            doRefinementAvoidingUnsupportedGroups(otCLI);
+        }
         if (addGroups) {
             otCLI.err << numIncludable << " nodes added to the tree.\n";
             if (numIncludable == 0) {
@@ -65,14 +97,78 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         assert(taxonomy != nullptr);
         if (toCheck == nullptr) {
             toCheck = std::move(tree);
-            otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+            if (!protectedFilename.empty()) {
+                parseAndProcessMRCADesignatorsFile(protectedFilename);
+            }
             return true;
         }
         expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
         clearAndfillDesIdSets(*tree);
-        const OttIdSet & treeLeafSet = tree->getRoot()->getData().desIds;
+        if (avoidAddingUnsupportedGroups) {
+            allInps.emplace_back(std::move(tree));
+        } else {
+            attemptResolutionFromSourceTree(otCLI, *tree);
+        }
+        return true;
+    }
+    void doRefinementAvoidingUnsupportedGroups(OTCLI & otCLI) {
+        for (auto & treePtr : allInps) {
+            recordSupportingStatements(otCLI, *treePtr);
+        }
+        for (auto & treePtr : allInps) {
+            attemptResolutionFromSourceTree(otCLI, *treePtr);
+        }
+    }
+    void recordSupportingStatements(OTCLI & otCLI, TreeMappedWithSplits & tree) {
+        std::map<const NodeWithSplits *, std::set<long> > restrictedDesIds;
+        for (auto nd : iter_leaf_const(tree)) {
+            auto ottId = nd->getOttId();
+            markPathToRoot(*toCheck, ottId, restrictedDesIds);
+        }
+        identifySupportedNodes(otCLI, tree, restrictedDesIds);
+    }
+    void identifySupportedNodes(OTCLI & otCLI,
+                                const TreeMappedWithSplits & tree,
+                                const std::map<const NodeWithSplits *, std::set<long> > & inducedNdToEffDesId) {
+        for (auto pd : inducedNdToEffDesId) {
+            checkNodeForSupport(otCLI, pd.first, pd.second, tree, inducedNdToEffDesId);
+        }
+    }
+    void checkNodeForSupport(OTCLI & ,
+                             const NodeWithSplits * nd,
+                             const OttIdSet & nm,
+                             const TreeMappedWithSplits & tree,
+                             const std::map<const NodeWithSplits *, OttIdSet > & inducedNdToEffDesId) {
+        auto par = nd->getParent();
+        if (par == nullptr) {
+            return;
+        }
+        auto firstBranchingAnc = findFirstForkingAnc<const NodeWithSplits>(nd);
+        if (firstBranchingAnc == nullptr) {
+            return;
+        }
+        auto ancIt = inducedNdToEffDesId.find(firstBranchingAnc);
+        assert(ancIt != inducedNdToEffDesId.end());
+        const auto & anm = ancIt->second;
+        const NodeWithSplits * firstNdPtr; // just used to match call
+        if (!multipleChildrenInMap(*nd, inducedNdToEffDesId, &firstNdPtr)) {
+            return;
+        }
+        if (anm == nm) {
+            return;
+        }
+        auto srcNode = findNodeWithMatchingDesIdSet(tree, nm);
+        if (srcNode != nullptr) {
+            const OttIdSet * sip = &(srcNode->getData().desIds);
+            const OttIdSet * spip = &(srcNode->getParent()->getData().desIds);
+            supportedNodes[nd].addSupport(sip, spip);
+        }
+    }
+
+    void attemptResolutionFromSourceTree(OTCLI & otCLI, TreeMappedWithSplits & tree) {
+        const OttIdSet & treeLeafSet = tree.getRoot()->getData().desIds;
         std::set<const NodeWithSplits *> nodesFromInp;
-        for (auto nd : iter_pre_internal_const(*tree)) {
+        for (auto nd : iter_pre_internal_const(tree)) {
             if (nd->getParent() != nullptr) {
                 nodesFromInp.insert(nd);
             }
@@ -82,6 +178,9 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             for (const auto nd : nodesFromInp) {
                 const OttIdSet & incGroup = nd->getData().desIds;
                 auto r = findMRCAUsingDesIds(*toCheck, incGroup);
+                if (contains(protectedPolytomy, r)) {
+                    continue; // skip protected
+                }
                 NodeWithSplits * mrca = const_cast<NodeWithSplits *>(r);
                 assert(mrca);
                 OttIdSet md = mrca->getData().desIds;
@@ -121,18 +220,165 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                     }
                 }
                 if (toAdd != nullptr) {
-                    numIncludable += 1;
                     const OttIdSet & incGroup = toAdd->getData().desIds;
-                    resolveNode(*toCheck, *mrcaPtr, incGroup);
+                    const OttIdSet & parIncAdded = toAdd->getParent()->getData().desIds;
+                    NodeWithSplits * added = resolveNode(*toCheck, *mrcaPtr, incGroup);
+                    if (avoidAddingUnsupportedGroups
+                        && causedUnsupported(otCLI,
+                                            *toCheck,
+                                            mrcaPtr,
+                                            incGroup,
+                                            parIncAdded,
+                                            added)) {
+                        collapseNode(*toCheck, added);
+                    } else {
+                        numIncludable += 1;
+                        if (otCLI.verbose) {
+                            otCLI.err << "tree \"" << tree.getName() << "\" adding split\n  inc. ";
+                            writeOttSet(otCLI.err, "  ", incGroup, " ");
+                            otCLI.err << "\n  exc. ";
+                            OttIdSet p = toAdd->getParent()->getData().desIds;
+                            p = set_difference_as_set(p, incGroup);
+                            writeOttSet(otCLI.err, "  ", p, " ");
+                            otCLI.err << '\n';
+                            
+                        }
+                    }
                 }
             }
             nodesFromInp = toDealWith;
         }
-        return true;
     }
 
+    bool causedUnsupported(OTCLI & otCLI,
+                           TreeMappedWithSplits & ,
+                           NodeWithSplits * par,
+                           const OttIdSet & incAdded,
+                           const OttIdSet & parIncAdded,
+                           NodeWithSplits * added) {
+        assert(par != nullptr);
+        assert(added != nullptr);
+        assert(par == added->getParent());
+        auto & supids = supportedNodes.at(par);
+        SupportingIDSets addedSupIds;
+        if (!supids.attemptSplitOfSupport(otCLI,
+                                          added,
+                                          addedSupIds,
+                                          *this,
+                                          incAdded,
+                                          parIncAdded)) {
+            return true;
+        }
+        supportedNodes[added] = addedSupIds;
+        return false;
+    }
+
+
+    void parseAndProcessMRCADesignatorsFile(const std::string &fp) {
+        assert(toCheck != nullptr);
+        std::list<std::set<long> > dl = parseDesignatorsFile(fp);
+        for (auto d : dl) {
+            markProtectedNode(d);
+        }
+    }
+
+    void markProtectedNode(const std::set<long> & designators) {
+        const NodeWithSplits * mrca = findMRCAFromIDSet(*toCheck, designators, -1);
+        protectedPolytomy[mrca] = designators;
+    }
 };
+
+inline bool SupportingIDSets::attemptSplitOfSupport(OTCLI & otCLI, 
+                                                    const NodeWithSplits *nd,
+                                                    SupportingIDSets & toAddTo,
+                                                    FindResolutionState & frs,
+                                                    const OttIdSet & incAdded,
+                                                    const OttIdSet & parIncAdded) {
+    //every support statement for this node, should either:
+    //  1. stay in SupportingIDSets,
+    //  2. move to toAddTo, or 
+    //  3. be removed
+    //  to toAddTo
+    assert(nd != nullptr);
+    auto p = nd->getParent();
+    assert(p != nullptr);
+    const OttIdSet & nddi = nd->getData().desIds;
+    const OttIdSet & pdi = p->getData().desIds;
+    std::list<std::list<incParIncPair>::iterator> toMove;
+    std::list<std::list<incParIncPair>::iterator> toDel;
+    std::list<incParIncPair>::iterator sIt = begin(supporting);
+    for (; sIt != end(supporting); ++sIt) {
+        const OttIdSet & suppInc = *(sIt->first);
+        const OttIdSet & suppParInc = *(sIt->second);
+        if (otCLI.verbose) {
+            otCLI.err << "suppInc ";
+            writeOttSet(otCLI.err, "  ", suppInc, " ");
+            otCLI.err << "\nsuppParInc";
+            writeOttSet(otCLI.err, "  ", suppParInc, " ");
+            otCLI.err << '\n';
+        }
+
+        if (isSubset(suppInc, nddi)) {
+            if (haveIntersection(suppParInc, pdi)) {
+                if (otCLI.verbose) {
+                    otCLI.err << "toMove\n";
+                }
+                toMove.push_back(sIt);
+            } else {
+                if (otCLI.verbose) {
+                    otCLI.err << "toDel\n";
+                }
+                toDel.push_back(sIt);
+            }
+        } else {
+            if (otCLI.verbose) {
+                otCLI.err << "toRetain\n";
+            }
+        }
+    }
+    if (toMove.empty()) {
+        assert(false); // the node causing the respolution should support the new node
+        return false;
+    }
+    const auto tcs = toMove.size() + toDel.size();
+    if (tcs ==  supporting.size()) {
+        if (otCLI.verbose) {
+            otCLI.err << "All " << tcs << " supporing statements moving or deleted \n";
+        }
+        return false;
+    }
+    if (otCLI.verbose) {
+        otCLI.err << toMove.size() << " moving. " << toDel.size() << " to be del.";
+        otCLI.err << supporting.size() - tcs << " to remain.";
+    }
+    
+    for (auto i : toMove) {
+        const OttIdSet & suppInc = *(i->first);
+        const OttIdSet & suppParInc = *(i->second);
+        OttIdSet * nsi = frs.aliasToNewOttIdSet();
+        OttIdSet * npsi = frs.aliasToNewOttIdSet();
+        *nsi = set_intersection_as_set(suppInc, incAdded);
+        *npsi = set_intersection_as_set(suppParInc, parIncAdded);
+        toAddTo.addSupport(nsi, npsi);
+        supporting.erase(i);
+    }
+
+    for (auto i : toDel) {
+        supporting.erase(i);
+    }
+    return true;
+}
+
 bool handleResolve(OTCLI & otCLI, const std::string &);
+bool handleDesignator(OTCLI & otCLI, const std::string &);
+bool handleAvoidUnsupported(OTCLI & otCLI, const std::string &);
+
+bool handleAvoidUnsupported(OTCLI & otCLI, const std::string &) {
+    FindResolutionState * proc = static_cast<FindResolutionState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->avoidAddingUnsupportedGroups = true;
+    return true;
+}
 
 bool handleResolve(OTCLI & otCLI, const std::string &) {
     FindResolutionState * proc = static_cast<FindResolutionState *>(otCLI.blob);
@@ -141,16 +387,32 @@ bool handleResolve(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
+bool handleDesignator(OTCLI & otCLI, const std::string &nextArg) {
+    FindResolutionState * proc = static_cast<FindResolutionState *>(otCLI.blob);
+    assert(proc != nullptr);
+    assert(!nextArg.empty());
+    proc->protectedFilename = nextArg;
+    return true;
+}
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-find-resolution",
-                "takes at least 2 newick file paths: a full supertree, and some number of input trees",
+                "takes at least 3 newick file paths: a taxonomy,  a full supertree, and some number of input trees.",
                 "synth.tre inp1.tre inp2.tre ...");
     FindResolutionState proc;
     otCLI.addFlag('r',
                   "Resolve the supertree rather than counting number of groups that could be added.",
                   handleResolve,
                   false);
+    otCLI.addFlag('u',
+                  "Do not add a resolution if it will cause an unsupported group.",
+                  handleAvoidUnsupported,
+                  false);
+    otCLI.addFlag('p',
+                  "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them. " \
+                  "If the -r option is used, these nodes will be protected from resolution.",
+                  handleDesignator,
+                  true);
     
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, true);
 }

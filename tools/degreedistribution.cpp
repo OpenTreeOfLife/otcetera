@@ -18,9 +18,11 @@ inline bool writeDegreeDistribution(OTCLI & otCLI, std::unique_ptr<T> tree) {
         otCLI.out << p.first << "\t" << p.second << "\n";
         numNodes += p.second;
     }
-    const auto numLeaves = degreeDistribution[0];
+    const auto numLeaves = degreeDistribution[0UL];
+    const auto numElbows = (contains(degreeDistribution, 1UL) ? degreeDistribution[1UL]: 0UL);
     otCLI.err << numLeaves << " leaves\n";
     otCLI.err << numNodes - numLeaves << " non-leaf nodes (internals including the root)\n";
+    otCLI.err << numNodes - numLeaves - numElbows<< " non-leaf nodes with out-degree > 1 (internals including the root)\n";
     otCLI.err << numNodes << " total nodes\n";
     return true;
 }
