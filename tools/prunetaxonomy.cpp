@@ -21,9 +21,9 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
                     numNonTerminals++;
                 }
             }
-            otCLI.out << numNonTerminals << " tips mapped to non-terminal taxa.\n";
-            otCLI.out << (directlyIncludedNodes.size() - numNonTerminals) << " tips mapped to terminal taxa.\n";
-            otCLI.out << directlyIncludedNodes.size() << " total mapped tips.\n";
+            otCLI.out << numNonTerminals << " non-terminal taxa in OTT that are mapped by at least 1 input.\n";
+            otCLI.out << (directlyIncludedNodes.size() - numNonTerminals) << " terminal taxa in OTT that are mapped by at least 1 input\n";
+            otCLI.out << directlyIncludedNodes.size() << " total taxa in OTT that are mapped by at least 1 input.\n";
             return true;
         }
         assert(taxonomy != nullptr && !includedNodes.empty());
