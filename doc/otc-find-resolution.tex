@@ -1,0 +1,56 @@
+\documentclass[11pt]{article}
+\input{preamble.tex}
+\usepackage{xr}
+\externaldocument[S-]{summarizing-taxonomy-plus-trees}
+\newcommand{\summDoc}{\href{http://phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf}{the otcetera summary}\xspace}
+\newcommand{\summRef}[1]{Section \ref{S-#1} of \summDoc}
+\usepackage{hyperref}
+\hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
+\begin{document}
+\section*{\texttt{otc-find-resolution}}
+This document describes the behavior of \texttt{otc-find-resolution} when the \texttt{-u}
+    option is used to request resolution of tree without introducing unsupported nodes.
+
+\subsection*{Background and notation}
+Consider a supertree \summaryTree that displays a set of input \pss \pssInOptimalTree.
+We say that \summaryTree is {\em minimal} with respect \pssInOptimalTree, if there is
+    no edge in \summaryTree that can be collapse to result in a smaller tree $\summaryTree^{\prime}$
+    which still displays all of the \pss in \pssInOptimalTree.
+
+$\leafLabels{T}$ is the set of leaf labels associated with the tips of a tree.
+Let $\leafDes{n}$ represent the set of leaf label that are associated with node that are descendants
+    of node $n$.
+$\excLeafDes{n, T}$ is the set of leaf labels of the tree T which are {\em not} descendants of $n$.
+Thus $\leafLabels{T} = \leafDes{n} \cup \excLeafDes(n, T)$ and $\leafDes{n} \cap \excLeafDes(n, T)=\emptyset$ for any node $n$ in $T$.
+
+$\pssFrom{T}$ is the set of \pss that correspond to the non-root, clusters of tree $T$.
+If $T$ denotes a set or series of trees, then this notation is used to indicate the union of the \pss from each tree.
+
+$\children{n}$ is the set of nodes that are children of $n$.
+
+\subsection*{Input}
+\begin{compactitem}
+    \item A tree representing the full taxonomy, \taxonomy
+    \item A summary tree, $\summaryTree$, which has no nodes of outdgree-1 and which is minimal wrt \pssInOptimalTree.
+    \item A series of input phylogenetic estimates  $[T_1, T_2, \ldots T_{N-1}]$ in ranked order of importance (1 being the most important)
+\end{compactitem}
+The full set of inputs is taken to be: $\mathcal{T} = [T_1, T_2, \ldots T_{N}]$ where $T_N = \taxonomy$.
+    $\pssInOptimalTree$ is the subset of $\pssFrom{\mathcal{T}}$ which are displayed by $\summaryTree$.
+
+\subsection*{Goal}
+Print a tree $\summaryTree^{\prime}$ which:
+\begin{compactitem}
+    \item is a more resolved form of $\summaryTree$.
+    \item is minimal wrt $\pssInOptimalTree^{\prime}$ where $\pssInOptimalTree \subset \pssInOptimalTree^{\prime}$ and $\pssInOptimalTree^{\prime} \subset \pssFrom{\mathcal{T}}$. and 
+    \item groupings are added to the tree in the order of the ranking of the trees (to maximize the \SWIPSD score)
+\end{compactitem}
+
+The output should be the highest scoring resolution of $\summaryTree$ under the \SWIPSD score when the
+    weights of for each tree is $>>$ than the weight of the next ranked tree.
+
+\section*{Implementation}
+\begin{compactenum}
+    \item All trees are read.
+    \item Any tip $n$ in $\mathcal{T}$ mapped to a non-terminal taxonis expanded as described in \summRef{expandNonTermPar}. This creates of $\leafDes{n}$ attached to $\parent{n}$ and removes $n$ from the tree.
+\end{compactenum}
+\end{document}
