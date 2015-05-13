@@ -27,6 +27,8 @@ $\pssFrom{T}$ is the set of \pss that correspond to the non-root, clusters of tr
 If $T$ denotes a set or series of trees, then this notation is used to indicate the union of the \pss from each tree.
 
 $\children{n}$ is the set of nodes that are children of $n$.
+$\parent{n}$ is the parent of $n$.
+$\mrca{n, T}$ is least inclusive ancestor of $\leafDes{n}$ in tree $T$.
 
 \subsection*{Input}
 \begin{compactitem}
@@ -50,7 +52,29 @@ The output should be the highest scoring resolution of $\summaryTree$ under the 
 
 \section*{Implementation}
 \begin{compactenum}
-    \item All trees are read.
-    \item Any tip $n$ in $\mathcal{T}$ mapped to a non-terminal taxonis expanded as described in \summRef{expandNonTermPar}. This creates of $\leafDes{n}$ attached to $\parent{n}$ and removes $n$ from the tree.
+    \item All trees are read. Let $\summaryTree^{\prime}$ denote the current state of the input
+    \summaryTree throughout the procedure (as it become more resolved $\summaryTree^{\prime}$ will
+    always denote the ``current'' form of the tree)
+    \item Any tip $n$ in $\mathcal{T}$ mapped to a non-terminal taxon is expanded as described in \summRef{expandNonTermPar}.
+    This creates of $\leafDes{n}$ attached to $\parent{n}$ and removes $n$ from the tree.
+    \item The non-root internal nodes $x$ of $\summaryTree$ are each decorated with a data structure. 
+    A more complete name for this structure would be something like $\supportingPSSetFull{x}{\pssFrom{\mathcal{T}}}$, but we will call it $\supportingPSSet{x}$ for brevity.
+    This data structure holds a set of  {\incLSSSs}.
+    An \incLSSS is a tuple of an include leaf set and a full leaf set from an input \pss.
+    Every member of $\supportingPSSet{x}$ will support node $x$ in the
+    sense that if the edge subtending $x$ were suppressed then the tree would no longer 
+    display the \ps that contributed this \incLSSS.
+    \item Walk through each tree in $\mathcal{T}$ in order of rank. 
+    Traverse tree in postorder, visiting every non-root internal.
+    When visiting node $v$:
+    \begin{compactenum}
+        \item Find $x \leftarrow \mrca{v}{\summaryTree^{\prime}}$
+        \item If $x$ is a polytomy and \textsc{CanResolve(x, v)} then:
+         \begin{compactenum}
+            \item let $y\leftarrow \textsc{Resolve(x, v)}$
+            \item If \textsc{CreatedUnsupportedNode(y, v)} then \textsc{Collapse(y)}
+        \end{compactenum}
+   \end{compactenum}
+   \item Print $\summaryTree^{\prime}$
 \end{compactenum}
 \end{document}
