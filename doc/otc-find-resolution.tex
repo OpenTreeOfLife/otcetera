@@ -30,6 +30,11 @@ $\children{n}$ is the set of nodes that are children of $n$.
 $\parent{n}$ is the parent of $n$.
 $\mrca{n, T}$ is least inclusive ancestor of $\leafDes{n}$ in tree $T$.
 
+An \incLSSS is a tuple of an include leaf set and a full leaf set from an input \pss.
+The exclude group for the \pss is simply the difference between the leaf set and the include group.
+This format can be more memory efficient because each \incLSSS from the same input tree
+can refer to the same leaf set.
+
 \subsection*{Input}
 \begin{compactitem}
     \item A tree representing the full taxonomy, \taxonomy
@@ -48,19 +53,20 @@ Print a tree $\summaryTree^{\prime}$ which:
 \end{compactitem}
 
 The output should be the highest scoring resolution of $\summaryTree$ under the \SWIPSD score when the
-    weights of for each tree is $>>$ than the weight of the next ranked tree.
+    weights of for each tree is much greater than the weight of the next ranked tree.
 
 \section*{Implementation}
 \begin{compactenum}
-    \item All trees are read. Let $\summaryTree^{\prime}$ denote the current state of the input
-    \summaryTree throughout the procedure (as it become more resolved $\summaryTree^{\prime}$ will
-    always denote the ``current'' form of the tree)
+    \item Read all input trees. Let $\summaryTree^{\prime}$ denote the current state of tree that is initialized by the input
+    \summaryTree throughout the procedure. 
+    As the tree becomes more resolved $\summaryTree^{\prime}$ will always denote the ``current'' form of the tree.
     \item Any tip $n$ in $\mathcal{T}$ mapped to a non-terminal taxon is expanded as described in \summRef{expandNonTermPar}.
     This creates of $\leafDes{n}$ attached to $\parent{n}$ and removes $n$ from the tree.
-    \item The non-root internal nodes $x$ of $\summaryTree$ are each decorated with a data structure. 
-    A more complete name for this structure would be something like $\supportingPSSetFull{x}{\pssFrom{\mathcal{T}}}$, but we will call it $\supportingPSSet{x}$ for brevity.
+    \item The non-root internal nodes $x$ of $\summaryTree$ are each decorated with a  $\supportingPSSet{x}$ data structure.
+    \footnote{A more complete name for this structure would be something like $\supportingPSSetFull{x}{\pssFrom{\mathcal{T}}}$,
+    because it depends on the $\pssInOptimalTree$.
+    We will call it $\supportingPSSet{x}$ for brevity, and because this set of inputs fixed for each run.}
     This data structure holds a set of  {\incLSSSs}.
-    An \incLSSS is a tuple of an include leaf set and a full leaf set from an input \pss.
     Every member of $\supportingPSSet{x}$ will support node $x$ in the
     sense that if the edge subtending $x$ were suppressed then the tree would no longer 
     display the \ps that contributed this \incLSSS.
@@ -71,8 +77,8 @@ The output should be the highest scoring resolution of $\summaryTree$ under the 
         \item Find $x \leftarrow \mrca{v}{\summaryTree^{\prime}}$
         \item If $x$ is a polytomy and \textsc{CanResolve(x, v)} then:
          \begin{compactenum}
-            \item let $y\leftarrow \textsc{Resolve(x, v)}$
-            \item If \textsc{CreatedUnsupportedNode(y, v)} then \textsc{Collapse(y)}
+            \item let $y\leftarrow \textsc{Resolve}(x, v)$
+            \item If \textsc{CreatedUnsupportedNode}(y, v) then \textsc{Collapse}(y) otherwise \textsc{UpdateSSS}(y).
         \end{compactenum}
    \end{compactenum}
    \item Print $\summaryTree^{\prime}$
