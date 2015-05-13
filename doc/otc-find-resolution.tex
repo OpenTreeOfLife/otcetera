@@ -21,7 +21,9 @@ $\leafLabels{T}$ is the set of leaf labels associated with the tips of a tree.
 Let $\leafDes{n}$ represent the set of leaf label that are associated with node that are descendants
     of node $n$.
 $\excLeafDes{n, T}$ is the set of leaf labels of the tree T which are {\em not} descendants of $n$.
-Thus $\leafLabels{T} = \leafDes{n} \cup \excLeafDes(n, T)$ and $\leafDes{n} \cap \excLeafDes(n, T)=\emptyset$ for any node $n$ in $T$.
+Thus $\leafLabels{T} = \leafDes{n} \cup \excLeafDes{n,T}$ and $\leafDes{n} \cap \excLeafDes{n,T}=\emptyset$ for any node $n$ in $T$.
+
+$\excLeafDes{n}$ is shorthand for $\excLeafDes{n, T}$ where $T$ is the tree that $n$ belongs to.
 
 $\pssFrom{T}$ is the set of \pss that correspond to the non-root, clusters of tree $T$.
 If $T$ denotes a set or series of trees, then this notation is used to indicate the union of the \pss from each tree.
@@ -62,25 +64,54 @@ The output should be the highest scoring resolution of $\summaryTree$ under the 
     As the tree becomes more resolved $\summaryTree^{\prime}$ will always denote the ``current'' form of the tree.
     \item Any tip $n$ in $\mathcal{T}$ mapped to a non-terminal taxon is expanded as described in \summRef{expandNonTermPar}.
     This creates of $\leafDes{n}$ attached to $\parent{n}$ and removes $n$ from the tree.
-    \item The non-root internal nodes $x$ of $\summaryTree$ are each decorated with a  $\supportingPSSet{x}$ data structure.
-    \footnote{A more complete name for this structure would be something like $\supportingPSSetFull{x}{\pssFrom{\mathcal{T}}}$,
+    \item The non-root internal nodes $x$ of $\summaryTree$ are each decorated with a  $\supportingPSSet{x}$ data structure.\footnote{A
+    more complete name for this structure would be something like $\supportingPSSetFull{x}{\pssFrom{\mathcal{T}}}$,
     because it depends on the $\pssInOptimalTree$.
     We will call it $\supportingPSSet{x}$ for brevity, and because this set of inputs fixed for each run.}
     This data structure holds a set of  {\incLSSSs}.
     Every member of $\supportingPSSet{x}$ will support node $x$ in the
     sense that if the edge subtending $x$ were suppressed then the tree would no longer 
     display the \ps that contributed this \incLSSS.
-    \item Walk through each tree in $\mathcal{T}$ in order of rank. 
-    Traverse tree in postorder, visiting every non-root internal.
+    \item Each node $x$ in a tree $T$ is decorated with a $\texttt{desIds}$ which holds $\leafDes{x}$;
+    each node also has $\texttt{leafSet}$ which refers to $\leafSet{T}$.
+    \item Walk through each tree in $\mathcal{T}$ in order of rank. For each tree, 
+    traverse it visiting every non-root internal node.
     When visiting node $v$:
     \begin{compactenum}
         \item Find $x \leftarrow \mrca{v}{\summaryTree^{\prime}}$
-        \item If $x$ is a polytomy and \textsc{CanResolve(x, v)} then:
+        \item If $x$ is a polytomy; $M, N \leftarrow \textsc{ResolvingBipart}(x, v)$. If neither $M$ nor $N$ is an empty set then:
          \begin{compactenum}
-            \item let $y\leftarrow \textsc{Resolve}(x, v)$
-            \item If \textsc{CreatedUnsupportedNode}(y, v) then \textsc{Collapse}(y) otherwise \textsc{UpdateSSS}(y).
+            \item let $y\leftarrow \textsc{Resolve}(x, M, N)$
+            \item If $\textsc{CreatedUnsupportedNode}(y, v)$ then $\textsc{Collapse}(y)$ otherwise $\textsc{UpdateSSS}(y)$.
         \end{compactenum}
    \end{compactenum}
    \item Print $\summaryTree^{\prime}$
 \end{compactenum}
+
+\begin{algorithm} \caption{\textsc{ResolvingBipart}}\label{AlgResolvingBipart}
+\begin{algorithmic}
+\REQUIRE $x$ a node in a taxonomically complete tree $T$ that is $\mrca{v}{T}$
+\REQUIRE $v$ a node from another tree
+\ENSURE Returns a pair of sets. If both elements returned are non-empty, then 
+    the pair of sets are a  bipartition of child set of $x$ and the first set 
+    can be moved to a newly created daughter in order to resolve $x$.
+    If either set is empty, then  $v$ cannot resolve $x$.
+\STATE $M\leftarrow \{\}$
+\STATE $N\leftarrow \{\}$
+\FOR{each $c \in \children{x}$}
+    \IF{$\leafDes{c} \cap \leafDes{v} \neq \emptyset$}
+        \IF{$\leafDes{c} \cap \excLeafDes{v} \neq \emptyset$}
+            \RETURN $(\emptyset, \emptyset)$
+        \ENDIF
+        $M\leftarrow M + \{ c\}$
+    \ELSE
+        $N\leftarrow N + \{ c\}$
+    \ENDIF
+\ENDFOR \\
+\RETURN $(M, N)$
+\end{algorithmic}
+\end{algorithm}
 \end{document}
+
+
+
