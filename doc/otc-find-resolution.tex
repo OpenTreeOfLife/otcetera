@@ -54,7 +54,7 @@ Print a tree $\summaryTree^{\prime}$ which:
     \item groupings are added to the tree in the order of the ranking of the trees (to maximize the \SWIPSD score)
 \end{compactitem}
 
-The output should be the highest scoring resolution of $\summaryTree$ under the \SWIPSD score when the
+This is a greedy approximation that attempts to output the highest scoring resolution of $\summaryTree$ under the \SWIPSD score when the
     weights of for each tree is much greater than the weight of the next ranked tree.
 
 \section*{Implementation}
@@ -79,7 +79,7 @@ The output should be the highest scoring resolution of $\summaryTree$ under the 
     When visiting node $v$:
     \begin{compactenum}
         \item Find $x \leftarrow \mrca{v}{\summaryTree^{\prime}}$
-        \item If $x$ is a polytomy; $M, N \leftarrow \textsc{ResolvingBipart}(x, v)$. If neither $M$ nor $N$ is an empty set then:
+        \item If $x$ is a polytomy; $M, N \leftarrow \textsc{ResolvingBipart}(x, v)$. If $|M| > 1$ and $N\neq \emptyset$ then:
          \begin{compactenum}
             \item let $y\leftarrow \textsc{Resolve}(x, M, N)$
             \item If $\textsc{CreatedUnsupportedNode}(y, v)$ then $\textsc{Collapse}(y)$ otherwise $\textsc{UpdateSSS}(y)$.
@@ -94,18 +94,23 @@ The output should be the highest scoring resolution of $\summaryTree$ under the 
 \REQUIRE $v$ a node from another tree
 \ENSURE Returns a pair of sets. If both elements returned are non-empty, then 
     the pair of sets are a  bipartition of child set of $x$ and the first set 
-    can be moved to a newly created daughter in order to resolve $x$.
+    can be moved to a newly created daughter in order to resolve $x$ in 
+    a way that is supported by $v$.
     If either set is empty, then  $v$ cannot resolve $x$.
+\STATE ASSERT $\leafDes{v} \subset \leafDes{x}$
+\IF{$\leafDes{x} \cap \excLeafDes{v} = \emptyset$}
+    \RETURN $(\emptyset, \emptyset)$ \COMMENT{resolution might be compatible with $v$, but would not {\em supported} by $v$.}
+\ENDIF
 \STATE $M\leftarrow \{\}$
 \STATE $N\leftarrow \{\}$
 \FOR{each $c \in \children{x}$}
     \IF{$\leafDes{c} \cap \leafDes{v} \neq \emptyset$}
         \IF{$\leafDes{c} \cap \excLeafDes{v} \neq \emptyset$}
-            \RETURN $(\emptyset, \emptyset)$
+            \RETURN $(\emptyset, \emptyset)$ \COMMENT{can't separate $\leafDes{v}$ from $\excLeafDes{v}$ by resolving}
         \ENDIF
-        $M\leftarrow M + \{ c\}$
+        $M\leftarrow M \cup \{ c\}$
     \ELSE
-        $N\leftarrow N + \{ c\}$
+        $N\leftarrow N \cup \{ c\}$
     \ENDIF
 \ENDFOR \\
 \RETURN $(M, N)$
