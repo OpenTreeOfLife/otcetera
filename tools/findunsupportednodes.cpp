@@ -337,7 +337,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         out << ". These are considered supported if their child is supported.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_INTERNAL) << " unnamed redundant internal nodes supported by an input tree internal node.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_EXPANDED) << " unnamed redundant internal nodes supported by an input tree expanded tip node.\n";
-        out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_BOTH) << " unnamed  redundant internal nodes supported by an input tree internal node and another tree\'s expanded  tip node.\n";
+        out << "    " << ss.supportCounts.at(REDUNDANT_ND + SEEN_IN_AN_INPUT_BOTH) << " unnamed redundant internal nodes supported by an input tree internal node and another tree\'s expanded tip node.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_NODE) << " redundant named internal nodes had no support (other than the name).\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_INTERNAL) << " redundant named internal nodes supported by an input tree internal node.\n";
         out << "    " << ss.supportCounts.at(REDUNDANT_ND + NAMED_SEEN_IN_AN_INPUT_EXPANDED) << " redundant named internal nodes supported by an input tree expanded tip node.\n";
