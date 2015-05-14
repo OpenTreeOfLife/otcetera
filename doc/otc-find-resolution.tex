@@ -73,10 +73,10 @@ This is a greedy approximation that attempts to output the highest scoring resol
     sense that if the edge subtending $x$ were suppressed then the tree would no longer 
     display the \ps that contributed this \incLSSS.
     Conceptually this can be done by traversing each node $v$ of an input $T$
-    and calling \textsc{RecordSupportStatement}$(x, v, T)$ for each node $x$ or the summary tree.
+    and calling \textsc{RecordSupportStatement}$(x, v)$ for each node $x$ or the summary tree.
     In practice, we can traverse each input tree, and only call that function for each internal node $v$ and $x=\mrca{v}{\summaryTree}$
     \item Each node $x$ in a tree $T$ is decorated with a $\texttt{desIds}$ which holds $\leafDes{x}$;
-    each node also has $\texttt{leafSet}$ which refers to $\leafSet{T}$.
+    each node also has $\texttt{leafLSet}$ which refers to $\leafSet{T}$.
     \item Walk through each tree in $\mathcal{T}$ in order of rank. For each tree, 
     traverse it visiting every non-root internal node.
     When visiting node $v$:
@@ -90,6 +90,39 @@ This is a greedy approximation that attempts to output the highest scoring resol
    \end{compactenum}
    \item Print $\summaryTree^{\prime}$
 \end{compactenum}
+
+\begin{algorithm} \caption{\textsc{RecordSupportStatement}}\label{AlgRecordSupportStatement}
+\begin{algorithmic}
+\REQUIRE $x$ an internal node of a tree
+\REQUIRE $v$ an internal node of a different tree where $v.\texttt{leafLSet} \subseteq x.\texttt{leafLSet}$
+\ENSURE If $v$ supports $x$, then add an entry to $\supportingPSSet{x}$
+\IF{\textsc{IsSupportedBy}$(x, v)$}
+    $\supportingPSSet{x} = \supportingPSSet{x} \cup \{(v.\texttt{desIds}, v.\texttt{leafLSet})\}$$
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm} \caption{\textsc{IsSupportedBy}}\label{AlgIsSupportedBy}
+\begin{algorithmic}
+\REQUIRE $x$ an internal node of a tree
+\REQUIRE $v$ an internal node of a different tree where $v.\texttt{leafLSet} \subseteq x.\texttt{leafLSet}$
+\ENSURE Predicate returning true if $\treeOf{x}$ displays $v$ and collapsing the 
+    edge below $x$ would yield a tree that would not display $x$.
+\IF{$v.\texttt{desIds} \neq  v.\texttt{leafLSet} \cap x.\texttt{desIds}$}
+    \RETURN \FALSE \COMMENT{$x$ is not a common ancestor of $v$ or it contains some of the exclude group of $v$.}
+\ENDIF
+\IF{$v.\texttt{desIds} = v.\texttt{leafLSet} \cap \parent{x}.\texttt{desIds}$}
+    \RETURN \FALSE \COMMENT{with respect to the leaf set of $\treeOf{v}$, then node $x$ and its parent are redundant. So the edge separating them is not supported.}
+\ENDIF
+\FOR{each $c \in \children{x}$}
+    \IF{$v.\texttt{desIds} = v.\texttt{desIds} \cap c.\texttt{desIds}$}
+        \RETURN \FALSE \COMMENT{$x$ is a common ancestor of $v.\texttt{desIds}$, but not the least inclusive ancestor.}
+    \ENDIF
+\ENDFOR
+\RETURN \TRUE
+\end{algorithmic}
+\end{algorithm}
+
 
 \begin{algorithm} \caption{\textsc{ResolvingBipart}}\label{AlgResolvingBipart}
 \begin{algorithmic}
