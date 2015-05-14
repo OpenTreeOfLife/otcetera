@@ -79,9 +79,9 @@ This is a greedy approximation that attempts to output the highest scoring resol
     When visiting node $v$:
     \begin{compactenum}
         \item Find $x \leftarrow \mrca{v}{\summaryTree^{\prime}}$
-        \item If $x$ is a polytomy; $M, N \leftarrow \textsc{ResolvingBipart}(x, v)$. If $|M| > 1$ and $N\neq \emptyset$ then:
+        \item If $x$ is a polytomy; $\mathcal{M}, \mathcal{N} \leftarrow \textsc{ResolvingBipart}(x, v)$. If $|\mathcal{M}| > 1$ and $\mathcal{N}\neq \emptyset$ then:
          \begin{compactenum}
-            \item let $y\leftarrow \textsc{Resolve}(x, M, N)$
+            \item  $y\leftarrow \textsc{Resolve}(x, \mathcal{M}, \mathcal{N})$
             \item If $\textsc{CreatedUnsupportedNode}(y, v)$ then $\textsc{Collapse}(y)$ otherwise $\textsc{UpdateSSS}(y)$.
         \end{compactenum}
    \end{compactenum}
@@ -101,21 +101,39 @@ This is a greedy approximation that attempts to output the highest scoring resol
 \IF{$\leafDes{x} \cap \excLeafDes{v} = \emptyset$}
     \RETURN $(\emptyset, \emptyset)$ \COMMENT{resolution might be compatible with $v$, but would not {\em supported} by $v$.}
 \ENDIF
-\STATE $M\leftarrow \{\}$
-\STATE $N\leftarrow \{\}$
+\STATE $\mathcal{M}\leftarrow \{\}$
+\STATE $\mathcal{N} \leftarrow \{\}$
 \FOR{each $c \in \children{x}$}
     \IF{$\leafDes{c} \cap \leafDes{v} \neq \emptyset$}
         \IF{$\leafDes{c} \cap \excLeafDes{v} \neq \emptyset$}
             \RETURN $(\emptyset, \emptyset)$ \COMMENT{can't separate $\leafDes{v}$ from $\excLeafDes{v}$ by resolving}
         \ENDIF
-        $M\leftarrow M \cup \{ c\}$
+        $\mathcal{M}\leftarrow \mathcal{M} \cup \{ c\}$
     \ELSE
-        $N\leftarrow N \cup \{ c\}$
+        $\mathcal{N}\leftarrow \mathcal{N} \cup \{ c\}$
     \ENDIF
 \ENDFOR \\
-\RETURN $(M, N)$
+\RETURN $(\mathcal{M}, \mathcal{N})$
 \end{algorithmic}
 \end{algorithm}
+
+\begin{algorithm} \caption{\textsc{Resolve}}\label{AlgResolve}
+\begin{algorithmic}
+\REQUIRE $\mathcal{M}$ a set of nodes to move
+\REQUIRE $\mathcal{N}$ a set of nodes to remain attached
+\ENSURE Returns the new node that is a sib to the elements in $\mathcal{N}$ and the parent of the elements in $\mathcal{M}$.
+\ENSURE $\texttt{desIds}$ fields of the new node is set (this field for other nodes does not change)
+\ENSURE{Does \underline{not} update $\supportingPSSet{x}$ for any node $x$. This field
+will be invalid until fixed!}
+\STATE ASSERT all elements of $\mathcal{N}$ and $\mathcal{M}$ are sibs
+\STATE $p\leftarrow \parent{x}$ for some $x\in \mathcal{N}$
+\STATE create $y$ as a child of $p$.
+\STATE move all elements of $\mathcal{M}$ to be children of $y$.
+\STATE set $\texttt{y.desIds} = \bigcup_{z\in\mathcal{M}}\texttt{z.desIds}$
+\RETURN $y$
+\end{algorithmic}
+\end{algorithm}
+
 \end{document}
 
 
