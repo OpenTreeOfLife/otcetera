@@ -123,21 +123,9 @@ be equivalent to what you get by dropping both the `-x` and `-r` args.
 
 ### Checking for incorrect internal labels in a full tree
 
-    otc-check-taxonomic-nodes -d synth.tre taxonomy.tre
-
-will check every labelled internal node is correctly labelled. To do this, it 
-verifies that the set of OTT ids associated with tips that descend from the 
-node is identical to the set of OTT ids associated with terminal taxa below
-the corresponding node in the taxonomic tree.
-
-A brief report will be issued for every problematic labeling if the -d arg is omitted.
-
-See the -x argument to `otc-find-unsupported-nodes` above for more taxonomic checks.
-
-`otc-taxon-conflict-report` takes at least 2 newick file paths: a full tree, and some number of input trees.
-It will write a summary of the difference in taxonomic inclusion for nodes that are in conflict:
-
-    otc-taxon-conflict-report taxonomy.tre inp1.tre inp2.tre
+`otc-check-taxonomic-nodes` used to be described here. That functionality
+has now been merged with `otc-find-unsupported-nodes`. 
+See the discussion of the -x and -r args above.
 
 
 ### Checking for additional splits that could be added
