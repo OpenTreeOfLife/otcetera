@@ -547,6 +547,7 @@ bool handleForceTaxonomy(OTCLI & otCLI, const std::string &);
 bool handleForceRefreshAfterTaxonomy(OTCLI & otCLI, const std::string &);
 bool handleFix(OTCLI & otCLI, const std::string &);
 bool handleFixKnuckles(OTCLI & otCLI, const std::string &);
+bool handlePruneUnrecognized(OTCLI & otCLI, const std::string &);
 
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg) {
     FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
@@ -598,6 +599,13 @@ bool handleFixKnuckles(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
+bool handlePruneUnrecognized(OTCLI & otCLI, const std::string &) {
+    FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
+    assert(fusp != nullptr);
+    otCLI.getParsingRules().pruneUnrecognizedInputTips = true;
+    return true;
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-find-unsupported-nodes",
                 "takes at least 2 newick file paths: a full taxonomy tree, a full supertree, and some number of input trees",
@@ -626,6 +634,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('k',
                   "If the -c is used, then this flag requests that unnamed nodes of out-degree=1 be suppressed.",
                   handleFixKnuckles,
+                  false);
+    otCLI.addFlag('p',
+                  "prune unrecognized taxa from inputs",
+                  handlePruneUnrecognized,
                   false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
