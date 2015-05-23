@@ -11,14 +11,14 @@
   },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["3genus-taxonomy.tre",
-                    "ACvB.tre",
+                    "3genus-ACvB.tre",
                     "3genus-Anotmonophyletic.tre"
                     ],
     "expected": "export-B-C-higher-A-nonmono-diff-order"
   },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o", "-r"],
     "infile_list": ["3genus-taxonomy.tre",
-                    "ACvB.tre",
+                    "3genus-ACvB.tre",
                     "3genus-Anotmonophyletic.tre"
                     ],
     "expected": "retain-contested"
@@ -31,14 +31,14 @@
   },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["AtoG-nomonotypictaxonomy.tre",
-                    "ABvC.tre",
-                    "DEvF.tre"],
+                    "AtoG-ABvC.tre",
+                    "AtoG-DEvF.tre"],
     "expected": "export-disjoint"
   },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
     "infile_list": ["AtoG-taxonomy.tre",
-                    "ABvC.tre",
-                    "DEvF.tre"],
+                    "AtoG-ABvC.tre",
+                    "AtoG-DEvF.tre"],
     "expected": "export-disjoint-monotypic"
   },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],

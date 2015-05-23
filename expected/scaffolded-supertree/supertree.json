@@ -17,15 +17,15 @@
   },
   { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["3genus-taxonomy.tre",
-                    "ACvB.tre",
+                    "3genus-ACvB.tre",
                     "3genus-Anotmonophyletic.tre"
                     ],
     "expected": "non-mono-tip"
   },
   { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
     "infile_list": ["AtoG-nomonotypictaxonomy.tre",
-                    "ABvC.tre",
-                    "DEvF.tre"],
+                    "AtoG-ABvC.tre",
+                    "AtoG-DEvF.tre"],
     "expected": "disjoint"
   },
   { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],

@@ -8,7 +8,7 @@ ott12
 TAXONOMY
 ott14
 (ott8,(ott12));
-ACvB.tre
+3genus-ACvB.tre
 ((ott1,ott12),ott2);
 3genus-Anotmonophyletic.tre
 ((ott1,ott2,ott3),ott8,ott12);
