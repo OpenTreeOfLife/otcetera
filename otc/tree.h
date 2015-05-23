@@ -202,6 +202,16 @@ class RootedTreeNode {
         bool isOutDegreeOneNode() const {
             return (lChild != nullptr) && (lChild->rSib == nullptr);
         }
+        bool isOutDegreeTwoNode() const {
+            return ((lChild != nullptr)
+                    && (lChild->rSib != nullptr)
+                    && (lChild->rSib->rSib == nullptr));
+        }
+        bool isPolytomy() const {
+            return ((lChild != nullptr)
+                    && (lChild->rSib != nullptr)
+                    && (lChild->rSib->rSib != nullptr));
+        }
         bool includesOnlyOneLeaf() const {
             if (isTip()) {
                 return true;
