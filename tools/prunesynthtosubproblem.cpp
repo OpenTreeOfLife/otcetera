@@ -6,13 +6,19 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
     std::set<const NodeWithSplits *> includedNodes;
     OttIdSet subproblemTipIds;
     int numErrors;
+    bool pruneInpTreesNotSynth;
+    std::string outDir;
     virtual ~PruneSynthToSubproblem(){}
     PruneSynthToSubproblem()
         :synthTree(nullptr),
-         numErrors(0) {
+         numErrors(0),
+         pruneInpTreesNotSynth(false) {
     }
 
     bool summarize(OTCLI & otCLI) override {
+        if (pruneInpTreesNotSynth) {
+            return true;
+        }
         assert(synthTree != nullptr && !includedNodes.empty());
         std::set<NodeWithSplits *> toPrune;
         for (auto nd : iter_node(*synthTree)) {
@@ -41,6 +47,12 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
     }
 
     bool processSubproblemTree(OTCLI & otCLI, const TreeMappedWithSplits & tree) {
+        if (pruneInpTreesNotSynth) {
+            std::string path = outDir + std::string("/") + otCLI.currentFilename;
+            std::ofstream outstream(path.c_str());
+            writeTreeAsNewick(outstream, tree);
+            return true;
+        }
         for (const auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->getOttId();
             if (nd->hasOttId()) {
@@ -64,10 +76,27 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
 
 };
 
+bool handleReverseToDir(OTCLI & otCLI, const std::string &);
+
+bool handleReverseToDir(OTCLI & otCLI, const std::string &nextArg) {
+    PruneSynthToSubproblem * proc = static_cast<PruneSynthToSubproblem *>(otCLI.blob);
+    assert(proc != nullptr);
+    assert(!nextArg.empty());
+    proc->outDir = nextArg;
+    proc->pruneInpTreesNotSynth = true;
+    otCLI.getParsingRules().pruneUnrecognizedInputTips = true;
+    return true;
+}
+
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-synth-to-subproblem",
                 "takes at 3 newick file paths: a full taxonomy tree, a full supertree, and a subproblem tree file. Prints a version of the synth tree restricted",
                 "taxonomy.tre synth.tre step_7_scratch/export-sub-temp/ott712383.tre");
     PruneSynthToSubproblem proc;
+    otCLI.addFlag('r',
+                  "ARG=output directory. Reverse the operation: prune the inputs instead of the synth tree. Only works if the synth tree is passed in as the first AND second argument.",
+                  handleReverseToDir,
+                  true);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, true);
 }
