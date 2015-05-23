@@ -93,7 +93,7 @@ This is a greedy approximation that attempts to output the highest scoring resol
 \REQUIRE $v$ an internal node of a different tree where $\cLeafSet{v} \subseteq \cLeafSet{x}$
 \ENSURE If $v$ supports $x$, then add an entry to $\supportingPSSet{x}$
 \IF{\textsc{IsSupportedBy}$(x, v)$}
-    $\supportingPSSet{x} = \supportingPSSet{x} \cup \{(\cDes{v}, \cLeafSet{v})\}$$
+    $\supportingPSSet{x} = \supportingPSSet{x} \cup \{(\cDes{v}, \cLeafSet{v})\}$
 \ENDIF
 \end{algorithmic}
 \end{algorithm}
@@ -132,8 +132,8 @@ This is a greedy approximation that attempts to output the highest scoring resol
     \RETURN \FALSE
 \ENDIF
 \STATE $y\leftarrow \textsc{Resolve}(x, \mathcal{M}, \mathcal{N})$
-\COMMENT{Leaves \supportingPSSet{} in an un-updated state, if not reverted!}
-\IF{$\textsc{CreatedUnsupportedNode}(y, v)$}
+\COMMENT{This procedure leaves \supportingPSSet{} in an incorrect state, if not reverted!}
+\IF{$\textsc{CreatedUnsupportedNode}(y)$}
     \STATE $\textsc{Collapse}(y)$
     \COMMENT{Revert}
     \RETURN \FALSE
@@ -191,6 +191,94 @@ will be invalid until fixed!}
 \end{algorithmic}
 \end{algorithm}
 
+
+
+Note that checking to see if $z$ \textsc{IsSupportedBy} node $v$ depends only on:
+    (1) $\cDes{z}$,
+    (2)$\cDes{\parent{z}}$, and 
+    (3) whether or not there is only 1 member of $\children{z}$ that has a $\cDes{}$ intersection  with $\cDes{v}$.
+
+The way that we call \textsc{ResolvingBipart} and \textsc{Resolve} means:
+\begin{compactenum}
+    \item The newly created node $y$, will be supported by $v$, at minimum. So it cannot be unsupported.
+    A full assessment of the nodes that support $y$ would require either traversing 
+    the inputs again, or storing all input nodes for which $\mrca{z}{\summaryTree^{\prime}} = x$ 
+    (and then checking the support criterion for thes nodes on $y$)
+    \item $x$ could become unsupported via some of the nodes supporting it no longer supporting any edge.
+    Note that neither $\cDes{x}$ nor  $\cDes{\parent{x}}$ change during the resolution operation. 
+    So this only occurs through $x$ transitioning from the mrca to simply a common ancestor.
+
+    Let input node $z$ be a node that had supported $x$.
+    If $\cDes{z} = \cDes{y} \cap \cDes{z}$, then
+    $z$ will be displayed by the path $\parent{x} \rightarrow x \rightarrow y$.
+    So $z$ will no longer support a node. If this condition does not occur, $z$ still supports $x$.
+    \item No element of $n\in \mathcal{N}$ can lose support because neither $\cDes{n}$, $\cDes{\parent{n}}$, nor the children change.
+    \item An element $m\in \mathcal{M}$ could lose all support. Neither $\cDes{m}$ nor its children change. But $\cDes{\parent{m}}$ changes from $\cDes{x}$ to $\cDes{y}$.
+    If $y$ is not the ancestor any element in the exclude group of the supporting node, then the
+    input grouping is displayed by a path of 2 edges in the new tree.
+    \item No node further in the $\summaryTree^{\prime}$ will have its supporting statements change. This include any node in the exclude group of $x$ or any descendant of a
+    node in $\mathcal{M}$ or $\mathcal{N}$.
+    For all of theses other nodes, neither their $\cDes{}$ nor their parent's $\cDes{}$ is changing, and none of their children are changing.
+\end{compactenum}
+
+\textsc{CreatedUnsupportedNode} checks the relevant elments of $\supportingPSSet{x}$ and $\supportingPSSet{m}$ for $m\in \mathcal{M}$ and
+returns \textbf{true} if any of them would become empty.
+
+Note that \textsc{UpdateSSS} is does the same checks as \textsc{CreatedUnsupportedNode}.
+It simply records the resulting changes to the $\supportingPSSet{}$ table as it 
+goes (because when it is called, we know that we won't collapse $y$).
+
+\begin{algorithm} \caption{\textsc{CreatedUnsupportedNode}}\label{AlgCreatedUnsupportedNode}
+\begin{algorithmic}
+\REQUIRE $y$ is a newly created internal node created to resolve its parent, and $\supportingPSSet{}$ has not been updated yet to reflect this resolution.
+\STATE $z \leftarrow \parent{y}$
+\STATE $q \leftarrow \emptyset$
+\FOR{$(\mbox{inc}_z, \mbox{leaves}_z) \in \supportingPSSet{x}$}
+    \IF{$\mbox{inc}_z\nsubseteq \cDes{y}$}
+        \STATE $q\leftarrow q \cup \{(\mbox{inc}_z, \mbox{leaves}_z)\}$
+    \ENDIF
+\ENDFOR
+\IF{$q=\emptyset$}
+    \RETURN \TRUE
+\ELSE
+    \COMMENT{If this were \textsc{UpdateSSS}, here we would: $\supportingPSSet{x} \leftarrow q$}
+\ENDIF
+\FOR{$m \in \children{y}$}
+    \STATE $q \leftarrow \emptyset$
+    \FOR{$(\mbox{inc}_z, \mbox{leaves}_z) \in \supportingPSSet{m}$}
+        \IF{$\mbox{inc}_z \neq \mbox{leaves}_z\cap \cDes{y}$}
+            \STATE $q\leftarrow q \cup \{(\mbox{inc}_z, \mbox{leaves}_z)\}$
+        \ENDIF
+    \ENDFOR
+    \IF{$q=\emptyset$}
+        \RETURN \TRUE
+    \ELSE
+        \COMMENT{If this were \textsc{UpdateSSS}, here we would: $\supportingPSSet{m} \leftarrow q$}
+    \ENDIF
+\ENDFOR
+\RETURN \FALSE
+\end{algorithmic}
+\end{algorithm}
+\begin{algorithm} \caption{\textsc{UpdateSSS}}\label{AlgUpdateSSS}
+\begin{algorithmic}
+\COMMENT{Execute \textsc{CreatedUnsupportedNode} but execute the instructions in the comments in the \mathbf{else} clauses}.
+\end{algorithmic}
+\end{algorithm}
+
+\section*{Some details of running}
+The first version of this will be invoked using something like:
+
+\begin{verbatim}
+cd supertree
+otc-find-resolution -r -u step_1/taxonomy.tre \
+                          /path/to/synth.tre \
+                          -fstep_7/step-7-phylo-args.txt > resolved.tre
+\end{verbatim}
+because (when running with the \texttt{Makefile.exemplar} version of the supertree pipeline)
+the input trees with the tips-mapped to non-terminals expanded (as described in step \ref{expandNTTips} above) will have been written in `step\_5' and `step\-7/step-7-phylo-args.txt'
+will hold their paths.
+
+Thus, the expansion of tips will be a prerequisite of the inputs for the time being.
 \end{document}
 
 

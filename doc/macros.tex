@@ -33,10 +33,10 @@
 \newcommand{\pssFrom}[1]{\ensuremath{\mathcal{G}(#1)}\xspace}
 \newcommand{\tripleSetInOptimal}{\ensuremath{\hat{\mathcal{R}}}\xspace}
 \newcommand{\leafLabels}[1]{\ensuremath{\mathcal{L}(#1)}}
-\newcommand{\parent}[1]{\ensuremath{\mbox{parent}(#1)}}
-\newcommand{\children}[1]{\ensuremath{\mbox{children}(#1)}}
-\newcommand{\nodes}[1]{\ensuremath{\mbox{nodes}(#1)}}
-\newcommand{\treeRoot}[1]{\ensuremath{\mbox{root}(#1)}}
+\newcommand{\parent}[1]{\mbox{parent}(#1)}
+\newcommand{\children}[1]{\mbox{children}(#1)}
+\newcommand{\nodes}[1]{\mbox{nodes}(#1)}
+\newcommand{\treeRoot}[1]{\mbox{root}(#1)}
 \newcommand{\taxonomy}[0]{\ensuremath{\mathbb{T}}\xspace}
 \newcommand{\prunedTaxonomy}[0]{\ensuremath{\mathbb{T}_P}\xspace}
 \newcommand{\phyloInputs}[0]{\ensuremath{\mathcal{T}}}
@@ -57,9 +57,9 @@
 \newcommand{\mrca}[2]{\ensuremath{\mbox{mrca}(#1, #2)}}
 \newcommand{\treeOf}[1]{\ensuremath{\mbox{tree}(#1)}}
 \newcommand{\leafSet}[1]{\leafLabels{#1}}}
-\newcommand{\cLeafSet}[1]{{#1}\texttt{.leafLSet}}}
-\newcommand{\cDes}[1]{{#1}\texttt{.desIds}}}
+\newcommand{\cLeafSet}[1]{\texttt{{#1}.leafLSet}}}
+\newcommand{\cDes}[1]{\texttt{{#1}.desIds}}}
 
-\newcommand{\supportingPSSetFull}[2]{\ensuremath{\mbox{\texttt{SuppStatementSet}}(#1, #2)}}
-\newcommand{\supportingPSSet}[1]{\ensuremath{\mbox{\texttt{SSS}}(#1)}}
+\newcommand{\supportingPSSetFull}[2]{\ensuremath{\mbox{\texttt{SuppStatementSet}}[#1, #2]}}
+\newcommand{\supportingPSSet}[1]{\ensuremath{\mbox{\texttt{SSS}}[#1]}}
 \DeclareMathOperator*{\argmax}{\arg\!\max}
