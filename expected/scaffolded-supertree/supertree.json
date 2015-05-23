@@ -23,7 +23,7 @@
     "expected": "non-mono-tip"
   },
   { "invocation" : ["otc-scaffolded-supertree", "<INFILELIST>", "-s"],
-    "infile_list": ["A-Gtaxonomy.tre",
+    "infile_list": ["AtoG-nomonotypictaxonomy.tre",
                     "ABvC.tre",
                     "DEvF.tre"],
     "expected": "disjoint"

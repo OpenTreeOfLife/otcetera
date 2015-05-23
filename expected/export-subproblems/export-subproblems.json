@@ -30,13 +30,13 @@
     "expected": "export-deeper-polytomy"
   },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
-    "infile_list": ["A-Gtaxonomy.tre",
+    "infile_list": ["AtoG-nomonotypictaxonomy.tre",
                     "ABvC.tre",
                     "DEvF.tre"],
     "expected": "export-disjoint"
   },
   { "invocation" : ["otc-uncontested-decompose", "<INFILELIST>", "-o"],
-    "infile_list": ["A-Gmonotypic-taxonomy.tre",
+    "infile_list": ["AtoG-taxonomy.tre",
                     "ABvC.tre",
                     "DEvF.tre"],
     "expected": "export-disjoint-monotypic"
