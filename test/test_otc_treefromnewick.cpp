@@ -27,15 +27,15 @@ class TestValidTreeStruct {
 };
 
 int main(int argc, char *argv[]) {
-    std::vector<std::string> validfilenames = {"abc-newick.tre", 
-                           "words-polytomy.tre", 
-                           "bifurcating.tre",
-                           "monotypic.tre", 
-                           "branch-lengths.tre",
-                           "quotedwords-polytomy.tre",
-                           "polytomy-with-comments.tre",
-                           "underscore-handling.tre", 
-                           "whitespace-handling.tre"};
+    std::vector<std::string> validfilenames = {"noids-abcnewick.tre", 
+                           "noids-wordspolytomy.tre", 
+                           "noids-bifurcating.tre",
+                           "noids-monotypic.tre", 
+                           "noids-branchlengths.tre",
+                           "noids-quotedwordspolytomy.tre",
+                           "noids-polytomywithcomments.tre",
+                           "noids-underscorehandling.tre", 
+                           "noids-whitespacehandling.tre"};
     TestHarness th(argc, argv);
     TestsVec tests;
     for (auto fn : validfilenames) {

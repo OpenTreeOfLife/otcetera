@@ -58,12 +58,12 @@ char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn) {
 
 char testSingleCharLabelPoly(const TestHarness &th) {
     const std::vector<std::string> expected = {"(", "A", ",", "B", ",", "C", ")", ";"};
-    return genericTokenTest(th, "abc-newick.tre", expected);
+    return genericTokenTest(th, "noids-abcnewick.tre", expected);
 }
 
 char testWordLabelPoly(const TestHarness &th) {
     const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
-    return genericTokenTest(th, "words-polytomy.tre", expected);
+    return genericTokenTest(th, "noids-wordspolytomy.tre", expected);
 }
 char testBifurcating(const TestHarness &th) {
     const std::vector<std::string> expected = {"(", "AB",
@@ -76,7 +76,7 @@ char testBifurcating(const TestHarness &th) {
                                                          "CD",
                                                      ")",
                                                 ")", ";"};
-    return genericTokenTest(th, "bifurcating.tre", expected);
+    return genericTokenTest(th, "noids-bifurcating.tre", expected);
 }
 char testMonotypic(const TestHarness &th) {
     const std::vector<std::string> expected = {"(", "(", "AB", ")",
@@ -89,7 +89,7 @@ char testMonotypic(const TestHarness &th) {
                                                          "CD",
                                                      ")",")",
                                                 ")", ";"};
-    return genericTokenTest(th, "monotypic.tre", expected);
+    return genericTokenTest(th, "noids-monotypic.tre", expected);
 }
 
 char testBranchLengths(const TestHarness &th) {
@@ -101,7 +101,7 @@ char testBranchLengths(const TestHarness &th) {
                                                     ",", "\'", ":", "7.315E-20",
                                                ")", "label for 5", ":", "5",
                                                 ")", "some label", ":", "3", ";"};
-    return genericTokenTest(th, "branch-lengths.tre", expected);
+    return genericTokenTest(th, "noids-branchlengths.tre", expected);
 }
 
 char testQuotedWordLabelPoly(const TestHarness &th) {
@@ -111,16 +111,16 @@ char testQuotedWordLabelPoly(const TestHarness &th) {
                                                ",", "E \'H",
                                                ",", "\'",
                                                ")", ";"};
-    return genericTokenTest(th, "quotedwords-polytomy.tre", expected);
+    return genericTokenTest(th, "noids-quotedwordspolytomy.tre", expected);
 }
 
 char testCommentPoly(const TestHarness &th) {
     const std::vector<std::string> expected = {"(", "AB", ",", "BC", ",", "CD", ")", ";"};
-    return genericTokenTest(th, "polytomy-with-comments.tre", expected);
+    return genericTokenTest(th, "noids-polytomywithcomments.tre", expected);
 }
 char testUnderscores(const TestHarness &th) {
     const std::vector<std::string> expected = {"(", "A B", ",", "B C", ",", "C_D", ")", ";"};
-    return genericTokenTest(th, "underscore-handling.tre", expected);
+    return genericTokenTest(th, "noids-underscorehandling.tre", expected);
 }
 char testWhitespaceHandling(const TestHarness &th) {
     const std::vector<std::string> expected = {"(", "A B",
@@ -131,18 +131,18 @@ char testWhitespaceHandling(const TestHarness &th) {
                                                ",", "I J", //warn but normalize unquoted even with newlines, I guess...
                                                ",", "Aembedded quoteJ", // ugh. I'll allowit
                                                ")", ";"};
-    return genericTokenTest(th, "whitespace-handling.tre", expected);
+    return genericTokenTest(th, "noids-whitespacehandling.tre", expected);
 }
 char testUnbalanced(const TestHarness &th) {
-    return genericOTCParsingErrorTest(th, "unbalanced.tre");
+    return genericOTCParsingErrorTest(th, "noids-unbalanced.tre");
 }
 char testUnbalancedToManyClose(const TestHarness &th) {
-    return genericOTCParsingErrorTest(th, "unbalanced-too-many-closed.tre");
+    return genericOTCParsingErrorTest(th, "noids-unbalancedtoomanyclosed.tre");
 }
 char testEmptyClade(const TestHarness &th) {
     char r = '.';
     for (const auto & i : {"1", "2", "3", "4"} ) {
-        std::string fn = "empty-clade";
+        std::string fn = "noids-emptyclade";
         fn += i;
         fn += ".tre";
         auto c = genericOTCParsingErrorTest(th, fn);
@@ -155,7 +155,7 @@ char testEmptyClade(const TestHarness &th) {
 char testEmptySib(const TestHarness &th) {
     char r = '.';
     for (const auto & i : {"1", "2", "3", "4"} ) {
-        std::string fn = "empty-sib";
+        std::string fn = "noids-emptysib";
         fn += i;
         fn += ".tre";
         auto c = genericOTCParsingErrorTest(th, fn);
@@ -168,7 +168,7 @@ char testEmptySib(const TestHarness &th) {
 char testEmptyBranchLength(const TestHarness &th) {
     char r = '.';
     for (const auto & i : {"1", "2", "3", "4", "5"} ) {
-        std::string fn = "empty-branch-length";
+        std::string fn = "noids-emptybranchlength";
         fn += i;
         fn += ".tre";
         auto c = genericOTCParsingErrorTest(th, fn);
