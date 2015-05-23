@@ -11,6 +11,7 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
     bool showNumNotDisplayed;
     bool showNumInternals;
     bool showNumDisplayed;
+    bool assertRFZero;
     std::string prevTreeFilename;
     std::size_t numComparisons;
     std::size_t numTreesInThisTreefile;
@@ -26,6 +27,7 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
         showNumNotDisplayed(false),
         showNumInternals(false),
         showNumDisplayed(false),
+        assertRFZero(false),
         numComparisons(0U), 
         numTreesInThisTreefile(0U) {
     }
@@ -115,6 +117,9 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
             otCLI.out << '\t' << totalNumInternals;
         }
         otCLI.out << '\n';
+        if (assertRFZero) {
+            return (totalRF == 0);
+        }
         return true;
     }
 
@@ -124,6 +129,7 @@ bool handleShowRF(OTCLI & otCLI, const std::string &);
 bool handleShowNumDisplayed(OTCLI & otCLI, const std::string &);
 bool handleShowShowNumNotDisplayed(OTCLI & otCLI, const std::string &);
 bool handleShowInternals(OTCLI & otCLI, const std::string &);
+bool handleAssertIdentical(OTCLI & otCLI, const std::string &);
 
 bool handleShowRF(OTCLI & otCLI, const std::string &) {
     DistanceState * proc = static_cast<DistanceState *>(otCLI.blob);
@@ -153,11 +159,23 @@ bool handleShowInternals(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
+bool handleAssertIdentical(OTCLI & otCLI, const std::string &) {
+    DistanceState * proc = static_cast<DistanceState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->assertRFZero = true;
+    return true;
+}
+
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-distance",
                 "takes at least 2 newick file paths: a supertree and some number of input trees. Writes one line for each input tree with the statistics requested for the comparison of the supertree to each input tree.",
                 "synth.tre inp1.tre inp2.tre");
     DistanceState proc;
+    otCLI.addFlag('a',
+                  "return 0 only if the RF distance is 0",
+                  handleAssertIdentical,
+                  false);
     otCLI.addFlag('r',
                   "Show RF symmetric distance",
                   handleShowRF,
