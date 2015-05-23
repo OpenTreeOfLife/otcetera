@@ -24,6 +24,9 @@ template<typename T, typename U>
 inline void cullRefsToNodeFromData(RootedTree<T, U> & tree, RootedTreeNode<T> *toDel);
 
 const std::set<long> & getDesOttIds(RootedTreeNode<RTSplits> & nd);
+template<typename T>
+std::size_t pruneTipsWithoutIds(T & tree);
+
 
 //// impl
 
@@ -184,6 +187,41 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
         anc->getData().desIds.insert(begin(ls), end(ls));
     }
 }
+
+// throws an OTCError if a tip is mapped to a non-terminal taxon
+template<typename T>
+void requireTipsToBeMappedToTerminalTaxa(const T & toExpand, const T & taxonomy) {
+    const auto & taxData = taxonomy.getData();
+    for (auto nd : iter_leaf_const(toExpand)) {
+        assert(nd->isTip());
+        assert(nd->hasOttId());
+        auto ottId = nd->getOttId();
+        auto taxNd = taxData.getNodeForOttId(ottId);
+        assert(taxNd != nullptr);
+        if (!taxNd->isTip()) {
+            std::string msg;
+            msg = "Tips must be mapped to terminal taxa ott" + std::to_string(ottId) + " found.";
+            throw OTCError(msg);
+        }
+    }
+}
+
+// throws an OTCError if node has out-degree=1
+template<typename T>
+void requireNonRedundantTree(const T & toExpand) {
+    std::map<typename T::node_type *, std::set<long> > replaceNodes;
+    for (auto nd : iter_post_internal_const(toExpand)) {
+        if (nd->isOutDegreeOneNode()) {
+            std::string msg;
+            msg = "Node with outdegree=1 found";
+            if (nd->hasOttId()) {
+                msg = msg + ":  ott" + std::to_string(nd->getOttId()) + ".";
+            }
+            throw OTCError(msg);
+        }
+    }
+}
+
 
 template<typename T>
 std::set<const typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toExpand, const T & taxonomy) {
@@ -845,7 +883,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
                     T & tree) {
     std::set<typename T::node_type *> monotypic;
     for (auto nd : iter_node_internal(tree)) {
-        assert(!nd->hasOttId()); // not a good place for this assert... true in how we use this fund
+        //assert(!nd->hasOttId()); // not a good place for this assert... true in how we use this fund
         if (nd->isOutDegreeOneNode()) {
             monotypic.insert(nd);
         }
@@ -1024,6 +1062,41 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
     }
 }
 
+template<typename T>
+inline std::size_t pruneTipsWithoutIds(T & tree) {
+    std::size_t r = 0;
+    std::set<typename T::node_type *> toPrune;
+    std::set<typename T::node_type *> parToCheck;
+    for (auto nd : iter_node(tree)) {
+        if (nd->isTip() && !nd->hasOttId()) {
+            toPrune.insert(nd);
+            parToCheck.insert(nd->getParent());
+        }
+    }
+    while (!toPrune.empty()) {
+        r += toPrune.size();
+        for (auto nd : toPrune) {
+            pruneAndDelete(tree, nd);
+        }
+        toPrune.clear();
+        std::set<typename T::node_type *> nextParToCheck;
+        for (auto nd : parToCheck) {
+            if (nd == nullptr) {
+                tree._setRoot(nullptr);
+                continue;
+            }
+            if (nd->isTip()) {
+                toPrune.insert(nd);
+                nextParToCheck.insert(nd->getParent());
+            }
+        }
+        nextParToCheck.swap(parToCheck);
+    }
+    if (tree.getRoot() != nullptr) {
+        suppressMonotypicTaxaPreserveShallowDangle(tree);
+    }
+    return r;
+}
 }// namespace otc
 #endif
 
