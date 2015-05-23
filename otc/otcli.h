@@ -113,6 +113,12 @@ inline int treeProcessingMain(OTCLI & otCLI,
                     if (nt == nullptr) {
                         break;
                     }
+                    if (otCLI.getParsingRules().pruneUnrecognizedInputTips) {
+                        pruneTipsWithoutIds(*nt);
+                        if (nt->getRoot() == nullptr) {
+                            continue;
+                        }
+                    }
                     std::string treeName = std::string("tree ") + std::to_string(treeNumInThisFile++);
                     treeName.append(" from ");
                     treeName.append(otCLI.currentFilename);
