@@ -48,8 +48,8 @@ template<typename T>
 std::set<T> container_as_set(const std::vector<T> &);
 template<typename T>
 bool isSubset(const T & small, const T & big);
-template<typename T>
-bool haveIntersection(const T & first, const T & second);
+template<typename T, typename U>
+bool haveIntersection(const T & first, const U & second);
 template<typename T>
 std::set<T> set_intersection_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T>
@@ -204,6 +204,34 @@ inline bool areDisjoint(const Set1 & set1, const Set2 & set2) {
     return true;
 }
 
+// http://stackoverflow.com/posts/1964252/revisions
+template<typename T, typename U>
+inline bool dsAreDisjoint(const std::map<T, U> & first,
+                          const std::set<T> & second) {
+    if (first.empty() || second.empty()) {
+        return true;
+    }
+    auto it1 = first.begin();
+    const auto it1End = first.end();
+    auto it2 = second.begin();
+    const auto & it2End = second.end();
+    if (it1->first > *second.rbegin() || *it2 > (first.rbegin()->first)) {
+        return true;
+    }
+    while (it1 != it1End && it2 != it2End) {
+        if (it1->first == *it2) {
+            return false;
+        }
+        if(it1->first < *it2) {
+            it1++;
+        } else {
+            it2++;
+        }
+    }
+    return true;
+}
+
+
 // called when we've determined that set1 is smaller than set2, and they have an
 // intersection with the first el of set1, so set 1 could be a subset of set2
 // returns true if set1 is a subset of set2 (where the args are the iterators and
@@ -286,6 +314,12 @@ inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
 template<typename T>
 inline bool haveIntersection(const T & first, const T & second) {
     return !areDisjoint<T>(first, second);
+}
+
+template<typename T, typename U>
+inline bool dsHaveIntersection(const std::map<T, U> & first,
+                               const std::set<T> & second) {
+    return !dsAreDisjoint<T>(first, second);
 }
 
 template<typename T>
