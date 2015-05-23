@@ -11,12 +11,12 @@
   },
   {
     "invocation" : ["otc-nonterminals-to-exemplars", "<INFILELIST>", "-o"],
-    "infile_list": ["3-level-taxonomy.tre", "3-level-subsample-higher.tre", "3-level-complementing-higher.tre"],
+    "infile_list": ["3level-taxonomy.tre", "3level-subsamplehigher.tre", "3level-complementhigher.tre"],
     "expected": "expandnested"
   },
   {
     "invocation" : ["otc-nonterminals-to-exemplars", "<INFILELIST>", "-o"],
-    "infile_list": ["3-level-taxonomy.tre", "3-level-subsample-higher.tre", "3-level-AC.tre"],
+    "infile_list": ["3level-taxonomy.tre", "3level-subsamplehigher.tre", "3level-ACvB.tre"],
     "expected": "expandAC"
   }
 ]
