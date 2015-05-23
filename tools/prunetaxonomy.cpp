@@ -15,15 +15,30 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
 
     bool summarize(OTCLI &otCLI) override {
         if (reportStats) {
+            OttIdSet oids;
+            OttIdSet ntoids;
+
             std::size_t numNonTerminals = 0;
             for (auto tn : directlyIncludedNodes) {
                 if (!tn->isTip()) {
                     numNonTerminals++;
+                    ntoids.insert(tn->getOttId());
                 }
+                oids.insert(tn->getOttId());
             }
             otCLI.out << numNonTerminals << " non-terminal taxa in OTT that are mapped by at least 1 input.\n";
             otCLI.out << (directlyIncludedNodes.size() - numNonTerminals) << " terminal taxa in OTT that are mapped by at least 1 input\n";
             otCLI.out << directlyIncludedNodes.size() << " total taxa in OTT that are mapped by at least 1 input.\n";
+            if (otCLI.verbose) {
+                otCLI.out << "total included OTT Ids\n";
+                for (const auto & oid : oids) {
+                    otCLI.out << oid << '\n';
+                }
+                otCLI.err << "non-terminal OTT Ids\n";
+                for (const auto & oid : ntoids) {
+                    otCLI.err << oid << '\n';
+                }
+            }
             return true;
         }
         assert(taxonomy != nullptr && !includedNodes.empty());
