@@ -81,9 +81,13 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
         if (ottID >= 0) {
             if (parsingRules.ottIdValidator != nullptr) {
                 if (!contains(*parsingRules.ottIdValidator, ottID)) {
-                    std::string m = "Unrecognized OTT Id ";
-                    m += std::to_string(ottID);
-                    throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->getStartPos());
+                    if (!parsingRules.pruneUnrecognizedInputTips) {
+                        std::string m = "Unrecognized OTT Id ";
+                        m += std::to_string(ottID);
+                        throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->getStartPos());
+                    } else {
+                        return;
+                    }
                 }
             }
             if (parsingRules.idRemapping != nullptr) {
@@ -101,7 +105,7 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
                                   labelToken->getStartPos());
             }
             treeData.ottIdToNode[ottID] = &node;
-        } else {
+        } else if (!parsingRules.pruneUnrecognizedInputTips) {
             throw OTCParsingError("Expecting a name for a taxon to end with an ott##### where the numbers are the OTT Id.",
                                   labelToken->content(),
                                   labelToken->getStartPos());
@@ -124,8 +128,10 @@ inline void postParseHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoDat
 inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
                                 RootedTreeNode<RTSplits> & node,
                                 const NewickTokenizer::Token & token,
-                                const ParsingRules & ) {
-    if (node.isTip() && !node.hasOttId()) {
+                                const ParsingRules & parsingRules) {
+    if (node.isTip()
+        && !node.hasOttId()
+        && (!parsingRules.pruneUnrecognizedInputTips)) {
         throw OTCParsingContentError("Expecting each tip to have an ID.", token.getStartPos());
     }
 }
