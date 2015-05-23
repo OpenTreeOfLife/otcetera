@@ -3,13 +3,13 @@ ott8
 TAXONOMY
 ott12
 (ott11);
-three-genus-Anotmonophyletic.tre
+3genus-Anotmonophyletic.tre
 (ott9,ott10,ott11);
 TAXONOMY
 ott14
 ((ott1,ott8),ott12);
-three-genus-BclosertoA1.tre
+3genus-BclosertoA1.tre
 ((ott1,ott12),ott2);
-three-genus-Anotmonophyletic.tre
+3genus-Anotmonophyletic.tre
 ((ott1,ott2,ott3),ott8,ott12);
 TAXONOMY

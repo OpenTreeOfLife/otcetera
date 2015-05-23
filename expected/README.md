@@ -25,7 +25,7 @@ as an argument.
 Or with a list of filenames:
 
     "invocation" : ["otcprunetaxonomy", "<INFILELIST>"],
-    "infile_list": ["three-genus-taxonomy.tre", "three-genus-subsample.tre"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-subsample.tre"],
     "expected": "prunesingletons-expected"
 
 Where the "expected" dir holds the output for this single invocation.

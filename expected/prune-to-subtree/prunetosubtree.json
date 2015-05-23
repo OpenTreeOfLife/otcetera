@@ -1,22 +1,22 @@
 [
   {
     "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-c1"],
-    "infile_list": ["three-genus-subsample-higher.tre"],
+    "infile_list": ["3genus-subsamplehigher.tre"],
     "expected": "prunenochild"
   },
   {
     "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-n1"],
-    "infile_list": ["three-genus-subsample-higher.tre"],
+    "infile_list": ["3genus-subsamplehigher.tre"],
     "expected": "prunetooneleaf"
   },
   {
     "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-p1"],
-    "infile_list": ["three-genus-subsample-higher.tre"],
+    "infile_list": ["3genus-subsamplehigher.tre"],
     "expected": "prunetoparofoneleaf"
   },
   {
     "invocation" : ["otc-prune-to-subtree", "<INFILELIST>", "-s1"],
-    "infile_list": ["three-genus-subsample-higher.tre"],
+    "infile_list": ["3genus-subsamplehigher.tre"],
     "expected": "prunetosibofoneleaf"
   }
 ]

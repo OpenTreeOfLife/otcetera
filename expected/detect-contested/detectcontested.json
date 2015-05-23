@@ -1,17 +1,17 @@
 [
   {
     "invocation" : ["otc-detect-contested", "<INFILELIST>"],
-    "infile_list": ["three-genus-taxonomy.tre", "three-genus-subsample.tre"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-subsample.tre"],
     "expected": "detectcontested-expected"
   },
   {
     "invocation" : ["otc-detect-contested", "<INFILELIST>"],
-    "infile_list": ["three-genus-taxonomy.tre", "three-genus-taxonomy.tre"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-taxonomy.tre"],
     "expected": "nocontested"
   },
   {
     "invocation" : ["otc-detect-contested", "<INFILELIST>"],
-    "infile_list": ["three-genus-taxonomy.tre", "three-genus-subsample-higher.tre"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-subsamplehigher.tre"],
     "expected": "detectcontested-higher"
   }
 ]

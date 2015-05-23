@@ -1,12 +1,12 @@
 [
   {
     "invocation" : ["otc-nonterminals-to-exemplars", "<INFILELIST>", "-o"],
-    "infile_list": ["three-genus-taxonomy.tre", "three-genus-subsample-higher.tre"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-subsamplehigher.tre"],
     "expected": "expandunsampled"
   },
   {
     "invocation" : ["otc-nonterminals-to-exemplars", "<INFILELIST>", "-o"],
-    "infile_list": ["three-genus-taxonomy.tre", "three-genus-subsample-higher.tre", "three-genus-complementing-higher.tre"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-subsamplehigher.tre", "3genus-complementhigher.tre"],
     "expected": "expandsampled"
   },
   {

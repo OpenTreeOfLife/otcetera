@@ -30,7 +30,7 @@ class TestValidTreeStruct {
             for (;;) {
                 ParsingRules pr;
                 auto nt = readNextNewick<Tree_t>(inp, pos, pr);
-                if (filename == "three-genus-synth.tre") {
+                if (filename == "3genus-synth.tre") {
                     const std::string expected[] = {
                         "(((A1_ott1,(A2_ott2,A3_ott3))A_ott4,B1_ott5),B2_ott6,B3_ott7,((C1_ott9,C2_ott10),C3_ott11)C_ott12)life_ott14;\n",
                         "((A1_ott1,(A2_ott2,A3_ott3))A_ott4,B1_ott5);\n",
@@ -50,7 +50,7 @@ class TestValidTreeStruct {
                     };
                     return doIterTest(expected, *nt);
                 }
-                if (filename == "three-genus-taxonomy.tre") {
+                if (filename == "3genus-taxonomy.tre") {
                     const std::string expected[] = {
                         "((A1_ott1,A2_ott2,A3_ott3)A_ott4,(B1_ott5,B2_ott6,B3_ott7)B_ott8,(C1_ott9,C2_ott10,C3_ott11)C_ott12)life_ott14;\n",
                         "(A1_ott1,A2_ott2,A3_ott3)A_ott4;\n",
@@ -85,7 +85,7 @@ class TestValidTreeStruct {
 };
 
 int main(int argc, char *argv[]) {
-    std::vector<std::string> validfilenames = {"three-genus-synth.tre", "three-genus-taxonomy.tre"};
+    std::vector<std::string> validfilenames = {"3genus-synth.tre", "3genus-taxonomy.tre"};
     TestHarness th(argc, argv);
     TestsVec tests;
     for (auto fn : validfilenames) {
