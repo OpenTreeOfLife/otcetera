@@ -634,26 +634,10 @@ bool handlePrintDiff(OTCLI & otCLI, const std::string &) {
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otc-find-unsupported-nodes",
+    OTCLI otCLI("otc-check-supertree",
                 "takes at least 2 newick file paths: a full taxonomy tree, a full supertree, and some number of input trees",
                 "taxonomy.tre synth.tre inp1.tre inp2.tre");
     FindUnsupportedState proc;
-    otCLI.addFlag('m',
-                  "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them.",
-                  handleDesignator,
-                  true);
-    otCLI.addFlag('t',
-                  "tips mapped to non-terminal taxa should NOT be counted as support",
-                  handleTipsNotSupport,
-                  false);
-    otCLI.addFlag('x',
-                  "Automatically treat the taxonomy as an input",
-                  handleForceTaxonomy,
-                  false);
-    otCLI.addFlag('r',
-                  "Refresh support stats after analyzing taxonomy so that final summary is only based on phylo inputs (only has an effect if -x is present)",
-                  handleForceRefreshAfterTaxonomy,
-                  false);
     otCLI.addFlag('c',
                   "Fix the problems (clean the tree) rather than reporting on them.",
                   handleFix,
@@ -666,9 +650,25 @@ int main(int argc, char *argv[]) {
                   "If the -c is used, then this flag requests that unnamed nodes of out-degree=1 be suppressed.",
                   handleFixKnuckles,
                   false);
+    otCLI.addFlag('m',
+                  "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them.",
+                  handleDesignator,
+                  true);
     otCLI.addFlag('p',
                   "prune unrecognized taxa from inputs",
                   handlePruneUnrecognized,
+                  false);
+    otCLI.addFlag('r',
+                  "Refresh support stats after analyzing taxonomy so that final summary is only based on phylo inputs (only has an effect if -x is present)",
+                  handleForceRefreshAfterTaxonomy,
+                  false);
+    otCLI.addFlag('t',
+                  "tips mapped to non-terminal taxa should NOT be counted as support",
+                  handleTipsNotSupport,
+                  false);
+    otCLI.addFlag('x',
+                  "Automatically treat the taxonomy as an input",
+                  handleForceTaxonomy,
                   false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
