@@ -35,6 +35,16 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 supportCounts[i] = 0; // fill in, so we can use .at on const SupportSummary
             }
         }
+        int getNumErrors() const {
+            return static_cast<int>(numUnsupportedForking 
+                                    + numUnsupportedKnuckles
+                                    + numUnsupportedElbows) + getNumTaxoErrors();
+        }
+        int getNumTaxoErrors() const {
+            return static_cast<int>(misnamedSupported.size()
+                                    + shouldBeUnnamed.size()
+                                    + supportedShouldHaveName.size());
+        }
     };
     
     std::unique_ptr<TreeMappedWithSplits> toCheck;
@@ -289,13 +299,14 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         if (processTaxonomyAsInputTree) {
             out << "Taxonomy-as-the-only-input summary:\n";
             writeSummaryStats(out, taxoSummary);
+            numErrors += taxoSummary.getNumTaxoErrors();
         }
         out << "Final summary:\n";
         writeSummaryStats(out, ss);
         if (numErrors < 0) {
             numErrors -= ss.numUnsupportedForking;
         } else {
-            numErrors = static_cast<int>(ss.numUnsupportedForking);
+            numErrors += static_cast<int>(ss.numUnsupportedForking);
         }
         return numErrors == 0;
     }

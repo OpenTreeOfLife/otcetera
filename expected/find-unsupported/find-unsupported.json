@@ -3,5 +3,10 @@
     "invocation" : ["otc-find-unsupported-nodes", "-x", "<INFILELIST>"],
     "infile_list": ["3genus-taxonomy.tre", "3genus-mislabeled.tre"],
     "expected": "checktaxonomicnodes-expected"
+  },
+  {
+    "invocation" : ["otc-find-unsupported-nodes", "-x", "<INFILELIST>"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-mislabeled.tre", "3genus-mislabeled.tre"],
+    "expected": "mislabeled-expected"
   }
 ]
