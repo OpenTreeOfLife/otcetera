@@ -1,0 +1,56 @@
+Taxonomy-as-the-only-input summary:
+Summary of checks of internal nodes names/Ids:
+0 named internal nodes with an incorrect name.
+0 unamed internal nodes which should have been named.
+2 named internal nodes which correspond to no taxon.
+    ott4 should not be named.
+    ott12 should not be named.
+1 internal nodes where flagged as being supported in some sense.
+    This means each of these nodes was:
+    supported by at least one non-taxonomic input tree or the internal node has a name.
+The breakdown of the types of supported nodes:
+    0 unnamed internal nodes supported by an input tree internal node.
+    0 unnamed internal nodes supported by an input tree expanded tip node.
+    0 unnamed internal nodes supported by an input tree internal node and another tree's expanded tip node.
+    0 named internal nodes had no support (other than the name).
+    1 named internal nodes supported by an input tree internal node.
+    0 named internal nodes supported by an input tree expanded tip node.
+    0 named internal nodes supported by an input tree internal node and another tree's expanded tip node.
+The following counts refer to redundant internal nodes (out-degree = 1). These are considered supported if their child is supported.
+    0 unnamed redundant internal nodes supported by an input tree internal node.
+    0 unnamed redundant internal nodes supported by an input tree expanded tip node.
+    0 unnamed redundant internal nodes supported by an input tree internal node and another tree's expanded tip node.
+    0 redundant named internal nodes had no support (other than the name).
+    0 redundant named internal nodes supported by an input tree internal node.
+    0 redundant named internal nodes supported by an input tree expanded tip node.
+    0 redundant named internal nodes supported by an input tree internal node and another tree's expanded tip node.
+6 unsupported nodes had out-degree > 1
+0 unsupported nodes had out-degree == 1 and were along a terminal path.
+0 unsupported nodes had out-degree == 1 and were along an internal path.
+7 total internal nodes checked.
+
+Final summary:
+7 internal nodes where flagged as being supported in some sense.
+    This means each of these nodes was:
+    supported by at least one non-taxonomic input tree or the internal node has a name.
+The breakdown of the types of supported nodes:
+    4 unnamed internal nodes supported by an input tree internal node.
+    0 unnamed internal nodes supported by an input tree expanded tip node.
+    0 unnamed internal nodes supported by an input tree internal node and another tree's expanded tip node.
+    0 named internal nodes had no support (other than the name).
+    3 named internal nodes supported by an input tree internal node.
+    0 named internal nodes supported by an input tree expanded tip node.
+    0 named internal nodes supported by an input tree internal node and another tree's expanded tip node.
+The following counts refer to redundant internal nodes (out-degree = 1). These are considered supported if their child is supported.
+    0 unnamed redundant internal nodes supported by an input tree internal node.
+    0 unnamed redundant internal nodes supported by an input tree expanded tip node.
+    0 unnamed redundant internal nodes supported by an input tree internal node and another tree's expanded tip node.
+    0 redundant named internal nodes had no support (other than the name).
+    0 redundant named internal nodes supported by an input tree internal node.
+    0 redundant named internal nodes supported by an input tree expanded tip node.
+    0 redundant named internal nodes supported by an input tree internal node and another tree's expanded tip node.
+0 unsupported nodes had out-degree > 1
+0 unsupported nodes had out-degree == 1 and were along a terminal path.
+0 unsupported nodes had out-degree == 1 and were along an internal path.
+7 total internal nodes checked.
+

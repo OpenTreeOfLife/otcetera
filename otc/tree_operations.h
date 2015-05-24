@@ -255,7 +255,7 @@ std::set<const typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toE
 // Starts at the node in `fullTree` identified by `ottId`
 // Walks back to the root, and adds `ottId` to value of the node->OttIdSet mapping `n2m`
 // Creates new entries in that table, as needed.
-// Multiple calls to this by tools like find-unsupported nodes to associate every node in a 
+// Multiple calls to this by tools like check-supertree to associate every node in a 
 //      full tree with an OttIdSet which contains all of the descendants for a reduced
 //      leafset.
 template<typename T>

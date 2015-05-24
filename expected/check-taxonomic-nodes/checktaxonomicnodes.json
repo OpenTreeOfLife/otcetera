@@ -1,7 +1,0 @@
-[
-  {
-    "invocation" : ["otc-check-taxonomic-nodes", "<INFILELIST>"],
-    "infile_list": ["3genus-mislabeled.tre", "3genus-taxonomy.tre"],
-    "expected": "checktaxonomicnodes-expected"
-  }
-]

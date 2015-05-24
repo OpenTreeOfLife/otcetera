@@ -101,9 +101,9 @@ OTT id is used to associate labels in different trees)
 
 ## Tools for checking a supertree against inputs
 
-### Checking for unnamed nodes in a full tree that have no tree supporting them
+### Checking for nodes in a supertree that have no tree supporting them
 
-    otc-find-unsupported-nodes taxonomy.tre synth.tre inp1.tre inp2.tre ...
+    otc-check-supertree taxonomy.tre synth.tre inp1.tre inp2.tre ...
 
 will report any nodes in `synth.tre` that are not named and which do not have
 any [ITEB support](https://github.com/OpenTreeOfLife/treemachine/blob/nonsense-1/nonsense/iteb_support_theorem.md)
@@ -112,6 +112,15 @@ The taxonomy is just used for the ottID validation (on the assumption that
 the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
 can help identify problems with those nodes).
 
+Note that this check identifies a nodes that could be collapsed to produce 
+  a "minimal" tree (*sensu* [Semple, 2003](http://ir.canterbury.ac.nz/handle/10092/1652)).
+As discussed in section 1.3 "Trees without unsupported groups" of 
+[the docs](http://phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf), if you
+want to get rid of such groups, then you should remove them one at a time and rerun 
+the check. Otherwise you may cause a supertree to display fewer of the input clusters.
+
+
+### Checking for incorrect internal labels in a full tree
 
 If you add a `-x` argument to the invocation, then the program will act like the taxonomy 
 is also a source of support for nodes.  Furthermore a report on problems with 
@@ -121,24 +130,25 @@ Using both `-x` and `-r` will create the taxonomic report, but then clear the ta
 support stats before analyzing the subsequent inputs. So the final summary should
 be equivalent to what you get by dropping both the `-x` and `-r` args.
 
-### Checking for incorrect internal labels in a full tree
-
-    otc-check-taxonomic-nodes -d synth.tre taxonomy.tre
+    otc-check-supertree -x -d synth.tre taxonomy.tre
 
 will check every labelled internal node is correctly labelled. To do this, it 
 verifies that the set of OTT ids associated with tips that descend from the 
 node is identical to the set of OTT ids associated with terminal taxa below
 the corresponding node in the taxonomic tree.
 
-A brief report will be issued for every problematic labeling if the -d arg is omitted.
-
-See the -x argument to `otc-find-unsupported-nodes` above for more taxonomic checks.
-
 `otc-taxon-conflict-report` takes at least 2 newick file paths: a full tree, and some number of input trees.
 It will write a summary of the difference in taxonomic inclusion for nodes that are in conflict:
 
     otc-taxon-conflict-report taxonomy.tre inp1.tre inp2.tre
 
+#### Removal of `otc-find-unsupported-nodes` and `otc-check-taxonomic-nodes`
+ The functionality that was previously in `otc-find-unsupported-nodes`
+and `otc-check-taxonomic-nodes` is now implemented in `otc-check-supertree`.
+This new tool has the same interface as `otc-find-unsupported-nodes` but the `-d`
+option from `otc-check-taxonomic-nodes` was also added. Thus `otc-check-taxonomic-nodes`
+is no longer necessary, and the name of the tool was changed to reflect its
+broader set of checks.
 
 ### Checking for additional splits that could be added
 

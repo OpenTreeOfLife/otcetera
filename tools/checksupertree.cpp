@@ -35,10 +35,20 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 supportCounts[i] = 0; // fill in, so we can use .at on const SupportSummary
             }
         }
+        int getNumErrors() const {
+            return static_cast<int>(numUnsupportedForking 
+                                    + numUnsupportedKnuckles
+                                    + numUnsupportedElbows) + getNumTaxoErrors();
+        }
+        int getNumTaxoErrors() const {
+            return static_cast<int>(misnamedSupported.size()
+                                    + shouldBeUnnamed.size()
+                                    + supportedShouldHaveName.size());
+        }
     };
     
     std::unique_ptr<TreeMappedWithSplits> toCheck;
-    int numErrors;
+    int numErrors = 0;
     std::map<const NodeWithSplits *, std::set<long> > aPrioriProblemNodes;
     std::map<const NodeWithSplits *, unsigned char> supportedNodes;
     std::map<const NodeWithSplits *, std::set<std::size_t> > supportedBy;
@@ -46,32 +56,21 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     //  an input clade that counts as support. 
     // false is a better setting (in terms of interpreting the input trees correctly)
     // TODO: Do we want to change the default?
-    bool treatExpandedTipsAsSupporting;
-    bool considerNamedSupported;
-    bool recordSupportingTreeIdentity;
-    bool processTaxonomyAsInputTree;
-    bool refreshAfterTaxonomy;
-    bool inTheProcessOfAnalyzingTax;
+    bool treatExpandedTipsAsSupporting = true;
+    bool considerNamedSupported = true;
+    bool recordSupportingTreeIdentity = false;
+    bool processTaxonomyAsInputTree = false;
+    bool refreshAfterTaxonomy = false;
+    bool inTheProcessOfAnalyzingTax = false;
     std::vector<std::string> supportTreeNames;
     SupportSummary taxoSummary; // only used if processTaxonomyAsInputTree is true
-    bool fixInsteadOfReport;
-    bool fixShouldSuppressKnuckles; // only used if fixInsteadOfReport is true
+    bool fixInsteadOfReport = false;
+    bool fixShouldSuppressKnuckles = false; // only used if fixInsteadOfReport is true
+    bool printDiff = false;
 
     virtual ~FindUnsupportedState(){}
     FindUnsupportedState()
-        :toCheck(nullptr),
-        numErrors(0),
-        treatExpandedTipsAsSupporting(true),
-        considerNamedSupported(true),
-        processTaxonomyAsInputTree(false),
-        refreshAfterTaxonomy(false),
-        inTheProcessOfAnalyzingTax(false),
-        fixInsteadOfReport(false),
-        fixShouldSuppressKnuckles(false),
-        numNamesAdded(0L), 
-        numNamesChanged(0L),
-        numNamesDeleted(0L),
-        numNodesCollapsed(0L) {
+        :toCheck(nullptr) {
     }
 
     // abuse of const because the fixInsteadOfReport was added late.
@@ -79,10 +78,10 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     mutable std::map<const NodeWithSplits * , OttId> toNameQ;
     mutable std::set<const NodeWithSplits * > toDelNameQ;
     mutable std::set<const NodeWithSplits * > toCollapse;
-    mutable std::size_t numNamesAdded;
-    mutable std::size_t numNamesChanged;
-    mutable std::size_t numNamesDeleted;
-    mutable std::size_t numNodesCollapsed;
+    mutable std::size_t numNamesAdded = 0L;
+    mutable std::size_t numNamesChanged = 0L;
+    mutable std::size_t numNamesDeleted = 0L;
+    mutable std::size_t numNodesCollapsed = 0L;
 
     void queueFixMisnamed(const NodeWithSplits * nd, const NodeWithSplits * tax) const {
         misnameQ[nd] = tax->getOttId();
@@ -184,8 +183,6 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 const auto t = snIt->second;
                 // not in taxoSummary, or having real (non-name-only) support
                 if ((!isTaxoSummary) || (t & SEEN_IN_AN_INPUT_BOTH)) {
-                    r.supportCounts[t] += 1;
-                    r.numSupportedInternals += 1;
                     if (isTaxoSummary) {
                         const OttIdSet & di = nd->getData().desIds;
                         if (nd->hasOttId()) {
@@ -195,6 +192,10 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                                 auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
                                 assert(matchingTaxonNode != nullptr);
                                 r.misnamedSupported[nd] = matchingTaxonNode;
+                                if (printDiff) {
+                                    *out << taxoNode->getName() << " incorrectly identified:\n";
+                                    writeOttSetDiff(*out, "    ", di, "summary", taxoNode->getData().desIds, "taxonomy");
+                                }
                                 if (fixInsteadOfReport) {
                                     if (outDegree == 1) {
                                         queueFixShouldBeUnnamed(nd);
@@ -202,15 +203,23 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                                         queueFixMisnamed(nd, matchingTaxonNode);
                                     }
                                 }
+                            } else {
+                                r.supportCounts[t] += 1;
+                                r.numSupportedInternals += 1;
                             }
                         } else {
                             auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
                             assert(matchingTaxonNode != nullptr);
                             r.supportedShouldHaveName[nd] = matchingTaxonNode;
+                            r.supportCounts[t] += 1;
+                            r.numSupportedInternals += 1;
                             if (fixInsteadOfReport && outDegree > 1) {
                                 queueFixShouldHaveBeenNamed(nd, matchingTaxonNode);
                             }
                         }
+                    } else {
+                        r.supportCounts[t] += 1;
+                        r.numSupportedInternals += 1;
                     }
                     if (fixInsteadOfReport
                         && fixShouldSuppressKnuckles
@@ -224,6 +233,15 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             }
             if (isTaxoSummary && nd->hasOttId()) {
                 r.shouldBeUnnamed.insert(nd);
+                if (printDiff) {
+                    OttId ottId = nd->getOttId();
+                    const auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
+                    *out << taxoNode->getName() << " incorrectly identified:\n";
+                    writeOttSetDiff(*out, "    ",
+                                    nd->getData().desIds, "summary",
+                                    taxoNode->getData().desIds, "taxonomy");
+                }
+
                 if (fixInsteadOfReport) {
                     if (!fixShouldSuppressKnuckles || outDegree > 1) {
                         queueFixShouldBeUnnamed(nd);
@@ -289,13 +307,14 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         if (processTaxonomyAsInputTree) {
             out << "Taxonomy-as-the-only-input summary:\n";
             writeSummaryStats(out, taxoSummary);
+            numErrors += taxoSummary.getNumTaxoErrors();
         }
         out << "Final summary:\n";
         writeSummaryStats(out, ss);
         if (numErrors < 0) {
             numErrors -= ss.numUnsupportedForking;
         } else {
-            numErrors = static_cast<int>(ss.numUnsupportedForking);
+            numErrors += static_cast<int>(ss.numUnsupportedForking);
         }
         return numErrors == 0;
     }
@@ -397,7 +416,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 analyzeTreeForSupport(otCLI, *taxonomy, true);
                 inTheProcessOfAnalyzingTax = false;
                 extendSupportedToRedundantNodes(*toCheck);
-                calcSupportSummary(nullptr, *toCheck, taxoSummary, true);
+                calcSupportSummary(&otCLI.out, *toCheck, taxoSummary, true);
                 if (refreshAfterTaxonomy) {
                    reinitSupportTemps();
                 }
@@ -548,6 +567,7 @@ bool handleForceRefreshAfterTaxonomy(OTCLI & otCLI, const std::string &);
 bool handleFix(OTCLI & otCLI, const std::string &);
 bool handleFixKnuckles(OTCLI & otCLI, const std::string &);
 bool handlePruneUnrecognized(OTCLI & otCLI, const std::string &);
+bool handlePrintDiff(OTCLI & otCLI, const std::string &);
 
 bool handleDesignator(OTCLI & otCLI, const std::string &nextArg) {
     FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
@@ -606,6 +626,13 @@ bool handlePruneUnrecognized(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
+bool handlePrintDiff(OTCLI & otCLI, const std::string &) {
+    FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
+    assert(fusp != nullptr);
+    fusp->printDiff = true;
+    return true;
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-find-unsupported-nodes",
                 "takes at least 2 newick file paths: a full taxonomy tree, a full supertree, and some number of input trees",
@@ -624,12 +651,16 @@ int main(int argc, char *argv[]) {
                   handleForceTaxonomy,
                   false);
     otCLI.addFlag('r',
-                  "Refresh support stats after analyzing taxonomy so that final summary is only based on phylo inputs",
+                  "Refresh support stats after analyzing taxonomy so that final summary is only based on phylo inputs (only has an effect if -x is present)",
                   handleForceRefreshAfterTaxonomy,
                   false);
     otCLI.addFlag('c',
                   "Fix the problems (clean the tree) rather than reporting on them.",
                   handleFix,
+                  false);
+    otCLI.addFlag('d',
+                  "Print difference between taxonomic content for mis-named nodes (only has an effect if -x is used)",
+                  handlePrintDiff,
                   false);
     otCLI.addFlag('k',
                   "If the -c is used, then this flag requests that unnamed nodes of out-degree=1 be suppressed.",
