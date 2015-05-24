@@ -1,12 +1,11 @@
 LDADD       = @top_builddir@/otc/libotcetera.la
 AM_CPPFLAGS = -I@top_srcdir@/otc
 bin_PROGRAMS = otc-assert-invariants \
-				otc-check-taxonomic-nodes \
 				otc-count-leaves \
 				otc-degree-distribution \
 				otc-detect-contested \
 				otc-distance \
-				otc-find-unsupported-nodes \
+				otc-check-supertree \
 				otc-find-resolution \
 				otc-induced-subtree \
 				otc-nonterminals-to-exemplars \
@@ -36,9 +35,6 @@ otc_suppress_monotypic_CPPFLAGS = $(AM_CPPFLAGS)
 otc_assert_invariants_SOURCES = assertinvariants.cpp
 otc_assert_invariants_CPPFLAGS = $(AM_CPPFLAGS)
 
-otc_check_taxonomic_nodes_SOURCES = checktaxonomicnodes.cpp
-otc_check_taxonomic_nodes_CPPFLAGS = $(AM_CPPFLAGS)
-
 otc_detect_contested_SOURCES = detectcontested.cpp
 otc_detect_contested_CPPFLAGS = $(AM_CPPFLAGS)
 
@@ -48,8 +44,8 @@ otc_uncontested_decompose_CPPFLAGS = $(AM_CPPFLAGS)
 otc_find_resolution_SOURCES = findresolution.cpp
 otc_find_resolution_CPPFLAGS = $(AM_CPPFLAGS)
 
-otc_find_unsupported_nodes_SOURCES = findunsupportednodes.cpp
-otc_find_unsupported_nodes_CPPFLAGS = $(AM_CPPFLAGS)
+otc_check_supertree_SOURCES = checksupertree.cpp
+otc_check_supertree_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_prune_taxonomy_SOURCES = prunetaxonomy.cpp
 otc_prune_taxonomy_CPPFLAGS = $(AM_CPPFLAGS)
