@@ -9,6 +9,7 @@
 #include "otc/tree_iter.h"
 #include "otc/error.h"
 #include "otc/util.h"
+#include "otc/debug.h"
 namespace otc {
 
 template<typename T>
@@ -285,6 +286,9 @@ inline T * findFirstForkingAnc(T * nd) {
     }
     while (anc->isOutDegreeOneNode()) {
         anc = anc->getParent();
+        if (anc == nullptr) {
+            return nullptr;
+        }
     }
     return anc;
 }
@@ -721,6 +725,7 @@ inline void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename 
     tree.markAsDetached(nd);
 }
 
+// 
 // detaches child from the tree (and lets it dangle)
 // assigns its children to nd (which should be the parent of child)
 // note in the only usage: nd is monotypic, but child is NOT.
@@ -728,28 +733,29 @@ inline void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename 
 //  taxonomic assignment that we want to preserve in the desIds
 template<typename T>
 inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
-                                                    typename T::node_type * child,
+                                                    typename T::node_type * monotypic_child,
                                                     T & tree) {
     assert(nd);
-    assert(child);
-    assert(child->getParent() == nd);
-    assert(nd->getFirstChild() == child);
-    assert(child->getNextSib() == nullptr);
-    LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd)) << " by stealing children from " << getDesignator(*child) ;
-    auto entryChild = child->getPrevSib();
+    assert(monotypic_child);
+    assert(monotypic_child->getParent() == nd);
+    assert(nd->getFirstChild() == monotypic_child);
+    assert(monotypic_child->getNextSib() == nullptr);
+    LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd))
+               << " by stealing children from " << getDesignator(*monotypic_child) ;
+    auto entryChild = monotypic_child->getPrevSib();
     assert(entryChild == nullptr);
-    auto exitChild = child->getNextSib();
+    auto exitChild = monotypic_child->getNextSib();
     assert(exitChild == nullptr);
-    typename T::node_type * f = child->getFirstChild();
+    typename T::node_type * f = monotypic_child->getFirstChild();
     typename T::node_type * c = nullptr;
-    auto citf = iter_child(*child);
+    auto citf = iter_child(*monotypic_child);
     const auto cite = citf.end();
     for (auto cit = citf.begin(); cit != cite; ++cit) {
         c = *cit;
         c->_setParent(nd);
     }
     if (entryChild != nullptr) {
-        assert(entryChild->getNextSib() == child);
+        assert(entryChild->getNextSib() == monotypic_child);
         if (f == nullptr) {
             entryChild->_setNextSib(exitChild);
         } else {
@@ -767,39 +773,39 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
         }
     }
     if (entryChild != nullptr || exitChild != nullptr) {
-        // nd has a different set of descendants than child.
+        // nd has a different set of descendants than monotypic_child.
         //  nd was not actually monotypic
         assert(false);
         throw OTCError("asserts disabled, but false");
-        //eraseMappingsToNode<T>(child, tree);
     } else {
-        replaceMappingsToNodeWithAlias<T>(child, nd, tree);
+        replaceMappingsToNodeWithAlias<T>(monotypic_child, nd, tree);
     }
 }
 
 template<typename T>
-inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * nd,
+inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * monotypic_nd,
                                                        typename T::node_type * child,
                                                        T & tree) {
-    assert(nd);
+    assert(monotypic_nd);
     assert(child);
-    assert(child->getParent() == nd);
-    assert(nd->getFirstChild() == child);
+    assert(child->getParent() == monotypic_nd);
+    assert(monotypic_nd->getFirstChild() == child);
     assert(child->getNextSib() == nullptr);
-    auto gp = nd->getParent();
+    auto gp = monotypic_nd->getParent();
     assert(gp);
-    LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd)) << " by claiming grandparent as parent for node " << getDesignator(*child) ;
-    auto entrySib = nd->getPrevSib();
-    auto exitSib = nd->getNextSib();
+    LOG(DEBUG) << "suppressing " << (monotypic_nd->hasOttId() ? monotypic_nd->getOttId() : long(monotypic_nd))
+                << " by claiming grandparent as parent for node " << getDesignator(*child) ;
+    auto entrySib = monotypic_nd->getPrevSib();
+    auto exitSib = monotypic_nd->getNextSib();
     child->_setParent(gp);
     if (entrySib != nullptr) {
-        assert(entrySib->getNextSib() == nd);
+        assert(entrySib->getNextSib() == monotypic_nd);
         entrySib->_setNextSib(child);
     } else {
         gp->_setFirstChild(child);
     }
     child->_setNextSib(exitSib);
-    replaceMappingsToNodeWithAlias<T>(nd, child, tree);
+    replaceMappingsToNodeWithAlias<T>(monotypic_nd, child, tree);
 }
 
 // nd must be unnnamed (or the aliases would not be fixed because we can't call replaceMappingsToNodeWithAlias)
@@ -892,12 +898,32 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
     auto toProcess = monotypic;
     while (!toProcess.empty()) {
         for (auto toPIt = toProcess.begin(); toPIt != toProcess.end();) {
+            checkTreeInvariants(tree);
             auto tpn = *toPIt;
             auto par = tpn->getParent();
             if (!contains(toProcess, par)) {
-                suppressMonotypyByClaimingGrandparentAsPar<T>(tpn, tpn->getFirstChild(), tree);
+                if (tree.isDetached(tpn)) {
+                    removed.insert(tpn);
+                } else if (tpn->isTip()) {
+                    tree._pruneAndDelete(tpn);
+                    removed.insert(tpn);
+                } else {
+                    auto onlyChild = tpn->getFirstChild();
+                    if (par) {
+                        suppressMonotypyByClaimingGrandparentAsPar<T>(tpn, onlyChild, tree);
+                        removed.insert(tpn);
+                    } else {
+                        replaceMappingsToNodeWithAlias<T>(onlyChild, tpn, tree);
+                        if (onlyChild->isTip()) {
+                            tree._pruneAndDelete(onlyChild);
+                        } else {
+                            onlyChild->delOttId();
+                            collapseInternalIntoPar(onlyChild, tree);
+                        }
+                        removed.insert(onlyChild);
+                    }
+                }
                 toProcess.erase(toPIt++);
-                removed.insert(tpn);
             } else {
                 ++toPIt;
             }

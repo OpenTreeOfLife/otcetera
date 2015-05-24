@@ -105,7 +105,15 @@ bool checkChildIter(const T & tree) {
 }
 
 template<typename T>
-bool checkDesIds(const T & tree) {
+bool checkDesIds(const T & tree);
+
+template<typename T>
+inline bool checkDesIds(const T & ) {
+    return true;
+}
+
+template<>
+inline bool checkDesIds(const TreeMappedWithSplits & tree) {
     auto ns = tree.getSetOfAllAttachedNodes();
     for (auto nd : ns) {
         if (nd->isTip()) {

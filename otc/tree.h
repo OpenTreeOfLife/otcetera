@@ -339,7 +339,9 @@ class RootedTree {
             p->removeChild(nd);
             deletePrunedSubtreeNodes(nd);
         }
-
+        bool isDetached(node_type * nd) {
+            return contains(detached, nd);
+        }
     protected:
         std::set<node_type *> allNodes;
         node_type * root;
