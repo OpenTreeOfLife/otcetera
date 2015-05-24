@@ -30,7 +30,7 @@ def execute(invoc, out_f='/dev/null', err_f='/dev/null', outdir='.'):
                 sys.exit('Failure of {}\n'.format(invoc[0]))
 
 def clean_tree(args, outdir):
-    invoc = ['otc-find-unsupported-nodes', '-x', '-r', '-c', '-k']
+    invoc = ['otc-check-supertree', '-x', '-r', '-c', '-k']
     invoc.append(args.taxonomy)
     invoc.append(args.summary)
     invoc.append('-f' + args.input_files)
@@ -45,7 +45,7 @@ def suppress_outdegree_one(args, outdir):
     execute(invoc, out_f=out_f, err_f=err_f, outdir=outdir)
 
 def check_cleaned_nonredundant(args, outdir):
-    invoc = ['otc-find-unsupported-nodes']
+    invoc = ['otc-check-supertree']
     invoc.append(args.taxonomy)
     invoc.append(get_cleaned_nonredundant_tree(outdir))
     invoc.append('-f' + args.input_files)
@@ -63,7 +63,7 @@ def resolve_cleaned(args, outdir):
     execute(invoc, out_tree, err_f, outdir)
 
 def check_resolved_cleaned(args, outdir):
-    invoc = ['otc-find-unsupported-nodes', '-x', '-r']
+    invoc = ['otc-check-supertree', '-x', '-r']
     invoc.append(args.taxonomy)
     invoc.append(get_resolved_treefile(outdir))
     invoc.append('-f' + args.input_files)
