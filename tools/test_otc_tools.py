@@ -61,6 +61,7 @@ def run_tests_for_invocation(descrip, data_dir, expected_par, executable_par):
     invoc = descrip['invocation']
     # make abs path to exe
     invoc[0] = os.path.join(executable_par, invoc[0])
+    test_tag = os.path.split(expected_par)[1]
     expected_results_path = os.path.join(expected_par, descrip['expected'])
     if 'infile_list' in descrip:
         # tests that need multiple input files
@@ -73,7 +74,7 @@ def run_tests_for_invocation(descrip, data_dir, expected_par, executable_par):
         else:
             s = []
         invoc = p + infile_list + s
-        tag = descrip['expected']
+        tag = test_tag + '/' + descrip['expected']
         test_invoc(tag, invoc, expected_results_path)
     elif '<INFILE>' in invoc:
         ind = invoc.index('<INFILE>')
@@ -84,7 +85,7 @@ def run_tests_for_invocation(descrip, data_dir, expected_par, executable_par):
             inp_path = os.path.join(data_dir, inp_file)
             sub_invoc = list(invoc)
             sub_invoc[ind] = inp_path
-            tag = os.path.join(descrip['expected'], inp_file)
+            tag = test_tag + '/' + os.path.join(descrip['expected'], inp_file)
             test_invoc(tag, sub_invoc, expected_for_full_invoc)
     else:
         assert False # no inputs needed

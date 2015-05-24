@@ -8,5 +8,10 @@
     "invocation" : ["otc-check-supertree", "-x", "<INFILELIST>"],
     "infile_list": ["3genus-taxonomy.tre", "3genus-mislabeled.tre", "3genus-mislabeled.tre"],
     "expected": "mislabeled-expected"
+  },
+  {
+    "invocation" : ["otc-check-supertree", "-x", "-p", "<INFILELIST>"],
+    "infile_list": ["3genus-Aonlytaxonomy.tre", "3genus-Aresolved.tre", "3genus-ABsynth.tre"],
+    "expected": "pruning"
   }
 ]

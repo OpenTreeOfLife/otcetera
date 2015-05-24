@@ -52,16 +52,16 @@ bool NodeEmbedding<T, U>::debugNodeEmbedding(const char * tag,
                     assert(root == nullptr || !parentsOfExits.empty());
                     assert(isContested || parentsOfExits.size() < 2);
                 } else {
-                    LOG(DEBUG)  << " parentless " << getDesignator(*p) << ' ' << (long) p;
+                    LOG(DEBUG)  << " parentless " << getDesignator(*p) << ' ' << (long)(p);
                     if (p->getParent() != nullptr) {
                         auto gp = p->getParent();
                         LOG(ERROR)  << " Failing on scaffold ott" << embeddedNode->getOttId() << " treeIndex " << treeIndex;
-                        LOG(ERROR)  << " phylo parent node (@" << (long)p << ") = " << getDesignator(*p) << ' ' << (long) p << " is not in loop or exit edges";
+                        LOG(ERROR)  << " phylo parent node (@" << (long)(p) << ") = " << getDesignator(*p) << ' ' << (long)(p) << " is not in loop or exit edges";
                         writeNewick(std::cerr, p);
                         std::cerr << std::endl;
-                        LOG(ERROR)  << " the phylo child was (@" << (long)c2p.first << ") = " << getDesignator(*c2p.first);
+                        LOG(ERROR)  << " the phylo child was (@" << (long)(c2p.first) << ") = " << getDesignator(*c2p.first);
                         writeNewick(std::cerr, c2p.first);
-                        LOG(ERROR)  << " phylo grandparent (@" << (long)gp << ") = " << getDesignator(*gp) << ' ' << (long) gp;
+                        LOG(ERROR)  << " phylo grandparent (@" << (long)(gp) << ") = " << getDesignator(*gp) << ' ' << (long)(gp);
                         writeNewick(std::cerr, gp);
                         std::cerr << std::endl;
                         for (auto anc : iter_anc(*embeddedNode)) {
@@ -286,7 +286,7 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbed
 template<typename T, typename U>
 bool PathPairing<T, U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
     if (false && debuggingOutputEnabled) {
-        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this << " in ";
+        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)(this) << " in ";
         dbWriteOttSet("currChildOttIdSet", currChildOttIdSet);
         dbWriteOttSet("oldEls", oldEls);
         dbWriteOttSet("newEls", newEls);
@@ -302,7 +302,7 @@ bool PathPairing<T, U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
     if (false && debuggingOutputEnabled) {
-        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)this;
+        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << (long)(this);
         dbWriteOttSet("updateOttIdSetNoTraversal exit ", currChildOttIdSet);
     }
     return true;
@@ -429,7 +429,7 @@ template<typename T>
 void debugPrintNd2Par(const char * p, const T & m) {
     std::cerr << "debugPrintNd2Par " << p << ": ";
     for (auto mp : m) {
-        std::cerr << "  " << (long) mp.first << " -> " << (long) mp.second << '\n';
+        std::cerr << "  " << (long)(mp.first) << " -> " << (long)(mp.second) << '\n';
     }
 }
 // Only resolves cases in which there is a deeper polytomy that is compatible with 
@@ -571,7 +571,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
                 LOG(DEBUG) << "   mapping " << np.first << " " << getDesignator(*np.first);
                 LOG(DEBUG) << "   to par  " << np.second << " " << getDesignator(*np.second);
             }
-            LOG(DEBUG) << " root = " << (long) root  << "  parentsOfExits.size() = " << parentsOfExits.size();
+            LOG(DEBUG) << " root = " << (long)(root)  << "  parentsOfExits.size() = " << parentsOfExits.size();
             assert(parentsOfExits.empty() || root != nullptr);
             assert(parentsOfExits.size() < 2 );
              // if the node is uncontested, then all exit paths must have the same parent
@@ -599,7 +599,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
                         if (!contains(lnd2par, pp->phyloParent)) {
                             if (!contains(end2par, pp->phyloParent)) {
                                 LOG(ERROR) << "crashing on treeIndex " << treeIndex;
-                                LOG(ERROR) << "deeperNd is set to  " << (long)deeperNd;
+                                LOG(ERROR) << "deeperNd is set to  " << (long)(deeperNd);
                                 debugPrintPathPairing(*pp);
                                 assert(false);
                             }
@@ -744,7 +744,11 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
             if (scaffOTTId == ottIDBeingDebugged) {
                 appendIncludeLeafSetAsNewick("phyloStatementAttempt", pathPtr->getOttIdSet(), pathPtr->getOttIdSet());
             }
-            gpf.attemptToAddGrouping(pathPtr->getOttIdSet(), EMPTY_SET, (int)bogusTreeIndex, bogusGroupIndex++, &sc);
+            gpf.attemptToAddGrouping(pathPtr->getOttIdSet(),
+                                    EMPTY_SET,
+                                    static_cast<int>(bogusTreeIndex),
+                                    bogusGroupIndex++,
+                                    &sc);
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, NONEMBEDDED_SPLIT, bogusTreeIndex, bogusGroupIndex -1));
@@ -779,13 +783,13 @@ std::map<std::size_t, std::set<PathPairing<T, U> *> > copyAllLoopPathPairing(con
 
 template<typename T, typename U>
 void debugPrintPathPairing(const PathPairing<T,U> & clp) {
-    std::cerr << "  PathPairing " << (long) &clp << " scaffoldAnc (@" << (long)clp.scaffoldAnc << ") = ott" << clp.scaffoldAnc->getOttId() << "\n      ";
+    std::cerr << "  PathPairing " << (long)(&clp) << " scaffoldAnc (@" << (long)(clp.scaffoldAnc) << ") = ott" << clp.scaffoldAnc->getOttId() << "\n      ";
     //writeNewick(std::cerr, clp.scaffoldAnc);
-    std::cerr << "            scaffoldDes (@" << (long)clp.scaffoldDes << ") = ott" << clp.scaffoldDes->getOttId() << "\n      ";
+    std::cerr << "            scaffoldDes (@" << (long)(clp.scaffoldDes) << ") = ott" << clp.scaffoldDes->getOttId() << "\n      ";
     //writeNewick(std::cerr, clp.scaffoldDes);
-    std::cerr << "            phyloParent (@" << (long)clp.phyloParent << ") = " << getDesignator(*clp.phyloParent) << "\n      ";
+    std::cerr << "            phyloParent (@" << (long)(clp.phyloParent) << ") = " << getDesignator(*clp.phyloParent) << "\n      ";
     //writeNewick(std::cerr, clp.phyloParent);
-    std::cerr << "            phyloChild (@" << (long)clp.phyloChild << ") = " << getDesignator(*clp.phyloChild) << "\n";
+    std::cerr << "            phyloChild (@" << (long)(clp.phyloChild) << ") = " << getDesignator(*clp.phyloChild) << "\n";
     //writeNewick(std::cerr, clp.phyloChild);
     
 }
