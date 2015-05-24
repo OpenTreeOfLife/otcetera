@@ -481,9 +481,9 @@ OttIdSet FTree<T, U>::addPhyloStatementAtNode(const PhyloStatement & ps,
                                              const OttIdSet & attachedElsewhere,
                                              InterTreeBand<T> * itbp) {
     dbWriteOttSet(" FTree<T, U>::addPhyloStatementAtNode inc", ps.includeGroup);
-    LOG(DEBUG) << "includeGroupA = " << (long) includeGroupA  << " " << std::hex << (long) includeGroupA << std::dec;
-    LOG(DEBUG) << "itbp = " << (long) itbp << " " << std::hex << (long) itbp << std::dec;
-    LOG(DEBUG) << "FTree = " << (long) this << " " << std::hex << (long) this << std::dec;
+    LOG(DEBUG) << "includeGroupA = " << (long)(includeGroupA)  << " " << std::hex << (long)(includeGroupA) << std::dec;
+    LOG(DEBUG) << "itbp = " << (long)(itbp) << " " << std::hex << (long)(itbp) << std::dec;
+    LOG(DEBUG) << "FTree = " << (long)(this) << " " << std::hex << (long)(this) << std::dec;
     dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
     assert(forest.getTreeForNode(includeGroupA) == this);
     OttIdSet r;
@@ -540,8 +540,8 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
     assert(pids.find(LONG_MAX) == pids.end());
     ois.insert(pids.begin(), pids.end());
     if(s != ois) {
-        LOG(DEBUG) << "FTree = " << (long) this << " " << std::hex << (long) this << std::dec;
-        LOG(DEBUG) << "nd = " << (long) nd << " " << std::hex << (long) nd << std::dec;
+        LOG(DEBUG) << "FTree = " << (long)(this) << " " << std::hex << (long)(this) << std::dec;
+        LOG(DEBUG) << "nd = " << (long)(nd) << " " << std::hex << (long)(nd) << std::dec;
         dbWriteNewick(nd);
         dbWriteOttSet("debugVerifyDesIdsAssumingDes incoming", s);
         dbWriteOttSet("calculated:", ois);
@@ -565,8 +565,6 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
 }
 template<typename T, typename U>
 void FTree<T, U>::debugInvariantsCheckFT() const {
-    //LOG(DEBUG) << " start of debugInvariantsCheckFT for " << (long) this << " " << std::hex << (long)this << std::dec;
-    //dbWriteNewick(root);
     checkAllNodePointersIter(*root);
     for (auto n : iter_post_n_const(*root)) {
          auto & b = bands.getBandsForNode(n);
@@ -576,8 +574,8 @@ void FTree<T, U>::debugInvariantsCheckFT() const {
             }
         }
         if(forest.getTreeForNode(n) != this) {
-            long x = (long) forest.getTreeForNode(n);
-            long p = (long) n->getParent();
+            long x = (long)(forest.getTreeForNode(n));
+            long p = (long)(n->getParent());
             LOG(DEBUG) << getDesignator(*n) << " in the wrong tree reporting " << x << " " << std::hex << x << std::dec << " p = " << p << " " << std::hex << p << std::dec;
             if (n->getParent() != nullptr) {
                 std::cerr << "the parent newick\n";

@@ -232,16 +232,16 @@ void GreedyBandedForest<T, U>::transferSubtreeInForest(
                 InterTreeBand<RTSplits> * bandBeingMerged) {
     assert(des != nullptr);
     auto oldPar = des->getParent();
-    LOG(DEBUG) << "top transferSubtreeInForest pre des == " << getDesignator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
-    LOG(DEBUG) << "                            newPar " << (long) newPar << " " << std::hex << (long) newPar << std::dec;
-    LOG(DEBUG) << "                            oldPar " << (long) oldPar << " " << std::hex << (long) oldPar << std::dec;
-    LOG(DEBUG) << "    newick of newPar before actions of transferSubtreeInForest";
-    dbWriteNewick(newPar);
-    LOG(DEBUG) << "    newick of oldPar before actions of transferSubtreeInForest";
-    dbWriteNewick(oldPar);
-    dbWriteOttSet("    on entry des->desIds", des->getData().desIds);
-    dbWriteOttSet("    on entry newPar->desIds", newPar->getData().desIds);
-    dbWriteOttSet("    on entry oldPar->desIds", oldPar->getData().desIds);
+    //LOG(DEBUG) << "top transferSubtreeInForest pre des == " << getDesignator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
+    //LOG(DEBUG) << "                            newPar " << (long) newPar << " " << std::hex << (long) newPar << std::dec;
+    //LOG(DEBUG) << "                            oldPar " << (long) oldPar << " " << std::hex << (long) oldPar << std::dec;
+    //LOG(DEBUG) << "    newick of newPar before actions of transferSubtreeInForest";
+    //dbWriteNewick(newPar);
+    //LOG(DEBUG) << "    newick of oldPar before actions of transferSubtreeInForest";
+    //dbWriteNewick(oldPar);
+    //dbWriteOttSet("    on entry des->desIds", des->getData().desIds);
+    //dbWriteOttSet("    on entry newPar->desIds", newPar->getData().desIds);
+    //dbWriteOttSet("    on entry oldPar->desIds", oldPar->getData().desIds);
     if (bandBeingMerged == nullptr) {
         debugInvariantsCheck();
     }
