@@ -150,7 +150,7 @@ option from `otc-check-taxonomic-nodes` was also added. Thus `otc-check-taxonomi
 is no longer necessary, and the name of the tool was changed to reflect its
 broader set of checks.
 
-### Determining how many input tree groups are displayed by a full tree
+### Counting input tree groups displayed by a full tree
 The `otc-displayed-stats` analyzes the nodes of the inputs in the context of a summary tree.
 
     otc-displayed-stats -x taxonomy.tre synth.tre inp1.tre inp2.tre ...
