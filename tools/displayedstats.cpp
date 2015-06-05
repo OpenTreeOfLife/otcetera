@@ -1,6 +1,7 @@
 #include "otc/otcli.h"
 #include "otc/supertree_util.h"
 #include <tuple>
+#include <sstream>
 using namespace otc;
 
 /// Stat Calc declarations
@@ -203,8 +204,28 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
 /// Stat report decl
 void writeHeader(std::ostream &out);
 void writeRow(std::ostream &out, std::map<NDSE, std::size_t> & m, const std::string & label);
+std::string explainOutput();
 /// End Stat report decl
 /// Stat report impl
+std::string explainOutput() {
+    std::ostringstream o;
+    o << "Writes tab-separated output.\n";
+    o << "Each row reports the number of internal nodes of the input tree that fall into each category.\n";
+    o << "The final row shows the totals.\n";
+    o << "The two \"axes\" that the statistics explore are support and out-degree.\n";
+    o << "\nColumns starting with \"F\" are \"forking\" internal nodes with out-degree > 1.\n";
+    o << "Columns starting with \"R\" are \"redundant\" internal nodes with out-degree = 1.\n";
+    o << "\nA \"D\" suffix to a column header means that the node is displayed by the summary tree.\n";
+    o << "A \"CR\" suffix means that the node is could resolve a polytomy in the summary tree (so the";
+    o << "    summary tree is not unambiguously in conflict in the node).\n";
+    o << "An \"I\" suffix to a column header means that the node is incompatible with every resolution ofthe summary tree.\n";
+    o << "\nFor the redundant nodes, the report indicates the conflict status of their closest non-redundant descendant.\n";
+    o << "A redundant node can also be marked \"T\" (for \"trivial\")if it is an ancestor of only 1 leaf or of the root.\n";
+    o << "\nThe \"F\" and \"R\" column are just the sums for forking and redundant entries.\n";
+    o << "\nThe \"label\" shows the tree name or \"Total of # trees\" for the global sum";
+    return o.str();
+}
+
 void writeHeader(std::ostream &out) {
     out << "FD" << '\t'
         << "FCR" << '\t'
@@ -213,21 +234,27 @@ void writeHeader(std::ostream &out) {
         << "RD" << '\t'
         << "RCR"  << '\t'
         << "RI" << '\t'
+        << "RT" << '\t'
         << "R" << '\t'
         << "label" << '\n';
 }
 
+
 void writeRow(std::ostream &out,
               std::map<NDSE, std::size_t> & m,
               const std::string & label) {
+    const auto f = m[NDSE::FORKING_DISPLAYED] + m[NDSE::FORKING_COULD_RESOLVE] + m[NDSE::FORKING_INCOMPATIBLE];
+    const auto rt = m[NDSE::REDUNDANT_TERMINAL] + m[NDSE::REDUNDANT_ROOT_ANC];
+    const auto r = m[NDSE::REDUNDANT_DISPLAYED] + m[NDSE::REDUNDANT_COULD_RESOLVE] + m[NDSE::REDUNDANT_INCOMPATIBLE] + rt;
     out << m[NDSE::FORKING_DISPLAYED] << '\t'
         << m[NDSE::FORKING_COULD_RESOLVE]  << '\t'
         << m[NDSE::FORKING_INCOMPATIBLE] << '\t'
-        << m[NDSE::FORKING_DISPLAYED] + m[NDSE::FORKING_COULD_RESOLVE] + m[NDSE::FORKING_INCOMPATIBLE] << '\t'
+        << f << '\t'
         << m[NDSE::REDUNDANT_DISPLAYED] << '\t'
         << m[NDSE::REDUNDANT_COULD_RESOLVE] << '\t'
         << m[NDSE::REDUNDANT_INCOMPATIBLE] << '\t'
-        << m[NDSE::REDUNDANT_DISPLAYED] + m[NDSE::REDUNDANT_COULD_RESOLVE] + m[NDSE::REDUNDANT_INCOMPATIBLE] << '\t'
+        << rt << '\t'
+        << r  << '\t'
         << label << '\n';
 }
 
@@ -301,13 +328,15 @@ bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
 }
 
 int main(int argc, char *argv[]) {
+    std::string explanation{"takes at least 2 newick file paths: a taxonomy,  a full supertree, and some number of input trees.\n"};
+    explanation += explainOutput();
     OTCLI otCLI("otc-displayed-stats",
-                "takes at least 2 newick file paths: a taxonomy,  a full supertree, and some number of input trees.",
+                explanation.c_str(),
                 "synth.tre inp1.tre inp2.tre ...");
     DisplayedStatsState proc;
     otCLI.addFlag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
                   false);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, true);
+    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }

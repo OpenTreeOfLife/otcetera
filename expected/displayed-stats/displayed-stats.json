@@ -1,0 +1,7 @@
+[
+  {
+    "invocation" : ["otc-displayed-stats", "-x", "<INFILELIST>"],
+    "infile_list": ["3genus-taxonomy.tre", "3genus-synth.tre", "3genus-synth.tre"],
+    "expected": "synth-taxo"
+  }
+]
