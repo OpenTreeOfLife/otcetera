@@ -213,16 +213,18 @@ std::string explainOutput() {
     o << "Each row reports the number of internal nodes of the input tree that fall into each category.\n";
     o << "The final row shows the totals.\n";
     o << "The two \"axes\" that the statistics explore are support and out-degree.\n";
-    o << "\nColumns starting with \"F\" are \"forking\" internal nodes with out-degree > 1.\n";
+    o << "Columns starting with \"F\" are \"forking\" internal nodes with out-degree > 1.\n";
     o << "Columns starting with \"R\" are \"redundant\" internal nodes with out-degree = 1.\n";
-    o << "\nA \"D\" suffix to a column header means that the node is displayed by the summary tree.\n";
-    o << "A \"CR\" suffix means that the node is could resolve a polytomy in the summary tree (so the";
+    o << "A \"D\" suffix to a column header means that the node is displayed by the summary tree.\n";
+    o << "A \"CR\" suffix means that the node is could resolve a polytomy in the summary tree (so the\n";
     o << "    summary tree is not unambiguously in conflict in the node).\n";
     o << "An \"I\" suffix to a column header means that the node is incompatible with every resolution ofthe summary tree.\n";
-    o << "\nFor the redundant nodes, the report indicates the conflict status of their closest non-redundant descendant.\n";
+    o << "For the redundant nodes, the report indicates the conflict status of their closest non-redundant descendant.\n";
     o << "A redundant node can also be marked \"T\" (for \"trivial\")if it is an ancestor of only 1 leaf or of the root.\n";
-    o << "\nThe \"F\" and \"R\" column are just the sums for forking and redundant entries.\n";
-    o << "\nThe \"label\" shows the tree name or \"Total of # trees\" for the global sum";
+    o << "The \"F\" and \"R\" column are just the sums for forking and redundant entries.\n";
+    o << "The \"label\" shows the tree name or \"Total of # trees\" for the global sum\n";
+    o << "The ordering of the rows is the input order. For columns it is:\n";
+    o <<  "FD FCR FI F RD RCR RI RT R label";
     return o.str();
 }
 

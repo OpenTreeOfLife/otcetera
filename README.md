@@ -130,7 +130,7 @@ Using both `-x` and `-r` will create the taxonomic report, but then clear the ta
 support stats before analyzing the subsequent inputs. So the final summary should
 be equivalent to what you get by dropping both the `-x` and `-r` args.
 
-    otc-check-supertree -x -d synth.tre taxonomy.tre
+    otc-check-supertree -x -d taxonomy.tre synth.tre
 
 will check every labelled internal node is correctly labelled. To do this, it 
 verifies that the set of OTT ids associated with tips that descend from the 
@@ -149,6 +149,49 @@ This new tool has the same interface as `otc-find-unsupported-nodes` but the `-d
 option from `otc-check-taxonomic-nodes` was also added. Thus `otc-check-taxonomic-nodes`
 is no longer necessary, and the name of the tool was changed to reflect its
 broader set of checks.
+
+### Determining how many input tree groups are displayed by a full tree
+The `otc-displayed-stats` analyzes the nodes of the inputs in the context of a summary tree.
+
+    otc-displayed-stats -x taxonomy.tre synth.tre inp1.tre inp2.tre ...
+
+writes tab-separated output. The first column is the number of non-redundant input
+tree nodes that are displayed by the `synth.tre`. This vector of groupings displayed directly
+corresponds to "Weighted Input Phylogenetic Statements Displayed" described in the documentation.
+If you were to assign each tree a weight (based on its rank), you could then calculate
+a score by multiplying the tree weight by the number displayed in the first column of the
+output.
+
+Or you could simply view the score of the `synth.tre` to be a vector of numbers that corresponds
+to this first column of output. The goal of they Open Tree of Life supertree operation is
+to maximize this score (in a lexicographic ordering with the first tree being the most significant)
+while introducing no unsupported groups.
+
+The `-x` flag above tells the tool to treat the taxonomy as the last input. (if this is lacking
+the taxonomy is only used for validation of OTT identifiers in the other trees.
+
+#### Explanation of the `otc-displayed-stats` output
+The full output of the `otc-displayed-stats` is explained below.
+Each row of the output reports the number of internal nodes of the input tree that
+fall into each category. The two "axes" that the statistics explore are support and out-degree.
+
+Columns starting with "F" are "forking" internal nodes with out-degree > 1.
+Columns starting with "R" are "redundant" internal nodes with out-degree = 1.
+A "D" suffix to a column header means that the node is displayed by the summary tree.
+A "CR" suffix means that the node is could resolve a polytomy in the summary tree (so the
+    summary tree is not unambiguously in conflict in the node).
+An "I" suffix to a column header means that the node is incompatible with every resolution ofthe summary tree.
+
+For the redundant nodes, the report indicates the conflict status of their closest non-redundant descendant.
+A redundant node can also be marked "T" (for "trivial")if it is an ancestor of only 1 leaf or of the root.
+
+The "F" and "R" column are just the sums for forking and redundant entries.
+
+The "label" shows the tree name or "Total of # trees" for the global sum
+The ordering of the rows is the input order. The final row shows the totals.
+.
+For columns, the order is: FD FCR FI F RD RCR RI RT R label.
+
 
 ### Checking for additional splits that could be added
 
