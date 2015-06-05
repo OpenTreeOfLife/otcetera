@@ -156,7 +156,13 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
     const auto & treeLeafSet = inpTree.getRoot()->getData().desIds;
     for (auto nd : iter_post_const(inpTree)) {
         NDSE t = NDSE::END_VALUE;
-        if (nd->getParent() == nullptr) {
+        if (nd->isTip()) {
+            if (nd->getParent() != nullptr) {
+                t = NDSE::LEAF_NODE;
+            } else {
+                t = NDSE::DOT_TREE;
+            }
+        } else if (nd->getParent() == nullptr) {
             if (nd->isTip()) {
                 t = NDSE::DOT_TREE;
             } else if (nd->isOutDegreeOneNode()) {
@@ -176,8 +182,6 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                    && ct != NDSE::ROOT_REDUNDANT_ROOT_ANC
                    && ct != NDSE::DOT_TREE);
             t = NDSB::OUTDEGREE_ONE_BIT | ct;
-        } else if (nd->isTip()) {
-            t = NDSE::LEAF_NODE;
         } else {
             const NodeWithSplits * startSummaryNd = nullptr;
             for (auto c : iter_child_const(*nd)) {
