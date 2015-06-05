@@ -216,8 +216,8 @@ void writePathPairingToDOT(std::ostream & out,
     std::string style = bstyle;
     style.append(" style=\"dashed\"");
     // The midpoint nodes are unlabeled dots with IDs that are _addr or __addr
-    const std::string pname ="_" + std::to_string((long)(&pp));
-    const std::string sname ="__" + std::to_string((long)(&pp));
+    const std::string pname ="_" + std::to_string(reinterpret_cast<long>(&pp));
+    const std::string sname ="__" + std::to_string(reinterpret_cast<long>(&pp));
     const NamePair pv{pname, emptyStr};
     const NamePair sv{sname, emptyStr};
     const auto * pn = pp.phyloParent;

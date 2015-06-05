@@ -16,6 +16,8 @@ void updateAncestralPathOttIdSet(T * nd,
                                 const OttIdSet & newEls,
                                 std::map<const T *, NodeEmbedding<T, U> > & m);
 
+template<typename T>
+bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup);
 
 template<typename T, typename U>
 void reportOnConflicting(std::ostream & out,
@@ -36,15 +38,13 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
 bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet);
-template<typename T>
-bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup);
 
 
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
 inline bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet) {
     const OttIdSet excGroup = set_difference_as_set(leafSet, incGroup);
-    return canBeResolvedToDisplayExcGroup(nd, incGroup, excGroup);
+    return canBeResolvedToDisplayIncExcGroup(nd, incGroup, excGroup);
 }
 
 template<typename T>
@@ -161,6 +161,19 @@ void sortChildOrderByLowestDesOttId(T *deepest) {
         assert(node2Id.at(nd->getFirstChild()) == node2Id.at(nd));
     }
 }
+
+// returns true if all of the children of nd which intersect with incGroup do NOT intersect w/ excGroup.
+// NOTE: `nd` is assumed to be a common anc of all IDs in incGroup!
+template<typename T>
+inline bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup) {
+    for (auto c : iter_child_const(*nd)) {
+        if (haveIntersection(incGroup, c->getData().desIds) && haveIntersection(excGroup, c->getData().desIds)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 } // namespace
 #endif

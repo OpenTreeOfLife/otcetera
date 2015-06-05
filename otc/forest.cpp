@@ -339,7 +339,7 @@ bool RootedForest<T, U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
                 dbWriteOttSet(" found a node with desIds:  ", includeGroupA->getData().desIds);
                 dbWriteOttSet(" which includes the excludegroup members:  ", excInc);
             }
-            if (!canBeResolvedToDisplayExcGroup(includeGroupA, ps.includeGroup, excInc)) {
+            if (!canBeResolvedToDisplayIncExcGroup(includeGroupA, ps.includeGroup, excInc)) {
                 return false; // the MRCA of the includeGroup had interdigitated members of the excludeGroup
             }
         }

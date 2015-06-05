@@ -65,7 +65,7 @@ class PathPairing {
         if (currChildOttIdSet.size() == 1 && *currChildOttIdSet.begin() == oid) {
             return;
         }
-        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << (long)(this);
+        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << reinterpret_cast<long>(this);
         dbWriteOttSet("prev currChildOttIdSet = ", currChildOttIdSet);
         OttIdSet n;
         OttIdSet oldIds;

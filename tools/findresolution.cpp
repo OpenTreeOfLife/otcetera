@@ -262,7 +262,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                     continue;
                 }
                 const OttIdSet excGroup = set_difference_as_set(treeLeafSet, incGroup);
-                if (canBeResolvedToDisplayExcGroup(mrca, incGroup, excGroup)) {
+                if (canBeResolvedToDisplayIncExcGroup(mrca, incGroup, excGroup)) {
                     if (addGroups) {
                         summaryTreeToResolveNodeToResolves[mrca].push_back(nd);
                     } else {

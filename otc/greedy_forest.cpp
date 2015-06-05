@@ -56,16 +56,6 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
     }
 }
 
-template<typename T>
-bool canBeResolvedToDisplayExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup) {
-    for (auto c : iter_child_const(*nd)) {
-        if (haveIntersection(incGroup, c->getData().desIds) && haveIntersection(excGroup, c->getData().desIds)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 template<typename T, typename U>
 void GreedyBandedForest<T, U>::writeFirstTree(std::ostream & treeFileStream) {
     writeNewick(treeFileStream, getRoots().at(0));

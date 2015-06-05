@@ -1,0 +1,313 @@
+#include "otc/otcli.h"
+#include "otc/supertree_util.h"
+#include <tuple>
+using namespace otc;
+
+/// Stat Calc declarations
+enum NDSB {
+    ROOT_BIT = 0x01,
+    OUTDEGREE_ONE_BIT = 0x02,
+    LEAF_BIT = 0x04,
+    DISPLAYED_BIT = 0x08,
+    COULD_RESOLVE_BIT = 0x10,
+    INCOMPATIBLE_BIT = 0x20,
+    ANC_ALL_BIT = 0x40,
+    END_BIT = 0x80
+};
+enum NDSE {
+    ROOT_NODE = NDSB::ROOT_BIT | NDSB::ANC_ALL_BIT , // root of graph and has out-degree>1
+    FIRST_FORK = NDSB::ANC_ALL_BIT , // root of phylo info, but has redundant parent
+    LEAF_NODE = NDSB::LEAF_BIT,
+    FORKING_DISPLAYED = NDSB::DISPLAYED_BIT,
+    FORKING_COULD_RESOLVE = NDSB::COULD_RESOLVE_BIT,
+    FORKING_INCOMPATIBLE = NDSB::INCOMPATIBLE_BIT,
+    REDUNDANT_DISPLAYED = NDSB::DISPLAYED_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    REDUNDANT_COULD_RESOLVE = NDSB::COULD_RESOLVE_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    REDUNDANT_INCOMPATIBLE = NDSB::INCOMPATIBLE_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    REDUNDANT_TERMINAL = NDSB::LEAF_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    // is and anc of FIRST_FORK, but not root of graph
+    REDUNDANT_ROOT_ANC = NDSB::ANC_ALL_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    // Is root of graph, but anc of FIRST_FORK
+    ROOT_REDUNDANT_ROOT_ANC = NDSB::ROOT_BIT | NDSB::ANC_ALL_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    //ROOT is a TIP
+    DOT_TREE = NDSB::ROOT_BIT | NDSB::ANC_ALL_BIT | NDSB::LEAF_BIT,
+    REDUNDANT_LINE_TREE = NDSB::ANC_ALL_BIT | NDSB::LEAF_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    ROOT_REDUNDANT_LINE_TREE = NDSB::ANC_ALL_BIT | NDSB::LEAF_BIT | NDSB::OUTDEGREE_ONE_BIT,
+    END_VALUE = NDSB::END_BIT
+};
+
+inline NDSE operator|(NDSE f, NDSE s) {
+    return static_cast<NDSE>(static_cast<int>(f) | static_cast<int>(s));
+}
+inline NDSE operator|(NDSB f, NDSE s) {
+    return static_cast<NDSE>(static_cast<int>(f) | static_cast<int>(s));
+}
+inline NDSE operator|(NDSE f, NDSB s) {
+    return static_cast<NDSE>(static_cast<int>(f) | static_cast<int>(s));
+}
+
+std::pair<NDSE, const NodeWithSplits *>
+classifyInpNode(const TreeMappedWithSplits & summaryTree,
+                     const NodeWithSplits * nd,
+                     const OttIdSet & leafSet,
+                     const NodeWithSplits * startSummaryNd);
+
+std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
+                                       const TreeMappedWithSplits & inpTree,
+                                       std::map<const NodeWithSplits *, NDSE> * node2Classification=nullptr);
+/// end Stat Calc declarations.
+/// end Stat Calc impl.
+
+std::pair<NDSE, const NodeWithSplits *>
+classifyInpNode(const TreeMappedWithSplits & summaryTree,
+                     const NodeWithSplits * nd,
+                     const OttIdSet & leafSet,
+                     const NodeWithSplits * startSummaryNd) {
+    using CN = std::pair<NDSE, const NodeWithSplits *>;
+    const auto & ndi = nd->getData().desIds;
+    assert(nd);
+    if (ndi.size() == leafSet.size()) {
+        if (nd->getParent() == nullptr) {
+            if (nd->isOutDegreeOneNode()) {
+                if (ndi.size() == 1) {
+                    return CN{NDSE::ROOT_REDUNDANT_LINE_TREE, nullptr};
+                }
+                return CN{NDSE::ROOT_REDUNDANT_ROOT_ANC, nullptr};
+            }
+            if (nd->isTip()) {
+                return CN{NDSE::DOT_TREE, nullptr};
+            }
+            return CN{NDSE::ROOT_NODE, nullptr};
+        } else {
+            if (nd->isOutDegreeOneNode()) {
+                if (ndi.size() == 1) {
+                    return CN{NDSE::REDUNDANT_LINE_TREE, nullptr};
+                }
+                return CN{NDSE::REDUNDANT_ROOT_ANC, nullptr};
+            }
+            if (nd->isTip()) {
+                return CN{NDSE::LEAF_NODE, nullptr};
+            }
+            return CN{NDSE::FIRST_FORK, nullptr};
+        }
+    }
+    assert(nd->getParent() != nullptr);
+    assert(ndi.size() > 1);
+    if (startSummaryNd == nullptr) {
+        const OttId firstID = *ndi.rbegin();
+        startSummaryNd = summaryTree.getData().getNodeForOttId(firstID);
+        if (startSummaryNd == nullptr) {
+            std::string m = "OTT id not found ";
+            m += std::to_string(firstID);
+            throw OTCError(m);
+        }
+    }
+    if (nd->isTip()) {
+        return std::pair<NDSE, const NodeWithSplits *>{NDSE::LEAF_NODE, startSummaryNd};
+    }
+    const auto exc = set_difference_as_set(leafSet, ndi);
+    const NodeWithSplits * rn = startSummaryNd;
+    for (;;) {
+        const auto & sumdi = rn->getData().desIds;
+        if (isSubset(ndi, sumdi)) {
+            if (areDisjoint(sumdi, exc)) {
+                if (nd->isOutDegreeOneNode()) {
+                    return CN{NDSE::REDUNDANT_DISPLAYED, rn};
+                }
+                return CN{NDSE::FORKING_DISPLAYED, rn};
+            }
+            if (canBeResolvedToDisplayIncExcGroup(rn, ndi, exc)) {
+                if (nd->isOutDegreeOneNode()) {
+                    return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
+                }
+                return CN{NDSE::FORKING_COULD_RESOLVE, rn};
+            }
+            break; // incompatible
+        }
+        if (!areDisjoint(sumdi, exc)) {
+            break; // incompatible
+        }
+        rn = rn->getParent();
+        if (rn == nullptr) {
+            const auto z = set_difference_as_set(ndi, sumdi);
+            auto x = *z.begin();
+            std::string m = "OTT id not found ";
+            m += std::to_string(x);
+            throw OTCError(m);
+        }
+    }
+    if (nd->isOutDegreeOneNode()) {
+        return CN{NDSE::REDUNDANT_INCOMPATIBLE, rn};
+    }
+    return CN{NDSE::FORKING_INCOMPATIBLE, rn};
+}
+
+std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
+                                       const TreeMappedWithSplits & inpTree,
+                                       std::map<const NodeWithSplits *, NDSE> * node2Classification) {
+    std::map<NDSE, std::size_t> r;
+    if (inpTree.getRoot() == nullptr) {
+        return r;
+    }
+    std::map<const NodeWithSplits *, NDSE> localNd2C;
+    std::map<const NodeWithSplits *, NDSE> & nd2t{node2Classification == nullptr ? localNd2C : *node2Classification};
+    std::map<const NodeWithSplits *, const NodeWithSplits *> nd2summaryTree;
+    const auto & treeLeafSet = inpTree.getRoot()->getData().desIds;
+    for (auto nd : iter_post_const(inpTree)) {
+        NDSE t = NDSE::END_VALUE;
+        if (nd->getParent() == nullptr) {
+            if (nd->isTip()) {
+                t = NDSE::DOT_TREE;
+            } else if (nd->isOutDegreeOneNode()) {
+                t = NDSE::ROOT_REDUNDANT_ROOT_ANC;
+            } else {
+                t = NDSE::ROOT_NODE;
+            }
+        } else if (nd->isOutDegreeOneNode()) {
+            auto child = nd->getFirstChild();
+            const NDSE ct = nd2t[child];
+            auto ns = nd2summaryTree.find(child);
+            if (ns != nd2summaryTree.end()) {
+                nd2summaryTree[nd] = ns->second;
+                nd2summaryTree.erase(ns); // we won't need this child mapping again
+            }
+            assert(ct != NDSE::ROOT_NODE
+                   && ct != NDSE::ROOT_REDUNDANT_ROOT_ANC
+                   && ct != NDSE::DOT_TREE);
+            t = NDSB::OUTDEGREE_ONE_BIT | ct;
+        } else if (nd->isTip()) {
+            t = NDSE::LEAF_NODE;
+        } else {
+            const NodeWithSplits * startSummaryNd = nullptr;
+            for (auto c : iter_child_const(*nd)) {
+                auto x = nd2summaryTree.find(c);
+                if (x != nd2summaryTree.end()) {
+                    startSummaryNd = x->second;
+                    nd2summaryTree.erase(c);
+                    break;
+                }
+            }
+            auto p = classifyInpNode(summaryTree, nd, treeLeafSet, startSummaryNd);
+            t = p.first;
+            if (p.second != nullptr) {
+                nd2summaryTree[nd] = p.second;
+            }
+        }
+        assert(t != END_VALUE);
+        r[t] += 1;
+        nd2t[nd] = t;
+    }
+    return r;
+}
+/// end Stat Calc impl
+/// Stat report decl
+void writeHeader(std::ostream &out);
+void writeRow(std::ostream &out, std::map<NDSE, std::size_t> & m, const std::string & label);
+/// End Stat report decl
+/// Stat report impl
+void writeHeader(std::ostream &out) {
+    out << "FD" << '\t'
+        << "FCR" << '\t'
+        << "FI" << '\t'
+        << "F" << '\t'
+        << "RD" << '\t'
+        << "RCR"  << '\t'
+        << "RI" << '\t'
+        << "R" << '\t'
+        << "label" << '\n';
+}
+
+void writeRow(std::ostream &out,
+              std::map<NDSE, std::size_t> & m,
+              const std::string & label) {
+    out << m[NDSE::FORKING_DISPLAYED] << '\t'
+        << m[NDSE::FORKING_COULD_RESOLVE]  << '\t'
+        << m[NDSE::FORKING_INCOMPATIBLE] << '\t'
+        << m[NDSE::FORKING_DISPLAYED] + m[NDSE::FORKING_COULD_RESOLVE] + m[NDSE::FORKING_INCOMPATIBLE] << '\t'
+        << m[NDSE::REDUNDANT_DISPLAYED] << '\t'
+        << m[NDSE::REDUNDANT_COULD_RESOLVE] << '\t'
+        << m[NDSE::REDUNDANT_INCOMPATIBLE] << '\t'
+        << m[NDSE::REDUNDANT_DISPLAYED] + m[NDSE::REDUNDANT_COULD_RESOLVE] + m[NDSE::REDUNDANT_INCOMPATIBLE] << '\t'
+        << label << '\n';
+}
+
+struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
+    std::unique_ptr<TreeMappedWithSplits> summaryTree;
+    std::map<NDSE, std::size_t> totals;
+    int numErrors = 0;
+    bool treatTaxonomyAsLastTree = false;
+    bool headerEmitted = false;
+    int numTrees = 0;
+    virtual ~DisplayedStatsState(){}
+
+    bool summarize(OTCLI &otCLI) override {
+        if (treatTaxonomyAsLastTree) {
+            statsForNextTree(otCLI, *taxonomy);
+        }
+        const std::string label = std::string("Total of ") + std::to_string(numTrees) + std::string(" trees");
+        writeNextRow(otCLI.out, totals, label);
+        return true;
+    }
+
+    void writeNextRow(std::ostream &out,
+                      std::map<NDSE, std::size_t> & m,
+                      const std::string & label) {
+        if (!headerEmitted) {
+            writeHeader(out);
+            headerEmitted = true;
+        }
+        writeRow(out, m, label);
+    }
+
+    void statsForNextTree(OTCLI & otCLI, const TreeMappedWithSplits & tree) {
+        auto c = doStatCalc(*summaryTree, tree);
+        writeNextRow(otCLI.out, c, tree.getName());
+        for (const auto & p : c) {
+            totals[p.first] += p.second;
+        }
+        numTrees += 1;
+    }
+
+    virtual bool processTaxonomyTree(OTCLI & otCLI) override {
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+        otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+        // now we get a little cute and reprocess the taxonomy desIds so that they 
+        // exclude internals. So that when we expand source trees, we expand just
+        // to the taxonomy's leaf set
+        clearAndfillDesIdSets(*taxonomy);
+        return true;
+    }
+
+    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+        assert(taxonomy != nullptr);
+        if (summaryTree == nullptr) {
+            summaryTree = std::move(tree);
+            return true;
+        }
+        requireTipsToBeMappedToTerminalTaxa(*tree, *taxonomy);
+        clearAndfillDesIdSets(*tree);
+        statsForNextTree(otCLI, *tree);
+        return true;
+    }
+
+};
+
+bool handleCountTaxonomy(OTCLI & otCLI, const std::string &);
+bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
+    DisplayedStatsState * proc = static_cast<DisplayedStatsState *>(otCLI.blob);
+    assert(proc != nullptr);
+    proc->treatTaxonomyAsLastTree = true;
+    return true;
+}
+
+int main(int argc, char *argv[]) {
+    OTCLI otCLI("otc-displayed-stats",
+                "takes at least 2 newick file paths: a taxonomy,  a full supertree, and some number of input trees.",
+                "synth.tre inp1.tre inp2.tre ...");
+    DisplayedStatsState proc;
+    otCLI.addFlag('x',
+                  "Automatically treat the taxonomy as an input in terms of supporting groups",
+                  handleCountTaxonomy,
+                  false);
+    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, true);
+}

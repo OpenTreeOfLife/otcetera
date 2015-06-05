@@ -4,6 +4,7 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-count-leaves \
 				otc-degree-distribution \
 				otc-detect-contested \
+				otc-displayed-stats \
 				otc-distance \
 				otc-check-supertree \
 				otc-find-resolution \
@@ -19,6 +20,10 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-suppress-monotypic \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose
+
+otc_displayed_stats_SOURCES = displayedstats.cpp
+otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
+
 
 otc_subproblem_stats_SOURCES = subproblemstats.cpp
 otc_subproblem_stats_CPPFLAGS = $(AM_CPPFLAGS)
