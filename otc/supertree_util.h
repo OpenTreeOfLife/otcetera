@@ -18,6 +18,8 @@ void updateAncestralPathOttIdSet(T * nd,
 
 template<typename T>
 bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup);
+template<typename T>
+bool canBeResolvedToDisplayOnlyIncGroup(const T *nd, const OttIdSet & incGroup);
 
 template<typename T, typename U>
 void reportOnConflicting(std::ostream & out,
@@ -173,6 +175,21 @@ inline bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incG
     }
     return true;
 }
+
+// returns true if all of the children of nd which intersect with incGroup do NOT intersect w/ excGroup.
+// NOTE: `nd` is assumed to be a common anc of all IDs in incGroup!
+template<typename T>
+inline bool canBeResolvedToDisplayOnlyIncGroup(const T *nd, const OttIdSet & incGroup) {
+    for (auto c : iter_child_const(*nd)) {
+        const auto & cdi = c->getData().desIds;
+        if (haveIntersection(incGroup, cdi) && (!isSubset(cdi, incGroup))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
 
 
 } // namespace

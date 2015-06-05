@@ -51,11 +51,13 @@ std::pair<NDSE, const NodeWithSplits *>
 classifyInpNode(const TreeMappedWithSplits & summaryTree,
                      const NodeWithSplits * nd,
                      const OttIdSet & leafSet,
-                     const NodeWithSplits * startSummaryNd);
+                     const NodeWithSplits * startSummaryNd,
+                     bool isTaxoComp=false);
 
 std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                                        const TreeMappedWithSplits & inpTree,
-                                       std::map<const NodeWithSplits *, NDSE> * node2Classification=nullptr);
+                                       std::map<const NodeWithSplits *, NDSE> * node2Classification=nullptr,
+                                       bool isTaxoComp=false);
 /// end Stat Calc declarations.
 /// end Stat Calc impl.
 
@@ -63,7 +65,8 @@ std::pair<NDSE, const NodeWithSplits *>
 classifyInpNode(const TreeMappedWithSplits & summaryTree,
                      const NodeWithSplits * nd,
                      const OttIdSet & leafSet,
-                     const NodeWithSplits * startSummaryNd) {
+                     const NodeWithSplits * startSummaryNd,
+                     bool isTaxoComp) {
     using CN = std::pair<NDSE, const NodeWithSplits *>;
     const auto & ndi = nd->getData().desIds;
     assert(nd);
@@ -106,35 +109,69 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
     if (nd->isTip()) {
         return std::pair<NDSE, const NodeWithSplits *>{NDSE::LEAF_NODE, startSummaryNd};
     }
-    const auto exc = set_difference_as_set(leafSet, ndi);
+    
     const NodeWithSplits * rn = startSummaryNd;
-    for (;;) {
-        const auto & sumdi = rn->getData().desIds;
-        if (isSubset(ndi, sumdi)) {
-            if (areDisjoint(sumdi, exc)) {
-                if (nd->isOutDegreeOneNode()) {
-                    return CN{NDSE::REDUNDANT_DISPLAYED, rn};
+    if (isTaxoComp) { // we are comparing against the taxonomy, so we know that the leafset is all other tips...
+        for (;;) {
+            const auto & sumdi = rn->getData().desIds;
+            if (isSubset(ndi, sumdi)) {
+                if (sumdi.size() == ndi.size()) {
+                    if (nd->isOutDegreeOneNode()) {
+                        return CN{NDSE::REDUNDANT_DISPLAYED, rn};
+                    }
+                    return CN{NDSE::FORKING_DISPLAYED, rn};
                 }
-                return CN{NDSE::FORKING_DISPLAYED, rn};
-            }
-            if (canBeResolvedToDisplayIncExcGroup(rn, ndi, exc)) {
-                if (nd->isOutDegreeOneNode()) {
-                    return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
+                if (canBeResolvedToDisplayOnlyIncGroup(rn, ndi)) {
+                    if (nd->isOutDegreeOneNode()) {
+                        return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
+                    }
+                    return CN{NDSE::FORKING_COULD_RESOLVE, rn};
                 }
-                return CN{NDSE::FORKING_COULD_RESOLVE, rn};
+                break; // incompatible
             }
-            break; // incompatible
+            if (!isSubset(sumdi, ndi)) {
+                break; // incompatible
+            }
+            rn = rn->getParent();
+            if (rn == nullptr) {
+                const auto z = set_difference_as_set(ndi, sumdi);
+                auto x = *z.begin();
+                std::string m = "OTT id not found ";
+                m += std::to_string(x);
+                throw OTCError(m);
+            }
         }
-        if (!areDisjoint(sumdi, exc)) {
-            break; // incompatible
-        }
-        rn = rn->getParent();
-        if (rn == nullptr) {
-            const auto z = set_difference_as_set(ndi, sumdi);
-            auto x = *z.begin();
-            std::string m = "OTT id not found ";
-            m += std::to_string(x);
-            throw OTCError(m);
+    } else {
+        for (;;) {
+            const auto & sumdi = rn->getData().desIds;
+            const auto extra = set_difference_as_set(sumdi, ndi);
+            if (isSubset(ndi, sumdi)) {
+                if (areDisjoint(extra, leafSet)) {
+                    if (nd->isOutDegreeOneNode()) {
+                        return CN{NDSE::REDUNDANT_DISPLAYED, rn};
+                    }
+                    return CN{NDSE::FORKING_DISPLAYED, rn};
+                }
+                const auto exc = set_difference_as_set(leafSet, ndi);
+                if (canBeResolvedToDisplayIncExcGroup(rn, ndi, exc)) {
+                    if (nd->isOutDegreeOneNode()) {
+                        return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
+                    }
+                    return CN{NDSE::FORKING_COULD_RESOLVE, rn};
+                }
+                break; // incompatible
+            }
+            if (!areDisjoint(extra, leafSet)) {
+                break; // incompatible
+            }
+            rn = rn->getParent();
+            if (rn == nullptr) {
+                const auto z = set_difference_as_set(ndi, sumdi);
+                auto x = *z.begin();
+                std::string m = "OTT id not found ";
+                m += std::to_string(x);
+                throw OTCError(m);
+            }
         }
     }
     if (nd->isOutDegreeOneNode()) {
@@ -145,7 +182,8 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
 
 std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                                        const TreeMappedWithSplits & inpTree,
-                                       std::map<const NodeWithSplits *, NDSE> * node2Classification) {
+                                       std::map<const NodeWithSplits *, NDSE> * node2Classification,
+                                       bool isTaxoComp) {
     std::map<NDSE, std::size_t> r;
     if (inpTree.getRoot() == nullptr) {
         return r;
@@ -192,7 +230,7 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                     break;
                 }
             }
-            auto p = classifyInpNode(summaryTree, nd, treeLeafSet, startSummaryNd);
+            auto p = classifyInpNode(summaryTree, nd, treeLeafSet, startSummaryNd, isTaxoComp);
             t = p.first;
             if (p.second != nullptr) {
                 nd2summaryTree[nd] = p.second;
@@ -275,7 +313,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
     bool summarize(OTCLI &otCLI) override {
         if (treatTaxonomyAsLastTree) {
-            statsForNextTree(otCLI, *taxonomy);
+            statsForNextTree(otCLI, *taxonomy, true);
         }
         const std::string label = std::string("Total of ") + std::to_string(numTrees) + std::string(" trees");
         writeNextRow(otCLI.out, totals, label);
@@ -292,8 +330,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         writeRow(out, m, label);
     }
 
-    void statsForNextTree(OTCLI & otCLI, const TreeMappedWithSplits & tree) {
-        auto c = doStatCalc(*summaryTree, tree);
+    void statsForNextTree(OTCLI & otCLI, const TreeMappedWithSplits & tree, bool isTaxoComp) {
+        auto c = doStatCalc(*summaryTree, tree, nullptr, isTaxoComp);
         writeNextRow(otCLI.out, c, tree.getName());
         for (const auto & p : c) {
             totals[p.first] += p.second;
@@ -319,7 +357,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         }
         requireTipsToBeMappedToTerminalTaxa(*tree, *taxonomy);
         clearAndfillDesIdSets(*tree);
-        statsForNextTree(otCLI, *tree);
+        statsForNextTree(otCLI, *tree, false);
         return true;
     }
 
