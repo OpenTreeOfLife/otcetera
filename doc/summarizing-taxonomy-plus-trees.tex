@@ -145,7 +145,7 @@ Furthermore, any maximal scoring solution can be converted to a maximal scoring
     solution by collapsing edges one at a time and checking for the existence of further
     unsupported groups.
 If $\mathcal{S}_s$ is the subset of $\mathcal{S}_w$ which do not contain any unsupported nodes,
-    then $\mathcat{S}_s$ is never empty, but may be much smaller than $\mathcal{S}_w$ because
+    then $\mathcal{S}_s$ is never empty, but may be much smaller than $\mathcal{S}_w$ because
     every resolution of $\mathcal{S}_s$ is a member of $\mathcal{S}_w$.
 
 \subsubsection{Minimally resolved phylogenetic supertrees} \label{minrs}
@@ -450,12 +450,12 @@ By stack-based we mean:
 \begin{compactenum}
     \item apply simplification 1 to reduce the problem size.
     \item apply simplification 1 to reduce the problem size.
-    \item[$\ldots]
+    \item[$\ldots$]
     \item[$n$] apply simplification $n$ to reduce the problem size.
     \item[$n + 1$] solve the reduced subproblem
     \item[$n + 2$]``undo'' simplification $n$ to augment the solution
     \item[$n + 3$] ``undo'' simplification $n-1$ to augment the solution
-    \item[$\ldots]
+    \item[$\ldots$]
     \item[$2n + 1$] ``undo'' simplification $1$ to augment the solution
     \item[$2n +2$] assure that all mentioned tips are present in the solution.
 \end{compactenum}
@@ -537,7 +537,7 @@ In other words, if $b$ is on the same ``side'' as $a$ for every \ps that $a$ occ
 \stepInput reference taxonomy and a ranked list of trees (study ID + tree ID pairs).
 \stepOutput a summary tree and annotations about which input trees supports each branch.
 
-\comment{the step numbering here does \textem{not} agree with the sub dir numbering in
+\comment{the step numbering here does {\em not} agree with the sub dir numbering in
     the \otc supertree subdir. That dir structure needs to be updated.}
 
 \subsection{Prune the reference taxonomy to remove some flags}
@@ -742,7 +742,7 @@ to be rerun after step \ref{expandedPhyloStep} is completed.
 \REQUIRE the taxonomic tree $\taxonomy$.
 \REQUIRE an input tree, $T$ with a unique identifier $\mbox{id}(T)$
 \FOR{each node $n_i$ in $\nodes{T}$}
-    \STATE{$z(n_i) \leftarrow \mbox{AlignNodes}(\taxonomy, n_i)$
+    \STATE{$z(n_i) \leftarrow \mbox{AlignNodes}(\taxonomy, n_i)$}
 \ENDFOR
 \FOR{each node $n_i$ in $\nodes{T}$}
     \IF{$n_i \neq \treeRoot{T}$}
@@ -766,7 +766,7 @@ to be rerun after step \ref{expandedPhyloStep} is completed.
 \REQUIRE a node from input tree, $n$, and it pair node in $\taxonomy$, $z(n)$
 \REQUIRE the parent node of $n$, called $y$ and its pair node in $\taxonomy$, $z(y)$
 \REQUIRE an identifier, $t$, that uniquely identifies the tree that contains $n$ and $y$.
-\REQUIRE Each non-leaf node in $\taxomony$ has 2 lookup tables: \textsc{LoopPaths} and \textsc{ExitPaths}
+\REQUIRE Each non-leaf node in $\taxonomy$ has 2 lookup tables: \textsc{LoopPaths} and \textsc{ExitPaths}
 \STATE $p \leftarrow \left[n, z(n), y, z(y)\right]$ \COMMENT{$p$ is called the ``path pairing'' information}
 \IF{$z(n) = z(y)$}
     \STATE $z(y).\textsc{LoopPaths}[t] \leftarrow p$
