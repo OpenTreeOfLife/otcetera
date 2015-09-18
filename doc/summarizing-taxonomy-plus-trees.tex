@@ -161,8 +161,8 @@ Their general algorithm for finding \textsc{MinRS} in $2^{O(n\log p)}$ time wher
     leaves and $p$ is the largest outdegree of any internal nodes in the output.
 
 \subsubsection{trees that are minor-minimal with respect to set of triples}
-\textsc{Note: I should have read \citet{JanssonLL2012} further before writing the next paragraph.}
-Page 277 of \citet{JanssonLL2012} points out that the concept of minor-minimal trees from \citet{Semple2003} is not the same as minimally resolved trees.
+
+Page 277 of \citet{JanssonLL2012} points out that the concept of minor-minimal trees from \citet{Semple2003} is not the same as minimally resolved trees.  It also points out that the BUILD tree is minor-minimal.  \textsc{Note: I should have read \citet{JanssonLL2012} further before writing the next paragraph.}
 
 Note that, every internal node of a \textsc{MinRS} tree will be ``supported'', but the
     ``no unsupported nodes'' rule is not the same as the \textsc{MinRS} rule.
@@ -170,6 +170,26 @@ The ``no unsupported nodes'' rule is more lenient in the sense of admitting more
 Consider the inputs (in terms of rooted triples): $A,B\mid C$ and $D,E\mid F$.
 The supertree $(((A,B),C,D,E),F)$ is one of several trees which has no unsupported nodes, but 
     only the tree $((A,B,D,E),C,F)$ is the only \textsc{MinRS} tree.
+
+\subsubsection{\textsc{MinRS} behaving badly}
+
+Suppose we have taxa human, $g$orilla, $d$og, $c$at, $f$ugu, $t$una,
+$s$hark, and $r$ay.  Let us suppose that we have two studies.  One focuses on mammals and
+contributes $\{gh|d,cd|h\}$.  The other focuses on fish, and contributes
+$\{ft|r,sr|f\}$.  The \textsc{BUILD} tree is then
+$((h,g),(c,d),(f,t),(s,r))$.  It is possible to merge groups to obtain
+the \textsc{MinRS} tree $((h,g,f,t),(c,d,s,r))$.  This tree has fewer
+nodes, but seems worse. %to me: Ben
+
+This example illustrates the problem of what to do when triplets
+fall into multiple non-overlapping groups.  \citet{JanssonLL2012}
+mentions the possibility of merging groups in the \textsc{BUILD} tree
+to obtain a tree with fewer internal nodes.  However, it might be
+preferable to leave groups unmerged if there is no triplet in the
+input tree to support the merger.  Perhaps it would be possible to
+indicate visually which sister branches can be merged without
+contradicting an input tree, since such groups could be merge by the
+addition of a new triplet to the input set.
 
 
 \subsection{Evaluating how well a single summary tree summarizes a set of summary trees}\label{treeAdmissibility}
