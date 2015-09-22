@@ -33,15 +33,19 @@ ARTIFACTS=$(STEP_5_DIR)/step-5-phylo-args.txt \
 	$(STEP_5_PHYLO_OUTPUT_PATHS) \
 	$(STEP_7_PHYLO_OUTPUT_TREE_PATHS) \
 	$(STEP_7_PHYLO_OUTPUT_TREE_NAME_PATHS) \
-	$(STEP_7_PHYLO_OUTPUT_MD5_PATHS)
+	$(STEP_7_PHYLO_OUTPUT_MD5_PATHS) \
+	$(SUBPROB_RAW_EXPORT_DIR)/*
 
 
 # default is "all"
 all: $(ARTIFACTS)
 
-
 clean:
-	rm -f $(ARTIFACTS) $(SUBPROB_RAW_EXPORT_DIR)/* && rmdir $(SUBPROB_RAW_EXPORT_DIR)
+	rm -f $(ARTIFACTS) && rmdir $(SUBPROB_RAW_EXPORT_DIR)
+
+cleanall:
+	rm -f $(ARTIFACTS) $(STEP_4_PHYLO_OUTPUT_PATHS) $(STEP_1_DIR)/taxonomy.tre
+	rmdir $(SUBPROB_RAW_EXPORT_DIR)
 
 # step-5-phylo-args is a list of the relative filepaths to the phylo inputs for step 5 (higher level tip expansion)
 #	relative to the supertree dir.  
