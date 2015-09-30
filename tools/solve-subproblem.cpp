@@ -38,11 +38,11 @@ std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
 
 struct RSplit
 {
-  set<int> in;
-  set<int> out;
-  set<int> all;
+  set<long> in;
+  set<long> out;
+  set<long> all;
   RSplit() = default;
-  RSplit(const set<int>& i, const set<int>& a)
+  RSplit(const set<long>& i, const set<long>& a)
     :in(i),all(a)
   {
     std::set_difference(all.begin(),all.end(),in.begin(),in.end(),std::inserter(out,out.end()));
@@ -50,18 +50,18 @@ struct RSplit
   }
 };
 
-void merge(int c1, int c2, map<int,int>& component, map<int,list<int>>& elements)
+void merge(long c1, long c2, map<long,long>& component, map<long,list<long>>& elements)
 {
   if (elements[c2].size() > elements[c1].size())
     std::swap(c1,c2);
 
-  for(int i:elements[c2])
+  for(long i:elements[c2])
     component[i] = c1;
 
   elements[c1].splice(elements[c1].begin(), elements[c2]);
 }
 
-unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits)
+unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits)
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
   tree->createRoot();
@@ -82,9 +82,9 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits
     return tree;
   }
 
-  map<int,int> component;    // tip -> component
-  map<int,list<int>> elements; // component -> elements
-  for(int i: tips)
+  map<long,long> component;    // tip -> component
+  map<long,list<long>> elements; // component -> elements
+  for(long i: tips)
   {
     component[i] = i;
     elements[i].push_back(i);
@@ -92,17 +92,17 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits
 
   for(const auto& split: splits)
   {
-    int c1 = -1;
-    for(int i: split.in)
+    long c1 = -1;
+    for(long i: split.in)
     {
-      int c2 = component[i];
+      long c2 = component[i];
       if (c1 != -1 and c1 != c2)
 	merge(c1,c2,component,elements);
       c1 = component[i];
     }
   }
 
-  int first = *tips.begin();
+  long first = *tips.begin();
   if (elements[component[first]].size() == tips.size())
   {
     std::cout<<"Failure: 1 component!\n";
@@ -110,22 +110,22 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits
   }
 
   std::cout<<"Components:\n";
-  map<int,set<int>> subtips;
-  for(int c: tips)
+  map<long,set<long>> subtips;
+  for(long c: tips)
   {
     if (c != component[c]) continue;
     
-    set<int>& s = subtips[c];
-    for(int l: elements[c])
+    set<long>& s = subtips[c];
+    for(long l: elements[c])
       s.insert(l);
     std::cout<<"   "<<s<<"\n";
   }
 
-  map<int,vector<RSplit>> subsplits;
+  map<long,vector<RSplit>> subsplits;
   for(const auto& split: splits)
   {
-    int first = *split.in.begin();
-    int c = component[first];
+    long first = *split.in.begin();
+    long c = component[first];
     
   }
   
@@ -133,63 +133,28 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits
 }
 
 
-unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits, int n)
+unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits, int n)
 {
   
   return {};
-}
-
-map<long,int> get_name_mapping(const vector<long>& ids)
-{
-  std::map<long,int> names;
-  for(int i=0;i<ids.size();i++)
-    names[ids[i]] = i;
-  return names;
-}
-
-set<int> remap_names(const set<long>& ids, const map<long,int>& name)
-{
-  set<int> indices;
-  for(auto id: ids)
-  {
-    auto i = name.find(id);
-    if (i == name.end())
-      throw OTCError()<<"Can't find ottid "<<id<<" in taxonomy";
-    indices.insert(i->second);
-  }
-  return indices;
-}
-
-vector<long> get_vector(const set<long>& ids)
-{
-  vector<long> v;
-  for(long id: ids)
-    v.push_back(id);
-  return v;
 }
 
 unique_ptr<Tree_t> merge(const vector<unique_ptr<Tree_t>>& trees)
 {
   // Standardize names to 0..n-1 for this subproblem
   const auto& taxonomy = trees.back();
-  auto leafset = taxonomy->getRoot()->getData().desIds;
-  std::cout<<leafset<<std::endl;
-  // i -> ids[i]
-  vector<long> leaves = get_vector(leafset);
-  // ids[i] -> i
-  auto names = get_name_mapping(leaves);
-  auto rename = [&names](const set<long>& ids) {return remap_names(ids,names);};
-  auto all_leaves = rename(leafset);
+  auto all_leaves = taxonomy->getRoot()->getData().desIds;
+  std::cout<<all_leaves<<std::endl;
   
   vector<RSplit> splits;
   for(const auto& tree: trees)
   {
     std::cout<<"Tree!\n";
     auto root = tree->getRoot();
-    const auto leafTaxa = rename(root->getData().desIds);
+    const auto leafTaxa = root->getData().desIds;
     for(auto nd: iter_post_const(*tree))
     {
-      const auto& descendants = rename(nd->getData().desIds);
+      const auto& descendants = nd->getData().desIds;
       RSplit split{descendants, leafTaxa};
       if (split.in.size()>1 and split.out.size())
       {
