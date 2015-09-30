@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <set>
+#include <list>
 #include <iterator>
 
 #include "otc/otcli.h"
@@ -9,10 +10,31 @@ using namespace otc;
 using std::vector;
 using std::unique_ptr;
 using std::set;
+using std::list;
 using std::map;
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
+
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const std::set<T>& s)
+{
+  auto it = s.begin();
+  o<<*it++;
+  for(; it != s.end(); it++)
+    o<<" "<<*it;
+  return o;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
+{
+  auto it = s.begin();
+  o<<*it++;
+  for(; it != s.end(); it++)
+    o<<" "<<*it;
+  return o;
+}
 
 struct RSplit
 {
@@ -28,7 +50,54 @@ struct RSplit
   }
 };
 
-unique_ptr<Tree_t> BUILD(const vector<RSplit>& splits, int n)
+void merge(int c1, int c2, map<int,int>& component, map<int,list<int>>& elements)
+{
+  if (elements[c2].size() > elements[c1].size())
+    std::swap(c1,c2);
+
+  for(int i:elements[c2])
+    component[i] = c1;
+
+  elements[c1].splice(elements[c1].begin(), elements[c2]);
+}
+
+unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits)
+{
+  map<int,int> component;    // tip -> component
+  map<int,list<int>> elements; // component -> elements
+  for(int i: tips)
+  {
+    component[i] = i;
+    elements[i].push_back(i);
+  }
+
+  for(const auto& split: splits)
+  {
+    int c1 = -1;
+    for(int i: split.in)
+    {
+      int c2 = component[i];
+      if (c1 != -1 and c1 != c2)
+	merge(c1,c2,component,elements);
+      c1 = component[i];
+    }
+  }
+
+  int first = *tips.begin();
+  if (elements[component[first]].size() == tips.size())
+    std::cout<<"Failure: 1 component!\n";
+  std::cout<<"Components:\n";
+  for(const auto& l:elements)
+  {
+    if (l.second.empty()) continue;
+    
+    std::cout<<"   "<<l.second<<"\n";
+  }
+  return {};
+}
+
+
+unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits, int n)
 {
   
   return {};
@@ -63,16 +132,6 @@ vector<long> get_vector(const set<long>& ids)
   return v;
 }
 
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::set<T>& s)
-{
-  auto it = s.begin();
-  o<<*it++;
-  for(; it != s.end(); it++)
-    o<<" "<<*it;
-  return o;
-}
-
 unique_ptr<Tree_t> merge(const vector<unique_ptr<Tree_t>>& trees)
 {
   // Standardize names to 0..n-1 for this subproblem
@@ -84,6 +143,7 @@ unique_ptr<Tree_t> merge(const vector<unique_ptr<Tree_t>>& trees)
   // ids[i] -> i
   auto names = get_name_mapping(leaves);
   auto rename = [&names](const set<long>& ids) {return remap_names(ids,names);};
+  auto all_leaves = rename(leafset);
   
   vector<RSplit> splits;
   for(const auto& tree: trees)
@@ -101,18 +161,19 @@ unique_ptr<Tree_t> merge(const vector<unique_ptr<Tree_t>>& trees)
 	std::cout<<split.in<<" | "<<split.out<<"\n";
       }
     }
+    BUILD(all_leaves, splits);
   }
 
   for(int n=2;n<=splits.size();)
   {
-    unique_ptr<Tree_t> result = BUILD(splits,n);
+    unique_ptr<Tree_t> result = BUILD(all_leaves, splits, n);
     if (not result)
       splits.erase(splits.begin()+(n-1));
     else
       n++;
   }
 
-  return BUILD(splits,splits.size());
+  return BUILD(all_leaves, splits, splits.size());
 }
 
 int main(int argc, char *argv[]) {
