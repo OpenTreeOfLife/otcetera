@@ -63,6 +63,25 @@ void merge(int c1, int c2, map<int,int>& component, map<int,list<int>>& elements
 
 unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits)
 {
+  std::unique_ptr<Tree_t> tree(new Tree_t());
+  tree->createRoot();
+
+  if (tips.size() == 1)
+  {
+    auto Node1 = tree->createChild(tree->getRoot());
+    Node1->setOttId(*tips.begin());
+    return tree;
+  }
+  else if (tips.size() == 2)
+  {
+    auto Node1a = tree->createChild(tree->getRoot());
+    auto Node1b = tree->createChild(tree->getRoot());
+    auto it = tips.begin();
+    Node1a->setOttId(*it++);
+    Node1b->setOttId(*it++);
+    return tree;
+  }
+
   map<int,int> component;    // tip -> component
   map<int,list<int>> elements; // component -> elements
   for(int i: tips)
@@ -85,15 +104,32 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<RSplit>& splits
 
   int first = *tips.begin();
   if (elements[component[first]].size() == tips.size())
-    std::cout<<"Failure: 1 component!\n";
-  std::cout<<"Components:\n";
-  for(const auto& l:elements)
   {
-    if (l.second.empty()) continue;
-    
-    std::cout<<"   "<<l.second<<"\n";
+    std::cout<<"Failure: 1 component!\n";
+    return {};
   }
-  return {};
+
+  std::cout<<"Components:\n";
+  map<int,set<int>> subtips;
+  for(int c: tips)
+  {
+    if (c != component[c]) continue;
+    
+    set<int>& s = subtips[c];
+    for(int l: elements[c])
+      s.insert(l);
+    std::cout<<"   "<<s<<"\n";
+  }
+
+  map<int,vector<RSplit>> subsplits;
+  for(const auto& split: splits)
+  {
+    int first = *split.in.begin();
+    int c = component[first];
+    
+  }
+  
+  return tree;
 }
 
 
