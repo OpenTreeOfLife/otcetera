@@ -19,7 +19,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-subproblem-stats \
 				otc-suppress-monotypic \
 				otc-taxon-conflict-report \
-				otc-uncontested-decompose
+				otc-uncontested-decompose \
+				otc-solve-subproblem
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
@@ -81,6 +82,9 @@ otc_distance_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_taxon_conflict_report_SOURCES = taxonconflictreport.cpp
 otc_taxon_conflict_report_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_solve_subproblem_SOURCES = solve-subproblem.cpp
+otc_solve_subproblem_CPPFLAGS = $(AM_CPPFLAGS)
 
 check:
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
