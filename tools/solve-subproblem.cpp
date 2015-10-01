@@ -50,7 +50,9 @@ struct RSplit
   }
 };
 
-void merge(long c1, long c2, map<long,long>& component, map<long,list<long>>& elements)
+
+/// Merge components c1 and c2
+long merge_components(long c1, long c2, map<long,long>& component, map<long,list<long>>& elements)
 {
   if (elements[c2].size() > elements[c1].size())
     std::swap(c1,c2);
@@ -59,6 +61,24 @@ void merge(long c1, long c2, map<long,long>& component, map<long,list<long>>& el
     component[i] = c1;
 
   elements[c1].splice(elements[c1].begin(), elements[c2]);
+  
+  return c1;
+}
+
+bool empty_intersection(const set<long>& x, const set<long>& y)
+{
+  std::set<long>::const_iterator i = x.begin();
+  std::set<long>::const_iterator j = y.begin();
+  while (i != x.end() && j != y.end())
+  {
+    if (*i == *j)
+      return false;
+    else if (*i < *j)
+      ++i;
+    else
+      ++j;
+  }
+  return true;
 }
 
 unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits)
@@ -66,10 +86,11 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
   std::unique_ptr<Tree_t> tree(new Tree_t());
   tree->createRoot();
 
+
+  // 1. First handle trees of size 1 and 2
   if (tips.size() == 1)
   {
-    auto Node1 = tree->createChild(tree->getRoot());
-    Node1->setOttId(*tips.begin());
+    tree->getRoot()->setOttId(*tips.begin());
     return tree;
   }
   else if (tips.size() == 2)
@@ -82,7 +103,8 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
     return tree;
   }
 
-  map<long,long> component;    // tip -> component
+  // 2. Initialize the mapping from elements to components
+  map<long,long> component;      // element   -> component
   map<long,list<long>> elements; // component -> elements
   for(long i: tips)
   {
@@ -90,6 +112,7 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
     elements[i].push_back(i);
   }
 
+  // 3. For each split, all the leaves in the include group must be in the same component
   for(const auto& split: splits)
   {
     long c1 = -1;
@@ -97,19 +120,21 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
     {
       long c2 = component[i];
       if (c1 != -1 and c1 != c2)
-	merge(c1,c2,component,elements);
+	merge_components(c1,c2,component,elements);
       c1 = component[i];
     }
   }
 
+  // 4. If we can't subdivide the leaves in any way, then the splits are not consistent.
   long first = *tips.begin();
   if (elements[component[first]].size() == tips.size())
   {
-    std::cout<<"Failure: 1 component!\n";
+    std::cerr<<"Failure: 1 component!\n";
     return {};
   }
 
-  std::cout<<"Components:\n";
+  // 5. Create the sets describing each component
+  std::cerr<<"Components:\n";
   map<long,set<long>> subtips;
   for(long c: tips)
   {
@@ -118,38 +143,66 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
     set<long>& s = subtips[c];
     for(long l: elements[c])
       s.insert(l);
-    std::cout<<"   "<<s<<"\n";
+    std::cerr<<"   "<<s<<"\n";
   }
 
+  // 6. Determine the splits that are not satisfied yet and go into each component
   map<long,vector<RSplit>> subsplits;
   for(const auto& split: splits)
   {
     long first = *split.in.begin();
     long c = component[first];
-    
+
+    // if none of the exclude group are in the component, the the split is satisfied by the top-level partition.
+    if (empty_intersection(split.out, subtips[c])) continue;
+
+    subsplits[c].push_back(split);
   }
   
+  // 7. Recursively solve the sub-problems of the partition components
+  for(const auto& x: subtips)
+  {
+    int c = x.first;
+    auto subtree = BUILD(x.second, subsplits[x.first]);
+    if (not subtree) return {};
+
+    tree->addSubtree(tree->getRoot(), *subtree);
+  }
+
+  // 8. Add writable names to the tree
+  for(auto nd: iter_post(*tree))
+  {
+    if (nd->hasOttId())
+    {
+      std::ostringstream oss;
+      oss<<"ott"<<nd->getOttId();
+      nd->setName(oss.str());
+    }
+  }
+
   return tree;
 }
 
 
 unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits, int n)
 {
-  
-  return {};
+  vector<RSplit> splits2;
+  for(int i=0;i<n;i++)
+    splits2.push_back(splits[i]);
+  return BUILD(tips,splits2);
 }
 
-unique_ptr<Tree_t> merge(const vector<unique_ptr<Tree_t>>& trees)
+unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
 {
   // Standardize names to 0..n-1 for this subproblem
   const auto& taxonomy = trees.back();
   auto all_leaves = taxonomy->getRoot()->getData().desIds;
-  std::cout<<all_leaves<<std::endl;
+  std::cerr<<all_leaves<<std::endl;
   
   vector<RSplit> splits;
   for(const auto& tree: trees)
   {
-    std::cout<<"Tree!\n";
+    std::cerr<<"Tree!\n";
     auto root = tree->getRoot();
     const auto leafTaxa = root->getData().desIds;
     for(auto nd: iter_post_const(*tree))
@@ -159,7 +212,7 @@ unique_ptr<Tree_t> merge(const vector<unique_ptr<Tree_t>>& trees)
       if (split.in.size()>1 and split.out.size())
       {
       	splits.push_back(split);
-	std::cout<<split.in<<" | "<<split.out<<"\n";
+	std::cerr<<split.in<<" | "<<split.out<<"\n";
       }
     }
     BUILD(all_leaves, splits);
@@ -200,5 +253,8 @@ int main(int argc, char *argv[]) {
     // They should have only terminals in desIds.
     treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1);
     
-    merge(trees);
+    auto tree = combine(trees);
+    
+    tree->writeAsNewick(std::cout, true);
+    std::cout<<";\n";
 }
