@@ -46,7 +46,7 @@ struct RSplit
   RSplit(const set<long>& i, const set<long>& a)
     :in(i),all(a)
   {
-    std::set_difference(all.begin(),all.end(),in.begin(),in.end(),std::inserter(out,out.end()));
+    out = set_difference_as_set(all,in);
     assert(in.size() + out.size() == all.size());
   }
 };
