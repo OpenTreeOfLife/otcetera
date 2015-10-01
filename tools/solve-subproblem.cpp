@@ -12,6 +12,7 @@ using std::unique_ptr;
 using std::set;
 using std::list;
 using std::map;
+using std::string;
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
@@ -85,7 +86,6 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
   tree->createRoot();
-
 
   // 1. First handle trees of size 1 and 2
   if (tips.size() == 1)
@@ -169,17 +169,6 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
     tree->addSubtree(tree->getRoot(), *subtree);
   }
 
-  // 8. Add writable names to the tree
-  for(auto nd: iter_post(*tree))
-  {
-    if (nd->hasOttId())
-    {
-      std::ostringstream oss;
-      oss<<"ott"<<nd->getOttId();
-      nd->setName(oss.str());
-    }
-  }
-
   return tree;
 }
 
@@ -190,6 +179,34 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
   for(int i=0;i<n;i++)
     splits2.push_back(splits[i]);
   return BUILD(tips,splits2);
+}
+
+string fixname(string name)
+{
+  for(char& c: name)
+    if (c == ' ')
+      c = '_';
+  return name;
+}
+
+void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
+{
+  map<long,string> names;
+  
+  // 8. Add writable names to the tree
+  for(auto nd: iter_post(*taxonomy))
+    if (nd->isTip())
+      names[nd->getOttId()] = nd->getName();
+  
+  // 8. Add writable names to the tree
+  for(auto nd: iter_post(*tree))
+    if (nd->hasOttId())
+    {
+      string name = names[nd->getOttId()];
+      nd->setName(fixname(name));
+    }
+  
+  tree->getRoot()->setName(fixname(taxonomy->getRoot()->getName()));
 }
 
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
@@ -227,7 +244,9 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
       n++;
   }
 
-  return BUILD(all_leaves, splits, splits.size());
+  auto tree = BUILD(all_leaves, splits, splits.size());
+  add_names(tree, taxonomy);
+  return tree;
 }
 
 int main(int argc, char *argv[]) {
