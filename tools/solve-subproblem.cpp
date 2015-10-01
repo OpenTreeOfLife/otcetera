@@ -51,6 +51,11 @@ struct RSplit
   }
 };
 
+std::ostream& operator<<(std::ostream& o, const RSplit& s)
+{
+  o<<s.in<<" | "<<s.out;
+  return o;
+}
 
 /// Merge components c1 and c2
 long merge_components(long c1, long c2, map<long,long>& component, map<long,list<long>>& elements)
