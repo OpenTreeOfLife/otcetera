@@ -851,6 +851,91 @@ Then start investigating constraints that force the inclusion of some of the exc
 
 The set of splits in a tree which are incompatible with a previously excluded split can be discarded as a preprocessing step.
 
+\section{Subproblem simplifications}
+\subsection{Using the intersection leaf set}
+Shortcut: prune the next tree to the intersection of its leaf set and the
+leaf set of the current batch of consistent phylogenetic statements.
+Any statement in the pruned tree that is inconsistent, need not be considered.
+(since the conflict detection uses a smaller graph, it might be faster than using the full leaf set).
+
+This is for the context of building up a set of consistent phylogenetic statements by adding
+    phylogenetic statements from a new tree.
+Let $T_i$ be the new tree.
+Let $\mathcal{A}_{i-1}$ denote a set of phylogenetic statements (from the consistent trees 1 to $i-1$).
+
+Let $T_i^{\ast}$ and $\mathcal{A}_{i-1}^{\ast}$ denote $T_i$ and $\mathcal{A}_{i-1}$ pruned down by removing any leaves that are not in $\leafLabels{\mathcal{A}_{i-1}} \cap \leafLabels{T_i}$ and (in the case of $T_i$) any nodes that have an out-degree $<2$ as a result of this pruning.
+
+
+\begin{theorem}
+If a phylogenetic statement from $T_i^{\ast}$ is not consistent
+    with $\mathcal{A}_{i-1}^{\ast}$,
+    then the corresponding statement from $T_i$ will not be consistent with $\mathcal{A}_{i-1}$.
+\end{theorem}
+Proof: By the definition of compatability, adding new leaves cannot make an tree that is incompatible with a statement in $\mathcal{A}_{i-1}^{\ast}$ compatible with the fuller version of that statement.
+}
+
+\subsection{Testing consistency by pruning off new leaves}
+Shortcut: prune off any ``new'' leaves from the next tree 
+and then test for consistency.
+(since the conflict detection uses a smaller graph, it might be faster than using the full leaf set).
+
+
+Let $T_i^{\dag}$ denote $T_i$ pruned down by removing any leaves that are not in $\leafLabels{\mathcal{A}_{i-1}}$  any nodes that have an out-degree $<2$ as a result of this pruning.
+
+
+Each internal node in $T_i$ that is not a common ancestor of all of the labels in $\leafLabels{T_i^{\dag}}$ can be partitioned into one of 3 categories:
+\begin{compactenum}
+    \item $\matchcal{N}^{\ddag}(T_i)$ is the set of nodes that have more than one child subtree with an contains a leaf in $\leafLabels{T_i^{\dag}}$.
+    \item $\matchcal{N}^{\dag}(T_i)$ is the set of nodes that have exactly one child subtree with an contains a leaf in $\leafLabels{T_i^{\dag}}$.
+    For every member of $\matchcal{N}^{\dag}(T_i)$ called $n$ let $D^{\dag}(n)$ denote the first descendant node that is either a leaf of $T_i$ or in $\matchcal{N}^{\ddag}(T_i)$.
+    \item $\matchcal{N}^{\circ}(T_i)$ is the set of nodes that are not the ancestor of any label in $\leafLabels{T_i^{\dag}}$.
+\end{compactenum}
+
+
+\begin{theorem}
+If a phylogenetic statement derived from a member of $\matchcal{N}^{\ddag}(T_i)$ is consistent with  $\mathcal{A}$ if and only if the corresponding member of $\matchcal{N}^{\ddag}(T_i^{\dag})$ is consistent with  $\mathcal{A}$.
+\end{theorem}
+Proof: To be written
+
+
+\begin{theorem}
+Every phylogenetic statement derived from a member of $\matchcal{N}^{\circ}(T_i)$ is consistent with  $\mathcal{A}_{i-1}$.
+\end{theorem}
+Proof: To be written. True because these statents are only making statements about previously unmentioned taxa.
+
+\begin{theorem}
+If $D^{\dag}(n)$ is a leaf, then the phylogenetic statement that corresponds
+    to $n$ is consistent with $\mathcal{A}_{i-1}$.
+\end{theorem}
+Proof: To be written. True becaus we are only adding sister groups to a previously trivial group.
+
+
+\begin{theorem}
+If $D^{\dag}(n)$ is an internal node, then the phylogenetic statement
+    that corresponds to $n$ will conflict with $\mathcal{A}_{i-1}$ if
+    and only if the phylogenetic statement that corresponds to 
+    $D^{\dag}(n)$ conflicts with $\mathcal{A}_{i-1}$.
+\end{theorem}
+Proof: To be written. If $D^{\dag}(n)$ is consistent with $\mathcal{A}_{i-1}$
+then there must be at least one tree that has an edge that separates all of the 
+descendants of $D^{\dag}(n)$ from all of the (mentioned) ancestors
+of $n$.
+Attaching the ``new'' subtree along this edge produces a tree that proves that 
+  $D^{\dag}(n)$ is also consistent with $\mathcal{A}_{i-1}$.
+
+In the case of $D^{\dag}(n)$ conflicting with $\mathcal{A}_{i-1}$, we know
+that an edge separating a subset of the descendants from the mentioned
+ancestors cannot be found. Adding more leaves will not alter that.
+
+
+
+%\begin{theorem}
+%One can identify the most resolved collapsed form of $T_i$ which is 
+%    consistent with $\mathcal{A}_{i-1}$ by pruning both $\mathcal{A}_{i-1}$ and
+%    $T_i$ down to the intersection of the leaf labels set: $\leafLabels{\mathcal{A}_{i-1}} \cap \leafLabels{T_i}$
+%\end{theorem}
+
+
 \section{Acknowledgements}
 Thanks to David Bryant for suggestions on the subproblem solver and
     for pointing me to the work of J.~Jansson in the context of the 
