@@ -272,6 +272,6 @@ int main(int argc, char *argv[]) {
 
     auto tree = combine(trees);
     
-    tree->writeAsNewick(std::cout, true);
-    std::cout<<";\n";
+    writeTreeAsNewick(std::cout, *tree);
+    std::cout<<"\n";
 }
