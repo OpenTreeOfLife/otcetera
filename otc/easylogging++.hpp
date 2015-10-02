@@ -27,6 +27,7 @@
 #pragma clang diagnostic ignored  "-Wunreachable-code"
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wmissing-noreturn"
+#pragma clang diagnostic ignored  "-Wpessimizing-move"
 
 
 // Compilers and C++0x/C++11 Evaluation

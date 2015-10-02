@@ -35,6 +35,8 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
                                 const ParsingRules &parsingRules) {
     if (labelToken) {
         node.setName(labelToken->content());
+	if (not parsingRules.requireOttIds)
+	    return;
         if ((!parsingRules.setOttIdForInternals) && node.isInternal()) {
             return;
         }
@@ -74,6 +76,8 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
                          const ParsingRules & parsingRules) {
     if (labelToken) {
         node.setName(labelToken->content());
+	if (not parsingRules.requireOttIds)
+  	    return;
         if ((!parsingRules.setOttIdForInternals) && node.isInternal()) {
             return;
         }
@@ -129,6 +133,7 @@ inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
                                 RootedTreeNode<RTSplits> & node,
                                 const NewickTokenizer::Token & token,
                                 const ParsingRules & parsingRules) {
+    if (not parsingRules.requireOttIds) return;
     if (node.isTip()
         && !node.hasOttId()
         && (!parsingRules.pruneUnrecognizedInputTips)) {
@@ -146,6 +151,7 @@ inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
 }
 
 inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
+    if (not parsingRules.requireOttIds) return;
     if (parsingRules.includeInternalNodesInDesIdSets) {
         fillDesIdSetsIncludingInternals(tree);
     } else {

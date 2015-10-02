@@ -235,7 +235,23 @@ class RootedTreeNode {
     public:
         void writeAsNewick(std::ostream &out,
                            bool useLeafNames,
-                           const std::map<node_type *, namestring_t> *nd2name=nullptr) const;
+                           const std::map<node_type *, namestring_t> *nd2name=nullptr) const
+	{
+	  auto child = getFirstChild();
+	  if (child)
+	  {
+	    out<<"(";
+	    child->writeAsNewick(out,useLeafNames,nd2name);
+	    child = child->getNextSib();
+	    for(;child;child = child->getNextSib())
+	    {
+	      out<<",";
+	      child->writeAsNewick(out,useLeafNames,nd2name);
+	    }
+	    out<<")";
+	  }
+	  out<<getName();
+	}
         void addSelfAndDesToPreorder(std::vector<const node_type *> &p) const;
 
         void lowLevelSetFirstChild(node_type *nd) {
@@ -273,11 +289,10 @@ class RootedTree {
         }
         std::vector<const node_type *> getPreorderTraversal() const;
         void writeAsNewick(std::ostream &out,
-                           bool nhx,
                            bool useLeafNames,
                            const std::map<node_type *, namestring_t> *nd2name=nullptr) const {
             if (root) {
-                root->writeAsNewick(out, nhx, useLeafNames, nd2name);
+                root->writeAsNewick(out, useLeafNames, nd2name);
             }
         }
         const node_type * getRoot() const {
@@ -301,6 +316,14 @@ class RootedTree {
             par->addChild(c);
             return c;
         }
+	void addSubtree(node_type* par, RootedTree<T,U>& T2) {
+  	    node_type* c = T2.root;
+	    T2.root = nullptr;
+	    allNodes.insert(T2.allNodes.begin(), T2.allNodes.end());
+	    T2.allNodes.clear();
+
+	    par->addChild(c);
+	}
         node_type * createNode(node_type *par) {
             auto c = this->allocNewNode(par);
             if (par != nullptr) {
