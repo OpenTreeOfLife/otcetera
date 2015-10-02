@@ -287,6 +287,57 @@ bool handleSynthesizeTaxonomy(OTCLI &, const std::string & arg)
   return true;
 }
 
+unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids)
+{
+  std::unique_ptr<Tree_t> tree(new Tree_t());
+  tree->createRoot();
+
+  if (use_ids)
+  {
+    map<long,string> names;
+    for(const auto& tree: trees)
+      for(auto nd: iter_pre_const(*tree))
+	if (nd->isTip())
+	{
+	  long id = nd->getOttId();
+	  auto it = names.find(id);
+	  if (it == names.end())
+	    names[id] = nd->getName();
+	}
+  
+    for(const auto& n: names)
+    {
+      auto node = tree->createChild(tree->getRoot());
+      node->setOttId(n.first);
+      node->setName(n.second);
+    }
+    clearAndfillDesIdSets(*tree);
+  }
+  else
+  {
+    set<string> names;
+    for(const auto& tree: trees)
+      for(auto nd: iter_pre_const(*tree))
+	if (nd->isTip())
+	  names.insert(nd->getName());
+
+    for(const auto& n: names)
+    {
+      auto node = tree->createChild(tree->getRoot());
+      node->setName(n);
+    }
+  }
+
+  return tree;
+}
+
+string newick(const Tree_t &t)
+{
+  std::ostringstream s;
+  writeTreeAsNewick(s, t);
+  return s.str();
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
                 "takes at series of tree files. Each is treated as a subproblem.\n",
@@ -300,10 +351,10 @@ int main(int argc, char *argv[]) {
 		  "Prune unrecognized tips.  Defaults to false",
 		  handlePruneUnrecognizedTips,
 		  true);
-    otCLI.addFlag('t',
+    otCLI.addFlag('T',
 		  "Synthesize unresolved taxonomy from all mentioned taxa.  Defaults to false",
 		  handleSynthesizeTaxonomy,
-		  true);
+		  false);
 
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
@@ -316,8 +367,15 @@ int main(int argc, char *argv[]) {
     if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
       std::exit(1);
 
+    bool requireOttIds = otCLI.getParsingRules().requireOttIds;
+    if (synthesize_taxonomy)
+    {
+      trees.push_back(make_unresolved_tree(trees,requireOttIds));
+      LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
+    }
+      
     // Add fake Ott Ids to tips and compute desIds
-    if (not otCLI.getParsingRules().requireOttIds)
+    if (not requireOttIds)
     {
       auto& taxonomy = trees.back();
 
