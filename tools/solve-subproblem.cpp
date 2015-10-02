@@ -182,15 +182,6 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
   return BUILD(tips,splits2);
 }
 
-/// What madness is being perpetrated here?
-string fixname(string name)
-{
-  for(char& c: name)
-    if (c == ' ')
-      c = '_';
-  return name;
-}
-
 /// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
 void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
 {
@@ -199,7 +190,7 @@ void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
   // 1. Determine the names for each ottid
   for(auto nd: iter_post(*taxonomy))
     if (nd->isTip())
-      names[nd->getOttId()] = fixname(nd->getName());
+      names[nd->getOttId()] = nd->getName();
   
   // 2. Set the names of nodes based on their ottid
   for(auto nd: iter_post(*tree))
@@ -208,7 +199,7 @@ void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
   
   // 3. Name the root node too
   string rootname = taxonomy->getRoot()->getName();
-  tree->getRoot()->setName(fixname(rootname));
+  tree->getRoot()->setName(rootname);
 }
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
