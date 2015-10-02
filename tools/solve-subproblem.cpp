@@ -249,17 +249,112 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
   return tree;
 }
 
+bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg)
+{
+  if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
+    otCLI.getParsingRules().requireOttIds = true;
+  else if (arg == "false" or arg == "no" or arg == "False" or arg == "no")
+    otCLI.getParsingRules().requireOttIds = false;
+  else
+    return false;
+    
+  return true;
+}
+
+bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg)
+{
+  if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
+    otCLI.getParsingRules().pruneUnrecognizedInputTips = true;
+  else if (arg == "false" or arg == "no" or arg == "False" or arg == "no")
+    otCLI.getParsingRules().pruneUnrecognizedInputTips = false;
+  else
+    return false;
+    
+  return true;
+}
+
+bool synthesize_taxonomy = false;
+
+bool handleSynthesizeTaxonomy(OTCLI &, const std::string & arg)
+{
+  if (arg == "true" or "yes" or "True" or "Yes")
+    synthesize_taxonomy = true;
+  else if (arg == "false" or "no" or "False" or "no")
+    synthesize_taxonomy = false;
+  else
+    return false;
+    
+  return true;
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
                 "takes at series of tree files. Each is treated as a subproblem.\n",
 		"subproblem.tre");
 
+    otCLI.addFlag('o',
+		  "Require OTT ids.  Defaults to true",
+		  handleRequireOttIds,
+		  true);
+    otCLI.addFlag('p',
+		  "Prune unrecognized tips.  Defaults to false",
+		  handlePruneUnrecognizedTips,
+		  true);
+    otCLI.addFlag('t',
+		  "Synthesize unresolved taxonomy from all mentioned taxa.  Defaults to false",
+		  handleSynthesizeTaxonomy,
+		  true);
+
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
-
-    // I don't think multiple subproblem files are essentially concatenated.
+    
+    if (argc < 2)
+	throw OTCError("No subproblem provided!");
+    
+    // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
-    treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1);
+    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
+      std::exit(1);
+
+    // Add fake Ott Ids to tips and compute desIds
+    if (not otCLI.getParsingRules().requireOttIds)
+    {
+      auto& taxonomy = trees.back();
+
+      // 1. Compute mapping from name -> id
+      long id = 1;
+      map<string,long> name_to_id;
+      for(auto nd: iter_pre(*taxonomy))
+	if (nd->isTip())
+	{
+	  string name = nd->getName();
+	  if (not name.size())
+	    throw OTCError()<<"Taxonomy tip has no label or OTT id!";
+	  auto it = name_to_id.find(name);
+	  if (it != name_to_id.end())
+	    throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
+	  name_to_id[name] = id++;
+	}
+
+      // 2. Set ids
+      for(auto& tree: trees)
+	for(auto nd: iter_post(*tree))
+	  if (nd->isTip())
+	  {
+	    string name = nd->getName();
+	    if (not name.size())
+	      throw OTCError()<<"Tip has no label or OTT id!";
+	    auto it = name_to_id.find(name);
+	    if (it == name_to_id.end())
+	      throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
+	    auto id = it->second;
+	    nd->setOttId(id);
+	  }
+
+      // 3. Compute DesIds.
+      for(auto& tree: trees)
+	clearAndfillDesIdSets(*tree);
+    }
 
     auto tree = combine(trees);
     
