@@ -12,10 +12,10 @@
 namespace otc {
 
 struct ParsingRules {
-    const std::set<long> * ottIdValidator;
+    const std::set<long> * ottIdValidator = nullptr;
     bool includeInternalNodesInDesIdSets = false;
     bool setOttIdForInternals = true; // TEMP. Do we want to just remove them after processing, rather than adding a conditional to the parsing logic...
-    const std::map<long, long> * idRemapping;
+    const std::map<long, long> * idRemapping = nullptr;
     bool pruneUnrecognizedInputTips = false;
 };
 
