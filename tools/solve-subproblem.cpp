@@ -185,21 +185,12 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
 /// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
 void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
 {
-  map<long,string> names;
-  
-  // 1. Determine the names for each ottid
-  for(auto nd: iter_post(*taxonomy))
-    if (nd->isTip())
-      names[nd->getOttId()] = nd->getName();
-  
-  // 2. Set the names of nodes based on their ottid
-  for(auto nd: iter_post(*tree))
-    if (nd->hasOttId())
-      nd->setName( names[nd->getOttId()] );
-  
-  // 3. Name the root node too
-  string rootname = taxonomy->getRoot()->getName();
-  tree->getRoot()->setName(rootname);
+  clearAndfillDesIdSets(*tree);
+
+  for(auto n1: iter_post(*tree))
+    for(auto n2: iter_post(*taxonomy))
+      if (n1->getData().desIds == n2->getData().desIds)
+	n1->setName( n2->getName());
 }
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
