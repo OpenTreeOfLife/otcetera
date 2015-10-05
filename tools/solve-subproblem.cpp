@@ -37,16 +37,38 @@ std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
   return o;
 }
 
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& s)
+{
+  auto it = s.begin();
+  o<<*it++;
+  for(; it != s.end(); it++)
+    o<<" "<<*it;
+  return o;
+}
+
+/// Create a SORTED vector from a set
+template <typename T>
+vector<T> set_to_vector(const set<T>& s)
+{
+  vector<T> v;
+  v.reserve(s.size());
+  std::copy(s.begin(), s.end(), std::back_inserter(v));
+  return v;
+}
+
 struct RSplit
 {
-  set<int> in;
-  set<int> out;
-  set<int> all;
+  vector<int> in;
+  vector<int> out;
+  vector<int> all;
   RSplit() = default;
   RSplit(const set<int>& i, const set<int>& a)
-    :in(i),all(a)
   {
-    out = set_difference_as_set(all,in);
+    set<int> o = set_difference_as_set(a,i);
+    in  = set_to_vector(i);
+    out = set_to_vector(o);
+    all = set_to_vector(a);
     assert(in.size() + out.size() == all.size());
   }
 };
@@ -71,11 +93,14 @@ int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& 
   return c1;
 }
 
-bool empty_intersection(const set<int>& x, const set<int>& y)
+template <typename T, typename U>
+bool sorted_empty_intersection(const T& x, const U& y)
 {
-  std::set<int>::const_iterator i = x.begin();
-  std::set<int>::const_iterator j = y.begin();
-  while (i != x.end() && j != y.end())
+  auto i = x.begin();
+  auto j = y.begin();
+  auto xe = x.end();
+  auto ye = y.end();
+  while (i != xe and j != ye)
   {
     if (*i == *j)
       return false;
@@ -147,39 +172,54 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
   if (elements[component[0]].size() == tips.size())
     return {};
 
-  // 5. Create the set of tips in each connected component 
-  map<int,vector<int>> subtips;
+  // 5. Make a vector of labels for the partition components
+  vector<int> component_labels;                           // index -> component label
+  vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
   for(int c=0;c<tips.size();c++)
-  {
-    if (c != component[c]) continue;
-    
-    vector<int>& s = subtips[c];
-    for(int i: elements[c])
-      s.push_back(tips[i]);
-  }
+    if (c == component[c])
+    {
+      int index = component_labels.size();
+      component_labels.push_back(c);
+      component_label_to_index[c] = index;
+    }
 
-  // 6. Determine the splits that are not satisfied yet and go into each component
-  map<int,vector<const RSplit*>> subsplits;
+    
+  // 6. Create the vector of tips in each connected component 
+  vector<vector<int>> subtips(component_labels.size());
+  for(int i=0;i<component_labels.size();i++)
+  {
+    vector<int>& s = subtips[i];
+    int c = component_labels[i];
+    for(int j: elements[c])
+      s.push_back(tips[j]);
+  }
+  for(auto& s: subtips)
+    std::sort(s.begin(), s.end());
+
+  // 7. Determine the splits that are not satisfied yet and go into each component
+  vector<vector<const RSplit*>> subsplits(component_labels.size());
   for(const auto& split: splits)
   {
     int first = indices[*split->in.begin()];
     assert(first >= 0);
     int c = component[first];
+    int i = component_label_to_index[c];
 
     // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-    if (empty_intersection(split->out, subtips[c])) continue;
+    assert(sorted_empty_intersection(split->out, subtips[i]) == empty_intersection(split->out, subtips[i]));
+    if (sorted_empty_intersection(split->out, subtips[i])) continue;
 
-    subsplits[c].push_back(split);
+    subsplits[i].push_back(split);
   }
   
-  // Clear our map from id -> index
+  // 8. Clear our map from id -> index, for use by subproblems.
   for(int id: tips)
     indices[id] = -1;
   
-  // 7. Recursively solve the sub-problems of the partition components
-  for(const auto& x: subtips)
+  // 9. Recursively solve the sub-problems of the partition components
+  for(int i=0;i<subtips.size();i++)
   {
-    auto subtree = BUILD(x.second, subsplits[x.first]);
+    auto subtree = BUILD(subtips[i], subsplits[i]);
     if (not subtree) return {};
 
     tree->addSubtree(tree->getRoot(), *subtree);
@@ -210,7 +250,6 @@ set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map)
   }
   return s2;
 }
-
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
