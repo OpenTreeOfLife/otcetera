@@ -322,6 +322,14 @@ bool handleSynthesizeTaxonomy(OTCLI &, const std::string & arg)
   return true;
 }
 
+bool cladeTips = true;
+
+bool handleCladeTips(OTCLI &, const std::string & arg)
+{
+  cladeTips = get_bool(arg,"-i: ");
+  return true;
+}
+
 /// Create an unresolved taxonomy out of all the input trees.
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids)
 {
@@ -431,6 +439,11 @@ int main(int argc, char *argv[]) {
 		  handlePruneUnrecognizedTips,
 		  true);
 
+    otCLI.addFlag('i',
+		  "Tips may be internal nodes on the taxnomy.  Defaults to true",
+		  handleCladeTips,
+		  true);
+
     otCLI.addFlag('T',
 		  "Synthesize an unresolved taxonomy from all mentioned tips.  Defaults to false",
 		  handleSynthesizeTaxonomy,
@@ -457,11 +470,17 @@ int main(int argc, char *argv[]) {
     // Add fake Ott Ids to tips and compute desIds
     if (not requireOttIds)
     {
-      // 1. Create mapping from taxonomy names to ids
       auto name_to_id = createIdsFromNames(*trees.back());
       for(auto& tree: trees)
 	setIdsFromNames(*tree, name_to_id);
     }
+
+    // Check if trees are mapping to non-terminal taxa, and either fix the situation or die.
+    for(int i=0;i<trees.size()-1;i++)
+      if (cladeTips)
+	expandOTTInternalsWhichAreLeaves(*trees[i], *trees.back());
+      else
+	requireTipsToBeMappedToTerminalTaxa(*trees[i], *trees.back());
 
     auto tree = combine(trees);
     
