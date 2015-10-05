@@ -454,6 +454,7 @@ int main(int argc, char *argv[]) {
 	      throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
 	    auto id = it->second;
 	    nd->setOttId(id);
+	    tree->getData().ottIdToNode[id] = nd;
 	  }
 
       // 3. Compute DesIds.
