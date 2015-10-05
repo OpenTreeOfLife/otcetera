@@ -330,6 +330,7 @@ bool handleSynthesizeTaxonomy(OTCLI &, const std::string & arg)
   return true;
 }
 
+/// Create an unresolved taxonomy out of all the input trees.
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids)
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
@@ -420,7 +421,7 @@ int main(int argc, char *argv[]) {
       trees.push_back(make_unresolved_tree(trees,requireOttIds));
       LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
     }
- 
+
     // Add fake Ott Ids to tips and compute desIds
     if (not requireOttIds)
     {
