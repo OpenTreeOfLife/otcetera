@@ -292,27 +292,25 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
   return tree;
 }
 
-bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg)
+bool get_bool(const string& arg, const string& context="")
 {
   if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
-    otCLI.getParsingRules().requireOttIds = true;
-  else if (arg == "false" or arg == "no" or arg == "False" or arg == "no")
-    otCLI.getParsingRules().requireOttIds = false;
-  else
+    return true;
+  else if (arg == "false" or arg == "no" or arg == "False" or arg == "No")
     return false;
-    
+  else
+    throw OTCError()<<context<<"'"<<arg<<"' is not a recognized boolean value.";
+}
+
+bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg)
+{
+  otCLI.getParsingRules().requireOttIds = get_bool(arg,"-o: ");
   return true;
 }
 
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg)
 {
-  if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = true;
-  else if (arg == "false" or arg == "no" or arg == "False" or arg == "no")
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = false;
-  else
-    return false;
-    
+  otCLI.getParsingRules().pruneUnrecognizedInputTips = get_bool(arg,"-p: ");
   return true;
 }
 
@@ -320,13 +318,7 @@ bool synthesize_taxonomy = false;
 
 bool handleSynthesizeTaxonomy(OTCLI &, const std::string & arg)
 {
-  if (arg == "true" or "yes" or "True" or "Yes")
-    synthesize_taxonomy = true;
-  else if (arg == "false" or "no" or "False" or "no")
-    synthesize_taxonomy = false;
-  else
-    return false;
-    
+  synthesize_taxonomy = get_bool(arg,"-T: ");
   return true;
 }
 
