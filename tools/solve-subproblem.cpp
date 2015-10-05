@@ -88,7 +88,7 @@ bool empty_intersection(const set<long>& x, const set<long>& y)
 }
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits)
+unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<const RSplit*>& splits)
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
   tree->createRoot();
@@ -122,7 +122,7 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
   for(const auto& split: splits)
   {
     long c1 = -1;
-    for(long i: split.in)
+    for(long i: split->in)
     {
       long c2 = component[i];
       if (c1 != -1 and c1 != c2)
@@ -148,14 +148,14 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
   }
 
   // 6. Determine the splits that are not satisfied yet and go into each component
-  map<long,vector<RSplit>> subsplits;
+  map<long,vector<const RSplit*>> subsplits;
   for(const auto& split: splits)
   {
-    long first = *split.in.begin();
+    long first = *split->in.begin();
     long c = component[first];
 
     // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-    if (empty_intersection(split.out, subtips[c])) continue;
+    if (empty_intersection(split->out, subtips[c])) continue;
 
     subsplits[c].push_back(split);
   }
@@ -208,20 +208,23 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
       	splits.push_back(split);
     }
   }
+  vector<const RSplit*> split_ptrs;
+  for(const auto& split: splits)
+    split_ptrs.push_back(&split);
 
   // 2. Add splits sequentially if they are consistent with previous splits.
-  vector<RSplit> consistent;
-  for(const auto& split: splits)
+  vector<const RSplit*> consistent;
+  for(const auto& split: split_ptrs)
   {
     consistent.push_back(split);
     auto result = BUILD(all_leaves, consistent);
     if (not result)
     {
       consistent.pop_back();
-      LOG(DEBUG)<<"Reject: "<<split<<"\n";
+      LOG(DEBUG)<<"Reject: "<<*split<<"\n";
     }
     else
-      LOG(DEBUG)<<"Keep:   "<<split<<"\n";
+      LOG(DEBUG)<<"Keep:   "<<*split<<"\n";
   }
 
   // 3. Construct final tree and add names
@@ -321,28 +324,32 @@ string newick(const Tree_t &t)
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
-                "takes at series of tree files. Each is treated as a subproblem.\n",
+                "Takes at series of tree files, with possibly mulitple trees per file.\n"
+                "Files are concatenated and the combined list treated as a single subproblem.\n"
+                "Trees should occur in order of priority, with the taxonomy last.\n",
 		"subproblem.tre");
 
     otCLI.addFlag('o',
 		  "Require OTT ids.  Defaults to true",
 		  handleRequireOttIds,
 		  true);
+
     otCLI.addFlag('p',
 		  "Prune unrecognized tips.  Defaults to false",
 		  handlePruneUnrecognizedTips,
 		  true);
+
     otCLI.addFlag('T',
-		  "Synthesize unresolved taxonomy from all mentioned taxa.  Defaults to false",
+		  "Synthesize an unresolved taxonomy from all mentioned tips.  Defaults to false",
 		  handleSynthesizeTaxonomy,
 		  false);
 
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
-    
+
     if (argc < 2)
 	throw OTCError("No subproblem provided!");
-    
+
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
     if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
@@ -354,7 +361,7 @@ int main(int argc, char *argv[]) {
       trees.push_back(make_unresolved_tree(trees,requireOttIds));
       LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
     }
-      
+ 
     // Add fake Ott Ids to tips and compute desIds
     if (not requireOttIds)
     {
