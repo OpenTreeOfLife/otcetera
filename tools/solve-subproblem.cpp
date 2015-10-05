@@ -426,7 +426,7 @@ void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id)
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
-                "Takes at series of tree files, with possibly mulitple trees per file.\n"
+                "Takes a series of tree files.\n"
                 "Files are concatenated and the combined list treated as a single subproblem.\n"
                 "Trees should occur in order of priority, with the taxonomy last.\n",
 		"subproblem.tre");
