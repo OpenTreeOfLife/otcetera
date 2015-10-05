@@ -198,7 +198,8 @@ void requireTipsToBeMappedToTerminalTaxa(const T & toExpand, const T & taxonomy)
         assert(nd->hasOttId());
         auto ottId = nd->getOttId();
         auto taxNd = taxData.getNodeForOttId(ottId);
-        assert(taxNd != nullptr);
+        if (not taxNd)
+	    throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->getName()<<"' not found in taxonomy!";
         if (!taxNd->isTip()) {
             std::string msg;
             msg = "Tips must be mapped to terminal taxa ott" + std::to_string(ottId) + " found.";
@@ -233,7 +234,8 @@ std::set<const typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toE
         assert(nd->hasOttId());
         auto ottId = nd->getOttId();
         auto taxNd = taxData.getNodeForOttId(ottId);
-        assert(taxNd != nullptr);
+        if (not taxNd)
+	    throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->getName()<<"' not found in taxonomy!";
         if (!taxNd->isTip()) {
             const auto & leafSet = getDesOttIds(*taxNd);
             replaceNodes[nd] = leafSet;
