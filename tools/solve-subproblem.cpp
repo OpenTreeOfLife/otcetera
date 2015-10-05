@@ -58,7 +58,7 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-int merge_components(int c1, int c2, map<int,int>& component, map<int,list<int>>& elements)
+int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& elements)
 {
   if (elements[c2].size() > elements[c1].size())
     std::swap(c1,c2);
@@ -87,8 +87,18 @@ bool empty_intersection(const set<int>& x, const set<int>& y)
   return true;
 }
 
+bool empty_intersection(const set<int>& xs, const vector<int>& ys)
+{
+  for(int y: ys)
+    if (xs.count(y))
+      return false;
+  return true;
+}
+
+vector<int> indices;
+
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<const RSplit*>& splits)
+unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits)
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
   tree->createRoot();
@@ -110,12 +120,13 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<const RSplit*>&
   }
 
   // 2. Initialize the mapping from elements to components
-  map<int,int> component;      // element   -> component
-  map<int,list<int>> elements; // component -> elements
-  for(int i: tips)
+  vector<int> component;       // element index  -> component
+  vector<list<int>> elements;  // component -> element indices
+  for(int i=0;i<tips.size();i++)
   {
-    component[i] = i;
-    elements[i].push_back(i);
+    indices[tips[i]] = i;
+    component.push_back(i);
+    elements.push_back({i});
   }
 
   // 3. For each split, all the leaves in the include group must be in the same component
@@ -124,34 +135,35 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<const RSplit*>&
     int c1 = -1;
     for(int i: split->in)
     {
-      int c2 = component[i];
+      int j = indices[i];
+      int c2 = component[j];
       if (c1 != -1 and c1 != c2)
 	merge_components(c1,c2,component,elements);
-      c1 = component[i];
+      c1 = component[j];
     }
   }
 
   // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-  int first = *tips.begin();
-  if (elements[component[first]].size() == tips.size())
+  if (elements[component[0]].size() == tips.size())
     return {};
 
   // 5. Create the set of tips in each connected component 
-  map<int,set<int>> subtips;
-  for(int c: tips)
+  map<int,vector<int>> subtips;
+  for(int c=0;c<tips.size();c++)
   {
     if (c != component[c]) continue;
     
-    set<int>& s = subtips[c];
-    for(int l: elements[c])
-      s.insert(l);
+    vector<int>& s = subtips[c];
+    for(int i: elements[c])
+      s.push_back(tips[i]);
   }
 
   // 6. Determine the splits that are not satisfied yet and go into each component
   map<int,vector<const RSplit*>> subsplits;
   for(const auto& split: splits)
   {
-    int first = *split->in.begin();
+    int first = indices[*split->in.begin()];
+    assert(first >= 0);
     int c = component[first];
 
     // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
@@ -159,6 +171,10 @@ unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<const RSplit*>&
 
     subsplits[c].push_back(split);
   }
+  
+  // Clear our map from id -> index
+  for(int id: tips)
+    indices[id] = -1;
   
   // 7. Recursively solve the sub-problems of the partition components
   for(const auto& x: subtips)
@@ -217,7 +233,13 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
     assert(ids[id_map[id]] == id);
   }
   auto remap = [&id_map](const set<long>& ids) {return remap_ids(ids,id_map);};
-  auto all_leaves_indices = remap(all_leaves);
+  vector<int> all_leaves_indices;
+  for(int i=0;i<all_leaves.size();i++)
+    all_leaves_indices.push_back(i);
+
+  indices.resize(all_leaves.size());
+  for(auto& i: indices)
+    i=-1;
   
   // 1. Find splits in order of input trees
   vector<RSplit> splits;
