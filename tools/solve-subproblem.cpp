@@ -382,6 +382,46 @@ string newick(const Tree_t &t)
   return s.str();
 }
 
+/// Create a mapping from name -> id
+map<string, long> createIdsFromNames(const Tree_t& taxonomy)
+{
+  long id = 0;
+  map<string,long> name_to_id;
+  for(auto nd: iter_pre_const(taxonomy))
+    if (nd->getName().size())
+    {
+      string name = nd->getName();
+      auto it = name_to_id.find(name);
+      if (it != name_to_id.end())
+	throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
+      name_to_id[name] = id++;
+    }
+    else if (nd->isTip())
+      throw OTCError()<<"Taxonomy tip has no label!";
+
+  return name_to_id;
+}  
+
+/// Set ids on the tree based on the name
+void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id)
+{
+  for(auto nd: iter_post(tree))
+    if (nd->getName().size())
+    {
+      string name = nd->getName();
+      auto it = name_to_id.find(name);
+      if (it == name_to_id.end())
+	throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
+      auto id = it->second;
+      nd->setOttId(id);
+      tree.getData().ottIdToNode[id] = nd;
+    }
+    else if (nd->isTip())
+      throw OTCError()<<"Tree tip has no label!";
+  
+  clearAndfillDesIdSets(tree);
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
                 "Takes at series of tree files, with possibly mulitple trees per file.\n"
@@ -425,42 +465,10 @@ int main(int argc, char *argv[]) {
     // Add fake Ott Ids to tips and compute desIds
     if (not requireOttIds)
     {
-      auto& taxonomy = trees.back();
-
-      // 1. Compute mapping from name -> id
-      long id = 1;
-      map<string,long> name_to_id;
-      for(auto nd: iter_pre(*taxonomy))
-	if (nd->getName().size())
-	{
-	  string name = nd->getName();
-	  auto it = name_to_id.find(name);
-	  if (it != name_to_id.end())
-	    throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
-	  name_to_id[name] = id++;
-	}
-	else if (nd->isTip())
-	  throw OTCError()<<"Taxonomy tip has no label!";
-
-      // 2. Set ids
+      // 1. Create mapping from taxonomy names to ids
+      auto name_to_id = createIdsFromNames(*trees.back());
       for(auto& tree: trees)
-	for(auto nd: iter_post(*tree))
-	  if (nd->getName().size())
-	  {
-	    string name = nd->getName();
-	    auto it = name_to_id.find(name);
-	    if (it == name_to_id.end())
-	      throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
-	    auto id = it->second;
-	    nd->setOttId(id);
-	    tree->getData().ottIdToNode[id] = nd;
-	  }
-	  else if (nd->isTip())
-	    throw OTCError()<<"Tree tip has no label!";
-
-      // 3. Compute DesIds.
-      for(auto& tree: trees)
-	clearAndfillDesIdSets(*tree);
+	setIdsFromNames(*tree, name_to_id);
     }
 
     auto tree = combine(trees);
