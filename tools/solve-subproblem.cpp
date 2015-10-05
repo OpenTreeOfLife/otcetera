@@ -316,9 +316,11 @@ bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg)
 
 bool synthesize_taxonomy = false;
 
-bool handleSynthesizeTaxonomy(OTCLI &, const std::string & arg)
+bool handleSynthesizeTaxonomy(OTCLI &, const std::string &arg)
 {
-  synthesize_taxonomy = get_bool(arg,"-T: ");
+  if (arg.size())
+    throw OTCError()<<"-T does not take an argument.";
+  synthesize_taxonomy = true;
   return true;
 }
 
