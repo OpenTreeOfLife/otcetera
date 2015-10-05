@@ -39,11 +39,11 @@ std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
 
 struct RSplit
 {
-  set<long> in;
-  set<long> out;
-  set<long> all;
+  set<int> in;
+  set<int> out;
+  set<int> all;
   RSplit() = default;
-  RSplit(const set<long>& i, const set<long>& a)
+  RSplit(const set<int>& i, const set<int>& a)
     :in(i),all(a)
   {
     out = set_difference_as_set(all,in);
@@ -58,12 +58,12 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-long merge_components(long c1, long c2, map<long,long>& component, map<long,list<long>>& elements)
+int merge_components(int c1, int c2, map<int,int>& component, map<int,list<int>>& elements)
 {
   if (elements[c2].size() > elements[c1].size())
     std::swap(c1,c2);
 
-  for(long i:elements[c2])
+  for(int i:elements[c2])
     component[i] = c1;
 
   elements[c1].splice(elements[c1].begin(), elements[c2]);
@@ -71,10 +71,10 @@ long merge_components(long c1, long c2, map<long,long>& component, map<long,list
   return c1;
 }
 
-bool empty_intersection(const set<long>& x, const set<long>& y)
+bool empty_intersection(const set<int>& x, const set<int>& y)
 {
-  std::set<long>::const_iterator i = x.begin();
-  std::set<long>::const_iterator j = y.begin();
+  std::set<int>::const_iterator i = x.begin();
+  std::set<int>::const_iterator j = y.begin();
   while (i != x.end() && j != y.end())
   {
     if (*i == *j)
@@ -88,7 +88,7 @@ bool empty_intersection(const set<long>& x, const set<long>& y)
 }
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<const RSplit*>& splits)
+unique_ptr<Tree_t> BUILD(const std::set<int>& tips, const vector<const RSplit*>& splits)
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
   tree->createRoot();
@@ -110,9 +110,9 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<const RSplit*>
   }
 
   // 2. Initialize the mapping from elements to components
-  map<long,long> component;      // element   -> component
-  map<long,list<long>> elements; // component -> elements
-  for(long i: tips)
+  map<int,int> component;      // element   -> component
+  map<int,list<int>> elements; // component -> elements
+  for(int i: tips)
   {
     component[i] = i;
     elements[i].push_back(i);
@@ -121,10 +121,10 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<const RSplit*>
   // 3. For each split, all the leaves in the include group must be in the same component
   for(const auto& split: splits)
   {
-    long c1 = -1;
-    for(long i: split->in)
+    int c1 = -1;
+    for(int i: split->in)
     {
-      long c2 = component[i];
+      int c2 = component[i];
       if (c1 != -1 and c1 != c2)
 	merge_components(c1,c2,component,elements);
       c1 = component[i];
@@ -132,27 +132,27 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<const RSplit*>
   }
 
   // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-  long first = *tips.begin();
+  int first = *tips.begin();
   if (elements[component[first]].size() == tips.size())
     return {};
 
   // 5. Create the set of tips in each connected component 
-  map<long,set<long>> subtips;
-  for(long c: tips)
+  map<int,set<int>> subtips;
+  for(int c: tips)
   {
     if (c != component[c]) continue;
     
-    set<long>& s = subtips[c];
-    for(long l: elements[c])
+    set<int>& s = subtips[c];
+    for(int l: elements[c])
       s.insert(l);
   }
 
   // 6. Determine the splits that are not satisfied yet and go into each component
-  map<long,vector<const RSplit*>> subsplits;
+  map<int,vector<const RSplit*>> subsplits;
   for(const auto& split: splits)
   {
-    long first = *split->in.begin();
-    long c = component[first];
+    int first = *split->in.begin();
+    int c = component[first];
 
     // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
     if (empty_intersection(split->out, subtips[c])) continue;
@@ -183,12 +183,41 @@ void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
 	n1->setName( n2->getName());
 }
 
+set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map)
+{
+  set<int> s2;
+  for(auto x: s1)
+  {
+    auto it = id_map.find(x);
+    assert(it != id_map.end());
+    s2.insert(it->second);
+  }
+  return s2;
+}
+
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
 {
-  // Standardize names to 0..n-1 for this subproblem
+  // 0. Standardize names to 0..n-1 for this subproblem
   const auto& taxonomy = trees.back();
   auto all_leaves = taxonomy->getRoot()->getData().desIds;
+
+  // index -> id
+  vector<long> ids;
+  // id -> index
+  map<long,int> id_map;
+  for(long id: all_leaves)
+  {
+    int i = ids.size();
+    id_map[id] = i;
+    ids.push_back(id);
+
+    assert(id_map[ids[i]] == i);
+    assert(ids[id_map[id]] == id);
+  }
+  auto remap = [&id_map](const set<long>& ids) {return remap_ids(ids,id_map);};
+  auto all_leaves_indices = remap(all_leaves);
   
   // 1. Find splits in order of input trees
   vector<RSplit> splits;
@@ -200,10 +229,11 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
     for(const auto& leaf: set_difference_as_set(leafTaxa, all_leaves))
       throw OTCError()<<"OTT Id "<<leaf<<" not in taxonomy!";
       
+    const auto leafTaxaIndices = remap(leafTaxa);
     for(auto nd: iter_post_const(*tree))
     {
-      const auto& descendants = nd->getData().desIds;
-      RSplit split{descendants, leafTaxa};
+      const auto& descendants = remap(nd->getData().desIds);
+      RSplit split{descendants, leafTaxaIndices};
       if (split.in.size()>1 and split.out.size())
       	splits.push_back(split);
     }
@@ -217,7 +247,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
   for(const auto& split: split_ptrs)
   {
     consistent.push_back(split);
-    auto result = BUILD(all_leaves, consistent);
+    auto result = BUILD(all_leaves_indices, consistent);
     if (not result)
     {
       consistent.pop_back();
@@ -228,7 +258,14 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
   }
 
   // 3. Construct final tree and add names
-  auto tree = BUILD(all_leaves, consistent);
+  auto tree = BUILD(all_leaves_indices, consistent);
+  for(auto nd: iter_pre(*tree))
+    if (nd->isTip())
+    {
+      int index = nd->getOttId();
+      nd->setOttId(ids[index]);
+    }
+
   add_names(tree, taxonomy);
   return tree;
 }
