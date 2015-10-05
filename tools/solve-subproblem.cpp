@@ -172,16 +172,6 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
   return tree;
 }
 
-
-/// Run the BUILD algorithm on the first n splits
-unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits, int n)
-{
-  vector<RSplit> splits2;
-  for(int i=0;i<n;i++)
-    splits2.push_back(splits[i]);
-  return BUILD(tips,splits2);
-}
-
 /// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
 void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
 {
