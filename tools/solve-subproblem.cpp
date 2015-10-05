@@ -66,7 +66,7 @@ int merge_components(int c1, int c2, map<int,int>& component, map<int,list<int>>
   for(int i:elements[c2])
     component[i] = c1;
 
-  elements[c1].splice(elements[c1].begin(), elements[c2]);
+  elements[c1].splice(elements[c1].end(), elements[c2]);
   
   return c1;
 }
