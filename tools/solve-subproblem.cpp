@@ -431,25 +431,23 @@ int main(int argc, char *argv[]) {
       long id = 1;
       map<string,long> name_to_id;
       for(auto nd: iter_pre(*taxonomy))
-	if (nd->isTip())
+	if (nd->getName().size())
 	{
 	  string name = nd->getName();
-	  if (not name.size())
-	    throw OTCError()<<"Taxonomy tip has no label or OTT id!";
 	  auto it = name_to_id.find(name);
 	  if (it != name_to_id.end())
 	    throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
 	  name_to_id[name] = id++;
 	}
+	else if (nd->isTip())
+	  throw OTCError()<<"Taxonomy tip has no label!";
 
       // 2. Set ids
       for(auto& tree: trees)
 	for(auto nd: iter_post(*tree))
-	  if (nd->isTip())
+	  if (nd->getName().size())
 	  {
 	    string name = nd->getName();
-	    if (not name.size())
-	      throw OTCError()<<"Tip has no label or OTT id!";
 	    auto it = name_to_id.find(name);
 	    if (it == name_to_id.end())
 	      throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
@@ -457,6 +455,8 @@ int main(int argc, char *argv[]) {
 	    nd->setOttId(id);
 	    tree->getData().ottIdToNode[id] = nd;
 	  }
+	  else if (nd->isTip())
+	    throw OTCError()<<"Tree tip has no label!";
 
       // 3. Compute DesIds.
       for(auto& tree: trees)
