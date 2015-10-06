@@ -37,16 +37,38 @@ std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
   return o;
 }
 
+template <typename T>
+std::ostream& operator<<(std::ostream& o, const std::vector<T>& s)
+{
+  auto it = s.begin();
+  o<<*it++;
+  for(; it != s.end(); it++)
+    o<<" "<<*it;
+  return o;
+}
+
+/// Create a SORTED vector from a set
+template <typename T>
+vector<T> set_to_vector(const set<T>& s)
+{
+  vector<T> v;
+  v.reserve(s.size());
+  std::copy(s.begin(), s.end(), std::back_inserter(v));
+  return v;
+}
+
 struct RSplit
 {
-  set<long> in;
-  set<long> out;
-  set<long> all;
+  vector<int> in;
+  vector<int> out;
+  vector<int> all;
   RSplit() = default;
-  RSplit(const set<long>& i, const set<long>& a)
-    :in(i),all(a)
+  RSplit(const set<int>& i, const set<int>& a)
   {
-    out = set_difference_as_set(all,in);
+    set<int> o = set_difference_as_set(a,i);
+    in  = set_to_vector(i);
+    out = set_to_vector(o);
+    all = set_to_vector(a);
     assert(in.size() + out.size() == all.size());
   }
 };
@@ -58,24 +80,27 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-long merge_components(long c1, long c2, map<long,long>& component, map<long,list<long>>& elements)
+int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& elements)
 {
   if (elements[c2].size() > elements[c1].size())
     std::swap(c1,c2);
 
-  for(long i:elements[c2])
+  for(int i:elements[c2])
     component[i] = c1;
 
-  elements[c1].splice(elements[c1].begin(), elements[c2]);
+  elements[c1].splice(elements[c1].end(), elements[c2]);
   
   return c1;
 }
 
-bool empty_intersection(const set<long>& x, const set<long>& y)
+template <typename T, typename U>
+bool sorted_empty_intersection(const T& x, const U& y)
 {
-  std::set<long>::const_iterator i = x.begin();
-  std::set<long>::const_iterator j = y.begin();
-  while (i != x.end() && j != y.end())
+  auto i = x.begin();
+  auto j = y.begin();
+  auto xe = x.end();
+  auto ye = y.end();
+  while (i != xe and j != ye)
   {
     if (*i == *j)
       return false;
@@ -87,8 +112,18 @@ bool empty_intersection(const set<long>& x, const set<long>& y)
   return true;
 }
 
+bool empty_intersection(const set<int>& xs, const vector<int>& ys)
+{
+  for(int y: ys)
+    if (xs.count(y))
+      return false;
+  return true;
+}
+
+vector<int> indices;
+
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits)
+unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits)
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
   tree->createRoot();
@@ -110,76 +145,86 @@ unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& split
   }
 
   // 2. Initialize the mapping from elements to components
-  map<long,long> component;      // element   -> component
-  map<long,list<long>> elements; // component -> elements
-  for(long i: tips)
+  vector<int> component;       // element index  -> component
+  vector<list<int>> elements;  // component -> element indices
+  for(int i=0;i<tips.size();i++)
   {
-    component[i] = i;
-    elements[i].push_back(i);
+    indices[tips[i]] = i;
+    component.push_back(i);
+    elements.push_back({i});
   }
 
   // 3. For each split, all the leaves in the include group must be in the same component
   for(const auto& split: splits)
   {
-    long c1 = -1;
-    for(long i: split.in)
+    int c1 = -1;
+    for(int i: split->in)
     {
-      long c2 = component[i];
+      int j = indices[i];
+      int c2 = component[j];
       if (c1 != -1 and c1 != c2)
 	merge_components(c1,c2,component,elements);
-      c1 = component[i];
+      c1 = component[j];
     }
   }
 
   // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-  long first = *tips.begin();
-  if (elements[component[first]].size() == tips.size())
+  if (elements[component[0]].size() == tips.size())
     return {};
 
-  // 5. Create the set of tips in each connected component 
-  map<long,set<long>> subtips;
-  for(long c: tips)
-  {
-    if (c != component[c]) continue;
-    
-    set<long>& s = subtips[c];
-    for(long l: elements[c])
-      s.insert(l);
-  }
+  // 5. Make a vector of labels for the partition components
+  vector<int> component_labels;                           // index -> component label
+  vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
+  for(int c=0;c<tips.size();c++)
+    if (c == component[c])
+    {
+      int index = component_labels.size();
+      component_labels.push_back(c);
+      component_label_to_index[c] = index;
+    }
 
-  // 6. Determine the splits that are not satisfied yet and go into each component
-  map<long,vector<RSplit>> subsplits;
+    
+  // 6. Create the vector of tips in each connected component 
+  vector<vector<int>> subtips(component_labels.size());
+  for(int i=0;i<component_labels.size();i++)
+  {
+    vector<int>& s = subtips[i];
+    int c = component_labels[i];
+    for(int j: elements[c])
+      s.push_back(tips[j]);
+  }
+  for(auto& s: subtips)
+    std::sort(s.begin(), s.end());
+
+  // 7. Determine the splits that are not satisfied yet and go into each component
+  vector<vector<const RSplit*>> subsplits(component_labels.size());
   for(const auto& split: splits)
   {
-    long first = *split.in.begin();
-    long c = component[first];
+    int first = indices[*split->in.begin()];
+    assert(first >= 0);
+    int c = component[first];
+    int i = component_label_to_index[c];
 
     // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-    if (empty_intersection(split.out, subtips[c])) continue;
+    if (sorted_empty_intersection(split->out, subtips[i])) continue;
 
-    subsplits[c].push_back(split);
+    subsplits[i].push_back(split);
   }
   
-  // 7. Recursively solve the sub-problems of the partition components
-  for(const auto& x: subtips)
+  // 8. Clear our map from id -> index, for use by subproblems.
+  for(int id: tips)
+    indices[id] = -1;
+  
+  // 9. Recursively solve the sub-problems of the partition components
+  for(int i=0;i<subtips.size();i++)
   {
-    auto subtree = BUILD(x.second, subsplits[x.first]);
+    auto subtree = BUILD(subtips[i], subsplits[i]);
     if (not subtree) return {};
 
     tree->addSubtree(tree->getRoot(), *subtree);
   }
 
   return tree;
-}
-
-
-/// Run the BUILD algorithm on the first n splits
-unique_ptr<Tree_t> BUILD(const std::set<long>& tips, const vector<RSplit>& splits, int n)
-{
-  vector<RSplit> splits2;
-  for(int i=0;i<n;i++)
-    splits2.push_back(splits[i]);
-  return BUILD(tips,splits2);
 }
 
 /// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
@@ -193,12 +238,46 @@ void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
 	n1->setName( n2->getName());
 }
 
+set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map)
+{
+  set<int> s2;
+  for(auto x: s1)
+  {
+    auto it = id_map.find(x);
+    assert(it != id_map.end());
+    s2.insert(it->second);
+  }
+  return s2;
+}
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
 {
-  // Standardize names to 0..n-1 for this subproblem
+  // 0. Standardize names to 0..n-1 for this subproblem
   const auto& taxonomy = trees.back();
   auto all_leaves = taxonomy->getRoot()->getData().desIds;
+
+  // index -> id
+  vector<long> ids;
+  // id -> index
+  map<long,int> id_map;
+  for(long id: all_leaves)
+  {
+    int i = ids.size();
+    id_map[id] = i;
+    ids.push_back(id);
+
+    assert(id_map[ids[i]] == i);
+    assert(ids[id_map[id]] == id);
+  }
+  auto remap = [&id_map](const set<long>& ids) {return remap_ids(ids,id_map);};
+  vector<int> all_leaves_indices;
+  for(int i=0;i<all_leaves.size();i++)
+    all_leaves_indices.push_back(i);
+
+  indices.resize(all_leaves.size());
+  for(auto& i: indices)
+    i=-1;
   
   // 1. Find splits in order of input trees
   vector<RSplit> splits;
@@ -210,74 +289,88 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
     for(const auto& leaf: set_difference_as_set(leafTaxa, all_leaves))
       throw OTCError()<<"OTT Id "<<leaf<<" not in taxonomy!";
       
+    const auto leafTaxaIndices = remap(leafTaxa);
     for(auto nd: iter_post_const(*tree))
     {
-      const auto& descendants = nd->getData().desIds;
-      RSplit split{descendants, leafTaxa};
+      const auto& descendants = remap(nd->getData().desIds);
+      RSplit split{descendants, leafTaxaIndices};
       if (split.in.size()>1 and split.out.size())
       	splits.push_back(split);
     }
   }
+  vector<const RSplit*> split_ptrs;
+  for(const auto& split: splits)
+    split_ptrs.push_back(&split);
 
   // 2. Add splits sequentially if they are consistent with previous splits.
-  vector<RSplit> consistent;
-  for(const auto& split: splits)
+  vector<const RSplit*> consistent;
+  for(const auto& split: split_ptrs)
   {
     consistent.push_back(split);
-    auto result = BUILD(all_leaves, consistent);
+    auto result = BUILD(all_leaves_indices, consistent);
     if (not result)
     {
       consistent.pop_back();
-      LOG(DEBUG)<<"Reject: "<<split<<"\n";
+      LOG(DEBUG)<<"Reject: "<<*split<<"\n";
     }
     else
-      LOG(DEBUG)<<"Keep:   "<<split<<"\n";
+      LOG(DEBUG)<<"Keep:   "<<*split<<"\n";
   }
 
   // 3. Construct final tree and add names
-  auto tree = BUILD(all_leaves, consistent);
+  auto tree = BUILD(all_leaves_indices, consistent);
+  for(auto nd: iter_pre(*tree))
+    if (nd->isTip())
+    {
+      int index = nd->getOttId();
+      nd->setOttId(ids[index]);
+    }
+
   add_names(tree, taxonomy);
   return tree;
 }
 
-bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg)
+bool get_bool(const string& arg, const string& context="")
 {
   if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
-    otCLI.getParsingRules().requireOttIds = true;
-  else if (arg == "false" or arg == "no" or arg == "False" or arg == "no")
-    otCLI.getParsingRules().requireOttIds = false;
-  else
+    return true;
+  else if (arg == "false" or arg == "no" or arg == "False" or arg == "No")
     return false;
-    
+  else
+    throw OTCError()<<context<<"'"<<arg<<"' is not a recognized boolean value.";
+}
+
+bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg)
+{
+  otCLI.getParsingRules().requireOttIds = get_bool(arg,"-o: ");
   return true;
 }
 
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg)
 {
-  if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = true;
-  else if (arg == "false" or arg == "no" or arg == "False" or arg == "no")
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = false;
-  else
-    return false;
-    
+  otCLI.getParsingRules().pruneUnrecognizedInputTips = get_bool(arg,"-p: ");
   return true;
 }
 
 bool synthesize_taxonomy = false;
 
-bool handleSynthesizeTaxonomy(OTCLI &, const std::string & arg)
+bool handleSynthesizeTaxonomy(OTCLI &, const std::string &arg)
 {
-  if (arg == "true" or "yes" or "True" or "Yes")
-    synthesize_taxonomy = true;
-  else if (arg == "false" or "no" or "False" or "no")
-    synthesize_taxonomy = false;
-  else
-    return false;
-    
+  if (arg.size())
+    throw OTCError()<<"-T does not take an argument.";
+  synthesize_taxonomy = true;
   return true;
 }
 
+bool cladeTips = true;
+
+bool handleCladeTips(OTCLI &, const std::string & arg)
+{
+  cladeTips = get_bool(arg,"-i: ");
+  return true;
+}
+
+/// Create an unresolved taxonomy out of all the input trees.
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids)
 {
   std::unique_ptr<Tree_t> tree(new Tree_t());
@@ -329,30 +422,79 @@ string newick(const Tree_t &t)
   return s.str();
 }
 
+/// Create a mapping from name -> id
+map<string, long> createIdsFromNames(const Tree_t& taxonomy)
+{
+  long id = 0;
+  map<string,long> name_to_id;
+  for(auto nd: iter_pre_const(taxonomy))
+    if (nd->getName().size())
+    {
+      string name = nd->getName();
+      auto it = name_to_id.find(name);
+      if (it != name_to_id.end())
+	throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
+      name_to_id[name] = id++;
+    }
+    else if (nd->isTip())
+      throw OTCError()<<"Taxonomy tip has no label!";
+
+  return name_to_id;
+}  
+
+/// Set ids on the tree based on the name
+void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id)
+{
+  for(auto nd: iter_post(tree))
+    if (nd->getName().size())
+    {
+      string name = nd->getName();
+      auto it = name_to_id.find(name);
+      if (it == name_to_id.end())
+	throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
+      auto id = it->second;
+      nd->setOttId(id);
+      tree.getData().ottIdToNode[id] = nd;
+    }
+    else if (nd->isTip())
+      throw OTCError()<<"Tree tip has no label!";
+  
+  clearAndfillDesIdSets(tree);
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
-                "takes at series of tree files. Each is treated as a subproblem.\n",
+                "Takes a series of tree files.\n"
+                "Files are concatenated and the combined list treated as a single subproblem.\n"
+                "Trees should occur in order of priority, with the taxonomy last.\n",
 		"subproblem.tre");
 
     otCLI.addFlag('o',
 		  "Require OTT ids.  Defaults to true",
 		  handleRequireOttIds,
 		  true);
+
     otCLI.addFlag('p',
 		  "Prune unrecognized tips.  Defaults to false",
 		  handlePruneUnrecognizedTips,
 		  true);
+
+    otCLI.addFlag('i',
+		  "Tips may be internal nodes on the taxnomy.  Defaults to true",
+		  handleCladeTips,
+		  true);
+
     otCLI.addFlag('T',
-		  "Synthesize unresolved taxonomy from all mentioned taxa.  Defaults to false",
+		  "Synthesize an unresolved taxonomy from all mentioned tips.  Defaults to false",
 		  handleSynthesizeTaxonomy,
 		  false);
 
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
-    
+
     if (argc < 2)
 	throw OTCError("No subproblem provided!");
-    
+
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
     if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
@@ -364,46 +506,21 @@ int main(int argc, char *argv[]) {
       trees.push_back(make_unresolved_tree(trees,requireOttIds));
       LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
     }
-      
+
     // Add fake Ott Ids to tips and compute desIds
     if (not requireOttIds)
     {
-      auto& taxonomy = trees.back();
-
-      // 1. Compute mapping from name -> id
-      long id = 1;
-      map<string,long> name_to_id;
-      for(auto nd: iter_pre(*taxonomy))
-	if (nd->isTip())
-	{
-	  string name = nd->getName();
-	  if (not name.size())
-	    throw OTCError()<<"Taxonomy tip has no label or OTT id!";
-	  auto it = name_to_id.find(name);
-	  if (it != name_to_id.end())
-	    throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
-	  name_to_id[name] = id++;
-	}
-
-      // 2. Set ids
+      auto name_to_id = createIdsFromNames(*trees.back());
       for(auto& tree: trees)
-	for(auto nd: iter_post(*tree))
-	  if (nd->isTip())
-	  {
-	    string name = nd->getName();
-	    if (not name.size())
-	      throw OTCError()<<"Tip has no label or OTT id!";
-	    auto it = name_to_id.find(name);
-	    if (it == name_to_id.end())
-	      throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
-	    auto id = it->second;
-	    nd->setOttId(id);
-	  }
-
-      // 3. Compute DesIds.
-      for(auto& tree: trees)
-	clearAndfillDesIdSets(*tree);
+	setIdsFromNames(*tree, name_to_id);
     }
+
+    // Check if trees are mapping to non-terminal taxa, and either fix the situation or die.
+    for(int i=0;i<trees.size()-1;i++)
+      if (cladeTips)
+	expandOTTInternalsWhichAreLeaves(*trees[i], *trees.back());
+      else
+	requireTipsToBeMappedToTerminalTaxa(*trees[i], *trees.back());
 
     auto tree = combine(trees);
     

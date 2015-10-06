@@ -22,30 +22,16 @@ struct ParsingRules {
 
 typedef std::shared_ptr<const std::string> ConstStrPtr;
 struct FilePosStruct {
-    FilePosStruct()
-        :pos(0U),
-        lineNumber(0U),
-        colNumber(0U),
-        filepath(ConstStrPtr(nullptr)) {
-    }
-    FilePosStruct(const ConstStrPtr fp)
-        :pos(0U),
-        lineNumber(0U),
-        colNumber(0U),
-        filepath(fp) {
-    }
-    FilePosStruct(std::size_t position, std::size_t line, std::size_t column, const ConstStrPtr fp)
+    FilePosStruct() = default;
+    FilePosStruct(const FilePosStruct&) = default;
+    FilePosStruct(const ConstStrPtr fp):filepath(fp) {}
+    FilePosStruct(std::size_t position, std::size_t line, std::size_t column, const ConstStrPtr& fp)
         :pos(position),
         lineNumber(line),
         colNumber(column),
         filepath(fp) {
     }
-    FilePosStruct(const FilePosStruct &other)
-        :pos(other.pos),
-        lineNumber(other.lineNumber),
-        colNumber(other.colNumber),
-        filepath(other.filepath) {
-    }
+
     void setLocationInFile(const FilePosStruct & other) {
         pos = other.pos;
         lineNumber = other.lineNumber;
@@ -72,10 +58,10 @@ struct FilePosStruct {
         return message;
     }
 
-    std::size_t pos;
-    std::size_t lineNumber;
-    std::size_t colNumber;
-    ConstStrPtr filepath;
+    std::size_t pos = 0;
+    std::size_t lineNumber = 0;
+    std::size_t colNumber = 0;
+    ConstStrPtr filepath = nullptr;
 };
 
 class OTCParsingError: public OTCError {
