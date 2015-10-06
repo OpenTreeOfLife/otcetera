@@ -206,7 +206,6 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     int i = component_label_to_index[c];
 
     // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-    assert(sorted_empty_intersection(split->out, subtips[i]) == empty_intersection(split->out, subtips[i]));
     if (sorted_empty_intersection(split->out, subtips[i])) continue;
 
     subsplits[i].push_back(split);
