@@ -370,6 +370,18 @@ bool handleCladeTips(OTCLI &, const std::string & arg)
   return true;
 }
 
+bool writeStandardized = false;
+
+bool handleStandardize(OTCLI& otCLI, const std::string & arg)
+{
+  if (arg.size())
+    throw OTCError()<<"-S does not take an argument.";
+  writeStandardized = true;
+  otCLI.getParsingRules().requireOttIds = false;
+  return true;
+}
+
+
 /// Create an unresolved taxonomy out of all the input trees.
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids)
 {
@@ -462,6 +474,22 @@ void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id)
   clearAndfillDesIdSets(tree);
 }
 
+string addOttId(const string s, long id)
+{
+  string tag = "ott" + std::to_string(id);
+  if (not s.size())
+    return tag;
+  else
+    return s + " " + tag;
+}
+
+void relabelWithOttId(Tree_t& T)
+{
+  for(auto nd: iter_pre(T))
+    if (nd->hasOttId())
+      nd->setName(addOttId(nd->getName(),nd->getOttId()));
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
                 "Takes a series of tree files.\n"
@@ -487,6 +515,11 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('T',
 		  "Synthesize an unresolved taxonomy from all mentioned tips.  Defaults to false",
 		  handleSynthesizeTaxonomy,
+		  false);
+
+    otCLI.addFlag('S',
+		  "Write out a standardized subproblem and exit",
+		  handleStandardize,
 		  false);
 
     vector<unique_ptr<Tree_t>> trees;
@@ -515,6 +548,16 @@ int main(int argc, char *argv[]) {
 	setIdsFromNames(*tree, name_to_id);
     }
 
+    if (writeStandardized)
+    {
+      for(const auto& tree: trees)
+      {
+	relabelWithOttId(*tree);
+	std::cout<<newick(*tree)<<"\n";
+      }	
+      exit(0);
+    }
+    
     // Check if trees are mapping to non-terminal taxa, and either fix the situation or die.
     for(int i=0;i<trees.size()-1;i++)
       if (cladeTips)
