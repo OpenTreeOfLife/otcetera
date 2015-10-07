@@ -425,9 +425,9 @@ string newick(const Tree_t &t)
 /// Create a mapping from name -> id
 map<string, long> createIdsFromNames(const Tree_t& taxonomy)
 {
-  long id = 0;
+  long id = 1;
   map<string,long> name_to_id;
-  for(auto nd: iter_pre_const(taxonomy))
+  for(auto nd: iter_post_const(taxonomy))
     if (nd->getName().size())
     {
       string name = nd->getName();
