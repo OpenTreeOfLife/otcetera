@@ -260,12 +260,14 @@ the split set is consistent using the BUILD algorithm.
 
 Non-terminal taxa in the input trees are allowed if they occur in the taxonomy.  Each terminal
 taxon contained in the non-terminal taxon is attached to the parent of the non-terminal taxon.
-The non-terminal taxon is them removed.
+The non-terminal taxon is them removed.  This behavior can be changed to reject non-terminal taxa
+with
+  * `-ifalse` for rejecting non-terminal taxa
 
 Flags allow running the solver on non-standard input.
   * `-ofalse` for handling tree files without OTT ids
-  * `T` for handling subproblems without a taxonomy.
-  * `S` writes out a standardized subproblem instead of running a solver.
+  * `-T` for handling subproblems without a taxonomy.
+  * `-S` writes out a standardized subproblem instead of running a solver.
 
 ## Miscellaneous tree manipulations and tree statistics
 
