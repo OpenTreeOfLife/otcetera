@@ -246,6 +246,27 @@ should be an input tree filepath. Each output will have:
 `otc-scaffolded-supertree` is incomplete. If completed it will produces a supertree
 of the its inputs.
 
+### Solving a subproblem
+
+    otc-solve-subproblem subproblem.tre
+    otc-solve-subproblem tree1.tre tree2.tre taxonomy.tre
+
+This will construct a synthesis tree and write it out in newick format.  Here subproblem.tre
+contains a list of newick trees ending in the taxonomy.  If more than one tree file is supplied,
+the trees are concatenated to form a single subproblem.  Earlier trees are ranking higher.
+
+The current solution algorithm attempts to add splits one-at-a-time, checking to see whether
+the split set is consistent using the BUILD algorithm.
+
+Non-terminal taxa in the input trees are allowed if they occur in the taxonomy.  Each terminal
+taxon contained in the non-terminal taxon is attached to the parent of the non-terminal taxon.
+The non-terminal taxon is them removed.
+
+Flags allow running the solver on non-standard input.
+  * `-ofalse` for handling tree files without OTT ids
+  * `T` for handling subproblems without a taxonomy.
+  * `S` writes out a standardized subproblem instead of running a solver.
+
 ## Miscellaneous tree manipulations and tree statistics
 
 ### Calculating stats for the subproblems
