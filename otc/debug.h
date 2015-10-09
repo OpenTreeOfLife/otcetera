@@ -24,7 +24,7 @@ bool checkNodePointers(const T & nd) {
 
 template<typename T>
 bool checkAllNodePointers(const T & tree) {
-    auto ns = tree.getSetOfAllAttachedNodes();
+    auto ns = tree.getAllAttachedNodes();
     for (auto nd : ns) {
         if (!checkNodePointers(*nd)) {
             return false;
@@ -91,7 +91,7 @@ bool checkPostorder(const T & tree) {
 
 template<typename T>
 bool checkChildIter(const T & tree) {
-    auto ns = tree.getSetOfAllAttachedNodes();
+    auto ns = tree.getAllAttachedNodes();
     for (auto nd : ns) {
         auto nc = nd->getOutDegree();
         auto v = 0U;

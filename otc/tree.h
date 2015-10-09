@@ -319,8 +319,6 @@ class RootedTree {
 	void addSubtree(node_type* par, RootedTree<T,U>& T2) {
   	    node_type* c = T2.root;
 	    T2.root = nullptr;
-	    allNodes.insert(T2.allNodes.begin(), T2.allNodes.end());
-	    T2.allNodes.clear();
 
 	    par->addChild(c);
 	}
@@ -344,8 +342,8 @@ class RootedTree {
             return this->data;
         }
         void _pruneAndDangle(node_type * nd) {
-            assert(contains(allNodes, nd));
-            auto p = nd->getParent();
+	    assert(vcontains(getAllAttachedNodes(), (const node_type*)nd));
+	    auto p = nd->getParent();
             if (p == nullptr) {
                 root = nullptr;
                 return;
@@ -353,20 +351,15 @@ class RootedTree {
             p->removeChild(nd);
         }
         void _pruneAndDelete(node_type * nd) {
-            assert(contains(allNodes, nd));
-            auto p = nd->getParent();
-            if (p == nullptr) {
-                clear();
-                return;
-            }
-            p->removeChild(nd);
-            deletePrunedSubtreeNodes(nd);
+	    auto nodes = getSubtreeNodes(nd);
+	    _pruneAndDangle(nd);
+	    for(auto nd: nodes)
+	        delete nd;
         }
         bool isDetached(node_type * nd) {
             return contains(detached, nd);
         }
     protected:
-        std::set<node_type *> allNodes;
         node_type * root;
         U data;
         std::string name;
@@ -381,41 +374,40 @@ class RootedTree {
         }
         node_type * allocNewNode(node_type *p) {
             node_type * nd = new node_type(p);
-            allNodes.insert(nd);
             return nd;
         }
         void clear() {
+	    for(auto nd: getAllAttachedNodes())
+	        delete nd;
+
             root = NULL;
-            for (auto nIt : allNodes) {
-                delete nIt;
-            }
-            allNodes.clear();
+        }
+	std::vector<const node_type *> getAllAttachedNodes() const {
+	    return getSubtreeNodes(root);
+	}
+	  
+        std::vector<const node_type *> getSubtreeNodes(node_type* p) const {
+	    std::vector<const node_type*> nodes;
+	    if (p)
+	        nodes.push_back(p);
+	    for(int i=0;i<nodes.size();i++)
+	      for(auto n = nodes[i]->lChild; n; n = n->rSib)
+		nodes.push_back(n);
+            return nodes;
         }
         std::set<const node_type *> getSetOfAllAttachedNodes() const {
-            std::set<const node_type *> r;
-            for (auto nd : allNodes) {
-                if (detached.find(nd) == detached.end()) {
-                    r.insert(nd);
-                }
-            }
-            return r;
+	    std::set<const node_type*> nodes;
+	    for(auto nd: getAllAttachedNodes())
+	      nodes.insert(nd);
+	    return nodes;
         }
         void markAsDetached(node_type * nd) {
             detached.insert(nd);
         }
         void markAsAttached(node_type * nd) {
-            detached.erase(nd);
+	  detached.erase(nd);
         }
     private:
-        //@ tmp recursive!
-        void deletePrunedSubtreeNodes(node_type * nd) {
-            allNodes.erase(nd);
-            auto c = nd->getFirstChild();
-            while (c != nullptr) {
-                deletePrunedSubtreeNodes(c);
-                c = c->getNextSib();
-            }
-        }
         RootedTree<T, U>(const RootedTree<T, U> &) = delete;
         RootedTree<T, U> & operator=(const RootedTree<T, U> &) = delete;
 };
