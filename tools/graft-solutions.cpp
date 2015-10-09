@@ -18,6 +18,8 @@ using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
 
+bool verbose = false;
+
 template <typename T>
 std::ostream& operator<<(std::ostream& o, const std::set<T>& s)
 {
@@ -163,6 +165,8 @@ int main(int argc, char *argv[]) {
     if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
       std::exit(1);
 
+    verbose = otCLI.verbose;
+
     if (trees.empty())
         throw OTCError("No trees loaded!");
 
@@ -196,6 +200,8 @@ int main(int argc, char *argv[]) {
       long id = trees[i]->getRoot()->getOttId();
       if (not my_leaf.count(id))
       {
+	if (otCLI.verbose)
+	  LOG(INFO)<<"OTT Id "<<id<<" is not a leaf in any subproblem.  Must be a root.\n";
 	roots.push_back({});
 	std::swap(roots.back(),trees[i]);
       }
