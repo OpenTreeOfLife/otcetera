@@ -172,6 +172,12 @@ int main(int argc, char *argv[]) {
 
     bool requireOttIds = otCLI.getParsingRules().requireOttIds;
 
+    for(int i=0;i<trees.size();i++)
+      if (trees[i]->getRoot()->getName().empty())
+	throw OTCError()<<"Tree "<<i+1<<" has an unlabelled root!";
+      else if (requireOttIds and not trees[i]->getRoot()->hasOttId())
+	throw OTCError()<<"Tree "<<i+1<<" has no OTT Id for the root!";
+
     if (not requireOttIds)
     {
       auto name_to_id = createIdsFromNames(trees);
