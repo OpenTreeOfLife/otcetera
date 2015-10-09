@@ -427,7 +427,6 @@ inline void cullRefsToNodeFromData(RootedTree<RTNodeNoData, RTreeOttIDMapping<RT
 template<>
 inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, 
                                    RootedTreeNode<RTSplits> *nd)  {
-    typedef RootedTreeNode<RTSplits> node_t;
     assert(nd != nullptr);
     if (nd->hasOttId()) {
         tree.getData().ottIdToNode.erase(nd->getOttId());
