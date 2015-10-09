@@ -141,7 +141,7 @@ bool handleRootName(OTCLI& otCLI, const std::string & arg)
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-graft-solutions",
                 "Takes a series of tree files, which are treated as subproblem solutions.\n"
-                "Each subproblem tree should have an OTT Id at the root.\n",
+                "Each solution tree should have an OTT Id at the root.\n",
 		"solutions.tre");
 
     otCLI.addFlag('o',
