@@ -546,6 +546,9 @@ int main(int argc, char *argv[]) {
     if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
       std::exit(1);
 
+    if (trees.empty())
+        throw OTCError("No trees loaded!");
+
     bool requireOttIds = otCLI.getParsingRules().requireOttIds;
     if (synthesize_taxonomy)
     {
