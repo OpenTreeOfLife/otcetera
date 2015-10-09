@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
 	{
 	  assert(nd->hasOttId());
 	  long id = nd->getOttId();
-	  assert(myleaf.find(id) == myleaf.end());
+	  assert(my_leaf.find(id) == my_leaf.end());
 	  my_leaf[id] = nd;
 	}
 
