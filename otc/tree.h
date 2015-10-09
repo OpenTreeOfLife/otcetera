@@ -409,12 +409,27 @@ class RootedTree {
 class RTNodeNoData{};
 class RTreeNoData{};
 
-template<typename T, typename U>
-void addSubtree(typename RootedTree<T,U>::node_type* par, RootedTree<T,U>& T2)
+template<typename Tree>
+void addSubtree(typename Tree::node_type* par, Tree& T2)
 {
     auto c = T2.getRoot();
     T2._pruneAndDangle(c);
     par->addChild(c);
+}
+
+template<typename Tree>
+void replaceWithSubtree(typename Tree::node_type* n, Tree& T2)
+{
+    // Get the parent of the tip we are replacing
+    auto p = n->getParent();
+    // Remove the data from T2 and attach it to this parent
+    auto c = T2.getRoot();
+    T2._pruneAndDangle(c);
+    p->addChild(c);
+    // Remove the old child from under p
+    p->removeChild(n);
+    // Make the old child the root of T2, which will handle deleting it
+    T2._setRoot(n);
 }
 
 } // namespace otc
