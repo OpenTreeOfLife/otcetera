@@ -221,7 +221,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     auto subtree = BUILD(subtips[i], subsplits[i]);
     if (not subtree) return {};
 
-    tree->addSubtree(tree->getRoot(), *subtree);
+    addSubtree(tree->getRoot(), *subtree);
   }
 
   return tree;

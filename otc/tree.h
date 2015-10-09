@@ -316,12 +316,6 @@ class RootedTree {
             par->addChild(c);
             return c;
         }
-	void addSubtree(node_type* par, RootedTree<T,U>& T2) {
-  	    node_type* c = T2.root;
-	    T2.root = nullptr;
-
-	    par->addChild(c);
-	}
         node_type * createNode(node_type *par) {
             auto c = this->allocNewNode(par);
             if (par != nullptr) {
@@ -414,6 +408,14 @@ class RootedTree {
 
 class RTNodeNoData{};
 class RTreeNoData{};
+
+template<typename T, typename U>
+void addSubtree(typename RootedTree<T,U>::node_type* par, RootedTree<T,U>& T2)
+{
+    auto c = T2.getRoot();
+    T2._pruneAndDangle(c);
+    par->addChild(c);
+}
 
 } // namespace otc
 #endif
