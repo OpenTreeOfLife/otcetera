@@ -381,6 +381,14 @@ bool handleStandardize(OTCLI& otCLI, const std::string & arg)
   return true;
 }
 
+string rootName = "";
+
+bool handleRootName(OTCLI& otCLI, const std::string & arg)
+{
+  rootName = arg;
+  return true;
+}
+
 
 /// Create an unresolved taxonomy out of all the input trees.
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids)
@@ -512,6 +520,11 @@ int main(int argc, char *argv[]) {
 		  handleCladeTips,
 		  true);
 
+    otCLI.addFlag('n',
+		  "Rename the root to this name",
+		  handleRootName,
+		  true);
+
     otCLI.addFlag('T',
 		  "Synthesize an unresolved taxonomy from all mentioned tips.  Defaults to false",
 		  handleSynthesizeTaxonomy,
@@ -567,6 +580,10 @@ int main(int argc, char *argv[]) {
 
     auto tree = combine(trees);
     
+    if (not rootName.empty())
+      tree->getRoot()->setName(rootName);
+
     writeTreeAsNewick(std::cout, *tree);
+
     std::cout<<"\n";
 }
