@@ -17,6 +17,8 @@ using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
 
+bool verbose = false;
+
 template <typename T>
 std::ostream& operator<<(std::ostream& o, const std::set<T>& s)
 {
@@ -311,10 +313,10 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
     if (not result)
     {
       consistent.pop_back();
-      LOG(DEBUG)<<"Reject: "<<*split<<"\n";
+      if (verbose) LOG(INFO)<<"Reject: "<<*split<<"\n";
     }
     else
-      LOG(DEBUG)<<"Keep:   "<<*split<<"\n";
+      if (verbose) LOG(INFO)<<"Keep:   "<<*split<<"\n";
   }
 
   // 3. Construct final tree and add names
@@ -545,6 +547,8 @@ int main(int argc, char *argv[]) {
     // Is it possible to read a single subproblem from cin?
     if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
       std::exit(1);
+
+    verbose = otCLI.verbose;
 
     if (trees.empty())
         throw OTCError("No trees loaded!");
