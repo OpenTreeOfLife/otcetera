@@ -82,6 +82,9 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     using ListTreeNdPair = std::list<TreeNdPair>;
     std::map<RootedTreeNodeNoData *, ListTreeNdPair> nonTermToMappedPhylo;
     std::string exportDir;
+    std::ofstream nonEmptyFileStream;
+    std::string outputNonEmptyTreeOutput;
+
     virtual ~NonTerminalsToExemplarsState(){}
     NonTerminalsToExemplarsState()
         :numErrors(0),
@@ -164,6 +167,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 return false;
             }
         }
+        nonEmptyFileStream.close();
         return true;
     }
     
@@ -171,6 +175,9 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::processTaxonomyTree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
         otCLI.getParsingRules().setOttIdForInternals = false;
+        if (!outputNonEmptyTreeOutput.empty()) {
+            nonEmptyFileStream.open(outputNonEmptyTreeOutput.c_str());
+        }
         return r;
     }
 
@@ -186,7 +193,9 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         // Store the tree's filename
         raw->setName(otCLI.currentFilename);
         std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
+        auto nleaves = 0;
         for (auto nd : iter_leaf(*raw)) {
+            nleaves += 1;
             auto ottId = nd->getOttId();
             auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
             assert(taxoNode != nullptr);
@@ -199,10 +208,15 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 nonTermToMappedPhylo[taxoNode].push_back(tnp);
             }
         }
+        if (!outputNonEmptyTreeOutput.empty()) {
+            nonEmptyFileStream << otCLI.currentFilename << '\n';
+            nonEmptyFileStream.flush();
+        }
         return true;
     }
 };
 
+bool handleNonemptyTreeOutput(OTCLI & otCLI, const std::string &narg);
 bool handleExportModified(OTCLI & otCLI, const std::string &narg);
 bool handleStdout(OTCLI & otCLI, const std::string &narg);
 
@@ -217,9 +231,19 @@ bool handleExportModified(OTCLI & otCLI, const std::string &narg) {
     NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
     assert(proc != nullptr);
     if (narg.empty()) {
-        throw OTCError("Expecting a list of IDs after the -b argument.");
+        throw OTCError("Expecting a list of IDs after the -e argument.");
     }
     proc->exportDir = narg;
+    return true;
+}
+
+bool handleNonemptyTreeOutput(OTCLI & otCLI, const std::string &narg) {
+    NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
+    assert(proc != nullptr);
+    if (narg.empty()) {
+        throw OTCError("Expecting a list of IDs after the -n argument.");
+    }
+    proc->outputNonEmptyTreeOutput = narg;
     return true;
 }
 
@@ -245,5 +269,9 @@ int main(int argc, char *argv[]) {
                   " requests that standard output stream, rather than the export directory, be used for all output.",
                   handleStdout,
                   false);
+    otCLI.addFlag('n',
+                  "ARG is and output file that will list the filename of input tree that was not empty",
+                  handleNonemptyTreeOutput,
+                  true);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);
 }
