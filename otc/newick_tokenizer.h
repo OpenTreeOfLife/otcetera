@@ -357,7 +357,7 @@ inline long ottIDFromName(const std::string & n) {
         }
     }
     if (currInd < 3) {
-        return 2;
+        return -2;
     }
     if (currInd >= 3 and strncmp(c+currInd-3,"ott",3) != 0) return -2;
     if (currInd > 3 and strchr("_ \t",c[currInd-4]) == 0) return -2;
