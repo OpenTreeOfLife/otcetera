@@ -384,7 +384,7 @@ class RootedTree {
 	    std::vector<const node_type*> nodes;
 	    if (p)
 	        nodes.push_back(p);
-	    for(int i=0;i<nodes.size();i++)
+	    for(std::size_t i=0;i<nodes.size();i++)
 	      for(auto n = nodes[i]->lChild; n; n = n->rSib)
 		nodes.push_back(n);
             return nodes;

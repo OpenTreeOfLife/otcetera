@@ -166,6 +166,13 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         }
         return true;
     }
+    
+    bool processTaxonomyTree(OTCLI & otCLI) override {
+        bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::processTaxonomyTree(otCLI);
+        // we can ignore the internal node labels for the non-taxonomic trees
+        otCLI.getParsingRules().setOttIdForInternals = false;
+        return r;
+    }
 
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedEmptyNodes> treeup) override {
         assert(treeup != nullptr);
