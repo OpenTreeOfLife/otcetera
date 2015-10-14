@@ -289,6 +289,28 @@ As of 5, May 2015, the columns of the report are:
 
 Use the `-h` option to see an explanation of the columns if they differ from this list.
 
+### Grafting subproblems back together
+This works on the outputs of `otc-solve-subproblem`.  Running
+
+```sh
+	otc-graft-solutions ott*-solution.tre > grafted_solution.tre
+```
+or
+```sh
+	cat ott*-solution.tre > solutions.tre
+	otc-graft-solutions solutions.tre > grafted_solution.tre
+```
+will produce a newick tree file containing the grafted solution.
+
+If the sub-problems do not connect into a single component, the program will exit
+with error code 1.  The program will write multiple trees, where each tree is a
+connected component whose root is not found in the other trees.
+
+The `-n` argument can be used to name the root if desired:
+
+```sh
+	otc-graft-solutions solutions.tre -nlife > grafted_solution.tre
+```
 
 ### getting the full distribution of out degree counts for a tree
 
