@@ -339,6 +339,7 @@ class NewickTokenizer {
         FilePosStruct initPos;
 };
 
+/// Get OTT Id from a string of the form (ott######) or (.......[ \t_]ott#####).
 inline long ottIDFromName(const std::string & n) {
     if (n.empty()) {
         return -1;
@@ -360,10 +361,22 @@ inline long ottIDFromName(const std::string & n) {
         return -2;
     }
     if (currInd >= 3 and strncmp(c+currInd-3,"ott",3) != 0) return -2;
+    // Valid separators between ott####### and previous characters.
     if (currInd > 3 and strchr("_ \t",c[currInd-4]) == 0) return -2;
     long conv = -2;
     auto r = char_ptr_to_long(c + currInd, &conv);
     assert(r);
+    return conv;
+}
+
+/// Get the OTT Id from a string ###### consisting of digits only, with no whitespace or other characters.
+inline long stringToOttID(const std::string & n) {
+    if (n.empty()) {
+        return -1;
+    }
+    long conv = -2;
+    // If conversion does not consume the entire string, conv is unchanged.
+    char_ptr_to_long(n.c_str(), &conv);
     return conv;
 }
 

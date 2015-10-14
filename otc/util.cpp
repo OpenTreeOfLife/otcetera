@@ -145,13 +145,10 @@ std::list<std::string> split_string(const std::string &s, const char delimiter)
 std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimiter) {
     std::set<long> ottIds;
     std::list<std::string> idList = split_string(str, delimiter);
-    for (const auto & ids : idList) {
-        long p = ottIDFromName(ids);
-        if (p < 1) {
-            std::string m = "Expecting each line to end with an OTT Id. Found: ";
-            m +=  ids;
-            throw OTCError(m);
-        }
+    for (const auto & id : idList) {
+        long p = stringToOttID(id);
+        if (p < 0) 
+	    throw OTCError()<<"Expecting an OTT Id.  Found: '"<<id<<"'";
         ottIds.insert(p);
     }
     return ottIds;
@@ -168,12 +165,9 @@ std::set<long> parseListOfOttIds(const std::string &fp) {
         while (getline(inpf, line)) {
             const auto stripped = strip_surrounding_whitespace(line);
             if (!stripped.empty()) {
-                long p = ottIDFromName(line);
-                if (p < 1) {
-                    std::string m = "Expecting each line to end with an OTT Id. Found: ";
-                    m +=  line;
-                    throw OTCError(m);
-                }
+                long p = stringToOttID(line);
+                if (p < 0)
+		    throw OTCError()<<"Expecting an OTT Id.  Found: '"<<line<<"'";
                 ottIds.insert(p);
             }
         }

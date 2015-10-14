@@ -252,7 +252,7 @@ bool handleReportOnNodesFlag(OTCLI & otCLI, const std::string &narg) {
     }
     auto rs = split_string(narg, ',');
     for (auto word : rs) {
-        auto ottId = ottIDFromName(word);
+        auto ottId = stringToOttID(word);
         if (ottId < 0) {
             throw OTCError(std::string("Expecting a list of IDs after the -b argument. Offending word: ") + word);
         }
