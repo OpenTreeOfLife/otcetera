@@ -373,11 +373,14 @@ class RootedTree {
           
         std::vector<const node_type *> getSubtreeNodes(node_type* p) const {
             std::vector<const node_type*> nodes;
-            if (p)
+            if (p) {
                 nodes.push_back(p);
-            for(std::size_t i=0;i<nodes.size();i++)
-              for(auto n = nodes[i]->lChild; n; n = n->rSib)
-                nodes.push_back(n);
+            }
+            for(std::size_t i = 0; i < nodes.size(); i++) {
+                for(auto n = nodes[i]->lChild; n; n = n->rSib) {
+                    nodes.push_back(n);
+                }
+            }
             return nodes;
         }
         std::set<const node_type *> getSetOfAllAttachedNodes() const {
