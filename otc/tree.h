@@ -96,7 +96,6 @@ class RootedTreeNode {
         node_type * getPrevSib() {
             return const_cast<node_type *>(const_cast<const node_type *>(this)->getPrevSib());
         }
-
         std::vector<node_type *> getChildrenNC() {
             std::vector<node_type *> children;
             auto * currNode = getFirstChild();
@@ -106,11 +105,9 @@ class RootedTreeNode {
             }
             return children;
         }
-
         std::vector<node_type *> getChildren() {
             return getChildrenNC();
         }
-
         std::vector<const node_type *> getChildren() const {
             node_type * t = const_cast<node_type *>(this);
             std::vector<const node_type *> r;
@@ -119,7 +116,6 @@ class RootedTreeNode {
             }
             return r;
         }
-
         unsigned getOutDegree() const {
             unsigned n = 0;
             auto currNode = getFirstChild();
@@ -141,7 +137,6 @@ class RootedTreeNode {
         void delOttId() {
             ottId = LONG_MAX;
         }
-
         // non-empty only for internals that are labelled with names that are NOT taxLabels
         const namestring_t & getName() const {
             return name;
@@ -235,25 +230,21 @@ class RootedTreeNode {
     public:
         void writeAsNewick(std::ostream &out,
                            bool useLeafNames,
-                           const std::map<node_type *, namestring_t> *nd2name=nullptr) const
-	{
-	  auto child = getFirstChild();
-	  if (child)
-	  {
-	    out<<"(";
-	    child->writeAsNewick(out,useLeafNames,nd2name);
-	    child = child->getNextSib();
-	    for(;child;child = child->getNextSib())
-	    {
-	      out<<",";
-	      child->writeAsNewick(out,useLeafNames,nd2name);
-	    }
-	    out<<")";
-	  }
-	  out<<getName();
-	}
+                           const std::map<node_type *, namestring_t> *nd2name=nullptr) const {
+            auto child = getFirstChild();
+            if (child) {
+                out << "(";
+                child->writeAsNewick(out,useLeafNames,nd2name);
+                child = child->getNextSib();
+                for(;child;child = child->getNextSib()) {
+                    out << ",";
+                    child->writeAsNewick(out,useLeafNames,nd2name);
+                }
+                out << ")";
+            }
+            out << getName();
+        }
         void addSelfAndDesToPreorder(std::vector<const node_type *> &p) const;
-
         void lowLevelSetFirstChild(node_type *nd) {
             lChild = nd;
         }
@@ -336,8 +327,8 @@ class RootedTree {
             return this->data;
         }
         void _pruneAndDangle(node_type * nd) {
-	    assert(vcontains(getAllAttachedNodes(), (const node_type*)nd));
-	    auto p = nd->getParent();
+            assert(vcontains(getAllAttachedNodes(), (const node_type*)nd));
+            auto p = nd->getParent();
             if (p == nullptr) {
                 root = nullptr;
                 return;
@@ -345,10 +336,10 @@ class RootedTree {
             p->removeChild(nd);
         }
         void _pruneAndDelete(node_type * nd) {
-	    auto nodes = getSubtreeNodes(nd);
-	    _pruneAndDangle(nd);
-	    for(auto nd: nodes)
-	        delete nd;
+            auto nodes = getSubtreeNodes(nd);
+            _pruneAndDangle(nd);
+            for(auto nd: nodes)
+                delete nd;
         }
         bool isDetached(node_type * nd) {
             return contains(detached, nd);
@@ -371,35 +362,35 @@ class RootedTree {
             return nd;
         }
         void clear() {
-	    for(auto nd: getAllAttachedNodes())
-	        delete nd;
+            for(auto nd: getAllAttachedNodes())
+                delete nd;
 
             root = NULL;
         }
-	std::vector<const node_type *> getAllAttachedNodes() const {
-	    return getSubtreeNodes(root);
-	}
-	  
+        std::vector<const node_type *> getAllAttachedNodes() const {
+            return getSubtreeNodes(root);
+        }
+          
         std::vector<const node_type *> getSubtreeNodes(node_type* p) const {
-	    std::vector<const node_type*> nodes;
-	    if (p)
-	        nodes.push_back(p);
-	    for(std::size_t i=0;i<nodes.size();i++)
-	      for(auto n = nodes[i]->lChild; n; n = n->rSib)
-		nodes.push_back(n);
+            std::vector<const node_type*> nodes;
+            if (p)
+                nodes.push_back(p);
+            for(std::size_t i=0;i<nodes.size();i++)
+              for(auto n = nodes[i]->lChild; n; n = n->rSib)
+                nodes.push_back(n);
             return nodes;
         }
         std::set<const node_type *> getSetOfAllAttachedNodes() const {
-	    std::set<const node_type*> nodes;
-	    for(auto nd: getAllAttachedNodes())
-	      nodes.insert(nd);
-	    return nodes;
+            std::set<const node_type*> nodes;
+            for(auto nd: getAllAttachedNodes())
+              nodes.insert(nd);
+            return nodes;
         }
         void markAsDetached(node_type * nd) {
             detached.insert(nd);
         }
         void markAsAttached(node_type * nd) {
-	  detached.erase(nd);
+          detached.erase(nd);
         }
     private:
         RootedTree<T, U>(const RootedTree<T, U> &) = delete;
