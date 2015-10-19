@@ -129,10 +129,12 @@ class RootedTreeNode {
             return ottId != LONG_MAX;
         }
         long getOttId() const {
-            return ottId;
+	    assert(hasOttId());
+	    return ottId;
         }
         void setOttId(long i) {
             ottId = i;
+	    assert(hasOttId());
         }
         void delOttId() {
             ottId = LONG_MAX;

@@ -49,7 +49,9 @@ void fillDesIdSets(T & tree) {
     for (auto node : iter_post(tree)) {
         std::set<long> & desIds = node->getData().desIds;
         if (node->isTip()) {
-            desIds.insert(node->getOttId());
+	    if (node->hasOttId()) {
+                desIds.insert(node->getOttId());
+	    }
         } else {
             for (auto child : iter_child(*node)) {
                 std::set<long> & cDesIds = child->getData().desIds;
