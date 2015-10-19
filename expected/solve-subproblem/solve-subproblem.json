@@ -1,0 +1,7 @@
+[
+  {
+      "invocation" : ["otc-solve-subproblem", "<INFILELIST>"],
+      "infile_list": ["attachresolved/tree1.tre", "attachresolved/tree2.tre", "attachresolved/tree3.tre", "attachresolved/taxonomy.tre"],
+      "expected": "attachresolved"
+  }
+]
