@@ -236,7 +236,7 @@ class RootedTreeNode {
                 out << "(";
                 child->writeAsNewick(out,useLeafNames,nd2name);
                 child = child->getNextSib();
-                for(;child;child = child->getNextSib()) {
+                for(;child;child = child->getNextSib()) {
                     out << ",";
                     child->writeAsNewick(out,useLeafNames,nd2name);
                 }
