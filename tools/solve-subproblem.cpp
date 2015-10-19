@@ -95,25 +95,6 @@ int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& 
   return c1;
 }
 
-template <typename T, typename U>
-bool sorted_empty_intersection(const T& x, const U& y)
-{
-  auto i = x.begin();
-  auto j = y.begin();
-  auto xe = x.end();
-  auto ye = y.end();
-  while (i != xe and j != ye)
-  {
-    if (*i == *j)
-      return false;
-    else if (*i < *j)
-      ++i;
-    else
-      ++j;
-  }
-  return true;
-}
-
 bool empty_intersection(const set<int>& xs, const vector<int>& ys)
 {
   for(int y: ys)
@@ -195,8 +176,6 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     for(int j: elements[c])
       s.push_back(tips[j]);
   }
-  for(auto& s: subtips)
-    std::sort(s.begin(), s.end());
 
   // 7. Determine the splits that are not satisfied yet and go into each component
   vector<vector<const RSplit*>> subsplits(component_labels.size());
@@ -205,12 +184,21 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     int first = indices[*split->in.begin()];
     assert(first >= 0);
     int c = component[first];
-    int i = component_label_to_index[c];
 
     // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-    if (sorted_empty_intersection(split->out, subtips[i])) continue;
-
-    subsplits[i].push_back(split);
+    bool satisfied = true;
+    for(int x: split->out)
+      if (indices[x] != -1 and component[indices[x]] == c)
+      {
+	satisfied = false;
+	break;
+      }
+    
+    if (not satisfied)
+    {
+      int i = component_label_to_index[c];
+      subsplits[i].push_back(split);
+    }
   }
   
   // 8. Clear our map from id -> index, for use by subproblems.
