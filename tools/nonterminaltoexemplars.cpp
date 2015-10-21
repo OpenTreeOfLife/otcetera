@@ -40,36 +40,12 @@ inline OttIdSet findIncludedTipIds(const T & nd, const Y & container) {
 
 template<typename T, typename Y>
 inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
-    Y * p = nd->getParent();
-    Y * nps = nd->getPrevSib();
-    Y * nns = nd->getNextSib();
-    assert(p != nullptr);
-    assert(!oids.empty());
-    Y * firstC = nullptr;
-    Y * lastC = nullptr;
     for (auto oid : oids) {
-        lastC = tree.createChild(p);
-        if (firstC == nullptr) {
-            firstC = lastC;
-        }
-        lastC->setOttId(oid);
+        auto x = tree.createNode(nullptr);
+        x->setOttId(oid);
+        nd->addSibOnLeft(x);
     }
-    assert(firstC != nullptr);
-    assert(lastC != nullptr);
-    assert(lastC->getNextSib() == nullptr);
-    Y * fcps = firstC->getPrevSib();
-    assert(fcps != nullptr);
-    // remove firstChild from the sib array
-    fcps->_setNextSib(nullptr);
-    // Add it in place of nd
-    if (nps == nullptr) {
-        p->_setFirstChild(firstC);
-    } else {
-        assert(nps->getNextSib() == nd);
-        nps->_setNextSib(firstC);
-    }
-    // make sure that the next sib of the last child is the same as the incoming exit node.
-    lastC->_setNextSib(nns);
+    nd->_detachThisNode();
 }
 
 struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
