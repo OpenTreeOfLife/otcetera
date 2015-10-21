@@ -34,8 +34,8 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->getOttId();
             assert(dn != destPoly);
             if (contains(sc->detachedScaffoldNodes, dn)) {
-                dn->_setFirstChild(nullptr);
-                dn->_setNextSib(nullptr);
+                assert(not dn->getFirstChild());
+                assert(not dn->getNextSib());
                 sc->detachedScaffoldNodes.erase(dn);
                 sc->scaffoldTree.markAsAttached(dn);
             }
@@ -404,7 +404,7 @@ NodeWithSplits * GreedyBandedForest<T, U>::moveAllSibs(
     }
     donorC->_detachThisNode();
     auto p = moveAllChildren(dp, donorTree, attachPoint, recipientTree, nullptr);
-    dp->_setFirstChild(nullptr);
+    assert(not dp->getFirstChild());
     dbWriteOttSet("   dpoids =", dpoids);
     removeDesIdsToNdAndAnc(dp, dpoids);
     registerTreeForNode(donorC, nullptr);
@@ -594,7 +594,7 @@ std::pair<NodeWithSplits *, NodeWithSplits*> GreedyBandedForest<T, U>::moveAllCh
         transferSubtreeInForest(currChild, donorTree, attachmentPoint, recipientTree, &donorTree, bandBeingMerged);
         LOG(DEBUG) << "Back from transferSubtreeInForest";
     }
-    donorParent->_setFirstChild(nullptr);
+    assert(not donorParent->getFirstChild());
     return std::pair<NodeWithSplits *, NodeWithSplits*>{recipientNode, attachmentPoint};
 }
 
