@@ -158,6 +158,11 @@ class RootedTreeNode {
             parent(par),
             ottId(LONG_MAX) {
         }
+        void addSibOnRight(node_type *n) {
+            n->rSib = rSib;
+            n->parent = parent;
+            rSib = n;
+        }
         void addSib(node_type *n) {
             node_type * cs = getLastSib();
             if (cs == nullptr) {
