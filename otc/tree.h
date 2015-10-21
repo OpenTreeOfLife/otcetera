@@ -265,6 +265,14 @@ class RootedTreeNode {
         friend class RootedTree;
 };
 
+template<typename NodeType>
+const NodeType* findRoot(const NodeType* nd)
+{
+    while(nd->getParent())
+        nd = nd->getParent();
+    return nd;
+}
+    
 template<typename T, typename U>
 class RootedTree {
     public:
@@ -327,7 +335,7 @@ class RootedTree {
             return this->data;
         }
         void _pruneAndDangle(node_type * nd) {
-            assert(vcontains(getAllAttachedNodes(), (const node_type*)nd));
+            assert(findRoot(nd) == root);
             auto p = nd->getParent();
             if (p == nullptr) {
                 root = nullptr;
