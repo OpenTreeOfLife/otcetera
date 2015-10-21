@@ -154,7 +154,7 @@ void sortChildOrderByLowestDesOttId(T *deepest) {
 
         // Remove all the children - they are remembered in the map
         while(nd->hasChildren())
-            nd->getFirstChild()->_detachThisNode();
+            nd->getFirstChild()->detachThisNode();
 
         // Add the children back in sorted order
         for(const auto& x: id2child)

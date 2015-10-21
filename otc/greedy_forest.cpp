@@ -41,7 +41,7 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             }
             if (dn->getParent() != dp) {
                 if (dn->getParent() != nullptr) {
-                    dn->_detachThisNode();
+                    dn->detachThisNode();
                     sc->scaffoldTree.markAsDetached(dn);
                 }
                 assert(dn->getNextSib() == nullptr);
@@ -248,7 +248,7 @@ void GreedyBandedForest<T, U>::transferSubtreeInForest(
     }
     assert(!recipientTree.isExcludedFrom(des, newPar));
     assert(getTreeForNode(des) == donorTree);
-    des->_detachThisNode();
+    des->detachThisNode();
     if (bandBeingMerged == nullptr) {
         dbWriteOttSet(" des pre addAndUpdateChild", des->getData().desIds);
         dbWriteOttSet(" newPar pre addAndUpdateChild", newPar->getData().desIds);
@@ -402,7 +402,7 @@ NodeWithSplits * GreedyBandedForest<T, U>::moveAllSibs(
     for (auto c :iter_child(*dp)) {
         dpoids.insert(begin(c->getData().desIds), end(c->getData().desIds));
     }
-    donorC->_detachThisNode();
+    donorC->detachThisNode();
     auto p = moveAllChildren(dp, donorTree, attachPoint, recipientTree, nullptr);
     assert(not dp->getFirstChild());
     dbWriteOttSet("   dpoids =", dpoids);
@@ -546,7 +546,7 @@ bool GreedyBandedForest<T, U>::mergeSingleBandedTree(
             donorTree._setRoot(nullptr);
             r = false;
         } else {
-            dn->_detachThisNode();
+            dn->detachThisNode();
         }
     } else {
         r = zipPathsFromBarrenNode(donorTree,

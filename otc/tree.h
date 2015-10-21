@@ -150,7 +150,7 @@ class RootedTreeNode {
             assert(n);
             assert(hasChildren());
             assert(n->parent == this);
-            n->_detachThisNode();
+            n->detachThisNode();
         }
         bool isOutDegreeOneNode() const {
             return lChild and not lChild->rSib;
@@ -168,7 +168,7 @@ class RootedTreeNode {
             return isOutDegreeOneNode() && lChild->includesOnlyOneLeaf();
         }
         // takes this node out of the child array of its parent, but does not fix any other pointer.
-        void _detachThisNode() {
+        void detachThisNode() {
             assert(parent);
             assert(parent->hasChildren());
 
@@ -289,7 +289,7 @@ class RootedTree {
         const U & getData() const {
             return this->data;
         }
-        void _pruneAndDangle(node_type * nd) {
+        void pruneAndDangle(node_type * nd) {
             assert(findRoot(nd) == root);
             auto p = nd->getParent();
             if (p == nullptr) {
@@ -298,9 +298,9 @@ class RootedTree {
             }
             p->removeChild(nd);
         }
-        void _pruneAndDelete(node_type * nd) {
+        void pruneAndDelete(node_type * nd) {
             auto nodes = getSubtreeNodes(nd);
-            _pruneAndDangle(nd);
+            pruneAndDangle(nd);
             for(auto nd: nodes)
                 delete nd;
         }
@@ -370,7 +370,7 @@ template<typename Tree>
 void addSubtree(typename Tree::node_type* par, Tree& T2)
 {
     auto c = T2.getRoot();
-    T2._pruneAndDangle(c);
+    T2.pruneAndDangle(c);
     par->addChild(c);
 }
 
@@ -381,7 +381,7 @@ void replaceWithSubtree(typename Tree::node_type* n, Tree& T2)
     auto p = n->getParent();
     // Remove the data from T2 and attach it to this parent
     auto c = T2.getRoot();
-    T2._pruneAndDangle(c);
+    T2.pruneAndDangle(c);
     p->addChild(c);
     // Remove the old child from under p
     p->removeChild(n);

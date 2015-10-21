@@ -188,7 +188,7 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
     U * insertedNodePtr = treePtr->createNode(phPar);
     for (auto p2p : phyloNode2PhyloPar) {
         U * phChild = p2p.first;
-        phChild->_detachThisNode();
+        phChild->detachThisNode();
         insertedNodePtr->addChild(phChild);
         const OttIdSet & cd = phChild->getData().desIds;
         insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());
@@ -1013,10 +1013,10 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextW
     while(scaffoldNode.hasChildren())
     {
         auto n = scaffoldNode.getFirstChild();
-        n->_detachThisNode();
+        n->detachThisNode();
         scaffoldNode.addSibOnLeft(n);
     }
-    scaffoldNode._detachThisNode();
+    scaffoldNode.detachThisNode();
     sc.scaffoldTree.markAsDetached(&scaffoldNode);
     sc.detachedScaffoldNodes.insert(&scaffoldNode);
 }

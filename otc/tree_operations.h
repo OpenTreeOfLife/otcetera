@@ -476,7 +476,7 @@ inline void collapseNode(RootedTree<T, U> & tree, RootedTreeNode<T> *nd) {
 template<typename T>
 inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
     cullRefsToNodeFromData<typename T::node_data_type, typename T::data_type>(tree, toDel);
-    tree._pruneAndDelete(toDel);
+    tree.pruneAndDelete(toDel);
 }
 
 template <typename T, typename U>
@@ -749,10 +749,10 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
     while(monotypic_child->hasChildren())
     {
         auto x = monotypic_child->getFirstChild();
-        x->_detachThisNode();
+        x->detachThisNode();
         nd->addChild(x);
     }
-    monotypic_child->_detachThisNode();
+    monotypic_child->detachThisNode();
 
     replaceMappingsToNodeWithAlias<T>(monotypic_child, nd, tree);
     //    delete monotypic_child;
@@ -772,8 +772,8 @@ inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * m
     LOG(DEBUG) << "suppressing " << (monotypic_nd->hasOttId() ? monotypic_nd->getOttId() : long(monotypic_nd))
                 << " by claiming grandparent as parent for node " << getDesignator(*child) ;
 
-    monotypic_nd->_detachThisNode();
-    child->_detachThisNode();
+    monotypic_nd->detachThisNode();
+    child->detachThisNode();
     gp->addChild(child);
     assert(not monotypic_nd->hasChildren());
     replaceMappingsToNodeWithAlias<T>(monotypic_nd, child, tree);
@@ -796,10 +796,10 @@ inline void collapseInternalIntoPar(typename T::node_type * nd,
     while(nd->hasChildren())
     {
         auto child = nd->getFirstChild();
-        child->_detachThisNode();
+        child->detachThisNode();
         nd->addSibOnLeft(child);
     }
-    nd->_detachThisNode();
+    nd->detachThisNode();
 }
 
 // in some context we need to preserve the deepest because the desIds may need 
@@ -864,7 +864,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
                 if (tree.isDetached(tpn)) {
                     removed.insert(tpn);
                 } else if (tpn->isTip()) {
-                    tree._pruneAndDelete(tpn);
+                    tree.pruneAndDelete(tpn);
                     removed.insert(tpn);
                 } else {
                     auto onlyChild = tpn->getFirstChild();
@@ -874,7 +874,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
                     } else {
                         replaceMappingsToNodeWithAlias<T>(onlyChild, tpn, tree);
                         if (onlyChild->isTip()) {
-                            tree._pruneAndDelete(onlyChild);
+                            tree.pruneAndDelete(onlyChild);
                         } else {
                             onlyChild->delOttId();
                             collapseInternalIntoPar(onlyChild, tree);

@@ -45,7 +45,7 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
         x->setOttId(oid);
         nd->addSibOnLeft(x);
     }
-    nd->_detachThisNode();
+    nd->detachThisNode();
 }
 
 struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
