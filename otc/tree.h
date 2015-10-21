@@ -47,25 +47,22 @@ class RootedTreeNode {
 
         //
         const node_type * getLastChild() const {
-            if (lChild == nullptr)
+            if (lChild)
+                return lChild->getLastSib();
+            else
                 return nullptr;
-            return (lChild->rSib == nullptr ? lChild : lChild->getLastSib());
         }
         node_type * getLastChild() {
             return const_cast<node_type *>(const_cast<const node_type *>(this)->getLastChild());
         }
+        /// Return the last node in the sibling list, which might be the current node.
         const node_type * getLastSib() const {
-            auto currNode = this->getNextSib();
-            if (currNode == nullptr) {
-                return nullptr;
-            }
-            auto nextNd = currNode->getNextSib();
-            while (nextNd != nullptr) {
-                currNode = nextNd;
-                nextNd = currNode->getNextSib();
-            }
-            return currNode;
+            auto nd = this;
+            while(nd->rSib)
+                nd = nd->rSib;
+            return nd;
         }
+        /// Return the last node in the sibling list, which might be the current node.
         node_type * getLastSib() {
             return const_cast<node_type *>(const_cast<const node_type *>(this)->getLastSib());
         }
@@ -166,12 +163,7 @@ class RootedTreeNode {
             rSib = n;
         }
         void addSib(node_type *n) {
-            node_type * cs = getLastSib();
-            if (cs == nullptr) {
-                rSib = n;
-            } else {
-                cs->rSib = n;
-            }
+            getLastSib()->addSibOnRight(n);
         }
         void addChild(node_type *n) {
             if (lChild) {
