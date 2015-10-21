@@ -252,12 +252,6 @@ class RootedTreeNode {
             out << getName();
         }
         void addSelfAndDesToPreorder(std::vector<const node_type *> &p) const;
-        void lowLevelSetFirstChild(node_type *nd) {
-            lChild = nd;
-        }
-        void lowLevelSetNextSib(node_type *nd) {
-            rSib = nd;
-        }
     private:
         node_type * lChild;
         node_type * rSib;
