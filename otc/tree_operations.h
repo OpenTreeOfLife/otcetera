@@ -745,44 +745,17 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
     assert(monotypic_child->getNextSib() == nullptr);
     LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd))
                << " by stealing children from " << getDesignator(*monotypic_child) ;
-    auto entryChild = monotypic_child->getPrevSib();
-    assert(entryChild == nullptr);
-    auto exitChild = monotypic_child->getNextSib();
-    assert(exitChild == nullptr);
-    typename T::node_type * f = monotypic_child->getFirstChild();
-    typename T::node_type * c = nullptr;
-    auto citf = iter_child(*monotypic_child);
-    const auto cite = citf.end();
-    for (auto cit = citf.begin(); cit != cite; ++cit) {
-        c = *cit;
-        c->_setParent(nd);
+
+    while(monotypic_child->hasChildren())
+    {
+        auto x = monotypic_child->getFirstChild();
+        x->_detachThisNode();
+        nd->addChild(x);
     }
-    if (entryChild != nullptr) {
-        assert(entryChild->getNextSib() == monotypic_child);
-        if (f == nullptr) {
-            entryChild->_setNextSib(exitChild);
-        } else {
-            entryChild->_setNextSib(f);
-            assert(c != nullptr);
-            c->_setNextSib(exitChild);
-        }
-    } else {
-        if (f != nullptr) {
-            nd->_setFirstChild(f);
-            assert(c != nullptr);
-            c->_setNextSib(exitChild);
-        } else {
-            nd->_setFirstChild(exitChild);
-        }
-    }
-    if (entryChild != nullptr || exitChild != nullptr) {
-        // nd has a different set of descendants than monotypic_child.
-        //  nd was not actually monotypic
-        assert(false);
-        throw OTCError("asserts disabled, but false");
-    } else {
-        replaceMappingsToNodeWithAlias<T>(monotypic_child, nd, tree);
-    }
+    monotypic_child->_detachThisNode();
+
+    replaceMappingsToNodeWithAlias<T>(monotypic_child, nd, tree);
+    //    delete monotypic_child;
 }
 
 template<typename T>
