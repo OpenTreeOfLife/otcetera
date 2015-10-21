@@ -44,16 +44,7 @@ class RootedTreeNode {
         node_type * getNextSib() {
             return rSib;
         }
-        // low-level
-        void _setFirstChild(node_type *s) {
-            lChild = s;
-        }
-        void _setNextSib(node_type *s) {
-            rSib = s;
-        }
-        void _setParent(node_type *s) {
-            parent = s;
-        }
+
         //
         const node_type * getLastChild() const {
             if (lChild == nullptr)
@@ -240,10 +231,10 @@ class RootedTreeNode {
             if (ls == nullptr) {
                 auto p = getParent();
                 if (p != nullptr) {
-                    p->_setFirstChild(getNextSib());
+                    p->lChild = getNextSib();
                 }
             } else {
-                ls->_setNextSib(getNextSib());
+                ls->rSib = getNextSib();
             }
             rSib = nullptr;
             parent = nullptr;
