@@ -117,12 +117,12 @@ class RootedTreeNode {
             return ottId != LONG_MAX;
         }
         long getOttId() const {
-	    assert(hasOttId());
-	    return ottId;
+            assert(hasOttId());
+            return ottId;
         }
         void setOttId(long i) {
             ottId = i;
-	    assert(hasOttId());
+            assert(hasOttId());
         }
         void delOttId() {
             ottId = LONG_MAX;
@@ -230,7 +230,7 @@ class RootedTreeNode {
             }
             rSib = nullptr;
             parent = nullptr;
-       }
+        }
     public:
         void writeAsNewick(std::ostream &out,
                            bool useLeafNames,
@@ -392,7 +392,7 @@ class RootedTree {
         std::set<const node_type *> getSetOfAllAttachedNodes() const {
             std::set<const node_type*> nodes;
             for(auto nd: getAllAttachedNodes())
-              nodes.insert(nd);
+                nodes.insert(nd);
             return nodes;
         }
         void markAsDetached(node_type * nd) {
