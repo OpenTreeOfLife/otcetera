@@ -771,17 +771,13 @@ inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * m
     assert(gp);
     LOG(DEBUG) << "suppressing " << (monotypic_nd->hasOttId() ? monotypic_nd->getOttId() : long(monotypic_nd))
                 << " by claiming grandparent as parent for node " << getDesignator(*child) ;
-    auto entrySib = monotypic_nd->getPrevSib();
-    auto exitSib = monotypic_nd->getNextSib();
-    child->_setParent(gp);
-    if (entrySib != nullptr) {
-        assert(entrySib->getNextSib() == monotypic_nd);
-        entrySib->_setNextSib(child);
-    } else {
-        gp->_setFirstChild(child);
-    }
-    child->_setNextSib(exitSib);
+
+    monotypic_nd->_detachThisNode();
+    child->_detachThisNode();
+    gp->addChild(child);
+    assert(not monotypic_nd->hasChildren());
     replaceMappingsToNodeWithAlias<T>(monotypic_nd, child, tree);
+    // delete monotypic_nd
 }
 
 // nd must be unnnamed (or the aliases would not be fixed because we can't call replaceMappingsToNodeWithAlias)
