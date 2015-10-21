@@ -141,10 +141,7 @@ class RootedTreeNode {
             return data;
         }
         RootedTreeNode<T>(RootedTreeNode<T> *par)
-            :lChild(nullptr),
-            rSib(nullptr),
-            parent(par),
-            ottId(LONG_MAX) {
+            :parent(par) {
         }
         void addSibOnLeft(node_type *n) {
             n->parent = parent;
@@ -250,11 +247,11 @@ class RootedTreeNode {
         }
         void addSelfAndDesToPreorder(std::vector<const node_type *> &p) const;
     private:
-        node_type * lChild;
-        node_type * rSib;
-        node_type * parent;
-        namestring_t name; // non-empty only for internals that are labelled with names that are NOT taxLabels
-        long ottId; // present for every leaf. UINT_MAX for internals labeled with taxlabels
+        node_type * lChild = nullptr;
+        node_type * rSib = nullptr;
+        node_type * parent = nullptr;
+        namestring_t name;     // non-empty only for internals that are labelled with names that are NOT taxLabels
+        long ottId = LONG_MAX; // present for every leaf. UINT_MAX for internals labeled with taxlabels
         T data;
     private:
         RootedTreeNode<T>(const RootedTreeNode<T> &) = delete;
