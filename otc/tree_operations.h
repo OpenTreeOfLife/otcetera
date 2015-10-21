@@ -785,34 +785,21 @@ template<typename T>
 inline void collapseInternalIntoPar(typename T::node_type * nd,
                                     T & tree) {
     assert(nd);
-    assert(!nd->hasOttId());
-    auto children = nd->getChildren();
-    assert(!children.empty());
-    auto firstChild = children.at(0);
-    if (children.size() == 1) {
-        suppressMonotypyByClaimingGrandparentAsPar(nd, firstChild, tree);
+    assert(not nd->hasOttId());
+    assert(nd->hasChildren());
+
+    if (nd->getOutDegree() == 1) {
+        suppressMonotypyByClaimingGrandparentAsPar(nd, nd->getFirstChild(), tree);
         return;
     }
-    auto p = nd->getParent();
-    assert(p);
-    auto entrySib = nd->getPrevSib();
-    auto exitSib = nd->getNextSib();
-    auto lastChild = children.at(children.size() - 1);
-    typename T::node_type * prev = nullptr;
-    for (auto child : children) {
-        if (prev != nullptr) {
-            prev->_setNextSib(child);
-        }
-        child->_setParent(p);
-        prev = child;
+    
+    while(nd->hasChildren())
+    {
+        auto child = nd->getFirstChild();
+        child->_detachThisNode();
+        nd->addSibOnLeft(child);
     }
-     if (entrySib != nullptr) {
-        assert(entrySib->getNextSib() == nd);
-        entrySib->_setNextSib(firstChild);
-    } else {
-        p->_setFirstChild(firstChild);
-    }
-    lastChild->_setNextSib(exitSib);
+    nd->_detachThisNode();
 }
 
 // in some context we need to preserve the deepest because the desIds may need 
