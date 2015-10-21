@@ -158,6 +158,17 @@ class RootedTreeNode {
             parent(par),
             ottId(LONG_MAX) {
         }
+        void addSibOnLeft(node_type *n) {
+            n->parent = parent;
+            n->rSib = this;
+            if (parent->lChild == this)
+                parent->lChild = n;
+            else
+            {
+                auto lSib = getPrevSib();
+                lSib->rSib = n;
+            }
+        }
         void addSibOnRight(node_type *n) {
             n->rSib = rSib;
             n->parent = parent;
@@ -178,6 +189,9 @@ class RootedTreeNode {
                 lChild = n;
             }
             n->parent = this;
+        }
+        bool hasChildren() const {
+            return lChild;
         }
         bool removeChild(node_type *n) {
             if (n == nullptr || lChild == nullptr) {
