@@ -841,8 +841,7 @@ void NodeEmbedding<T, U>::pruneSuppressed(std::size_t treeIndex, U * phyloPar, U
             pps.erase(pp);
         }
     }
-    auto rc = phyloPar->removeChild(phyloChild);
-    assert(rc);
+    phyloPar->removeChild(phyloChild);
 }
 
 template<typename T, typename U>
