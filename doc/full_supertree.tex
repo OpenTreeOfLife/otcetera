@@ -84,6 +84,55 @@ such taxa rootward, but their range of attachment extends over specific
 branches in the tree obtained by combining $T_{1}$ and $T_{2}^{\prime}$.
 All of these branches derive from $T_{1}$ but not from $T_{2}^{\prime}$.
 
+First, note that each split of $T_{2}$ implies a split on the reduced
+leaf set $\mathcal{L}(T_{1})$. This split then is either consistent
+with $T_{1}$, or conflicts with at least one split in $T_{1}$. We
+obtain $T_{2}^{\prime}$ by removing each split of $T_{2}$ that,
+when reducted to leaf set $\mathcal{L}(T_{1})$, conflicts with some
+branch of $T_{1}.$ By definition, the remaining branches of $T_{2}$
+are individually compatible with each branch of $T_{1}$.
+
+Second, let us look at the subtree of $T_{2}$ obtained by restricting
+the leaf set to $\mathcal{L}(T_{1})$. We proceed by adapting a proof
+that pairwise compatible (unrooted) splits can always be combined
+to form a tree. The adaptation is necessary because the splits of
+$T_{1}$ and $T_{2}$ have different leaf sets. We can handle rootedness
+in the unrooted context by simply treating the root as a special leaf.
+Now, let us consider a split $\sigma$ of $T_{1}$ that is not implied
+by any branch of $T_{2}$. Then $\sigma$ induces a flow on $T_{2}|_{\mathcal{L}(T_{1})}$
+(i.e. $T_{2}$ restricted to $\mathcal{L}(T_{1})$). That is, for
+each branch of $T_{2}|_{\mathcal{L}(T_{1})}$, $\sigma$ is either
+on the left side or the right side of that branch. An important fact
+(not shown here, but not very hard) is that each node of $T_{2}|_{\mathcal{L}(T_{1})}$
+has either all branches pointing towards the node under the flow,
+or at most one branch pointing away. Therefore, starting from any
+node, we may follow the flow from node to node. Since this is a flow
+on a tree, we may not have cycles. Therefore, there must be a fixed
+point. As second important fact (also not shown here) is that when
+we find a node where all branches point towards to the node, then
+we may impose the split $\sigma$ by adding a branch diving some of
+the branches at that node from other branches. This completes the
+proof that if $\sigma$ is consistent with $T_{2}|_{\mathcal{L}(T_{1})}$
+then we may add $\sigma$ to that tree.
+
+However, in order to add $\sigma$ to $T_{2}$, we must adapt the
+proof. Specifically, the node of $T_{2}|_{\mathcal{L}(T_{1})}$ where
+we insert $\sigma$ is also a node of $T_{2}.$ However, whereas $\sigma$
+partitions each branch of $T_{2}|_{\mathcal{L}(T_{1})}$ to one side
+or the other side of the newly inserted branch, there may be branches
+at the node that have no taxa of $T_{1}$. These branches are thus
+not partitioned to one side or the other side of the new branch. We
+solve this ambiguity by attaching them to the rootward side of $\sigma$.
+However, in reality the branch imposed by $\sigma$ constitutes a
+connected collection of branches over which these clades of $T_{2}$
+may wander. Note that not all taxa in $\mathcal{L}(T_{2})-\mathcal{L}(T_{1})$
+may wander across the branch imposed by sigma. Taxa in $\mathcal{L}(T_{2})-\mathcal{L}(T_{1})$
+that are separated from the new branch by a branch of $T_{2}$ are
+instead partitioned on the same side of $\sigma$ as the branch of
+$T_{2}$ that attach behind.
+
+Sigh. Clearly we need some pictures here.
+
 
 \section{Questions}
 \begin{itemize}
