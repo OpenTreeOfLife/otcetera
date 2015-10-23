@@ -1,0 +1,95 @@
+%% LyX 2.1.4 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=2cm,bmargin=2cm,lmargin=2cm,rmargin=2cm}
+\usepackage{babel}
+\begin{document}
+
+\title{Thoughts on constructing the Full Supertree}
+
+\maketitle
+In the \emph{otcetera} pipeline, the synthesis tree is first constructed
+using a pruned taxonomy. This taxonomy has been pruned to remove any
+leaves that do not occur in one of the ranked input phylogenies. Therefore,
+a later step in the pipeline involves adding the pruned taxa back
+in to the synthesis tree. The resulting tree is the \emph{full supertree.
+}This document is an attempt to collect, and perhaps organize, thoughts
+on how the full supertree can or should be constructed, as well as
+related questions and concepts.
+
+This document takes the approach that we should be able to use the
+sub-problem solver to construct the full supertree by feeding it a
+sequence of 2 trees:
+\begin{verbatim}
+otc-solve-subproblem grafted-solution.tre cleaned_ott.tre
+\end{verbatim}
+Various other quick-and-dirty methods may be sufficient to achieve
+the result. However, the attempt to make the subproblem solver fast
+enough to solve this particular problem raises various issues with
+the subproblem solver. It also suggests various optimizations that
+may be useful more generally.
+
+
+\section{Potential speed increases}
+
+In the current implementation of the BUILD algorithm, we have a number
+of places we take excessive computation time:
+\begin{itemize}
+\item We attempt to construct rooted splits (a.k.a. desIds) for each node.
+For a bifurcating tree, this operation should take time and memory
+quadratic in the number of leaves.
+\item We attempt to construct connected component by considering each split
+in a tree separately. However, considering splits for nodes that are
+not direct children of the root is redundant.
+\item Much of the time is spent in determining which splits are imposed
+at a given level in the tree, and therefore need not be passed to
+subproblems.
+
+\begin{itemize}
+\item When different splits have the same leaf set, we should be able to
+get a speedup.
+\item When some splits have the full leaf set, we should be able to get
+a speedup.
+\end{itemize}
+\item We recompute connected components from scratch each time BUILD is
+recursively called on a subproblem. This could be avoided by incrementally
+removing edges from the graph and discovering new connected components
+that appear, as in Henzinger et al. \emph{However, it is unclear if
+an algorithm similar to Henzinger et al could be used to find the
+edges to remove at each step.}
+\item When we have two trees $T_{1}$ and $T_{2}$, and either $\mathcal{L}(T_{1})\subseteq\mathcal{L}(T_{2})$
+or $\mathcal{L}(T_{2})\subseteq\mathcal{L}(T_{1})$, then it should
+be possible to determine all conflicting splits in a single pass over
+the trees, similar to \texttt{otc-detectcontested}.
+\end{itemize}
+
+\section{The problem}
+
+When the subproblem to be solved consists of two ranked trees, $T_{1}$
+and $T_{2}$, and the second tree is the taxonomy, then we have $\mathcal{L}(T_{1})\subseteq\mathcal{L}(T_{2})$.
+For each (rooted) split in $T_{2}$, we can determine whether that
+split is consistent with $T_{1}$. We claim that each split in $T_{2}$
+is either consistent with $T_{1}$, or incompatible with at least
+one split of $T_{1}$. We can therefore remove each split of $T_{2}$
+that is inconsistent with $T_{1}$ to form a new tree $T_{2}^{\prime}$.
+The splits of $T_{1}$ and $T_{2}^{\prime}$ are then jointly consistent.
+Furthermore, by combining the trees $T_{1}$ and $T_{2}^{\prime}$,
+we obtain a new tree in which the splits of $T_{1}$ that are not
+implied by $T_{2}^{\prime}$ may not fully specify where certain taxa
+of $T_{2}^{\prime}$ are placed. We resolve this ambiguity by placing
+such taxa rootward, but their range of attachment extends over specific
+branches in the tree obtained by combining $T_{1}$ and $T_{2}^{\prime}$.
+All of these branches derive from $T_{1}$ but not from $T_{2}^{\prime}$.
+
+
+\section{Questions}
+\begin{itemize}
+\item Is there a single, unique solution to this problem?
+\item When running BUILD, is it possible to construct a \emph{reason} for
+the lack of inclusion of each split? Specifically, can we say which
+split (or set of splits) conflicts with that split?\end{itemize}
+
+\end{document}
