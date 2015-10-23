@@ -229,16 +229,16 @@ When the subproblem to be solved consists of two ranked trees,
 \end_inset
 
 .
- We can therefore remove each split of 
+ We can therefore form a new tree 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+ by starting with 
 \begin_inset Formula $T_{2}$
 \end_inset
 
- that is inconsistent with 
+ and removing each split that is inconsistent with 
 \begin_inset Formula $T_{1}$
-\end_inset
-
- to form a new tree 
-\begin_inset Formula $T_{2}^{\prime}$
 \end_inset
 
 .
@@ -380,7 +380,7 @@ Second, let us look at the subtree of
 \begin_inset Formula $\sigma$
 \end_inset
 
- induces a flow on 
+ induces a flow from node to node on 
 \begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
 \end_inset
 
@@ -393,7 +393,11 @@ Second, let us look at the subtree of
 \begin_inset Formula $\mathcal{L}(T_{1})$
 \end_inset
 
-).
+) by assigning a direction to each branch of 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+.
  That is, for each branch of 
 \begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
 \end_inset
@@ -411,16 +415,17 @@ Second, let us look at the subtree of
  has either all branches pointing towards the node under the flow, or at
  most one branch pointing away.
  Therefore, starting from any node, we may follow the flow from node to
- node.
+ node along the unique branch directed away from a node.
  Since this is a flow on a tree, we may not have cycles.
- Therefore, there must be a fixed point.
- As second important fact (also not shown here) is that when we find a node
+ Therefore, there must be a fixed point, which occurs when no branches point
+ away from a node.
+ A second important fact (also not shown here) is that when we find a node
  where all branches point towards to the node, then we may impose the split
  
 \begin_inset Formula $\sigma$
 \end_inset
 
- by adding a branch diving some of the branches at that node from other
+ by adding a branch dividing some of the branches at that node from other
  branches.
  This completes the proof that if 
 \begin_inset Formula $\sigma$
@@ -468,24 +473,25 @@ However, in order to add
 \end_inset
 
  to one side or the other side of the newly inserted branch, there may be
- branches at the node that have no taxa of 
+ branches at the node of 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ that contain no taxa from 
 \begin_inset Formula $T_{1}$
 \end_inset
 
 .
  These branches are thus not partitioned to one side or the other side of
  the new branch.
- We solve this ambiguity by attaching them to the rootward side of 
-\begin_inset Formula $\sigma$
-\end_inset
-
-.
+ We solve this ambiguity by attaching them to the rootward side of the new
+ branch.
  However, in reality the branch imposed by 
 \begin_inset Formula $\sigma$
 \end_inset
 
- constitutes a connected collection of branches over which these clades
- of 
+ be part of a connected collection of branches over which these clades of
+ 
 \begin_inset Formula $T_{2}$
 \end_inset
 
@@ -495,23 +501,6 @@ However, in order to add
 \end_inset
 
  may wander across the branch imposed by sigma.
- Taxa in 
-\begin_inset Formula $\mathcal{L}(T_{2})-\mathcal{L}(T_{1})$
-\end_inset
-
- that are separated from the new branch by a branch of 
-\begin_inset Formula $T_{2}$
-\end_inset
-
- are instead partitioned on the same side of 
-\begin_inset Formula $\sigma$
-\end_inset
-
- as the branch of 
-\begin_inset Formula $T_{2}$
-\end_inset
-
- that attach behind.
 \end_layout
 
 \begin_layout Standard
@@ -536,5 +525,31 @@ reason
  split (or set of splits) conflicts with that split?
 \end_layout
 
+\begin_deeper
+\begin_layout Itemize
+We can construct the graph such that each internal node of a tree is a vertex
+ that connects to the vertex of its children.
+ Instead of cutting branches, we can remove vertices (and their connected
+ edges).
+ (Unlike Stephen's graph, internal nodes from different trees should 
+\emph on
+not 
+\emph default
+be merged, I think.
+ At most, we could record that an internal node vertex has multiplicity
+ 2, but each internal node is also going to be associated with a particular
+ leaf set, and it unlikely that the leafs sets would be identical.) 
+\end_layout
+
+\begin_layout Itemize
+If we cut the vertex corresponding to a conflicting split, this should be
+ allow the BUILD algorithm to proceed, 
+\emph on
+a la 
+\emph default
+Semple and Steel's mincut supertree method.
+\end_layout
+
+\end_deeper
 \end_body
 \end_document
