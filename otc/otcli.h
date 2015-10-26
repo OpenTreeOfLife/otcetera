@@ -170,6 +170,8 @@ class TaxonomyDependentTreeProcessor {
 
         virtual bool processTaxonomyTree(OTCLI & otCLI) {
             ottIds = getAllOTTIds(*taxonomy);
+            if (not taxonomy->getRoot()->hasOttId())
+                throw OTCError()<<"Taxonomy root does not have an OTT ID!";
             otCLI.getParsingRules().ottIdValidator = &ottIds;
             otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
             return true;

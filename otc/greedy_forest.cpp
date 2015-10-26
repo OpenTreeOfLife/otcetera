@@ -27,21 +27,21 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
         auto sp = sn->getParent();
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
-        auto nid = sn->getOttId();
-        if (sn->hasOttId() && nid > 0) { // might assign negative number to nodes created in synth...
+        if (sn->hasOttId() && sn->getOttId() > 0) { // might assign negative number to nodes created in synth...
+	    auto nid = sn->getOttId();
             //LOG(DEBUG) << " node in src has ID " << nid;
             dn = dOttIdToNode.at(nid);
             //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->getOttId();
             assert(dn != destPoly);
             if (contains(sc->detachedScaffoldNodes, dn)) {
-                dn->_setFirstChild(nullptr);
-                dn->_setNextSib(nullptr);
+                assert(not dn->getFirstChild());
+                assert(not dn->getNextSib());
                 sc->detachedScaffoldNodes.erase(dn);
                 sc->scaffoldTree.markAsAttached(dn);
             }
             if (dn->getParent() != dp) {
                 if (dn->getParent() != nullptr) {
-                    dn->_detachThisNode();
+                    dn->detachThisNode();
                     sc->scaffoldTree.markAsDetached(dn);
                 }
                 assert(dn->getNextSib() == nullptr);
@@ -49,7 +49,8 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             }
         } else {
             dn = destTree.createChild(dp);
-            dn->setOttId(sn->getOttId());
+	    if (sn->hasOttId())
+	      dn->setOttId(sn->getOttId());
         }
         //LOG(DEBUG) << " adding " << sn;
         gpf2scaff[sn] = dn;
@@ -247,7 +248,7 @@ void GreedyBandedForest<T, U>::transferSubtreeInForest(
     }
     assert(!recipientTree.isExcludedFrom(des, newPar));
     assert(getTreeForNode(des) == donorTree);
-    des->_detachThisNode();
+    des->detachThisNode();
     if (bandBeingMerged == nullptr) {
         dbWriteOttSet(" des pre addAndUpdateChild", des->getData().desIds);
         dbWriteOttSet(" newPar pre addAndUpdateChild", newPar->getData().desIds);
@@ -401,9 +402,9 @@ NodeWithSplits * GreedyBandedForest<T, U>::moveAllSibs(
     for (auto c :iter_child(*dp)) {
         dpoids.insert(begin(c->getData().desIds), end(c->getData().desIds));
     }
-    donorC->_detachThisNode();
+    donorC->detachThisNode();
     auto p = moveAllChildren(dp, donorTree, attachPoint, recipientTree, nullptr);
-    dp->_setFirstChild(nullptr);
+    assert(not dp->getFirstChild());
     dbWriteOttSet("   dpoids =", dpoids);
     removeDesIdsToNdAndAnc(dp, dpoids);
     registerTreeForNode(donorC, nullptr);
@@ -545,7 +546,7 @@ bool GreedyBandedForest<T, U>::mergeSingleBandedTree(
             donorTree._setRoot(nullptr);
             r = false;
         } else {
-            dn->_detachThisNode();
+            dn->detachThisNode();
         }
     } else {
         r = zipPathsFromBarrenNode(donorTree,
@@ -593,7 +594,7 @@ std::pair<NodeWithSplits *, NodeWithSplits*> GreedyBandedForest<T, U>::moveAllCh
         transferSubtreeInForest(currChild, donorTree, attachmentPoint, recipientTree, &donorTree, bandBeingMerged);
         LOG(DEBUG) << "Back from transferSubtreeInForest";
     }
-    donorParent->_setFirstChild(nullptr);
+    assert(not donorParent->getFirstChild());
     return std::pair<NodeWithSplits *, NodeWithSplits*>{recipientNode, attachmentPoint};
 }
 

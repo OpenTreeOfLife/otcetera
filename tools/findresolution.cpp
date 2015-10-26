@@ -18,7 +18,7 @@ U * resolveNode(T & tree, U & parent, const OttIdSet & newInc) {
    assert(phPar != nullptr);
     U * insertedNodePtr = tree.createNode(phPar);
     for (auto phChild : childrenToMove) {
-        phChild->_detachThisNode();
+        phChild->detachThisNode();
         insertedNodePtr->addChild(phChild);
         const OttIdSet & cd = phChild->getData().desIds;
         insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());

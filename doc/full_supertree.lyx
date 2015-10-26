@@ -1,0 +1,555 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2cm
+\topmargin 2cm
+\rightmargin 2cm
+\bottommargin 2cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Thoughts on constructing the Full Supertree
+\end_layout
+
+\begin_layout Standard
+In the 
+\emph on
+otcetera
+\emph default
+ pipeline, the synthesis tree is first constructed using a pruned taxonomy.
+ This taxonomy has been pruned to remove any leaves that do not occur in
+ one of the ranked input phylogenies.
+ Therefore, a later step in the pipeline involves adding the pruned taxa
+ back in to the synthesis tree.
+ The resulting tree is the 
+\emph on
+full supertree.
+ 
+\emph default
+This document is an attempt to collect, and perhaps organize, thoughts on
+ how the full supertree can or should be constructed, as well as related
+ questions and concepts.
+\end_layout
+
+\begin_layout Standard
+This document takes the approach that we should be able to use the sub-problem
+ solver to construct the full supertree by feeding it a sequence of 2 trees:
+\end_layout
+
+\begin_layout Verbatim
+
+otc-solve-subproblem grafted-solution.tre cleaned_ott.tre
+\end_layout
+
+\begin_layout Standard
+Various other quick-and-dirty methods may be sufficient to achieve the result.
+ However, the attempt to make the subproblem solver fast enough to solve
+ this particular problem raises various issues with the subproblem solver.
+ It also suggests various optimizations that may be useful more generally.
+\end_layout
+
+\begin_layout Section
+Potential speed increases
+\end_layout
+
+\begin_layout Standard
+In the current implementation of the BUILD algorithm, we have a number of
+ places we take excessive computation time:
+\end_layout
+
+\begin_layout Itemize
+We attempt to construct rooted splits (a.k.a.
+ desIds) for each node.
+ For a bifurcating tree, this operation should take time and memory quadratic
+ in the number of leaves.
+\end_layout
+
+\begin_layout Itemize
+We attempt to construct connected component by considering each split in
+ a tree separately.
+ However, considering splits for nodes that are not direct children of the
+ root is redundant.
+\end_layout
+
+\begin_layout Itemize
+Much of the time is spent in determining which splits are imposed at a given
+ level in the tree, and therefore need not be passed to subproblems.
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+When different splits have the same leaf set, we should be able to get a
+ speedup.
+\end_layout
+
+\begin_layout Itemize
+When some splits have the full leaf set, we should be able to get a speedup.
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+We recompute connected components from scratch each time BUILD is recursively
+ called on a subproblem.
+ This could be avoided by incrementally removing edges from the graph and
+ discovering new connected components that appear, as in Henzinger et al.
+ 
+\emph on
+However, it is unclear if an algorithm similar to Henzinger et al could
+ be used to find the edges to remove at each step.
+\end_layout
+
+\begin_layout Itemize
+When we have two trees 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+, and either 
+\begin_inset Formula $\mathcal{L}(T_{1})\subseteq\mathcal{L}(T_{2})$
+\end_inset
+
+ or 
+\begin_inset Formula $\mathcal{L}(T_{2})\subseteq\mathcal{L}(T_{1})$
+\end_inset
+
+, then it should be possible to determine all conflicting splits in a single
+ pass over the trees, similar to 
+\family typewriter
+otc-detectcontested
+\family default
+.
+\end_layout
+
+\begin_layout Section
+The problem
+\end_layout
+
+\begin_layout Standard
+When the subproblem to be solved consists of two ranked trees, 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+, and the second tree is the taxonomy, then we have 
+\begin_inset Formula $\mathcal{L}(T_{1})\subseteq\mathcal{L}(T_{2})$
+\end_inset
+
+.
+ For each (rooted) split in 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+, we can determine whether that split is consistent with 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+.
+ We claim that each split in 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ is either consistent with 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+, or incompatible with at least one split of 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+.
+ We can therefore form a new tree 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+ by starting with 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ and removing each split that is inconsistent with 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+.
+ The splits of 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+ are then jointly consistent.
+ Furthermore, by combining the trees 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+, we obtain a new tree in which the splits of 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ that are not implied by 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+ may not fully specify where certain taxa of 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+ are placed.
+ We resolve this ambiguity by placing such taxa rootward, but their range
+ of attachment extends over specific branches in the tree obtained by combining
+ 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+.
+ All of these branches derive from 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ but not from 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+First, note that each split of 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ implies a split on the reduced leaf set 
+\begin_inset Formula $\mathcal{L}(T_{1})$
+\end_inset
+
+.
+ This split then is either consistent with 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+, or conflicts with at least one split in 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+.
+ We obtain 
+\begin_inset Formula $T_{2}^{\prime}$
+\end_inset
+
+ by removing each split of 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ that, when reducted to leaf set 
+\begin_inset Formula $\mathcal{L}(T_{1})$
+\end_inset
+
+, conflicts with some branch of 
+\begin_inset Formula $T_{1}.$
+\end_inset
+
+ By definition, the remaining branches of 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ are individually compatible with each branch of 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Second, let us look at the subtree of 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ obtained by restricting the leaf set to 
+\begin_inset Formula $\mathcal{L}(T_{1})$
+\end_inset
+
+.
+ We proceed by adapting a proof that pairwise compatible (unrooted) splits
+ can always be combined to form a tree.
+ The adaptation is necessary because the splits of 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ and 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ have different leaf sets.
+ We can handle rootedness in the unrooted context by simply treating the
+ root as a special leaf.
+ Now, let us consider a split 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ of 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ that is not implied by any branch of 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+.
+ Then 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ induces a flow from node to node on 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+ (i.e.
+ 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ restricted to 
+\begin_inset Formula $\mathcal{L}(T_{1})$
+\end_inset
+
+) by assigning a direction to each branch of 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+.
+ That is, for each branch of 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+, 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ is either on the left side or the right side of that branch.
+ An important fact (not shown here, but not very hard) is that each node
+ of 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+ has either all branches pointing towards the node under the flow, or at
+ most one branch pointing away.
+ Therefore, starting from any node, we may follow the flow from node to
+ node along the unique branch directed away from a node.
+ Since this is a flow on a tree, we may not have cycles.
+ Therefore, there must be a fixed point, which occurs when no branches point
+ away from a node.
+ A second important fact (also not shown here) is that when we find a node
+ where all branches point towards to the node, then we may impose the split
+ 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ by adding a branch dividing some of the branches at that node from other
+ branches.
+ This completes the proof that if 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ is consistent with 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+ then we may add 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ to that tree.
+\end_layout
+
+\begin_layout Standard
+However, in order to add 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ to 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+, we must adapt the proof.
+ Specifically, the node of 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+ where we insert 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ is also a node of 
+\begin_inset Formula $T_{2}.$
+\end_inset
+
+ However, whereas 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ partitions each branch of 
+\begin_inset Formula $T_{2}|_{\mathcal{L}(T_{1})}$
+\end_inset
+
+ to one side or the other side of the newly inserted branch, there may be
+ branches at the node of 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ that contain no taxa from 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+.
+ These branches are thus not partitioned to one side or the other side of
+ the new branch.
+ We solve this ambiguity by attaching them to the rootward side of the new
+ branch.
+ However, in reality the branch imposed by 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ be part of a connected collection of branches over which these clades of
+ 
+\begin_inset Formula $T_{2}$
+\end_inset
+
+ may wander.
+ Note that not all taxa in 
+\begin_inset Formula $\mathcal{L}(T_{2})-\mathcal{L}(T_{1})$
+\end_inset
+
+ may wander across the branch imposed by sigma.
+\end_layout
+
+\begin_layout Standard
+Sigh.
+ Clearly we need some pictures here.
+\end_layout
+
+\begin_layout Section
+Questions
+\end_layout
+
+\begin_layout Itemize
+Is there a single, unique solution to this problem?
+\end_layout
+
+\begin_layout Itemize
+When running BUILD, is it possible to construct a 
+\emph on
+reason
+\emph default
+ for the lack of inclusion of each split? Specifically, can we say which
+ split (or set of splits) conflicts with that split?
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+We can construct the graph such that each internal node of a tree is a vertex
+ that connects to the vertex of its children.
+ Instead of cutting branches, we can remove vertices (and their connected
+ edges).
+ (Unlike Stephen's graph, internal nodes from different trees should 
+\emph on
+not 
+\emph default
+be merged, I think.
+ At most, we could record that an internal node vertex has multiplicity
+ 2, but each internal node is also going to be associated with a particular
+ leaf set, and it unlikely that the leafs sets would be identical.) 
+\end_layout
+
+\begin_layout Itemize
+If we cut the vertex corresponding to a conflicting split, this should be
+ allow the BUILD algorithm to proceed, 
+\emph on
+a la 
+\emph default
+Semple and Steel's mincut supertree method.
+\end_layout
+
+\end_deeper
+\end_body
+\end_document

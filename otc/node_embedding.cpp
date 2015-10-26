@@ -188,7 +188,7 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
     U * insertedNodePtr = treePtr->createNode(phPar);
     for (auto p2p : phyloNode2PhyloPar) {
         U * phChild = p2p.first;
-        phChild->_detachThisNode();
+        phChild->detachThisNode();
         insertedNodePtr->addChild(phChild);
         const OttIdSet & cd = phChild->getData().desIds;
         insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());
@@ -841,8 +841,7 @@ void NodeEmbedding<T, U>::pruneSuppressed(std::size_t treeIndex, U * phyloPar, U
             pps.erase(pp);
         }
     }
-    auto rc = phyloPar->removeChild(phyloChild);
-    assert(rc);
+    phyloPar->removeChild(phyloChild);
 }
 
 template<typename T, typename U>
@@ -992,10 +991,7 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextW
      LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.getOttId() << ", adding child to parent";
     // NOTE: it is important that we add the children of scaffoldNode the left of its location
     //  in the tree so that the postorder traversal will not iterate over them.
-    assert(!scaffoldNode.isTip());
-    auto entrySib = scaffoldNode.getPrevSib();
-    assert(entrySib == nullptr || entrySib->getNextSib() == &scaffoldNode);
-    auto exitSib = scaffoldNode.getNextSib();
+    assert(scaffoldNode.hasChildren());
     auto p = scaffoldNode.getParent();
     assert(p);
     if (!phyloNd2ParForUnembeddedTrees.empty()) {
@@ -1014,26 +1010,15 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextW
             }
         }
     }
-    const auto cv = scaffoldNode.getChildren();
-    scaffoldNode._detachThisNode();
+    while(scaffoldNode.hasChildren())
+    {
+        auto n = scaffoldNode.getFirstChild();
+        n->detachThisNode();
+        scaffoldNode.addSibOnLeft(n);
+    }
+    scaffoldNode.detachThisNode();
     sc.scaffoldTree.markAsDetached(&scaffoldNode);
     sc.detachedScaffoldNodes.insert(&scaffoldNode);
-    if (cv.empty()) {
-        assert(false);
-        throw OTCError("disabled assert is false");
-    }
-    for (auto c : cv) {
-        c->_setParent(p);
-    }
-    auto firstMovingChild = cv[0];
-    auto lastMovingChild = *cv.rbegin();
-    if (entrySib == nullptr) {
-        p->_setFirstChild(firstMovingChild);
-    } else {
-        assert(entrySib->getNextSib() == exitSib); // _detachThisNode guarantees this
-        entrySib->_setNextSib(firstMovingChild);
-    }
-    lastMovingChild->_setNextSib(exitSib);
 }
 
 template<typename T, typename U>

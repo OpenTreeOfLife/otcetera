@@ -20,102 +20,32 @@ class RootedTreeNode {
     public:
         using node_type = RootedTreeNode<T>;
         using data_type = T;
-        bool isTip() const {
-            return (lChild == nullptr);
-        }
-        bool isInternal() const {
-            return (lChild != nullptr);
-        }
-        const node_type * getParent() const {
-            return parent;
-        }
-        node_type * getParent() {
-            return parent;
-        }
-        const node_type * getFirstChild() const {
-            return lChild;
-        }
-        node_type * getFirstChild() {
-            return lChild;
-        }
-        const node_type * getNextSib() const {
-            return rSib;
-        }
-        node_type * getNextSib() {
-            return rSib;
-        }
-        // low-level
-        void _setFirstChild(node_type *s) {
-            lChild = s;
-        }
-        void _setNextSib(node_type *s) {
-            rSib = s;
-        }
-        void _setParent(node_type *s) {
-            parent = s;
-        }
-        //
-        const node_type * getLastChild() const {
-            if (lChild == nullptr)
-                return nullptr;
-            return (lChild->rSib == nullptr ? lChild : lChild->getLastSib());
-        }
-        node_type * getLastChild() {
-            return const_cast<node_type *>(const_cast<const node_type *>(this)->getLastChild());
-        }
-        const node_type * getLastSib() const {
-            auto currNode = this->getNextSib();
-            if (currNode == nullptr) {
-                return nullptr;
-            }
-            auto nextNd = currNode->getNextSib();
-            while (nextNd != nullptr) {
-                currNode = nextNd;
-                nextNd = currNode->getNextSib();
-            }
-            return currNode;
-        }
-        node_type * getLastSib() {
-            return const_cast<node_type *>(const_cast<const node_type *>(this)->getLastSib());
-        }
-        const node_type * getPrevSib() const {
-            if (this->getParent() == nullptr) {
-                return nullptr;
-            }
-            auto currNode = this->getParent()->getFirstChild();
-            if (currNode == this) {
-                return nullptr;
-            }
-            while (currNode->getNextSib() != this) {
-                currNode = currNode->getNextSib();
-                assert(currNode != nullptr);
-            }
-            assert(currNode->getNextSib() == this);
-            return currNode;
-        }
-        node_type * getPrevSib() {
-            return const_cast<node_type *>(const_cast<const node_type *>(this)->getPrevSib());
-        }
-        std::vector<node_type *> getChildrenNC() {
-            std::vector<node_type *> children;
-            auto * currNode = getFirstChild();
-            while (currNode) {
-                children.push_back(currNode);
-                currNode = currNode->getNextSib();
-            }
-            return children;
-        }
-        std::vector<node_type *> getChildren() {
-            return getChildrenNC();
-        }
-        std::vector<const node_type *> getChildren() const {
-            node_type * t = const_cast<node_type *>(this);
-            std::vector<const node_type *> r;
-            for (auto i : t->getChildren()) {
-                r.push_back(i);
-            }
-            return r;
-        }
+
+        bool isTip() const { return (lChild == nullptr); }
+
+        bool isInternal() const { return not isTip(); }
+
+        const node_type * getParent() const { return parent; }
+              node_type * getParent()       { return parent; }
+              
+        const node_type * getFirstChild() const { return lChild; }
+              node_type * getFirstChild()       { return lChild; }
+
+        const node_type * getLastChild() const { return rChild; }
+              node_type * getLastChild()       { return rChild; }
+
+        const node_type * getPrevSib() const { return lSib; }
+              node_type * getPrevSib()       { return lSib; }
+
+        const node_type * getNextSib() const { return rSib; }
+              node_type * getNextSib()       { return rSib; }
+
+        const node_type * getFirstSib() const { assert(parent); return parent->getFirstChild(); }
+              node_type * getFirstSib()       { assert(parent); return parent->getFirstChild(); }
+
+        const node_type * getLastSib() const { assert(parent); return parent->getLastChild(); }
+              node_type * getLastSib()       { assert(parent); return parent->getLastChild(); }
+
         unsigned getOutDegree() const {
             unsigned n = 0;
             auto currNode = getFirstChild();
@@ -129,10 +59,12 @@ class RootedTreeNode {
             return ottId != LONG_MAX;
         }
         long getOttId() const {
+            assert(hasOttId());
             return ottId;
         }
         void setOttId(long i) {
             ottId = i;
+            assert(hasOttId());
         }
         void delOttId() {
             ottId = LONG_MAX;
@@ -151,61 +83,83 @@ class RootedTreeNode {
             return data;
         }
         RootedTreeNode<T>(RootedTreeNode<T> *par)
-            :lChild(nullptr),
-            rSib(nullptr),
-            parent(par),
-            ottId(LONG_MAX) {
+            :parent(par) {
+        }
+        void addSibOnLeft(node_type *n) {
+            assert(n);
+
+            // Connect left (from n)
+            n->lSib = lSib;
+            if (n->lSib)
+                n->lSib->rSib = n;
+            else
+            {
+                assert(parent->lChild == this);
+                parent->lChild = n;
+            }
+
+            // Connect right (from n)
+            n->rSib = this;
+            lSib = n;
+
+            // Connect up (from n)
+            n->parent = parent;
+        }
+        void addSibOnRight(node_type *n) {
+            assert(n);
+
+            // Connect right (from n)
+            n->rSib = rSib;
+            if (n->rSib)
+                n->rSib->lSib = n;
+            else
+            {
+                assert(parent->rChild == this);
+                parent->rChild = n;
+            }
+
+            // Connect left (from n)
+            n->lSib = this;
+            rSib = n;
+
+            // Connect up (from n)
+            n->parent = parent;
+        }
+        void addSibAtEnd(node_type *n) {
+            getLastSib()->addSibOnRight(n);
         }
         void addSib(node_type *n) {
-            node_type * cs = getLastSib();
-            if (cs == nullptr) {
-                rSib = n;
-            } else {
-                cs->rSib = n;
-            }
+            addSibAtEnd(n);
         }
         void addChild(node_type *n) {
-            if (lChild) {
-                lChild->addSib(n);
+            if (rChild) {
+                rChild->addSib(n);
             } else {
                 lChild = n;
+                rChild = n;
+                n->lSib = nullptr;
+                n->rSib = nullptr;
+                n->parent = this;
             }
-            n->parent = this;
         }
-        bool removeChild(node_type *n) {
-            if (n == nullptr || lChild == nullptr) {
-                return false;
-            }
-            if (lChild == n) {
-                lChild = lChild->rSib;
-            } else {
-                auto c = lChild;
-                for (;;) {
-                    if (c->rSib == n) {
-                        c->rSib = n->rSib;
-                        break;
-                    }
-                    if (c->rSib == nullptr) {
-                        return false;
-                    }
-                    c = c->rSib;
-                }
-            }
-            n->parent = nullptr;
-            return true;
+        bool hasChildren() const {
+            assert(bool(lChild) == bool(rChild));
+            return lChild;
+        }
+        void removeChild(node_type *n) {
+            assert(n);
+            assert(hasChildren());
+            assert(n->parent == this);
+            n->detachThisNode();
         }
         bool isOutDegreeOneNode() const {
-            return (lChild != nullptr) && (lChild->rSib == nullptr);
+            return lChild and not lChild->rSib;
         }
         bool isOutDegreeTwoNode() const {
-            return ((lChild != nullptr)
-                    && (lChild->rSib != nullptr)
-                    && (lChild->rSib->rSib == nullptr));
+            return lChild and lChild->rSib and not lChild->rSib->rSib;
         }
         bool isPolytomy() const {
-            return ((lChild != nullptr)
-                    && (lChild->rSib != nullptr)
-                    && (lChild->rSib->rSib != nullptr));
+            return lChild and lChild->rSib and lChild->rSib->rSib;
         }
         bool includesOnlyOneLeaf() const {
             if (isTip()) {
@@ -214,19 +168,24 @@ class RootedTreeNode {
             return isOutDegreeOneNode() && lChild->includesOnlyOneLeaf();
         }
         // takes this node out of the child array of its parent, but does not fix any other pointer.
-        void _detachThisNode() {
-            auto ls = getPrevSib();
-            if (ls == nullptr) {
-                auto p = getParent();
-                if (p != nullptr) {
-                    p->_setFirstChild(getNextSib());
-                }
-            } else {
-                ls->_setNextSib(getNextSib());
-            }
-            rSib = nullptr;
+        void detachThisNode() {
+            assert(parent);
+            assert(parent->hasChildren());
+
+            if (lSib)
+                lSib->rSib = rSib;
+            else
+                parent->lChild = rSib;
+
+            if (rSib)
+                rSib->lSib = lSib;
+            else
+                parent->rChild = lSib;
+
             parent = nullptr;
-       }
+            rSib = nullptr;
+            lSib = nullptr;
+        }
     public:
         void writeAsNewick(std::ostream &out,
                            bool useLeafNames,
@@ -236,7 +195,7 @@ class RootedTreeNode {
                 out << "(";
                 child->writeAsNewick(out,useLeafNames,nd2name);
                 child = child->getNextSib();
-                for(;child;child = child->getNextSib()) {
+                for(;child;child = child->getNextSib()) {
                     out << ",";
                     child->writeAsNewick(out,useLeafNames,nd2name);
                 }
@@ -245,18 +204,14 @@ class RootedTreeNode {
             out << getName();
         }
         void addSelfAndDesToPreorder(std::vector<const node_type *> &p) const;
-        void lowLevelSetFirstChild(node_type *nd) {
-            lChild = nd;
-        }
-        void lowLevelSetNextSib(node_type *nd) {
-            rSib = nd;
-        }
     private:
-        node_type * lChild;
-        node_type * rSib;
-        node_type * parent;
-        namestring_t name; // non-empty only for internals that are labelled with names that are NOT taxLabels
-        long ottId; // present for every leaf. UINT_MAX for internals labeled with taxlabels
+        node_type * lChild = nullptr;
+        node_type * rChild = nullptr;
+        node_type * lSib = nullptr;
+        node_type * rSib = nullptr;
+        node_type * parent = nullptr;
+        namestring_t name;     // non-empty only for internals that are labelled with names that are NOT taxLabels
+        long ottId = LONG_MAX; // present for every leaf. UINT_MAX for internals labeled with taxlabels
         T data;
     private:
         RootedTreeNode<T>(const RootedTreeNode<T> &) = delete;
@@ -265,6 +220,14 @@ class RootedTreeNode {
         friend class RootedTree;
 };
 
+template<typename NodeType>
+const NodeType* findRoot(const NodeType* nd)
+{
+    while(nd->getParent())
+        nd = nd->getParent();
+    return nd;
+}
+    
 template<typename T, typename U>
 class RootedTree {
     public:
@@ -326,8 +289,8 @@ class RootedTree {
         const U & getData() const {
             return this->data;
         }
-        void _pruneAndDangle(node_type * nd) {
-            assert(vcontains(getAllAttachedNodes(), (const node_type*)nd));
+        void pruneAndDangle(node_type * nd) {
+            assert(findRoot(nd) == root);
             auto p = nd->getParent();
             if (p == nullptr) {
                 root = nullptr;
@@ -335,9 +298,9 @@ class RootedTree {
             }
             p->removeChild(nd);
         }
-        void _pruneAndDelete(node_type * nd) {
+        void pruneAndDelete(node_type * nd) {
             auto nodes = getSubtreeNodes(nd);
-            _pruneAndDangle(nd);
+            pruneAndDangle(nd);
             for(auto nd: nodes)
                 delete nd;
         }
@@ -386,7 +349,7 @@ class RootedTree {
         std::set<const node_type *> getSetOfAllAttachedNodes() const {
             std::set<const node_type*> nodes;
             for(auto nd: getAllAttachedNodes())
-              nodes.insert(nd);
+                nodes.insert(nd);
             return nodes;
         }
         void markAsDetached(node_type * nd) {
@@ -407,7 +370,7 @@ template<typename Tree>
 void addSubtree(typename Tree::node_type* par, Tree& T2)
 {
     auto c = T2.getRoot();
-    T2._pruneAndDangle(c);
+    T2.pruneAndDangle(c);
     par->addChild(c);
 }
 
@@ -418,7 +381,7 @@ void replaceWithSubtree(typename Tree::node_type* n, Tree& T2)
     auto p = n->getParent();
     // Remove the data from T2 and attach it to this parent
     auto c = T2.getRoot();
-    T2._pruneAndDangle(c);
+    T2.pruneAndDangle(c);
     p->addChild(c);
     // Remove the old child from under p
     p->removeChild(n);

@@ -49,7 +49,9 @@ void fillDesIdSets(T & tree) {
     for (auto node : iter_post(tree)) {
         std::set<long> & desIds = node->getData().desIds;
         if (node->isTip()) {
-            desIds.insert(node->getOttId());
+	    if (node->hasOttId()) {
+                desIds.insert(node->getOttId());
+	    }
         } else {
             for (auto child : iter_child(*node)) {
                 std::set<long> & cDesIds = child->getData().desIds;
@@ -474,7 +476,7 @@ inline void collapseNode(RootedTree<T, U> & tree, RootedTreeNode<T> *nd) {
 template<typename T>
 inline void pruneAndDelete(T & tree, typename T::node_type *toDel) {
     cullRefsToNodeFromData<typename T::node_data_type, typename T::data_type>(tree, toDel);
-    tree._pruneAndDelete(toDel);
+    tree.pruneAndDelete(toDel);
 }
 
 template <typename T, typename U>
@@ -743,44 +745,17 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
     assert(monotypic_child->getNextSib() == nullptr);
     LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd))
                << " by stealing children from " << getDesignator(*monotypic_child) ;
-    auto entryChild = monotypic_child->getPrevSib();
-    assert(entryChild == nullptr);
-    auto exitChild = monotypic_child->getNextSib();
-    assert(exitChild == nullptr);
-    typename T::node_type * f = monotypic_child->getFirstChild();
-    typename T::node_type * c = nullptr;
-    auto citf = iter_child(*monotypic_child);
-    const auto cite = citf.end();
-    for (auto cit = citf.begin(); cit != cite; ++cit) {
-        c = *cit;
-        c->_setParent(nd);
+
+    while(monotypic_child->hasChildren())
+    {
+        auto x = monotypic_child->getFirstChild();
+        x->detachThisNode();
+        nd->addChild(x);
     }
-    if (entryChild != nullptr) {
-        assert(entryChild->getNextSib() == monotypic_child);
-        if (f == nullptr) {
-            entryChild->_setNextSib(exitChild);
-        } else {
-            entryChild->_setNextSib(f);
-            assert(c != nullptr);
-            c->_setNextSib(exitChild);
-        }
-    } else {
-        if (f != nullptr) {
-            nd->_setFirstChild(f);
-            assert(c != nullptr);
-            c->_setNextSib(exitChild);
-        } else {
-            nd->_setFirstChild(exitChild);
-        }
-    }
-    if (entryChild != nullptr || exitChild != nullptr) {
-        // nd has a different set of descendants than monotypic_child.
-        //  nd was not actually monotypic
-        assert(false);
-        throw OTCError("asserts disabled, but false");
-    } else {
-        replaceMappingsToNodeWithAlias<T>(monotypic_child, nd, tree);
-    }
+    monotypic_child->detachThisNode();
+
+    replaceMappingsToNodeWithAlias<T>(monotypic_child, nd, tree);
+    //    delete monotypic_child;
 }
 
 template<typename T>
@@ -796,17 +771,13 @@ inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * m
     assert(gp);
     LOG(DEBUG) << "suppressing " << (monotypic_nd->hasOttId() ? monotypic_nd->getOttId() : long(monotypic_nd))
                 << " by claiming grandparent as parent for node " << getDesignator(*child) ;
-    auto entrySib = monotypic_nd->getPrevSib();
-    auto exitSib = monotypic_nd->getNextSib();
-    child->_setParent(gp);
-    if (entrySib != nullptr) {
-        assert(entrySib->getNextSib() == monotypic_nd);
-        entrySib->_setNextSib(child);
-    } else {
-        gp->_setFirstChild(child);
-    }
-    child->_setNextSib(exitSib);
+
+    monotypic_nd->detachThisNode();
+    child->detachThisNode();
+    gp->addChild(child);
+    assert(not monotypic_nd->hasChildren());
     replaceMappingsToNodeWithAlias<T>(monotypic_nd, child, tree);
+    // delete monotypic_nd
 }
 
 // nd must be unnnamed (or the aliases would not be fixed because we can't call replaceMappingsToNodeWithAlias)
@@ -814,34 +785,21 @@ template<typename T>
 inline void collapseInternalIntoPar(typename T::node_type * nd,
                                     T & tree) {
     assert(nd);
-    assert(!nd->hasOttId());
-    auto children = nd->getChildren();
-    assert(!children.empty());
-    auto firstChild = children.at(0);
-    if (children.size() == 1) {
-        suppressMonotypyByClaimingGrandparentAsPar(nd, firstChild, tree);
+    assert(not nd->hasOttId());
+    assert(nd->hasChildren());
+
+    if (nd->getOutDegree() == 1) {
+        suppressMonotypyByClaimingGrandparentAsPar(nd, nd->getFirstChild(), tree);
         return;
     }
-    auto p = nd->getParent();
-    assert(p);
-    auto entrySib = nd->getPrevSib();
-    auto exitSib = nd->getNextSib();
-    auto lastChild = children.at(children.size() - 1);
-    typename T::node_type * prev = nullptr;
-    for (auto child : children) {
-        if (prev != nullptr) {
-            prev->_setNextSib(child);
-        }
-        child->_setParent(p);
-        prev = child;
+    
+    while(nd->hasChildren())
+    {
+        auto child = nd->getFirstChild();
+        child->detachThisNode();
+        nd->addSibOnLeft(child);
     }
-     if (entrySib != nullptr) {
-        assert(entrySib->getNextSib() == nd);
-        entrySib->_setNextSib(firstChild);
-    } else {
-        p->_setFirstChild(firstChild);
-    }
-    lastChild->_setNextSib(exitSib);
+    nd->detachThisNode();
 }
 
 // in some context we need to preserve the deepest because the desIds may need 
@@ -906,7 +864,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
                 if (tree.isDetached(tpn)) {
                     removed.insert(tpn);
                 } else if (tpn->isTip()) {
-                    tree._pruneAndDelete(tpn);
+                    tree.pruneAndDelete(tpn);
                     removed.insert(tpn);
                 } else {
                     auto onlyChild = tpn->getFirstChild();
@@ -916,7 +874,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
                     } else {
                         replaceMappingsToNodeWithAlias<T>(onlyChild, tpn, tree);
                         if (onlyChild->isTip()) {
-                            tree._pruneAndDelete(onlyChild);
+                            tree.pruneAndDelete(onlyChild);
                         } else {
                             onlyChild->delOttId();
                             collapseInternalIntoPar(onlyChild, tree);

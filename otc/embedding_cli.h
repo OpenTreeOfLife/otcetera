@@ -70,7 +70,7 @@ class EmbeddingCLI
     bool cloneTaxonomyAsASourceTree() {
         assert(taxonomy != nullptr);
         assert(taxonomyAsSource == nullptr);
-        std::unique_ptr<TreeMappedWithSplits> tree = std::move(cloneTree(*taxonomy));
+        std::unique_ptr<TreeMappedWithSplits> tree = cloneTree(*taxonomy);
         taxonomyAsSource = tree.get();
         std::size_t treeIndex = inputTreesToIndex.size();
         inputTreesToIndex[std::move(tree)] = treeIndex;

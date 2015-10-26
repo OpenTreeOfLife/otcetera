@@ -151,15 +151,14 @@ void sortChildOrderByLowestDesOttId(T *deepest) {
             assert(id2child.size() == 1 + i2csize); // assumes tip IDs are unique
         }
         assert(!id2child.empty());
-        auto i2cIt = begin(id2child);
-        T * prev = i2cIt->second;
-        nd->_setFirstChild(prev);
-        for (++i2cIt; i2cIt != id2child.end(); ++i2cIt) {
-            T * curr = i2cIt->second;
-            prev->_setNextSib(curr);
-            prev = curr;
-        }
-        prev->_setNextSib(nullptr);
+
+        // Remove all the children - they are remembered in the map
+        while(nd->hasChildren())
+            nd->getFirstChild()->detachThisNode();
+
+        // Add the children back in sorted order
+        for(const auto& x: id2child)
+            nd->addChild(x.second);
         assert(node2Id.at(nd->getFirstChild()) == node2Id.at(nd));
     }
 }

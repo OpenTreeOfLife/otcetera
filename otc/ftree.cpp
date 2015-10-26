@@ -176,16 +176,8 @@ RootedTreeNode<T> * FTree<T, U>::createDeeperNode(RootedTreeNode<T> *nd) {
     assert(p != nullptr);
     // manually place the new node nn in the same spot as nd occupies
     auto nn = forest.createNode(nullptr, this);
-    auto ps = nd->getPrevSib();
-    if (ps == nullptr) {
-        assert(p->getFirstChild() == nd);
-        p->_setFirstChild(nn);
-    } else {
-        ps->_setNextSib(nn);
-    }
-    nn->_setNextSib(nd->getNextSib());
-    nn->_setNextSib(nullptr);
-    nn->_setParent(p);
+    nd->addSibOnRight(nd);
+    nd->detachThisNode();
     // we can add nd to nn in the normal way
     forest.addAndUpdateChild(nd, nn, *this);
     // but we placed nn in the exact spot that nd used to occupy, so
@@ -288,7 +280,7 @@ RootedTreeNode<T> * FTree<T, U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T
     }
     auto newNode = forest.createNode(par, this); // parent of includeGroup
     for (auto c : orderedToMove) {
-        c->_detachThisNode();
+        c->detachThisNode();
         forest.addAndUpdateChild(newNode, c, *this);
     }
     updateToReflectResolution(par, newNode, cToMove, ps);
