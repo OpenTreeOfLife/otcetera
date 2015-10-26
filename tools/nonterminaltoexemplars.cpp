@@ -112,6 +112,8 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                     break;
                 }
             }
+            const auto nid = nd->getOttId();
+            
             OttIdSet exemplarIDs;
             if (hasIncludedDes) {
                 exemplarIDs = findIncludedTipIds(*nd, includedNodes);
@@ -120,6 +122,10 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 includedNodes.insert(n);
                 insertAncestorsToParaphyleticSet(n, includedNodes);
                 exemplarIDs.insert(n->getOttId());
+            }
+            LOG(INFO) << "Exemplifying OTT-ID" << nid << " with:";
+            for (auto rid : exemplarIDs) {
+                LOG(INFO) << "    " << rid;
             }
             for (auto treeNdPair : treeNdPairList) {
                 TreeMappedEmptyNodes * treeP = treeNdPair.first;
