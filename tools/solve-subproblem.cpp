@@ -67,10 +67,9 @@ struct RSplit
   RSplit() = default;
   RSplit(const set<int>& i, const set<int>& a)
   {
-    set<int> o = set_difference_as_set(a,i);
     in  = set_to_vector(i);
-    out = set_to_vector(o);
     all = set_to_vector(a);
+    set_difference(begin(all), end(all), begin(in), end(in), std::inserter(out, out.end()));
     assert(in.size() + out.size() == all.size());
   }
 };
