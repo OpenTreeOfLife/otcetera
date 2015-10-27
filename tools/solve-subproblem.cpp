@@ -76,7 +76,16 @@ struct RSplit
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s)
 {
-  o<<s.in<<" | "<<s.out;
+  o<<s.in<<" | ";
+  if (s.out.size() < 100)
+      o<<s.out;
+  else
+  {
+      auto it = s.out.begin();
+      for(int i=0;i<100;i++)
+          o<<*it++<<" ";
+      o<<"...";
+  }
   return o;
 }
 
