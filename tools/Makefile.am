@@ -21,7 +21,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
 				otc-solve-subproblem \
-				otc-graft-solutions
+				otc-graft-solutions \
+				otc-unprune-solution
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
@@ -89,6 +90,9 @@ otc_solve_subproblem_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_graft_solutions_SOURCES = graft-solutions.cpp
 otc_graft_solutions_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_unprune_solution_SOURCES = unprune-solution.cpp
+otc_unprune_solution_CPPFLAGS = $(AM_CPPFLAGS)
 
 check:
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
