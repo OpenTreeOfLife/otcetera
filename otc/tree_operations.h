@@ -1010,6 +1010,8 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         if (npIt == other2new.end()) {
             nParent = toWrite.createNode(nullptr);
             other2new[otherParent] = nParent;
+            if (otherParent->hasOttId())
+                nParent->setOttId(otherParent->getOttId());
         } else {
             nParent = npIt->second;
         }
@@ -1018,6 +1020,8 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         if (ncIt == other2new.end()) {
             nChild = toWrite.createNode(nParent);
             other2new[otherChild] = nChild;
+            if (otherChild->hasOttId())
+                nChild->setOttId(otherChild->getOttId());
         } else {
             nChild = ncIt->second;
             nParent->addChild(nChild);
@@ -1025,6 +1029,10 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         auto idIt = nd2id.find(otherChild);
         if (idIt != nd2id.end()) {
             nChild->setOttId(idIt->second);
+        }
+        idIt = nd2id.find(otherParent);
+        if (idIt != nd2id.end()) {
+            nParent->setOttId(idIt->second);
         }
         withParents.insert(nChild);
     }

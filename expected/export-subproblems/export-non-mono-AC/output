@@ -8,5 +8,5 @@ ott14
 3genus-subsamplehigher.tre
 ((((ott1,ott2),ott3),ott8),((ott9,ott11),ott10));
 3genus-resolved.tre
-((ott1,ott2,ott3),ott8,(ott9,ott10,ott11));
+((ott1,ott2,ott3)ott4,ott8,(ott9,ott10,ott11)ott12)ott14;
 TAXONOMY

@@ -11,5 +11,5 @@ ott14
 3genus-ACvB.tre
 ((ott1,ott12),ott2);
 3genus-Anotmonophyletic.tre
-((ott1,ott2,ott3),ott8,ott12);
+((ott1,ott2,ott3)ott4,ott8,ott12)ott14;
 TAXONOMY
