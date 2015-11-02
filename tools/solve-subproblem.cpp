@@ -225,6 +225,14 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     return tree;
 }
 
+unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits)
+{
+    vector<const RSplit*> split_ptrs;
+    for(const auto& split: splits)
+        split_ptrs.push_back(&split);
+    return BUILD(tips, split_ptrs);
+}
+
 /// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
 void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy)
 {
@@ -278,7 +286,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
         i=-1;
   
     // 1. Find splits in order of input trees
-    vector<RSplit> splits;
+    vector<RSplit> consistent;
     for(const auto& tree: trees)
     {
         auto root = tree->getRoot();
@@ -293,29 +301,21 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
             const auto& descendants = remap(nd->getData().desIds);
             RSplit split{descendants, leafTaxaIndices};
             if (split.in.size()>1 and split.out.size())
-                splits.push_back(split);
+            {
+                consistent.push_back(split);
+                auto result = BUILD(all_leaves_indices, consistent);
+                if (not result)
+                {
+                    consistent.pop_back();
+                    if (verbose) LOG(INFO)<<"Reject: "<<split<<"\n";
+                }
+                else
+                    if (verbose) LOG(INFO)<<"Keep:   "<<split<<"\n";
+            }
         }
     }
-    vector<const RSplit*> split_ptrs;
-    for(const auto& split: splits)
-        split_ptrs.push_back(&split);
 
-    // 2. Add splits sequentially if they are consistent with previous splits.
-    vector<const RSplit*> consistent;
-    for(const auto& split: split_ptrs)
-    {
-        consistent.push_back(split);
-        auto result = BUILD(all_leaves_indices, consistent);
-        if (not result)
-        {
-            consistent.pop_back();
-            if (verbose) LOG(INFO)<<"Reject: "<<*split<<"\n";
-        }
-        else
-            if (verbose) LOG(INFO)<<"Keep:   "<<*split<<"\n";
-    }
-
-    // 3. Construct final tree and add names
+    // 2. Construct final tree and add names
     auto tree = BUILD(all_leaves_indices, consistent);
     for(auto nd: iter_pre(*tree))
         if (nd->isTip())
