@@ -312,6 +312,31 @@ The `-n` argument can be used to name the root if desired:
 	otc-graft-solutions solutions.tre -nlife > grafted_solution.tre
 ```
 
+### Unpruning the grafted solution
+
+This tool takes the grafted solution and re-attaches leaves that were pruned
+
+```sh
+	otc-unprune-solution grafted_solution.tre cleaned_ott.tre > full_supertree.tre
+```
+
+The first argument is the grafted solution.  This is a solution on a reduced taxon set.
+
+The second argument is a full (cleaned) taxonomy.  This contains leaves that have been pruned.
+
+In order for this tool to work, the grafted solution must have internal nodes corresponding to the
+taxonomy labelled with their OTT Ids.  Currently the generation of subproblems, solution of subproblems,
+and grafting of solutions preserve these labels.
+
+Typically, many leaves on the grafted solution are internal nodes in the full taxonomy.  In this
+case, the leaves in the grafted solution are expanded to match the taxonomy.
+
+Since many nodes in the taxonomy may have out-degree 1, unpruning involves re-inserting such nodes
+into the grafted solution to form the full supertree.
+
+In theory, one could use the sub-problem solve to unprune, if the sub-problem solver would handle
+taxonomy nodes with out-degree 1.
+
 ### getting the full distribution of out degree counts for a tree
 
     otc-degree-distribution sometree.tre
