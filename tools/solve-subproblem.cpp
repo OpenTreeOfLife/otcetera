@@ -307,10 +307,12 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees)
                 if (not result)
                 {
                     consistent.pop_back();
-                    if (verbose) LOG(INFO)<<"Reject: "<<split<<"\n";
+                    if (verbose and nd->hasOttId()) LOG(INFO)<<"Reject: ott"<<nd->getOttId()<<"\n";
                 }
                 else
-                    if (verbose) LOG(INFO)<<"Keep:   "<<split<<"\n";
+                {
+                    if (verbose and nd->hasOttId()) LOG(INFO)<<"Keep: ott"<<nd->getOttId()<<"\n";
+                }
             }
         }
     }
