@@ -334,7 +334,7 @@ case, the leaves in the grafted solution are expanded to match the taxonomy.
 Since many nodes in the taxonomy may have out-degree 1, unpruning involves re-inserting such nodes
 into the grafted solution to form the full supertree.
 
-In theory, one could use the sub-problem solve to unprune, if the sub-problem solver would handle
+In theory, one could use the sub-problem solver to unprune, if the sub-problem solver would handle
 taxonomy nodes with out-degree 1.
 
 ### getting the full distribution of out degree counts for a tree
