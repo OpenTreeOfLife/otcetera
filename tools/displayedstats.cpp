@@ -342,6 +342,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     virtual bool processTaxonomyTree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
         otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+        otCLI.getParsingRules().requireOttIds = false;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set

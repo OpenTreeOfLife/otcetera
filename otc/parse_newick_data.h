@@ -35,8 +35,8 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
                                 const ParsingRules &parsingRules) {
     if (labelToken) {
         node.setName(labelToken->content());
-	if (not parsingRules.requireOttIds)
-	    return;
+        if (not parsingRules.setOttIds)
+            return;
         if ((!parsingRules.setOttIdForInternals) && node.isInternal()) {
             return;
         }
@@ -76,11 +76,8 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
                          const ParsingRules & parsingRules) {
     if (labelToken) {
         node.setName(labelToken->content());
-	if (not parsingRules.requireOttIds)
-  	    return;
-        if ((!parsingRules.setOttIdForInternals) && node.isInternal()) {
-            return;
-        }
+        if (not parsingRules.setOttIds) return;
+        if (not parsingRules.setOttIdForInternals and node.isInternal()) return;
         long ottID = ottIDFromName(labelToken->content());
         if (ottID >= 0) {
             if (parsingRules.ottIdValidator != nullptr) {
@@ -105,11 +102,11 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
             U & treeData = tree.getData();
             if (contains(treeData.ottIdToNode, ottID)) {
                 throw OTCParsingError("Expecting an OTT Id to only occur one time in a tree.",
-                                  labelToken->content(),
-                                  labelToken->getStartPos());
+                                      labelToken->content(),
+                                      labelToken->getStartPos());
             }
             treeData.ottIdToNode[ottID] = &node;
-        } else if (!parsingRules.pruneUnrecognizedInputTips) {
+        } else if (parsingRules.requireOttIds and not parsingRules.pruneUnrecognizedInputTips) {
             throw OTCParsingError("Expecting a name for a taxon to end with an ott##### where the numbers are the OTT Id.",
                                   labelToken->content(),
                                   labelToken->getStartPos());
@@ -133,7 +130,7 @@ inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
                                 RootedTreeNode<RTSplits> & node,
                                 const NewickTokenizer::Token & token,
                                 const ParsingRules & parsingRules) {
-    if (not parsingRules.requireOttIds) return;
+    if (not parsingRules.setOttIds) return;
     if (node.isTip()
         && !node.hasOttId()
         && (!parsingRules.pruneUnrecognizedInputTips)) {
@@ -151,7 +148,7 @@ inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
 }
 
 inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
-    if (not parsingRules.requireOttIds) return;
+    if (not parsingRules.setOttIds) return;
     if (parsingRules.includeInternalNodesInDesIdSets) {
         fillDesIdSetsIncludingInternals(tree);
     } else {

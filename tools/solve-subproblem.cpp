@@ -342,7 +342,7 @@ bool get_bool(const string& arg, const string& context="")
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg)
 {
-    otCLI.getParsingRules().requireOttIds = get_bool(arg,"-o: ");
+    otCLI.getParsingRules().setOttIds = get_bool(arg,"-o: ");
     return true;
 }
 
@@ -377,7 +377,7 @@ bool handleStandardize(OTCLI& otCLI, const std::string & arg)
     if (arg.size())
         throw OTCError()<<"-S does not take an argument.";
     writeStandardized = true;
-    otCLI.getParsingRules().requireOttIds = false;
+    otCLI.getParsingRules().setOttIds = false;
     return true;
 }
 
@@ -551,15 +551,15 @@ int main(int argc, char *argv[]) {
     if (trees.empty())
         throw OTCError("No trees loaded!");
 
-    bool requireOttIds = otCLI.getParsingRules().requireOttIds;
+    bool setOttIds = otCLI.getParsingRules().setOttIds;
     if (synthesize_taxonomy)
     {
-        trees.push_back(make_unresolved_tree(trees,requireOttIds));
+        trees.push_back(make_unresolved_tree(trees,setOttIds));
         LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
     }
 
     // Add fake Ott Ids to tips and compute desIds
-    if (not requireOttIds)
+    if (not setOttIds)
     {
         auto name_to_id = createIdsFromNames(*trees.back());
         for(auto& tree: trees)
