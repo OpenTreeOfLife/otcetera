@@ -289,7 +289,6 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                     string node = p.second->getName();
                     if (p.second->hasOttId())
                         node = "ott"+std::to_string(p.second->getOttId());
-                    node = quote(node);
 
                     string study = quote(study_from_tree_name(inpTree.getName()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
@@ -303,7 +302,6 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                     string node = p.second->getName();
                     if (p.second->hasOttId())
                         node = "ott"+std::to_string(p.second->getOttId());
-                    node = quote(node);
 
                     string study = quote(study_from_tree_name(inpTree.getName()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
@@ -402,22 +400,53 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         }
         else
         {
-            for (auto iter=support.begin(); iter!=support.end();)
-            { 
-                std::cout<< " ("<<iter->first <<", [ ";
-                auto range = support.equal_range(iter->first);
-                auto start = range.first;
-                auto end   = range.second;
-                for (;iter!=end;++iter)
+            std::cout<<"  \"nodes\": {\n";
+            for(auto nd: iter_post_const(*summaryTree))
+            {
+                string name = nd->getName();
+                if (nd->hasOttId())
+                    name = "ott" + std::to_string(nd->getOttId());
+
+                int sc = support.count(name);
+                int cc = conflict.count(name);
+                if (sc + cc) == 0) continue;
+
+                std::cout<<"    "<<quote(name)<<": { \n";
+                if (sc)
                 {
-                    if (iter != start) std::cout<<"                   ";
-                    std::cout<<iter->second;
-                    auto next = iter; ++next;
-                    if (next != end)
-                        std::cout<<",\n";
+                    std::cout<<"      \"supported-by\": [ ";
+                    auto range = support.equal_range(name);
+                    auto start = range.first;
+                    auto end   = range.second;
+                    for (auto iter = start; iter!=end; ++iter)
+                    {
+                        if (iter != start) std::cout<<"                        ";
+                        std::cout<<iter->second;
+                        auto next = iter; ++next;
+                        if (next != end)
+                            std::cout<<",\n";
+                    }
+                    std::cout<<" ] }\n";
                 }
-                std::cout<<" ] )\n";
+                if (cc)
+                {
+                    std::cout<<"      \"conflicts-with\": [ ";
+                    auto range = conflict.equal_range(name);
+                    auto start = range.first;
+                    auto end   = range.second;
+                    for (auto iter = start; iter!=end; ++iter)
+                    {
+                        if (iter != start) std::cout<<"                        ";
+                        std::cout<<iter->second;
+                        auto next = iter; ++next;
+                        if (next != end)
+                            std::cout<<",\n";
+                    }
+                    std::cout<<" ] }\n";
+                }
+                std::cout<<"    }\n";
             }
+            std::cout<<"  }\n";
         }
         return true;
     }
