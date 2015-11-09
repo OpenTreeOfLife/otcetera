@@ -393,7 +393,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                 auto end   = range.second;
                 for (;iter!=end;++iter)
                 {
-                    if (iter != start) std::cout<<"                  ";
+                    if (iter != start) std::cout<<"                   ";
                     std::cout<<iter->second;
                     auto next = iter; ++next;
                     if (next != end)
