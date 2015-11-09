@@ -17,7 +17,7 @@ using std::map;
 using std::string;
 using namespace otc;
 
-typedef TreeMappedWithSplits Tree_t;
+using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
 bool verbose = false;
 
@@ -90,12 +90,9 @@ void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id)
                 throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
             auto id = it->second;
             nd->setOttId(id);
-            tree.getData().ottIdToNode[id] = nd;
         }
         else if (nd->isTip())
             throw OTCError()<<"Tree tip has no label!";
-  
-    clearAndfillDesIdSets(tree);
 }
 
 string addOttId(const string s, long id)
@@ -211,10 +208,12 @@ int main(int argc, char *argv[]) {
                 assert(nd->hasOttId());
                 long id = nd->getOttId();
                 if (my_leaf.find(id) != my_leaf.end())
+                {
                     if (setOttIds)
                         throw OTCError()<<"OTT Id "<<id<<" occurs at multiple tips!";
                     else
                         throw OTCError()<<"Label '"<<nd->getName()<<"' occurs at multiple tips!";
+                }
                 my_leaf[id] = nd;
             }
 
