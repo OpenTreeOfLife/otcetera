@@ -298,6 +298,20 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                     study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
                     support->insert({node, study_tree_node.str()});
                 }
+                else if (p.first == NDSE::FORKING_INCOMPATIBLE and conflict)
+                {
+                    string node = p.second->getName();
+                    if (p.second->hasOttId())
+                        node = "ott"+std::to_string(p.second->getOttId());
+                    node = quote(node);
+
+                    string study = quote(study_from_tree_name(inpTree.getName()));
+                    string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
+                    string node_in_study = quote(getNodeName(nd->getName()));
+                    std::ostringstream study_tree_node;;
+                    study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
+                    conflict->insert({node, study_tree_node.str()});
+                }
             }
         }
         assert(t != END_VALUE);
