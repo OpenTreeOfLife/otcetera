@@ -232,6 +232,7 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                                        const TreeMappedWithSplits & inpTree,
                                        std::map<const NodeWithSplits *, NDSE> * node2Classification,
                                        std::unordered_multimap<string,string> * support,
+                                       std::unordered_multimap<string,string> * conflict,
                                        bool isTaxoComp) {
     std::map<NDSE, std::size_t> r;
     if (inpTree.getRoot() == nullptr) {
@@ -368,6 +369,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     std::unique_ptr<TreeMappedWithSplits> summaryTree;
     std::map<NDSE, std::size_t> totals;
     std::unordered_multimap<string,string> support;
+    std::unordered_multimap<string,string> conflict;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
@@ -416,7 +418,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     }
 
     void statsForNextTree(OTCLI & otCLI, const TreeMappedWithSplits & tree, bool isTaxoComp) {
-        auto c = doStatCalc(*summaryTree, tree, nullptr, showJSON?(&support):nullptr, isTaxoComp);
+        auto c = doStatCalc(*summaryTree, tree, nullptr, showJSON?(&support):nullptr, showJSON?(&conflict):nullptr, isTaxoComp);
         if (not showJSON) writeNextRow(otCLI.out, c, tree.getName());
         for (const auto & p : c) {
             totals[p.first] += p.second;
