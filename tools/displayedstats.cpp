@@ -2,7 +2,14 @@
 #include "otc/supertree_util.h"
 #include <tuple>
 #include <sstream>
+#include <cstring>
+#include <unordered_map>
+
 using namespace otc;
+
+using std::string;
+
+bool showJSON = false;
 
 /// Stat Calc declarations
 enum NDSB {
@@ -180,9 +187,51 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
     return CN{NDSE::FORKING_INCOMPATIBLE, rn};
 }
 
+
+
+string study_from_tree_name(const string& name)
+{
+    const char* start = strrchr(name.c_str(),' ');
+    start++;
+    assert(start);
+
+    const char* end = strrchr(name.c_str(),'_');
+    return name.substr(start - name.c_str(), end-start);
+}
+
+
+string tree_in_study_from_tree_name(const string& name)
+{
+    const char* start = strrchr(name.c_str(),'_');
+    start++;
+    assert(start);
+
+    const char* end = strrchr(name.c_str(),'.');
+    return name.substr(start - name.c_str(), end-start);
+}
+
+string getNodeName(const string& name)
+{
+    const char* start = name.c_str();
+    const char* end = name.c_str() + name.size();
+    while(strchr(" \t_",*start) and start < end)
+        start++;
+    while(strchr(" \t_",*end) and start < end)
+        end--;
+    if (start == end)
+        throw OTCError()<<"Node name '"<<name<<"' contracted to nothing!";
+    return name.substr(start - name.c_str(), end-start);
+}
+
+string quote(const string& s)
+{
+    return '"'+s+'"';
+};
+
 std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                                        const TreeMappedWithSplits & inpTree,
                                        std::map<const NodeWithSplits *, NDSE> * node2Classification,
+                                       std::unordered_multimap<string,string> * support,
                                        bool isTaxoComp) {
     std::map<NDSE, std::size_t> r;
     if (inpTree.getRoot() == nullptr) {
@@ -234,6 +283,19 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
             t = p.first;
             if (p.second != nullptr) {
                 nd2summaryTree[nd] = p.second;
+                if (p.first == NDSE::FORKING_DISPLAYED and support)
+                {
+                    string supported = p.second->getName();
+                    if (p.second->hasOttId())
+                        supported = "ott"+std::to_string(p.second->getOttId());
+                    supported = quote(supported);
+                    string study = quote(study_from_tree_name(inpTree.getName()));
+                    string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
+                    string node_in_study = quote(getNodeName(nd->getName()));
+                    std::ostringstream supported_by;
+                    supported_by<<"("<<study<<", "<<tree_in_study<<", "<<node_in_study<<")";
+                    support->insert({supported, supported_by.str()});
+                }
             }
         }
         assert(t != END_VALUE);
@@ -305,6 +367,7 @@ void writeRow(std::ostream &out,
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
     std::unique_ptr<TreeMappedWithSplits> summaryTree;
     std::map<NDSE, std::size_t> totals;
+    std::unordered_multimap<string,string> support;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
@@ -315,8 +378,30 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         if (treatTaxonomyAsLastTree) {
             statsForNextTree(otCLI, *taxonomy, true);
         }
-        const std::string label = std::string("Total of ") + std::to_string(numTrees) + std::string(" trees");
-        writeNextRow(otCLI.out, totals, label);
+        if (not showJSON)
+        {
+            const std::string label = std::string("Total of ") + std::to_string(numTrees) + std::string(" trees");
+            writeNextRow(otCLI.out, totals, label);
+        }
+        else
+        {
+            for (auto iter=support.begin(); iter!=support.end();)
+            { 
+                std::cout<< " ("<<iter->first <<", [ ";
+                auto range = support.equal_range(iter->first);
+                auto start = range.first;
+                auto end   = range.second;
+                for (;iter!=end;++iter)
+                {
+                    if (iter != start) std::cout<<"           ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
+                }
+                std::cout<<" ])\n";
+            }
+        }
         return true;
     }
 
@@ -331,8 +416,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     }
 
     void statsForNextTree(OTCLI & otCLI, const TreeMappedWithSplits & tree, bool isTaxoComp) {
-        auto c = doStatCalc(*summaryTree, tree, nullptr, isTaxoComp);
-        writeNextRow(otCLI.out, c, tree.getName());
+        auto c = doStatCalc(*summaryTree, tree, nullptr, showJSON?(&support):nullptr, isTaxoComp);
+        if (not showJSON) writeNextRow(otCLI.out, c, tree.getName());
         for (const auto & p : c) {
             totals[p.first] += p.second;
         }
@@ -364,11 +449,16 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
 };
 
-bool handleCountTaxonomy(OTCLI & otCLI, const std::string &);
+
 bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
     DisplayedStatsState * proc = static_cast<DisplayedStatsState *>(otCLI.blob);
     assert(proc != nullptr);
     proc->treatTaxonomyAsLastTree = true;
+    return true;
+}
+
+bool handleJSON(OTCLI & otCLI, const std::string &) {
+    showJSON = true;
     return true;
 }
 
@@ -382,6 +472,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
+                  false);
+    otCLI.addFlag('j',
+                  "Output JSON for node support, instead of displaying statistics.",
+                  handleJSON,
                   false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
