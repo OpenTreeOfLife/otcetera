@@ -216,7 +216,7 @@ string getNodeName(const string& name)
     const char* end = name.c_str() + name.size();
     while(strchr(" \t_",*start) and start < end)
         start++;
-    while(strchr(" \t_",*end) and start < end)
+    while(strchr(" \t_",*(end-1)) and start < end)
         end--;
     if (start == end)
         throw OTCError()<<"Node name '"<<name<<"' contracted to nothing!";
