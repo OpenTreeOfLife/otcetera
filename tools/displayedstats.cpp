@@ -409,7 +409,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
                 int sc = support.count(name);
                 int cc = conflict.count(name);
-                if (sc + cc) == 0) continue;
+                if (sc + cc == 0) continue;
 
                 std::cout<<"    "<<quote(name)<<": { \n";
                 if (sc)
@@ -426,7 +426,10 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                         if (next != end)
                             std::cout<<",\n";
                     }
-                    std::cout<<" ] }\n";
+                    std::cout<<" ]";
+                    if (cc > 0)
+                        std::cout<<",";
+                    std::cout<<"\n";
                 }
                 if (cc)
                 {
@@ -442,7 +445,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                         if (next != end)
                             std::cout<<",\n";
                     }
-                    std::cout<<" ] }\n";
+                    std::cout<<" ]\n";
                 }
                 std::cout<<"    }\n";
             }
