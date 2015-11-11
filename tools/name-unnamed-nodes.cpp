@@ -119,7 +119,9 @@ int main(int argc, char *argv[]) {
         int id = 1;
         for(auto nd:iter_pre(*tree))
         {
-            if (not nd->getName().size())
+            if (nd->hasOttId())
+                nd->setName("ott"+std::to_string(nd->getOttId()));
+            else if (not nd->getName().size())
             {
                 string name = makeName(prefix,id);
                 if (names.count(name))
