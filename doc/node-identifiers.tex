@@ -1,0 +1,47 @@
+\documentclass[11pt]{article}
+\input{preamble.tex}
+\usepackage{hyperref}
+\hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
+\begin{document}
+The source for this in the doc subdirectory of the otcetera
+    repo \url{https://github.com/mtholder/otcetera/tree/master/doc}.
+\begin{center}
+    {\bf Proposals for node identification systems in the Open Tree of Life project} \\
+{Mark T.~Holder$^{1,2,\ast}$. feel free to contribute and add your name}
+\end{center}
+This doc really has nothing to do with otcetera, MTH just wanted a spot to
+put a \LaTeX doc on this subject, and this repo had a convenient template.
+
+\tableofcontents
+\section{Background}
+As of November 2015 nodes in the synthetic tree are identified in API calls
+    using unstable neo4j node IDs.
+If these node IDs resolve across versions of the synthetic tree, they will be
+    resolving to an arbitrary spot in the synthetic tree.
+Node IDs show up in URLs (some of which users may be in users' bookmarks, hence
+    are out of our control) and in our commenting system (feedback repo on GitHub).
+
+We also have IDs for taxa in our reference taxonomy, OTT.
+That taxonomy is created by rule-based merging of multiple source taxonomies and
+    a set of ``patch files.''
+The system for deciding when a taxon has changed enough to merit a different OTT Id
+    is automated, but not described in user-facing documentation.
+In other words, we have not made any promises to people about what these IDs mean.
+
+We would like to accelerate the rate of producing new synthetic trees.
+That would exacerbate the problems with node-base URLs.
+It would also be nice to be able to answer questions like ``how long has this grouping
+been in the synthetic tree? (i.e. what version of the tree did this group first appear''
+
+Any proposal for a system of generating node IDs would have to describe
+\begin{compactenum}
+  \item how the
+    set of these Ids gets updated when a new version of the synthetic tree or taxonomy are produced,
+  \item how changes in the id would affect the URLs from a previous version of the tree, 
+  \item how the changes of Ids would affect the phylesystem corpus of studies that 
+  are mapped to OTT names (and store the taxon name and OTT Id in the versioned NexSON
+  files), and
+  \item what we can promise users of Open Tree about these ids.
+\end{compactenum}
+\bibliography{otcetera}
+\end{document}
