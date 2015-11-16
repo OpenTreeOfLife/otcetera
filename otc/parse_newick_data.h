@@ -17,7 +17,6 @@ void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
                          const NewickTokenizer::Token * colonToken, // used for comment
                          const NewickTokenizer::Token * branchLenToken,
                          const ParsingRules & parsingRules);
-void postParseHook(RootedTree<RTNodeNoData, RTreeNoData> & , const ParsingRules & );
 
 ////////////////////////////////////////////////////////////////////////////////
 // no ops for no data
@@ -53,7 +52,9 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
         }
     }
 }
-inline void postParseHook(RootedTree<RTNodeNoData, RTreeNoData> & , const ParsingRules & ) {
+
+template<typename N, typename T>
+inline void postParseHook(RootedTree<N,T> & , const ParsingRules & ) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
@@ -122,8 +123,7 @@ inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNod
                                 const ParsingRules & parsingRules) {
     setOttIdAndAddToMap(tree, node, labelToken, parsingRules);
 }
-inline void postParseHook(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & , const ParsingRules & ) {
-}
+
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
 inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
@@ -147,6 +147,7 @@ inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
     setOttIdAndAddToMap(tree, node, labelToken, parsingRules);
 }
 
+template<>
 inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
     if (not parsingRules.setOttIds) return;
     if (parsingRules.includeInternalNodesInDesIdSets) {
