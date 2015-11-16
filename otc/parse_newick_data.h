@@ -105,9 +105,9 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
     }
 }
 
-template<>
-inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & tree,
-                                RootedTreeNode<RTNodeNoData> & node,
+template<typename N>
+inline void newickParseNodeInfo(RootedTree<N, RTreeOttIDMapping<N> > & tree,
+                                RootedTreeNode<N> & node,
                                 const NewickTokenizer::Token * labelToken,
                                 const NewickTokenizer::Token * , // used for comment
                                 const NewickTokenizer::Token * ,
@@ -128,16 +128,6 @@ inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
         && (!parsingRules.pruneUnrecognizedInputTips)) {
         throw OTCParsingContentError("Expecting each tip to have an ID.", token.getStartPos());
     }
-}
-
-template<>
-inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree,
-                                RootedTreeNode<RTSplits> & node,
-                                const NewickTokenizer::Token * labelToken,
-                                const NewickTokenizer::Token * , // used for comment
-                                const NewickTokenizer::Token * ,
-                                const ParsingRules & parsingRules) {
-    setOttIdAndAddToMap(tree, node, labelToken, parsingRules);
 }
 
 template<>
