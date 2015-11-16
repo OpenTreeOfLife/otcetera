@@ -11,13 +11,6 @@
 
 namespace otc {
 
-void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
-                         RootedTreeNode<RTNodeNoData> &,
-                         const NewickTokenizer::Token * labelToken,
-                         const NewickTokenizer::Token * colonToken, // used for comment
-                         const NewickTokenizer::Token * branchLenToken,
-                         const ParsingRules & parsingRules);
-
 ////////////////////////////////////////////////////////////////////////////////
 // no ops for no data
 template <typename N, typename T>
@@ -27,8 +20,9 @@ inline void newickCloseNodeHook(RootedTree<N,T> & ,
                                 const ParsingRules & )
 { }
 
-inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeNoData> & ,
-                                RootedTreeNode<RTNodeNoData> & node,
+template <typename N, typename T>
+inline void newickParseNodeInfo(RootedTree<N, T> & ,
+                                RootedTreeNode<N> & node,
                                 const NewickTokenizer::Token * labelToken,
                                 const NewickTokenizer::Token * , // used for comment
                                 const NewickTokenizer::Token * ,
@@ -111,6 +105,7 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
     }
 }
 
+template<>
 inline void newickParseNodeInfo(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & tree,
                                 RootedTreeNode<RTNodeNoData> & node,
                                 const NewickTokenizer::Token * labelToken,
@@ -135,6 +130,7 @@ inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
     }
 }
 
+template<>
 inline void newickParseNodeInfo(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree,
                                 RootedTreeNode<RTSplits> & node,
                                 const NewickTokenizer::Token * labelToken,
