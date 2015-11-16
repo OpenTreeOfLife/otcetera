@@ -700,17 +700,17 @@ inline void eraseMappingsToNode(typename T::node_type * nd, T & tree) {
     }
     tree.markAsDetached(nd);
 }
-template<typename T>
-void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename T::node_type * alias, T & tree);
 
-template<>
-inline void replaceMappingsToNodeWithAlias(typename RootedTreeTopologyNoData::node_type *,
-                                           typename RootedTreeTopologyNoData::node_type * ,
-                                           RootedTreeTopologyNoData & ) {
+template<typename N, typename T>
+    inline void replaceMappingsToNodeWithAlias(typename RootedTree<N,T>::node_type * nd, typename RootedTree<N,T>::node_type * alias, RootedTree<N,T> & tree)
+{
 }
 
-template<typename T>
-inline void replaceMappingsToNodeWithAlias(typename T::node_type * nd, typename T::node_type * alias, T & tree) {
+
+template<typename N>
+inline void replaceMappingsToNodeWithAlias(typename RootedTree<N,RTreeOttIDMapping<N>>::node_type * nd,
+                                           typename RootedTree<N,RTreeOttIDMapping<N>>::node_type * alias,
+                                           RootedTree<N,RTreeOttIDMapping<N>>& tree) {
     if (nd->hasOttId()) {
         tree.getData().ottIdToDetachedNode[nd->getOttId()] = nd;
         tree.getData().ottIdToNode[nd->getOttId()] = alias;
@@ -754,7 +754,7 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
     }
     monotypic_child->detachThisNode();
 
-    replaceMappingsToNodeWithAlias<T>(monotypic_child, nd, tree);
+    replaceMappingsToNodeWithAlias(monotypic_child, nd, tree);
     //    delete monotypic_child;
 }
 
@@ -776,7 +776,7 @@ inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * m
     child->detachThisNode();
     gp->addChild(child);
     assert(not monotypic_nd->hasChildren());
-    replaceMappingsToNodeWithAlias<T>(monotypic_nd, child, tree);
+    replaceMappingsToNodeWithAlias(monotypic_nd, child, tree);
     // delete monotypic_nd
 }
 
@@ -872,7 +872,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
                         suppressMonotypyByClaimingGrandparentAsPar<T>(tpn, onlyChild, tree);
                         removed.insert(tpn);
                     } else {
-                        replaceMappingsToNodeWithAlias<T>(onlyChild, tpn, tree);
+                        replaceMappingsToNodeWithAlias(onlyChild, tpn, tree);
                         if (onlyChild->isTip()) {
                             tree.pruneAndDelete(onlyChild);
                         } else {
