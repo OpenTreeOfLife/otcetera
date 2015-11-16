@@ -142,12 +142,8 @@ inline int treeProcessingMain(OTCLI & otCLI,
     return otCLI.exitCode;
 }
 
-template<typename T>
-inline std::set<long> getAllOTTIds(const T &taxonomy) {
-    return taxonomy.getRoot()->getData().desIds;
-}
-template<>
-inline std::set<long> getAllOTTIds(const TreeMappedEmptyNodes &taxonomy) {
+template<typename Tree>
+inline std::set<long> getAllOTTIds(const Tree& taxonomy) {
     std::set<long> o;
     for (auto nd : iter_node_const(taxonomy)) {
         if (nd->hasOttId()) {
@@ -157,6 +153,11 @@ inline std::set<long> getAllOTTIds(const TreeMappedEmptyNodes &taxonomy) {
     return o;
 }
 
+template<>
+inline std::set<long> getAllOTTIds(const TreeMappedWithSplits &taxonomy) {
+    return taxonomy.getRoot()->getData().desIds;
+}
+ 
 template<typename T>
 class TaxonomyDependentTreeProcessor {
     public:
