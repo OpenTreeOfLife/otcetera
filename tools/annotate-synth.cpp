@@ -180,6 +180,7 @@ void writeRow(std::ostream &out,
 
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     std::unique_ptr<Tree_t> summaryTree;
+    std::map<long,const Tree_t::node_type*> taxOttIdToNode;
     std::map<NDSE, std::size_t> totals;
     std::unordered_multimap<string,string> support;
     std::unordered_multimap<string,string> conflict;
@@ -277,9 +278,9 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         TaxonomyDependentTreeProcessor<Tree_t>::processTaxonomyTree(otCLI);
         otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
         otCLI.getParsingRules().requireOttIds = false;
-        // now we get a little cute and reprocess the taxonomy desIds so that they 
-        // exclude internals. So that when we expand source trees, we expand just
-        // to the taxonomy's leaf set
+        for(auto nd: iter_post_const(*taxonomy))
+            if (nd->hasOttId())
+                taxOttIdToNode[nd->getOttId()] = nd;
         return true;
     }
 
@@ -289,7 +290,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             summaryTree = std::move(tree);
             return true;
         }
-        requireTipsToBeMappedToTerminalTaxa(*tree, *taxonomy);
+        requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
         statsForNextTree(otCLI, *tree, false);
         return true;
     }
