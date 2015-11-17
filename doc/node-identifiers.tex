@@ -1,5 +1,6 @@
 \documentclass[11pt]{article}
 \input{preamble.tex}
+\newcommand{\mthcomment}[1]{{\color{red} #1}\xspace}
 \usepackage{hyperref}
 \hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
 \begin{document}
@@ -14,6 +15,7 @@ put a \LaTeX doc on this subject, and this repo had a convenient template.
 
 \tableofcontents
 \section{Background}
+\subsection{Node IDs in the synthetic tree}
 As of November 2015 nodes in the synthetic tree are identified in API calls
     using unstable neo4j node IDs.
 If these node IDs resolve across versions of the synthetic tree, they will be
@@ -21,13 +23,16 @@ If these node IDs resolve across versions of the synthetic tree, they will be
 Node IDs show up in URLs (some of which users may be in users' bookmarks, hence
     are out of our control) and in our commenting system (feedback repo on GitHub).
 
+
+\subsection{OTT Ids}
 We also have IDs for taxa in our reference taxonomy, OTT.
 That taxonomy is created by rule-based merging of multiple source taxonomies and
     a set of ``patch files.''
-The system for deciding when a taxon has changed enough to merit a different OTT Id
+The system for deciding when a taxon has changed enough to merit a different OTT ID
     is automated, but not described in user-facing documentation.
 In other words, we have not made any promises to people about what these IDs mean.
 
+\subsection{Motivation and requirements}
 We would like to accelerate the rate of producing new synthetic trees.
 That would exacerbate the problems with node-base URLs.
 It would also be nice to be able to answer questions like ``how long has this grouping
@@ -36,12 +41,168 @@ been in the synthetic tree? (i.e. what version of the tree did this group first 
 Any proposal for a system of generating node IDs would have to describe
 \begin{compactenum}
   \item how the
-    set of these Ids gets updated when a new version of the synthetic tree or taxonomy are produced,
-  \item how changes in the id would affect the URLs from a previous version of the tree, 
-  \item how the changes of Ids would affect the phylesystem corpus of studies that 
-  are mapped to OTT names (and store the taxon name and OTT Id in the versioned NexSON
+    set of these IDs gets updated when a new version of the synthetic tree or taxonomy are produced,
+  \item how changes in the ID would affect the URLs from a previous version of the tree, 
+  \item how the changes of IDs would affect the phylesystem corpus of studies that 
+  are mapped to OTT names (and store the taxon name and OTT ID in the versioned NexSON
   files), and
-  \item what we can promise users of Open Tree about these ids.
+  \item what we can promise users of Open Tree about these IDs.
 \end{compactenum}
+
+\section{Sampling of inclusions and exclusions}
+See \href{https://docs.google.com/document/d/1hJHjMckLywnoBuY1xG3I0hP-rsl4l8du3iA8kflEOQE/edit#}{JAR's note on the node ID registry google doc}, the 
+\href{https://github.com/OpenTreeOfLife/reference-taxonomy/blob/registry/registry/README.md}{README} in the registry implementation,
+and the \href{https://rawgit.com/OpenTreeOfLife/reference-taxonomy/registry/registry/doc/scenarios.html}{``scenarios'' web page} for 
+a full description.
+\subsection{Brief summary and concerns}
+\subsubsection{Some background}
+(based partially on the docs above and partly on slack conversations).
+\begin{compactenum}
+  \item OTT Ids of terminal taxa are the ``atomic'' units of an internal node registrations
+  \item an internal node registration consists of:
+  \begin{compactitem}
+    \item an inclusion set: some (but usually not all) descendant terminal taxa IDs, and
+    \item an exclusion set: some (but not all) terminal taxa that are not in the clade.
+  \end{compactitem}
+  \item internal node registrations maintain some flexibility by being interpreted as ``a 
+  common ancestor'' of the inclusion set rather than the ``most recent common 
+  ancestor'' (e.g a ``node-based'' name) or ``the largest clade that is the 
+  ancestor of all of the inclusion set and none of the exclusion set'' (a stem-based name).
+\end{compactenum}
+Procedure:
+\begin{compactenum}
+  \item From the current (and possibly previous) version(s) of OTT,
+  we create an initial set of internal node registrations.
+  One for each internal node in OTT.
+  For this initial operation only, the OTT ID becomes the registration ID.
+  \begin{compactitem}
+    \item The $x$ sampled terminals are chosen by including walking through the first $x$ 
+    children of the taxon in OTT (repeating subtrees as necessary).
+    Thus if a taxon in OTT has five subtaxa and $x=4$ then a representative from
+    4 distinct subtaxa will be chosen.
+    In other words, the terminal sampling is ``overdispersed''
+    \item Choosing a terminal node mentioned in multiple source taxonomies increases
+    the stability of the system by avoiding potentially problematic/questionable
+    taxa from serving as the exemplary descendants of a taxon.
+  \end{compactitem}
+  \item Whenever a new version synthetic tree is produced:
+    \begin{compactenum}
+      \item existing internal node registrations are used to decorate the
+      internal nodes of the tree.
+      \item If an internal node of the tree lacks any registration, then a new registration is
+      created to identify it.
+      \item If an internal node of the tree, $Y$, has been assigned multiple registrations:
+      \begin{compactenum}
+        \item If some of the node registrations map only to $Y$, then this set
+          of registrations uniquely identify the node. No new registrations are
+          needed.
+        \item If {\em none} of the nodes map to $Y$ alone, then a new
+        registration is created to identify $Y$.
+      \end{compactenum}
+    \end{compactenum}
+  \item OTT updates are handled in the same way as synthetic tree updates.
+\end{compactenum}
+\subsubsection{Concerns}
+\begin{compactenum}
+  \item This sample-based registry is, essentially, a collection of taxon concepts. That is fine, but having the OTT ID tied to a taxon concept leads to issues
+  with mapped studies in phylesystem.
+  With a high degree of probability, we can state that the vast majority of the 
+  OTU mapping has been name-based (rather than by looking at the inclusion
+    sets of OTT and choosing the most appropriate OTT ID).
+  As mentioned \href{https://docs.google.com/document/d/1hJHjMckLywnoBuY1xG3I0hP-rsl4l8du3iA8kflEOQE/edit?pli=1#heading=h.aqib3hn3t8nx}{here},
+  the sampling proposal will increase the rate of breaking the connection
+  between OTT Taxon names and OTT IDs by a factor of 15.
+  The phylesystem use-case argues for either
+  \begin{compactenum}
+    \item a fixed association between names and OTT IDs whenever possible. OR
+    \item a much more sophisticated UI for OTU mapping that allows for mapping
+      to a taxon concept (which would presumably also entail allowing curators to
+      register new taxon concepts on the fly)
+  \end{compactenum}
+  In the short term, it seems appealing to augment name-based OTT Ids with a system of taxon concept IDs rather 
+  than replace it with taxon concepts.
+  \item Note that the creation of new synthetic tree can break the association b
+  between an OTT ID and an OTT taxonomic name in this system.
+  So we would need to alert curators of changes in the interpretations of 
+  mappings more frequently than with every OTT update.
+  \item It is not clear how we can assign ``higher'' taxonomic names to the 
+  synthetic tree in a way that won't be confusing (or at least require a lot
+  of software infrastructure to explain).
+  It seems inevitable that users will interpret a taxonomic name as meaning
+  that the meaning of the name can be discerned by looking at OTT and saying
+  the clade includes ``all of the OTT IDs that descend from this taxon in OTT, 
+  and no others.''
+  But the registration that provides the ID for that OTT taxon name may have a
+    looser definition.
+\end{compactenum}
+
+\section{Name-based OTT IDs. Synthetic tree nodes designated by MRCA of two descendants}
+This solution would reuse the OTT ID whenever the uniqname has not changed.
+
+We would start referring to internal nodes in the synthetic tree by pairs of
+  terminal descendants that designate that node via an MRCA statement.
+
+The current synthetic tree APIs require the server to be able to handle MRCA
+  queries, so this is not a new burden.
+We could produce ``canonical'' pairs of descendants for the MRCA statements
+  via a procedure such as:
+\begin{compactenum}
+  \item sort the child branch order based on the lowest OTT ID in each subtree
+  \item use the lowest OTT ID of the first child and the second child to designate the internal node
+\end{compactenum}
+If we add assign high numbers for new OTT Ids, this would probably result in
+  lots of reuse of designators chosen.
+This would help us cache the synthetic tree queries.
+
+\subsection{Cons}
+\begin{compactenum}
+  \item The fact that the OTT IDs don't mean anything other than ``a taxon that some
+  some source has given this name to'' is unfortunate, because it is so 
+  semantically impoverished.
+  For example, feedback issues could refer to a node in a new version of the
+  tree that does not have the feature that the user commented on when creating
+  the feedback issue.
+  However,
+  \begin{compactenum}
+    \item it is fairly easy to explain cases to users for which the OTT ID is stable,
+    but it corresponds to different node designations.
+    \item it is consistent with the type-based nomenclature codes which have
+    very ``empty'' meanings for the names.
+  \end{compactenum}
+  \item the lack of any real registry of taxon concepts makes it harder to
+  start keeping stats to answer questions like ``How long has group $X$ been
+  seen in the synthetic tree?''
+\end{compactenum}
+
+\section{(strawman) Define inclusion set as all descendants and exclusion as all 
+OTT IDs that are not included.}
+
+\section{Define inclusion set as union of inclusion sets of children.
+Update registrations with every OTT update}
+
+\section{Define inclusion set as union of inclusion sets of children. Define 
+exclusion set as all other taxa except the relevant set of {\em incertae sedis} 
+taxa.
+Update registrations with every OTT update.}
+
 \bibliography{otcetera}
 \end{document}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%  Cruft
+Whenever a new version of OTT is produced, we sweep over the nodes of
+  the tree of OTT and map all of the registrations to the internal nodes of OTT.
+  \item For any internal node in OTT, $Z$, the smasher code will have a
+    plausible name for that taxon {\em Ab} (\mthcomment{I think. At least I think
+    that most of smasher is based on name matching}).
+    \begin{compactenum}
+      \item if the {\em Ab} was in a previous version of OTT, then it should
+        have a registration. Let us call the registration ID $123$, for the sake of explaining this example:
+        \begin{compactenum}
+          \item if registration $123$ maps uniquely to node $Z$, then we do not
+          then we call the node in OTT {\em Ab} and its OTT ID becomes $123$.
+          \item if registration $123$ doesnode $Z$ is one of several nodes that map to $123$
+        \end{compactenum}
+    \end{compactenum}
