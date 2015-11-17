@@ -192,22 +192,36 @@ inline void fixDesIdFields(RootedTreeNode<RTSplits> & nd, const std::set<long> &
 }
 
 // throws an OTCError if a tip is mapped to a non-terminal taxon
-template<typename T>
-void requireTipsToBeMappedToTerminalTaxa(const T & toExpand, const T & taxonomy) {
-    const auto & taxData = taxonomy.getData();
+template<typename N, typename T, typename M>
+void requireTipsToBeMappedToTerminalTaxa(const RootedTree<N,T> & toExpand, const M& ottIdToNode) {
     for (auto nd : iter_leaf_const(toExpand)) {
         assert(nd->isTip());
         assert(nd->hasOttId());
         auto ottId = nd->getOttId();
-        auto taxNd = taxData.getNodeForOttId(ottId);
-        if (not taxNd)
-	    throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->getName()<<"' not found in taxonomy!";
-        if (!taxNd->isTip()) {
-            std::string msg;
-            msg = "Tips must be mapped to terminal taxa ott" + std::to_string(ottId) + " found.";
-            throw OTCError(msg);
-        }
+
+        if (not ottIdToNode.count(ottId))
+            throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->getName()<<"' not found in taxonomy!";
+
+        auto taxNd = ottIdToNode.at(ottId);
+        if (not taxNd->isTip())
+            throw OTCError()<<"Tips must be mapped to terminal taxa: ott"<<ottId<<" found.";
     }
+}
+
+template<typename N, typename T>
+void requireTipsToBeMappedToTerminalTaxa(const RootedTree<N,T> & toExpand, const RootedTree<N,T>& taxonomy) {
+    std::map<long,const RootedTreeNode<N>*> ottIdToNode;
+    for(auto nd: iter_post_const(taxonomy))
+        if (nd->hasOttId())
+            ottIdToNode[nd->getOttId()] = nd;
+    
+    requireTipsToBeMappedToTerminalTaxa(toExpand, ottIdToNode);
+}
+
+template<typename N>
+void requireTipsToBeMappedToTerminalTaxa(const RootedTree<N,RTreeOttIDMapping<N>> & toExpand, const RootedTree<N,RTreeOttIDMapping<N>> & taxonomy) {
+    const auto & taxData = taxonomy.getData();
+    requireTipsToBeMappedToTerminalTaxa(toExpand, taxData.ottIdToNode);
 }
 
 // throws an OTCError if node has out-degree=1
