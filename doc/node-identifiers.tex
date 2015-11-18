@@ -1,6 +1,8 @@
 \documentclass[11pt]{article}
 \input{preamble.tex}
 \newcommand{\mthcomment}[1]{{\color{red} #1}\xspace}
+\newcommand{\registration}[3]{{\ensuremath{r(#1)=\{#2\}\mid\{#3\}}}\xspace}
+\newcommand{\mrcaDesig}[3]{{\ensuremath{m(#1)=\mbox{MRCA}(#2, #3)}}\xspace}
 \newcommand{\nodeLinkRot}{Node Link Rot Problem\xspace}
 \newcommand{\ottIdInterpretation}{OTT ID Interpretation Problem\xspace}
 \newcommand{\fragileOTUMapping}{Fragile OTU Mapping Problem\xspace}
@@ -35,13 +37,12 @@ That taxonomy is created by rule-based merging of multiple source taxonomies and
 The system for deciding when a taxon has changed enough to merit a different OTT ID
     is automated, but not described in user-facing documentation.
 In other words, we have not made any promises to people about what these IDs mean.
-That is nice.
-
 However, at some point, inquiring minds want to know what the rules are for when
   the OTT IDs will be stable and when they won't.
+
 This is a very minor concern, compared to the other problems mentioned in this section,
   but any solution to the other problems is going to affect what we can say 
-  about OTT ID stability.
+  about OTT ID stability and meaning.
 
 \subsection{\fragileOTUMapping}
 A primary motivation of our phylesystem corpus of studies, was to enable
@@ -68,7 +69,6 @@ But it would be nice to have an automatic solution that does not involve sleuthi
 We would like to accelerate the rate of producing new synthetic trees.
 That would exacerbate the problems with node-base URLs.
 
-
 Any proposal for a system of generating node IDs would have to describe:
 \begin{compactenum}
   \item how the
@@ -77,6 +77,7 @@ Any proposal for a system of generating node IDs would have to describe:
   \item how the proposal affects the \fragileOTUMapping, and
   \item what we can promise users of Open Tree about these IDs (the \ottIdInterpretation)
 \end{compactenum}
+
 \subsection{Other features that might be nice to have}
 \begin{compactenum}
   \item It would be nice to be able to answer questions like ``how long has this grouping
@@ -94,6 +95,8 @@ been in the synthetic tree?'' or ``what version of the tree did this grouping fi
   In short, MTH sees this annotation-transferring use case as a pretty poor
     match for a system of general node identification}.
 \end{compactenum}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Proposals}
 \subsection{Sampling of inclusions and exclusions}
 \subsubsection{Brief summary}
@@ -251,6 +254,9 @@ This would help us by giving us ``hits'' when we use node IDs
 
 \subsection{(strawman) Define inclusion set as all descendants and exclusion as all 
 OTT IDs that are not included.}
+It would be tedious and unwieldy to list every descendant OTT ID in the include
+  set for a node definition and every other ID in the exclude set.
+
 
 \subsection{Define inclusion set as union of inclusion sets of children.
 Update registrations with every OTT update}
@@ -259,6 +265,115 @@ Update registrations with every OTT update}
 exclusion set as all other taxa except the relevant set of {\em incertae sedis} 
 taxa.
 Update registrations with every OTT update.}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Example cases}
+\subsection{Jonathan Rees' scenarios}
+\begin{figure}[h!]
+   \centering \includegraphics[scale=.5]{images/jar-example.pdf}\\
+   \caption{initial tree}\label{jarInitialTree}
+\end{figure}
+The following figures are from JAR's \href{https://rawgit.com/OpenTreeOfLife/reference-taxonomy/registry/registry/doc/scenarios.html}{scenarios web page}.
+The starting point is shown in Figure \ref{jarInitialTree} where
+$m$ denotes a node that we want to bookmark.
+JAR works through an example in which his sampling proposal
+  initially defines a registration: \registration{m}{c,d,e}{x,y} where the
+  first set is the inclusion set, and the second set is the exclusion set.
+We can contrast this with a MRCA designation \mrcaDesig{m}{a}{b}.
+
+\subsubsection{Resolutions}
+\begin{figure}[h!]
+   \centering  \includegraphics[scale=.5]{images/jar-unique-resolution.pdf}
+   \includegraphics[scale=.5]{images/jar-ambiguous-resolution.pdf}\\
+   \put{(A)\hskip 15em (B)}\\
+   \caption{Two resolutions of the polytomy}\label{jarResolution1}
+\end{figure}
+Consider the case of a synthetic tree update that shows on of the resolutions
+shown in Figure \ref{jarResolution1}.
+In resolution \ref{jarResolution1}A $r(m)$ points unambiguously to the corresponding
+  resolved node, but if resolution \ref{jarResolution1}B were produced
+  then $r(m)$ would map to the 2 nodes marked $m1$ and $m2$
+  in the new tree.
+It is an open question how to deal with this ambiguity.
+JAR's doc discusses using metadata, a MRCA or most inclusive ancestor procedure, or prompting the user.
+$m(m)$ would resolve to a node in both cases, of course.
+However, in \ref{jarResolution1}A it would resolve to the MRCA of $a,b,c$ which is not the corresponding
+  node.
+
+\subsection{Dissolution of the original monophyletic group}
+\begin{figure}[h]
+   \centering  \includegraphics[scale=.5]{images/jar-false-positive.pdf}
+   \includegraphics[scale=.5]{images/jar-relocation.pdf}
+   \includegraphics[scale=.5]{images/jar-no-resolution.pdf}\\
+   \put{\hskip 2em(A)\hskip 12em (B)\hskip 14em (C)}\\
+   \caption{3 examples of trees in which the original clade $m$ is not recovered}\label{jarDissolutionOfM}
+\end{figure}
+If a new version of the synthetic tree does not find the original members
+  $m$ to be a clade, then the behavior of the registration system depends on
+  whether or not the taxa that have ``moved away'' are among the sampled taxa
+  (or whether they are paraphyletic with respect to taxa mentioned in the 
+  exclude statement).
+In case \ref{jarDissolutionOfM}A the $r(m)$ would no refer to the node labelled $m1$,
+  despite the fact that it lacks $b$ (because $b$ was not chosen as a sampled include taxon).
+In case \ref{jarDissolutionOfM}B the node labelled $m$ would be identified by $r(m)$.
+In case \ref{jarDissolutionOfM}C the registration $r(m)$ would fail to map.
+
+\subsection{Gain or loss of taxa}
+\begin{figure}[h!]
+   \centering  \includegraphics[scale=.5]{images/jar-sample-loss.pdf}
+   \includegraphics[scale=.5]{images/jar-new-taxon.pdf}\\
+   \put{(A)\hskip 15em (B)}\\
+   \caption{A tree that lacks $c$, and one that has a new leaf, $w$.}\label{jarGainLoss}
+\end{figure}
+The registration system is not too sensitive to taxon loss (assuming the number of sampled inclusions is not too small).
+Addition of a new taxon ($w$ Figure \ref{jarGainLoss}B) results in ambiguity in this
+  case.
+This would be the same result if $w$ existed outside of $m$ in the original tree, but 
+  was not selected as a member of the exclusion set.
+
+\subsection{Summary of JAR scenarios}
+\subsubsection{Biologists expected behavior}
+If we define the ideal behavior as:
+  ``Imagine that I showed the initial tree to a competent systematist
+  and asked him/her
+  to find the node that corresponds to $m$ in the following trees.''
+I think that answers would be:\\
+\begin{table}[h]
+\centering
+\begin{tabular}{r|c|c|c}
+Case & Biologist & $r(m)$ & $m(m)$ \\
+\hline
+\ref{jarResolution1}A & $m$ & m & child of $m$ \\
+\ref{jarResolution1}B & $m2$ & ambig. & $m2$ \\
+\ref{jarDissolutionOfM}A & NA & $m1$ & root \\
+\ref{jarDissolutionOfM}B & NA & $m$ & root \\
+\ref{jarDissolutionOfM}C & NA & NA & non-root internal \\
+\ref{jarGainLoss}A & $m^{\ast}$ & $m$ & $m$ \\
+\ref{jarGainLoss}B & $m$ & ambig & tipward `$m?$' \\
+\hline
+\end{tabular}
+\end{table}
+Note that the table is not intended to show the frequency of the different scenarios.
+Presumably, resolution will be the most common case.
+
+\subsubsection{sampled registry proposal}
+I don't disagree with JAR's statement (on the scenarios page): ``If the inclusion and exclusion sets are made apparent to users, and expectations are set correctly, this should be a pretty strong system$\ldots$''
+However, I do think that ways that the system deviates from biologists
+  expectation are a bit hard summarize to someone who does not understand the system.
+Sometimes the registration-based mapping is ambiguous in cases in which biologists
+  would say there is no ambiguity, and sometimes it maps when a biologist would say 
+  this tree does not show that group.''
+So it is not a matter of telling the users something direct like
+  ``we use a stricter definition of `this group' than you may be expecting, here is why...''
+
+Very few users will want to learn the system, and even if you understand the 
+  system it would take quite a bit of coding to make the inclusion and exclusions apparent to users in a friendly way.
+
+It could be done, but it sounds like a lot of work, and one that will be confusing to
+  most users.
+
+\subsubsection{MRCA proposal}
 
 \section{Conclusions}
 \subsection{We probably need IDs for names}
@@ -282,6 +397,7 @@ If OTT IDs are not attached to names, and a name is discovered to be a homonym
 We'd be able to sort these cases out by looking through old versions of OTT, but
   that seems like a big headache to avoid the obvious solution: establish some
   unique identifier to the names.
+
 
 \bibliography{otcetera}
 \end{document}
