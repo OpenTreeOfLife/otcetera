@@ -1,6 +1,10 @@
 \documentclass[11pt]{article}
 \input{preamble.tex}
 \newcommand{\mthcomment}[1]{{\color{red} #1}\xspace}
+\newcommand{\nodeLinkRot}{Node Link Rot Problem\xspace}
+\newcommand{\ottIdInterpretation}{OTT ID Interpretation Problem\xspace}
+\newcommand{\fragileOTUMapping}{Fragile OTU Mapping Problem\xspace}
+
 \usepackage{hyperref}
 \hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
 \begin{document}
@@ -14,51 +18,95 @@ This doc really has nothing to do with otcetera, MTH just wanted a spot to
 put a \LaTeX doc on this subject, and this repo had a convenient template.
 
 \tableofcontents
-\section{Background}
-\subsection{Node IDs in the synthetic tree}
+\section{Motivation and Requirements}
+\subsection{\nodeLinkRot}
 As of November 2015 nodes in the synthetic tree are identified in API calls
     using unstable neo4j node IDs.
 If these node IDs resolve across versions of the synthetic tree, they will be
     resolving to an arbitrary spot in the synthetic tree.
+This will be referred to as the \nodeLinkRot problem in this doc.
 Node IDs show up in URLs (some of which users may be in users' bookmarks, hence
     are out of our control) and in our commenting system (feedback repo on GitHub).
 
-
-\subsection{OTT Ids}
+\subsection{\ottIdInterpretation}
 We also have IDs for taxa in our reference taxonomy, OTT.
 That taxonomy is created by rule-based merging of multiple source taxonomies and
     a set of ``patch files.''
 The system for deciding when a taxon has changed enough to merit a different OTT ID
     is automated, but not described in user-facing documentation.
 In other words, we have not made any promises to people about what these IDs mean.
+That is nice.
 
-\subsection{Motivation and requirements}
+However, at some point, inquiring minds want to know what the rules are for when
+  the OTT IDs will be stable and when they won't.
+This is a very minor concern, compared to the other problems mentioned in this section,
+  but any solution to the other problems is going to affect what we can say 
+  about OTT ID stability.
+
+\subsection{\fragileOTUMapping}
+A primary motivation of our phylesystem corpus of studies, was to enable
+  mapping OTUs in published trees to a common taxonomy.
+When a curator chooses a taxonomic name, the NexSON representation of the study
+  retains the OTT ID and the OTT taxon name.
+With a high degree of probability, we can state that the vast majority of the 
+  OTU mapping has been name-based (rather than by looking at the inclusion
+    sets of OTT and choosing the most appropriate OTT ID).
+
+Currently the name is not guaranteed to remain fixed with that OTT ID, and the
+  names are not guaranteed to be unique.
+Thus, the stored OTU mapping can become internally inconsistent when OTT is updated.
+Note that: (a) we do have a ``uniqname'' field for taxa that have homonyms, and (b)
+  new versions of OTT have a file of ``forwarding'' statements for many IDs that 
+  are removed from the system.
+
+Since flux in OTT IDs is mainly at the internal taxa, and relatively few of these
+  are mapped to OTUs in studies, this is a relatively low level problem.
+But it would be nice to have an automatic solution that does not involve sleuthing
+  through old versions of OTT.
+
+\subsection{Summary of Requirements}
 We would like to accelerate the rate of producing new synthetic trees.
 That would exacerbate the problems with node-base URLs.
-It would also be nice to be able to answer questions like ``how long has this grouping
-been in the synthetic tree? (i.e. what version of the tree did this group first appear''
 
-Any proposal for a system of generating node IDs would have to describe
+
+Any proposal for a system of generating node IDs would have to describe:
 \begin{compactenum}
   \item how the
     set of these IDs gets updated when a new version of the synthetic tree or taxonomy are produced,
-  \item how changes in the ID would affect the URLs from a previous version of the tree, 
-  \item how the changes of IDs would affect the phylesystem corpus of studies that 
-  are mapped to OTT names (and store the taxon name and OTT ID in the versioned NexSON
-  files), and
-  \item what we can promise users of Open Tree about these IDs.
+  \item how the proposal would solve/mediat the \nodeLinkRot), 
+  \item how the proposal affects the \fragileOTUMapping, and
+  \item what we can promise users of Open Tree about these IDs (the \ottIdInterpretation)
 \end{compactenum}
-
-\section{Sampling of inclusions and exclusions}
+\subsection{Other features that might be nice to have}
+\begin{compactenum}
+  \item It would be nice to be able to answer questions like ``how long has this grouping
+been in the synthetic tree?'' or ``what version of the tree did this grouping first appear?)''
+  for groups that are not named.
+  This would require some nice definition of taxon concept to stand in for ``this grouping'' in these questions.
+  \item One might want a taxon concept that can describe where to place an annotation on a tree.
+  Notes: see \href{https://docs.google.com/document/d/1MbiQwy5ImaWUzzCudmkLwKj82oe-QC__e5krsQJ8umE/edit}{hackathon annotations docs} and footnote
+  \footnote{
+  It seems (to MTH) that it is unlikely that we could reuse a specfic description
+    of what properties a group must have before one applies an annotation to it.
+  In other words it seems like if the target of annotations is explicitly stated,
+    then it will probably only apply to that one property.
+  If it is vaguely stated, then it does not seem that worthwhile.
+  In short, MTH sees this annotation-transferring use case as a pretty poor
+    match for a system of general node identification}.
+\end{compactenum}
+\section{Proposals}
+\subsection{Sampling of inclusions and exclusions}
+\subsubsection{Brief summary}
 See \href{https://docs.google.com/document/d/1hJHjMckLywnoBuY1xG3I0hP-rsl4l8du3iA8kflEOQE/edit#}{JAR's note on the node ID registry google doc}, the 
 \href{https://github.com/OpenTreeOfLife/reference-taxonomy/blob/registry/registry/README.md}{README} in the registry implementation,
 and the \href{https://rawgit.com/OpenTreeOfLife/reference-taxonomy/registry/registry/doc/scenarios.html}{``scenarios'' web page} for 
 a full description.
-\subsection{Brief summary and concerns}
-\subsubsection{Some background}
-(based partially on the docs above and partly on slack conversations).
+
+The following is based partially on the docs above and partly on slack conversations.
+
+\subsubsection{Some principles}
 \begin{compactenum}
-  \item OTT Ids of terminal taxa are the ``atomic'' units of an internal node registrations
+  \item OTT IDs of terminal taxa are the ``atomic'' units of an internal node registrations
   \item an internal node registration consists of:
   \begin{compactitem}
     \item an inclusion set: some (but usually not all) descendant terminal taxa IDs, and
@@ -68,22 +116,29 @@ a full description.
   common ancestor'' of the inclusion set rather than the ``most recent common 
   ancestor'' (e.g a ``node-based'' name) or ``the largest clade that is the 
   ancestor of all of the inclusion set and none of the exclusion set'' (a stem-based name).
+  \item The number of included descendants, $y$, and the number of excluded taxa, $x$, will
+    be decided based on testing their effects (based on previous revisions.) JAR has some
+    results, but you can get the gist of the proposal without knowing those details.
 \end{compactenum}
-Procedure:
+
+This sample-based registry is, essentially, a collection of automatically
+  generated taxon concepts.
+
+\subsubsection{Procedure}
 \begin{compactenum}
   \item From the current (and possibly previous) version(s) of OTT,
-  we create an initial set of internal node registrations.
-  One for each internal node in OTT.
+  we create an initial set of internal node registrations -- one for each internal node in OTT.
   For this initial operation only, the OTT ID becomes the registration ID.
   \begin{compactitem}
-    \item The $x$ sampled terminals are chosen by including walking through the first $x$ 
-    children of the taxon in OTT (repeating subtrees as necessary).
-    Thus if a taxon in OTT has five subtaxa and $x=4$ then a representative from
+    \item The $y$ sampled terminals are chosen by including walking through $y$ distinct
+    children of the taxon in OTT.
+    Thus if a taxon in OTT has five subtaxa and $y=4$ then a representative from
     4 distinct subtaxa will be chosen.
-    In other words, the terminal sampling is ``overdispersed''
-    \item Choosing a terminal node mentioned in multiple source taxonomies increases
+    In other words, the terminal sampling is ``overdispersed'' compared to random sampling.
+    If the number of children is less than the sampling number, then some subtrees will be represented by multiple descendants.
+    \item Choosing a terminal OTT ID that is mentioned in multiple source taxonomies increases
     the stability of the system by avoiding potentially problematic/questionable
-    taxa from serving as the exemplary descendants of a taxon.
+    taxa from serving as the exemplars in a registration definition.
   \end{compactitem}
   \item Whenever a new version synthetic tree is produced:
     \begin{compactenum}
@@ -99,29 +154,21 @@ Procedure:
         \item If {\em none} of the nodes map to $Y$ alone, then a new
         registration is created to identify $Y$.
       \end{compactenum}
+      \item What happens if a registration that is associate with a taxonomic name maps to
+      multiple nodes in the tree, but each of those nodes also has a different registration
+      which uniquely identifies the node? I'm not sure if there is some mechanism to 
+      disambiguate any ``taxonomic registrations'' (registrations that are associated with
+      a taxonomic name in OTT).
     \end{compactenum}
   \item OTT updates are handled in the same way as synthetic tree updates.
 \end{compactenum}
 \subsubsection{Concerns}
 \begin{compactenum}
-  \item This sample-based registry is, essentially, a collection of taxon concepts. That is fine, but having the OTT ID tied to a taxon concept leads to issues
-  with mapped studies in phylesystem.
-  With a high degree of probability, we can state that the vast majority of the 
-  OTU mapping has been name-based (rather than by looking at the inclusion
-    sets of OTT and choosing the most appropriate OTT ID).
+  \item exacerbates the \fragileOTUMapping.
   As mentioned \href{https://docs.google.com/document/d/1hJHjMckLywnoBuY1xG3I0hP-rsl4l8du3iA8kflEOQE/edit?pli=1#heading=h.aqib3hn3t8nx}{here},
   the sampling proposal will increase the rate of breaking the connection
   between internal OTT Taxon names and OTT IDs by a factor of 15 (note also that
   most tips in phylesytem trees are mapped to terminals in OTT).
-  The phylesystem use-case argues for either
-  \begin{compactenum}
-    \item a fixed association between names and OTT IDs whenever possible. OR
-    \item a much more sophisticated UI for OTU mapping that allows for mapping
-      to a taxon concept (which would presumably also entail allowing curators to
-      register new taxon concepts on the fly)
-  \end{compactenum}
-  In the short term, it seems appealing to augment name-based OTT Ids with a system of taxon concept IDs rather 
-  than replace it with taxon concepts.
   \item Note that the creation of new synthetic tree can break the association b
   between an OTT ID and an OTT taxonomic name in this system.
   So we would need to alert curators of changes in the interpretations of 
@@ -137,54 +184,104 @@ Procedure:
     looser definition.
 \end{compactenum}
 
-\section{Name-based OTT IDs. Synthetic tree nodes designated by MRCA of two descendants}
-This solution would reuse the OTT ID whenever the uniqname has not changed.
+\subsection{Name-based OTT IDs. Synthetic tree nodes designated by MRCA of two descendants}
+\subsubsection{Procedure}
+Reuse the OTT IDs whenever the uniqname has not changed.
 
-We would start referring to internal nodes in the synthetic tree by pairs of
-  terminal descendants that designate that node via an MRCA statement.
+Internal nodes in the synthetic tree get designations (instead of true IDs).
+These designations use some syntactic trick to concatenate
+  a pair of OTT IDs for terminal descendants which point to the node via an MRCA statement.
 
-The current synthetic tree APIs require the server to be able to handle MRCA
-  queries, so this is not a new burden.
+Retrieval of a node based on an exact designation match would be a very fast look up
+  in an index in treemachine-LITE.
+If no node a new tree was decorated with that specific designation, we can still
+  find a node provided that the two descendants are still in the tree by using
+  the MRCA query in the API.
+
+{\bf Note:} an easy method for producing designations that are likely to get reused:
 We could produce ``canonical'' pairs of descendants for the MRCA statements
   via a procedure such as:
 \begin{compactenum}
-  \item sort the child branch order based on the lowest OTT ID in each subtree
-  \item use the lowest OTT ID of the first child and the second child to designate the internal node
+  \item At each internal node, sort the child branch order based on the lowest OTT ID (or via a pair of numbers. The first is some score 
+  for the OTT ID that captures reliability based on number of source taxonomies
+  that include the source, and the second is the numeric interpretation of the OTT ID.
+  The second element is used to break ties in a consistent way) 
+  \item use the best scoring OTT ID of the first child and the second child to designate the internal node
 \end{compactenum}
-If we add assign high numbers for new OTT Ids, this would probably result in
-  lots of reuse of designators chosen.
-This would help us cache the synthetic tree queries.
+As long as we assign high numbers for new OTT Ids, then would probably result in
+  lots of reuse of which designators are chosen.
+This would help us by giving us ``hits'' when we use node IDs
 
-\subsection{Cons}
+\subsubsection{Pros}
 \begin{compactenum}
+  \item Easy to implement:
+  The current synthetic tree APIs require the server to be able to handle MRCA
+    queries, so this is not a new burden.
+  \item Slows the divergence of OTT taxon name fields in NexSON from the OTT ID fields in NexSON files.
+  \item Would stop a lot of the 404's (or random resolutions) when we update the
+  synth tree. It would even be pretty trivial to create a redirect table for cases
+  when we know that one of our designators has been merged or removed from OTT.
+\end{compactenum}
+
+
+\subsubsection{Cons}
+\begin{compactenum}
+  \item Internal OTT IDs are not tied to the internal node designations, which might surprise
+  some users.
   \item The fact that the OTT IDs don't mean anything other than ``a taxon that some
-  some source has given this name to'' is unfortunate, because it is so 
+  some source has given this name to'' is unfortunate, because that meaning is so 
   semantically impoverished.
-  For example, feedback issues could refer to a node in a new version of the
-  tree that does not have the feature that the user commented on when creating
-  the feedback issue.
+  For example, feedback issues could refer some feature of a named taxon, but in 
+    a subsequent version of the tree that name may refer to a different set of 
+    descendants.
   However,
   \begin{compactenum}
-    \item it is fairly easy to explain cases to users for which the OTT ID is stable,
-    but it corresponds to different node designations.
+    \item it is fairly easy to explain cases to users the idea that OTT ID is stable,
+    but it corresponds to different set of taxa.
     \item it is consistent with the type-based nomenclature codes which have
     very ``empty'' meanings for the names.
+    \item unless we start ``doing taxonomy'' in the sense of asserting taaxon concepts
+    {\em should} be named a certain thing, we are already subject to the whims
+    of our input taxonomies.
   \end{compactenum}
   \item the lack of any real registry of taxon concepts makes it harder to
   start keeping stats to answer questions like ``How long has group $X$ been
   seen in the synthetic tree?''
 \end{compactenum}
 
-\section{(strawman) Define inclusion set as all descendants and exclusion as all 
+\subsection{(strawman) Define inclusion set as all descendants and exclusion as all 
 OTT IDs that are not included.}
 
-\section{Define inclusion set as union of inclusion sets of children.
+\subsection{Define inclusion set as union of inclusion sets of children.
 Update registrations with every OTT update}
 
-\section{Define inclusion set as union of inclusion sets of children. Define 
+\subsection{Define inclusion set as union of inclusion sets of children. Define 
 exclusion set as all other taxa except the relevant set of {\em incertae sedis} 
 taxa.
 Update registrations with every OTT update.}
+
+\section{Conclusions}
+\subsection{We probably need IDs for names}
+The \fragileOTUMapping argues for either
+\begin{compactenum}
+  \item a fixed association between names and OTT IDs whenever possible, or
+  \item a much more sophisticated UI for OTU mapping that allows for mapping
+    to a taxon concept (which would presumably also entail allowing curators to
+    register new taxon concepts on the fly)
+\end{compactenum}
+The latter route would require significant UI development, so 
+  it does not sound like a short-term solution.
+
+I think that we only fill in the {\tt uniqname} in the taxonomy if 
+  a name is known to be a homonym.
+If OTT IDs are not attached to names, and a name is discovered to be a homonym
+  in a future version of OTT,
+  any record (e.g. a study in phylesystem) that stores just the OTT
+  taxon name will be in danger of holding an ambiguous way of recognizing the
+  mapped name.
+We'd be able to sort these cases out by looking through old versions of OTT, but
+  that seems like a big headache to avoid the obvious solution: establish some
+  unique identifier to the names.
 
 \bibliography{otcetera}
 \end{document}
