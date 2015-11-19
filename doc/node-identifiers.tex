@@ -17,7 +17,7 @@ The source for this in the doc subdirectory of the otcetera
 {Mark T.~Holder$^{1,2,\ast}$. feel free to contribute and add your name}
 \end{center}
 This doc really has nothing to do with otcetera, MTH just wanted a spot to
-put a \LaTeX doc on this subject, and this repo had a convenient template.
+put a \LaTeX\xspace doc on this subject, and this repo had a convenient template.
 
 \tableofcontents
 \section{Motivation and Requirements}
@@ -26,14 +26,14 @@ As of November 2015 nodes in the synthetic tree are identified in API calls
     using unstable neo4j node IDs.
 If these node IDs resolve across versions of the synthetic tree, they will be
     resolving to an arbitrary spot in the synthetic tree.
-This will be referred to as the \nodeLinkRot problem in this doc.
+This will be referred to as the ``''\nodeLinkRot'' in this doc.
 Node IDs show up in URLs (some of which users may be in users' bookmarks, hence
     are out of our control) and in our commenting system (feedback repo on GitHub).
 
 \subsection{\ottIdInterpretation}
 We also have IDs for taxa in our reference taxonomy, OTT.
 That taxonomy is created by rule-based merging of multiple source taxonomies and
-    a set of ``patch files.''
+    a set of patch files.
 The system for deciding when a taxon has changed enough to merit a different OTT ID
     is automated, but not described in user-facing documentation.
 In other words, we have not made any promises to people about what these IDs mean.
@@ -48,7 +48,7 @@ This is a very minor concern, compared to the other problems mentioned in this s
 A primary motivation of our phylesystem corpus of studies, was to enable
   mapping OTUs in published trees to a common taxonomy.
 When a curator chooses a taxonomic name, the NexSON representation of the study
-  retains the OTT ID and the OTT taxon name.
+  retains both the OTT ID and the OTT taxon name.
 With a high degree of probability, we can state that the vast majority of the 
   OTU mapping has been name-based (rather than by looking at the inclusion
     sets of OTT and choosing the most appropriate OTT ID).
@@ -103,7 +103,7 @@ been in the synthetic tree?'' or ``what version of the tree did this grouping fi
 See \href{https://docs.google.com/document/d/1hJHjMckLywnoBuY1xG3I0hP-rsl4l8du3iA8kflEOQE/edit#}{JAR's note on the node ID registry google doc}, the 
 \href{https://github.com/OpenTreeOfLife/reference-taxonomy/blob/registry/registry/README.md}{README} in the registry implementation,
 and the \href{https://rawgit.com/OpenTreeOfLife/reference-taxonomy/registry/registry/doc/scenarios.html}{``scenarios'' web page} for 
-a full description.
+a more complete description of this proposal.
 
 The following is based partially on the docs above and partly on slack conversations.
 
@@ -149,15 +149,16 @@ This sample-based registry is, essentially, a collection of automatically
       internal nodes of the tree.
       \item If an internal node of the tree lacks any registration, then a new registration is
       created to identify it.
-      \item If an internal node of the tree, $Y$, has been assigned multiple registrations:
+      \item If an internal node, $Y$, of the tree has been assigned multiple registrations:
       \begin{compactenum}
         \item If some of the node registrations map only to $Y$, then this set
           of registrations uniquely identify the node. No new registrations are
           needed.
         \item If {\em none} of the nodes map to $Y$ alone, then a new
-        registration is created to identify $Y$.
+        registration is created to identify $Y$, or perhaps on of the mapped registrations is 
+        modified to be more specific (map only to node $Y$). \mthcomment{I'm not quite sure.}
       \end{compactenum}
-      \item What happens if a registration that is associate with a taxonomic name maps to
+      \item What happens if a registration that is associated with a taxonomic name maps to
       multiple nodes in the tree, but each of those nodes also has a different registration
       which uniquely identifies the node? I'm not sure if there is some mechanism to 
       disambiguate any ``taxonomic registrations'' (registrations that are associated with
@@ -172,9 +173,9 @@ This sample-based registry is, essentially, a collection of automatically
   the sampling proposal will increase the rate of breaking the connection
   between internal OTT Taxon names and OTT IDs by a factor of 15 (note also that
   most tips in phylesytem trees are mapped to terminals in OTT).
-  \item Note that the creation of new synthetic tree can break the association b
+  \item Note that the creation of new synthetic tree can break the association
   between an OTT ID and an OTT taxonomic name in this system.
-  So we would need to alert curators of changes in the interpretations of 
+  So we might need to alert curators of changes in the interpretations of 
   mappings more frequently than with every OTT update.
   \item It is not clear how we can assign ``higher'' taxonomic names to the 
   synthetic tree in a way that won't be confusing (or at least require a lot
@@ -185,6 +186,9 @@ This sample-based registry is, essentially, a collection of automatically
   and no others.''
   But the registration that provides the ID for that OTT taxon name may have a
     looser definition.
+  \item As discussed in Section \ref{scenarioSummary}, the system seems pretty
+  unintuitive to a biologist.
+  Teaching users what to expect seems possible, but quite difficult.
 \end{compactenum}
 
 \subsection{Name-based OTT IDs. Synthetic tree nodes designated by MRCA of two descendants}
@@ -201,7 +205,7 @@ If no node a new tree was decorated with that specific designation, we can still
   find a node provided that the two descendants are still in the tree by using
   the MRCA query in the API.
 
-{\bf Note:} an easy method for producing designations that are likely to get reused:
+{\bf Side note:} an easy method for producing designations that are likely to get reused:
 We could produce ``canonical'' pairs of descendants for the MRCA statements
   via a procedure such as:
 \begin{compactenum}
@@ -215,15 +219,18 @@ As long as we assign high numbers for new OTT Ids, then would probably result in
   lots of reuse of which designators are chosen.
 This would help us by giving us ``hits'' when we use node IDs
 
+{\bf Side note \#2:} 
+  It would even be pretty trivial to create a redirect table for cases
+  when we know that one of our designators has been merged or removed from OTT.
+
 \subsubsection{Pros}
 \begin{compactenum}
   \item Easy to implement:
   The current synthetic tree APIs require the server to be able to handle MRCA
     queries, so this is not a new burden.
-  \item Slows the divergence of OTT taxon name fields in NexSON from the OTT ID fields in NexSON files.
+  \item Slows the divergence of OTT taxon name fields in NexSON from the OTT ID fields in NexSON files (mitigates the \fragileOTUMapping)
   \item Would stop a lot of the 404's (or random resolutions) when we update the
-  synth tree. It would even be pretty trivial to create a redirect table for cases
-  when we know that one of our designators has been merged or removed from OTT.
+  synth tree (the \nodeLinkRot).
 \end{compactenum}
 
 
@@ -231,16 +238,17 @@ This would help us by giving us ``hits'' when we use node IDs
 \begin{compactenum}
   \item Internal OTT IDs are not tied to the internal node designations, which might surprise
   some users.
-  \item The fact that the OTT IDs don't mean anything other than ``a taxon that some
+  The fact that the OTT IDs don't mean anything other than ``a taxon that some
   some source has given this name to'' is unfortunate, because that meaning is so 
   semantically impoverished.
   For example, feedback issues could refer some feature of a named taxon, but in 
     a subsequent version of the tree that name may refer to a different set of 
     descendants.
-  However,
+  However:
   \begin{compactenum}
     \item it is fairly easy to explain cases to users the idea that OTT ID is stable,
     but it corresponds to different set of taxa.
+    Simply adding text to the page that says ``the MRCA of {\em Gen. sp. \#1} and {\em Gen. sp. \#2}'' would make it clear to biologists what the URL meant.
     \item it is consistent with the type-based nomenclature codes which have
     very ``empty'' meanings for the names.
     \item unless we start ``doing taxonomy'' in the sense of asserting taaxon concepts
@@ -265,8 +273,37 @@ Update registrations with every OTT update}
 exclusion set as all other taxa except the relevant set of {\em incertae sedis} 
 taxa.
 Update registrations with every OTT update.}
+\mthcomment{(my current favorite). I'll try to find time for full description soon, but
+the gist is$\ldots$}
 
+Define taxon concept for higher taxon as the union of the descendants of its children, and excluding other terminal taxa in the current taxonomy.
+There can be a specific set of taxa that are omitted from consideration to deal with 
+{\em incertae sedis} taxa.
 
+\href{https://tree.opentreeoflife.org/opentree/opentree4.0@3454690}{This node} in the 
+current synthetic tree is the clade often called ``whippomorpha.''}
+If we are going to be creating IDs for taxon concepts, it seems like we should be
+  able to handle a case like this one in the obvious way: 
+  ``Whippomorpha is the name for the claim that the most recent common ancestor 
+  of everything that is currently considered a Cetacean and everything that is 
+  currently in Hippopotomidae is not the ancestor of any other taxon -- there may be some fragmentary fossils that the concept 
+  is silent on, but every other mammal assigned to a group outside of Cetacea or Hippopotomidae is excluded.''
+
+This type of definition will probably require tweaking to be stated in terms of taxon concepts (rather than requiring named taxa).
+But the core of this is very consistent with how biologists view hypotheses about the 
+  tree of life.
+Looking at Hippopotomidae in our current tree shows several species with epithets that are close to {\em madagascarensis}.
+I suspect that these are unrecognized synonyms.
+If they all get merged in the next version of OTT, they don't change whether or not ``Whippomorpha'' shows up in that tree.
+Any biologist would react to that change by saying ``sure, the idea of what is in the
+genus {\em Hippopotamus} has been corrected, but the Whippomorpha claim is at a higher level.
+''
+
+By not storing the definition of as the set of descendants ``exploded'' out to the tips, 
+  we can have a relatively concise definition of the taxon concept (compared to listing all
+  inclusions or exclusions).
+Furthermore there will be a lot of reuse of lower level groups in alternative taxon concepts,
+  so it seems feasible to store the ``non-retired'' set of taxon concepts efficiently.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Example cases}
 \subsection{Jonathan Rees' scenarios}
@@ -332,7 +369,7 @@ Addition of a new taxon ($w$ Figure \ref{jarGainLoss}B) results in ambiguity in 
 This would be the same result if $w$ existed outside of $m$ in the original tree, but 
   was not selected as a member of the exclusion set.
 
-\subsection{Summary of JAR scenarios}
+\subsection{Summary of JAR scenarios}\label{scenarioSummary}
 \subsubsection{Biologists expected behavior}
 If we define the ideal behavior as:
   ``Imagine that I showed the initial tree to a competent systematist
