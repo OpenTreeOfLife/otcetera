@@ -41,6 +41,16 @@ int& mark(Tree_t::node_type* node)
     return node->getData().mark;
 }
 
+bool is_marked(const Tree_t::node_type* node, int bits)
+{
+    return (mark(node)&bits) == bits;
+}
+
+void set_mark(Tree_t::node_type* node, int bits)
+{
+    mark(node) |= bits;
+}
+
 Tree_t::node_type* summary_node(const Tree_t::node_type* node)
 {
     return node->getData().summary_node;
@@ -120,12 +130,11 @@ string quote(const string& s)
 Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits)
 {
     // node should be already marked
-    assert((mark(node) & bits) == bits);
-    assert((mark(node) | bits) == mark(node));
+    assert(is_marked(node, bits));
     
     // move to parent and mark it.
     node = node->getParent();
-    mark(node) |= bits;
+    set_mark(node, bits);
 
     return node;
 }
@@ -145,31 +154,31 @@ const Tree_t::node_type* get_root(const Tree_t::node_type* node)
 }
 
 /// Walk up the tree from node1 and node2 until we find the common ancestor, marking all the way.
-Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits)
+Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2)
 {
     assert(node1 or node2);
     if (not node1)
     {
-        assert((mark(node2) & bits) == bits);
+        assert(is_marked(node2, bits2));
         return node2;
     }
 
     if (not node2)
     {
-        assert((mark(node1) & bits) == bits);
+        assert(is_marked(node1, bits1));
         return node1;
     }
 
     assert(node1 and node2);
     assert(get_root(node1) == get_root(node2));
 
-    assert((mark(node1) & bits) == bits);
-    assert((mark(node2) & bits) == bits);
+    assert(is_marked(node1, bits1));
+    assert(is_marked(node2, bits2));
     
     while(depth(node1) > depth(node2))
-        node1 = trace_to_parent(node1, bits);
+        node1 = trace_to_parent(node1, bits1);
     while(depth(node1) < depth(node2))
-        node2 = trace_to_parent(node2, bits);
+        node2 = trace_to_parent(node2, bits2);
 
     assert(depth(node1) == depth(node2));
     while(node1 != node2)
@@ -177,11 +186,12 @@ Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* 
         assert(node1->getParent());
         assert(node2->getParent());
 
-        node1 = trace_to_parent(node1, bits);
-        node2 = trace_to_parent(node2, bits);
+        node1 = trace_to_parent(node1, bits1);
+        node2 = trace_to_parent(node2, bits2);
     }
     assert(node1 == node2);
-    assert((mark(node1) & bits) == bits);
+    assert(is_marked(node1, bits1));
+    assert(is_marked(node2, bits2));
     return node1;
 }
 
@@ -192,7 +202,7 @@ Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, 
     {
         auto leaf2 = summary_node(leaf);
         mark(leaf2) |= bits;
-        MRCA = trace_find_MRCA(MRCA, leaf2, bits);
+        MRCA = trace_find_MRCA(MRCA, leaf2, bits, bits);
     }
     return MRCA;
 }
@@ -208,10 +218,10 @@ Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, 
     {
         auto leaf2 = summary_node(leaf);
 
-        if (mark(leaf2) & bits1 == bits1) continue;
+        if (is_marked(leaf2, bits1)) continue;
 
         mark(leaf2) |= bits2;
-        MRCA = trace_find_MRCA(MRCA, leaf2, bits2);
+        MRCA = trace_find_MRCA(MRCA, leaf2, bits2, bits2);
     }
     return MRCA;
 }
