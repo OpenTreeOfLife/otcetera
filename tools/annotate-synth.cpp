@@ -87,6 +87,16 @@ long n_leaves(const node_t* nd)
     return count;
 }
 
+string source_from_tree_name(const string& name)
+{
+    const char* start = strrchr(name.c_str(),' ');
+    start++;
+    assert(start);
+
+    const char* end = strrchr(name.c_str(),'.');
+    return name.substr(start - name.c_str(), end-start);
+}
+
 string study_from_tree_name(const string& name)
 {
     const char* start = strrchr(name.c_str(),' ');
@@ -244,6 +254,15 @@ void trace_clean_marks_from_synth(const Tree_t& tree)
     }
 }
 
+string source_node_name(const Tree_t::node_type* input_node, const Tree_t& input_tree)
+{
+    string source = quote(source_from_tree_name(input_tree.getName()));
+    string node_in_study = quote(getNodeName(input_node->getName()));
+    std::ostringstream study_tree_node;;
+    study_tree_node<<"["<<source<<", "<<node_in_study<<"]";
+    return study_tree_node.str();
+}
+
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     std::unique_ptr<Tree_t> summaryTree;
     std::map<long,const Tree_t::node_type*> taxOttIdToNode;
@@ -252,11 +271,37 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     std::unordered_multimap<string,string> partial_path_of;
     std::unordered_multimap<string,string> conflicts_with;
     std::unordered_multimap<string,string> could_resolve;
+    std::unordered_multimap<string,string> terminal;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
     int numTrees = 0;
     virtual ~DisplayedStatsState(){}
+
+    void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        terminal.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        supported_by.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        partial_path_of.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        conflicts_with.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_could_resolve(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        could_resolve.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
 
     bool summarize(OTCLI &otCLI) override {
         if (treatTaxonomyAsLastTree) {
@@ -271,14 +316,54 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                 name = "ott" + std::to_string(nd->getOttId());
 
             int sc = supported_by.count(name);
+            int tc = terminal.count(name);
+            int pc = partial_path_of.count(name);
             int cc = conflicts_with.count(name);
-            if (sc + cc == 0) continue;
+            if (sc + tc + pc + cc == 0) continue;
 
             std::cout<<"    "<<quote(name)<<": { \n";
             if (sc)
             {
                 std::cout<<"      \"supported-by\": [ ";
                 auto range = supported_by.equal_range(name);
+                auto start = range.first;
+                auto end   = range.second;
+                for (auto iter = start; iter!=end; ++iter)
+                {
+                    if (iter != start) std::cout<<"                        ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
+                }
+                std::cout<<" ]";
+                if (tc + pc + cc > 0)
+                    std::cout<<",";
+                std::cout<<"\n";
+            }
+            if (tc)
+            {
+                std::cout<<"      \"terminal\": [ ";
+                auto range = terminal.equal_range(name);
+                auto start = range.first;
+                auto end   = range.second;
+                for (auto iter = start; iter!=end; ++iter)
+                {
+                    if (iter != start) std::cout<<"                        ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
+                }
+                std::cout<<" ]";
+                if (pc + cc > 0)
+                    std::cout<<",";
+                std::cout<<"\n";
+            }
+            if (pc)
+            {
+                std::cout<<"      \"partial-path-of\": [ ";
+                auto range = partial_path_of.equal_range(name);
                 auto start = range.first;
                 auto end   = range.second;
                 for (auto iter = start; iter!=end; ++iter)
@@ -326,11 +411,32 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             auto MRCA_include = trace_include_group_find_MRCA(nd, 1);
             auto MRCA_exclude = trace_exclude_group_find_MRCA(nd, 1, 2);
 
+            MRCA_exclude = trace_find_MRCA(MRCA_include, MRCA_exclude, 0, 2);
+
+            if (nd->isTip())
+            {
+                assert(mark(MRCA_include) == 1);
+                for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
+                    set_terminal(path_node, nd, tree);
+            }
+            else if (mark(MRCA_include) == 1)
+            {
+                if (MRCA_include->getParent() and mark(MRCA_include->getParent()) == 2)
+                    set_supported_by(MRCA_include, nd, tree);
+                else
+                {
+                    for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
+                        set_partial_path_of(path_node, nd, tree);
+                }
+            }
+
             trace_clean_marks_from_synth(tree);
+#ifndef CHECK_MARKS
             for(const auto nd2: iter_post_const(*summaryTree))
             {
                 assert(mark(nd2) == 0);
             }
+#endif
         }
         numTrees += 1;
     }
