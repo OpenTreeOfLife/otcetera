@@ -61,6 +61,15 @@ Tree_t::node_type*& summary_node(Tree_t::node_type* node)
     return node->getData().summary_node;
 }
 
+Tree_t::node_type* nmParent(Tree_t::node_type* node)
+{
+    do
+    {
+        node = node->getParent();
+    } while (node and node->isOutDegreeOneNode());
+    return node;
+}
+
 void computeDepth(Tree_t& tree)
 {
     tree.getRoot()->getData().depth = 1;
@@ -421,8 +430,14 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             }
             else if (mark(MRCA_include) == 1)
             {
-                if (MRCA_include->getParent() and mark(MRCA_include->getParent()) == 2)
-                    set_supported_by(MRCA_include, nd, tree);
+                if (MRCA_include->getParent() and mark(nmParent(MRCA_include)) == 2)
+                {
+                    auto path_node = MRCA_include;
+                    do {
+                        set_supported_by(path_node, nd, tree);
+                        path_node = path_node->getParent();
+                    } while(path_node->isOutDegreeOneNode());
+                }
                 else
                 {
                     for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
