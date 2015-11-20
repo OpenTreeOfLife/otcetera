@@ -1,3 +1,4 @@
+// See https://github.com/OpenTreeOfLife/opentree/wiki/Open-Tree-of-Life-APIs-v3#synthetic-tree
 #include "otc/otcli.h"
 #include "otc/supertree_util.h"
 #include <tuple>
