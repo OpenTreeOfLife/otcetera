@@ -251,7 +251,7 @@ void trace_clean_marks(Tree_t::node_type* node)
     {
         mark(node) = 0;
         node = node->getParent();
-    } while (node);
+    } while (node and mark(node));
 }
 
 void trace_clean_marks_from_synth(const Tree_t& tree)
