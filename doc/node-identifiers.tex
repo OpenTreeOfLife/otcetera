@@ -41,7 +41,7 @@ However, at some point, inquiring minds want to know what the rules are for when
   the OTT IDs will be stable and when they won't.
 
 This is a very minor concern, compared to the other problems mentioned in this section,
-  but any solution to the other problems is going to affect what we can say 
+  but any solution to the other problems is going to affect what we can say
   about OTT ID stability and meaning.
 
 \subsection{\fragileOTUMapping}
@@ -49,7 +49,7 @@ A primary motivation of our phylesystem corpus of studies, was to enable
   mapping OTUs in published trees to a common taxonomy.
 When a curator chooses a taxonomic name, the NexSON representation of the study
   retains both the OTT ID and the OTT taxon name.
-With a high degree of probability, we can state that the vast majority of the 
+With a high degree of probability, we can state that the vast majority of the
   OTU mapping has been name-based (rather than by looking at the inclusion
     sets of OTT and choosing the most appropriate OTT ID).
 
@@ -400,7 +400,7 @@ However, I do think that ways that the system deviates from biologists
   expectation are a bit hard summarize to someone who does not understand the system.
 Sometimes the registration-based mapping is ambiguous in cases in which biologists
   would say there is no ambiguity, and sometimes it maps when a biologist would say 
-  this tree does not show that group.''
+  this tree does not show that group.
 So it is not a matter of telling the users something direct like
   ``we use a stricter definition of `this group' than you may be expecting, here is why...''
 
@@ -408,9 +408,34 @@ Very few users will want to learn the system, and even if you understand the
   system it would take quite a bit of coding to make the inclusion and exclusions apparent to users in a friendly way.
 
 It could be done, but it sounds like a lot of work, and one that will be confusing to
-  most users.
+  most users (at least in those cases in which the results deviate from the 
+  expectation under a complete sampling model).
 
 \subsubsection{MRCA proposal}
+As expected, the MRCA does not identify the node that corresponds to the ``same''
+  node in several cases.
+However, the behavior is easy to explain to users.
+
+\subsection{{\em Anolis}}
+This case has been referred to in the other docs a few times.
+Interested folks can refer to \href{http://www.anoleannals.org/2015/11/04/taxonomic-splitting-revisited-when-should-genera-be-subdivided/}{this blog post} and comments.
+In essence, while no one seems to dispute the monophyly of particular
+  group of lizards, some systematists prefer to call it the genus
+  {\em Anolis} and others prefer to call the group the family Dactyloidae
+  and this latter group uses the generic name {\em Anolis} for a subgroup.
+
+We don't know if NCBI will adopt the new taxonomy, but our policy of giving
+  highest priority to the NCBI taxonomy means that OTT may be subject to
+  a changes.
+
+The take-home message is that ``the same'' (or ``the corresponding'')
+  group in an updated tree could adequately be described by a
+  taxon concept.
+However, the group does not necessarily track the name.
+In other words, just because a name is retained in OTT through multiple
+  verions does not necessarily mean that looking up the name in the
+  changing versions of the synthetic tree would be more satisfactory than
+  bookmarking some URL that encodes a taxon concept.
 
 \section{Conclusions}
 \subsection{We probably need IDs for names}
@@ -421,10 +446,10 @@ The \fragileOTUMapping argues for either
     to a taxon concept (which would presumably also entail allowing curators to
     register new taxon concepts on the fly)
 \end{compactenum}
-The latter route would require significant UI development, so 
+The latter route would require significant UI development, so
   it does not sound like a short-term solution.
 
-I think that we only fill in the {\tt uniqname} in the taxonomy if 
+I think that we only fill in the {\tt uniqname} in the taxonomy if
   a name is known to be a homonym.
 If OTT IDs are not attached to names, and a name is discovered to be a homonym
   in a future version of OTT,
