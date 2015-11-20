@@ -333,7 +333,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             std::cout<<"    "<<quote(name)<<": { \n";
             if (sc)
             {
-                std::cout<<"      \"supported-by\": [ ";
+                std::cout<<"      \"supported_by\": [ ";
                 auto range = supported_by.equal_range(name);
                 auto start = range.first;
                 auto end   = range.second;
@@ -371,7 +371,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             }
             if (pc)
             {
-                std::cout<<"      \"partial-path-of\": [ ";
+                std::cout<<"      \"partial_path_of\": [ ";
                 auto range = partial_path_of.equal_range(name);
                 auto start = range.first;
                 auto end   = range.second;
@@ -390,7 +390,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             }
             if (cc)
             {
-                std::cout<<"      \"conflicts-with\": [ ";
+                std::cout<<"      \"conflicts_with\": [ ";
                 auto range = conflicts_with.equal_range(name);
                 auto start = range.first;
                 auto end   = range.second;
