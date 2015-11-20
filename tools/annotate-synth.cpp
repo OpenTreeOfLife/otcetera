@@ -7,6 +7,7 @@
 
 using namespace otc;
 
+using std::vector;
 using std::string;
 using std::map;
 
@@ -245,21 +246,24 @@ Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, 
     return MRCA;
 }
 
-void trace_clean_marks(Tree_t::node_type* node)
+void trace_clean_marks(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts)
 {
-    do
+    while (node and mark(node))
     {
+        if (is_marked(node,1) and is_marked(node,2) and node->getParent() and is_marked(node->getParent(),1))
+            conflicts.push_back(node);
         mark(node) = 0;
         node = node->getParent();
-    } while (node and mark(node));
+    } 
 }
 
-void trace_clean_marks_from_synth(const Tree_t& tree)
+void trace_clean_marks_from_synth(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts)
 {
+    conflicts.clear();
     for(auto leaf: iter_leaf_const(tree))
     {
         auto leaf2 = summary_node(leaf);
-        trace_clean_marks(leaf2);
+        trace_clean_marks(leaf2, conflicts);
     }
 }
 
@@ -328,7 +332,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             int tc = terminal.count(name);
             int pc = partial_path_of.count(name);
             int cc = conflicts_with.count(name);
-            if (sc + tc + pc + cc == 0) continue;
+            int crc = could_resolve.count(name);
+            if (sc + tc + pc + cc + crc == 0) continue;
 
             std::cout<<"    "<<quote(name)<<": { \n";
             if (sc)
@@ -346,7 +351,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                         std::cout<<",\n";
                 }
                 std::cout<<" ]";
-                if (tc + pc + cc > 0)
+                if (tc + pc + cc + crc> 0)
                     std::cout<<",";
                 std::cout<<"\n";
             }
@@ -365,7 +370,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                         std::cout<<",\n";
                 }
                 std::cout<<" ]";
-                if (pc + cc > 0)
+                if (pc + cc + crc> 0)
                     std::cout<<",";
                 std::cout<<"\n";
             }
@@ -373,6 +378,25 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             {
                 std::cout<<"      \"partial_path_of\": [ ";
                 auto range = partial_path_of.equal_range(name);
+                auto start = range.first;
+                auto end   = range.second;
+                for (auto iter = start; iter!=end; ++iter)
+                {
+                    if (iter != start) std::cout<<"                        ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
+                }
+                std::cout<<" ]";
+                if (cc + crc > 0)
+                    std::cout<<",";
+                std::cout<<"\n";
+            }
+            if (crc)
+            {
+                std::cout<<"      \"could_resolve\": [ ";
+                auto range = could_resolve.equal_range(name);
                 auto start = range.first;
                 auto end   = range.second;
                 for (auto iter = start; iter!=end; ++iter)
@@ -413,6 +437,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     void mapNextTree(OTCLI & otCLI, const Tree_t & tree, bool isTaxoComp)
     {
+        vector<Tree_t::node_type*> conflicts;
+
         for(const auto nd: iter_post_const(tree))
         {
             if (not nd->getParent()) continue;
@@ -444,8 +470,19 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                         set_partial_path_of(path_node, nd, tree);
                 }
             }
+            assert(is_marked(MRCA_include,1));
+            bool conflicts_or_could_resolve = is_marked(MRCA_include,2);
 
-            trace_clean_marks_from_synth(tree);
+            trace_clean_marks_from_synth(tree, conflicts);
+
+            if (nd->isTip() or mark(MRCA_include) == 1) assert(conflicts.empty());
+
+            for(auto conflicting_node: conflicts)
+                set_conflicts_with(conflicting_node, nd, tree);
+
+            if (conflicts.empty() and conflicts_or_could_resolve)
+                set_could_resolve(MRCA_include, nd, tree);
+
 #ifdef CHECK_MARKS
             for(const auto nd2: iter_post_const(*summaryTree))
             {
