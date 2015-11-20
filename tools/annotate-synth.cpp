@@ -431,7 +431,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             }
 
             trace_clean_marks_from_synth(tree);
-#ifndef CHECK_MARKS
+#ifdef CHECK_MARKS
             for(const auto nd2: iter_post_const(*summaryTree))
             {
                 assert(mark(nd2) == 0);
