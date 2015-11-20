@@ -8,59 +8,74 @@
 using namespace otc;
 
 using std::string;
+using std::map;
 
 struct RTNodeDepth
 {
     int depth = 0;
+    int mark = 0;
+    RootedTreeNode<RTNodeDepth>* summary_node;
 };
-
 
 using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
 using node_t = Tree_t::node_type;
 
-bool showJSON = false;
 
-/// Stat Calc declarations
-enum NDSB {
-    ROOT_BIT = 0x01,
-    OUTDEGREE_ONE_BIT = 0x02,
-    LEAF_BIT = 0x04,
-    DISPLAYED_BIT = 0x08,
-    COULD_RESOLVE_BIT = 0x10,
-    INCOMPATIBLE_BIT = 0x20,
-    ANC_ALL_BIT = 0x40,
-    END_BIT = 0x80
-};
-enum NDSE {
-    ROOT_NODE = NDSB::ROOT_BIT | NDSB::ANC_ALL_BIT , // root of graph and has out-degree>1
-    FIRST_FORK = NDSB::ANC_ALL_BIT , // root of phylo info, but has redundant parent
-    LEAF_NODE = NDSB::LEAF_BIT,
-    FORKING_DISPLAYED = NDSB::DISPLAYED_BIT,
-    FORKING_COULD_RESOLVE = NDSB::COULD_RESOLVE_BIT,
-    FORKING_INCOMPATIBLE = NDSB::INCOMPATIBLE_BIT,
-    REDUNDANT_DISPLAYED = NDSB::DISPLAYED_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    REDUNDANT_COULD_RESOLVE = NDSB::COULD_RESOLVE_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    REDUNDANT_INCOMPATIBLE = NDSB::INCOMPATIBLE_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    REDUNDANT_TERMINAL = NDSB::LEAF_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    // is and anc of FIRST_FORK, but not root of graph
-    REDUNDANT_ROOT_ANC = NDSB::ANC_ALL_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    // Is root of graph, but anc of FIRST_FORK
-    ROOT_REDUNDANT_ROOT_ANC = NDSB::ROOT_BIT | NDSB::ANC_ALL_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    //ROOT is a TIP
-    DOT_TREE = NDSB::ROOT_BIT | NDSB::ANC_ALL_BIT | NDSB::LEAF_BIT,
-    REDUNDANT_LINE_TREE = NDSB::ANC_ALL_BIT | NDSB::LEAF_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    ROOT_REDUNDANT_LINE_TREE = NDSB::ANC_ALL_BIT | NDSB::LEAF_BIT | NDSB::OUTDEGREE_ONE_BIT,
-    END_VALUE = NDSB::END_BIT
-};
+int depth(const Tree_t::node_type* node)
+{
+    return node->getData().depth;
+}
 
-inline NDSE operator|(NDSE f, NDSE s) {
-    return static_cast<NDSE>(static_cast<int>(f) | static_cast<int>(s));
+int& depth(Tree_t::node_type* node)
+{
+    return node->getData().depth;
 }
-inline NDSE operator|(NDSB f, NDSE s) {
-    return static_cast<NDSE>(static_cast<int>(f) | static_cast<int>(s));
+
+int mark(const Tree_t::node_type* node)
+{
+    return node->getData().mark;
 }
-inline NDSE operator|(NDSE f, NDSB s) {
-    return static_cast<NDSE>(static_cast<int>(f) | static_cast<int>(s));
+
+int& mark(Tree_t::node_type* node)
+{
+    return node->getData().mark;
+}
+
+bool is_marked(const Tree_t::node_type* node, int bits)
+{
+    return (mark(node)&bits) == bits;
+}
+
+void set_mark(Tree_t::node_type* node, int bits)
+{
+    mark(node) |= bits;
+}
+
+Tree_t::node_type* summary_node(const Tree_t::node_type* node)
+{
+    return node->getData().summary_node;
+}
+
+Tree_t::node_type*& summary_node(Tree_t::node_type* node)
+{
+    return node->getData().summary_node;
+}
+
+void computeDepth(Tree_t& tree)
+{
+    tree.getRoot()->getData().depth = 1;
+    for(auto nd: iter_pre(tree))
+    {
+        if (not nd->getParent()) continue;
+
+        nd->getData().depth = nd->getParent()->getData().depth + 1;
+    }
+}
+
+void computeSummaryNodes(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode)
+{
+    for(auto leaf: iter_leaf(tree))
+        summary_node(leaf) = summaryOttIdToNode.at(leaf->getOttId());
 }
 
 long n_leaves(const node_t* nd)
@@ -70,6 +85,16 @@ long n_leaves(const node_t* nd)
         if (nd2->isTip())
             count++;
     return count;
+}
+
+string source_from_tree_name(const string& name)
+{
+    const char* start = strrchr(name.c_str(),' ');
+    start++;
+    assert(start);
+
+    const char* end = strrchr(name.c_str(),'.');
+    return name.substr(start - name.c_str(), end-start);
 }
 
 string study_from_tree_name(const string& name)
@@ -111,167 +136,309 @@ string quote(const string& s)
     return '"'+s+'"';
 };
 
-std::map<NDSE, std::size_t> doStatCalc(const Tree_t & summaryTree,
-                                       const Tree_t & inpTree,
-                                       std::map<const Tree_t::node_type *, NDSE> * node2Classification,
-                                       std::unordered_multimap<string,string> * support,
-                                       std::unordered_multimap<string,string> * conflict,
-                                       bool isTaxoComp) {
-}
-/// end Stat Calc impl
-/// Stat report decl
-void writeHeader(std::ostream &out);
-void writeRow(std::ostream &out, std::map<NDSE, std::size_t> & m, const std::string & label);
-std::string explainOutput();
-/// End Stat report decl
-/// Stat report impl
-std::string explainOutput() {
-    std::ostringstream o;
-    o << "Writes tab-separated output.\n";
-    o << "Each row reports the number of internal nodes of the input tree that fall into each category.\n";
-    o << "The final row shows the totals.\n";
-    o << "The two \"axes\" that the statistics explore are support and out-degree.\n";
-    o << "Columns starting with \"F\" are \"forking\" internal nodes with out-degree > 1.\n";
-    o << "Columns starting with \"R\" are \"redundant\" internal nodes with out-degree = 1.\n";
-    o << "A \"D\" suffix to a column header means that the node is displayed by the summary tree.\n";
-    o << "A \"CR\" suffix means that the node is could resolve a polytomy in the summary tree (so the\n";
-    o << "    summary tree is not unambiguously in conflict in the node).\n";
-    o << "An \"I\" suffix to a column header means that the node is incompatible with every resolution ofthe summary tree.\n";
-    o << "For the redundant nodes, the report indicates the conflict status of their closest non-redundant descendant.\n";
-    o << "A redundant node can also be marked \"T\" (for \"trivial\")if it is an ancestor of only 1 leaf or of the root.\n";
-    o << "The \"F\" and \"R\" column are just the sums for forking and redundant entries.\n";
-    o << "The \"label\" shows the tree name or \"Total of # trees\" for the global sum\n";
-    o << "The ordering of the rows is the input order. For columns it is:\n";
-    o <<  "FD FCR FI F RD RCR RI RT R label";
-    return o.str();
+
+Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits)
+{
+    // node should be already marked
+    assert(is_marked(node, bits));
+    
+    // move to parent and mark it.
+    node = node->getParent();
+    set_mark(node, bits);
+
+    return node;
 }
 
-void writeHeader(std::ostream &out) {
-    out << "FD" << '\t'
-        << "FCR" << '\t'
-        << "FI" << '\t'
-        << "F" << '\t'
-        << "RD" << '\t'
-        << "RCR"  << '\t'
-        << "RI" << '\t'
-        << "RT" << '\t'
-        << "R" << '\t'
-        << "label" << '\n';
+Tree_t::node_type* get_root(Tree_t::node_type* node)
+{
+    while(node->getParent())
+        node = node->getParent();
+    return node;
+}
+
+const Tree_t::node_type* get_root(const Tree_t::node_type* node)
+{
+    while(node->getParent())
+        node = node->getParent();
+    return node;
+}
+
+/// Walk up the tree from node1 and node2 until we find the common ancestor, marking all the way.
+Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2)
+{
+    assert(node1 or node2);
+    if (not node1)
+    {
+        assert(is_marked(node2, bits2));
+        return node2;
+    }
+
+    if (not node2)
+    {
+        assert(is_marked(node1, bits1));
+        return node1;
+    }
+
+    assert(node1 and node2);
+    assert(get_root(node1) == get_root(node2));
+
+    assert(is_marked(node1, bits1));
+    assert(is_marked(node2, bits2));
+    
+    while(depth(node1) > depth(node2))
+        node1 = trace_to_parent(node1, bits1);
+    while(depth(node1) < depth(node2))
+        node2 = trace_to_parent(node2, bits2);
+
+    assert(depth(node1) == depth(node2));
+    while(node1 != node2)
+    {
+        assert(node1->getParent());
+        assert(node2->getParent());
+
+        node1 = trace_to_parent(node1, bits1);
+        node2 = trace_to_parent(node2, bits2);
+    }
+    assert(node1 == node2);
+    assert(is_marked(node1, bits1));
+    assert(is_marked(node2, bits2));
+    return node1;
+}
+
+Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, int bits)
+{
+    Tree_t::node_type* MRCA = nullptr;
+    for(auto leaf: iter_leaf_n_const(*node))
+    {
+        auto leaf2 = summary_node(leaf);
+        mark(leaf2) |= bits;
+        MRCA = trace_find_MRCA(MRCA, leaf2, bits, bits);
+    }
+    return MRCA;
 }
 
 
-void writeRow(std::ostream &out,
-              std::map<NDSE, std::size_t> & m,
-              const std::string & label) {
-    const auto f = m[NDSE::FORKING_DISPLAYED] + m[NDSE::FORKING_COULD_RESOLVE] + m[NDSE::FORKING_INCOMPATIBLE];
-    const auto rt = m[NDSE::REDUNDANT_TERMINAL] + m[NDSE::REDUNDANT_ROOT_ANC];
-    const auto r = m[NDSE::REDUNDANT_DISPLAYED] + m[NDSE::REDUNDANT_COULD_RESOLVE] + m[NDSE::REDUNDANT_INCOMPATIBLE] + rt;
-    out << m[NDSE::FORKING_DISPLAYED] << '\t'
-        << m[NDSE::FORKING_COULD_RESOLVE]  << '\t'
-        << m[NDSE::FORKING_INCOMPATIBLE] << '\t'
-        << f << '\t'
-        << m[NDSE::REDUNDANT_DISPLAYED] << '\t'
-        << m[NDSE::REDUNDANT_COULD_RESOLVE] << '\t'
-        << m[NDSE::REDUNDANT_INCOMPATIBLE] << '\t'
-        << rt << '\t'
-        << r  << '\t'
-        << label << '\n';
+Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, int bits1, int bits2)
+{
+    // Using bits1 to exclude leafs seems like a dumb way to iterate over excluded leaves.
+    node = get_root(node);
+
+    Tree_t::node_type* MRCA = nullptr;
+    for(auto leaf: iter_leaf_n(*node))
+    {
+        auto leaf2 = summary_node(leaf);
+
+        if (is_marked(leaf2, bits1)) continue;
+
+        mark(leaf2) |= bits2;
+        MRCA = trace_find_MRCA(MRCA, leaf2, bits2, bits2);
+    }
+    return MRCA;
+}
+
+void trace_clean_marks(Tree_t::node_type* node)
+{
+    do
+    {
+        mark(node) = 0;
+        node = node->getParent();
+    } while (node);
+}
+
+void trace_clean_marks_from_synth(const Tree_t& tree)
+{
+    for(auto leaf: iter_leaf_const(tree))
+    {
+        auto leaf2 = summary_node(leaf);
+        trace_clean_marks(leaf2);
+    }
+}
+
+string source_node_name(const Tree_t::node_type* input_node, const Tree_t& input_tree)
+{
+    string source = quote(source_from_tree_name(input_tree.getName()));
+    string node_in_study = quote(getNodeName(input_node->getName()));
+    std::ostringstream study_tree_node;;
+    study_tree_node<<"["<<source<<", "<<node_in_study<<"]";
+    return study_tree_node.str();
 }
 
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     std::unique_ptr<Tree_t> summaryTree;
     std::map<long,const Tree_t::node_type*> taxOttIdToNode;
-    std::map<NDSE, std::size_t> totals;
-    std::unordered_multimap<string,string> support;
-    std::unordered_multimap<string,string> conflict;
+    std::map<long,Tree_t::node_type*> summaryOttIdToNode;
+    std::unordered_multimap<string,string> supported_by;
+    std::unordered_multimap<string,string> partial_path_of;
+    std::unordered_multimap<string,string> conflicts_with;
+    std::unordered_multimap<string,string> could_resolve;
+    std::unordered_multimap<string,string> terminal;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
     int numTrees = 0;
     virtual ~DisplayedStatsState(){}
 
+    void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        terminal.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        supported_by.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        partial_path_of.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        conflicts_with.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
+    void set_could_resolve(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        could_resolve.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+    }
+
     bool summarize(OTCLI &otCLI) override {
         if (treatTaxonomyAsLastTree) {
-            statsForNextTree(otCLI, *taxonomy, true);
+            mapNextTree(otCLI, *taxonomy, true);
         }
-        if (not showJSON)
+
+        std::cout<<"  \"nodes\": {\n";
+        for(auto nd: iter_post_const(*summaryTree))
         {
-            const std::string label = std::string("Total of ") + std::to_string(numTrees) + std::string(" trees");
-            writeNextRow(otCLI.out, totals, label);
-        }
-        else
-        {
-            std::cout<<"  \"nodes\": {\n";
-            for(auto nd: iter_post_const(*summaryTree))
+            string name = nd->getName();
+            if (nd->hasOttId())
+                name = "ott" + std::to_string(nd->getOttId());
+
+            int sc = supported_by.count(name);
+            int tc = terminal.count(name);
+            int pc = partial_path_of.count(name);
+            int cc = conflicts_with.count(name);
+            if (sc + tc + pc + cc == 0) continue;
+
+            std::cout<<"    "<<quote(name)<<": { \n";
+            if (sc)
             {
-                string name = nd->getName();
-                if (nd->hasOttId())
-                    name = "ott" + std::to_string(nd->getOttId());
-
-                int sc = support.count(name);
-                int cc = conflict.count(name);
-                if (sc + cc == 0) continue;
-
-                std::cout<<"    "<<quote(name)<<": { \n";
-                if (sc)
+                std::cout<<"      \"supported-by\": [ ";
+                auto range = supported_by.equal_range(name);
+                auto start = range.first;
+                auto end   = range.second;
+                for (auto iter = start; iter!=end; ++iter)
                 {
-                    std::cout<<"      \"supported-by\": [ ";
-                    auto range = support.equal_range(name);
-                    auto start = range.first;
-                    auto end   = range.second;
-                    for (auto iter = start; iter!=end; ++iter)
-                    {
-                        if (iter != start) std::cout<<"                        ";
-                        std::cout<<iter->second;
-                        auto next = iter; ++next;
-                        if (next != end)
-                            std::cout<<",\n";
-                    }
-                    std::cout<<" ]";
-                    if (cc > 0)
-                        std::cout<<",";
-                    std::cout<<"\n";
+                    if (iter != start) std::cout<<"                        ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
                 }
-                if (cc)
-                {
-                    std::cout<<"      \"conflicts-with\": [ ";
-                    auto range = conflict.equal_range(name);
-                    auto start = range.first;
-                    auto end   = range.second;
-                    for (auto iter = start; iter!=end; ++iter)
-                    {
-                        if (iter != start) std::cout<<"                        ";
-                        std::cout<<iter->second;
-                        auto next = iter; ++next;
-                        if (next != end)
-                            std::cout<<",\n";
-                    }
-                    std::cout<<" ]\n";
-                }
-                std::cout<<"    }\n";
+                std::cout<<" ]";
+                if (tc + pc + cc > 0)
+                    std::cout<<",";
+                std::cout<<"\n";
             }
-            std::cout<<"  }\n";
+            if (tc)
+            {
+                std::cout<<"      \"terminal\": [ ";
+                auto range = terminal.equal_range(name);
+                auto start = range.first;
+                auto end   = range.second;
+                for (auto iter = start; iter!=end; ++iter)
+                {
+                    if (iter != start) std::cout<<"                        ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
+                }
+                std::cout<<" ]";
+                if (pc + cc > 0)
+                    std::cout<<",";
+                std::cout<<"\n";
+            }
+            if (pc)
+            {
+                std::cout<<"      \"partial-path-of\": [ ";
+                auto range = partial_path_of.equal_range(name);
+                auto start = range.first;
+                auto end   = range.second;
+                for (auto iter = start; iter!=end; ++iter)
+                {
+                    if (iter != start) std::cout<<"                        ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
+                }
+                std::cout<<" ]";
+                if (cc > 0)
+                    std::cout<<",";
+                std::cout<<"\n";
+            }
+            if (cc)
+            {
+                std::cout<<"      \"conflicts-with\": [ ";
+                auto range = conflicts_with.equal_range(name);
+                auto start = range.first;
+                auto end   = range.second;
+                for (auto iter = start; iter!=end; ++iter)
+                {
+                    if (iter != start) std::cout<<"                        ";
+                    std::cout<<iter->second;
+                    auto next = iter; ++next;
+                    if (next != end)
+                        std::cout<<",\n";
+                }
+                std::cout<<" ]\n";
+            }
+            std::cout<<"    }\n";
         }
+        std::cout<<"  }\n";
+
         return true;
     }
 
-    void writeNextRow(std::ostream &out,
-                      std::map<NDSE, std::size_t> & m,
-                      const std::string & label) {
-        if (!headerEmitted) {
-            writeHeader(out);
-            headerEmitted = true;
-        }
-        writeRow(out, m, label);
-    }
+    void mapNextTree(OTCLI & otCLI, const Tree_t & tree, bool isTaxoComp)
+    {
+        for(const auto nd: iter_post_const(tree))
+        {
+            if (not nd->getParent()) continue;
 
-    void statsForNextTree(OTCLI & otCLI, const Tree_t & tree, bool isTaxoComp) {
-//        auto c = doStatCalc(*summaryTree, tree, nullptr, showJSON?(&support):nullptr, showJSON?(&conflict):nullptr, isTaxoComp);
-//        if (not showJSON) writeNextRow(otCLI.out, c, tree.getName());
-//        for (const auto & p : c) {
-//            totals[p.first] += p.second;
-//        }
-//        numTrees += 1;
+            auto MRCA_include = trace_include_group_find_MRCA(nd, 1);
+            auto MRCA_exclude = trace_exclude_group_find_MRCA(nd, 1, 2);
+
+            MRCA_exclude = trace_find_MRCA(MRCA_include, MRCA_exclude, 0, 2);
+
+            if (nd->isTip())
+            {
+                assert(mark(MRCA_include) == 1);
+                for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
+                    set_terminal(path_node, nd, tree);
+            }
+            else if (mark(MRCA_include) == 1)
+            {
+                if (MRCA_include->getParent() and mark(MRCA_include->getParent()) == 2)
+                    set_supported_by(MRCA_include, nd, tree);
+                else
+                {
+                    for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
+                        set_partial_path_of(path_node, nd, tree);
+                }
+            }
+
+            trace_clean_marks_from_synth(tree);
+#ifndef CHECK_MARKS
+            for(const auto nd2: iter_post_const(*summaryTree))
+            {
+                assert(mark(nd2) == 0);
+            }
+#endif
+        }
+        numTrees += 1;
     }
 
     virtual bool processTaxonomyTree(OTCLI & otCLI) override {
@@ -285,13 +452,20 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     }
 
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) override {
+        computeDepth(*tree);
         assert(taxonomy != nullptr);
         if (summaryTree == nullptr) {
             summaryTree = std::move(tree);
+            for(auto nd: iter_post(*summaryTree))
+                if (nd->hasOttId())
+                    summaryOttIdToNode[nd->getOttId()] = nd;
             return true;
         }
         requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
-        statsForNextTree(otCLI, *tree, false);
+        computeDepth(*tree);
+        computeSummaryNodes(*tree, summaryOttIdToNode);
+
+        mapNextTree(otCLI, *tree, false);
         return true;
     }
 
@@ -305,25 +479,15 @@ bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
-bool handleJSON(OTCLI & otCLI, const std::string &) {
-    showJSON = true;
-    return true;
-}
-
 int main(int argc, char *argv[]) {
     std::string explanation{"takes at least 2 newick file paths: a taxonomy,  a full supertree, and some number of input trees.\n"};
-    explanation += explainOutput();
     OTCLI otCLI("otc-displayed-stats",
                 explanation.c_str(),
-                "synth.tre inp1.tre inp2.tre ...");
+                "taxonomy.tre synth.tre inp1.tre inp2.tre ...");
     DisplayedStatsState proc;
     otCLI.addFlag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
-                  false);
-    otCLI.addFlag('j',
-                  "Output JSON for node support, instead of displaying statistics.",
-                  handleJSON,
                   false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
