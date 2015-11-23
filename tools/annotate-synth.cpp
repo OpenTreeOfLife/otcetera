@@ -98,6 +98,23 @@ long n_leaves(const node_t* nd)
     return count;
 }
 
+long n_children(const node_t* nd)
+{
+    long count = 0;
+    for(auto nd2: iter_child_const(*nd))
+        count++;
+    return count;
+}
+
+long n_marked_children(const node_t* nd, int bits)
+{
+    long count = 0;
+    for(auto nd2: iter_child_const(*nd))
+        if (is_marked(nd2, bits))
+            count++;
+    return count;
+}
+
 string source_from_tree_name(const string& name)
 {
     const char* start = strrchr(name.c_str(),' ');
@@ -224,6 +241,9 @@ Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, 
         auto leaf2 = summary_node(leaf);
         mark(leaf2) |= bits;
         MRCA = trace_find_MRCA(MRCA, leaf2, bits, bits);
+        assert(is_marked(MRCA,bits));
+        if (MRCA->hasChildren())
+            assert(n_marked_children(MRCA,bits)>0);
     }
     return MRCA;
 }
@@ -247,24 +267,41 @@ Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, 
     return MRCA;
 }
 
-void trace_clean_marks(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts)
+void find_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts)
 {
     while (node and mark(node))
     {
         if (is_marked(node,1) and is_marked(node,2) and node->getParent() and is_marked(node->getParent(),1))
             conflicts.push_back(node);
-        mark(node) = 0;
         node = node->getParent();
     } 
 }
 
-void trace_clean_marks_from_synth(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts)
+void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts)
 {
     conflicts.clear();
     for(auto leaf: iter_leaf_const(tree))
     {
         auto leaf2 = summary_node(leaf);
-        trace_clean_marks(leaf2, conflicts);
+        find_conflicts(leaf2, conflicts);
+    }
+}
+
+void trace_clean_marks(Tree_t::node_type* node)
+{
+    while (node and mark(node))
+    {
+        mark(node) = 0;
+        node = node->getParent();
+    } 
+}
+
+void trace_clean_marks_from_synth(const Tree_t& tree)
+{
+    for(auto leaf: iter_leaf_const(tree))
+    {
+        auto leaf2 = summary_node(leaf);
+        trace_clean_marks(leaf2);
     }
 }
 
@@ -445,6 +482,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             if (not nd->getParent()) continue;
 
             auto MRCA_include = trace_include_group_find_MRCA(nd, 1);
+            assert(not is_marked(MRCA_include,2));
             auto MRCA_exclude = trace_exclude_group_find_MRCA(nd, 1, 2);
 
             MRCA_exclude = trace_find_MRCA(MRCA_include, MRCA_exclude, 0, 2);
@@ -474,8 +512,9 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             assert(is_marked(MRCA_include,1));
             bool conflicts_or_could_resolve = is_marked(MRCA_include,2);
 
-            trace_clean_marks_from_synth(tree, conflicts);
-
+            find_conflicts(tree, conflicts);
+            trace_clean_marks_from_synth(tree);
+            
             if (nd->isTip() or mark(MRCA_include) == 1) assert(conflicts.empty());
 
             for(auto conflicting_node: conflicts)
