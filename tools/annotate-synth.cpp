@@ -166,12 +166,6 @@ string getNodeName(const string& name)
     return name.substr(start - name.c_str(), end-start);
 }
 
-string quote(const string& s)
-{
-    return '"'+s+'"';
-};
-
-
 Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits)
 {
     // node should be already marked
@@ -312,24 +306,23 @@ void trace_clean_marks_from_synth(const Tree_t& tree)
     }
 }
 
-string source_node_name(const Tree_t::node_type* input_node, const Tree_t& input_tree)
+json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree)
 {
-    string source = quote(source_from_tree_name(input_tree.getName()));
-    string node_in_study = quote(getNodeName(input_node->getName()));
-    std::ostringstream study_tree_node;;
-    study_tree_node<<"["<<source<<", "<<node_in_study<<"]";
-    return study_tree_node.str();
+    string source = source_from_tree_name(input_tree.getName());
+    string node_in_study = getNodeName(input_node->getName());
+    return {source,node_in_study};
 }
 
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
+    json document;
     std::unique_ptr<Tree_t> summaryTree;
     std::map<long,const Tree_t::node_type*> taxOttIdToNode;
     std::map<long,Tree_t::node_type*> summaryOttIdToNode;
-    std::unordered_multimap<string,string> supported_by;
-    std::unordered_multimap<string,string> partial_path_of;
-    std::unordered_multimap<string,string> conflicts_with;
-    std::unordered_multimap<string,string> could_resolve;
-    std::unordered_multimap<string,string> terminal;
+    std::unordered_multimap<string,json> supported_by;
+    std::unordered_multimap<string,json> partial_path_of;
+    std::unordered_multimap<string,json> conflicts_with;
+    std::unordered_multimap<string,json> could_resolve;
+    std::unordered_multimap<string,json> terminal;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
@@ -338,27 +331,27 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        terminal.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+        terminal.insert({synth_node->getName(), source_node(input_node,input_tree)});
     }
 
     void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        supported_by.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+        supported_by.insert({synth_node->getName(), source_node(input_node,input_tree)});
     }
 
     void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        partial_path_of.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+        partial_path_of.insert({synth_node->getName(), source_node(input_node,input_tree)});
     }
 
     void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        conflicts_with.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+        conflicts_with.insert({synth_node->getName(), source_node(input_node,input_tree)});
     }
 
     void set_could_resolve(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        could_resolve.insert({synth_node->getName(), source_node_name(input_node,input_tree)});
+        could_resolve.insert({synth_node->getName(), source_node(input_node,input_tree)});
     }
 
     bool summarize(OTCLI &otCLI) override {
@@ -366,20 +359,17 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             mapNextTree(otCLI, *taxonomy, true);
         }
 
-        json j;
-        j["date_completed"] = "date";
-        j["tree_id"] = "an idenftifier";
-        j["taxonomy_version"] = "2.9draft12";
-        j["num_tips"] = n_leaves(*summaryTree);
-        j["run_time"] = "an estimate of the time taken to build the tree";
-        j["num_source_trees"] = "the number of input trees not counting the taxonomy";
-        j["num_source_studies"] = "the number of studies that contributed trees to the num_source_trees";
-        j["root_taxon_name"] = "life";
-        j["root_ott_id"] = taxonomy->getRoot()->getOttId();
-        j["sources"] = "sources";// - list of strings. Each element is a reference to a source tree where the source_id_map is used to provide the additional data for each source. The list is in order, if order of trees affects the supertree.
-        j["source_id_map"] = "object with string keys";// that map to objects describing the source (see below)
-        j["generated_by"] = "propinquity";
-        j["filtered_flags"] = "list of taxon flags";
+        document["date_completed"] = "date";
+        document["tree_id"] = "an idenftifier";
+        document["taxonomy_version"] = "2.9draft12";
+        document["num_tips"] = n_leaves(*summaryTree);
+        document["run_time"] = "an estimate of the time taken to build the tree";
+        document["num_source_trees"] = numTrees;
+        document["num_source_studies"] = "the number of studies that contributed trees to the num_source_trees";
+        document["root_taxon_name"] = "life";
+        document["root_ott_id"] = taxonomy->getRoot()->getOttId();
+        document["generated_by"] = "propinquity";
+        document["filtered_flags"] = "list of taxon flags";
 
         json nodes;
         for(auto nd: iter_post_const(*summaryTree))
@@ -437,15 +427,20 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             if (not node.empty())
                 nodes[name] = node;
         }
-        j["nodes"] = nodes;
-        std::cout<<j.dump(4)<<std::endl;
+        document["nodes"] = nodes;
+        std::cout<<document.dump(4)<<std::endl;
         return true;
     }
 
     void mapNextTree(OTCLI & otCLI, const Tree_t & tree, bool isTaxoComp)
     {
         vector<Tree_t::node_type*> conflicts;
-
+        string source_name = source_from_tree_name(tree.getName());
+        document["sources"].push_back(source_name);
+        document["source_id_map"][source_name] = {{"study_id",study_from_tree_name(tree.getName())},
+                                                  {"tree_id",tree_in_study_from_tree_name(tree.getName())},
+                                                  {"git_sha",""}};
+        
         for(const auto nd: iter_post_const(tree))
         {
             if (not nd->getParent()) continue;
