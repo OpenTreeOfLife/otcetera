@@ -5,8 +5,10 @@
 #include <sstream>
 #include <cstring>
 #include <unordered_map>
+#include "json.hpp"
 
 using namespace otc;
+using json = nlohmann::json;
 
 using std::vector;
 using std::string;
@@ -96,6 +98,11 @@ long n_leaves(const node_t* nd)
         if (nd2->isTip())
             count++;
     return count;
+}
+
+long n_leaves(const Tree_t& t)
+{
+    return n_leaves(t.getRoot());
 }
 
 long n_children(const node_t* nd)
@@ -359,117 +366,79 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             mapNextTree(otCLI, *taxonomy, true);
         }
 
-        std::cout<<"  \"nodes\": {\n";
+        json j;
+        j["date_completed"] = "date";
+        j["tree_id"] = "an idenftifier";
+        j["taxonomy_version"] = "2.9draft12";
+        j["num_tips"] = n_leaves(*summaryTree);
+        j["run_time"] = "an estimate of the time taken to build the tree";
+        j["num_source_trees"] = "the number of input trees not counting the taxonomy";
+        j["num_source_studies"] = "the number of studies that contributed trees to the num_source_trees";
+        j["root_taxon_name"] = "life";
+        j["root_ott_id"] = taxonomy->getRoot()->getOttId();
+        j["sources"] = "sources";// - list of strings. Each element is a reference to a source tree where the source_id_map is used to provide the additional data for each source. The list is in order, if order of trees affects the supertree.
+        j["source_id_map"] = "object with string keys";// that map to objects describing the source (see below)
+        j["generated_by"] = "propinquity";
+        j["filtered_flags"] = "list of taxon flags";
+
+        json nodes;
         for(auto nd: iter_post_const(*summaryTree))
         {
+            json node;
             string name = nd->getName();
             if (nd->hasOttId())
                 name = "ott" + std::to_string(nd->getOttId());
 
-            int sc = supported_by.count(name);
-            int tc = terminal.count(name);
-            int pc = partial_path_of.count(name);
-            int cc = conflicts_with.count(name);
-            int crc = could_resolve.count(name);
-            if (sc + tc + pc + cc + crc == 0) continue;
-
-            std::cout<<"    "<<quote(name)<<": { \n";
-            if (sc)
             {
-                std::cout<<"      \"supported_by\": [ ";
+                json j_supported_by = json::array();
+
                 auto range = supported_by.equal_range(name);
-                auto start = range.first;
-                auto end   = range.second;
-                for (auto iter = start; iter!=end; ++iter)
-                {
-                    if (iter != start) std::cout<<"                        ";
-                    std::cout<<iter->second;
-                    auto next = iter; ++next;
-                    if (next != end)
-                        std::cout<<",\n";
-                }
-                std::cout<<" ]";
-                if (tc + pc + cc + crc> 0)
-                    std::cout<<",";
-                std::cout<<"\n";
+                for (auto iter = range.first; iter!=range.second; ++iter)
+                    j_supported_by.push_back(iter->second);
+                if (not j_supported_by.empty())
+                    node["supported_by"] = j_supported_by;
             }
-            if (tc)
             {
-                std::cout<<"      \"terminal\": [ ";
-                auto range = terminal.equal_range(name);
-                auto start = range.first;
-                auto end   = range.second;
-                for (auto iter = start; iter!=end; ++iter)
-                {
-                    if (iter != start) std::cout<<"                        ";
-                    std::cout<<iter->second;
-                    auto next = iter; ++next;
-                    if (next != end)
-                        std::cout<<",\n";
-                }
-                std::cout<<" ]";
-                if (pc + cc + crc> 0)
-                    std::cout<<",";
-                std::cout<<"\n";
-            }
-            if (pc)
-            {
-                std::cout<<"      \"partial_path_of\": [ ";
-                auto range = partial_path_of.equal_range(name);
-                auto start = range.first;
-                auto end   = range.second;
-                for (auto iter = start; iter!=end; ++iter)
-                {
-                    if (iter != start) std::cout<<"                        ";
-                    std::cout<<iter->second;
-                    auto next = iter; ++next;
-                    if (next != end)
-                        std::cout<<",\n";
-                }
-                std::cout<<" ]";
-                if (cc + crc > 0)
-                    std::cout<<",";
-                std::cout<<"\n";
-            }
-            if (crc)
-            {
-                std::cout<<"      \"could_resolve\": [ ";
-                auto range = could_resolve.equal_range(name);
-                auto start = range.first;
-                auto end   = range.second;
-                for (auto iter = start; iter!=end; ++iter)
-                {
-                    if (iter != start) std::cout<<"                        ";
-                    std::cout<<iter->second;
-                    auto next = iter; ++next;
-                    if (next != end)
-                        std::cout<<",\n";
-                }
-                std::cout<<" ]";
-                if (cc > 0)
-                    std::cout<<",";
-                std::cout<<"\n";
-            }
-            if (cc)
-            {
-                std::cout<<"      \"conflicts_with\": [ ";
-                auto range = conflicts_with.equal_range(name);
-                auto start = range.first;
-                auto end   = range.second;
-                for (auto iter = start; iter!=end; ++iter)
-                {
-                    if (iter != start) std::cout<<"                        ";
-                    std::cout<<iter->second;
-                    auto next = iter; ++next;
-                    if (next != end)
-                        std::cout<<",\n";
-                }
-                std::cout<<" ]\n";
-            }
-            std::cout<<"    }\n";
-        }
-        std::cout<<"  }\n";
+                json j_terminal = json::array();
 
+                auto range = terminal.equal_range(name);
+                for (auto iter = range.first; iter!=range.second; ++iter)
+                    j_terminal.push_back(iter->second);
+                if (not j_terminal.empty())
+                    node["terminal"] = j_terminal;
+            }
+            {
+                json j_partial_path_of = json::array();
+
+                auto range = partial_path_of.equal_range(name);
+                for (auto iter = range.first; iter!=range.second; ++iter)
+                    j_partial_path_of.push_back(iter->second);
+                if (not j_partial_path_of.empty())
+                    node["partial_path_of"] = j_partial_path_of;
+            }
+            {
+                json j_conflicts_with = json::array();
+
+                auto range = conflicts_with.equal_range(name);
+                for (auto iter = range.first; iter!=range.second; ++iter)
+                    j_conflicts_with.push_back(iter->second);
+                if (not j_conflicts_with.empty())
+                    node["conflicts_with"] = j_conflicts_with;
+            }
+            {
+                json j_could_resolve = json::array();
+
+                auto range = could_resolve.equal_range(name);
+                for (auto iter = range.first; iter!=range.second; ++iter)
+                    j_could_resolve.push_back(iter->second);
+                if (not j_could_resolve.empty())
+                    node["could_resolve"] = j_could_resolve;
+            }
+            if (not node.empty())
+                nodes[name] = node;
+        }
+        j["nodes"] = nodes;
+        std::cout<<j.dump(4)<<std::endl;
         return true;
     }
 
