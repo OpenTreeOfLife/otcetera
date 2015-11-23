@@ -327,6 +327,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
     int numTrees = 0;
+    std::set<string> studies;
     virtual ~DisplayedStatsState(){}
 
     void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
@@ -359,17 +360,17 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             mapNextTree(otCLI, *taxonomy, true);
         }
 
-        document["date_completed"] = "date";
-        document["tree_id"] = "an idenftifier";
-        document["taxonomy_version"] = "2.9draft12";
+//        document["date_completed"] = "date";
+//        document["tree_id"] = "an idenftifier";
+//        document["taxonomy_version"] = "2.9draft12";
         document["num_tips"] = n_leaves(*summaryTree);
-        document["run_time"] = "an estimate of the time taken to build the tree";
+//        document["run_time"] = "an estimate of the time taken to build the tree";
         document["num_source_trees"] = numTrees;
-        document["num_source_studies"] = "the number of studies that contributed trees to the num_source_trees";
-        document["root_taxon_name"] = "life";
+        document["num_source_studies"] = studies.size();
+//        document["root_taxon_name"] = "life";
         document["root_ott_id"] = taxonomy->getRoot()->getOttId();
-        document["generated_by"] = "propinquity";
-        document["filtered_flags"] = "list of taxon flags";
+//        document["generated_by"] = "propinquity";
+//        document["filtered_flags"] = "list of taxon flags";
 
         json nodes;
         for(auto nd: iter_post_const(*summaryTree))
@@ -437,10 +438,13 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         vector<Tree_t::node_type*> conflicts;
         string source_name = source_from_tree_name(tree.getName());
         document["sources"].push_back(source_name);
-        document["source_id_map"][source_name] = {{"study_id",study_from_tree_name(tree.getName())},
-                                                  {"tree_id",tree_in_study_from_tree_name(tree.getName())},
-                                                  {"git_sha",""}};
-        
+        string study_id = study_from_tree_name(tree.getName());
+        string tree_id = tree_in_study_from_tree_name(tree.getName());
+        studies.insert(study_id);
+        document["source_id_map"][source_name] = {{"study_id", study_id},
+                                                  {"tree_id", tree_id},
+                                                  {"git_sha","aaaaaaaaaa"}};
+
         for(const auto nd: iter_post_const(tree))
         {
             if (not nd->getParent()) continue;
