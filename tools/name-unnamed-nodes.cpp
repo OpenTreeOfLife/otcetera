@@ -69,6 +69,13 @@ bool get_bool(const string& arg, const string& context="")
         throw OTCError()<<context<<"'"<<arg<<"' is not a recognized boolean value.";
 }
 
+bool chopRoot = false;
+bool handleChopRoot(OTCLI & otCLI, const std::string &)
+{
+    chopRoot = true;
+    return true;
+}
+
 string prefix = "node";
 bool handlePrefix(OTCLI & otCLI, const std::string & arg)
 {
@@ -91,6 +98,12 @@ int main(int argc, char *argv[]) {
                   "Prefix for unnamed nodes",
                   handlePrefix,
                   true);
+    
+    otCLI.addFlag('c',
+                  "Chop of the root node",
+                  handleChopRoot,
+                  false);
+    
 
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
@@ -102,6 +115,14 @@ int main(int argc, char *argv[]) {
     // Is it possible to read a single subproblem from cin?
     if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
         std::exit(1);
+
+    if (chopRoot)
+    {
+        Tree_t& tree = *trees[0];
+        auto newRoot = tree.getRoot()->getFirstChild();
+        newRoot->detachThisNode();
+        tree._setRoot(newRoot);
+    }
 
     verbose = otCLI.verbose;
 
