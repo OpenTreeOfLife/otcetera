@@ -153,8 +153,12 @@ string tree_in_study_from_tree_name(const string& name)
     return name.substr(start - name.c_str(), end-start);
 }
 
-string getNodeName(const string& name)
+string getNodeName(const Tree_t::node_type* node)
 {
+    string name = node->getName();
+    if (node->hasOttId())
+        name = "ott" + std::to_string(node->getOttId());
+
     const char* start = name.c_str();
     const char* end = name.c_str() + name.size();
     while(strchr(" \t_",*start) and start < end)
@@ -309,7 +313,7 @@ void trace_clean_marks_from_synth(const Tree_t& tree)
 json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree)
 {
     string source = source_from_tree_name(input_tree.getName());
-    string node_in_study = getNodeName(input_node->getName());
+    string node_in_study = getNodeName(input_node);
     return {source,node_in_study};
 }
 
@@ -368,7 +372,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         document["num_source_trees"] = numTrees;
         document["num_source_studies"] = studies.size();
 //        document["root_taxon_name"] = "life";
-        document["root_ott_id"] = taxonomy->getRoot()->getOttId();
+        document["root_ott_id"] = summaryTree->getRoot()->getOttId();
 //        document["generated_by"] = "propinquity";
 //        document["filtered_flags"] = "list of taxon flags";
 
