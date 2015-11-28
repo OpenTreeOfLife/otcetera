@@ -17,6 +17,7 @@
 #define EASYLOGGINGPP_H
 // pragmas are MTH mods to silence clang
 #pragma clang diagnostic push
+#pragma GCC diagnostic push
 #pragma clang diagnostic ignored  "-Wc++98-compat-pedantic"
 #pragma clang diagnostic ignored  "-Wdocumentation-unknown-command"
 #pragma clang diagnostic ignored  "-Wdocumentation"
@@ -27,6 +28,7 @@
 #pragma clang diagnostic ignored  "-Wunreachable-code"
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wmissing-noreturn"
+#pragma GCC diagnostic ignored  "-Wstrict-overflow"
 
 
 // Compilers and C++0x/C++11 Evaluation
@@ -6676,4 +6678,5 @@ static T* checkNotNull(T* ptr, const char* name, const char* loggers, ...) {
 
 // MTH mod silencing
 #pragma clang diagnostic pop
+#pragma GCC diagnostic pop
 #endif // EASYLOGGINGPP_H

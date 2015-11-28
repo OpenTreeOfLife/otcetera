@@ -131,6 +131,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored  "-Wsign-compare"
     std::unique_ptr<Tree_t> tree(new Tree_t());
     tree->createRoot();
     // 1. First handle trees of size 1 and 2
