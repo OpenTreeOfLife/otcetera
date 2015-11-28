@@ -111,16 +111,6 @@ void relabelWithOttId(Tree_t& T)
             nd->setName(addOttId(nd->getName(),nd->getOttId()));
 }
 
-bool get_bool(const string& arg, const string& context="")
-{
-    if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
-        return true;
-    else if (arg == "false" or arg == "no" or arg == "False" or arg == "No")
-        return false;
-    else
-        throw OTCError()<<context<<"'"<<arg<<"' is not a recognized boolean value.";
-}
-
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg)
 {
     otCLI.getParsingRules().setOttIds = get_bool(arg,"-o: ");

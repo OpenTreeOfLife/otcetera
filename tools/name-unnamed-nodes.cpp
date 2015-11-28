@@ -59,16 +59,6 @@ string newick(const Tree_t &t)
     return s.str();
 }
 
-bool get_bool(const string& arg, const string& context="")
-{
-    if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes")
-        return true;
-    else if (arg == "false" or arg == "no" or arg == "False" or arg == "No")
-        return false;
-    else
-        throw OTCError()<<context<<"'"<<arg<<"' is not a recognized boolean value.";
-}
-
 bool chopRoot = false;
 bool handleChopRoot(OTCLI & otCLI, const std::string &)
 {

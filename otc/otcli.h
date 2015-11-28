@@ -10,6 +10,7 @@
 #include "otc/util.h"
 #include "otc/tree_iter.h"
 namespace otc {
+bool get_bool(const std::string& arg, const std::string& context);
 
 class OTCLI {
     public:
@@ -221,6 +222,16 @@ int taxDependentTreeProcessingMain(OTCLI & otCLI,
     }
     return rc;
 }
+
+inline bool get_bool(const std::string& arg, const std::string& context) {
+    if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes") {
+        return true;
+    } else if (arg == "false" or arg == "no" or arg == "False" or arg == "No") {
+        return false;
+    }
+    throw OTCError() << context << "'" << arg << "' is not a recognized boolean value.";
+}
+
 
 } // namespace otc
 #endif

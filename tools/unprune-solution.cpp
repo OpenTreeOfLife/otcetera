@@ -63,7 +63,6 @@ long n_leaves(const Tree_t& T);
 long n_nodes(const Tree_t& T);
 std::vector<Tree_t::node_type*> all_nodes(Tree_t& T);
 void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose);
-bool get_bool(const string& arg, const string& context="");
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg);
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg);
 bool handleRegraft(OTCLI&, const std::string & arg);
@@ -334,15 +333,6 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     const auto out_degree_many3 = n_internal_out_degree_many(solution);
     std::cerr<<"Unpruned splits: #added by phylo inputs = "<<out_degree_many3 - out_degree_many2<<std::endl;
     std::cerr<<"Unpruned splits: total = "<<out_degree_many3<<std::endl;
-}
-
-bool get_bool(const string& arg, const string& context) {
-    if (arg == "true" or arg == "yes" or arg == "True" or arg == "Yes") {
-        return true;
-    } else if (arg == "false" or arg == "no" or arg == "False" or arg == "No") {
-        return false;
-    }
-    throw OTCError() << context << "'" << arg << "' is not a recognized boolean value.";
 }
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
