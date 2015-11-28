@@ -9,7 +9,7 @@ using namespace otc;
 
 using std::string;
 
-bool showJSON = false;
+static bool showJSON = false;
 
 /// Stat Calc declarations
 enum NDSB {
@@ -188,45 +188,58 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
 }
 
 
+string study_from_tree_name(const string& name);
+string tree_in_study_from_tree_name(const string& name);
+string getNodeName(const string& name);
+string quote(const string& s);
+string string_between_chars(const string & s, char beforeC, char endC);
 
-string study_from_tree_name(const string& name)
-{
-    const char* start = strrchr(name.c_str(),' ');
-    start++;
-    assert(start);
-
-    const char* end = strrchr(name.c_str(),'_');
-    return name.substr(start - name.c_str(), end-start);
+inline string string_between_chars(const string & s, char beforeC, char endC) {
+    auto start = s.find_first_of(beforeC);
+    assert(start != string::npos);
+    ++start;
+    assert(start < s.length() - 1);
+    const auto end = s.find_first_of(endC);
+    assert(end != string::npos);
+    assert(end > start);
+    return s.substr(start, end - start);
 }
 
-
-string tree_in_study_from_tree_name(const string& name)
-{
-    const char* start = strrchr(name.c_str(),'_');
-    start++;
-    assert(start);
-
-    const char* end = strrchr(name.c_str(),'.');
-    return name.substr(start - name.c_str(), end-start);
+inline string study_from_tree_name(const string& name) {
+    return string_between_chars(name, ' ', '_');
 }
 
-string getNodeName(const string& name)
-{
+inline string tree_in_study_from_tree_name(const string& name) {
+    return string_between_chars(name, '_', '.');
+}
+
+string getNodeName(const string& name) {
     const char* start = name.c_str();
     const char* end = name.c_str() + name.size();
-    while(strchr(" \t_",*start) and start < end)
+    while(strchr(" \t_",*start) and start < end) {
         start++;
-    while(strchr(" \t_",*(end-1)) and start < end)
+    }
+    while(strchr(" \t_",*(end-1)) and start < end) {
         end--;
-    if (start == end)
-        throw OTCError()<<"Node name '"<<name<<"' contracted to nothing!";
-    return name.substr(start - name.c_str(), end-start);
+    }
+    if (start >= end) {
+        throw OTCError() << "Node name '" << name << "' contracted to nothing!";
+    }
+    const std::size_t offset = static_cast<std::size_t>(start - name.c_str());
+    const std::size_t len = static_cast<std::size_t>(end - start);
+    return name.substr(offset, len);
 }
 
-string quote(const string& s)
-{
+inline string quote(const string& s) {
     return '"'+s+'"';
-};
+}
+
+std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
+                                       const TreeMappedWithSplits & inpTree,
+                                       std::map<const NodeWithSplits *, NDSE> * node2Classification,
+                                       std::unordered_multimap<string,string> * support,
+                                       std::unordered_multimap<string,string> * conflict,
+                                       bool isTaxoComp);
 
 std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                                        const TreeMappedWithSplits & inpTree,
@@ -404,17 +417,17 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             for(auto nd: iter_post_const(*summaryTree))
             {
                 string name = nd->getName();
-                if (nd->hasOttId())
+                if (nd->hasOttId()) {
                     name = "ott" + std::to_string(nd->getOttId());
-
-                int sc = support.count(name);
-                int cc = conflict.count(name);
-                if (sc + cc == 0) continue;
-
-                std::cout<<"    "<<quote(name)<<": { \n";
-                if (sc)
-                {
-                    std::cout<<"      \"supported-by\": [ ";
+                }
+                const auto sc = support.count(name);
+                const auto cc = conflict.count(name);
+                if (sc + cc == 0) {
+                    continue;
+                }
+                std::cout <<"    " <<quote(name) << ": { \n";
+                if (sc) {
+                    std::cout << "      \"supported-by\": [ ";
                     auto range = support.equal_range(name);
                     auto start = range.first;
                     auto end   = range.second;
@@ -427,29 +440,31 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                             std::cout<<",\n";
                     }
                     std::cout<<" ]";
-                    if (cc > 0)
+                    if (cc > 0){
                         std::cout<<",";
+                    }
                     std::cout<<"\n";
                 }
-                if (cc)
-                {
-                    std::cout<<"      \"conflicts-with\": [ ";
+                if (cc) {
+                    std::cout << "      \"conflicts-with\": [ ";
                     auto range = conflict.equal_range(name);
                     auto start = range.first;
                     auto end   = range.second;
-                    for (auto iter = start; iter!=end; ++iter)
-                    {
-                        if (iter != start) std::cout<<"                        ";
-                        std::cout<<iter->second;
+                    for (auto iter = start; iter!=end; ++iter) {
+                        if (iter != start) {
+                            std::cout << "                        ";
+                        }
+                        std::cout << iter->second;
                         auto next = iter; ++next;
-                        if (next != end)
+                        if (next != end){
                             std::cout<<",\n";
+                        }
                     }
-                    std::cout<<" ]\n";
+                    std::cout << " ]\n";
                 }
-                std::cout<<"    }\n";
+                std::cout << "    }\n";
             }
-            std::cout<<"  }\n";
+            std::cout << "  }\n";
         }
         return true;
     }
@@ -498,6 +513,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
 };
 
+bool handleCountTaxonomy(OTCLI & otCLI, const std::string &);
+bool handleJSON(OTCLI & , const std::string &);
 
 bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
     DisplayedStatsState * proc = static_cast<DisplayedStatsState *>(otCLI.blob);
@@ -506,7 +523,7 @@ bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
     return true;
 }
 
-bool handleJSON(OTCLI & otCLI, const std::string &) {
+bool handleJSON(OTCLI & , const std::string &) {
     showJSON = true;
     return true;
 }

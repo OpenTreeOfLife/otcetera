@@ -301,8 +301,9 @@ class RootedTree {
         void pruneAndDelete(node_type * nd) {
             auto nodes = getSubtreeNodes(nd);
             pruneAndDangle(nd);
-            for(auto nd: nodes)
-                delete nd;
+            for (auto ndi: nodes) {
+                delete ndi;
+            }
         }
         bool isDetached(node_type * nd) {
             return contains(detached, nd);

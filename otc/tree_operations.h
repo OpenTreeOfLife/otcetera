@@ -49,9 +49,9 @@ void fillDesIdSets(T & tree) {
     for (auto node : iter_post(tree)) {
         std::set<long> & desIds = node->getData().desIds;
         if (node->isTip()) {
-	    if (node->hasOttId()) {
-                desIds.insert(node->getOttId());
-	    }
+            if (node->hasOttId()) {
+                    desIds.insert(node->getOttId());
+            }
         } else {
             for (auto child : iter_child(*node)) {
                 std::set<long> & cDesIds = child->getData().desIds;
@@ -251,7 +251,7 @@ std::set<const typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toE
         auto ottId = nd->getOttId();
         auto taxNd = taxData.getNodeForOttId(ottId);
         if (not taxNd)
-	    throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->getName()<<"' not found in taxonomy!";
+        throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->getName()<<"' not found in taxonomy!";
         if (!taxNd->isTip()) {
             const auto & leafSet = getDesOttIds(*taxNd);
             replaceNodes[nd] = leafSet;
@@ -716,8 +716,9 @@ inline void eraseMappingsToNode(typename T::node_type * nd, T & tree) {
 }
 
 template<typename N, typename T>
-    inline void replaceMappingsToNodeWithAlias(typename RootedTree<N,T>::node_type * nd, typename RootedTree<N,T>::node_type * alias, RootedTree<N,T> & tree)
-{
+inline void replaceMappingsToNodeWithAlias(typename RootedTree<N,T>::node_type * , // nd
+                                           typename RootedTree<N,T>::node_type * , //alias
+                                           RootedTree<N,T> & ) {
 }
 
 
