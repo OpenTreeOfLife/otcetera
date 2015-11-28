@@ -4718,7 +4718,7 @@ class basic_json
     {
         // variable to hold indentation for recursive calls
         unsigned int new_indent = current_indent;
-
+#       pragma clang diagnostic ignored  "-Wsign-conversion"
         switch (m_type)
         {
             case (value_t::object):

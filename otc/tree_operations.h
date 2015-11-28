@@ -11,6 +11,8 @@
 #include "otc/util.h"
 #include "otc/debug.h"
 namespace otc {
+template<typename T>
+std::string newick(const T &t);
 
 template<typename T>
 unsigned int countPolytomies(const T & tree);
@@ -1106,6 +1108,13 @@ inline std::size_t pruneTipsWithoutIds(T & tree) {
     return r;
 }
 
+
+template<typename T>
+inline std::string newick(const T &t) {
+    std::ostringstream s;
+    writeTreeAsNewick(s, t);
+    return s.str();
+}
 
 
 }// namespace otc

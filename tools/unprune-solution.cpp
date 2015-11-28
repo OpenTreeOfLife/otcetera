@@ -68,7 +68,6 @@ bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg);
 bool handleRegraft(OTCLI&, const std::string & arg);
 bool handleRootName(OTCLI&, const std::string & arg);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
-string newick(const Tree_t &t);
 map<string, long> createIdsFromNames(const Tree_t& taxonomy);
 void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id);
 
@@ -397,12 +396,6 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
         }
     }
     return retTree;
-}
-
-string newick(const Tree_t &t) {
-    std::ostringstream s;
-    writeTreeAsNewick(s, t);
-    return s.str();
 }
 
 /// Create a mapping from name -> id

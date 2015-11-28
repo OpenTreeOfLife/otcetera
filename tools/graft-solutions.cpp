@@ -51,13 +51,6 @@ std::ostream& operator<<(std::ostream& o, const std::vector<T>& s)
     return o;
 }
 
-string newick(const Tree_t &t)
-{
-    std::ostringstream s;
-    writeTreeAsNewick(s, t);
-    return s.str();
-}
-
 /// Create a mapping from name -> id
 map<string, long> createIdsFromNames(const vector<unique_ptr<Tree_t>>& trees)
 {

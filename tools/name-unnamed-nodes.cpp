@@ -52,13 +52,6 @@ std::ostream& operator<<(std::ostream& o, const std::vector<T>& s)
     return o;
 }
 
-string newick(const Tree_t &t)
-{
-    std::ostringstream s;
-    writeTreeAsNewick(s, t);
-    return s.str();
-}
-
 bool chopRoot = false;
 bool handleChopRoot(OTCLI & otCLI, const std::string &)
 {
