@@ -5,6 +5,7 @@
 
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
+#include "otc/supertree_util.h"
 #include "otc/tree_iter.h"
 using namespace otc;
 using std::vector;
@@ -68,8 +69,6 @@ bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg);
 bool handleRegraft(OTCLI&, const std::string & arg);
 bool handleRootName(OTCLI&, const std::string & arg);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
-map<string, long> createIdsFromNames(const Tree_t& taxonomy);
-void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id);
 
 void remove_split(Tree_t::node_type* nd) {
     while (nd->getFirstChild()) {
@@ -398,41 +397,6 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     return retTree;
 }
 
-/// Create a mapping from name -> id
-map<string, long> createIdsFromNames(const Tree_t& taxonomy) {
-    long id = 1;
-    map<string,long> name_to_id;
-    for(auto nd: iter_post_const(taxonomy)) {
-        if (nd->getName().size()) {
-            string name = nd->getName();
-            auto it = name_to_id.find(name);
-            if (it != name_to_id.end()){
-                throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
-            }
-            name_to_id[name] = id++;
-        } else if (nd->isTip()){
-            throw OTCError()<<"Taxonomy tip has no label!";
-        }
-    }
-    return name_to_id;
-}  
-
-/// Set ids on the tree based on the name
-void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id) {
-    for(auto nd: iter_post(tree)){
-        if (nd->getName().size()) {
-            string name = nd->getName();
-            auto it = name_to_id.find(name);
-            if (it == name_to_id.end()) {
-                throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
-            }
-            auto id = it->second;
-            nd->setOttId(id);
-        } else if (nd->isTip()){
-            throw OTCError()<<"Tree tip has no label!";
-        }
-    }
-}
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",

@@ -5,6 +5,7 @@
 
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
+#include "otc/supertree_util.h"
 #include "otc/tree_iter.h"
 using namespace otc;
 using std::vector;
@@ -85,10 +86,6 @@ bool handleCladeTips(OTCLI &, const std::string & arg);
 bool handleStandardize(OTCLI& otCLI, const std::string & arg);
 bool handleRootName(OTCLI& otCLI, const std::string & arg);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
-map<string, long> createIdsFromNames(const Tree_t& taxonomy);
-void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id);
-string addOttId(const string s, long id);
-void relabelWithOttId(Tree_t& T);
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     o<<s.in<<" | ";
@@ -401,150 +398,81 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     return retTree;
 }
 
-/// Create a mapping from name -> id
-map<string, long> createIdsFromNames(const Tree_t& taxonomy)
-{
-    long id = 1;
-    map<string,long> name_to_id;
-    for(auto nd: iter_post_const(taxonomy))
-        if (nd->getName().size())
-        {
-            string name = nd->getName();
-            auto it = name_to_id.find(name);
-            if (it != name_to_id.end())
-                throw OTCError()<<"Tip label '"<<name<<"' occurs twice in taxonomy!";
-            name_to_id[name] = id++;
-        }
-        else if (nd->isTip())
-            throw OTCError()<<"Taxonomy tip has no label!";
-
-    return name_to_id;
-}  
-
-/// Set ids on the tree based on the name
-void setIdsFromNames(Tree_t& tree, const map<string,long>& name_to_id)
-{
-    for(auto nd: iter_post(tree))
-        if (nd->getName().size())
-        {
-            string name = nd->getName();
-            auto it = name_to_id.find(name);
-            if (it == name_to_id.end())
-                throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
-            auto id = it->second;
-            nd->setOttId(id);
-            tree.getData().ottIdToNode[id] = nd;
-        }
-        else if (nd->isTip())
-            throw OTCError()<<"Tree tip has no label!";
-  
-    clearAndfillDesIdSets(tree);
-}
-
-string addOttId(const string s, long id)
-{
-    string tag = "ott" + std::to_string(id);
-    if (not s.size())
-        return tag;
-    else
-        return s + " " + tag;
-}
-
-void relabelWithOttId(Tree_t& T)
-{
-    for(auto nd: iter_pre(T))
-        if (nd->hasOttId())
-            nd->setName(addOttId(nd->getName(),nd->getOttId()));
-}
-
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-solve-subproblem",
                 "Takes a series of tree files.\n"
                 "Files are concatenated and the combined list treated as a single subproblem.\n"
                 "Trees should occur in order of priority, with the taxonomy last.\n",
                 "subproblem.tre");
-
     otCLI.addFlag('o',
                   "Require OTT ids.  Defaults to true",
                   handleRequireOttIds,
                   true);
-
     otCLI.addFlag('p',
                   "Prune unrecognized tips.  Defaults to false",
                   handlePruneUnrecognizedTips,
                   true);
-
     otCLI.addFlag('i',
                   "Tips may be internal nodes on the taxnomy.  Defaults to true",
                   handleCladeTips,
                   true);
-
     otCLI.addFlag('n',
                   "Rename the root to this name",
                   handleRootName,
                   true);
-
     otCLI.addFlag('T',
                   "Synthesize an unresolved taxonomy from all mentioned tips.  Defaults to false",
                   handleSynthesizeTaxonomy,
                   false);
-
     otCLI.addFlag('S',
                   "Write out a standardized subproblem and exit",
                   handleStandardize,
                   false);
-
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
-
-    if (argc < 2)
+    if (argc < 2) {
         throw OTCError("No subproblem provided!");
-
+    }
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
-        std::exit(1);
-
-    if (trees.empty())
+    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+        return 1;
+    }
+    if (trees.empty()) {
         throw OTCError("No trees loaded!");
-
+    }
     bool setOttIds = otCLI.getParsingRules().setOttIds;
-    if (synthesize_taxonomy)
-    {
+    if (synthesize_taxonomy) {
         trees.push_back(make_unresolved_tree(trees,setOttIds));
         LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
     }
-
     // Add fake Ott Ids to tips and compute desIds
-    if (not setOttIds)
-    {
+    if (not setOttIds) {
         auto name_to_id = createIdsFromNames(*trees.back());
-        for(auto& tree: trees)
-            setIdsFromNames(*tree, name_to_id);
+        for(auto& tree: trees) {
+            setIdsFromNamesAndRefresh(*tree, name_to_id);
+        }
     }
-
-    if (writeStandardized)
-    {
-        for(const auto& tree: trees)
-        {
-            relabelWithOttId(*tree);
+    if (writeStandardized) {
+        for(const auto& tree: trees) {
+            relabelNodesWithOttId(*tree);
             std::cout<<newick(*tree)<<"\n";
-        }	
-        exit(0);
+        }
+        return 0;
     }
-    
     // Check if trees are mapping to non-terminal taxa, and either fix the situation or die.
-    for(int i=0;i<trees.size()-1;i++)
-        if (cladeTips)
+    for (int i = 0; i <trees.size() - 1; i++) {
+        if (cladeTips) {
             expandOTTInternalsWhichAreLeaves(*trees[i], *trees.back());
-        else
+        } else {
             requireTipsToBeMappedToTerminalTaxa(*trees[i], *trees.back());
-
+        }
+    }
     auto tree = combine(trees, otCLI.verbose);
-    if (not rootName.empty())
+    if (not rootName.empty()){
         tree->getRoot()->setName(rootName);
-
+    }
     writeTreeAsNewick(std::cout, *tree);
-
     std::cout<<"\n";
+    return 0;
 }

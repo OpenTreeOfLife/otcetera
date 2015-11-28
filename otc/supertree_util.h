@@ -188,7 +188,120 @@ inline bool canBeResolvedToDisplayOnlyIncGroup(const T *nd, const OttIdSet & inc
     return true;
 }
 
+/// Functions below here are hackier in that they codify systems for embedding IDs in newick labels
 
+template<typename T>
+inline std::map<std::string, long> createIdsFromNames(const T & taxonomy);
+template<typename T>
+inline std::map<std::string, long> createIdsFromNamesFromTrees(const T& treeColl);
+// awkward should merge the following 2 functions and use template specialization
+template<typename T>
+void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string, long>& name_to_id);
+template<typename T>
+void setIdsFromNames(T& tree, const std::map<std::string, long>& name_to_id);
+template<typename T>
+void fillIdMapFromNames(const T & taxonomy, std::map<std::string, long> & name_to_id, long &nextId, bool allowRep);
+std::string addOttId(const std::string & s, long id);
+template<typename T>
+inline void relabelNodesWithOttId(T& tree);
+/// Create a mapping from name -> id.
+/// throws exception for repeated names or unnamed tips
+template<typename T>
+inline std::map<std::string, long> createIdsFromNames(const T& taxonomy) {
+    long id = 1;
+    std::map<std::string, long> name_to_id;
+    fillIdMapFromNames(taxonomy, name_to_id, id, false);
+    return name_to_id;
+}
+
+/// Create a mapping from name -> id.
+/// throws exception for unnamed tips - does NOT verify that a name only occurs once in a tree!
+template<typename T>
+inline std::map<std::string, long> createIdsFromNamesFromTrees(const T& treeColl) {
+    long id = 1;
+    std::map<std::string, long> name_to_id;
+    for (const auto & tree : treeColl) {
+        fillIdMapFromNames(*tree, name_to_id, id, true);
+    }
+    return name_to_id;
+}
+
+
+template<typename T>
+inline void fillIdMapFromNames(const T & tree, std::map<std::string, long> & name_to_id, long & nextId, bool allowRep) {
+    for(auto nd: iter_post_const(tree)) {
+        if (nd->getName().size()) {
+            const std::string name = nd->getName();
+            auto it = name_to_id.find(name);
+            if (it != name_to_id.end()) {
+                if (not allowRep) {
+                    throw OTCError()<<"Tip label '"<<name<<"' occurs twice!";
+                }
+            } else {
+                name_to_id[name] = nextId++;
+            }
+        } else if (nd->isTip()) {
+            throw OTCError()<<"tip has no label!";
+        }
+    }
+}
+
+/// Set ids on the tree based on the name
+template<typename T>
+inline void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string,long> & name_to_id) {
+    for(auto nd: iter_post(tree)){
+        if (nd->getName().size()) {
+            const auto name = nd->getName();
+            const auto it = name_to_id.find(name);
+            if (it == name_to_id.end()) {
+                throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
+            }
+            const auto id = it->second;
+            nd->setOttId(id);
+            tree.getData().ottIdToNode[id] = nd;
+        } else if (nd->isTip()){
+            throw OTCError()<<"Tree tip has no label!";
+        }
+    }
+    clearAndfillDesIdSets(tree);
+}
+
+/// Set ids on the tree based on the name
+template<typename T>
+inline void setIdsFromNames(T& tree, const std::map<std::string,long> & name_to_id) {
+    for(auto nd: iter_post(tree)){
+        if (nd->getName().size()) {
+            const auto name = nd->getName();
+            const auto it = name_to_id.find(name);
+            if (it == name_to_id.end()) {
+                throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
+            }
+            const auto id = it->second;
+            nd->setOttId(id);
+        } else if (nd->isTip()){
+            throw OTCError()<<"Tree tip has no label!";
+        }
+    }
+}
+
+
+inline std::string addOttId(const std::string & s, long id) {
+    std::string tag = "ott" + std::to_string(id);
+    if (not s.size()) {
+        return tag;
+    } else {
+        return s + " " + tag;
+    }
+}
+
+template<typename T>
+inline void relabelNodesWithOttId(T& tree) {
+    for(auto nd: iter_pre(tree)){
+        if (nd->hasOttId()){
+            nd->setName(addOttId(nd->getName(),nd->getOttId()));
+        }
+    }
+}
 
 
 } // namespace

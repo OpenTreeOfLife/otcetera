@@ -148,7 +148,7 @@ std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimit
     for (const auto & id : idList) {
         long p = stringToOttID(id);
         if (p < 0) 
-	    throw OTCError()<<"Expecting an OTT Id.  Found: '"<<id<<"'";
+        throw OTCError()<<"Expecting an OTT Id.  Found: '"<<id<<"'";
         ottIds.insert(p);
     }
     return ottIds;
@@ -167,7 +167,7 @@ std::set<long> parseListOfOttIds(const std::string &fp) {
             if (!stripped.empty()) {
                 long p = stringToOttID(line);
                 if (p < 0)
-		    throw OTCError()<<"Expecting an OTT Id.  Found: '"<<line<<"'";
+            throw OTCError()<<"Expecting an OTT Id.  Found: '"<<line<<"'";
                 ottIds.insert(p);
             }
         }

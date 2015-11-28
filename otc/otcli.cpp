@@ -84,16 +84,16 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
         try {
             const auto n = flagWithoutDash.substr(1);
             if (contains(clientDefArgNeeded, f))
-	    {
-	        if (n.empty()) {
+        {
+            if (n.empty()) {
                     this->err << "Expecting an argument value after the  -" << f << " flag.\n";
                     return false;
-	      }
-	    }
-	    else if (not n.empty()) {
-	        this->err << "Unexpected argument value after the  -" << f << " flag.\n";
-	        return false;
-	    }
+          }
+        }
+        else if (not n.empty()) {
+            this->err << "Unexpected argument value after the  -" << f << " flag.\n";
+            return false;
+        }
             const auto rc = cb(*this, n);
             return rc;
         } catch (std::exception & x) {
