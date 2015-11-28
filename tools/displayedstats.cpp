@@ -188,47 +188,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
 }
 
 
-string study_from_tree_name(const string& name);
-string tree_in_study_from_tree_name(const string& name);
-string getNodeName(const string& name);
 string quote(const string& s);
-string string_between_chars(const string & s, char beforeC, char endC);
-
-inline string string_between_chars(const string & s, char beforeC, char endC) {
-    auto start = s.find_first_of(beforeC);
-    assert(start != string::npos);
-    ++start;
-    assert(start < s.length() - 1);
-    const auto end = s.find_first_of(endC);
-    assert(end != string::npos);
-    assert(end > start);
-    return s.substr(start, end - start);
-}
-
-inline string study_from_tree_name(const string& name) {
-    return string_between_chars(name, ' ', '_');
-}
-
-inline string tree_in_study_from_tree_name(const string& name) {
-    return string_between_chars(name, '_', '.');
-}
-
-string getNodeName(const string& name) {
-    const char* start = name.c_str();
-    const char* end = name.c_str() + name.size();
-    while(strchr(" \t_",*start) and start < end) {
-        start++;
-    }
-    while(strchr(" \t_",*(end-1)) and start < end) {
-        end--;
-    }
-    if (start >= end) {
-        throw OTCError() << "Node name '" << name << "' contracted to nothing!";
-    }
-    const std::size_t offset = static_cast<std::size_t>(start - name.c_str());
-    const std::size_t len = static_cast<std::size_t>(end - start);
-    return name.substr(offset, len);
-}
 
 inline string quote(const string& s) {
     return '"'+s+'"';
@@ -305,7 +265,7 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
 
                     string study = quote(study_from_tree_name(inpTree.getName()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
-                    string node_in_study = quote(getNodeName(nd->getName()));
+                    string node_in_study = quote(getSourceNodeName(nd->getName()));
                     std::ostringstream study_tree_node;;
                     study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
                     support->insert({node, study_tree_node.str()});
@@ -318,7 +278,7 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
 
                     string study = quote(study_from_tree_name(inpTree.getName()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
-                    string node_in_study = quote(getNodeName(nd->getName()));
+                    string node_in_study = quote(getSourceNodeName(nd->getName()));
                     std::ostringstream study_tree_node;;
                     study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
                     conflict->insert({node, study_tree_node.str()});

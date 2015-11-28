@@ -303,6 +303,130 @@ inline void relabelNodesWithOttId(T& tree) {
     }
 }
 
+template<typename N>
+std::size_t countChildren(const N * nd);
+template<typename T>
+std::size_t countLeaves(const T& tree);
+template<typename T>
+std::size_t countLeavesSubTree(const T* node);
+template<typename N>
+int mark(const N* node);
+template<typename N>
+int& mark(N* node);
+template<typename N>
+bool is_marked(const N* node, int bits);
+template<typename N>
+void set_mark(N* node, int bits);
+template<typename N>
+std::size_t countMarkedChildren(const N* nd, int bits);
+
+template<typename T>
+inline std::size_t countLeaves(const T& tree) {
+    std::size_t count = 0U;
+    for(auto nd: iter_post_const(tree)) {
+        if (nd->isTip()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+template<typename N>
+inline std::size_t countLeavesSubTree(const N * tree) {
+    std::size_t count = 0U;
+    for(auto nd: iter_post_n_const(tree)) {
+        if (nd->isTip()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+template<typename N>
+std::size_t countChildren(const N * nd) {
+    std::size_t count = 0;
+    for(auto nd2: iter_child_const(*nd)){
+        count++;
+    }
+    return count;
+}
+
+template<typename N>
+inline int mark(const N* node) {
+    return node->getData().mark;
+}
+
+template<typename N>
+inline int& mark(N* node) {
+    return node->getData().mark;
+}
+
+template<typename N>
+inline bool is_marked(const N* node, int bits) {
+    return (mark(node)&bits) == bits;
+}
+
+template<typename N>
+inline void set_mark(N* node, int bits) {
+    mark(node) |= bits;
+}
+
+template<typename N>
+inline std::size_t countMarkedChildren(const N* nd, int bits) {
+    std::size_t count = 0;
+    for(auto nd2: iter_child_const(*nd)) {
+        if (is_marked(nd2, bits)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+std::string study_from_tree_name(const std::string& name);
+std::string tree_in_study_from_tree_name(const std::string& name);
+std::string string_between_chars(const std::string & s, char beforeC, char endC);
+std::string source_from_tree_name(const std::string & name);
+std::string getSourceNodeName(const std::string& name);
+
+inline std::string string_between_chars(const std::string & s, char beforeC, char endC) {
+    auto start = s.find_first_of(beforeC);
+    assert(start != std::string::npos);
+    ++start;
+    assert(start < s.length() - 1);
+    const auto end = s.find_first_of(endC);
+    assert(end != std::string::npos);
+    assert(end > start);
+    return s.substr(start, end - start);
+}
+
+inline std::string study_from_tree_name(const std::string& name) {
+    return string_between_chars(name, ' ', '_');
+}
+
+inline std::string tree_in_study_from_tree_name(const std::string& name) {
+    return string_between_chars(name, '_', '.');
+}
+
+inline std::string source_from_tree_name(const std::string& name) {
+    return string_between_chars(name, ' ', '.');
+}
+
+inline std::string getSourceNodeName(const std::string& name) {
+    const char* start = name.c_str();
+    const char* end = name.c_str() + name.size();
+    while(strchr(" \t_",*start) and start < end) {
+        start++;
+    }
+    while(strchr(" \t_",*(end-1)) and start < end) {
+        end--;
+    }
+    if (start >= end) {
+        throw OTCError() << "Node name '" << name << "' contracted to nothing!";
+    }
+    const std::size_t offset = static_cast<std::size_t>(start - name.c_str());
+    const std::size_t len = static_cast<std::size_t>(end - start);
+    return name.substr(offset, len);
+}
 
 } // namespace
 #endif

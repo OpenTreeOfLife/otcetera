@@ -60,7 +60,6 @@ long n_internal_with_ott_id(const Tree_t& T);
 long n_internal(const Tree_t& T);
 long n_internal_out_degree_1(const Tree_t& T);
 long n_internal_out_degree_many(const Tree_t& T);
-long n_leaves(const Tree_t& T);
 long n_nodes(const Tree_t& T);
 std::vector<Tree_t::node_type*> all_nodes(Tree_t& T);
 void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose);
@@ -156,16 +155,6 @@ long n_internal_out_degree_many(const Tree_t& T) {
     return count;
 }
 
-long n_leaves(const Tree_t& T) {
-    long count = 0;
-    for(auto nd: iter_post_const(T)) {
-        if (nd->isTip()) {
-            count++;
-        }
-    }
-    return count;
-}
-
 long n_nodes(const Tree_t& T) {
 #pragma clang diagnostic ignored  "-Wunused-variable"
     long count = 0;
@@ -187,7 +176,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     assert(trees.size() == 2);
     auto& solution = *trees[0];
     auto& taxonomy = *trees[1];
-    std::cerr<<"Leaves:           solution = "<<n_leaves(solution)<<"   taxonomy = "<<n_leaves(taxonomy)<<std::endl;
+    std::cerr<<"Leaves:           solution = " << countLeaves(solution) <<"   taxonomy = " << countLeaves(taxonomy)<<std::endl;
     std::cerr<<"Internal:         solution = "<<n_internal(solution)<<"   taxonomy = "<<n_internal(taxonomy)<<std::endl;
     std::cerr<<"Internal splits:  solution = "<<n_internal_out_degree_many(solution)<<"   taxonomy = "<<n_internal_out_degree_many(taxonomy)<<std::endl;
     const auto out_degree_many1 = n_internal_out_degree_many(taxonomy);

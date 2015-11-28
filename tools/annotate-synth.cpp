@@ -9,13 +9,11 @@
 
 using namespace otc;
 using json = nlohmann::json;
-
 using std::vector;
 using std::string;
 using std::map;
 
-struct RTNodeDepth
-{
+struct RTNodeDepth {
     int depth = 0;
     int mark = 0;
     RootedTreeNode<RTNodeDepth>* summary_node;
@@ -24,150 +22,70 @@ struct RTNodeDepth
 using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
 using node_t = Tree_t::node_type;
 
+int depth(const Tree_t::node_type* node);
+int& depth(Tree_t::node_type* node);
+Tree_t::node_type* summary_node(const Tree_t::node_type* node);
+Tree_t::node_type*& summary_node(Tree_t::node_type* node);
+Tree_t::node_type* nmParent(Tree_t::node_type* node);
+void computeDepth(Tree_t& tree);
+void computeSummaryNodes(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
+string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node);
+Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits);
+Tree_t::node_type* get_root(Tree_t::node_type* node);
+const Tree_t::node_type* get_root(const Tree_t::node_type* node);
+Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2);
+Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, int bits);
+Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, int bits1, int bits2);
+void find_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts);
+void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
+void trace_clean_marks(Tree_t::node_type* node);
+void trace_clean_marks_from_synth(const Tree_t& tree);
+json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree);
 
-int depth(const Tree_t::node_type* node)
-{
+inline int depth(const Tree_t::node_type* node) {
     return node->getData().depth;
 }
 
-int& depth(Tree_t::node_type* node)
-{
+inline int& depth(Tree_t::node_type* node) {
     return node->getData().depth;
 }
 
-int mark(const Tree_t::node_type* node)
-{
-    return node->getData().mark;
-}
-
-int& mark(Tree_t::node_type* node)
-{
-    return node->getData().mark;
-}
-
-bool is_marked(const Tree_t::node_type* node, int bits)
-{
-    return (mark(node)&bits) == bits;
-}
-
-void set_mark(Tree_t::node_type* node, int bits)
-{
-    mark(node) |= bits;
-}
-
-Tree_t::node_type* summary_node(const Tree_t::node_type* node)
-{
+inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
     return node->getData().summary_node;
 }
 
-Tree_t::node_type*& summary_node(Tree_t::node_type* node)
-{
+inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
     return node->getData().summary_node;
 }
 
-Tree_t::node_type* nmParent(Tree_t::node_type* node)
-{
-    do
-    {
+inline Tree_t::node_type* nmParent(Tree_t::node_type* node) {
+    do {
         node = node->getParent();
     } while (node and node->isOutDegreeOneNode());
     return node;
 }
 
-void computeDepth(Tree_t& tree)
-{
+void computeDepth(Tree_t& tree) {
     tree.getRoot()->getData().depth = 1;
-    for(auto nd: iter_pre(tree))
-    {
-        if (not nd->getParent()) continue;
-
-        nd->getData().depth = nd->getParent()->getData().depth + 1;
+    for (auto nd: iter_pre(tree)) {
+        if (nd->getParent()) {
+            nd->getData().depth = nd->getParent()->getData().depth + 1;
+        }
     }
 }
 
-void computeSummaryNodes(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode)
-{
+void computeSummaryNodes(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
     for(auto leaf: iter_leaf(tree))
         summary_node(leaf) = summaryOttIdToNode.at(leaf->getOttId());
 }
 
-long n_leaves(const node_t* nd)
-{
-    long count = 0;
-    for(auto nd2: iter_post_n_const(*nd))
-        if (nd2->isTip())
-            count++;
-    return count;
-}
 
-long n_leaves(const Tree_t& t)
-{
-    return n_leaves(t.getRoot());
-}
-
-long n_children(const node_t* nd)
-{
-    long count = 0;
-    for(auto nd2: iter_child_const(*nd))
-        count++;
-    return count;
-}
-
-long n_marked_children(const node_t* nd, int bits)
-{
-    long count = 0;
-    for(auto nd2: iter_child_const(*nd))
-        if (is_marked(nd2, bits))
-            count++;
-    return count;
-}
-
-string source_from_tree_name(const string& name)
-{
-    const char* start = strrchr(name.c_str(),' ');
-    start++;
-    assert(start);
-
-    const char* end = strrchr(name.c_str(),'.');
-    return name.substr(start - name.c_str(), end-start);
-}
-
-string study_from_tree_name(const string& name)
-{
-    const char* start = strrchr(name.c_str(),' ');
-    start++;
-    assert(start);
-
-    const char* end = strrchr(name.c_str(),'_');
-    return name.substr(start - name.c_str(), end-start);
-}
-
-
-string tree_in_study_from_tree_name(const string& name)
-{
-    const char* start = strrchr(name.c_str(),'_');
-    start++;
-    assert(start);
-
-    const char* end = strrchr(name.c_str(),'.');
-    return name.substr(start - name.c_str(), end-start);
-}
-
-string getNodeName(const Tree_t::node_type* node)
+string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node)
 {
     string name = node->getName();
     if (node->hasOttId())
         name = "ott" + std::to_string(node->getOttId());
-
-    const char* start = name.c_str();
-    const char* end = name.c_str() + name.size();
-    while(strchr(" \t_",*start) and start < end)
-        start++;
-    while(strchr(" \t_",*(end-1)) and start < end)
-        end--;
-    if (start == end)
-        throw OTCError()<<"Node name '"<<name<<"' contracted to nothing!";
-    return name.substr(start - name.c_str(), end-start);
+    return getSourceNodeName(name);
 }
 
 Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits)
@@ -247,8 +165,9 @@ Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, 
         mark(leaf2) |= bits;
         MRCA = trace_find_MRCA(MRCA, leaf2, bits, bits);
         assert(is_marked(MRCA,bits));
-        if (MRCA->hasChildren())
-            assert(n_marked_children(MRCA,bits)>0);
+        if (MRCA->hasChildren()){
+            assert(countMarkedChildren(MRCA,bits)>0);
+        }
     }
     return MRCA;
 }
@@ -313,7 +232,7 @@ void trace_clean_marks_from_synth(const Tree_t& tree)
 json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree)
 {
     string source = source_from_tree_name(input_tree.getName());
-    string node_in_study = getNodeName(input_node);
+    string node_in_study = getSourceNodeNameFromNameOrOttId(input_node);
     return {source,node_in_study};
 }
 
@@ -367,7 +286,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 //        document["date_completed"] = "date";
 //        document["tree_id"] = "an idenftifier";
 //        document["taxonomy_version"] = "2.9draft12";
-        document["num_tips"] = n_leaves(*summaryTree);
+        document["num_tips"] = countLeaves(*summaryTree);
 //        document["run_time"] = "an estimate of the time taken to build the tree";
         document["num_source_trees"] = numTrees;
         document["num_source_studies"] = studies.size();
@@ -437,7 +356,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         return true;
     }
 
-    void mapNextTree(OTCLI & otCLI, const Tree_t & tree, bool isTaxoComp)
+    void mapNextTree(OTCLI & , const Tree_t & tree, bool ) //isTaxoComp is third param
     {
         vector<Tree_t::node_type*> conflicts;
         string source_name = source_from_tree_name(tree.getName());
@@ -534,7 +453,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     }
 
 };
-
+bool handleCountTaxonomy(OTCLI & otCLI, const std::string &);
 
 bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
     DisplayedStatsState * proc = static_cast<DisplayedStatsState *>(otCLI.blob);
