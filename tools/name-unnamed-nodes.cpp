@@ -17,58 +17,25 @@ using std::list;
 using std::map;
 using std::string;
 using namespace otc;
-
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
-bool verbose = false;
+static bool chopRoot = false;
+static std::string prefix = "node";
+bool handleChopRoot(OTCLI & otCLI, const std::string &);
+bool handlePrefix(OTCLI & , const std::string & arg);
+string makeName(const string& prefix, int number);
 
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::set<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::vector<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
-bool chopRoot = false;
-bool handleChopRoot(OTCLI & otCLI, const std::string &)
-{
+bool handleChopRoot(OTCLI & , const std::string &) {
     chopRoot = true;
     return true;
 }
-
-string prefix = "node";
-bool handlePrefix(OTCLI & otCLI, const std::string & arg)
-{
+bool handlePrefix(OTCLI & , const std::string & arg) {
     prefix = arg;
     return true;
 }
 
-string makeName(const string& prefix, int number)
-{
-    return prefix + std::to_string(number);
+string makeName(const string& pre, int number) {
+    return pre + std::to_string(number);
 }
 
 int main(int argc, char *argv[]) {
@@ -76,69 +43,56 @@ int main(int argc, char *argv[]) {
                 "Takes a series of tree files, which are treated as subproblem solutions.\n"
                 "Each solution tree should have an OTT Id at the root.\n",
                 "solutions.tre");
-
     otCLI.addFlag('p',
                   "Prefix for unnamed nodes",
                   handlePrefix,
                   true);
-    
     otCLI.addFlag('c',
                   "Chop of the root node",
                   handleChopRoot,
                   false);
-    
-
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
-
-    if (argc < 2)
+    if (argc < 2) {
         throw OTCError("No trees provided!");
-
-    // I think multiple subproblem files are essentially concatenated.
-    // Is it possible to read a single subproblem from cin?
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1))
-        std::exit(1);
-
-    if (chopRoot)
-    {
+    }
+    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+        return 1;
+    }
+    if (trees.empty()) {
+        throw OTCError("No trees loaded!");
+    }
+    if (chopRoot) {
         Tree_t& tree = *trees[0];
         auto newRoot = tree.getRoot()->getFirstChild();
         newRoot->detachThisNode();
         tree._setRoot(newRoot);
     }
-
-    verbose = otCLI.verbose;
-
-    if (trees.empty())
-        throw OTCError("No trees loaded!");
-
     // Add names to unnamed nodes
-    for(const auto& tree: trees)
-    {
+    for(const auto& tree: trees) {
         std::unordered_set<string> names;
-        for(auto nd:iter_pre(*tree))
-            if (nd->getName().size())
+        for(auto nd:iter_pre(*tree)) {
+            if (nd->getName().size()) {
                 names.insert(nd->getName());
-
+            }
+        }
         int id = 1;
-        for(auto nd:iter_pre(*tree))
-        {
-            if (nd->hasOttId())
+        for(auto nd:iter_pre(*tree)) {
+            if (nd->hasOttId()) {
                 nd->setName("ott"+std::to_string(nd->getOttId()));
-            else if (not nd->getName().size())
-            {
+            } else if (not nd->getName().size()) {
                 string name = makeName(prefix,id);
-                if (names.count(name))
+                if (names.count(name)) {
                     throw OTCError()<<"Synthesized name '"<<name<<"' already exists in the tree!";
+                }
                 nd->setName(makeName(prefix,id));
             }
             id++;
         }
     }
-
-    for(const auto& tree: trees)
-    {
+    for(const auto& tree: trees) {
         writeTreeAsNewick(std::cout, *tree);
         std::cout<<"\n";
     }
+    return 0;
 }
