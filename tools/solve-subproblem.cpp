@@ -19,31 +19,38 @@ using namespace otc;
 typedef TreeMappedWithSplits Tree_t;
 
 template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::set<T>& s) {
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep);
+template <typename T>
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep);
+template <typename T>
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep);
+
+template <typename T>
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep) {
     auto it = s.begin();
     o << *it++;
     for(; it != s.end(); it++) {
-        o << " " << *it;
+        o << sep << *it;
     }
     return o;
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::list<T>& s) {
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep) {
     auto it = s.begin();
     o << *it++;
     for(; it != s.end(); it++) {
-        o << " " << *it;
+        o << sep << *it;
     }
     return o;
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::vector<T>& s) {
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep) {
     auto it = s.begin();
     o << *it++;
     for(; it != s.end(); it++) {
-        o << " " << *it;
+        o << sep << *it;
     }
     return o;
 }
@@ -88,15 +95,15 @@ bool handleRootName(OTCLI& otCLI, const std::string & arg);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s) {
-    o<<s.in<<" | ";
-    if (s.out.size() < 100)
-        o<<s.out;
-    else
-    {
+    writeSeparatedCollection(o, s.in, " ") <<" | ";
+    if (s.out.size() < 100) {
+        writeSeparatedCollection(o, s.out, " ");
+    } else {
         auto it = s.out.begin();
-        for(int i=0;i<100;i++)
-            o<<*it++<<" ";
-        o<<"...";
+        for(int i=0;i<100;i++) {
+            o << *it++ <<" ";
+        }
+        o << "...";
     }
     return o;
 }
