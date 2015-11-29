@@ -14,7 +14,6 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-prune-synth-to-subproblem \
 				otc-prune-taxonomy \
 				otc-prune-to-subtree \
-				otc-scaffolded-supertree \
 				otc-set-of-ids \
 				otc-subproblem-stats \
 				otc-suppress-monotypic \
@@ -65,9 +64,6 @@ otc_prune_to_subtree_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_prune_synth_to_subproblem_SOURCES = prunesynthtosubproblem.cpp
 otc_prune_synth_to_subproblem_CPPFLAGS = $(AM_CPPFLAGS)
-
-otc_scaffolded_supertree_SOURCES = scaffoldedsupertree.cpp
-otc_scaffolded_supertree_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_polytomy_count_SOURCES = polytomycount.cpp
 otc_polytomy_count_CPPFLAGS = $(AM_CPPFLAGS)
