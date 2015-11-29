@@ -18,43 +18,6 @@ using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
 
-template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep);
-template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep);
-template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep);
-
-template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep) {
-    auto it = s.begin();
-    o << *it++;
-    for(; it != s.end(); it++) {
-        o << sep << *it;
-    }
-    return o;
-}
-
-template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep) {
-    auto it = s.begin();
-    o << *it++;
-    for(; it != s.end(); it++) {
-        o << sep << *it;
-    }
-    return o;
-}
-
-template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep) {
-    auto it = s.begin();
-    o << *it++;
-    for(; it != s.end(); it++) {
-        o << sep << *it;
-    }
-    return o;
-}
-
 /// Create a SORTED vector from a set
 template <typename T>
 vector<T> set_to_vector(const set<T>& s) {

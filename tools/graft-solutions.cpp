@@ -19,35 +19,6 @@ using std::string;
 using namespace otc;
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::set<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::vector<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
 
 static std::string rootName = "";
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg);

@@ -66,6 +66,15 @@ template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
 std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimiter);
 
+void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const OttIdSet & ls);
+template <typename T>
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep);
+template <typename T>
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep);
+template <typename T>
+std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep);
+
+
 template<typename T>
 inline std::string getContestedPreambleFromName(const T & nd, const std::string & treeName) {
     std::ostringstream ss;
@@ -469,7 +478,36 @@ inline std::size_t sizeOfSymmetricDifference(const T & first, const T &sec) {
     return diff.size();
 }
 
-void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const OttIdSet & ls);
+template <typename T>
+inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep) {
+    auto it = s.begin();
+    o << *it++;
+    for(; it != s.end(); it++) {
+        o << sep << *it;
+    }
+    return o;
+}
+
+template <typename T>
+inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep) {
+    auto it = s.begin();
+    o << *it++;
+    for(; it != s.end(); it++) {
+        o << sep << *it;
+    }
+    return o;
+}
+
+template <typename T>
+inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep) {
+    auto it = s.begin();
+    o << *it++;
+    for(; it != s.end(); it++) {
+        o << sep << *it;
+    }
+    return o;
+}
+
 
 } //namespace otc
 #endif

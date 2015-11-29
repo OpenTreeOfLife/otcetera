@@ -20,37 +20,6 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 static bool regrafting = false;
 static string rootName = "";
 
-
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::set<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::list<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
-template <typename T>
-std::ostream& operator<<(std::ostream& o, const std::vector<T>& s)
-{
-    auto it = s.begin();
-    o<<*it++;
-    for(; it != s.end(); it++)
-        o<<" "<<*it;
-    return o;
-}
-
 void remove_split(Tree_t::node_type* nd);
 void show_children(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral);
 int count_children(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral);
@@ -157,6 +126,7 @@ long n_internal_out_degree_many(const Tree_t& T) {
 
 long n_nodes(const Tree_t& T) {
 #pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
     long count = 0;
     for(auto nd: iter_post_const(T)){
         count++;
@@ -201,7 +171,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
             if (not ott_to_tax.count(nd->getOttId())) {
                 throw OTCError()<<"OttId "<<nd->getOttId()<<" not in taxonomy!";
             }
-            auto nd2 = ott_to_tax.at(nd->getOttId());
+            //auto nd2 = ott_to_tax.at(nd->getOttId());
         }
     }
     // 1b. Find the subtree ancestral to the solution OttIds, and mark nodes monotypic in this subtree
