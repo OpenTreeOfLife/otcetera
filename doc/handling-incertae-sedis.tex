@@ -87,15 +87,21 @@ Thus any resulution of \naiveFullTree can be said to be compatible with the taxo
 Let \augmentedFullTree denote a tree that is created by taking \naiveFullTree and replacing each
     edge with a pair of edges by introducing a new node with out-degree=1.
 The set of nodes introduced by this step is denoted $\mathcal{A}$.
+The root of the tree will not be n $\mathcal{A}$ and the path from the root to any tip will alternate
+    between nodes not in $\matccal{A}$ and nodes in $\mathcal{A}$.
 This augmented tree depicts all the possible attachment points for a new edge in the tree.
 Note that \naiveFullTree tree induced by \placedTaxa is homeomorphic to \placedTaxoTree.
 Thus for any node $n$ in \placedTaxoTree, we can find a corresponding node 
   \corresponding{n}{\naiveFullTree} in \naiveFullTree and a corresponding node
    \corresponding{n}{\augmentedFullTree} in \augmentedFullTree.
 
-For any internal node $n$ in \augmentedFullTree, let \insedChildren{n}
+For any internal node $n\in\mathccal{A}$ in \augmentedFullTree, let \insedChildren{n}
      denote the set of children
     of $n$ which are mapped to OTT Ids flagged as being \insed taxa; this can be the empty set.
+
+For an internal node $n\notin\mathcal{A}$ let \insedChildren{n} denote the set of grandchildren
+    of $n$ mapped to flagged taxa. This just provides handy notation for skipping over the 
+    set of augmented nodes.
 
 A hypergraph \specHyper that accurately depicts the taxonomic knowledge in OTT is one that can be produced by
     traversing $\augmentedFullTree$ and performing the following operations for each internal node $n\notin \mathcal{A}$.
@@ -133,5 +139,39 @@ We will define a \specialHypergraph as being a hypergraph such as $H$ with the k
         \insed taxa that are sister groups in \naiveFullTree.
 \end{compactitem}
 
+\section{New processing step: taxonomic refinement as a preprocessing step}
+As an early step in the propinquity pipeline, we might want to try to reduce complexity of the
+    decomposition by using the ranked source trees to
+\begin{compactenum}
+    \item place \insed groups more specifically (narrow the range of parental node sets) in the OTT hypergraph, and
+    \item prune \insed groups from lower ranked trees if the same \insed group has been placed in a 
+        conlicting position by a higher ranked tree.
+\end{compactenum}
+
+\section{Modified processing step: \insed-aware decomposition into subproblems}
+
+\section{Modified processing step: \insed-aware assignment of taxonomic names}
+For some named node, $n$, in \naiveFullTree, our current naive naming approach
+    boils down to defining the include group to be all terminal OTT Ids that descend are assigned to descendants of $n$, and 
+    the exclude group to be all other terminal OTT Ids.
+If some tree has another node whose set of descendants are a subset of this include
+    set are disjoint from this exclude group, then we give that node the name assigned to $n$.
+
+An \insed-aware naming procedure is easiest to describe on the augmented tree, \augmentedFullTree.
+For a named internal node $n$ on that tree, the include group is the set of terminal 
+    OTT Ids (as before).
+Let $\mathcal{Y}(n)$ denote the set of nodes that are ancestral to $n$.
+Recall that $\insedChildren{x}$ is either the set of children or grandchildren of $x$ that 
+    are flagged as being \insed (depending on whether $x\in\mathcal{A}$ or $x\notin\mathcal{A}$).
+Let $$\mathcal{D}(n) =\bigcup_{i\in\mathcal{Y}(n)}\insedChildren{i}$$
+in other words $\mathcal{D}(n)$ is the set of \insed children for any ansetor of $n$.
+The are all of the \insed groups that, according to OTT, could be allowed to move into the named
+    group.
+So the exclude group for the named taxon $n$ becomes all terminal tips that are not:
+\begin{compactitem}
+    \item in the include set, OR
+    \item descendants of any member of $\mathcal{D}(n)$ in \augmentedFullTree
+\end{compactitem}
+\section{Modified processing step: \insed-aware other annotations}
 \bibliography{otcetera}
 \end{document}
