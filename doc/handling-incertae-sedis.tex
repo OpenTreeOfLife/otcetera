@@ -157,7 +157,7 @@ For some named node, $n$, in \naiveFullTree, our current naive naming approach
 If some tree has another node whose set of descendants are a subset of this include
     set are disjoint from this exclude group, then we give that node the name assigned to $n$.
 
-An \insed-aware naming procedure is easiest to describe on the augmented tree, \augmentedFullTree.
+Given the notation introduced above, the \insed-aware naming procedure is easiest to describe on the augmented tree, \augmentedFullTree.
 For a named internal node $n$ on that tree, the include group is the set of terminal 
     OTT Ids (as before).
 Let $\mathcal{Y}(n)$ denote the set of nodes that are ancestral to $n$.
@@ -173,5 +173,14 @@ So the exclude group for the named taxon $n$ becomes all terminal tips that are 
     \item descendants of any member of $\mathcal{D}(n)$ in \augmentedFullTree
 \end{compactitem}
 \section{Modified processing step: \insed-aware other annotations}
+
+\section{Expressing the information in the taxonomy via a set of trees}
+If one wanted to express what triples are implied by OTT as a concise set of
+    trees, one can think of a tree with a single internal edge for each internal taxon.
+For tree $T_i$ that represents the set of triples implied by taxon $n$, the
+    ``ingroup'' of the tree is set terminal taxa included in taxon $n$ and taxa
+    that attach basally to tree $T_i$ are all of the other terminal taxa in OTT
+    except for the members of $\mathcal{D}(n)$;
+    those \insed taxa are not included at all in $T_i$.
 \bibliography{otcetera}
 \end{document}
