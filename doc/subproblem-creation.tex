@@ -1,17 +1,8 @@
 \documentclass[11pt]{article}
 \input{preamble.tex}
-\newcommand{\insed}{{\em incertae sedis}\xspace}
-\newcommand{\specialHypergraph}{rooted tree-based quasi-hierarchical hypergraph \xspace}
 
-\newcommand{\placedTaxa}{\ensuremath{\mathcal{P}}\xspace}
-\newcommand{\placedTaxoTree}{\ensuremath{P}\xspace}
-\newcommand{\placedTaxoTreeName}{placed-taxa tree\xspace}
-\newcommand{\naiveFullTree}{\ensuremath{N}\xspace}
-\newcommand{\augmentedFullTree}{\ensuremath{E}\xspace}
-\newcommand{\specHyper}{\ensuremath{H}\xspace}
-\newcommand{\naiveFullTreeName}{naive full taxonomic tree\xspace}
-\newcommand{\insedChildren}[1]{\ensuremath{\mathcal{I}(#1)}\xspace}
-\newcommand{\corresponding}[2]{\ensuremath{c_{#2}(#1)}\xspace}
+\newcommand{\phylogeny}{\ensuremath{P}\xspace}
+\newcommand{\uncontestedTaxa}{\ensuremath{\mathcal{U}}\xspace}
 \usepackage{hyperref}
 \hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
 \begin{document}
@@ -26,5 +17,33 @@ The source for this in the doc subdirectory of the otcetera
 This document is intended to be a more thorough discussion of the
     ``Decomposition into Subproblems'' section of the Supporting
     Information of \citep{HinchliffEtAl2015}.
+Here we consider the case of a complete tree representing a taxonomy \taxonomy and
+    a list of $N$ phylogenetic estimates, $[P_1, P_2, \ldots, P_N]$, in which the leaf labels of the phylogenetic
+    trees is a subset of the leaf label set of the taxonomy.
+Note that in \citep{HinchliffEtAl2015}, some phylogenetic trees could have leaves labeled by
+    ``higher'' taxa, but that possibility is not covered in this document, because in
+    the \propinquity pipeline, these tips are replaced by exemplars of the higher taxon
+    at a previous step.
+
+As state in the glossary for \otc, we say that taxon $A$ is contested $\iff$ 
+    there is at least one tree in the set of input trees that has a node which is in conflict
+    with the taxon.
+    Note that if a tree has members of taxon as children of a polytomy that also contains other taxa, then
+        the tree does not display the taxon, but it is also does not contest the taxon.
+    Thus ``contests'' is not equivalent to ``does not display'' (though, if a tree displays a taxon, then 
+        it cannot contest that taxon).
+
+\section{Subproblems}
+Let $\uncontestedTaxa$ denote the set of higher taxa in \taxonomy.
+Any labels of internal nodes in a tree that is one of the input phylogenetic estimates
+    are ignored\footnoted{In the software, we actually use a syntatic structure to the
+    internal node labels, so that we can associate them with specific nodes in the input tree
+    but we can think of the label, for the sake of the algorithm, as being a taxonomic label
+    which is removed on input.}.
+Let $\mathcal{A}_i$ denote tree obtained by starting with $P_i$ and labeling internal 
+    nodes or introducing new, labeled internal nodes (with in-degree and outdegree of 1)
+    such that the label of each uncontested node represented in $P_i$ is attached to a node
+    in $\mathcal{A}_i$.
+
 \bibliography{otcetera}
 \end{document}
