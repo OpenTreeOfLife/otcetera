@@ -1,17 +1,5 @@
 \documentclass[11pt]{article}
 \input{preamble.tex}
-\newcommand{\insed}{{\em incertae sedis}\xspace}
-\newcommand{\specialHypergraph}{rooted tree-based quasi-hierarchical hypergraph \xspace}
-
-\newcommand{\placedTaxa}{\ensuremath{\mathcal{P}}\xspace}
-\newcommand{\placedTaxoTree}{\ensuremath{P}\xspace}
-\newcommand{\placedTaxoTreeName}{placed-taxa tree\xspace}
-\newcommand{\naiveFullTree}{\ensuremath{N}\xspace}
-\newcommand{\augmentedFullTree}{\ensuremath{E}\xspace}
-\newcommand{\specHyper}{\ensuremath{H}\xspace}
-\newcommand{\naiveFullTreeName}{naive full taxonomic tree\xspace}
-\newcommand{\insedChildren}[1]{\ensuremath{\mathcal{I}(#1)}\xspace}
-\newcommand{\corresponding}[2]{\ensuremath{c_{#2}(#1)}\xspace}
 \usepackage{hyperref}
 \hypersetup{backref,  linkcolor=blue, citecolor=black, colorlinks=true, hyperindex=true}
 \begin{document}
@@ -88,7 +76,7 @@ Let \augmentedFullTree denote a tree that is created by taking \naiveFullTree an
     edge with a pair of edges by introducing a new node with out-degree=1.
 The set of nodes introduced by this step is denoted $\mathcal{A}$.
 The root of the tree will not be n $\mathcal{A}$ and the path from the root to any tip will alternate
-    between nodes not in $\matccal{A}$ and nodes in $\mathcal{A}$.
+    between nodes not in $\mathcal{A}$ and nodes in $\mathcal{A}$.
 This augmented tree depicts all the possible attachment points for a new edge in the tree.
 Note that \naiveFullTree tree induced by \placedTaxa is homeomorphic to \placedTaxoTree.
 Thus for any node $n$ in \placedTaxoTree, we can find a corresponding node 
