@@ -34,18 +34,13 @@ inline int& smallestChild(Tree_t::node_type* node) {
 }
 
 static bool chopRoot = false;
-static std::string prefix = "node";
 static std::string mrca_prefix = "mrca-ott";
 bool handleChopRoot(OTCLI & otCLI, const std::string &);
-bool handlePrefix(OTCLI & , const std::string & arg);
+
 string makeName(const string& prefix, int number);
 
 bool handleChopRoot(OTCLI & , const std::string &) {
     chopRoot = true;
-    return true;
-}
-bool handlePrefix(OTCLI & , const std::string & arg) {
-    prefix = arg;
     return true;
 }
 
@@ -101,14 +96,10 @@ void sortBySmallestChild(Tree_t& T)
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otc-graft-solutions",
-                "Takes a series of tree files, which are treated as subproblem solutions.\n"
-                "Each solution tree should have an OTT Id at the root.\n",
-                "solutions.tre");
-    otCLI.addFlag('p',
-                  "Prefix for unnamed nodes",
-                  handlePrefix,
-                  true);
+    OTCLI otCLI("otc-name-unnamed-nodes",
+                "Takes a series of tree files and writes each tree with names computed for unnamed nodes.\n"
+                "Nodes with OTT ids are written as ott#####, with longer names suppressed.\n",
+                "tree1.tre [tree2.tre ... treeN.tree]");
     otCLI.addFlag('c',
                   "Chop of the root node",
                   handleChopRoot,
@@ -149,10 +140,9 @@ int main(int argc, char *argv[]) {
                 assert(not nd->isTip());
                 assert(not nd->isOutDegreeOneNode());
 
-                string name = makeName(prefix,id);
                 int id1 = smallestChild(nd->getFirstChild());
                 int id2 = smallestChild(nd->getFirstChild()->getNextSib());
-                name = makeMRCAName(id1,id2);
+                string name = makeMRCAName(id1,id2);
                 if (names.count(name)) {
                     throw OTCError()<<"Synthesized name '"<<name<<"' already exists in the tree!";
                 }
