@@ -34,7 +34,12 @@ As state in the glossary for \otc, we say that taxon $A$ is contested $\iff$
         it cannot contest that taxon).
 
 \section{Subproblems}
-Let $\uncontestedTaxa$ denote the set of higher taxa in \taxonomy.
+Let $\uncontestedTaxa$ denote the set of higher taxa in \taxonomy,
+    and $\mathbb{U}$ denote the uncontested taxonomy tree,
+    which is created by collapsing any edge leading to
+    an internal taxon if that taxon is not in $\uncontestedTaxa$.
+$\induced{\mathbb{U}}{P_i}$ denotes the uncontested taxonomy tree induced by the leaf set
+    of $P_i$.
 Any labels of internal nodes in a tree that is one of the input phylogenetic estimates
     are ignored\footnoted{In the software, we actually use a syntatic structure to the
     internal node labels, so that we can associate them with specific nodes in the input tree
