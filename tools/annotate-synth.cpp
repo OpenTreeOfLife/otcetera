@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cstring>
 #include <unordered_map>
+#include <unordered_set>
 #include "json.hpp"
 
 using namespace otc;
@@ -12,6 +13,13 @@ using json = nlohmann::json;
 using std::vector;
 using std::string;
 using std::map;
+using std::pair;
+
+template<>
+struct std::hash<std::pair<string,json>>
+{
+    std::size_t operator()(const std::pair<string,json>& p) const noexcept {return std::hash<string>()(p.first) * std::hash<json>()(p.second);}
+};
 
 struct RTNodeDepth {
     int depth = 0;
@@ -191,6 +199,9 @@ Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, 
     return MRCA;
 }
 
+// This is sub-optimal, because we walk each branch n times if it has n children.
+// There a conflict will be discovered n times if it has n children.
+// We currently hack around this by checking for duplicate entries in the hash.
 void find_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts)
 {
     while (node and mark(node))
@@ -246,6 +257,11 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     std::unordered_multimap<string,json> conflicts_with;
     std::unordered_multimap<string,json> could_resolve;
     std::unordered_multimap<string,json> terminal;
+    std::unordered_set<pair<string,json>> supported_by_set;
+    std::unordered_set<pair<string,json>> partial_path_of_set;
+    std::unordered_set<pair<string,json>> conflicts_with_set;
+    std::unordered_set<pair<string,json>> could_resolve_set;
+    std::unordered_set<pair<string,json>> terminal_set;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
@@ -254,27 +270,52 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        terminal.insert({synth_node->getName(), source_node(input_node,input_tree)});
+        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
+        if (not terminal_set.count(x))
+        {
+            terminal_set.insert(x);
+            terminal.insert(x);
+        }
     }
 
     void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        supported_by.insert({synth_node->getName(), source_node(input_node,input_tree)});
+        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
+        if (not supported_by_set.count(x))
+        {
+            supported_by_set.insert(x);
+            supported_by.insert(x);
+        }
     }
 
     void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        partial_path_of.insert({synth_node->getName(), source_node(input_node,input_tree)});
+        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
+        if (not partial_path_of_set.count(x))
+        {
+            partial_path_of_set.insert(x);
+            partial_path_of.insert(x);
+        }
     }
 
     void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        conflicts_with.insert({synth_node->getName(), source_node(input_node,input_tree)});
+        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
+        if (not conflicts_with_set.count(x))
+        {
+            conflicts_with_set.insert(x);
+            conflicts_with.insert(x);
+        }
     }
 
     void set_could_resolve(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        could_resolve.insert({synth_node->getName(), source_node(input_node,input_tree)});
+        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
+        if (not could_resolve_set.count(x))
+        {
+            could_resolve_set.insert(x);
+            could_resolve.insert(x);
+        }
     }
 
     bool summarize(OTCLI &otCLI) override {
