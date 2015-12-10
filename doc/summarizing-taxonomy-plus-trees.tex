@@ -317,6 +317,9 @@ This can be done by creating the polytomy of terminal leaves at the parent node 
     mapped to the non-terminal taxon).
 
     \textbf{BEN: while this doesn't impose monophyly of the non-terminal taxon, it does seem to impose monophyly of non-terminal taxa + sisters.  I'm not sure why this is correct.  The ``optimizing assignment'' below seems clearly correct.}
+    \textbf{BEN: after thinking about this, I suppose we could interpret the clade (A,B) in an input tree as stipulating that
+      then groups A and B are jointly monophyletic (so $A \cup B$ is monophyletic).  Not that this is bulletproof, but instead clarifying that we could phrase this as an interpretation rule for input trees.  By interpreting input trees in this way, we assign the blame for cases where this is wrong to the input trees that contain such statements.}
+    \textbf{BEN: when the input trees are in fact created under the interpration that (A,B) means ``there exists an A and a B'' that form a monophyletic group, then this is naturally still problematic. So the problem doesn't go away.}
 
 \subsubsection{optimizing the assignment to a terminal taxon}
 Under the unknown tip case (case \ref{itmUnknownTip} above), we could treat the
