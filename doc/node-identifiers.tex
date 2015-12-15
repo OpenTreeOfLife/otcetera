@@ -273,7 +273,47 @@ Update registrations with every OTT update}
 exclusion set as all other taxa except the relevant set of {\em incertae sedis} 
 taxa.
 Update registrations with every OTT update.}
-\mthcomment{(my current favorite). I'll try to find time for full description soon, but
+JAR's \href{http://www.slideshare.net/jar375/rees-claimsievobio2014}{2014 iEvoBio talk}
+  presents a nice summary of the factual claims made by a classification (see also 
+  the corresponding \href{https://github.com/OpenTreeOfLife/reference-taxonomy/wiki/Expressing-phylogenetic-claims}{wiki page}).
+
+Running {\tt smasher} extracts taxonomic claims from source taxonomies and summarizes
+  the results of that operation of a hierarchical classification with:
+\begin{compactenum}
+  \item names taken from the source taxonomies,
+  \item flags for noting additional info about taxa,
+  \item lists of synonyms, and
+  \item reference to the IDs of the corresponding taxa in the source taxonomies.
+\end{compactenum}
+
+Each iteration of OTT has differences from its predecessor.
+We can partition these changes into one of several categories:
+\begin{compactenum}
+  \item Introduction of a new species. This could occur because:
+  \begin{compactenum}
+    \item the species is new to one or more of the input source taxonomies.
+    \item one (or more) of the source taxonomies previously considered the species to be
+      a synonym of another species, but the newest version of the source taxonomy no longer
+      considers it to be a synonym.
+    \item the {\tt smasher} procedure previously decided that two names in different source
+      taxonomies referred to the same species, but no longer come to that decision. 
+      This could happen either from:
+      \begin{compactenum}
+        \item changes to the logic of {\tt smasher}'s co-reference operations, or
+        \item changes to the data associated with taxa in the source taxonomies.
+      \end{compactenum}
+    \item the {\tt smasher} procedure previously decided that a one (or more)
+      names in a source taxonomy was a junior synonym, but no longer come to that decision. 
+      This could happen either from:
+      \begin{compactenum}
+        \item changes to the logic of {\tt smasher}'s co-reference operations, or
+        \item changes to the data associated with taxa in the source taxonomies.
+      \end{compactenum}
+  \end{compactenum}
+\end{compactenum}
+
+\mthcomment{The rest of this section is my old summary
+of this option. . I'll try to find time for full description soon, but
 the gist is$\ldots$}
 
 Define taxon concept for higher taxon as the union of the descendants of its children, and excluding other terminal taxa in the current taxonomy.
@@ -281,7 +321,7 @@ There can be a specific set of taxa that are omitted from consideration to deal 
 {\em incertae sedis} taxa.
 
 \href{https://tree.opentreeoflife.org/opentree/opentree4.0@3454690}{This node} in the 
-current synthetic tree is the clade often called ``whippomorpha.''}
+current synthetic tree is the clade often called ``whippomorpha.''
 If we are going to be creating IDs for taxon concepts, it seems like we should be
   able to handle a case like this one in the obvious way: 
   ``Whippomorpha is the name for the claim that the most recent common ancestor 
@@ -323,7 +363,7 @@ We can contrast this with a MRCA designation \mrcaDesig{m}{a}{b}.
 \begin{figure}[h!]
    \centering  \includegraphics[scale=.5]{images/jar-unique-resolution.pdf}
    \includegraphics[scale=.5]{images/jar-ambiguous-resolution.pdf}\\
-   \put{(A)\hskip 15em (B)}\\
+   {(A)\hskip 15em (B)}\\
    \caption{Two resolutions of the polytomy}\label{jarResolution1}
 \end{figure}
 Consider the case of a synthetic tree update that shows on of the resolutions
@@ -343,7 +383,7 @@ However, in \ref{jarResolution1}A it would resolve to the MRCA of $a,b,c$ which 
    \centering  \includegraphics[scale=.5]{images/jar-false-positive.pdf}
    \includegraphics[scale=.5]{images/jar-relocation.pdf}
    \includegraphics[scale=.5]{images/jar-no-resolution.pdf}\\
-   \put{\hskip 2em(A)\hskip 12em (B)\hskip 14em (C)}\\
+   {\hskip 2em(A)\hskip 12em (B)\hskip 14em (C)}\\
    \caption{3 examples of trees in which the original clade $m$ is not recovered}\label{jarDissolutionOfM}
 \end{figure}
 If a new version of the synthetic tree does not find the original members
@@ -360,7 +400,7 @@ In case \ref{jarDissolutionOfM}C the registration $r(m)$ would fail to map.
 \begin{figure}[h!]
    \centering  \includegraphics[scale=.5]{images/jar-sample-loss.pdf}
    \includegraphics[scale=.5]{images/jar-new-taxon.pdf}\\
-   \put{(A)\hskip 15em (B)}\\
+   {(A)\hskip 15em (B)}\\
    \caption{A tree that lacks $c$, and one that has a new leaf, $w$.}\label{jarGainLoss}
 \end{figure}
 The registration system is not too sensitive to taxon loss (assuming the number of sampled inclusions is not too small).

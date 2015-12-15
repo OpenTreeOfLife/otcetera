@@ -337,6 +337,20 @@ into the grafted solution to form the full supertree.
 In theory, one could use the sub-problem solver to unprune, if the sub-problem solver would handle
 taxonomy nodes with out-degree 1.
 
+### Naming unnamed nodes
+
+This tool takes a series of trees, names the unnamed nodes, and writes out the resulting trees:
+
+```sh
+otc-name-unnamed-nodes tree1.tre > tree1-named.tre
+```
+
+It is assumed that monotypic nodes always have OTT Ids, and are therefore named.  Names for
+unnamed nodes are of the form mrca-ottX-ottY.  To find X and Y in a unique, repeatable way, 
+each node in the tree is annotated with the OTT Id of the smallest leaf in the include group
+for that node.  X and Y are then the annotations of the child nodes
+with the smallest, and second-smallest annotations, respectively.
+
 ### getting the full distribution of out degree counts for a tree
 
     otc-degree-distribution sometree.tre

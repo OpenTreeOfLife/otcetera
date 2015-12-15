@@ -77,7 +77,6 @@ Class @ref nlohmann::basic_json is a good entry point for the documentation.
 namespace nlohmann
 {
 
-
 /*!
 @brief unnamed namespace with internal helper functions
 */
@@ -1666,6 +1665,7 @@ class basic_json
     */
     ~basic_json()
     {
+#pragma clang diagnostic ignored  "-Wswitch-enum"
         switch (m_type)
         {
             case (value_t::object):
@@ -3400,6 +3400,7 @@ class basic_json
     */
     bool empty() const noexcept
     {
+#pragma clang diagnostic ignored  "-Wswitch-enum"
         switch (m_type)
         {
             case (value_t::null):
@@ -3454,6 +3455,7 @@ class basic_json
     */
     size_type size() const noexcept
     {
+#pragma clang diagnostic ignored  "-Wswitch-enum"
         switch (m_type)
         {
             case (value_t::null):
@@ -4505,6 +4507,7 @@ class basic_json
     /// return the type as string
     string_t type_name() const
     {
+#pragma clang diagnostic ignored  "-Wswitch-enum"
         switch (m_type)
         {
             case (value_t::null):
@@ -4718,7 +4721,7 @@ class basic_json
     {
         // variable to hold indentation for recursive calls
         unsigned int new_indent = current_indent;
-
+#pragma clang diagnostic ignored  "-Wswitch-enum"
         switch (m_type)
         {
             case (value_t::object):
@@ -6966,6 +6969,7 @@ basic_json_parser_59:
         basic_json parse_internal(bool keep)
         {
             auto result = basic_json(value_t::discarded);
+#pragma clang diagnostic ignored  "-Wswitch-enum"
 
             switch (last_token)
             {

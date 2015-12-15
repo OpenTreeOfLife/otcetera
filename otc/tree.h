@@ -131,6 +131,18 @@ class RootedTreeNode {
         void addSib(node_type *n) {
             addSibAtEnd(n);
         }
+        void addChildAtFront(node_type* n) {
+            if (lChild)
+                lChild->addSibOnLeft(n);
+            else
+            {
+                lChild = n;
+                rChild = n;
+                n->lSib = nullptr;
+                n->rSib = nullptr;
+                n->parent = this;
+            }
+        }
         void addChild(node_type *n) {
             if (rChild) {
                 rChild->addSib(n);
@@ -301,8 +313,9 @@ class RootedTree {
         void pruneAndDelete(node_type * nd) {
             auto nodes = getSubtreeNodes(nd);
             pruneAndDangle(nd);
-            for(auto nd: nodes)
-                delete nd;
+            for (auto ndi: nodes) {
+                delete ndi;
+            }
         }
         bool isDetached(node_type * nd) {
             return contains(detached, nd);

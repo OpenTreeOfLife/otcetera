@@ -16,6 +16,14 @@
 #include "otc/util.h"
 namespace otc {
 
+/// EmbeddingCLI is intended as a base class for tools that need to 
+//      produce an EmbeddedTree with tree 0 serving as the 
+//      "outer" tree and all subsequent trees to be embedded in a taxonomic tree.
+// It provides overrides for the TaxonomyDependentTreeProcessor hooks processTaxonomyTree,
+//  and processSourceTree. It also proveds a cloneTaxonomyAsASourceTree method that allows
+//  the taxonomy tree to be embedded inside itself (this feature is used by the uncontested-decompose
+//  so that it can correctly emit the fracments of the input trees (including the taxonomic tree)
+//  when it writes a subproblem).
 class EmbeddingCLI
     : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits>,
     public EmbeddedTree {

@@ -317,6 +317,9 @@ This can be done by creating the polytomy of terminal leaves at the parent node 
     mapped to the non-terminal taxon).
 
     \textbf{BEN: while this doesn't impose monophyly of the non-terminal taxon, it does seem to impose monophyly of non-terminal taxa + sisters.  I'm not sure why this is correct.  The ``optimizing assignment'' below seems clearly correct.}
+    \textbf{BEN: after thinking about this, I suppose we could interpret the clade (A,B) in an input tree as stipulating that
+      then groups A and B are jointly monophyletic (so $A \cup B$ is monophyletic).  Not that this is bulletproof, but instead clarifying that we could phrase this as an interpretation rule for input trees.  By interpreting input trees in this way, we assign the blame for cases where this is wrong to the input trees that contain such statements.}
+    \textbf{BEN: when the input trees are in fact created under the interpration that (A,B) means ``there exists an A and a B'' that form a monophyletic group, then this is naturally still problematic. So the problem doesn't go away.}
 
 \subsubsection{optimizing the assignment to a terminal taxon}
 Under the unknown tip case (case \ref{itmUnknownTip} above), we could treat the
@@ -872,7 +875,7 @@ If a phylogenetic statement from $T_i^{\ast}$ is not consistent
     then the corresponding statement from $T_i$ will not be consistent with $\mathcal{A}_{i-1}$.
 \end{theorem}
 Proof: By the definition of compatability, adding new leaves cannot make an tree that is incompatible with a statement in $\mathcal{A}_{i-1}^{\ast}$ compatible with the fuller version of that statement.
-}
+
 
 \subsection{Testing consistency by pruning off new leaves}
 Shortcut: prune off any ``new'' leaves from the next tree 
@@ -885,21 +888,21 @@ Let $T_i^{\dag}$ denote $T_i$ pruned down by removing any leaves that are not in
 
 Each internal node in $T_i$ that is not a common ancestor of all of the labels in $\leafLabels{T_i^{\dag}}$ can be partitioned into one of 3 categories:
 \begin{compactenum}
-    \item $\matchcal{N}^{\ddag}(T_i)$ is the set of nodes that have more than one child subtree with an contains a leaf in $\leafLabels{T_i^{\dag}}$.
-    \item $\matchcal{N}^{\dag}(T_i)$ is the set of nodes that have exactly one child subtree with an contains a leaf in $\leafLabels{T_i^{\dag}}$.
-    For every member of $\matchcal{N}^{\dag}(T_i)$ called $n$ let $D^{\dag}(n)$ denote the first descendant node that is either a leaf of $T_i$ or in $\matchcal{N}^{\ddag}(T_i)$.
-    \item $\matchcal{N}^{\circ}(T_i)$ is the set of nodes that are not the ancestor of any label in $\leafLabels{T_i^{\dag}}$.
+    \item $\mathcal{N}^{\ddag}(T_i)$ is the set of nodes that have more than one child subtree with an contains a leaf in $\leafLabels{T_i^{\dag}}$.
+    \item $\mathcal{N}^{\dag}(T_i)$ is the set of nodes that have exactly one child subtree with an contains a leaf in $\leafLabels{T_i^{\dag}}$.
+    For every member of $\mathcal{N}^{\dag}(T_i)$ called $n$ let $D^{\dag}(n)$ denote the first descendant node that is either a leaf of $T_i$ or in $\mathcal{N}^{\ddag}(T_i)$.
+    \item $\mathcal{N}^{\circ}(T_i)$ is the set of nodes that are not the ancestor of any label in $\leafLabels{T_i^{\dag}}$.
 \end{compactenum}
 
 
 \begin{theorem}
-If a phylogenetic statement derived from a member of $\matchcal{N}^{\ddag}(T_i)$ is consistent with  $\mathcal{A}$ if and only if the corresponding member of $\matchcal{N}^{\ddag}(T_i^{\dag})$ is consistent with  $\mathcal{A}$.
+If a phylogenetic statement derived from a member of $\mathcal{N}^{\ddag}(T_i)$ is consistent with  $\mathcal{A}$ if and only if the corresponding member of $\mathcal{N}^{\ddag}(T_i^{\dag})$ is consistent with  $\mathcal{A}$.
 \end{theorem}
 Proof: To be written
 
 
 \begin{theorem}
-Every phylogenetic statement derived from a member of $\matchcal{N}^{\circ}(T_i)$ is consistent with  $\mathcal{A}_{i-1}$.
+Every phylogenetic statement derived from a member of $\mathcal{N}^{\circ}(T_i)$ is consistent with  $\mathcal{A}_{i-1}$.
 \end{theorem}
 Proof: To be written. True because these statents are only making statements about previously unmentioned taxa.
 
