@@ -117,9 +117,12 @@ int main(int argc, char *argv[]) {
     }
     if (chopRoot) {
         Tree_t& tree = *trees[0];
-        auto newRoot = tree.getRoot()->getFirstChild();
-        newRoot->detachThisNode();
-        tree._setRoot(newRoot);
+        if (tree.getRoot()->isOutDegreeOneNode())
+        {
+            auto newRoot = tree.getRoot()->getFirstChild();
+            newRoot->detachThisNode();
+            tree._setRoot(newRoot);
+        }
     }
     // Add names to unnamed nodes
     for(const auto& tree: trees) {
