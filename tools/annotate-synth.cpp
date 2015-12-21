@@ -496,8 +496,8 @@ bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
 }
 
 int main(int argc, char *argv[]) {
-    std::string explanation{"takes at least 2 newick file paths: a taxonomy,  a full supertree, and some number of input trees.\n"};
-    OTCLI otCLI("otc-displayed-stats",
+    std::string explanation{"takes at least 2 newick file paths: a taxonomy, a full supertree, and some number of input trees.\n"};
+    OTCLI otCLI("otc-annotate-synth",
                 explanation.c_str(),
                 "taxonomy.tre synth.tre inp1.tre inp2.tre ...");
     DisplayedStatsState proc;
