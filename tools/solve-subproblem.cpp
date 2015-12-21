@@ -259,9 +259,9 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, bool verbose
         }
         const auto leafTaxaIndices = remap(leafTaxa);
         for(auto nd: iter_post_const(*tree)) {
-            const auto& descendants = remap(nd->getData().desIds);
-            RSplit split{descendants, leafTaxaIndices};
-            if (split.in.size()>1 and split.out.size()) {
+            if (nd->getData().desIds.size()>1 and leafTaxaIndices.size() > nd->getData().desIds.size()) {
+                const auto descendants = remap(nd->getData().desIds);
+                RSplit split{descendants, leafTaxaIndices};
                 consistent.push_back(split);
                 auto result = BUILD(all_leaves_indices, consistent);
                 if (not result) {
