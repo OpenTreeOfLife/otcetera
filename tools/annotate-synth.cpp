@@ -328,17 +328,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             mapNextTree(otCLI, *taxonomy, true);
         }
 
-//        document["date_completed"] = "date";
-//        document["tree_id"] = "an idenftifier";
-//        document["taxonomy_version"] = "2.9draft12";
         document["num_tips"] = countLeaves(*summaryTree);
-//        document["run_time"] = "an estimate of the time taken to build the tree";
-//        document["num_source_trees"] = numTrees;
-//        document["num_source_studies"] = studies.size();
-//        document["root_taxon_name"] = "life";
         document["root_ott_id"] = summaryTree->getRoot()->getOttId();
-//        document["generated_by"] = "propinquity";
-//        document["filtered_flags"] = "list of taxon flags";
 
         json nodes;
         for(auto nd: iter_post_const(*summaryTree))
