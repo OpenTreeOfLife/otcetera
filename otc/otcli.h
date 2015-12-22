@@ -72,6 +72,41 @@ class OTCLI {
 };
 
 template<typename T>
+inline bool processTrees(const std::string& filename,
+                         const ParsingRules& parsingRules,
+                         std::function<bool (std::unique_ptr<T>)> treePtr)
+{
+    std::ifstream inp;
+    if (!openUTF8File(filename, inp)) {
+        throw OTCError("Could not open \"" + filename + "\"");
+    }
+    LOG(INFO) << "reading \"" << filename << "\"...";
+    
+    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
+    FilePosStruct pos(filenamePtr);
+    unsigned treeNumInThisFile = 1;
+    for (;;) {
+        std::unique_ptr<T> nt = readNextNewick<T>(inp, pos, parsingRules);
+        if (nt == nullptr) {
+            break;
+        }
+        if (parsingRules.pruneUnrecognizedInputTips) {
+            pruneTipsWithoutIds(*nt);
+            if (nt->getRoot() == nullptr) {
+                continue;
+            }
+        }
+        std::string treeName = std::string("tree ") + std::to_string(treeNumInThisFile++);
+        treeName.append(" from ");
+        treeName.append(filepathToFilename(filename));
+        nt->setName(treeName);
+        const auto cbr = treePtr(std::move(nt));
+        if (not cbr) return false;
+    }
+    return true;
+}
+
+template<typename T>
 int treeProcessingMain(OTCLI & otCLI,
                           int argc,
                           char * argv[],
@@ -99,36 +134,16 @@ inline int treeProcessingMain(OTCLI & otCLI,
     }
     try {
         if (treePtr) {
+            std::function<bool(std::unique_ptr<T>)> treePtr1 = 
+                [&otCLI,&treePtr](std::unique_ptr<T> t)
+                {return treePtr(otCLI,std::move(t));};
+            
             for (const auto & filename : filenameVec) {
-                std::ifstream inp;
-                if (!openUTF8File(filename, inp)) {
-                    throw OTCError("Could not open \"" + filename + "\"");
-                }
-                LOG(INFO) << "reading \"" << filename << "\"...";
                 otCLI.currentFilename = filepathToFilename(filename);
-                ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
-                FilePosStruct pos(filenamePtr);
-                unsigned treeNumInThisFile = 1;
-                for (;;) {
-                    std::unique_ptr<T> nt = readNextNewick<T>(inp, pos, otCLI.getParsingRules());
-                    if (nt == nullptr) {
-                        break;
-                    }
-                    if (otCLI.getParsingRules().pruneUnrecognizedInputTips) {
-                        pruneTipsWithoutIds(*nt);
-                        if (nt->getRoot() == nullptr) {
-                            continue;
-                        }
-                    }
-                    std::string treeName = std::string("tree ") + std::to_string(treeNumInThisFile++);
-                    treeName.append(" from ");
-                    treeName.append(otCLI.currentFilename);
-                    nt->setName(treeName);
-                    const auto cbr = treePtr(otCLI, std::move(nt));
-                    if (!cbr) {
-                        otCLI.exitCode = 2;
-                        return otCLI.exitCode;
-                    }
+                const auto cbr = processTrees(filename, otCLI.getParsingRules(), treePtr1);
+                if (not cbr) {
+                    otCLI.exitCode = 2;
+                    return otCLI.exitCode;
                 }
             }
         }
