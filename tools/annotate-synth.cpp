@@ -22,7 +22,7 @@ struct std::hash<std::pair<string,json>>
 };
 
 struct RTNodeDepth {
-    int depth = 0;
+    int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1s)
     int mark = 0;
     RootedTreeNode<RTNodeDepth>* summary_node;
 };
@@ -36,7 +36,7 @@ Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 Tree_t::node_type* nmParent(Tree_t::node_type* node);
 void computeDepth(Tree_t& tree);
-void computeSummaryNodes(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
+void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
 string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node);
 Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits);
 Tree_t::node_type* get_root(Tree_t::node_type* node);
@@ -44,7 +44,7 @@ const Tree_t::node_type* get_root(const Tree_t::node_type* node);
 Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2);
 Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, int bits);
 Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, int bits1, int bits2);
-void find_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts);
+void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts);
 void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
 void trace_clean_marks(Tree_t::node_type* node);
 void trace_clean_marks_from_synth(const Tree_t& tree);
@@ -53,6 +53,7 @@ json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree);
 inline int depth(const Tree_t::node_type* node) {
     return node->getData().depth;
 }
+
 
 inline int& depth(Tree_t::node_type* node) {
     return node->getData().depth;
@@ -66,6 +67,7 @@ inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
     return node->getData().summary_node;
 }
 
+// returns the most recent non-monotypic ancestor of node (or nullptr if there is no such node)
 inline Tree_t::node_type* nmParent(Tree_t::node_type* node) {
     do {
         node = node->getParent();
@@ -73,6 +75,7 @@ inline Tree_t::node_type* nmParent(Tree_t::node_type* node) {
     return node;
 }
 
+// fills in the depth data member for each node.
 void computeDepth(Tree_t& tree) {
     tree.getRoot()->getData().depth = 1;
     for (auto nd: iter_pre(tree)) {
@@ -82,79 +85,75 @@ void computeDepth(Tree_t& tree) {
     }
 }
 
-void computeSummaryNodes(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
-    for(auto leaf: iter_leaf(tree))
+// uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
+void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
+    for(auto leaf: iter_leaf(tree)) {
         summary_node(leaf) = summaryOttIdToNode.at(leaf->getOttId());
+    }
 }
 
 
-string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node)
-{
+string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node) {
     string name = node->getName();
-    if (node->hasOttId())
+    if (node->hasOttId()){
         name = "ott" + std::to_string(node->getOttId());
+    }
     return getSourceNodeName(name);
 }
 
-Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits)
-{
-    // node should be already marked
+// assumes `node` is marked with `bits`. Returns the parent of `node` and
+//  also marks the parent with `bits` as a side effect.
+Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits) {
     assert(is_marked(node, bits));
-    
-    // move to parent and mark it.
-    node = node->getParent();
+    node = node->getParent(); // move to parent and mark it.
     set_mark(node, bits);
-
     return node;
 }
 
-Tree_t::node_type* get_root(Tree_t::node_type* node)
-{
-    while(node->getParent())
+Tree_t::node_type* get_root(Tree_t::node_type* node) {
+    while (node->getParent()) {
         node = node->getParent();
+    }
     return node;
 }
 
 const Tree_t::node_type* get_root(const Tree_t::node_type* node)
 {
-    while(node->getParent())
+    while (node->getParent()){
         node = node->getParent();
+    }
     return node;
 }
 
 /// Walk up the tree from node1 and node2 until we find the common ancestor, marking all the way.
-Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2)
-{
+// for X=1,2 and Y = 3-X
+//      assumes nodeX is marked by bitsX 
+//      returns the MRCA, and guarantees that the path from MRCA to nodeX is marked with bitsX
+//  if nodeX is nullptr, returns the other nodeY marked by bitsY
+Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2) {
     assert(node1 or node2);
-    if (not node1)
-    {
+    if (not node1) {
         assert(is_marked(node2, bits2));
         return node2;
     }
-
-    if (not node2)
-    {
+    if (not node2) {
         assert(is_marked(node1, bits1));
         return node1;
     }
-
     assert(node1 and node2);
     assert(get_root(node1) == get_root(node2));
-
     assert(is_marked(node1, bits1));
     assert(is_marked(node2, bits2));
-    
-    while(depth(node1) > depth(node2))
+    while (depth(node1) > depth(node2)){
         node1 = trace_to_parent(node1, bits1);
-    while(depth(node1) < depth(node2))
+    }
+    while (depth(node1) < depth(node2)){
         node2 = trace_to_parent(node2, bits2);
-
+    }
     assert(depth(node1) == depth(node2));
-    while(node1 != node2)
-    {
+    while (node1 != node2) {
         assert(node1->getParent());
         assert(node2->getParent());
-
         node1 = trace_to_parent(node1, bits1);
         node2 = trace_to_parent(node2, bits2);
     }
@@ -164,16 +163,18 @@ Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* 
     return node1;
 }
 
-Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, int bits)
-{
+// traces the summary nodes that correspond to the leaves of `node` back to their MRCA
+//  on the summary tree. All of the nodes in this induced tree will be flagged by setting
+//  `bits` to 1.
+// returns the MRCA node (in the summary tree)
+Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, int bits) {
     Tree_t::node_type* MRCA = nullptr;
-    for(auto leaf: iter_leaf_n_const(*node))
-    {
+    for (auto leaf: iter_leaf_n_const(*node)) {
         auto leaf2 = summary_node(leaf);
         mark(leaf2) |= bits;
         MRCA = trace_find_MRCA(MRCA, leaf2, bits, bits);
-        assert(is_marked(MRCA,bits));
-        if (MRCA->hasChildren()){
+        assert(is_marked(MRCA, bits));
+        if (MRCA->hasChildren()) {
             assert(countMarkedChildren(MRCA,bits)>0);
         }
     }
@@ -181,67 +182,71 @@ Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, 
 }
 
 
-Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, int bits1, int bits2)
-{
+// Assumes that the version of the summary tree induced by the include group of `node` has
+//  already been marked with `bits1`.
+// Returns the MRCA of the exclude group, and assures that every node in the version of the
+//  summary tree induced by the exclude group is flagged with `bits2` 
+Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, int bits1, int bits2) {
     // Using bits1 to exclude leafs seems like a dumb way to iterate over excluded leaves.
     node = get_root(node);
-
     Tree_t::node_type* MRCA = nullptr;
-    for(auto leaf: iter_leaf_n(*node))
-    {
+    for(auto leaf: iter_leaf_n(*node)) {
         auto leaf2 = summary_node(leaf);
-
-        if (is_marked(leaf2, bits1)) continue;
-
-        mark(leaf2) |= bits2;
-        MRCA = trace_find_MRCA(MRCA, leaf2, bits2, bits2);
+        if (!is_marked(leaf2, bits1)) {
+            mark(leaf2) |= bits2;
+            MRCA = trace_find_MRCA(MRCA, leaf2, bits2, bits2);
+        }
     }
     return MRCA;
 }
 
+// Walks from `node` to the induced root (real root or the deepest node with some mark).
+// adds the a node to `conflicts` if that node is marked by the include AND exclude bit
+//  but the node is NOT the deepest node marked with the include flag.
+// The latter (but...NOT) condition avoids flagging nodes that are polytomies which
+//  could be resolved in favor of a node as "conflict" nodes.
 // This is sub-optimal, because we walk each branch n times if it has n children.
 // There a conflict will be discovered n times if it has n children.
 // We currently hack around this by checking for duplicate entries in the hash.
-void find_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts)
-{
-    while (node and mark(node))
-    {
-        if (is_marked(node,1) and is_marked(node,2) and node->getParent() and is_marked(node->getParent(),1))
+void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts) {
+    while (node and mark(node)) {
+        if (is_marked(node,1)
+            and is_marked(node,2)
+            and node->getParent()
+            and is_marked(node->getParent(), 1)) {
             conflicts.push_back(node);
+        }
         node = node->getParent();
     } 
 }
 
-void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts)
-{
+// calls find_anc_conflicts for each leaf to fill `conflicts`
+void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts) {
     conflicts.clear();
-    for(auto leaf: iter_leaf_const(tree))
-    {
+    for(auto leaf: iter_leaf_const(tree)) {
         auto leaf2 = summary_node(leaf);
-        find_conflicts(leaf2, conflicts);
+        find_anc_conflicts(leaf2, conflicts);
     }
 }
 
-void trace_clean_marks(Tree_t::node_type* node)
-{
-    while (node and mark(node))
-    {
+
+void trace_clean_marks(Tree_t::node_type* node) {
+    while (node and mark(node)) {
         mark(node) = 0;
         node = node->getParent();
+        // MTH should  be able to bail out here if the next node is already mark(node) == 0, right?
     } 
 }
 
-void trace_clean_marks_from_synth(const Tree_t& tree)
-{
-    for(auto leaf: iter_leaf_const(tree))
-    {
+// sets marks to 0 for all nodes of the summary tree that are induced by the leaf set of tree.
+void trace_clean_marks_from_synth(const Tree_t& tree) {
+    for(auto leaf: iter_leaf_const(tree)) {
         auto leaf2 = summary_node(leaf);
         trace_clean_marks(leaf2);
     }
 }
 
-json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree)
-{
+json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree) {
     string source = source_from_tree_name(input_tree.getName());
     string node_in_study = getSourceNodeNameFromNameOrOttId(input_node);
     return {source,node_in_study};
@@ -479,7 +484,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         }
         requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
         computeDepth(*tree);
-        computeSummaryNodes(*tree, summaryOttIdToNode);
+        computeSummaryLeaves(*tree, summaryOttIdToNode);
 
         mapNextTree(otCLI, *tree, false);
         return true;
