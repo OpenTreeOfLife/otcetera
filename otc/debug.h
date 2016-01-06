@@ -2,6 +2,7 @@
 #define OTCETERA_DEBUG_H
 
 #include "otc/otc_base_includes.h"
+#include "otc/tree_data.h"
 #include "otc/tree_operations.h"
 
 namespace otc {
