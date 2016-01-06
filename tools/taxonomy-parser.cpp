@@ -18,6 +18,13 @@ using std::endl;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
+// 1. Write a parser to read the lines faster
+// 2. Avoid memory allocation -- by mmapping the taxonomy file?
+// 3. Convert the flags into a bitmask
+// 4. Should the Rank be a converted to an integer?
+// 5. Can we assign OTT IDs to internal nodes of a tree while accounting for Incertae Sedis taxa?
+// * What are the triplet-inference rules for the Incertae Sedis problem?
+
 struct taxonomy_record
 {
     int id = 0;
