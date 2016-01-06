@@ -23,7 +23,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-graft-solutions \
 				otc-unprune-solution \
 				otc-name-unnamed-nodes \
-				otc-annotate-synth
+				otc-annotate-synth \
+				otc-taxonomy-parser
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
@@ -97,6 +98,9 @@ otc_name_unnamed_nodes_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_annotate_synth_SOURCES = annotate-synth.cpp
 otc_annotate_synth_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_taxonomy_parser_SOURCES = taxonomy-parser.cpp
+otc_taxonomy_parser_CPPFLAGS = $(AM_CPPFLAGS)
 
 check:
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
