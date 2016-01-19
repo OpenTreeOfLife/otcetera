@@ -38,6 +38,15 @@ worked for MTH on Mac on 28-Feb-2015:
     sudo make install
 
 
+### BOOST C++ libraries
+You also need the BOOST C++ source libraries.  You should install the BOOST libraries and
+header files using your operating system's package manager.
+
+Many BOOST modules are header-only.  However, some modules require linking to an installed
+library archive.  You must install library archives for at least these BOOST libraries:
+ * Program_options
+
+
 ## configuration + building
 
 To run the whole autoreconf stuff in a manner that will add missing bits as needed,
