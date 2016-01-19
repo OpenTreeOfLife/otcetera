@@ -351,7 +351,19 @@ each node in the tree is annotated with the OTT Id of the smallest leaf in the i
 for that node.  X and Y are then the annotations of the child nodes
 with the smallest, and second-smallest annotations, respectively.
 
-### getting the full distribution of out degree counts for a tree
+### Creating annotations for the synthesis tree
+
+This tool takes a series of newick trees: a taxonomy, a full supertree, and some number of input trees.
+
+```sh
+otc-annotate-synth taxonomy.tre super.tre inp1.tre inp2.tree ...
+```
+
+It outputs a JSON document with fields describing relationships between the input tree edges and the
+supertree.  Relationships include conflict, support, etc and are described in the
+[OpenTree v3 conflict API](https://github.com/OpenTreeOfLife/opentree/wiki/Open-Tree-of-Life-APIs-v3).
+
+### getting the full distribution of out-degree counts for a tree
 
     otc-degree-distribution sometree.tre
 
