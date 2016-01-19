@@ -45,6 +45,7 @@ AC_STRUCT_TM
 AC_FUNC_MKTIME
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([memmove strchr strtol])
+BOOST_REQUIRE([1.54])
 ################################################################################
 # the install-check requires python with subprocess to actually perform a check
 # these tests should not cause failure of configure if python is not found.
