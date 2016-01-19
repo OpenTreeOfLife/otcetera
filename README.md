@@ -17,16 +17,6 @@ by http://stackoverflow.com/users/127669/graphics-noob
 
 ## prerequisites
 
-### rapidjson
-To facilitate parsing of NexSON, this version of requires rapidjson.
-Download it from https://github.com/miloyip/rapidjson
-
-**Note**: you'll need to put the full path to the `rapidjson/include` subdir 
-after a "-I" flag in either the CPPFLAGS variable or the CXXFLAGS variable
-when you run configure for otcetera
-
-
-
 ### autotools
 You also need the a fairly recent version of the whole autotools stack
 including libtool. MTH had problems with automake 1.10. If you can't install
