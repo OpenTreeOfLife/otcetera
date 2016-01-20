@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <boost/program_options.hpp>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -25,6 +26,49 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 // 5. Can we assign OTT IDs to internal nodes of a tree while accounting for Incertae Sedis taxa?
 // * What are the triplet-inference rules for the Incertae Sedis problem?
 
+namespace po = boost::program_options;
+using po::variables_map;
+
+variables_map parse_cmd_line(int argc,char* argv[]) 
+{ 
+  using namespace po;
+
+  // named options
+  options_description invisible("Invisible options");
+  invisible.add_options()
+    ("taxonomy", value<string>(),"Filename for the taxonomy")
+    ;
+
+  options_description visible("All options");
+  visible.add_options()
+    ("help,h", "Produce help message")
+    ("config,c",value<string>(),"Config file containing flags to filter")
+//    ("quiet,q","QUIET mode (all logging disabled)")
+//    ("trace,t","TRACE level debugging (very noisy)")
+//    ("verbose,v","verbose")
+    ;
+
+  options_description all("All options");
+  all.add(invisible).add(visible);
+
+  // positional options
+  positional_options_description p;
+  p.add("taxonomy", -1);
+
+  variables_map args;     
+  store(command_line_parser(argc, argv).options(all).positional(p).run(), args);
+  notify(args);    
+
+  if (args.count("help")) {
+    cout<<"Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n";
+    cout<<"Select columns from a Tracer-format data file.\n\n";
+    cout<<visible<<"\n";
+    exit(0);
+  }
+
+  return args;
+}
+
 struct taxonomy_record
 {
     int id = 0;
@@ -38,15 +82,18 @@ int main(int argc, char* argv[])
 {
     try
     {
-        if (argc != 2)
-            throw OTCError()<<"Expecting exactly 1 argument, but got "<<argc-1<<".";
+//        if (argc != 2)
+//            throw OTCError()<<"Expecting exactly 1 argument, but got "<<argc-1<<".";
+        variables_map args = parse_cmd_line(argc,argv);
 
-        string filename = argv[1];
+        string taxonomy_dir = args["taxonomy"].as<string>();
+        string filename = taxonomy_dir + "/taxonomy.tsv";
 
         std::ifstream taxonomy(filename);
         if (not taxonomy)
             throw OTCError()<<"Could not open file '"<<filename<<"'.";
     
+        extern std::string foobar;
         string line;
         int count = 0;
         vector<taxonomy_record> lines;
@@ -88,7 +135,7 @@ int main(int argc, char* argv[])
             count++;
         }
         cerr<<"#lines = "<<count<<std::endl;
-        //      writeTreeAsNewick(cout, *tree);
+        writeTreeAsNewick(cout, *tree);
     }
     catch (std::exception& e)
     {
