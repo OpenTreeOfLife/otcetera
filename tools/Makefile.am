@@ -1,5 +1,6 @@
 LDADD       = @top_builddir@/otc/libotcetera.la
-AM_CPPFLAGS = -I@top_srcdir@/otc
+AM_CPPFLAGS = -I@top_srcdir@/otc $(BOOST_CPPFLAGS)
+AM_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS)
 bin_PROGRAMS = otc-assert-invariants \
 				otc-count-leaves \
 				otc-degree-distribution \
@@ -25,6 +26,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-name-unnamed-nodes \
 				otc-annotate-synth \
 				otc-taxonomy-parser
+
+LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
