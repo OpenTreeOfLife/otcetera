@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <boost/program_options.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -86,6 +88,14 @@ int main(int argc, char* argv[])
 //            throw OTCError()<<"Expecting exactly 1 argument, but got "<<argc-1<<".";
         variables_map args = parse_cmd_line(argc,argv);
 
+        if (args.count("config"))
+        {
+            
+            boost::property_tree::ptree pt;
+            boost::property_tree::ini_parser::read_ini(args["config"].as<string>(), pt);
+            std::cout << pt.get<std::string>("taxonomy.cleaning_flags") << std::endl;
+        }
+        
         string taxonomy_dir = args["taxonomy"].as<string>();
         string filename = taxonomy_dir + "/taxonomy.tsv";
 
