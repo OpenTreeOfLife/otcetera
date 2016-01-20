@@ -15,10 +15,13 @@ using std::string;
 using std::map;
 using std::pair;
 
+namespace std
+{
 template<>
-struct std::hash<std::pair<string,json>>
+struct hash<std::pair<string,json>>
 {
     std::size_t operator()(const std::pair<string,json>& p) const noexcept {return std::hash<string>()(p.first) * std::hash<json>()(p.second);}
+};
 };
 
 struct RTNodeDepth {
