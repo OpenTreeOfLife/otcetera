@@ -16,8 +16,9 @@
 #ifndef EASYLOGGINGPP_H
 #define EASYLOGGINGPP_H
 // pragmas are MTH mods to silence clang
-#pragma clang diagnostic push
 #pragma GCC diagnostic push
+#ifdef __clang__
+#pragma clang diagnostic push
 #pragma clang diagnostic ignored  "-Wc++98-compat-pedantic"
 #pragma clang diagnostic ignored  "-Wdocumentation-unknown-command"
 #pragma clang diagnostic ignored  "-Wdocumentation"
@@ -28,6 +29,7 @@
 #pragma clang diagnostic ignored  "-Wunreachable-code"
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wmissing-noreturn"
+#endif
 #pragma GCC diagnostic ignored  "-Wstrict-overflow"
 
 
@@ -6677,6 +6679,8 @@ static T* checkNotNull(T* ptr, const char* name, const char* loggers, ...) {
 #endif  // defined(ELPP_UNICODE)
 
 // MTH mod silencing
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 #pragma GCC diagnostic pop
 #endif // EASYLOGGINGPP_H

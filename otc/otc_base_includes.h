@@ -3,8 +3,10 @@
 #include <cassert>
 #include <set>
 #include <functional>
+#ifdef __clang__
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored  "-Wweak-vtables"
+#endif
 #define ELPP_CUSTOM_COUT std::cerr
 #define NOT_IMPLEMENTED assert("not implemented"[0] == 'f');
 #define UNREACHABLE assert(false);
