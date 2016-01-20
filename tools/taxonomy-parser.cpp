@@ -45,6 +45,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
   visible.add_options()
     ("help,h", "Produce help message")
     ("config,c",value<string>(),"Config file containing flags to filter")
+    ("write-tree,t","Write out the result as a tree")
 //    ("quiet,q","QUIET mode (all logging disabled)")
 //    ("trace,t","TRACE level debugging (very noisy)")
 //    ("verbose,v","verbose")
@@ -93,7 +94,8 @@ int main(int argc, char* argv[])
             
             boost::property_tree::ptree pt;
             boost::property_tree::ini_parser::read_ini(args["config"].as<string>(), pt);
-            std::cout << pt.get<std::string>("taxonomy.cleaning_flags") << std::endl;
+            string cleaning_flags = pt.get<std::string>("taxonomy.cleaning_flags");
+            std::cout<<cleaning_flags<<std::endl;
         }
         
         string taxonomy_dir = args["taxonomy"].as<string>();
@@ -145,7 +147,8 @@ int main(int argc, char* argv[])
             count++;
         }
         cerr<<"#lines = "<<count<<std::endl;
-        writeTreeAsNewick(cout, *tree);
+        if (args.count("write-tree"))
+            writeTreeAsNewick(cout, *tree);
     }
     catch (std::exception& e)
     {
