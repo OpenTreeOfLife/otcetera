@@ -6,6 +6,7 @@
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/spirit/include/qi_symbols.hpp>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -18,6 +19,9 @@ using std::vector;
 using std::cout;
 using std::cerr;
 using std::endl;
+
+using boost::spirit::qi::symbols;
+using namespace boost::spirit;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
@@ -72,17 +76,143 @@ variables_map parse_cmd_line(int argc,char* argv[])
   return args;
 }
 
+// https://github.com/OpenTreeOfLife/taxomachine/blob/master/src/main/java/org/opentree/taxonomy/OTTFlag.java
+auto get_symbols()
+{
+    symbols<char, int> sym;
+
+    sym.add
+        ("not_otu", 0)
+        ("environmental", 1)
+        ("environmental_inherited", 2)
+        ("viral", 3)
+        ("hidden", 4)
+        ("hidden_inherited", 5)
+//        unclassified_direct
+        ("was_container", 6)
+        ("barren", 8)
+        ("extinct", 9)
+//        extinct_direct)
+        ("extinct_inherited", 11)
+        ("major_rank_conflict", 12)
+//        major_rank_conflict_direct
+        ("major_rank_conflict_inherited", 14)
+        ("unclassified", 15)
+        ("unclassified_inherited", 16)
+        ("edited", 17)
+        ("hybrid", 18)
+        ("incertae_sedis", 19)
+        ("incertae_sedis_inherited", 20)
+//	      incertae_sedis_direct
+        ("infraspecific", 22)
+        ("sibling_lower", 23)
+        ("sibling_higher", 24)
+        ("tattered", 25)
+        ("tattered_inherited", 26)
+        ("forced_visible", 27)
+        ("unplaced", 28)
+        ("unplaced_inherited", 29)
+        ("inconsistent", 30)
+        ("merged", 31)
+        ;
+    return sym;
+}
+
+auto flag_symbols = get_symbols();
+
+enum treemachine_prune_flags
+{
+	not_otu = 0,
+    environmental = 1,
+    environmental_inherited = 2,
+	viral = 3,
+    hidden = 4,
+    hidden_inherited = 5,
+//    unclassified_direct
+    was_container = 6,
+    barren = 8,
+    extinct = 9,
+//    extinct_direct,
+    extinct_inherited = 11,
+    major_rank_conflict = 12,
+// major_rank_conflict_direct
+	major_rank_conflict_inherited = 14,
+    unclassified = 15,
+	unclassified_inherited = 16,
+    edited = 17,
+    hybrid = 18,
+    incertae_sedis = 19,
+	incertae_sedis_inherited = 20,
+//	incertae_sedis_direct
+	infraspecific = 22,
+	sibling_lower = 23,
+    sibling_higher = 24,
+	tattered = 25,
+	tattered_inherited = 26,
+	forced_visible = 27,
+	unplaced = 28,
+    unplaced_inherited = 29,
+	inconsistent = 30,
+    merged = 31
+};
+
 struct taxonomy_record
 {
     int id = 0;
     int parent_id = 0;
     string name;
+    string rank;
+    string sourceinfo;
+    string uniqname;
+    unsigned flags = 0;
     taxonomy_record(int i1, int i2, string&& s): id(i1), parent_id(i2), name(std::move(s)) {}
     taxonomy_record(int i1, int i2, const string& s): id(i1), parent_id(i2), name(s) {}
 };
 
+// http://www.boost.org/doc/libs/1_50_0/libs/spirit/doc/html/spirit/qi/reference/string/symbols.html
+
+int flag_from_string(const char* start, const char* end)
+{
+    int n = end - start;
+    assert(n >= 0);
+    if (n == 0) return 0;
+    int flag = 0;
+    for(auto i = start;i<end;i++)
+        std::cerr<<*i;
+    std::cerr<<" = ";
+    boost::spirit::qi::parse(start, end, flag_symbols, flag);
+    std::cerr<<flag<<std::endl;
+    return (1<<flag);
+}
+
+
+unsigned flags_from_string(const char* start, const char* end)
+{
+    assert(start <= end);
+
+    unsigned flags = 0;
+    while (start < end)
+    {
+        assert(start <= end);
+        const char* sep = std::strchr(start, ',');
+        if (not sep) sep = end;
+        flags |= flag_from_string(start, sep);
+        start = sep + 1;
+    }
+    return flags;
+}
+
+int flags_from_string(const string& s)
+{
+    const char* start = s.c_str();
+    const char* end = start + s.length();
+    return flags_from_string(start, end);
+}
+
 int main(int argc, char* argv[])
 {
+    std::ios::sync_with_stdio(false);
+
     try
     {
 //        if (argc != 2)
@@ -94,8 +224,10 @@ int main(int argc, char* argv[])
             
             boost::property_tree::ptree pt;
             boost::property_tree::ini_parser::read_ini(args["config"].as<string>(), pt);
-            string cleaning_flags = pt.get<std::string>("taxonomy.cleaning_flags");
-            std::cout<<cleaning_flags<<std::endl;
+            string cleaning_flags_string = pt.get<std::string>("taxonomy.cleaning_flags");
+            std::cerr<<cleaning_flags_string<<std::endl;
+            unsigned cleaning_flags = flags_from_string(cleaning_flags_string);
+            std::cerr<<cleaning_flags<<std::endl;
         }
         
         string taxonomy_dir = args["taxonomy"].as<string>();
