@@ -286,7 +286,6 @@ int main(int argc, char* argv[])
         string line;
         int count = 0;
         vector<taxonomy_record> taxonomy;
-        std::unordered_map<long,Tree_t::node_type*> id_to_node;
         std::unordered_map<long,int> index;
         std::getline(taxonomy_stream,line);
         if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
