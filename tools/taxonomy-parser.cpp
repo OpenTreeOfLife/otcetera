@@ -218,6 +218,38 @@ int flags_from_string(const string& s)
     return flags_from_string(start, end);
 }
 
+std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
+{
+    std::unique_ptr<Tree_t> tree(new Tree_t);
+    int nodes = 0;
+    for(int i=0;i<taxonomy.size();i++)
+    {
+        const auto& line = taxonomy[i];
+
+        if ((line.marks & 1) != 0) continue;
+        if ((line.marks & 2) == 0) continue;
+
+        // Make the tree
+        Tree_t::node_type* nd = nullptr;
+        if (not line.parent_id)
+            nd = tree->createRoot();
+        else if ((taxonomy[line.parent_index].marks & 2) == 0)
+            nd = tree->createRoot();
+        else
+        {
+            auto parent_nd = taxonomy[line.parent_index].node_ptr;
+            nd = tree->createChild(parent_nd);
+        }
+        nd->setOttId(line.id);
+        nd->setName(line.name);
+        taxonomy[i].node_ptr = nd;
+        nodes++;
+    }
+    cerr<<"#tree nodes = "<<nodes<<std::endl;
+    return tree;
+}
+
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -246,24 +278,22 @@ int main(int argc, char* argv[])
         string taxonomy_dir = args["taxonomy"].as<string>();
         string filename = taxonomy_dir + "/taxonomy.tsv";
 
-        std::ifstream taxonomy(filename);
-        if (not taxonomy)
+        std::ifstream taxonomy_stream(filename);
+        if (not taxonomy_stream)
             throw OTCError()<<"Could not open file '"<<filename<<"'.";
     
         extern std::string foobar;
         string line;
         int count = 0;
-        vector<taxonomy_record> lines;
+        vector<taxonomy_record> taxonomy;
         std::unordered_map<long,Tree_t::node_type*> id_to_node;
         std::unordered_map<long,int> index;
-        std::getline(taxonomy,line);
+        std::getline(taxonomy_stream,line);
         if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
             throw OTCError()<<"First line of file '"<<filename<<"' is not a taxonomy header.";
 
-        std::unique_ptr<Tree_t> tree(new Tree_t());
         int matched = 0;
-        int nodes = 0;
-        while(std::getline(taxonomy,line))
+        while(std::getline(taxonomy_stream,line))
         {
             // parse the line
             int b1 = line.find("\t|\t",0);
@@ -272,7 +302,7 @@ int main(int argc, char* argv[])
             long id = std::strtoul(line.c_str(),&end,10);
             start = end + 3;
             long parent_id = std::strtoul(start,&end,10);
-//            lines.push_back(line);
+//            taxonomy.push_back(line);
             start = end + 3;
             const char* end3 = std::strstr(start,"\t|\t");
             string name = line.substr(start - line.c_str(),end3 - start);
@@ -284,25 +314,25 @@ int main(int argc, char* argv[])
             unsigned flags = flags_from_string(end6+3,end7);
 
             // Add line to vector
-            int my_index = lines.size();
+            int my_index = taxonomy.size();
             index[id] = my_index;
-            lines.push_back({id,parent_id,name,flags});
+            taxonomy.push_back({id,parent_id,name,flags});
             if (parent_id)
             {
                 int parent_index = index.at(parent_id);
-                lines.back().parent_index = parent_index;
-                lines.back().marks |= lines[parent_index].marks;
+                taxonomy.back().parent_index = parent_index;
+                taxonomy.back().marks |= taxonomy[parent_index].marks;
             }
             count++;
 
             // Compare with cleaning flags
-            if ((lines.back().flags & cleaning_flags) != 0)
+            if ((taxonomy.back().flags & cleaning_flags) != 0)
             {
                 matched++;
-                lines.back().marks |= 1;
+                taxonomy.back().marks |= 1;
             }
-            if (lines.back().id == keep_root or (keep_root == -1 and not parent_id))
-                lines.back().marks |= 2;
+            if (taxonomy.back().id == keep_root or (keep_root == -1 and not parent_id))
+                taxonomy.back().marks |= 2;
 
         }
         
@@ -311,32 +341,11 @@ int main(int argc, char* argv[])
 
         if (args.count("write-tree"))
         {
-            for(int i=0;i<lines.size();i++)
-            {
-                const auto& line = lines[i];
 
-                if ((line.marks & 1) != 0) continue;
-                if ((line.marks & 2) == 0) continue;
-
-                nodes++;
-                // Make the tree
-                Tree_t::node_type* nd = nullptr;
-                if (not line.parent_id)
-                    nd = tree->createRoot();
-                else if ((lines[line.parent_index].marks & 2) == 0)
-                    nd = tree->createRoot();
-                else
-                {
-                    auto parent_nd = lines[line.parent_index].node_ptr;
-                    nd = tree->createChild(parent_nd);
-                }
-                nd->setOttId(line.id);
-                nd->setName(line.name);
-                lines[i].node_ptr = nd;
-            }
+            std::unique_ptr<Tree_t> tree = tree_from_taxonomy(taxonomy);
             writeTreeAsNewick(cout, *tree);
         }
-        cerr<<"#tree nodes = "<<nodes<<std::endl;
+
     }
     catch (std::exception& e)
     {
