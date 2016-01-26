@@ -47,9 +47,10 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
   options_description visible("All options");
   visible.add_options()
-    ("help,h", "Produce help message")
-    ("config,c",value<string>(),"Config file containing flags to filter")
-    ("write-tree,t","Write out the result as a tree")
+      ("help,h", "Produce help message")
+      ("config,c",value<string>(),"Config file containing flags to filter")
+      ("write-tree,t","Write out the result as a tree")
+      ("root,r", value<int>(), "OTT id of root node of subtree to keep")
 //    ("quiet,q","QUIET mode (all logging disabled)")
 //    ("trace,t","TRACE level debugging (very noisy)")
 //    ("verbose,v","verbose")
@@ -158,30 +159,38 @@ enum treemachine_prune_flags
 
 struct taxonomy_record
 {
-    int id = 0;
-    int parent_id = 0;
+    long id = 0;
+    long parent_id = 0;
+    int parent_index = 0;
     string name;
     string rank;
     string sourceinfo;
     string uniqname;
     unsigned flags = 0;
-    taxonomy_record(int i1, int i2, string&& s): id(i1), parent_id(i2), name(std::move(s)) {}
-    taxonomy_record(int i1, int i2, const string& s): id(i1), parent_id(i2), name(s) {}
+    unsigned marks = 0;
+    Tree_t::node_type* node_ptr = nullptr;
+    taxonomy_record(long i1, long i2, string&& s, unsigned f): id(i1), parent_id(i2), name(std::move(s)), flags(f) {}
+    taxonomy_record(long i1, long i2, const string& s, unsigned f): id(i1), parent_id(i2), name(s), flags(f) {}
 };
 
 // http://www.boost.org/doc/libs/1_50_0/libs/spirit/doc/html/spirit/qi/reference/string/symbols.html
 
-int flag_from_string(const char* start, const char* end)
+unsigned flag_from_string(const char* start, const char* end)
 {
     int n = end - start;
     assert(n >= 0);
     if (n == 0) return 0;
     int flag = 0;
-    for(auto i = start;i<end;i++)
-        std::cerr<<*i;
-    std::cerr<<" = ";
+//    for(auto i = start;i<end;i++)
+//        std::cerr<<*i;
+//    std::cerr<<" = ";
     boost::spirit::qi::parse(start, end, flag_symbols, flag);
-    std::cerr<<flag<<std::endl;
+    if (start != end)
+    {
+        std::cout<<"fail!";
+        return 0;
+    }
+//    std::cerr<<flag<<std::endl;
     return (1<<flag);
 }
 
@@ -219,14 +228,18 @@ int main(int argc, char* argv[])
 //            throw OTCError()<<"Expecting exactly 1 argument, but got "<<argc-1<<".";
         variables_map args = parse_cmd_line(argc,argv);
 
+        unsigned keep_root = -1;
+        if (args.count("root"))
+            keep_root = args["root"].as<int>();
+        
+        unsigned cleaning_flags = 0;
         if (args.count("config"))
         {
-            
             boost::property_tree::ptree pt;
             boost::property_tree::ini_parser::read_ini(args["config"].as<string>(), pt);
             string cleaning_flags_string = pt.get<std::string>("taxonomy.cleaning_flags");
             std::cerr<<cleaning_flags_string<<std::endl;
-            unsigned cleaning_flags = flags_from_string(cleaning_flags_string);
+            cleaning_flags = flags_from_string(cleaning_flags_string);
             std::cerr<<cleaning_flags<<std::endl;
         }
         
@@ -242,25 +255,55 @@ int main(int argc, char* argv[])
         int count = 0;
         vector<taxonomy_record> lines;
         std::unordered_map<long,Tree_t::node_type*> id_to_node;
+        std::unordered_map<long,int> index;
         std::getline(taxonomy,line);
         if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
             throw OTCError()<<"First line of file '"<<filename<<"' is not a taxonomy header.";
 
         std::unique_ptr<Tree_t> tree(new Tree_t());
+        int matched = 0;
         while(std::getline(taxonomy,line))
         {
+            // parse the line
             int b1 = line.find("\t|\t",0);
             const char* start = line.c_str();
             char* end = nullptr;
-            int id = std::strtoul(line.c_str(),&end,10);
+            long id = std::strtoul(line.c_str(),&end,10);
             start = end + 3;
-            int parent_id = std::strtoul(start,&end,10);
+            long parent_id = std::strtoul(start,&end,10);
 //            lines.push_back(line);
             start = end + 3;
             const char* end3 = std::strstr(start,"\t|\t");
             string name = line.substr(start - line.c_str(),end3 - start);
 //            cerr<<id<<"\t"<<parent_id<<"\t'"<<name<<"'\n";
+            const char* end4 = std::strstr(end3+3,"\t|\t");
+            const char* end5 = std::strstr(end4+3,"\t|\t");
+            const char* end6 = std::strstr(end5+3,"\t|\t");
+            const char* end7 = std::strstr(end6+3,"\t|\t");
+            unsigned flags = flags_from_string(end6+3,end7);
 
+            // Add line to vector
+            int my_index = lines.size();
+            index[id] = my_index;
+            lines.push_back({id,parent_id,name,flags});
+            if (parent_id)
+            {
+                int parent_index = index.at(parent_id);
+                lines.back().marks |= lines[parent_index].marks;
+            }
+            count++;
+
+            // Compare with cleaning flags
+            if ((lines.back().flags & cleaning_flags) != 0)
+            {
+                matched++;
+                lines.back().marks |= 1;
+            }
+            if (lines.back().id == keep_root or not parent_id)
+                lines.back().marks |= 2;
+
+            if ((lines.back().marks & 1) != 0) continue;
+            // Make the tree
             Tree_t::node_type* nd = nullptr;
             if (not parent_id)
             {
@@ -268,17 +311,23 @@ int main(int argc, char* argv[])
             }
             else
             {
+                if (not id_to_node.count(parent_id))
+                {
+                    std::cerr<<"node "<<id<<" is not cleaned, but parent "<<parent_id<<" is cleaned!"<<std::endl;
+                    int parent_index = index.at(parent_id);
+                    std::cerr<<"my index is "<<my_index<<"    parent index is "<<parent_index<<std::endl;
+                    std::cerr<<"marks are "<<lines.back().marks<<"        parent marks are "<<lines[parent_index].marks<<std::endl;
+                    exit(1);
+                }
                 auto parent_nd = id_to_node.at(parent_id);
                 nd = tree->createChild(parent_nd);
             }
             nd->setOttId(id);
             nd->setName(name);
             id_to_node[id] = nd;
-            
-            lines.push_back({id,parent_id,name});
-            count++;
         }
         cerr<<"#lines = "<<count<<std::endl;
+        cerr<<"#matched lines = "<<matched<<std::endl;
         if (args.count("write-tree"))
             writeTreeAsNewick(cout, *tree);
     }
