@@ -290,6 +290,7 @@ int main(int argc, char* argv[])
             if (parent_id)
             {
                 int parent_index = index.at(parent_id);
+                lines.back().parent_index = parent_index;
                 lines.back().marks |= lines[parent_index].marks;
             }
             count++;
@@ -300,7 +301,7 @@ int main(int argc, char* argv[])
                 matched++;
                 lines.back().marks |= 1;
             }
-            if (lines.back().id == keep_root or not parent_id)
+            if (lines.back().id == keep_root or (keep_root == -1 and not parent_id))
                 lines.back().marks |= 2;
 
         }
@@ -315,10 +316,14 @@ int main(int argc, char* argv[])
                 const auto& line = lines[i];
 
                 if ((line.marks & 1) != 0) continue;
+                if ((line.marks & 2) == 0) continue;
+
                 nodes++;
                 // Make the tree
                 Tree_t::node_type* nd = nullptr;
                 if (not line.parent_id)
+                    nd = tree->createRoot();
+                else if ((lines[line.parent_index].marks & 2) == 0)
                     nd = tree->createRoot();
                 else
                 {
