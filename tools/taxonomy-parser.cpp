@@ -49,6 +49,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
   visible.add_options()
       ("help,h", "Produce help message")
       ("config,c",value<string>(),"Config file containing flags to filter")
+      ("clean",value<string>(),"Comma-separated string of flags to filter")
       ("write-tree,t","Write out the result as a tree")
       ("root,r", value<int>(), "OTT id of root node of subtree to keep")
 //    ("quiet,q","QUIET mode (all logging disabled)")
@@ -271,6 +272,14 @@ std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
     return tree;
 }
 
+int cleaning_flags_from_config_file(const string& filename)
+{
+    boost::property_tree::ptree pt;
+    boost::property_tree::ini_parser::read_ini(filename, pt);
+    string cleaning_flags_string = pt.get<std::string>("taxonomy.cleaning_flags");
+    return flags_from_string(cleaning_flags_string);
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -288,14 +297,9 @@ int main(int argc, char* argv[])
         
         unsigned cleaning_flags = 0;
         if (args.count("config"))
-        {
-            boost::property_tree::ptree pt;
-            boost::property_tree::ini_parser::read_ini(args["config"].as<string>(), pt);
-            string cleaning_flags_string = pt.get<std::string>("taxonomy.cleaning_flags");
-            std::cerr<<cleaning_flags_string<<std::endl;
-            cleaning_flags = flags_from_string(cleaning_flags_string);
-            std::cerr<<cleaning_flags<<std::endl;
-        }
+            cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
+        if (args.count("clean"))
+            cleaning_flags |= flags_from_string(args["clean"].as<string>());
         
         string taxonomy_dir = args["taxonomy"].as<string>();
         string filename = taxonomy_dir + "/taxonomy.tsv";
