@@ -157,24 +157,6 @@ enum treemachine_prune_flags
     merged = 31
 };
 
-struct taxonomy_record
-{
-    long id = 0;
-    long parent_id = 0;
-    int parent_index = 0;
-    string name;
-    string rank;
-    string sourceinfo;
-    string uniqname;
-    unsigned flags = 0;
-    unsigned marks = 0;
-    Tree_t::node_type* node_ptr = nullptr;
-    taxonomy_record(long i1, long i2, string&& s, unsigned f): id(i1), parent_id(i2), name(std::move(s)), flags(f) {}
-    taxonomy_record(long i1, long i2, const string& s, unsigned f): id(i1), parent_id(i2), name(s), flags(f) {}
-};
-
-// http://www.boost.org/doc/libs/1_50_0/libs/spirit/doc/html/spirit/qi/reference/string/symbols.html
-
 unsigned flag_from_string(const char* start, const char* end)
 {
     int n = end - start;
@@ -217,6 +199,46 @@ int flags_from_string(const string& s)
     const char* end = start + s.length();
     return flags_from_string(start, end);
 }
+
+struct taxonomy_record
+{
+    long id = 0;
+    long parent_id = 0;
+    int parent_index = 0;
+    string name;
+    string rank;
+    string sourceinfo;
+    string uniqname;
+    unsigned flags = 0;
+    unsigned marks = 0;
+    Tree_t::node_type* node_ptr = nullptr;
+    taxonomy_record(taxonomy_record&& tr) = default;
+    taxonomy_record(long i1, long i2, string&& s, unsigned f): id(i1), parent_id(i2), name(std::move(s)), flags(f) {}
+    taxonomy_record(long i1, long i2, const string& s, unsigned f): id(i1), parent_id(i2), name(s), flags(f) {}
+    explicit taxonomy_record(const string& line);
+};
+
+taxonomy_record::taxonomy_record(const string& line)
+{
+    // parse the line
+    const char* start = line.c_str();
+    char* end = nullptr;
+    id = std::strtoul(line.c_str(),&end,10);
+    start = end + 3;
+    parent_id = std::strtoul(start,&end,10);
+//            taxonomy.push_back(line);
+    start = end + 3;
+    const char* end3 = std::strstr(start,"\t|\t");
+    name = line.substr(start - line.c_str(),end3 - start);
+//            cerr<<id<<"\t"<<parent_id<<"\t'"<<name<<"'\n";
+    const char* end4 = std::strstr(end3+3,"\t|\t");
+    const char* end5 = std::strstr(end4+3,"\t|\t");
+    const char* end6 = std::strstr(end5+3,"\t|\t");
+    const char* end7 = std::strstr(end6+3,"\t|\t");
+    flags = flags_from_string(end6+3,end7);
+}
+
+// http://www.boost.org/doc/libs/1_50_0/libs/spirit/doc/html/spirit/qi/reference/string/symbols.html
 
 std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
 {
@@ -294,44 +316,27 @@ int main(int argc, char* argv[])
         int matched = 0;
         while(std::getline(taxonomy_stream,line))
         {
-            // parse the line
-            int b1 = line.find("\t|\t",0);
-            const char* start = line.c_str();
-            char* end = nullptr;
-            long id = std::strtoul(line.c_str(),&end,10);
-            start = end + 3;
-            long parent_id = std::strtoul(start,&end,10);
-//            taxonomy.push_back(line);
-            start = end + 3;
-            const char* end3 = std::strstr(start,"\t|\t");
-            string name = line.substr(start - line.c_str(),end3 - start);
-//            cerr<<id<<"\t"<<parent_id<<"\t'"<<name<<"'\n";
-            const char* end4 = std::strstr(end3+3,"\t|\t");
-            const char* end5 = std::strstr(end4+3,"\t|\t");
-            const char* end6 = std::strstr(end5+3,"\t|\t");
-            const char* end7 = std::strstr(end6+3,"\t|\t");
-            unsigned flags = flags_from_string(end6+3,end7);
-
             // Add line to vector
             int my_index = taxonomy.size();
-            index[id] = my_index;
-            taxonomy.push_back({id,parent_id,name,flags});
-            if (parent_id)
+            taxonomy.emplace_back(line);
+            auto& record = taxonomy.back();
+            index[record.id] = my_index;
+            if (record.parent_id)
             {
-                int parent_index = index.at(parent_id);
-                taxonomy.back().parent_index = parent_index;
-                taxonomy.back().marks |= taxonomy[parent_index].marks;
+                int parent_index = index.at(record.parent_id);
+                record.parent_index = parent_index;
+                record.marks |= taxonomy[parent_index].marks;
             }
             count++;
 
             // Compare with cleaning flags
-            if ((taxonomy.back().flags & cleaning_flags) != 0)
+            if ((record.flags & cleaning_flags) != 0)
             {
                 matched++;
-                taxonomy.back().marks |= 1;
+                record.marks |= 1;
             }
-            if (taxonomy.back().id == keep_root or (keep_root == -1 and not parent_id))
-                taxonomy.back().marks |= 2;
+            if (record.id == keep_root or (keep_root == -1 and not record.parent_id))
+                record.marks |= 2;
 
         }
         
@@ -340,7 +345,6 @@ int main(int argc, char* argv[])
 
         if (args.count("write-tree"))
         {
-
             std::unique_ptr<Tree_t> tree = tree_from_taxonomy(taxonomy);
             writeTreeAsNewick(cout, *tree);
         }
