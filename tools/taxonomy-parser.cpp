@@ -262,6 +262,7 @@ int main(int argc, char* argv[])
 
         std::unique_ptr<Tree_t> tree(new Tree_t());
         int matched = 0;
+        int nodes = 0;
         while(std::getline(taxonomy,line))
         {
             // parse the line
@@ -302,34 +303,43 @@ int main(int argc, char* argv[])
             if (lines.back().id == keep_root or not parent_id)
                 lines.back().marks |= 2;
 
-            if ((lines.back().marks & 1) != 0) continue;
-            // Make the tree
-            Tree_t::node_type* nd = nullptr;
-            if (not parent_id)
-            {
-                nd = tree->createRoot();
-            }
-            else
-            {
-                if (not id_to_node.count(parent_id))
-                {
-                    std::cerr<<"node "<<id<<" is not cleaned, but parent "<<parent_id<<" is cleaned!"<<std::endl;
-                    int parent_index = index.at(parent_id);
-                    std::cerr<<"my index is "<<my_index<<"    parent index is "<<parent_index<<std::endl;
-                    std::cerr<<"marks are "<<lines.back().marks<<"        parent marks are "<<lines[parent_index].marks<<std::endl;
-                    exit(1);
-                }
-                auto parent_nd = id_to_node.at(parent_id);
-                nd = tree->createChild(parent_nd);
-            }
-            nd->setOttId(id);
-            nd->setName(name);
-            id_to_node[id] = nd;
         }
+        
         cerr<<"#lines = "<<count<<std::endl;
         cerr<<"#matched lines = "<<matched<<std::endl;
+
         if (args.count("write-tree"))
+        {
+            for(int i=0;i<lines.size();i++)
+            {
+                const auto& line = lines[i];
+
+                if ((line.marks & 1) != 0) continue;
+                nodes++;
+                // Make the tree
+                Tree_t::node_type* nd = nullptr;
+                if (not line.parent_id)
+                    nd = tree->createRoot();
+                else
+                {
+                    if (not id_to_node.count(line.parent_id))
+                    {
+                        std::cerr<<"node "<<line.id<<" is not cleaned, but parent "<<line.parent_id<<" is cleaned!"<<std::endl;
+                        int parent_index = index.at(line.parent_id);
+                        std::cerr<<"my index is "<<i<<"    parent index is "<<parent_index<<std::endl;
+                        std::cerr<<"marks are "<<line.marks<<"        parent marks are "<<lines[parent_index].marks<<std::endl;
+                        exit(1);
+                    }
+                    auto parent_nd = id_to_node.at(line.parent_id);
+                    nd = tree->createChild(parent_nd);
+                }
+                nd->setOttId(line.id);
+                nd->setName(line.name);
+                id_to_node[line.id] = nd;
+            }
             writeTreeAsNewick(cout, *tree);
+        }
+        cerr<<"#tree nodes = "<<nodes<<std::endl;
     }
     catch (std::exception& e)
     {
