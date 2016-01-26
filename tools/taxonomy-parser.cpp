@@ -327,12 +327,12 @@ int main(int argc, char* argv[])
                     nd = tree->createRoot();
                 else
                 {
-                    auto parent_nd = id_to_node.at(line.parent_id);
+                    auto parent_nd = lines[line.parent_index].node_ptr;
                     nd = tree->createChild(parent_nd);
                 }
                 nd->setOttId(line.id);
                 nd->setName(line.name);
-                id_to_node[line.id] = nd;
+                lines[i].node_ptr = nd;
             }
             writeTreeAsNewick(cout, *tree);
         }
