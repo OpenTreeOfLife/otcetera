@@ -322,14 +322,6 @@ int main(int argc, char* argv[])
                     nd = tree->createRoot();
                 else
                 {
-                    if (not id_to_node.count(line.parent_id))
-                    {
-                        std::cerr<<"node "<<line.id<<" is not cleaned, but parent "<<line.parent_id<<" is cleaned!"<<std::endl;
-                        int parent_index = index.at(line.parent_id);
-                        std::cerr<<"my index is "<<i<<"    parent index is "<<parent_index<<std::endl;
-                        std::cerr<<"marks are "<<line.marks<<"        parent marks are "<<lines[parent_index].marks<<std::endl;
-                        exit(1);
-                    }
                     auto parent_nd = id_to_node.at(line.parent_id);
                     nd = tree->createChild(parent_nd);
                 }
