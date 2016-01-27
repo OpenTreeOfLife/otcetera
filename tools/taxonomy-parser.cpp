@@ -127,42 +127,6 @@ auto get_symbols()
 
 auto flag_symbols = get_symbols();
 
-enum treemachine_prune_flags
-{
-	not_otu = 0,
-    environmental = 1,
-    environmental_inherited = 2,
-	viral = 3,
-    hidden = 4,
-    hidden_inherited = 5,
-//    unclassified_direct
-    was_container = 6,
-    barren = 8,
-    extinct = 9,
-//    extinct_direct,
-    extinct_inherited = 11,
-    major_rank_conflict = 12,
-// major_rank_conflict_direct
-	major_rank_conflict_inherited = 14,
-    unclassified = 15,
-	unclassified_inherited = 16,
-    edited = 17,
-    hybrid = 18,
-    incertae_sedis = 19,
-	incertae_sedis_inherited = 20,
-//	incertae_sedis_direct
-	infraspecific = 22,
-	sibling_lower = 23,
-    sibling_higher = 24,
-	tattered = 25,
-	tattered_inherited = 26,
-	forced_visible = 27,
-	unplaced = 28,
-    unplaced_inherited = 29,
-	inconsistent = 30,
-    merged = 31
-};
-
 auto flag_from_string(const char* start, const char* end)
 {
     int n = end - start;
@@ -182,6 +146,15 @@ auto flag_from_string(const char* start, const char* end)
     return flags;
 }
 
+long n_nodes(const Tree_t& T) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    long count = 0;
+    for(auto nd: iter_post_const(T)){
+        count++;
+    }
+    return count;
+}
 
 auto flags_from_string(const char* start, const char* end)
 {
@@ -238,6 +211,8 @@ taxonomy_record::taxonomy_record(const string& line)
     name = line.substr(start - line.c_str(),end3 - start);
 //            cerr<<id<<"\t"<<parent_id<<"\t'"<<name<<"'\n";
     const char* end4 = std::strstr(end3+3,"\t|\t");
+    start = end4+3;
+//    rank = line.substr(start - line.c_str(),end4 - start);
     const char* end5 = std::strstr(end4+3,"\t|\t");
     const char* end6 = std::strstr(end5+3,"\t|\t");
     const char* end7 = std::strstr(end6+3,"\t|\t");
@@ -266,7 +241,6 @@ void mark_taxonomy_with_cleaning_flags(vector<taxonomy_record>& taxonomy, bitset
 std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
 {
     std::unique_ptr<Tree_t> tree(new Tree_t);
-    int nodes = 0;
     for(int i=0;i<taxonomy.size();i++)
     {
         const auto& line = taxonomy[i];
@@ -288,9 +262,8 @@ std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
         nd->setOttId(line.id);
         nd->setName(line.name);
         taxonomy[i].node_ptr = nd;
-        nodes++;
     }
-    cerr<<"#tree nodes = "<<nodes<<std::endl;
+    cerr<<"#tree nodes = "<<n_nodes(*tree)<<std::endl;
     return tree;
 }
 
@@ -358,7 +331,7 @@ int main(int argc, char* argv[])
             cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
         if (args.count("clean"))
             cleaning_flags |= flags_from_string(args["clean"].as<string>());
-        
+
         string taxonomy_dir = args["taxonomy"].as<string>();
 
         Taxonomy taxonomy(taxonomy_dir);
