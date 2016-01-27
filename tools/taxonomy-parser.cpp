@@ -1,3 +1,5 @@
+// TODO: https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
+
 #include <iostream>
 #include <exception>
 #include <vector>
@@ -7,6 +9,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
+#include <boost/utility/string_ref.hpp>
 #include <bitset>
 
 #include "otc/error.h"
@@ -23,6 +26,7 @@ using std::endl;
 using std::bitset;
 
 using boost::spirit::qi::symbols;
+using boost::string_ref;
 using namespace boost::spirit;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
@@ -181,42 +185,50 @@ auto flags_from_string(const string& s)
 
 struct taxonomy_record
 {
+    string line;
     long id = 0;
     long parent_id = 0;
     int parent_index = 0;
-    string name;
-    string rank;
-    string sourceinfo;
-    string uniqname;
+    string_ref name;
+    string_ref rank;
+    string_ref sourceinfo;
+    string_ref uniqname;
     bitset<32> flags;
     bitset<32> marks;
     Tree_t::node_type* node_ptr = nullptr;
     taxonomy_record(taxonomy_record&& tr) = default;
-    taxonomy_record(long i1, long i2, string&& s, bitset<32> f): id(i1), parent_id(i2), name(std::move(s)), flags(f) {}
-    taxonomy_record(long i1, long i2, const string& s, bitset<32> f): id(i1), parent_id(i2), name(s), flags(f) {}
     explicit taxonomy_record(const string& line);
 };
 
-taxonomy_record::taxonomy_record(const string& line)
+taxonomy_record::taxonomy_record(const string& line_)
+    :line(line_)
 {
     // parse the line
-    const char* start = line.c_str();
-    char* end = nullptr;
-    id = std::strtoul(line.c_str(),&end,10);
-    start = end + 3;
-    parent_id = std::strtoul(start,&end,10);
-//            taxonomy.push_back(line);
-    start = end + 3;
-    const char* end3 = std::strstr(start,"\t|\t");
-    name = line.substr(start - line.c_str(),end3 - start);
-//            cerr<<id<<"\t"<<parent_id<<"\t'"<<name<<"'\n";
-    const char* end4 = std::strstr(end3+3,"\t|\t");
-    start = end4+3;
-//    rank = line.substr(start - line.c_str(),end4 - start);
-    const char* end5 = std::strstr(end4+3,"\t|\t");
-    const char* end6 = std::strstr(end5+3,"\t|\t");
-    const char* end7 = std::strstr(end6+3,"\t|\t");
-    flags = flags_from_string(end6+3,end7);
+    // also see boost::make_split_iterator
+    const char* start[8];
+    const char* end[8];
+
+    start[0] = line.c_str();
+    for(int i=0;i<7;i++)
+    {
+        end[i] = std::strstr(start[i],"\t|\t");
+        start[i+1] = end[i] + 3;
+    }
+
+//    boost::container::small_vector<string_ref,10> words;
+//    for (string_ref&& r : iter_split(v, line, token_finder(is_any_of(","))) |
+//             transformed([](R const& r){return boost::string_ref(&*r.begin(), r.size());})
+//        )
+//        words.push_back(r);
+
+    char *temp;
+    id = std::strtoul(start[0], &temp, 10);
+    parent_id = std::strtoul(start[1], &temp, 10);
+    name = string_ref(start[2],end[2]-start[2]);
+    rank = string_ref(start[3],end[3]-start[3]);
+    sourceinfo = string_ref(start[4],end[4]-start[4]);
+    uniqname = string_ref(start[5],end[5]-start[5]);
+    flags = flags_from_string(start[6],end[6]);
 }
 
 void propagate_marks_to_descendants(vector<taxonomy_record>& taxonomy)
@@ -260,7 +272,7 @@ std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
             nd = tree->createChild(parent_nd);
         }
         nd->setOttId(line.id);
-        nd->setName(line.name);
+        nd->setName(string(line.name));
         taxonomy[i].node_ptr = nd;
     }
     cerr<<"#tree nodes = "<<n_nodes(*tree)<<std::endl;
