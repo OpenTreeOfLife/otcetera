@@ -302,6 +302,44 @@ auto cleaning_flags_from_config_file(const string& filename)
     return flags_from_string(cleaning_flags_string);
 }
 
+struct Taxonomy: public vector<taxonomy_record>
+{
+    int root = -1;
+    std::unordered_map<long,int> index;
+    string path;
+    Taxonomy(const string& dir);
+};
+
+Taxonomy::Taxonomy(const string& dir)
+    :path(dir)
+{
+    string filename = dir + "/taxonomy.tsv";
+
+    std::ifstream taxonomy_stream(filename);
+    if (not taxonomy_stream)
+        throw OTCError()<<"Could not open file '"<<filename<<"'.";
+
+    string line;
+    int count = 0;
+    std::getline(taxonomy_stream,line);
+    if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
+        throw OTCError()<<"First line of file '"<<filename<<"' is not a taxonomy header.";
+
+    while(std::getline(taxonomy_stream,line))
+    {
+        // Add line to vector
+        int my_index = size();
+        emplace_back(line);
+        auto& record = back();
+        index[record.id] = my_index;
+        if (record.parent_id)
+            record.parent_index = index.at(record.parent_id);
+        else
+            root = my_index;
+        count++;
+    }
+    cerr<<"#lines = "<<count<<std::endl;
+}
 
 int main(int argc, char* argv[])
 {
@@ -309,8 +347,6 @@ int main(int argc, char* argv[])
 
     try
     {
-//        if (argc != 2)
-//            throw OTCError()<<"Expecting exactly 1 argument, but got "<<argc-1<<".";
         variables_map args = parse_cmd_line(argc,argv);
 
         unsigned keep_root = -1;
@@ -324,47 +360,19 @@ int main(int argc, char* argv[])
             cleaning_flags |= flags_from_string(args["clean"].as<string>());
         
         string taxonomy_dir = args["taxonomy"].as<string>();
-        string filename = taxonomy_dir + "/taxonomy.tsv";
 
-        std::ifstream taxonomy_stream(filename);
-        if (not taxonomy_stream)
-            throw OTCError()<<"Could not open file '"<<filename<<"'.";
-    
-        extern std::string foobar;
-        string line;
-        int count = 0;
-        vector<taxonomy_record> taxonomy;
-        std::unordered_map<long,int> index;
-        std::getline(taxonomy_stream,line);
-        if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
-            throw OTCError()<<"First line of file '"<<filename<<"' is not a taxonomy header.";
-
-        int root = -1;
-        while(std::getline(taxonomy_stream,line))
-        {
-            // Add line to vector
-            int my_index = taxonomy.size();
-            taxonomy.emplace_back(line);
-            auto& record = taxonomy.back();
-            index[record.id] = my_index;
-            if (record.parent_id)
-                record.parent_index = index.at(record.parent_id);
-            else
-                root = my_index;
-            count++;
-        }
-        cerr<<"#lines = "<<count<<std::endl;
+        Taxonomy taxonomy(taxonomy_dir);
 
         // Mark records with bit #1 if they match the cleaning flags
         mark_taxonomy_with_cleaning_flags(taxonomy, cleaning_flags, 1);
 
         // Mark the root
         if (keep_root == -1)
-            taxonomy[root].marks.set(2);
-        else if (not index.count(keep_root))
+            taxonomy[taxonomy.root].marks.set(2);
+        else if (not taxonomy.index.count(keep_root))
             throw OTCError()<<"Can't find root id '"<<keep_root<<"'";
         else
-            taxonomy[index.at(keep_root)].marks.set(2);
+            taxonomy[taxonomy.index.at(keep_root)].marks.set(2);
 
         // Propagate marks
         propagate_marks_to_descendants(taxonomy);
