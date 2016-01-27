@@ -7,6 +7,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
+#include <bitset>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -19,6 +20,7 @@ using std::vector;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::bitset;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
@@ -50,7 +52,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
       ("help,h", "Produce help message")
       ("config,c",value<string>(),"Config file containing flags to filter")
       ("clean",value<string>(),"Comma-separated string of flags to filter")
-      ("write-tree,t","Write out the result as a tree")
+      ("write-tree,T","Write out the result as a tree")
       ("root,r", value<int>(), "OTT id of root node of subtree to keep")
 //    ("quiet,q","QUIET mode (all logging disabled)")
 //    ("trace,t","TRACE level debugging (very noisy)")
@@ -158,31 +160,31 @@ enum treemachine_prune_flags
     merged = 31
 };
 
-unsigned flag_from_string(const char* start, const char* end)
+auto flag_from_string(const char* start, const char* end)
 {
     int n = end - start;
     assert(n >= 0);
-    if (n == 0) return 0;
-    int flag = 0;
-//    for(auto i = start;i<end;i++)
-//        std::cerr<<*i;
-//    std::cerr<<" = ";
-    boost::spirit::qi::parse(start, end, flag_symbols, flag);
-    if (start != end)
+    bitset<32> flags;
+    if (n > 0)
     {
-        std::cout<<"fail!";
-        return 0;
+        int flag = 0;
+        boost::spirit::qi::parse(start, end, flag_symbols, flag);
+        if (start != end)
+        {
+            std::cout<<"fail!";
+            std::abort();
+        }
+        flags.set(flag);
     }
-//    std::cerr<<flag<<std::endl;
-    return (1<<flag);
+    return flags;
 }
 
 
-unsigned flags_from_string(const char* start, const char* end)
+auto flags_from_string(const char* start, const char* end)
 {
     assert(start <= end);
 
-    unsigned flags = 0;
+    bitset<32> flags;
     while (start < end)
     {
         assert(start <= end);
@@ -194,7 +196,7 @@ unsigned flags_from_string(const char* start, const char* end)
     return flags;
 }
 
-int flags_from_string(const string& s)
+auto flags_from_string(const string& s)
 {
     const char* start = s.c_str();
     const char* end = start + s.length();
@@ -210,12 +212,12 @@ struct taxonomy_record
     string rank;
     string sourceinfo;
     string uniqname;
-    unsigned flags = 0;
-    unsigned marks = 0;
+    bitset<32> flags;
+    bitset<32> marks;
     Tree_t::node_type* node_ptr = nullptr;
     taxonomy_record(taxonomy_record&& tr) = default;
-    taxonomy_record(long i1, long i2, string&& s, unsigned f): id(i1), parent_id(i2), name(std::move(s)), flags(f) {}
-    taxonomy_record(long i1, long i2, const string& s, unsigned f): id(i1), parent_id(i2), name(s), flags(f) {}
+    taxonomy_record(long i1, long i2, string&& s, bitset<32> f): id(i1), parent_id(i2), name(std::move(s)), flags(f) {}
+    taxonomy_record(long i1, long i2, const string& s, bitset<32> f): id(i1), parent_id(i2), name(s), flags(f) {}
     explicit taxonomy_record(const string& line);
 };
 
@@ -249,14 +251,14 @@ std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
     {
         const auto& line = taxonomy[i];
 
-        if ((line.marks & 1) != 0) continue;
-        if ((line.marks & 2) == 0) continue;
+        if (line.marks.test(1)) continue;
+        if (not line.marks.test(2)) continue;
 
         // Make the tree
         Tree_t::node_type* nd = nullptr;
         if (not line.parent_id)
             nd = tree->createRoot();
-        else if ((taxonomy[line.parent_index].marks & 2) == 0)
+        else if (not taxonomy[line.parent_index].marks.test(2))
             nd = tree->createRoot();
         else
         {
@@ -272,7 +274,7 @@ std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
     return tree;
 }
 
-int cleaning_flags_from_config_file(const string& filename)
+auto cleaning_flags_from_config_file(const string& filename)
 {
     boost::property_tree::ptree pt;
     boost::property_tree::ini_parser::read_ini(filename, pt);
@@ -295,7 +297,7 @@ int main(int argc, char* argv[])
         if (args.count("root"))
             keep_root = args["root"].as<int>();
         
-        unsigned cleaning_flags = 0;
+        bitset<32> cleaning_flags = 0;
         if (args.count("config"))
             cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
         if (args.count("clean"))
@@ -334,16 +336,15 @@ int main(int argc, char* argv[])
             count++;
 
             // Compare with cleaning flags
-            if ((record.flags & cleaning_flags) != 0)
+            if ((record.flags & cleaning_flags).any())
             {
                 matched++;
-                record.marks |= 1;
+                record.marks.set(1);
             }
             if (record.id == keep_root or (keep_root == -1 and not record.parent_id))
-                record.marks |= 2;
-
+                record.marks.set(2);
         }
-        
+
         cerr<<"#lines = "<<count<<std::endl;
         cerr<<"#matched lines = "<<matched<<std::endl;
 
