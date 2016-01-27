@@ -34,7 +34,7 @@ inline int& smallestChild(Tree_t::node_type* node) {
 }
 
 static bool chopRoot = false;
-static std::string mrca_prefix = "mrca-ott";
+static std::string mrca_prefix = "mrcaott";
 bool handleChopRoot(OTCLI & otCLI, const std::string &);
 
 string makeName(const string& prefix, int number);
@@ -49,7 +49,7 @@ string makeName(const string& pre, int number) {
 }
 
 string makeMRCAName(int number1, int number2) {
-    return mrca_prefix + std::to_string(number1) + "-ott" + std::to_string(number2);
+    return mrca_prefix + std::to_string(number1) + "ott" + std::to_string(number2);
 }
 
 void calculateSmallestChild(Tree_t& T)
