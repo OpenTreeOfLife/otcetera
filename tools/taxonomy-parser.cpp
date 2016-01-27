@@ -81,6 +81,9 @@ variables_map parse_cmd_line(int argc,char* argv[])
 }
 
 // https://github.com/OpenTreeOfLife/taxomachine/blob/master/src/main/java/org/opentree/taxonomy/OTTFlag.java
+
+// http://www.boost.org/doc/libs/1_50_0/libs/spirit/doc/html/spirit/qi/reference/string/symbols.html
+
 auto get_symbols()
 {
     symbols<char, int> sym;
@@ -241,7 +244,24 @@ taxonomy_record::taxonomy_record(const string& line)
     flags = flags_from_string(end6+3,end7);
 }
 
-// http://www.boost.org/doc/libs/1_50_0/libs/spirit/doc/html/spirit/qi/reference/string/symbols.html
+void propagate_marks_to_descendants(vector<taxonomy_record>& taxonomy)
+{
+    for(auto& record: taxonomy)
+        if (record.parent_id)
+            record.marks |= taxonomy[record.parent_index].marks;
+}
+
+void mark_taxonomy_with_cleaning_flags(vector<taxonomy_record>& taxonomy, bitset<32> cleaning_flags, int bit)
+{
+    int matched = 0;
+    for(auto& record: taxonomy)
+        if ((record.flags & cleaning_flags).any())
+        {
+            matched++;
+            record.marks.set(bit);
+        }
+    std::cerr<<"#lines directly matching cleaning flags = "<<matched<<std::endl;
+}
 
 std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
 {
@@ -319,7 +339,7 @@ int main(int argc, char* argv[])
         if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
             throw OTCError()<<"First line of file '"<<filename<<"' is not a taxonomy header.";
 
-        int matched = 0;
+        int root = -1;
         while(std::getline(taxonomy_stream,line))
         {
             // Add line to vector
@@ -328,32 +348,30 @@ int main(int argc, char* argv[])
             auto& record = taxonomy.back();
             index[record.id] = my_index;
             if (record.parent_id)
-            {
-                int parent_index = index.at(record.parent_id);
-                record.parent_index = parent_index;
-                record.marks |= taxonomy[parent_index].marks;
-            }
+                record.parent_index = index.at(record.parent_id);
+            else
+                root = my_index;
             count++;
-
-            // Compare with cleaning flags
-            if ((record.flags & cleaning_flags).any())
-            {
-                matched++;
-                record.marks.set(1);
-            }
-            if (record.id == keep_root or (keep_root == -1 and not record.parent_id))
-                record.marks.set(2);
         }
-
         cerr<<"#lines = "<<count<<std::endl;
-        cerr<<"#matched lines = "<<matched<<std::endl;
+
+        // Mark records with bit #1 if they match the cleaning flags
+        mark_taxonomy_with_cleaning_flags(taxonomy, cleaning_flags, 1);
+
+        // Mark the root
+        if (keep_root == -1)
+            taxonomy[root].marks.set(2);
+        else if (not index.count(keep_root))
+            throw OTCError()<<"Can't find root id '"<<keep_root<<"'";
+        else
+            taxonomy[index.at(keep_root)].marks.set(2);
+
+        // Propagate marks
+        propagate_marks_to_descendants(taxonomy);
 
         if (args.count("write-tree"))
-        {
-            std::unique_ptr<Tree_t> tree = tree_from_taxonomy(taxonomy);
-            writeTreeAsNewick(cout, *tree);
-        }
-
+            writeTreeAsNewick(cout, *tree_from_taxonomy(taxonomy));
+        std::cout<<std::endl;
     }
     catch (std::exception& e)
     {
