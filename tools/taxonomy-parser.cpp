@@ -1,4 +1,6 @@
-// TODO: https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
+// TODO: mmap via BOOST https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
+// TODO: write out a reduced taxonomy
+// TODO: Discard cleaned lines as we read.
 
 #include <iostream>
 #include <exception>
@@ -258,13 +260,10 @@ std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
         const auto& line = taxonomy[i];
 
         if (line.marks.test(1)) continue;
-        if (not line.marks.test(2)) continue;
 
         // Make the tree
         Tree_t::node_type* nd = nullptr;
         if (not line.parent_id)
-            nd = tree->createRoot();
-        else if (not taxonomy[line.parent_index].marks.test(2))
             nd = tree->createRoot();
         else
         {
@@ -292,10 +291,10 @@ struct Taxonomy: public vector<taxonomy_record>
     int root = -1;
     std::unordered_map<long,int> index;
     string path;
-    Taxonomy(const string& dir);
+    Taxonomy(const string& dir, int keep_root = -1);
 };
 
-Taxonomy::Taxonomy(const string& dir)
+Taxonomy::Taxonomy(const string& dir, int keep_root)
     :path(dir)
 {
     string filename = dir + "/taxonomy.tsv";
@@ -310,20 +309,52 @@ Taxonomy::Taxonomy(const string& dir)
     if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
         throw OTCError()<<"First line of file '"<<filename<<"' is not a taxonomy header.";
 
+    if (keep_root != -1)
+    {
+        while(std::getline(taxonomy_stream,line))
+        {
+            // Add line to vector
+            emplace_back(line);
+
+            if (back().id == keep_root)
+                break;
+
+            pop_back();
+        }
+        if (empty())
+            throw OTCError()<<"Root id '"<<keep_root<<"' not found.";
+    }
+    else
+    {
+        std::getline(taxonomy_stream,line);
+        
+        // Add line to vector
+        emplace_back(line);
+    }
+    root = size() - 1;
+    back().parent_id = 0;
+    index[back().id] = size() - 1;
+    count++;
+
     while(std::getline(taxonomy_stream,line))
     {
         // Add line to vector
-        int my_index = size();
         emplace_back(line);
-        auto& record = back();
-        index[record.id] = my_index;
-        if (record.parent_id)
-            record.parent_index = index.at(record.parent_id);
-        else
-            root = my_index;
+
+        auto loc = index.find(back().parent_id);
+        if (loc == index.end())
+        {
+            pop_back();
+            continue;
+        }
+
+        back().parent_index = loc->second;
+        
+        index[back().id] = size() - 1;
         count++;
     }
     cerr<<"#lines = "<<count<<std::endl;
+    cerr<<"size = "<<size()<<std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -346,18 +377,10 @@ int main(int argc, char* argv[])
 
         string taxonomy_dir = args["taxonomy"].as<string>();
 
-        Taxonomy taxonomy(taxonomy_dir);
+        Taxonomy taxonomy(taxonomy_dir,keep_root);
 
         // Mark records with bit #1 if they match the cleaning flags
         mark_taxonomy_with_cleaning_flags(taxonomy, cleaning_flags, 1);
-
-        // Mark the root
-        if (keep_root == -1)
-            taxonomy[taxonomy.root].marks.set(2);
-        else if (not taxonomy.index.count(keep_root))
-            throw OTCError()<<"Can't find root id '"<<keep_root<<"'";
-        else
-            taxonomy[taxonomy.index.at(keep_root)].marks.set(2);
 
         // Propagate marks
         propagate_marks_to_descendants(taxonomy);
