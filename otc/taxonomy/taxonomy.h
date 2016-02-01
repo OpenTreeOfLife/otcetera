@@ -46,12 +46,15 @@ namespace otc
 
     struct Taxonomy: public std::vector<taxonomy_record>
     {
-        int root = -1;
         std::unordered_map<long,int> index;
+        int keep_root;
         std::bitset<32> cleaning_flags;
         std::string path;
+        std::string version;
         template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const taxonomy_record&)>) const;
-        Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), int keep_root = -1);
+        constexpr static int root_index() {return 0;}
+        void write(const std::string& dirname);
+        Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), int kr = -1);
     };
 
     template <typename Tree_t>
@@ -66,7 +69,7 @@ namespace otc
 
             // Make the tree
             typename Tree_t::node_type* nd = nullptr;
-            if (not line.parent_id)
+            if (i==0)
                 nd = tree->createRoot();
             else
             {

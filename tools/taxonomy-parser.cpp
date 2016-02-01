@@ -60,6 +60,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
       ("config,c",value<string>(),"Config file containing flags to filter")
       ("clean",value<string>(),"Comma-separated string of flags to filter")
       ("write-tree,T","Write out the result as a tree")
+      ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
       ("root,r", value<int>(), "OTT id of root node of subtree to keep")
 //    ("quiet,q","QUIET mode (all logging disabled)")
 //    ("trace,t","TRACE level debugging (very noisy)")
@@ -125,6 +126,8 @@ int main(int argc, char* argv[])
             writeTreeAsNewick(cout, *taxonomy.getTree<Tree_t>(nodeNamer));
             std::cout<<std::endl;
         }
+        if (args.count("write-taxonomy"))
+            taxonomy.write(args["write-taxonomy"].as<string>());
     }
     catch (std::exception& e)
     {

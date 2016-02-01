@@ -7,6 +7,11 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <bitset>
+#include <fstream>
+
+#include <boost/filesystem/operations.hpp>
+
+namespace fs = boost::filesystem;
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -22,6 +27,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::bitset;
+using std::ofstream;
 
 using boost::string_ref;
 
@@ -61,11 +67,51 @@ namespace otc
         flags = flags_from_string(start[6],end[6]);
     }
 
-    Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int keep_root)
-        :cleaning_flags(cf),
-         path(dir)
+    void Taxonomy::write(const std::string& newdirname)
     {
-        string filename = dir + "/taxonomy.tsv";
+        fs::path old_dir = path;
+        fs::path new_dir = newdirname;
+
+        if (fs::exists(new_dir))
+            throw OTCError()<<"File '"<<newdirname<<"' already exists!";
+
+        fs::create_directories(new_dir);
+
+        for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv", "forwards.tsv",
+                    "log.tsv", "new-forwards.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
+            fs::copy_file(old_dir/name,new_dir/name);
+
+        {
+            ofstream version_file((new_dir/"version.txt").string());
+            version_file<<version;
+
+            if (keep_root != -1 or cleaning_flags.any())
+            {
+                version_file<<"modified: ";
+                if (keep_root != -1)
+                    version_file<<"root="<<keep_root<<"  ";
+                if (cleaning_flags.any())
+                    version_file<<"cleaning_flags="<<flags_to_string(cleaning_flags);
+                version_file<<"\n";
+            }
+            version_file.close();
+        }
+
+        ofstream tf ((new_dir/"taxonomy.tsv").string());
+        tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t"<<std::endl;
+        string sep = "\t|\t";
+        for(const auto& r: *this)
+            tf << r.line <<"\n";
+        tf.close();
+    }
+    
+    Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int kr)
+        :keep_root(kr),
+        cleaning_flags(cf),
+         path(dir),
+         version(readStrContentOfUTF8File(dir + "/version.txt"))
+    {
+        string filename = path + "/taxonomy.tsv";
 
         // 1. Open the file.
         std::ifstream taxonomy_stream(filename);
@@ -104,8 +150,6 @@ namespace otc
             // Add line to vector
             emplace_back(line);
         }
-        root = size() - 1;
-        back().parent_id = 0;
         if ((back().flags & cleaning_flags).any())
             throw OTCError()<<"Root taxon (ID = "<<back().id<<") removed according to cleaning flags!";
         index[back().id] = size() - 1;

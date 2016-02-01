@@ -12,6 +12,7 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
 #include <boost/utility/string_ref.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <bitset>
 
 #include "otc/error.h"
@@ -81,23 +82,31 @@ auto flag_symbols = get_symbols();
 
 namespace otc
 {
-    std::bitset<32> flag_from_string(const char* start, const char* end)
+    int flag_from_string(const char* start, const char* end)
     {
         int n = end - start;
         assert(n >= 0);
-        bitset<32> flags;
-        if (n > 0)
+        if (n == 0)
         {
-            int flag = 0;
-            boost::spirit::qi::parse(start, end, flag_symbols, flag);
-            if (start != end)
-            {
-                std::cout<<"fail!";
-                std::abort();
-            }
-            flags.set(flag);
+            std::cout<<"fail!";
+            std::abort();
         }
-        return flags;
+
+        int flag = 0;
+        boost::spirit::qi::parse(start, end, flag_symbols, flag);
+        if (start != end)
+        {
+            std::cout<<"fail!";
+            std::abort();
+        }
+        return flag;
+    }
+
+    int flag_from_string(const string& s)
+    {
+        const char* start = s.c_str();
+        const char* end = start + s.length();
+        return flag_from_string(start, end);
     }
 
     std::bitset<32> flags_from_string(const char* start, const char* end)
@@ -110,7 +119,8 @@ namespace otc
             assert(start <= end);
             const char* sep = std::strchr(start, ',');
             if (not sep) sep = end;
-            flags |= flag_from_string(start, sep);
+            int flag = flag_from_string(start, sep);
+            flags |= (1<<flag);
             start = sep + 1;
         }
         return flags;
@@ -131,4 +141,19 @@ namespace otc
         return flags_from_string(cleaning_flags_string);
     }
 
+    string string_for_flag(int i)
+    {
+        vector<string> matches;
+        flag_symbols.for_each([&](const string& s, int j){if (i==j) {matches.push_back(s);}});
+        return matches[0];
+    }
+
+    std::string flags_to_string(const std::bitset<32> flags)
+    {
+        vector<string> f;
+        for(int i=0;i<32;i++)
+            if (flags.test(i))
+                f.push_back(string_for_flag(i));
+        return boost::algorithm::join(f, ", ");
+    }
 }

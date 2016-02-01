@@ -1,7 +1,7 @@
 pkglib_LTLIBRARIES = libotcetera.la
 libotcetera_ladir = $(includedir)/otc
 libotcetera_la_LDFLAGS = -release @PACKAGE_VERSION@
-
+LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS) 
 
 libotcetera_la_HEADERS = \
 	embedding_cli.h \
