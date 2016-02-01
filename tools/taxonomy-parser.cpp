@@ -377,12 +377,11 @@ int main(int argc, char* argv[])
         Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 
         if (args.count("write-tree"))
-            writeTreeAsNewick(cout,
-                              *taxonomy.getTree(
-                                  [](const auto& record){return string(record.name);}
-                                  )
-                              );
-        std::cout<<std::endl;
+        {
+            auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};
+            writeTreeAsNewick(cout, *taxonomy.getTree(nodeNamer));
+            std::cout<<std::endl;
+        }
     }
     catch (std::exception& e)
     {
