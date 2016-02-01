@@ -278,20 +278,25 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int keep_root)
 {
     string filename = dir + "/taxonomy.tsv";
 
+    // 1. Open the file.
     std::ifstream taxonomy_stream(filename);
     if (not taxonomy_stream)
         throw OTCError()<<"Could not open file '"<<filename<<"'.";
 
+    // 2. Read and check the first line
     string line;
-    int count = 0;
     std::getline(taxonomy_stream,line);
     if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t")
         throw OTCError()<<"First line of file '"<<filename<<"' is not a taxonomy header.";
 
+    // 3. Read records up to the record containing the root.
+    int count = 0;
     if (keep_root != -1)
     {
         while(std::getline(taxonomy_stream,line))
         {
+            count++;
+
             // Add line to vector
             emplace_back(line);
 
@@ -306,7 +311,7 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int keep_root)
     else
     {
         std::getline(taxonomy_stream,line);
-        
+        count++;
         // Add line to vector
         emplace_back(line);
     }
@@ -315,19 +320,23 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int keep_root)
     if ((back().flags & cleaning_flags).any())
         throw OTCError()<<"Root taxon (ID = "<<back().id<<") removed according to cleaning flags!";
     index[back().id] = size() - 1;
-    count++;
 
+    // 4. Read the remaining records
     while(std::getline(taxonomy_stream,line))
     {
+        count++;
+
         // Add line to vector
         emplace_back(line);
 
+        // Eliminate records that match the cleaning flags
         if ((back().flags & cleaning_flags).any())
         {
             pop_back();
             continue;
         }
         
+        // Eliminate records whose parents have been eliminated, or are not found.
         auto loc = index.find(back().parent_id);
         if (loc == index.end())
         {
@@ -338,9 +347,8 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int keep_root)
         back().parent_index = loc->second;
         
         index[back().id] = size() - 1;
-        count++;
     }
-    cerr<<"#lines = "<<count<<std::endl;
+    cerr<<"#lines read = "<<count<<std::endl;
     cerr<<"size = "<<size()<<std::endl;
 }
 
