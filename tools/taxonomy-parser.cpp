@@ -1,6 +1,5 @@
 // TODO: mmap via BOOST https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
 // TODO: write out a reduced taxonomy
-// TODO: Discard cleaned lines as we read.
 
 #include <iostream>
 #include <exception>
@@ -196,7 +195,6 @@ struct taxonomy_record
     string_ref sourceinfo;
     string_ref uniqname;
     bitset<32> flags;
-    bitset<32> marks;
     Tree_t::node_type* node_ptr = nullptr;
     taxonomy_record(taxonomy_record&& tr) = default;
     explicit taxonomy_record(const string& line);
@@ -233,33 +231,12 @@ taxonomy_record::taxonomy_record(const string& line_)
     flags = flags_from_string(start[6],end[6]);
 }
 
-void propagate_marks_to_descendants(vector<taxonomy_record>& taxonomy)
-{
-    for(auto& record: taxonomy)
-        if (record.parent_id)
-            record.marks |= taxonomy[record.parent_index].marks;
-}
-
-void mark_taxonomy_with_cleaning_flags(vector<taxonomy_record>& taxonomy, bitset<32> cleaning_flags, int bit)
-{
-    int matched = 0;
-    for(auto& record: taxonomy)
-        if ((record.flags & cleaning_flags).any())
-        {
-            matched++;
-            record.marks.set(bit);
-        }
-    std::cerr<<"#lines directly matching cleaning flags = "<<matched<<std::endl;
-}
-
 std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
 {
     std::unique_ptr<Tree_t> tree(new Tree_t);
     for(int i=0;i<taxonomy.size();i++)
     {
         const auto& line = taxonomy[i];
-
-        if (line.marks.test(1)) continue;
 
         // Make the tree
         Tree_t::node_type* nd = nullptr;
@@ -290,12 +267,14 @@ struct Taxonomy: public vector<taxonomy_record>
 {
     int root = -1;
     std::unordered_map<long,int> index;
+    bitset<32> cleaning_flags;
     string path;
-    Taxonomy(const string& dir, int keep_root = -1);
+    Taxonomy(const string& dir, bitset<32> cf = bitset<32>(), int keep_root = -1);
 };
 
-Taxonomy::Taxonomy(const string& dir, int keep_root)
-    :path(dir)
+Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int keep_root)
+    :cleaning_flags(cf),
+     path(dir)
 {
     string filename = dir + "/taxonomy.tsv";
 
@@ -333,6 +312,8 @@ Taxonomy::Taxonomy(const string& dir, int keep_root)
     }
     root = size() - 1;
     back().parent_id = 0;
+    if ((back().flags & cleaning_flags).any())
+        throw OTCError()<<"Root taxon (ID = "<<back().id<<") removed according to cleaning flags!";
     index[back().id] = size() - 1;
     count++;
 
@@ -341,6 +322,12 @@ Taxonomy::Taxonomy(const string& dir, int keep_root)
         // Add line to vector
         emplace_back(line);
 
+        if ((back().flags & cleaning_flags).any())
+        {
+            pop_back();
+            continue;
+        }
+        
         auto loc = index.find(back().parent_id);
         if (loc == index.end())
         {
@@ -377,13 +364,7 @@ int main(int argc, char* argv[])
 
         string taxonomy_dir = args["taxonomy"].as<string>();
 
-        Taxonomy taxonomy(taxonomy_dir,keep_root);
-
-        // Mark records with bit #1 if they match the cleaning flags
-        mark_taxonomy_with_cleaning_flags(taxonomy, cleaning_flags, 1);
-
-        // Propagate marks
-        propagate_marks_to_descendants(taxonomy);
+        Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 
         if (args.count("write-tree"))
             writeTreeAsNewick(cout, *tree_from_taxonomy(taxonomy));
