@@ -3,7 +3,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_PREREQ(2.57)
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR(config)
-AM_INIT_AUTOMAKE([1.6 foreign dist-zip tar-ustar filename-length-max=299])
+AM_INIT_AUTOMAKE([1.6 foreign subdir-objects dist-zip tar-ustar filename-length-max=299])
 AC_CONFIG_SRCDIR([ChangeLog])
 # Checks for programs.
 AC_PROG_LN_S
