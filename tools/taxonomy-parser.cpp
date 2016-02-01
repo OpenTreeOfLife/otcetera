@@ -195,7 +195,6 @@ struct taxonomy_record
     string_ref sourceinfo;
     string_ref uniqname;
     bitset<32> flags;
-    Tree_t::node_type* node_ptr = nullptr;
     taxonomy_record(taxonomy_record&& tr) = default;
     explicit taxonomy_record(const string& line);
 };
@@ -231,30 +230,6 @@ taxonomy_record::taxonomy_record(const string& line_)
     flags = flags_from_string(start[6],end[6]);
 }
 
-std::unique_ptr<Tree_t> tree_from_taxonomy(vector<taxonomy_record>& taxonomy)
-{
-    std::unique_ptr<Tree_t> tree(new Tree_t);
-    for(int i=0;i<taxonomy.size();i++)
-    {
-        const auto& line = taxonomy[i];
-
-        // Make the tree
-        Tree_t::node_type* nd = nullptr;
-        if (not line.parent_id)
-            nd = tree->createRoot();
-        else
-        {
-            auto parent_nd = taxonomy[line.parent_index].node_ptr;
-            nd = tree->createChild(parent_nd);
-        }
-        nd->setOttId(line.id);
-        nd->setName(string(line.name));
-        taxonomy[i].node_ptr = nd;
-    }
-    cerr<<"#tree nodes = "<<n_nodes(*tree)<<std::endl;
-    return tree;
-}
-
 auto cleaning_flags_from_config_file(const string& filename)
 {
     boost::property_tree::ptree pt;
@@ -269,6 +244,7 @@ struct Taxonomy: public vector<taxonomy_record>
     std::unordered_map<long,int> index;
     bitset<32> cleaning_flags;
     string path;
+    std::unique_ptr<Tree_t> getTree(std::function<string(const taxonomy_record&)>) const;
     Taxonomy(const string& dir, bitset<32> cf = bitset<32>(), int keep_root = -1);
 };
 
@@ -352,6 +328,32 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int keep_root)
     cerr<<"size = "<<size()<<std::endl;
 }
 
+std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<string(const taxonomy_record&)> getName) const
+{
+    const auto& taxonomy = *this;
+    std::unique_ptr<Tree_t> tree(new Tree_t);
+    vector<Tree_t::node_type*> node_ptr(size(), nullptr);
+    for(int i=0;i<taxonomy.size();i++)
+    {
+        const auto& line = taxonomy[i];
+
+        // Make the tree
+        Tree_t::node_type* nd = nullptr;
+        if (not line.parent_id)
+            nd = tree->createRoot();
+        else
+        {
+            auto parent_nd = node_ptr[line.parent_index];
+            nd = tree->createChild(parent_nd);
+        }
+        nd->setOttId(line.id);
+        nd->setName(getName(line));
+        node_ptr[i] = nd;
+    }
+    cerr<<"#tree nodes = "<<n_nodes(*tree)<<std::endl;
+    return tree;
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -375,7 +377,11 @@ int main(int argc, char* argv[])
         Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 
         if (args.count("write-tree"))
-            writeTreeAsNewick(cout, *tree_from_taxonomy(taxonomy));
+            writeTreeAsNewick(cout,
+                              *taxonomy.getTree(
+                                  [](const auto& record){return string(record.name);}
+                                  )
+                              );
         std::cout<<std::endl;
     }
     catch (std::exception& e)
