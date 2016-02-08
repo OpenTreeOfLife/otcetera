@@ -47,13 +47,23 @@ namespace otc
     struct Taxonomy: public std::vector<taxonomy_record>
     {
         std::unordered_map<long,int> index;
+        std::unordered_map<long,long> forwards;
         int keep_root;
         std::bitset<32> cleaning_flags;
         std::string path;
         std::string version;
         template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const taxonomy_record&)>) const;
+
+        /// Index of the root record
         constexpr static int root_index() {return 0;}
+
+        /// Given an OTT ID, forward if necessary and return the current ID.  Returns -1 if not found.
+        long map(long id) const;
+
+        /// Write out a taxonomy to directory dirname
         void write(const std::string& dirname);
+
+        /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
         Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), int kr = -1);
     };
 

@@ -67,6 +67,18 @@ namespace otc
         flags = flags_from_string(start[6],end[6]);
     }
 
+    long Taxonomy::map(long old_id) const
+    {
+        if (index.count(old_id))
+            return old_id;
+            
+        auto loc = forwards.find(old_id);
+        if (loc != forwards.end())
+            return loc->second;
+
+        return -1;
+    }
+    
     void Taxonomy::write(const std::string& newdirname)
     {
         fs::path old_dir = path;
@@ -77,10 +89,12 @@ namespace otc
 
         fs::create_directories(new_dir);
 
-        for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv", "forwards.tsv",
-                    "log.tsv", "new-forwards.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
+        // Copy the other files.
+        for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
+                    "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
             fs::copy_file(old_dir/name,new_dir/name);
 
+        // Write the new version file.
         {
             ofstream version_file((new_dir/"version.txt").string());
             version_file<<version;
@@ -97,12 +111,24 @@ namespace otc
             version_file.close();
         }
 
-        ofstream tf ((new_dir/"taxonomy.tsv").string());
-        tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t"<<std::endl;
-        string sep = "\t|\t";
-        for(const auto& r: *this)
-            tf << r.line <<"\n";
-        tf.close();
+        // Write the new taxonomy file.
+        {
+            ofstream tf ((new_dir/"taxonomy.tsv").string());
+            tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t"<<std::endl;
+            string sep = "\t|\t";
+            for(const auto& r: *this)
+                tf << r.line <<"\n";
+            tf.close();
+        }
+
+        // Write the new forwards file.
+        {
+            ofstream ff((new_dir/"forwards.tsv").string());
+            ff << "id\treplacement\n";
+            for(const auto& p: forwards)
+                ff<<p.first<<'\t'<<p.second<<'\n';
+            ff.close();
+        }
     }
     
     Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int kr)
@@ -183,6 +209,23 @@ namespace otc
         }
         cerr<<"#lines read = "<<count<<std::endl;
         cerr<<"size = "<<size()<<std::endl;
+        taxonomy_stream.close();
+
+        std::ifstream forwards_stream(path + "/forwards.tsv");
+        if (not forwards_stream)
+            throw OTCError()<<"Could not open file '"<<filename<<"'.";
+
+        std::getline(forwards_stream, line);
+        while(std::getline(forwards_stream, line))
+        {
+            char* temp;
+            long old_id = std::strtoul(line.c_str(), &temp, 10);
+            assert(*temp == '\t');
+            const char* temp2 = temp+1;
+            long new_id = std::strtoul(temp2, &temp, 10);
+            if (index.count(new_id))
+                forwards[old_id] = new_id;
+        }
     }
 
 }
