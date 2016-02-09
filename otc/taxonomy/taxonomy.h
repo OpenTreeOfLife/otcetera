@@ -48,7 +48,7 @@ namespace otc
     {
         std::unordered_map<long,int> index;
         std::unordered_map<long,long> forwards;
-        int keep_root;
+        long keep_root;
         std::bitset<32> cleaning_flags;
         std::string path;
         std::string version;
@@ -64,7 +64,7 @@ namespace otc
         void write(const std::string& dirname);
 
         /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-        Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), int kr = -1);
+        Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
     };
 
     template <typename Tree_t>

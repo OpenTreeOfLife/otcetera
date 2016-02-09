@@ -131,7 +131,7 @@ namespace otc
         }
     }
     
-    Taxonomy::Taxonomy(const string& dir, bitset<32> cf, int kr)
+    Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
         :keep_root(kr),
         cleaning_flags(cf),
          path(dir),
