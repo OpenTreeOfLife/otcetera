@@ -15,6 +15,8 @@ using std::string;
 using std::map;
 using std::pair;
 
+// TODO: Could we exemplify tips here, if we had access to the taxonomy?
+
 namespace std
 {
 template<>
@@ -52,6 +54,12 @@ void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
 void trace_clean_marks(Tree_t::node_type* node);
 void trace_clean_marks_from_synth(const Tree_t& tree);
 json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree);
+
+bool prune_unrecognized = true;
+bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
+    prune_unrecognized = false;
+    return true;
+}
 
 inline int depth(const Tree_t::node_type* node) {
     return node->getData().depth;
@@ -254,6 +262,30 @@ json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree) 
     string node_in_study = getSourceNodeNameFromNameOrOttId(input_node);
     return {source,node_in_study};
 }
+
+void pruneUnmapped(Tree_t& tree, const std::map<long,const Tree_t::node_type*>& taxOttIdToNode)
+{
+    vector<Tree_t::node_type*> remove;
+    for(auto nd: iter_leaf(tree))
+    {
+        long id = nd->getOttId();
+        if (not taxOttIdToNode.count(id))
+            remove.push_back(nd);
+    }
+
+    for(auto nd: remove)
+    {
+        auto parent = nd->getParent();
+        pruneAndDelete(tree, nd);
+        while(parent and not parent->hasOttId() and parent->isTip())
+        {
+            auto tmp = parent;
+            parent = parent->getParent();
+            pruneAndDelete(tree, tmp);
+        }
+    }
+}
+
 
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     json document;
@@ -476,6 +508,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                     summaryOttIdToNode[nd->getOttId()] = nd;
             return true;
         }
+        if (prune_unrecognized)
+            pruneUnmapped(*tree, taxOttIdToNode);
         requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
         computeDepth(*tree);
         computeSummaryLeaves(*tree, summaryOttIdToNode);
@@ -499,10 +533,14 @@ int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-annotate-synth",
                 explanation.c_str(),
                 "taxonomy.tre synth.tre inp1.tre inp2.tre ...");
-    DisplayedStatsState proc;
+    otCLI.addFlag('p',
+                  "Prune input tips that are not part of the supertree.  Defaults to false",
+                  handlePruneUnrecognizedTips,
+                  true);
     otCLI.addFlag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
                   false);
+    DisplayedStatsState proc;
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
