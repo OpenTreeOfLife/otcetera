@@ -115,6 +115,22 @@ int main(int argc, char *argv[]) {
                 names.insert(nd->getName());
             }
         }
+
+        // Remove unnamed nodes w/ no OTT Id that are monotypic.
+        vector<Tree_t::node_type*> remove;
+        for(auto nd:iter_pre(*tree))
+            if (not nd->hasOttId() and nd->getName().empty() and nd->isOutDegreeOneNode())
+                remove.push_back(nd);
+        for(auto nd: remove)
+        {
+            auto parent = nd->getParent();
+            auto child = nd->getFirstChild();
+            child->detachThisNode();
+            nd->addSibOnRight(child);
+            nd->detachThisNode();
+            delete nd;
+        }
+        
         int id = 1;
         for(auto nd:iter_pre(*tree)) {
             if (nd->hasOttId()) {
