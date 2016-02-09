@@ -33,16 +33,9 @@ inline int& smallestChild(Tree_t::node_type* node) {
     return node->getData().smallestChild;
 }
 
-static bool chopRoot = false;
 static std::string mrca_prefix = "mrcaott";
-bool handleChopRoot(OTCLI & otCLI, const std::string &);
 
 string makeName(const string& prefix, int number);
-
-bool handleChopRoot(OTCLI & , const std::string &) {
-    chopRoot = true;
-    return true;
-}
 
 string makeName(const string& pre, int number) {
     return pre + std::to_string(number);
@@ -100,10 +93,6 @@ int main(int argc, char *argv[]) {
                 "Takes a series of tree files and writes each tree with names computed for unnamed nodes.\n"
                 "Nodes with OTT ids are written as ott#####, with longer names suppressed.\n",
                 "tree1.tre [tree2.tre ... treeN.tree]");
-    otCLI.addFlag('c',
-                  "Chop of the root node",
-                  handleChopRoot,
-                  false);
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
     if (argc < 2) {
@@ -114,15 +103,6 @@ int main(int argc, char *argv[]) {
     }
     if (trees.empty()) {
         throw OTCError("No trees loaded!");
-    }
-    if (chopRoot) {
-        Tree_t& tree = *trees[0];
-        if (tree.getRoot()->isOutDegreeOneNode())
-        {
-            auto newRoot = tree.getRoot()->getFirstChild();
-            newRoot->detachThisNode();
-            tree._setRoot(newRoot);
-        }
     }
     // Add names to unnamed nodes
     for(const auto& tree: trees) {
