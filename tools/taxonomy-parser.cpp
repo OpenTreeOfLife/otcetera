@@ -61,7 +61,9 @@ variables_map parse_cmd_line(int argc,char* argv[])
       ("clean",value<string>(),"Comma-separated string of flags to filter")
       ("write-tree,T","Write out the result as a tree")
       ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
-      ("root,r", value<int>(), "OTT id of root node of subtree to keep")
+      ("root,r", value<long>(), "OTT id of root node of subtree to keep")
+      ("name,N", value<long>(), "Return name of the given ID")
+      ("uniqname,U", value<long>(), "Return unique name for the given ID")
 //    ("quiet,q","QUIET mode (all logging disabled)")
 //    ("trace,t","TRACE level debugging (very noisy)")
 //    ("verbose,v","verbose")
@@ -106,9 +108,12 @@ int main(int argc, char* argv[])
     {
         variables_map args = parse_cmd_line(argc,argv);
 
-        unsigned keep_root = -1;
+        if (not args.count("taxonomy"))
+            throw OTCError()<<"Please specify the taxonomy directory!";
+        
+        long keep_root = -1;
         if (args.count("root"))
-            keep_root = args["root"].as<int>();
+            keep_root = args["root"].as<long>();
         
         bitset<32> cleaning_flags = 0;
         if (args.count("config"))
@@ -128,6 +133,16 @@ int main(int argc, char* argv[])
         }
         if (args.count("write-taxonomy"))
             taxonomy.write(args["write-taxonomy"].as<string>());
+        if (args.count("name"))
+        {
+            long id = args["name"].as<long>();
+            std::cout<<taxonomy[taxonomy.index.at(id)].name<<std::endl;
+        }
+        if (args.count("uniqname"))
+        {
+            long id = args["uniqname"].as<long>();
+            std::cout<<taxonomy[taxonomy.index.at(id)].uniqname<<std::endl;
+        }
     }
     catch (std::exception& e)
     {
