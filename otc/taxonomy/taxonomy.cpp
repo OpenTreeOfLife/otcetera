@@ -65,6 +65,9 @@ namespace otc
         sourceinfo = string_ref(start[4],end[4]-start[4]);
         uniqname = string_ref(start[5],end[5]-start[5]);
         flags = flags_from_string(start[6],end[6]);
+
+        if (not uniqname.size())
+            uniqname = name;
     }
 
     long Taxonomy::map(long old_id) const
