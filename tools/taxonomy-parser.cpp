@@ -121,6 +121,19 @@ long n_nodes(const Tree_t& T) {
     return count;
 }
 
+long root_ott_id_from_file(const string& filename)
+{
+    boost::property_tree::ptree pt;
+    boost::property_tree::ini_parser::read_ini(filename, pt);
+    try {
+        return pt.get<long>("synthesis.root_ott_id");
+    }
+    catch (...)
+    {
+        return -1;
+    }
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -135,6 +148,8 @@ int main(int argc, char* argv[])
         long keep_root = -1;
         if (args.count("root"))
             keep_root = args["root"].as<long>();
+        else if (args.count("config"))
+            keep_root = root_ott_id_from_file(args["config"].as<string>());
         
         bitset<32> cleaning_flags = 0;
         if (args.count("config"))
