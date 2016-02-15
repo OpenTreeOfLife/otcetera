@@ -30,6 +30,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::bitset;
+using std::unique_ptr;
 
 using boost::spirit::qi::symbols;
 using boost::string_ref;
@@ -134,6 +135,25 @@ long root_ott_id_from_file(const string& filename)
     }
 }
 
+void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
+{
+    vector<unique_ptr<Tree_t>> trees;
+    std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
+    ParsingRules rules;
+    rules.requireOttIds = false;
+    otc::processTrees(filename,rules,a);//[&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;});
+    const auto& T =  trees[0];
+
+    std::unordered_map<long, const Tree_t::node_type*> ottid_to_node;
+    for(auto nd: iter_pre_const(*T))
+        if (nd->hasOttId())
+            ottid_to_node[nd->getOttId()] = nd;
+
+    for(const auto& rec: taxonomy)
+        if (not ottid_to_node.count(rec.id))
+            std::cout<<"id = "<<rec.id<<" uniqname = "<<rec.uniqname<<"\n";
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -145,6 +165,8 @@ int main(int argc, char* argv[])
         if (not args.count("taxonomy"))
             throw OTCError()<<"Please specify the taxonomy directory!";
         
+        string taxonomy_dir = args["taxonomy"].as<string>();
+
         long keep_root = -1;
         if (args.count("root"))
             keep_root = args["root"].as<long>();
@@ -156,8 +178,6 @@ int main(int argc, char* argv[])
             cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
         if (args.count("clean"))
             cleaning_flags |= flags_from_string(args["clean"].as<string>());
-
-        string taxonomy_dir = args["taxonomy"].as<string>();
 
         Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 
@@ -178,6 +198,15 @@ int main(int argc, char* argv[])
         {
             long id = args["uniqname"].as<long>();
             std::cout<<taxonomy[taxonomy.index.at(id)].uniqname<<std::endl;
+        }
+        if (args.count("report-lost-taxa"))
+        {
+            string treefile = args["report-lost-taxa"].as<string>();
+            report_lost_taxa(taxonomy,treefile);
+        }
+        if (args.count("version"))
+        {
+            std::cout<<taxonomy.version<<std::endl;
         }
     }
     catch (std::exception& e)
