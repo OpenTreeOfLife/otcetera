@@ -15,9 +15,12 @@
 
 #include "otc/error.h"
 #include "otc/tree.h"
+#include "otc/otcli.h"
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
+
+INITIALIZE_EASYLOGGINGPP
 
 using namespace otc;
 
@@ -64,9 +67,11 @@ variables_map parse_cmd_line(int argc,char* argv[])
       ("root,r", value<long>(), "OTT id of root node of subtree to keep")
       ("name,N", value<long>(), "Return name of the given ID")
       ("uniqname,U", value<long>(), "Return unique name for the given ID")
-//    ("quiet,q","QUIET mode (all logging disabled)")
-//    ("trace,t","TRACE level debugging (very noisy)")
-//    ("verbose,v","verbose")
+      ("report-lost-taxa",value<string>(), "A tree to report missing taxa for")
+      ("version,V","Taxonomy version")
+      ("quiet,q","QUIET mode (all logging disabled)")
+      ("trace,t","TRACE level debugging (very noisy)")
+      ("verbose,v","verbose")
     ;
 
   options_description all("All options");
@@ -86,6 +91,22 @@ variables_map parse_cmd_line(int argc,char* argv[])
     cout<<visible<<"\n";
     exit(0);
   }
+
+  el::Configurations defaultConf;
+  if (args.count("quiet"))
+      defaultConf.set(el::Level::Global,  el::ConfigurationType::Enabled, "false");
+  else
+  {
+      defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
+      defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+
+      if (args.count("trace"))
+          defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
+
+      if (args.count("verbose"))
+          defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
+  }
+  el::Loggers::reconfigureLogger("default", defaultConf);
 
   return args;
 }
