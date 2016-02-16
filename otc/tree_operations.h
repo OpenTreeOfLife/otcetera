@@ -100,6 +100,17 @@ void fillDesIdSetsIncludingInternals(T & tree) {
     }
 }
 
+// fills in the depth data member for each node.
+template <typename T>
+void computeDepth(T& tree) {
+    tree.getRoot()->getData().depth = 1;
+    for (auto nd: iter_pre(tree)) {
+        if (nd->getParent()) {
+            nd->getData().depth = nd->getParent()->getData().depth + 1;
+        }
+    }
+}
+
 // uses ottID->node mapping, but not the split sets of the nodes
 template<typename T>
 typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet, long trigger) {

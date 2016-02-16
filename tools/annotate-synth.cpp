@@ -27,7 +27,7 @@ struct hash<std::pair<string,json>>
 };
 
 struct RTNodeDepth {
-    int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1s)
+    int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
     int mark = 0;
     RootedTreeNode<RTNodeDepth>* summary_node;
 };
@@ -40,7 +40,6 @@ int& depth(Tree_t::node_type* node);
 Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 Tree_t::node_type* nmParent(Tree_t::node_type* node);
-void computeDepth(Tree_t& tree);
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
 string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node);
 Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits);
@@ -84,16 +83,6 @@ inline Tree_t::node_type* nmParent(Tree_t::node_type* node) {
         node = node->getParent();
     } while (node and node->isOutDegreeOneNode());
     return node;
-}
-
-// fills in the depth data member for each node.
-void computeDepth(Tree_t& tree) {
-    tree.getRoot()->getData().depth = 1;
-    for (auto nd: iter_pre(tree)) {
-        if (nd->getParent()) {
-            nd->getData().depth = nd->getParent()->getData().depth + 1;
-        }
-    }
 }
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
