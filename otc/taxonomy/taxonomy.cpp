@@ -179,6 +179,7 @@ namespace otc
             // Add line to vector
             emplace_back(line);
         }
+        back().depth = 1;
         if ((back().flags & cleaning_flags).any())
             throw OTCError()<<"Root taxon (ID = "<<back().id<<") removed according to cleaning flags!";
         index[back().id] = size() - 1;
@@ -207,7 +208,7 @@ namespace otc
             }
 
             back().parent_index = loc->second;
-        
+            back().depth = (*this)[back().parent_index].depth + 1;
             index[back().id] = size() - 1;
         }
         cerr<<"#lines read = "<<count<<std::endl;
