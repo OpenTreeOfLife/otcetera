@@ -211,8 +211,8 @@ namespace otc
             back().depth = (*this)[back().parent_index].depth + 1;
             index[back().id] = size() - 1;
         }
-        cerr<<"#lines read = "<<count<<std::endl;
-        cerr<<"size = "<<size()<<std::endl;
+        LOG(TRACE)<<"records read = "<<count;
+        LOG(TRACE)<<"records kept = "<<size();
         taxonomy_stream.close();
 
         std::ifstream forwards_stream(path + "/forwards.tsv");
