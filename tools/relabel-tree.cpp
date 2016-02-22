@@ -76,8 +76,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
                                                     "Usage: otc-relabel-tree <newick-file> [OPTIONS]\n"
                                                     "Rewrite node labels for a tree.\n\n"
                                                     "Format strings have the following interpretation:\n"
-                                                    "  %I=id  %N=name %U=uniqname %R=rank %S=sourceinfo\n"
-                                                    "  %%=%   %L=origin label",
+                                                    "  %I=id %N=name %U=uniqname %R=rank %S=sourceinfo %%=% %L=original label",
                                                     visible, invisible, p);
     return vm;
 }
