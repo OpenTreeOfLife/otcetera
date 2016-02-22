@@ -55,6 +55,9 @@ namespace otc
         std::string version;
         template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const taxonomy_record&)>) const;
 
+              taxonomy_record& record_from_id(long id);
+        const taxonomy_record& record_from_id(long id) const;
+        
         /// Index of the root record
         constexpr static int root_index() {return 0;}
 

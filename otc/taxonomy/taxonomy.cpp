@@ -70,6 +70,40 @@ namespace otc
             uniqname = name;
     }
 
+    const taxonomy_record& Taxonomy::record_from_id(long id) const
+    {
+        auto loc = index.find(id);
+        if (loc == index.end())
+        {
+            auto loc2 = forwards.find(id);
+            if (loc2 == forwards.end())
+                throw OTCError()<<"ID "<<id<<" not in taxonomy or forwarding list";
+            long newid = loc2->second;
+            loc = index.find(newid);
+            // If id is in the forwarding table, then newid should be in the taxonomy
+            assert(loc != index.end());
+        }
+        int index = loc->second;
+        return (*this)[index];
+    }
+
+    taxonomy_record& Taxonomy::record_from_id(long id)
+    {
+        auto loc = index.find(id);
+        if (loc == index.end())
+        {
+            auto loc2 = forwards.find(id);
+            if (loc2 == forwards.end())
+                throw OTCError()<<"ID "<<id<<" not in taxonomy or forwarding list";
+            long newid = loc2->second;
+            loc = index.find(newid);
+            // If id is in the forwarding table, then newid should be in the taxonomy
+            assert(loc != index.end());
+        }
+        int index = loc->second;
+        return (*this)[index];
+    }
+
     long Taxonomy::map(long old_id) const
     {
         if (index.count(old_id))
