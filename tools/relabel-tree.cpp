@@ -60,9 +60,9 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description output("Relabelling options");
     output.add_options()
-        ("keep-ott-id","Include ottIds at the end of names")
-        ("format-label",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
-        ("label-regex", value<string>(), "Return name of the given ID")
+        ("format-tax",value<string>()->default_value("%L"),"Form of labels to write for taxonomy nodes.")
+        ("format-unknown",value<string>()->default_value("%L"),"Form of labels to write for non-taxonomy nodes.")
+//        ("label-regex", value<string>(), "Return name of the given ID")
         ;
 
     options_description visible;
@@ -73,8 +73,11 @@ variables_map parse_cmd_line(int argc,char* argv[])
     p.add("tree", -1);
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
-                                                    "Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
-                                                    "Select columns from a Tracer-format data file.",
+                                                    "Usage: otc-relabel-tree <newick-file> [OPTIONS]\n"
+                                                    "Rewrite node labels for a tree.\n\n"
+                                                    "Format strings have the following interpretation:\n"
+                                                    "  %I=id  %N=name %U=uniqname %R=rank %S=sourceinfo\n"
+                                                    "  %%=%   %L=origin label",
                                                     visible, invisible, p);
     return vm;
 }
@@ -112,6 +115,74 @@ unique_ptr<Tree_t> get_tree(const string& filename)
     return std::move(trees[0]);
 }
 
+string format_with_taxonomy(const string& orig, const string& format, const taxonomy_record& rec)
+{
+    string result;
+    
+    int pos = 0;
+    do {
+        auto loc = format.find('%',pos);
+        if (loc == string::npos)
+        {
+            result += format.substr(pos);
+            break;
+        }
+        result += format.substr(pos,loc-pos);
+        loc++;
+        if (format[loc] == 0)
+            std::abort();
+        else if (format[loc] == 'I')
+            result += std::to_string(rec.id);
+        else if (format[loc] == 'N')
+            result += rec.name.to_string();
+        else if (format[loc] == 'U')
+            result += rec.uniqname.to_string();
+        else if (format[loc] == 'R')
+            result += rec.rank.to_string();
+        else if (format[loc] == 'S')
+            result += rec.sourceinfo.to_string();
+        else if (format[loc] == 'L')
+            result += orig;
+        else if (format[loc] == '%')
+            result += '%';
+        else
+            throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in taxonomy-based format string '"<<format<<"'";
+        pos = loc + 1;
+    }
+    while (pos < format.size());
+
+    return result;
+}
+
+string format_without_taxonomy(const string& orig, const string& format)
+{
+    string result;
+    
+    int pos = 0;
+    do {
+        auto loc = format.find('%',pos);
+        if (loc == string::npos)
+        {
+            result += format.substr(pos);
+            break;
+        }
+        result += format.substr(pos,loc-pos);
+        loc++;
+        if (format[loc] == 0)
+            std::abort();
+        else if (format[loc] == 'L')
+            result += orig;
+        else if (format[loc] == '%')
+            result += '%';
+        else
+            throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in non-taxonomy-based format string '"<<format<<"'";
+        pos = loc + 1;
+    }
+    while (pos < format.size());
+
+    return result;
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -140,26 +211,29 @@ int main(int argc, char* argv[])
         if (args.count("clean"))
             cleaning_flags |= flags_from_string(args["clean"].as<string>());
 
-        bool keep_id = args.count("keep-ott-id");
+        bool keep_non_ott = not args.count("unlabel-non-taxa");
 
         auto tree = get_tree(args["tree"].as<string>());
 
         Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 
+        string format_tax = args["format-tax"].as<string>();
+        string format_unknown = args["format-unknown"].as<string>();
         for(auto nd: iter_pre(*tree))
         {
             if (nd->hasOttId())
             {
                 int id = nd->getOttId();
                 const auto& record = taxonomy.record_from_id(id);
-                string name = record.name.to_string();
-                if (keep_id)
-                {
-                    name += " ott";
-                    name += std::to_string(id);
-                }
-                nd->setName(name);
+                string name = format_with_taxonomy(nd->getName(), format_tax, record);
+                nd->setName(std::move(name));
             }
+            else
+            {
+                string name = format_without_taxonomy(nd->getName(), format_unknown);
+                nd->setName(std::move(name));
+            }
+
         }
 
         writeTreeAsNewick(cout, *tree);
