@@ -1,6 +1,3 @@
-// TODO: mmap via BOOST https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
-// TODO: write out a reduced taxonomy
-
 #include <iostream>
 #include <fstream>
 #include <exception>
@@ -39,13 +36,6 @@ using boost::string_ref;
 using namespace boost::spirit;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
-
-// 1. Write a parser to read the lines faster
-// 2. Avoid memory allocation -- by mmapping the taxonomy file?
-// 3. Convert the flags into a bitmask
-// 4. Should the Rank be a converted to an integer?
-// 5. Can we assign OTT IDs to internal nodes of a tree while accounting for Incertae Sedis taxa?
-// * What are the triplet-inference rules for the Incertae Sedis problem?
 
 namespace po = boost::program_options;
 using po::variables_map;
@@ -199,3 +189,14 @@ int main(int argc, char* argv[])
         exit(1);
     }
 }
+
+// 1. Write a parser to read the lines faster
+// 2. Avoid memory allocation -- by mmapping the taxonomy file?
+// 3. Convert the flags into a bitmask
+// 4. Should the Rank be a converted to an integer?
+// 5. Can we assign OTT IDs to internal nodes of a tree while accounting for Incertae Sedis taxa?
+// * What are the triplet-inference rules for the Incertae Sedis problem?
+
+// TODO: mmap via BOOST https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
+// TODO: write out a reduced taxonomy
+
