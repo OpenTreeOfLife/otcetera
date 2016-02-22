@@ -65,91 +65,104 @@ po::options_description standard_options()
     return standard;
 }
 
+variables_map cmd_line_set_logging(const po::variables_map& vm)
+{
+    el::Configurations defaultConf;
+    if (vm.count("quiet"))
+        defaultConf.set(el::Level::Global,  el::ConfigurationType::Enabled, "false");
+    else
+    {
+        defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
+        defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+
+        if (vm.count("trace"))
+            defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
+
+        if (vm.count("verbose"))
+            defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
+    }
+    el::Loggers::reconfigureLogger("default", defaultConf);
+
+    return vm;
+}
+
+vector<string> cmd_line_response_file_contents(const po::variables_map& vm)
+{
+    vector<string> args;
+    if (vm.count("response-file"))
+    {
+        // Load the file and tokenize it
+        std::ifstream ifs(vm["response-file"].as<string>().c_str());
+        if (not ifs)
+            throw OTCError() << "Could not open the response file\n";
+        // Read the whole file into a string
+        std::stringstream ss;
+        ss << ifs.rdbuf();
+        // Split the file content
+        boost::char_separator<char> sep(" \n\r");
+        std::string ResponsefileContents( ss.str() );
+        boost::tokenizer<boost::char_separator<char> > tok(ResponsefileContents, sep);
+        copy(tok.begin(), tok.end(), back_inserter(args));
+    }
+    return args;
+}
+
 variables_map parse_cmd_line(int argc,char* argv[]) 
 { 
-  using namespace po;
+    using namespace po;
 
-  // named options
-  options_description invisible("Invisible options");
-  invisible.add_options()
-    ("taxonomy", value<string>(),"Filename for the taxonomy")
-    ;
+    // named options
+    options_description invisible("Invisible options");
+    invisible.add_options()
+        ("taxonomy", value<string>(),"Filename for the taxonomy")
+        ;
 
-  options_description taxonomy("Taxonomy options");
-  taxonomy.add_options()
-      ("config,c",value<string>(),"Config file containing flags to filter")
-      ("clean",value<string>(),"Comma-separated string of flags to filter")
-      ("root,r", value<long>(), "OTT id of root node of subtree to keep")
-    ;
+    options_description taxonomy("Taxonomy options");
+    taxonomy.add_options()
+        ("config,c",value<string>(),"Config file containing flags to filter")
+        ("clean",value<string>(),"Comma-separated string of flags to filter")
+        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
+        ;
 
-  options_description output("Output options");
-  output.add_options()
-      ("write-tree,T","Write out the result as a tree")
-      ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
-      ("name,N", value<long>(), "Return name of the given ID")
-      ("uniqname,U", value<long>(), "Return unique name for the given ID")
-      ("report-lost-taxa",value<string>(), "A tree to report missing taxa for")
-      ("version,V","Taxonomy version")
-    ;
+    options_description output("Output options");
+    output.add_options()
+        ("write-tree,T","Write out the result as a tree")
+        ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
+        ("name,N", value<long>(), "Return name of the given ID")
+        ("uniqname,U", value<long>(), "Return unique name for the given ID")
+        ("report-lost-taxa",value<string>(), "A tree to report missing taxa for")
+        ("version,V","Taxonomy version")
+        ;
 
-  options_description standard = standard_options();
+    options_description standard = standard_options();
 
-  options_description visible;
-  visible.add(taxonomy).add(output).add(standard);
-  options_description all("All options");
-  all.add(invisible).add(visible);
+    options_description visible;
+    visible.add(taxonomy).add(output).add(standard);
 
-  // positional options
-  positional_options_description p;
-  p.add("taxonomy", -1);
+    // positional options
+    positional_options_description p;
+    p.add("taxonomy", -1);
 
-  variables_map vm;
-  store(command_line_parser(argc, argv).options(all).positional(p).run(), vm);
-  notify(vm);
-  if (vm.count("response-file"))
-  {
-      // Load the file and tokenize it
-      std::ifstream ifs(vm["response-file"].as<string>().c_str());
-      if (not ifs)
-          throw OTCError() << "Could not open the response file\n";
-      // Read the whole file into a string
-      std::stringstream ss;
-      ss << ifs.rdbuf();
-      // Split the file content
-      boost::char_separator<char> sep(" \n\r");
-      std::string ResponsefileContents( ss.str() );
-      boost::tokenizer<boost::char_separator<char> > tok(ResponsefileContents, sep);
-      std::vector<string> args;
-      copy(tok.begin(), tok.end(), back_inserter(args));
-      // Parse the file and store the options
-      store(command_line_parser(args).options(all).positional(p).run(), vm);
-  }
-  notify(vm);
+    variables_map vm;
+    options_description all;
+    all.add(invisible).add(visible);
+    store(command_line_parser(argc, argv).options(all).positional(p).run(), vm);
+    notify(vm);
 
-  if (vm.count("help")) {
-    cout<<"Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n";
-    cout<<"Select columns from a Tracer-format data file.\n";
-    cout<<visible<<"\n";
-    exit(0);
-  }
+    std::vector<string> args = cmd_line_response_file_contents(vm);
+    store(command_line_parser(args).options(all).positional(p).run(), vm);
+    notify(vm);
 
-  el::Configurations defaultConf;
-  if (vm.count("quiet"))
-      defaultConf.set(el::Level::Global,  el::ConfigurationType::Enabled, "false");
-  else
-  {
-      defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
-      defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+    if (vm.count("help")) {
+        cout<<"Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n";
+        cout<<"Select columns from a Tracer-format data file.\n";
+        cout<<visible<<"\n";
+        exit(0);
+    }
 
-      if (vm.count("trace"))
-          defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
+    vm = cmd_line_set_logging(vm);
 
-      if (vm.count("verbose"))
-          defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
-  }
-  el::Loggers::reconfigureLogger("default", defaultConf);
-
-  return vm;
+    return vm;
 }
 
 long n_nodes(const Tree_t& T) {
