@@ -138,7 +138,7 @@ namespace otc
         :keep_root(kr),
         cleaning_flags(cf),
          path(dir),
-         version(readStrContentOfUTF8File(dir + "/version.txt"))
+         version(strip_trailing_whitespace(readStrContentOfUTF8File(dir + "/version.txt")))
     {
         string filename = path + "/taxonomy.tsv";
 
