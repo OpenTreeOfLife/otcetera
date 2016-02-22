@@ -50,108 +50,6 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 namespace po = boost::program_options;
 using po::variables_map;
 
-
-po::options_description standard_options()
-{
-    using namespace po;
-    options_description standard("Standard command-line flags");
-    standard.add_options()
-      ("help,h", "Produce help message")
-      ("response-file,f", value<string>(), "Treat contents of file <arg> as a command line.")
-      ("quiet,q","QUIET mode (all logging disabled)")
-      ("trace,t","TRACE level debugging (very noisy)")
-      ("verbose,v","verbose")
-    ;
-    return standard;
-}
-
-variables_map cmd_line_set_logging(const po::variables_map& vm)
-{
-    el::Configurations defaultConf;
-    if (vm.count("quiet"))
-        defaultConf.set(el::Level::Global,  el::ConfigurationType::Enabled, "false");
-    else
-    {
-        defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
-        defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
-
-        if (vm.count("trace"))
-            defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
-
-        if (vm.count("verbose"))
-            defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
-    }
-    el::Loggers::reconfigureLogger("default", defaultConf);
-
-    return vm;
-}
-
-vector<string> cmd_line_response_file_contents(const po::variables_map& vm)
-{
-    vector<string> args;
-    if (vm.count("response-file"))
-    {
-        // Load the file and tokenize it
-        std::ifstream ifs(vm["response-file"].as<string>().c_str());
-        if (not ifs)
-            throw OTCError() << "Could not open the response file\n";
-        // Read the whole file into a string
-        std::stringstream ss;
-        ss << ifs.rdbuf();
-        // Split the file content
-        boost::char_separator<char> sep(" \n\r");
-        std::string ResponsefileContents( ss.str() );
-        boost::tokenizer<boost::char_separator<char> > tok(ResponsefileContents, sep);
-        copy(tok.begin(), tok.end(), back_inserter(args));
-    }
-    return args;
-}
-
-variables_map parse_cmd_line_response_file(int argc, char* argv[],
-                                           po::options_description visible,
-                                           po::options_description invisible,
-                                           po::positional_options_description p)
-{
-    using namespace po;
-    variables_map vm;
-    options_description all;
-    all.add(invisible).add(visible);
-    store(command_line_parser(argc, argv).options(all).positional(p).run(), vm);
-    notify(vm);
-
-    std::vector<string> args = cmd_line_response_file_contents(vm);
-    store(command_line_parser(args).options(all).positional(p).run(), vm);
-    notify(vm);
-
-    return vm;
-}
-
-variables_map parse_cmd_line_standard(int argc, char* argv[],
-                                      const string& message,
-                                      po::options_description visible_,
-                                      po::options_description invisible,
-                                      po::positional_options_description p)
-{
-    using namespace po;
-
-    options_description visible;
-    visible.add(visible_).add(standard_options());
-
-    variables_map vm = parse_cmd_line_response_file(argc, argv, visible, invisible, p);
-
-    if (vm.count("help")) {
-        cout<<message<<"\n";
-        cout<<visible<<"\n";
-        if (vm.count("verbose"))
-            cout<<invisible<<"\n";
-        exit(0);
-    }
-
-    cmd_line_set_logging(vm);
-
-    return vm; 
-}
-
 variables_map parse_cmd_line(int argc,char* argv[]) 
 { 
     using namespace po;
@@ -180,16 +78,16 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ;
 
     options_description visible;
-    visible.add(taxonomy).add(output);
+    visible.add(taxonomy).add(output).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
     p.add("taxonomy", -1);
 
-    variables_map vm = parse_cmd_line_standard(argc, argv,
-                                               "Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
-                                               "Select columns from a Tracer-format data file.\n",
-                                               visible, invisible, p);
+    variables_map vm = otc::parse_cmd_line_standard(argc, argv,
+                                                    "Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
+                                                    "Select columns from a Tracer-format data file.",
+                                                    visible, invisible, p);
     return vm;
 }
 

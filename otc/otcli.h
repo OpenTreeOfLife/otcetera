@@ -9,6 +9,8 @@
 #include "otc/newick.h"
 #include "otc/util.h"
 #include "otc/tree_iter.h"
+#include <boost/tokenizer.hpp>
+#include <boost/program_options.hpp>
 namespace otc {
 bool get_bool(const std::string& arg, const std::string& context);
 
@@ -247,6 +249,23 @@ inline bool get_bool(const std::string& arg, const std::string& context) {
     throw OTCError() << context << "'" << arg << "' is not a recognized boolean value.";
 }
 
+boost::program_options::options_description standard_options();
+
+boost::program_options::variables_map cmd_line_set_logging(const boost::program_options::variables_map& vm);
+
+std::vector<std::string> cmd_line_response_file_contents(const boost::program_options::variables_map& vm);
+
+boost::program_options::variables_map parse_cmd_line_response_file(int argc, char* argv[],
+                                                                   const std::string& message,
+                                                                   boost::program_options::options_description visible_,
+                                                                   boost::program_options::options_description invisible,
+                                                                   boost::program_options::positional_options_description p);
+
+boost::program_options::variables_map parse_cmd_line_standard(int argc, char* argv[],
+                                                              const std::string& message,
+                                                              boost::program_options::options_description visible_,
+                                                              boost::program_options::options_description invisible,
+                                                              boost::program_options::positional_options_description p);
 
 } // namespace otc
 #endif
