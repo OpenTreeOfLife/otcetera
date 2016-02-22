@@ -25,7 +25,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-unprune-solution \
 				otc-name-unnamed-nodes \
 				otc-annotate-synth \
-				otc-taxonomy-parser
+				otc-taxonomy-parser \
+				otc-relabel-tree
 
 LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS)
 
@@ -104,6 +105,9 @@ otc_annotate_synth_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_taxonomy_parser_SOURCES = taxonomy-parser.cpp
 otc_taxonomy_parser_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_relabel_tree_SOURCES = relabel-tree.cpp
+otc_relabel_tree_CPPFLAGS = $(AM_CPPFLAGS)
 
 check:
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
