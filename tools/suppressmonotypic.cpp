@@ -8,10 +8,36 @@ typedef RootedTree<RTNodeNoData, RTreeNoData> Tree_t;
 template<typename T>
 bool suppressMonotypicAndWrite(OTCLI & , std::unique_ptr<T> tree);
 
+// BDR - I copied this (with some modifications) from name-unnamed-nodes.cpp
+//       For trees with no attributes this seems to be much faster than
+//         suppressMonotypicTaxaPreserveShallowDangle(*p), which I commented out.
+//       We do not need to construct a set of removed nodes here, and we probably
+//         do not want to check invariants.
+//       I believe this is a "shallow dangle" version, because we delete monotypic nodes
+//         instead of preserving the one closest to the root.
+void suppressMonotypicFast(Tree_t& tree)
+{
+    std::vector<Tree_t::node_type*> remove;
+    for(auto nd:iter_pre(tree))
+        if (nd->isOutDegreeOneNode())
+            remove.push_back(nd);
+
+    for(auto nd: remove)
+    {
+        auto parent = nd->getParent();
+        auto child = nd->getFirstChild();
+        child->detachThisNode();
+        nd->addSibOnRight(child);
+        nd->detachThisNode();
+        delete nd;
+    }
+}
+
 template<typename T>
 inline bool suppressMonotypicAndWrite(OTCLI & otCLI, std::unique_ptr<T> tree) {
     T * p = tree.get();
-    suppressMonotypicTaxaPreserveShallowDangle(*p);
+//    suppressMonotypicTaxaPreserveShallowDangle(*p);
+    suppressMonotypicFast(*p);
     writeTreeAsNewick(otCLI.out, *p);
     otCLI.out << std::endl;
     return true;
