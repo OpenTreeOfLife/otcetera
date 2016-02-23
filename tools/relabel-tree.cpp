@@ -65,8 +65,13 @@ variables_map parse_cmd_line(int argc,char* argv[])
 //        ("label-regex", value<string>(), "Return name of the given ID")
         ;
 
+    options_description tree("Tree options");
+    tree.add_options()
+        ("del-monotypic","Remove monotypic nodes.")
+        ;
+
     options_description visible;
-    visible.add(taxonomy).add(output).add(otc::standard_options());
+    visible.add(taxonomy).add(output).add(tree).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -182,6 +187,24 @@ string format_without_taxonomy(const string& orig, const string& format)
     return result;
 }
 
+void suppressMonotypicFast(Tree_t& tree)
+{
+    std::vector<Tree_t::node_type*> remove;
+    for(auto nd:iter_pre(tree))
+        if (nd->isOutDegreeOneNode())
+            remove.push_back(nd);
+
+    for(auto nd: remove)
+    {
+        auto parent = nd->getParent();
+        auto child = nd->getFirstChild();
+        child->detachThisNode();
+        nd->addSibOnRight(child);
+        nd->detachThisNode();
+        delete nd;
+    }
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -218,6 +241,10 @@ int main(int argc, char* argv[])
 
         string format_tax = args["format-tax"].as<string>();
         string format_unknown = args["format-unknown"].as<string>();
+
+        if (args.count("del-monotypic"))
+            suppressMonotypicFast(*tree);
+        
         for(auto nd: iter_pre(*tree))
         {
             if (nd->hasOttId())
