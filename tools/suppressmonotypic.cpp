@@ -24,7 +24,6 @@ void suppressMonotypicFast(Tree_t& tree)
 
     for(auto nd: remove)
     {
-        auto parent = nd->getParent();
         auto child = nd->getFirstChild();
         child->detachThisNode();
         nd->addSibOnRight(child);
