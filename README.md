@@ -362,6 +362,17 @@ It outputs a JSON document with fields describing relationships between the inpu
 supertree.  Relationships include conflict, support, etc and are described in the
 [OpenTree v3 conflict API](https://github.com/OpenTreeOfLife/opentree/wiki/Open-Tree-of-Life-APIs-v3).
 
+### Renaming tree nodes
+
+This tool takes a Newick tree and writes out a relabelled tree.
+
+```sh
+otc-relabel-tree in.tre --format-tax="%N ott%I" --taxonomy=<ott-dir> --del-monotypic > out.tre
+```
+
+Format codes are given in `otc-relabel-tree -h`.  It is also possible to relabel
+non-taxonomy nodes, but without refering to taxonomy fields.
+
 ### getting the full distribution of out-degree counts for a tree
 
     otc-degree-distribution sometree.tre
