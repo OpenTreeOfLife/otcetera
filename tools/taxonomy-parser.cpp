@@ -5,11 +5,6 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <boost/program_options.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/ini_parser.hpp>
-#include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/utility/string_ref.hpp>
-#include <boost/tokenizer.hpp>
 #include <bitset>
 
 #include "otc/error.h"
@@ -76,7 +71,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
                                                     "Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
-                                                    "Select columns from a Tracer-format data file.",
+                                                    "Read a taxonomy, clean it, and then make a tree or some other operation.",
                                                     visible, invisible, p);
     return vm;
 }
