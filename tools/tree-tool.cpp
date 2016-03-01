@@ -12,6 +12,8 @@
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
 
+#include <boost/range/adaptor/reversed.hpp>
+
 INITIALIZE_EASYLOGGINGPP
 
 using namespace otc;
@@ -48,8 +50,13 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("prune,p", value<std::vector<long>>()->composing(),"OTT ids of taxa to prune")
         ;
 
+    options_description output("Output options");
+    output.add_options()
+        ("high-degree-nodes", value<long>(), "Show the top <arg> high-degree nodes.")
+        ;
+
     options_description visible;
-    visible.add(tree).add(otc::standard_options());
+    visible.add(tree).add(output).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -100,6 +107,24 @@ unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long r
     return tree2;
 }
 
+void show_high_degree_nodes(const Tree_t& tree, int n)
+{
+    std::multimap<long,std::string> nodes;
+    for(auto nd: iter_pre_const(tree))
+    {
+        auto outdegree = nd->getOutDegree();
+        if (outdegree > 1)
+            nodes.insert({outdegree,nd->getName()});
+    }
+
+    for(const auto& x: boost::adaptors::reverse(nodes))
+    {
+        --n;
+        if (n <= 0) return;
+        std::cout<<x.first<<"\t"<<x.second<<std::endl;
+    } 
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -111,18 +136,21 @@ int main(int argc, char* argv[])
         if (not args.count("tree"))
             throw OTCError()<<"Please specify the tree to operate on!";
         
-        if (not args.count("root"))
-            throw OTCError()<<"Please specify the root of the tree to operate on!";
-            
-        long root = -1;
-        if (args.count("root"))
-            root = args["root"].as<long>();
-        
         auto tree = get_tree(args["tree"].as<string>());
 
-        tree = truncate_to_subtree_by_ott_id(std::move(tree), root);
+        if (args.count("root"))
+        {
+            long root = args["root"].as<long>();
+            tree = truncate_to_subtree_by_ott_id(std::move(tree), root);
+        }
         
-        writeTreeAsNewick(std::cout, *tree);
+        if (args.count("high-degree-nodes"))
+        {
+            long n = args["high-degree-nodes"].as<long>();
+            show_high_degree_nodes(*tree, n);
+        }
+        else
+            writeTreeAsNewick(std::cout, *tree);
     }
     catch (std::exception& e)
     {
