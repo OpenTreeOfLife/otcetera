@@ -30,7 +30,6 @@ long n_internal(const Tree_t& T);
 long n_internal_out_degree_1(const Tree_t& T);
 long n_internal_out_degree_many(const Tree_t& T);
 long n_nodes(const Tree_t& T);
-std::vector<Tree_t::node_type*> all_nodes(Tree_t& T);
 void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose);
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg);
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg);
@@ -131,14 +130,6 @@ long n_nodes(const Tree_t& T) {
         count++;
     }
     return count;
-}
-
-std::vector<Tree_t::node_type*> all_nodes(Tree_t& T) {
-    std::vector<Tree_t::node_type*> nodes;
-    for(auto nd: iter_post(T)) {
-        nodes.push_back(nd);
-    }
-    return nodes;
 }
 
 void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {

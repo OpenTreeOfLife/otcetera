@@ -4,7 +4,7 @@
 //  over trees (contrast w/tree_util.h)
 // Depends on: tree.h tree_util.h tree_iter.h 
 // Depended on by: tools
-
+#include <vector>
 #include "otc/otc_base_includes.h"
 #include "otc/tree_iter.h"
 #include "otc/error.h"
@@ -29,9 +29,19 @@ inline void cullRefsToNodeFromData(RootedTree<T, U> & tree, RootedTreeNode<T> *t
 const std::set<long> & getDesOttIds(RootedTreeNode<RTSplits> & nd);
 template<typename T>
 std::size_t pruneTipsWithoutIds(T & tree);
+template <typename T>
+std::vector<typename T::node_type*> all_nodes(T& tree);
 
 
 //// impl
+template <typename T>
+inline std::vector<typename T::node_type*> all_nodes(T& tree) {
+    std::vector<typename T::node_type*> nodes;
+    for(auto nd: iter_post(tree)) {
+        nodes.push_back(nd);
+    }
+    return nodes;
+}
 
 template<typename T>
 unsigned int countPolytomies(const T & tree) {

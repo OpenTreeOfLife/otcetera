@@ -1,25 +1,18 @@
 #include <algorithm>
-#include <set>
-#include <unordered_map>
 #include <unordered_set>
-#include <list>
 #include <iterator>
 #include <sstream>
 
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
 #include "otc/tree_iter.h"
+#include "otc/node_naming.h"
 using namespace otc;
 using std::vector;
 using std::unique_ptr;
-using std::set;
-using std::list;
-using std::map;
 using std::string;
-using namespace otc;
 
-struct RTNodeSmallestChild
-{
+struct RTNodeSmallestChild {
     int smallestChild = 0;
 };
 
@@ -33,54 +26,34 @@ inline int& smallestChild(Tree_t::node_type* node) {
     return node->getData().smallestChild;
 }
 
-static std::string mrca_prefix = "mrcaott";
-
-string makeName(const string& prefix, int number);
-
-string makeName(const string& pre, int number) {
-    return pre + std::to_string(number);
-}
-
-string makeMRCAName(int number1, int number2) {
-    return mrca_prefix + std::to_string(number1) + "ott" + std::to_string(number2);
-}
-
-void calculateSmallestChild(Tree_t& T)
-{
-    for(auto nd: iter_post(T))
-        if (nd->isTip())
+void calculateSmallestChild(Tree_t& T) {
+    for (auto nd: iter_post(T)) {
+        if (nd->isTip()) {
             smallestChild(nd) = nd->getOttId();
-        else
-        {
+        } else {
             int sc = smallestChild(nd->getFirstChild());
-            for(auto c: iter_child(*nd))
+            for(auto c: iter_child(*nd)) {
                 sc = std::min(sc, smallestChild(c));
+            }
             smallestChild(nd) = sc;
         }
+    }
 }
 
-void sortBySmallestChild(Tree_t& T)
-{
-    vector<Tree_t::node_type*> nodes;
-    for(auto nd: iter_post(T))
-        if (not nd->isTip())
-            nodes.push_back(nd);
-
-    for(auto nd: nodes)
-    {
+void sortBySmallestChild(Tree_t& T) {
+    const vector<Tree_t::node_type*> nodes = all_nodes(T);
+    for (auto nd: nodes) {
         vector<Tree_t::node_type*> children;
-        while(nd->hasChildren())
-        {
+        while (nd->hasChildren()) {
             auto x = nd->getFirstChild();
             x->detachThisNode();
             children.push_back(x);
         }
-        std::sort( begin(children), end(children),
-                   [](const auto& nd1, const auto& nd2)
-                   {return smallestChild(nd1) < smallestChild(nd2);}
-            );
-        while(not children.empty())
-        {
+        std::sort(begin(children),
+                  end(children),
+                  [](const auto& nd1, const auto& nd2)
+                  {return smallestChild(nd1) < smallestChild(nd2);});
+        while (not children.empty()) {
             auto x = children.back();
             children.pop_back();
             nd->addChildAtFront(x);
