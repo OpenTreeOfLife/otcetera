@@ -20,11 +20,10 @@ using std::pair;
 namespace std
 {
 template<>
-struct hash<std::pair<string,json>>
-{
+struct hash<std::pair<string,json>> {
     std::size_t operator()(const std::pair<string,json>& p) const noexcept {return std::hash<string>()(p.first) * std::hash<json>()(p.second);}
 };
-};
+}
 
 struct RTNodeDepth {
     int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)

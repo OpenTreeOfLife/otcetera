@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
                 remove.push_back(nd);
         for(auto nd: remove)
         {
-            auto parent = nd->getParent();
+            //auto parent = nd->getParent();
             auto child = nd->getFirstChild();
             child->detachThisNode();
             nd->addSibOnRight(child);
