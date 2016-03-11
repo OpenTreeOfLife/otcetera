@@ -8,12 +8,12 @@
 
 namespace otc {
 
-std::string makeName(const std::string& prefix, int number);
-std::string makeMRCAName(int number1, int number2);
+std::string makeName(const std::string& prefix, long number);
+std::string makeMRCAName(long number1, long number2);
 template<typename T>
-int smallestChild(const typename T::node_type* node);
+long smallestChild(const typename T::node_type* node);
 template<typename T>
-int& smallestChild(typename T::node_type* node);
+long& smallestChild(typename T::node_type* node);
 template<typename T>
 void calculateSmallestChild(T& tree);
 template<typename T>
@@ -27,7 +27,7 @@ void calculateSmallestChild(T& tree) {
         if (nd->isTip()) {
             smallestChild(nd) = nd->getOttId();
         } else {
-            int sc = smallestChild(nd->getFirstChild());
+            auto sc = smallestChild(nd->getFirstChild());
             for(auto c: iter_child(*nd)) {
                 sc = std::min(sc, smallestChild(c));
             }
@@ -85,7 +85,7 @@ void nameUnamedNodes(T & tree) {
         delete nd;
     }
     
-    int id = 1;
+    long id = 1;
     for(auto nd:iter_pre(tree)) {
         if (nd->hasOttId()) {
             nd->setName("ott"+std::to_string(nd->getOttId()));
@@ -93,8 +93,8 @@ void nameUnamedNodes(T & tree) {
             assert(not nd->isTip());
             assert(not nd->isOutDegreeOneNode());
 
-            int id1 = smallestChild(nd->getFirstChild());
-            int id2 = smallestChild(nd->getFirstChild()->getNextSib());
+            auto id1 = smallestChild(nd->getFirstChild());
+            auto id2 = smallestChild(nd->getFirstChild()->getNextSib());
             auto name = makeMRCAName(id1,id2);
             if (names.count(name)) {
                 throw OTCError()<<"Synthesized name '"<<name<<"' already exists in the tree!";
@@ -106,11 +106,11 @@ void nameUnamedNodes(T & tree) {
     }
 }
 
-inline std::string makeName(const std::string& pre, int number) {
+inline std::string makeName(const std::string& pre, long number) {
     return pre + std::to_string(number);
 }
 
-inline std::string makeMRCAName(int number1, int number2) {
+inline std::string makeMRCAName(long number1, long number2) {
     const static std::string mrca_prefix = "mrcaott";
     return mrca_prefix + std::to_string(number1) + "ott" + std::to_string(number2);
 }

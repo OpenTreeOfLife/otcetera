@@ -13,16 +13,16 @@ using std::unique_ptr;
 using std::string;
 
 struct RTNodeSmallestChild {
-    int smallestChild = 0;
+    long smallestChild = 0;
 };
 
 using Tree_t = RootedTree<RTNodeSmallestChild, RTreeNoData>;
 
-inline int smallestChild(const Tree_t::node_type* node) {
+inline long smallestChild(const Tree_t::node_type* node) {
     return node->getData().smallestChild;
 }
 
-inline int& smallestChild(Tree_t::node_type* node) {
+inline long& smallestChild(Tree_t::node_type* node) {
     return node->getData().smallestChild;
 }
 

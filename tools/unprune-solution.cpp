@@ -19,118 +19,12 @@ using namespace otc;
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 static bool regrafting = false;
 static string rootName = "";
-
-void collapse_split(Tree_t::node_type* nd);
-void show_children(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral);
-int count_children(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral);
-bool is_monotypic(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral);
-Tree_t::node_type* insert_child(Tree_t::node_type* x);
-long n_internal_with_ott_id(const Tree_t& T);
-long n_internal(const Tree_t& T);
-long n_internal_out_degree_1(const Tree_t& T);
-long n_internal_out_degree_many(const Tree_t& T);
-long n_nodes(const Tree_t& T);
 void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose);
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg);
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg);
 bool handleRegraft(OTCLI&, const std::string & arg);
 bool handleRootName(OTCLI&, const std::string & arg);
 
-void collapse_split(Tree_t::node_type* nd) {
-    while (nd->getFirstChild()) {
-        auto nd2 = nd->getFirstChild();
-        nd2->detachThisNode();
-        nd->addSibOnLeft(nd2);
-    }
-    nd->detachThisNode();
-    delete nd;
-}
-
-void show_children(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral) {
-    std::cerr<<nd->getName()<<" children: ";
-    for (auto c = nd->getFirstChild(); c; c = c->getNextSib()) {
-        if (ancestral.count(c)) {
-            std::cerr << "'" << c->getName() << "' ";
-        }
-    }
-    std::cerr << std::endl;
-}
-
-int count_children(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral) {
-    int count = 0;
-    for(auto c = nd->getFirstChild(); c; c = c->getNextSib()) {
-        if (ancestral.count(c)) {
-            count++;
-        }
-    }
-    return count;
-}
-
-bool is_monotypic(Tree_t::node_type* nd, const set<Tree_t::node_type*>& ancestral) {
-    return (count_children(nd, ancestral) == 1);
-}
-
-Tree_t::node_type* insert_child(Tree_t::node_type* x) {
-    auto xc = new Tree_t::node_type(x);
-    while (x->getFirstChild()) {
-        auto nd = x->getFirstChild();
-        nd->detachThisNode();
-        xc->addChild(nd);
-    }
-    assert(not x->hasChildren());
-    x->addChild(xc);
-    return xc;
-}
-
-long n_internal_with_ott_id(const Tree_t& T) {
-    long count = 0;
-    for (auto nd: iter_post_const(T)) {
-        if (not nd->isTip() and nd->hasOttId()) {
-            count++;
-        }
-    }
-    return count;
-}
-
-long n_internal(const Tree_t& T) {
-    long count = 0;
-    for (auto nd: iter_post_const(T)) {
-        if (not nd->isTip()) {
-            count++;
-        }
-    }
-    return count;
-}
-
-long n_internal_out_degree_1(const Tree_t& T) {
-    long count = 0;
-    for (auto nd: iter_post_const(T)) {
-        if (not nd->isTip() and nd->isOutDegreeOneNode()) {
-            count++;
-        }
-    }
-    return count;
-}
-
-long n_internal_out_degree_many(const Tree_t& T) {
-    long count = 0;
-    for(auto nd: iter_post_const(T)) {
-        if (not nd->isTip() and not nd->isOutDegreeOneNode()) {
-            count++;
-        }
-    }
-    return count;
-}
-
-long n_nodes(const Tree_t& T) {
-#pragma clang diagnostic ignored  "-Wunused-variable"
-#pragma GCC diagnostic ignored  "-Wunused-variable"
-    long count = 0;
-    for(auto nd: iter_post_const(T)){
-        count++;
-    }
-    return count;
-}
 
 void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     assert(trees.size() == 2);
@@ -184,7 +78,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
         if (not ancestral.count(nd)) {
             continue;
         }
-        if (is_monotypic(nd, ancestral)) {
+        if (is_monotypic_in_set(nd, ancestral)) {
             continue;
         }
         Tree_t::node_type* nd1 = nullptr;
@@ -193,7 +87,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
         }
         vector<Tree_t::node_type*> nodes = {nd};
         auto anc = nd->getParent();
-        while (not nd1 and anc and is_monotypic(anc,ancestral)) {
+        while (not nd1 and anc and is_monotypic_in_set(anc,ancestral)) {
             nodes.push_back(anc);
             if (ott_to_sol.count(anc->getOttId()) > 0) {
                 if (verbose){
@@ -205,7 +99,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
         }
         if (nd1) {
             if (not ott_to_sol.count(nd->getOttId())) {
-                nd1 = insert_child(nd1);
+                nd1 = bisect_branch_with_new_child(nd1);
                 nd1->setOttId(nd->getOttId());
                 nd1->setName(nd->getName());
                 ott_to_sol[nd1->getOttId()] = nd1;
@@ -216,10 +110,10 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
                 if (verbose) {
                     LOG(INFO)<<"Removing Id = '"<<nodes.back()->getName()<<"' ("<<nodes.back()->getOttId()<<")"
                              <<"  children = "<<nodes.back()->getOutDegree()
-                             <<"  ancestral children = "<<count_children(nodes.back(),ancestral);
+                             <<"  ancestral children = "<<count_children_in_set(nodes.back(),ancestral);
                 }
                 // MTH this is where we should make note of which higher taxa do not make it into the solution.
-                collapse_split(nodes.back());
+                collapse_split_and_del_node(nodes.back());
                 ancestral.erase(nodes.back());
                 nodes.pop_back();
             }
@@ -233,7 +127,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     // 2a. Map solution leaves to taxonomy leaves (walking up monotypic chimneys)
     //map<const Tree_t::node_type*,Tree_t::node_type*> sol_to_tax;
     for (auto nd2: iter_post(taxonomy)) {
-        if (ancestral.count(nd2) and not is_monotypic(nd2,ancestral)){
+        if (ancestral.count(nd2) and not is_monotypic_in_set(nd2,ancestral)){
             assert(ott_to_sol.count(nd2->getOttId()));
         }
     }
@@ -242,7 +136,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
             auto nd1 = ott_to_sol.at(nd2->getOttId());
             assert(nd1->getOttId() == nd2->getOttId());
             // Add the immediate ancestral nodes of nd2 to the solution tree, if they are monotypic
-            while (nd2->getParent() and is_monotypic(nd2->getParent(),ancestral)
+            while (nd2->getParent() and is_monotypic_in_set(nd2->getParent(),ancestral)
                    and not ott_to_sol.count(nd2->getParent()->getOttId())) {
                 nd2 = nd2->getParent();
                 assert(nd1->getParent());

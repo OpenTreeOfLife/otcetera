@@ -187,16 +187,16 @@ class RootedTreeNode {
             assert(parent);
             assert(parent->hasChildren());
 
-            if (lSib)
+            if (lSib){
                 lSib->rSib = rSib;
-            else
+            } else {
                 parent->lChild = rSib;
-
-            if (rSib)
+            }
+            if (rSib) {
                 rSib->lSib = lSib;
-            else
+            } else {
                 parent->rChild = lSib;
-
+            }
             parent = nullptr;
             rSib = nullptr;
             lSib = nullptr;
