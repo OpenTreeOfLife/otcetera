@@ -17,11 +17,12 @@ using std::map;
 
 static std::string lostTaxaJSONFilename;
 
-struct RTNodeSmallestChild {
-    long smallestChild = 0;
+struct RTNodePartialDesSet {
+    std::set<long> desIds;
+    long smallestChild  = 0;
 };
 
-using Tree_t = RootedTree<RTNodeSmallestChild, RTreeNoData>;
+using Tree_t = RootedTree<RTNodePartialDesSet, RTreeNoData>;
 
 inline long smallestChild(const Tree_t::node_type* node) {
     return node->getData().smallestChild;
@@ -33,7 +34,9 @@ inline long& smallestChild(Tree_t::node_type* node) {
 
 class LostTaxonLocation {
     public:
-        void addAttachmentPoint(Tree_t::node_type *);
+        void addAttachmentPoint(Tree_t::node_type *) {
+
+        }
 };
 typedef std::map<int, LostTaxonLocation> LostTaxonMap;
 
@@ -95,6 +98,18 @@ void recursiveUnpruneTaxonForSubtree(N * nearestSolnAncWithTaxon,
     }
 }
 
+template<typename N>
+void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
+    assert(firstNd);
+    while (true) {
+        firstNd->getData().desIds.insert(ottId);
+        if (firstNd == ancAndLast) {
+            return;
+        }
+        firstNd = firstNd->getParent();
+    }
+}
+
 template <typename N>
 void unpruneTaxaForSubtree(N *solnNd,
                            map<long, N*> & ott2tax, 
@@ -107,6 +122,17 @@ void unpruneTaxaForSubtree(N *solnNd,
     assert(ott2soln.at(ottId) == solnNd);
     N * taxonNd = ott2tax.at(ottId);
     assert(!taxonNd->isTip());
+    // this will have the IDs for all of the include taxa for this slice of the tree
+    auto & solnDesIds = solnNd->getData().desIds;
+    //Here we add the sampled IDs to the relevant taxa. This is potentially
+    // confusing because data.desIds will hold all of the OTT Ids in the soln
+    //  tree (even when we are talking about the taxonomy tree)
+    for (auto effectiveTipOttId : solnDesIds) {
+        auto effTipTaxonNd = ott2tax.at(effectiveTipOttId);
+        effTipTaxonNd->getData().desIds.clear();
+        addToDesIdsForAnc(effectiveTipOttId, effTipTaxonNd, taxonNd);
+    }
+
     N * currTaxonChild = taxonNd->getFirstChild();
     assert(currTaxonChild != nullptr);
     N * nextTaxonChild = currTaxonChild->getNextSib();
@@ -148,11 +174,20 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution) {
     }
     map<long, N*> ott_to_sol;
     for (auto nd: iter_post(solution)){
+        auto p = nd->getParent();
         if (nd->hasOttId()){
             ott_to_sol[nd->getOttId()] = nd;
             if (!nd->isTip()) {
                 unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, ltm);
             }
+            if (p) {
+                nd->getData().desIds.insert(nd->getOttId());
+                auto & pd = p->getData();
+                pd.desIds.insert(nd->getOttId());
+            }
+        } else if (p) {
+            const auto & d = nd->getData().desIds;
+            p->getData().desIds.insert(d.begin(), d.end());
         }
         if (nd->isTip()) {
             if (!nd->hasOttId()) {
