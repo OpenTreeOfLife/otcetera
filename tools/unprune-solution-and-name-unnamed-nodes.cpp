@@ -100,7 +100,7 @@ void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
     assert(firstNd);
     while (true) {
         firstNd->getData().desIds.insert(ottId);
-        LOG(DEBUG) << "adding " << ottId << " to node " << firstNd->getName(); dbWriteOttSet(" its desIds", firstNd->getData().desIds);
+        //LOG(DEBUG) << "adding " << ottId << " to node " << firstNd->getName(); dbWriteOttSet(" its desIds", firstNd->getData().desIds);
         if (firstNd == ancAndLast) {
             return;
         }
@@ -234,7 +234,7 @@ void incorporateHigherTaxonNode(N* higherTaxonNd,
                                 LostTaxonMap & ltm) {
     assert(higherTaxonNd);
     assert(rootSolnNd);
-    LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
+    //LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
     const auto & taxDes = higherTaxonNd->getData().desIds;
     assert(taxDes.size() > 0);
     N * currSolnNd = rootSolnNd;
@@ -255,6 +255,15 @@ void incorporateHigherTaxonNode(N* higherTaxonNd,
                 moveUnsampledChildren(higherTaxonNd, currSolnNd);
             }
             return;
+        }
+        if (!isProperSubset(taxDes, solDes)) {
+            LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
+            dbWriteOttSet("taxDes", taxDes);
+            dbWriteOttSet("solDes", solDes);
+            auto d = set_difference_as_set(taxDes, solDes);
+            dbWriteOttSet("tax - sol", d);
+            auto od = set_difference_as_set(solDes, taxDes);
+            dbWriteOttSet("sol - tax", od);
         }
         assert(isProperSubset(taxDes, solDes));
         // look in this subtree for the higher taxon 
@@ -291,15 +300,15 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     assert(rootSolnNd->hasOttId());
     assert(!rootSolnNd->isTip());
     const auto ottId = rootSolnNd->getOttId();
-    LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
+    //LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
     assert(ott2soln.at(ottId) == rootSolnNd);
     N * rootTaxonNd = ott2tax.at(ottId);
-    LOG(DEBUG) << " root taxon is " << rootTaxonNd->getName();
+    //LOG(DEBUG) << " root taxon is " << rootTaxonNd->getName();
     assert(!rootTaxonNd->isTip());
     // this will have the IDs for all of the include taxa for this slice of the tree
     auto & solnDesIds = rootSolnNd->getData().desIds;
     assert(!solnDesIds.empty());
-    dbWriteOttSet("solnRoot desIds = ", solnDesIds);
+    ///dbWriteOttSet("solnRoot desIds = ", solnDesIds);
     // desIds fields of the solution tree are filled in by the caller before this function.
     //  here we fill in those fields for the taxonomy nodes.
     //Here we add the sampled IDs to desId fields ofthe relevant taxa. This is potentially
@@ -318,7 +327,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         solnLeaves.insert(ott2soln.at(effectiveTipOttId));
         taxaLeaves.insert(ott2tax.at(effectiveTipOttId));
     }
-    dbWriteOttSet("rootTaxonNd desIds = ", rootTaxonNd->getData().desIds);
+    ///dbWriteOttSet("rootTaxonNd desIds = ", rootTaxonNd->getData().desIds);
     // If a tip of the solution is a higher taxon, then we should
     //  graft on the other tips here...
     for (auto l : solnLeaves) {

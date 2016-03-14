@@ -8,5 +8,10 @@
       "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
       "infile_list": ["3genus-AnotmonophyleticCandB.tre", "3genus-taxonomy.tre"],
       "expected": "non-monophyletic"
+  },
+  {
+      "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
+      "infile_list": ["spermatophyta_synth.tre", "spermatophyta_taxonomy.tre"],
+      "expected": "spermatophyta"
   }
 ]
