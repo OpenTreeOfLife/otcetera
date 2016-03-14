@@ -74,6 +74,8 @@ inline std::vector<N *> all_children(N * node) {
 //  of the returned node.
 template<typename T>
 T* bisect_branch_with_new_child(T* x) {
+    assert(x);
+    assert(x->getParent());
     auto xc = new T(x);
     while (x->getFirstChild()) {
         auto nd = x->getFirstChild();
@@ -85,6 +87,23 @@ T* bisect_branch_with_new_child(T* x) {
     return xc;
 }
 
+// breaks the branch from x to its parent by allocating
+//  a new node (which is returned) and putting it in between
+//  `x` and the parent of `x`
+template<typename T>
+T* bisect_branch_with_new_parent(T* x) {
+    assert(x);
+    assert(x->getParent());
+    auto xc = new T(x);
+    while (x->getFirstChild()) {
+        auto nd = x->getFirstChild();
+        nd->detachThisNode();
+        xc->addChild(nd);
+    }
+    assert(not x->hasChildren());
+    x->addChild(xc);
+    return xc;
+}
 template<typename T, typename CONTAINER>
 inline void show_children_in_set(std::ostream & out, T nd, const CONTAINER& ancestral) {
     out << nd->getName() << " children: ";

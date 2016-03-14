@@ -3,6 +3,7 @@
 #include <iterator>
 #include <sstream>
 #include <stack>
+#include <tuple>
 
 #include "otc/otcli.h"
 #include "otc/node_naming.h"
@@ -33,10 +34,30 @@ inline long& smallestChild(Tree_t::node_type* node) {
     return node->getData().smallestChild;
 }
 
+// Stores pointers for a taxon X which not in the solution.
+//   points to the MRCA, and all of the attachment points for 
+//   subtrees that are part of this taxon.
+// An attachment point is:
+//      1. an ancestor of at least one member of the taxon X,
+//      2. an ancestor of at least one taxon that is not contained in the taxon X.
+//      3. has at least one child (an attached node) that consists entirely
+//          of member of taxon X
 class LostTaxonLocation {
     public:
-        void addAttachmentPoint(Tree_t::node_type *) {
-        }
+    LostTaxonLocation(long oid=0, Tree_t::node_type *mrcaNd=nullptr)
+        :ottId(oid),
+        mrca(mrcaNd) {
+    }
+    void addAttachmentPoint(Tree_t::node_type *attach, Tree_t::node_type *child) {
+        attachNode2AttachedVec[attach].push_back(child);
+    }
+    private:
+    long ottId = 0L;
+    Tree_t::node_type * mrca = nullptr;
+    using node_vec = std::vector<Tree_t::node_type *>;
+    using attach2node_vec = std::map<Tree_t::node_type *, node_vec>;
+    // for each attachment point, we store which subtrees for this taxon attach there.
+    attach2node_vec attachNode2AttachedVec;
 };
 typedef std::map<int, LostTaxonLocation> LostTaxonMap;
 
@@ -94,25 +115,92 @@ std::vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
 
 template <typename N>
 N * introduceMonotypicParent(N * taxon, N * solnChild) {
-    assert(false);
+    assert(taxon);
+    assert(solnChild);
+    N * nn = new N(nullptr);
+    solnChild->replaceThisNode(nn);
+    nn->setName(taxon->getName());
+    nn->setOttId(taxon->getOttId());
+    nn->addChild(solnChild);
+    nn->getData().desIds = solnChild->getData().desIds;
+    return nn;
 }
 
 template <typename N>
 N * addParentAndMoveUnsampledTaxChildren(N * taxon, N * solnChild) {
-    assert(false);
+    auto * nn = introduceMonotypicParent(taxon, solnChild);
+    moveUnsampledChildren(taxon, nn);
+    return nn;
+}
+
+// Moves all of the children of taxon that have empty desIds fields
+//  to be children of solnNode.
+template <typename N>
+void moveUnsampledChildren(N * taxon, N * solnNode) {
+    assert(taxon);
+    assert(solnNode);
+    const auto children = all_children(taxon);
+    for (auto child : children) {
+        if (child->getData().desIds.empty()) {
+            child->detachThisNode();
+            solnNode->addChild(child);
+        }
+    }
 }
 
 template <typename N>
-void moveUnsampledChildren(N * taxon, N * solnChild) {
-    assert(false);
+void registerAttachmentPoints(const N * taxon,
+                              N * mrca,
+                              LostTaxonLocation & ltl) {
+    assert(taxon);
+    assert(mrca);
+    std::set<N *> visited;
+    std::stack<N *> toDealWith;
+    const auto & taxDes = taxon->getData().desIds;
+    assert(taxDes.size() > 1);
+    assert(isProperSubset(taxDes, mrca->getData().desIds));
+    N * currSolnNd = mrca;
+    // the root of the solution, must have all of the constituent taxa
+    while (true) {
+        if (visited.count(currSolnNd) > 0) {
+            if (toDealWith.empty()) {
+                return ;
+            }
+            currSolnNd = toDealWith.top();
+            toDealWith.pop();
+            assert (visited.count(currSolnNd) == 0);
+        } else {
+            visited.insert(currSolnNd);
+            const auto & solDes = currSolnNd->getData().desIds;
+            assert(solDes != taxDes); // we should not call this if a des of mrca = taxon
+            for (auto c : iter_child(*currSolnNd)) {
+                const auto & cdesId = c->getData().desIds;
+                if (!areDisjoint(cdesId, taxDes)) {
+                    if (isProperSubset(cdesId, taxDes)) {
+                        ltl.addAttachmentPoint(currSolnNd, c);
+                    } else {
+                        toDealWith.push(c);
+                    }
+                }
+            }
+        }
+    }
 }
 
 template <typename N>
-void addChildrenOfNonMonophyleticTaxon(N * taxon, N * mrca, LostTaxonMap & ltm) {
-    assert(false);
+void addChildrenOfNonMonophyleticTaxon(N * taxon,
+                                       N * mrca,
+                                       LostTaxonMap & ltm) {
+    assert(taxon);
+    assert(mrca);
+    assert(taxon->hasOttId());
+    const auto ottId = taxon->getOttId();
+    assert(ltm.count(ottId) == 0); // should be adding a new element
+    ltm[ottId] = LostTaxonLocation(ottId, mrca);
+    auto & ltl = ltm[ottId];
+    registerAttachmentPoints(taxon, mrca, ltl);
+    moveUnsampledChildren(taxon, mrca);
 }
-
-
 
 template <typename N>
 void incorporateHigherTaxonNode(N* higherTaxonNd,
