@@ -360,8 +360,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         {
             json node;
             string name = nd->getName();
-            if (nd->hasOttId())
-                name = "ott" + std::to_string(nd->getOttId());
+//            if (nd->hasOttId())
+//                name = "ott" + std::to_string(nd->getOttId());
 
             {
                 json j_supported_by = json::array();
