@@ -2,6 +2,7 @@
 #include <unordered_set>
 #include <iterator>
 #include <sstream>
+#include <stack>
 
 #include "otc/otcli.h"
 #include "otc/node_naming.h"
@@ -35,7 +36,6 @@ inline long& smallestChild(Tree_t::node_type* node) {
 class LostTaxonLocation {
     public:
         void addAttachmentPoint(Tree_t::node_type *) {
-
         }
 };
 typedef std::map<int, LostTaxonLocation> LostTaxonMap;
@@ -46,59 +46,11 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution);
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm) {
+    assert(false);
 }
 
+// adds ottId to the desIds field of every node from firstNd down to ancAndLast (inclusive)
 template <typename N>
-void stealNodeAsChild(N * newPar, N *child) {
-
-}
-
-
-template <typename N>
-N * mrcaForThisTaxon(N * parMRCASolnNd,
-                     N * taxonNd,
-                     map<long, N*> & ott2tax, 
-                     map<long, N*> & ott2soln, 
-                     LostTaxonMap & ltm) {
-
-}
-
-template <typename N>
-void recursiveUnpruneTaxonForSubtree(N * nearestSolnAncWithTaxon,
-                                     N * mrcaSolnNd,
-                                     N * taxonNd,
-                                     map<long, N*> & ott2tax, 
-                                     map<long, N*> & ott2soln, 
-                                     LostTaxonMap & ltm) {
-    const auto ottId = taxonNd->getOttId();
-    if (ott2soln.count(ottId) > 0) {
-        return;
-    }
-    if (taxonNd->isTip()) {
-        const auto taxPar = taxonNd->getParent();
-        const auto taxParOttId = taxPar->getOttId();
-        auto & ltl = ltm[taxParOttId];
-        ltl.addAttachmentPoint(mrcaSolnNd);
-        stealNodeAsChild(mrcaSolnNd, taxonNd);
-    } else {
-        N * nm = mrcaForThisTaxon(mrcaSolnNd, taxonNd, ott2tax, ott2soln, ltm);
-        N * currTaxonChild = taxonNd->getFirstChild();
-        assert(currTaxonChild != nullptr);
-        N * nextTaxonChild = currTaxonChild->getNextSib();
-        while (currTaxonChild) {
-            recursiveUnpruneTaxonForSubtree(nearestSolnAncWithTaxon,
-                                            nm,
-                                            currTaxonChild,
-                                            ott2tax,
-                                            ott2soln, 
-                                            ltm);
-            currTaxonChild = nextTaxonChild;
-            nextTaxonChild = currTaxonChild->getNextSib();
-        }
-    }
-}
-
-template<typename N>
 void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
     assert(firstNd);
     while (true) {
@@ -111,40 +63,194 @@ void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
 }
 
 template <typename N>
-void unpruneTaxaForSubtree(N *solnNd,
+std::vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
+                                               const std::set<N *> & boundaries) {
+    std::set<N *> seen;
+    std::vector<N *> r;
+    N * curr = root;
+    assert(!curr->getData().desIds.empty());
+    std::stack<N *> toDealWith;
+    while (true) {
+        if (seen.count(curr) > 0) {
+            if (toDealWith.empty()) {
+                return r;
+            }
+            curr = toDealWith.top();
+            toDealWith.pop();
+            assert (seen.count(curr) == 0);
+        } else {
+            seen.insert(curr);
+            if (boundaries.count(curr) == 0) {
+                r.push_back(curr);
+                for (auto c : iter_child(*curr)) {
+                    if (!c->getData().desIds.empty()) {
+                        toDealWith.push(c);
+                    }
+                }
+            }
+        }
+    }
+}
+
+template <typename N>
+N * introduceMonotypicParent(N * taxon, N * solnChild) {
+    assert(false);
+}
+
+template <typename N>
+N * addParentAndMoveUnsampledTaxChildren(N * taxon, N * solnChild) {
+    assert(false);
+}
+
+template <typename N>
+void moveUnsampledChildren(N * taxon, N * solnChild) {
+    assert(false);
+}
+
+template <typename N>
+void addChildrenOfNonMonophyleticTaxon(N * taxon, N * mrca, LostTaxonMap & ltm) {
+    assert(false);
+}
+
+
+
+template <typename N>
+void incorporateHigherTaxonNode(N* higherTaxonNd,
+                                N* rootSolnNd,
+                                std::set<N *> & nodesAddedForTaxa,
+                                LostTaxonMap & ltm) {
+    assert(higherTaxonNd);
+    assert(rootSolnNd);
+    const auto & taxDes = higherTaxonNd->getData().desIds;
+    assert(taxDes.size() > 1);
+    N * currSolnNd = rootSolnNd;
+    N * tipmostMRCA = nullptr;
+    // the root of the solution, must have all of the constituent taxa
+    assert(isSubset(taxDes, rootSolnNd->getData().desIds));
+    while (true) {
+        const auto & solDes = currSolnNd->getData().desIds;
+        if (solDes == taxDes) {
+            if (higherTaxonNd->isOutDegreeOneNode()) {
+                auto nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
+                nodesAddedForTaxa.insert(nt);
+            } else if (nodesAddedForTaxa.count(currSolnNd) > 0) {
+                auto nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
+                nodesAddedForTaxa.insert(nt);
+            } else {
+                moveUnsampledChildren(higherTaxonNd, currSolnNd);
+            }
+            return;
+        }
+        assert(isProperSubset(taxDes, solDes));
+        // look in this subtree for the higher taxon 
+        tipmostMRCA = currSolnNd;
+        N * nextSolnNd = nullptr;
+        for (auto c : iter_child(*currSolnNd)) {
+            const auto & cdesId = c->getData().desIds;
+            if (!areDisjoint(cdesId, taxDes)) {
+                if (nextSolnNd == nullptr) {
+                    nextSolnNd = c;
+                } else {
+                    // More than one child of currSolnNd, has a member of the taxon,
+                    // so this is the mrca
+                    // The fact that we are here (not in the branch above where we
+                    //  tested for equality), means that this solution will not
+                    //  display this taxon
+                    assert(tipmostMRCA != nullptr);
+                    addChildrenOfNonMonophyleticTaxon(higherTaxonNd, tipmostMRCA, ltm);
+                    return;
+                }
+            }
+        }
+        assert(nextSolnNd != nullptr);
+        currSolnNd = nextSolnNd;
+    }
+}
+
+template <typename N>
+void unpruneTaxaForSubtree(N *rootSolnNd,
                            map<long, N*> & ott2tax, 
                            map<long, N*> & ott2soln, 
                            LostTaxonMap & ltm) {
-    assert(solnNd);
-    assert(solnNd->hasOttId());
-    assert(!solnNd->isTip());
-    const auto ottId = solnNd->getOttId();
-    assert(ott2soln.at(ottId) == solnNd);
-    N * taxonNd = ott2tax.at(ottId);
-    assert(!taxonNd->isTip());
+    assert(rootSolnNd);
+    assert(rootSolnNd->hasOttId());
+    assert(!rootSolnNd->isTip());
+    const auto ottId = rootSolnNd->getOttId();
+    assert(ott2soln.at(ottId) == rootSolnNd);
+    N * rootTaxonNd = ott2tax.at(ottId);
+    assert(!rootTaxonNd->isTip());
     // this will have the IDs for all of the include taxa for this slice of the tree
-    auto & solnDesIds = solnNd->getData().desIds;
-    //Here we add the sampled IDs to the relevant taxa. This is potentially
-    // confusing because data.desIds will hold all of the OTT Ids in the soln
-    //  tree (even when we are talking about the taxonomy tree)
+    auto & solnDesIds = rootSolnNd->getData().desIds;
+    // desIds fields of the solution tree are filled in by the caller before this function.
+    //  here we fill in those fields for the taxonomy nodes.
+    //Here we add the sampled IDs to desId fields ofthe relevant taxa. This is potentially
+    //  confusing because getData().desIds will hold only the IDs of taxa that are present in the soln
+    //  tree (even when we are talking about the taxonomy node's desIds)
+    // While we are walking through the "leaf" Ids for this tree slice, we'll also
+    //  collect the leaf sets 
+    std::set<N *> solnLeaves;
+    std::set<N *> taxaLeaves;
     for (auto effectiveTipOttId : solnDesIds) {
         auto effTipTaxonNd = ott2tax.at(effectiveTipOttId);
         effTipTaxonNd->getData().desIds.clear();
-        addToDesIdsForAnc(effectiveTipOttId, effTipTaxonNd, taxonNd);
+        addToDesIdsForAnc(effectiveTipOttId,
+                          effTipTaxonNd,
+                          rootTaxonNd);
+        solnLeaves.insert(ott2soln.at(effectiveTipOttId));
+        taxaLeaves.insert(ott2tax.at(effectiveTipOttId));
     }
-
-    N * currTaxonChild = taxonNd->getFirstChild();
-    assert(currTaxonChild != nullptr);
-    N * nextTaxonChild = currTaxonChild->getNextSib();
-    while (currTaxonChild) {
-        recursiveUnpruneTaxonForSubtree(solnNd,
-                                        solnNd,
-                                        currTaxonChild,
-                                        ott2tax,
-                                        ott2soln, 
-                                        ltm);
-        currTaxonChild = nextTaxonChild;
-        nextTaxonChild = currTaxonChild->getNextSib();
+    // If a tip of the solution is a higher taxon, then we should
+    //  graft on the other tips here...
+    for (auto l : solnLeaves) {
+        if (l->isTip()) {
+            assert(l->hasOttId());
+            auto leafOttId = l->getOttId();
+            auto taxonForLeaf = ott2tax.at(leafOttId);
+            if (!taxonForLeaf->isTip()) {
+                auto cvec = all_children(taxonForLeaf);
+                for (auto c : cvec) {
+                    taxonForLeaf->removeChild(c);
+                    l->addChild(c);
+                }
+            }
+        }
+    }
+    // Walk through the taxonomy in a preorder fashion, but only accumulate
+    //  a vector of those nodes with at least 1 member of the `desIds` field.
+    //  these are the internal nodes that are induced by the taxa included
+    //  in the solution tree.
+    // We will reverse the vector in the next line, so that we can walk through
+    //  in postorder.
+    auto postOrderInTaxNd = higherTaxPreOrderBelowBoundaries(rootTaxonNd,
+                                                          taxaLeaves);
+    std::reverse(postOrderInTaxNd.begin(), postOrderInTaxNd.end());
+    // Here we will add the relevant higher (non-leaf) taxa from the taxonomy to the 
+    //  solution. It is crucial that we do this in postorder because if we have a series
+    //  of nodes to introduce along a branch, the incorporateHigherTaxonNode function
+    //  will add them below the attachment node (so postorder will assure that they 
+    //  are correctly added in the tip->root orientation).
+    std::set<N *> nodesAddedForTaxa;
+    for (auto higherTaxonNd : postOrderInTaxNd) {
+        incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, ltm);
+    }
+    // for the sake of a low memory footprint, here we 
+    //  clear out the desIds fields for this slice of the tree.
+    for (auto n : taxaLeaves) {
+        n->getData().desIds.clear();
+    }
+    for (auto n : postOrderInTaxNd) {
+        n->getData().desIds.clear();
+    }
+    std::set<N *> visited;
+    for (auto n : solnLeaves) {
+        auto c = n;
+        while (visited.count(c) == 0 && c != rootSolnNd) {
+            c->getData().desIds.clear();
+            if (c != n) {
+                visited.insert(c);
+            }
+            c = c->getParent();
+        }
     }
 }
 
@@ -173,22 +279,10 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution) {
         }
     }
     map<long, N*> ott_to_sol;
+    // postorder walk over solution. Every time we find a taxon assigned to a taxon
+    //  we augment the slice of the tree that is rooted at that node (and is the
+    //  subtree that is cut at the deepest taxonomic node)
     for (auto nd: iter_post(solution)){
-        auto p = nd->getParent();
-        if (nd->hasOttId()){
-            ott_to_sol[nd->getOttId()] = nd;
-            if (!nd->isTip()) {
-                unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, ltm);
-            }
-            if (p) {
-                nd->getData().desIds.insert(nd->getOttId());
-                auto & pd = p->getData();
-                pd.desIds.insert(nd->getOttId());
-            }
-        } else if (p) {
-            const auto & d = nd->getData().desIds;
-            p->getData().desIds.insert(d.begin(), d.end());
-        }
         if (nd->isTip()) {
             if (!nd->hasOttId()) {
                 throw OTCError() << "Tip "<< nd->getName() << " in solution lacks an OTT ID";
@@ -196,7 +290,25 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution) {
             if (not ott_to_tax.count(nd->getOttId())) {
                 throw OTCError() << "OttId "<< nd->getOttId() << " not in taxonomy!";
             }
-
+        }
+        auto p = nd->getParent();
+        if (nd->hasOttId()){
+            ott_to_sol[nd->getOttId()] = nd;
+            if (!nd->isTip()) {
+                // unpruneTaxaForSubtree will deal with this slice of the
+                //tree
+                unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, ltm);
+                // we treat this named node as a tip for the next deeper slice
+                nd->getData().desIds.clear();
+            }
+            nd->getData().desIds.insert(nd->getOttId());
+            if (p) {
+                auto & pd = p->getData();
+                pd.desIds.insert(nd->getOttId());
+            }
+        } else if (p) {
+            const auto & d = nd->getData().desIds;
+            p->getData().desIds.insert(d.begin(), d.end());
         }
     }    
     return ltm;

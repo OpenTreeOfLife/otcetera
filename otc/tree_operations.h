@@ -52,9 +52,20 @@ template<typename T>
 std::size_t pruneTipsWithoutIds(T & tree);
 template <typename T>
 std::vector<typename T::node_type*> all_nodes(T& tree);
+template <typename N>
+std::vector<N *> all_children(N * node);
 
 
 //// impl
+template <typename N>
+inline std::vector<N *> all_children(N * node) {
+    std::vector<N *> r;
+    for (auto c : iter_child(*node)) {
+        r.push_back(c);
+    }
+    return r;
+}
+
 // breaks the branch from x to its parent by allocating
 //  a new node (which is returned) and assigning all of
 //  the children of `x` to that node.
