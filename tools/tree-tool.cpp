@@ -53,6 +53,9 @@ variables_map parse_cmd_line(int argc,char* argv[])
     options_description output("Output options");
     output.add_options()
         ("high-degree-nodes", value<long>(), "Show the top <arg> high-degree nodes.")
+        ("degree-of",value<long>(), "Show the degree of node <arg>")
+        ("children-of",value<long>(), "List the children of node <arg>")
+        ("parent-of",value<long>(), "List the parent of node <arg>")
         ;
 
     options_description visible;
@@ -96,6 +99,15 @@ Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, long root_ott_id)
             return nd;
     
     throw OTCError()<<"Can't find node with id "<<root_ott_id<<" in tree '"<<tree.getName()<<"'";
+}
+
+Tree_t::node_type* find_node_by_name(Tree_t& tree, const string& name)
+{
+    for(auto nd: iter_pre(tree))
+        if (nd->getName().size() and nd->getName() == name)
+            return nd;
+    
+    throw OTCError()<<"Can't find node with name '"<<name<<"' in tree '"<<tree.getName()<<"'";
 }
 
 unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long root_ott_id)
@@ -148,6 +160,28 @@ int main(int argc, char* argv[])
         {
             long n = args["high-degree-nodes"].as<long>();
             show_high_degree_nodes(*tree, n);
+        }
+        else if (args.count("degree-of"))
+        {
+            long n = args["degree-of"].as<long>();
+            auto nd = find_node_by_ott_id(*tree, n);
+            std::cout<<nd->getOutDegree()<<"\n";
+        }
+        else if (args.count("children-of"))
+        {
+            long n = args["children-of"].as<long>();
+            auto nd = find_node_by_ott_id(*tree, n);
+            for(auto c = nd->getFirstChild(); c; c = c->getNextSib())
+                std::cout<<c->getName()<<"\n";
+        }
+        else if (args.count("parent-of"))
+        {
+            long n = args["parent-of"].as<long>();
+            auto nd = find_node_by_ott_id(*tree, n);
+            if (nd->getParent())
+                std::cout<<nd->getParent()->getName()<<"\n";
+            else
+                std::cout<<"No parent: that node is the root.\n";
         }
         else
             writeTreeAsNewick(std::cout, *tree);
