@@ -76,6 +76,7 @@ void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
     assert(firstNd);
     while (true) {
         firstNd->getData().desIds.insert(ottId);
+        LOG(DEBUG) << "adding " << ottId << " to node " << firstNd->getName(); dbWriteOttSet(" its desIds", firstNd->getData().desIds);
         if (firstNd == ancAndLast) {
             return;
         }
@@ -211,7 +212,7 @@ void incorporateHigherTaxonNode(N* higherTaxonNd,
     assert(rootSolnNd);
     LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
     const auto & taxDes = higherTaxonNd->getData().desIds;
-    assert(taxDes.size() > 1);
+    assert(taxDes.size() > 0);
     N * currSolnNd = rootSolnNd;
     N * tipmostMRCA = nullptr;
     // the root of the solution, must have all of the constituent taxa
@@ -222,7 +223,8 @@ void incorporateHigherTaxonNode(N* higherTaxonNd,
             if (higherTaxonNd->isOutDegreeOneNode()) {
                 auto nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
                 nodesAddedForTaxa.insert(nt);
-            } else if (nodesAddedForTaxa.count(currSolnNd) > 0) {
+            } else if (nodesAddedForTaxa.count(currSolnNd) > 0
+                       || (currSolnNd->hasOttId() && currSolnNd->getOttId() != higherTaxonNd->getOttId())) {
                 auto nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
                 nodesAddedForTaxa.insert(nt);
             } else {
