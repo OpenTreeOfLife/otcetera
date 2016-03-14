@@ -426,6 +426,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         {
             if (not nd->getParent()) continue;
 
+            // Ignore knuckles in input trees.
+            //
+            // Note that in general, if we've pruned this tree down to match the shared taxon set
+            // then this could produce knuckles.
+            if (nd->isOutDegreeOneNode()) continue;
+
             auto MRCA_include = trace_include_group_find_MRCA(nd, 1);
             assert(not is_marked(MRCA_include,2));
             auto MRCA_exclude = trace_exclude_group_find_MRCA(nd, 1, 2);
