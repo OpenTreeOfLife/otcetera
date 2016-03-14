@@ -206,6 +206,18 @@ inline std::vector<typename T::node_type*> all_nodes(T& tree) {
     return nodes;
 }
 
+template <typename T>
+inline std::vector<typename T::node_type*> all_internal_nodes_post(T& tree) {
+    std::vector<typename T::node_type*> nodes;
+    for(auto nd: iter_post(tree)) {
+        if (!nd->isTip()) {
+            nodes.push_back(nd);
+        }
+    }
+    return nodes;
+}
+
+
 template<typename T>
 unsigned int countPolytomies(const T & tree) {
     unsigned int n = 0U;

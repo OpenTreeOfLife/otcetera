@@ -367,10 +367,11 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution) {
         }
     }
     map<long, N*> ott_to_sol;
+    const auto snVec = all_internal_nodes_post(solution);
     // postorder walk over solution. Every time we find a taxon assigned to a taxon
     //  we augment the slice of the tree that is rooted at that node (and is the
     //  subtree that is cut at the deepest taxonomic node)
-    for (auto nd: iter_post(solution)){
+    for (auto nd: snVec){
         if (nd->isTip()) {
             if (!nd->hasOttId()) {
                 throw OTCError() << "Tip "<< nd->getName() << " in solution lacks an OTT ID";
