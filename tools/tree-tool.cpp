@@ -47,7 +47,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
     options_description tree("Tree options");
     tree.add_options()
         ("root,r", value<long>(), "OTT id of root node of subtree to keep")
-        ("prune,p", value<std::vector<long>>()->composing(),"OTT ids of taxa to prune")
+        ("prune,p", value<std::vector<long> >()->composing(),"OTT ids of taxa to prune")
+        ("slice,s", value<std::vector<long> >()->composing(),"OTT ids of root and taxa to prune")
         ;
 
     options_description output("Output options");
@@ -119,6 +120,26 @@ unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long r
     return tree2;
 }
 
+unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
+                              long root_ott_id,
+                              const std::vector<long> & tips) {
+    for (auto t_ott_id : tips) {
+        auto tn = find_node_by_ott_id(*tree, t_ott_id);
+        if (tn && !tn->isTip()) {
+            const auto children = all_children(tn);
+            for (auto c : children) {
+                c->detachThisNode();
+            }
+        }
+    }
+    auto root = find_node_by_ott_id(*tree, root_ott_id);
+    root->detachThisNode();
+    unique_ptr<Tree_t> tree2 (new Tree_t);
+    tree2->_setRoot(root);
+    return tree2;
+}
+
+
 void show_high_degree_nodes(const Tree_t& tree, int n)
 {
     std::multimap<long,std::string> nodes;
@@ -155,6 +176,16 @@ int main(int argc, char* argv[])
             long root = args["root"].as<long>();
             tree = truncate_to_subtree_by_ott_id(std::move(tree), root);
         }
+        if (args.count("slice"))
+        {
+            std::vector<long> slice = args["slice"].as<std::vector<long> >();
+            if (slice.empty()) {
+                throw OTCError() << "Expecting a root ID followed by a OTT Ids to slice from the tree";
+            }
+            long root = slice[0];
+            slice.erase(slice.begin());
+            tree = slice_tree(std::move(tree), root, slice);
+        }
         
         if (args.count("high-degree-nodes"))
         {
@@ -183,8 +214,10 @@ int main(int argc, char* argv[])
             else
                 std::cout<<"No parent: that node is the root.\n";
         }
-        else
+        else {
             writeTreeAsNewick(std::cout, *tree);
+            std::cout << std::endl;
+        }
     }
     catch (std::exception& e)
     {
