@@ -310,7 +310,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     // We will reverse the vector in the next line, so that we can walk through
     //  in postorder.
     auto postOrderInTaxNd = higherTaxPreOrderBelowBoundaries(rootTaxonNd,
-                                                          taxaLeaves);
+                                                             taxaLeaves);
     std::reverse(postOrderInTaxNd.begin(), postOrderInTaxNd.end());
     // Here we will add the relevant higher (non-leaf) taxa from the taxonomy to the 
     //  solution. It is crucial that we do this in postorder because if we have a series
