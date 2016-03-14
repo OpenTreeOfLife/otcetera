@@ -359,8 +359,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         {
             json node;
             string name = nd->getName();
-            if (nd->hasOttId())
-                name = "ott" + std::to_string(nd->getOttId());
+//            if (nd->hasOttId())
+//                name = "ott" + std::to_string(nd->getOttId());
 
             {
                 json j_supported_by = json::array();
@@ -424,6 +424,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         for(const auto nd: iter_post_const(tree))
         {
             if (not nd->getParent()) continue;
+
+            // Ignore knuckles in input trees.
+            //
+            // Note that in general, if we've pruned this tree down to match the shared taxon set
+            // then this could produce knuckles.
+            if (nd->isOutDegreeOneNode()) continue;
 
             auto MRCA_include = trace_include_group_find_MRCA(nd, 1);
             assert(not is_marked(MRCA_include,2));
