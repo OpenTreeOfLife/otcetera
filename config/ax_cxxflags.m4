@@ -65,7 +65,7 @@ AC_DEFUN([AX_CXXFLAGS],
 		if test "$enable_debugging" = yes; then
 				#	Suppress warnings about possibly uninitialized variables but show everything else (used for
 				#   development, but these warnings should also not trip for release builds)
-			CXXFLAGS_WARNINGS="$CXXFLAGS_WARNINGS -Wall -Wno-uninitialized -Wimplicit -Wreturn-type -Wunused -Wredundant-decls -Wcast-align -Wcomment -Wextra"
+			CXXFLAGS_WARNINGS="$CXXFLAGS_WARNINGS -Wall -Wno-uninitialized -Wreturn-type -Wunused -Wredundant-decls -Wcast-align -Wcomment -Wextra"
 		else
 				#	Just suppress warnings about possibly uninitialized variables	
 			CXXFLAGS_WARNINGS="$CXXFLAGS_WARNINGS -Wno-uninitialized"
