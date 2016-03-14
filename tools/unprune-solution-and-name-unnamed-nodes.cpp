@@ -4,7 +4,7 @@
 #include <sstream>
 #include <stack>
 #include <tuple>
-
+#include "json.hpp"
 #include "otc/otcli.h"
 #include "otc/node_naming.h"
 #include "otc/tree_iter.h"
@@ -12,6 +12,7 @@
 #include "otc/supertree_util.h"
 
 using namespace otc;
+using json = nlohmann::json;
 using std::vector;
 using std::unique_ptr;
 using std::string;
@@ -51,13 +52,14 @@ class LostTaxonLocation {
     void addAttachmentPoint(Tree_t::node_type *attach, Tree_t::node_type *child) {
         attachNode2AttachedVec[attach].push_back(child);
     }
-    private:
+    public: //@TMP should be private.
     long ottId = 0L;
     Tree_t::node_type * mrca = nullptr;
     using node_vec = std::vector<Tree_t::node_type *>;
     using attach2node_vec = std::map<Tree_t::node_type *, node_vec>;
     // for each attachment point, we store which subtrees for this taxon attach there.
     attach2node_vec attachNode2AttachedVec;
+
 };
 typedef std::map<int, LostTaxonLocation> LostTaxonMap;
 
@@ -67,7 +69,29 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution);
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm) {
-    assert(false);
+    json lostTaxa;
+    for (auto ltmEl : ltm) {
+        const auto & ottId = ltmEl.first;
+        const auto & ltl = ltmEl.second; 
+        json lostTaxonLocation;
+        lostTaxonLocation["mrca"] = ltl.mrca->getName();
+        const auto attachmentPoints = ltl.attachNode2AttachedVec;
+        json apjson;
+        for (auto attachPoint: attachmentPoints) {
+            const auto & parent = attachPoint.first;
+            const auto & childVec = attachPoint.second;
+            json childVecJSON = json::array();
+            for (auto c : childVec) {
+                childVecJSON.push_back(c->getName());
+            }
+            apjson[parent->getName()] = childVecJSON;
+        }
+        lostTaxonLocation["attachment_points"] = apjson;
+        lostTaxa["ott" + std::to_string(ottId)] = lostTaxonLocation;
+    }
+    json document;
+    document["non_monophyletic_taxa"] = lostTaxa;
+    out << document.dump(4) << std::endl;
 }
 
 // adds ottId to the desIds field of every node from firstNd down to ancAndLast (inclusive)

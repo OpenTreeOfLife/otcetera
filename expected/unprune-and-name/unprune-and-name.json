@@ -5,7 +5,7 @@
       "expected": "simple-unprune"
   },
   {
-      "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "<INFILELIST>"],
+      "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
       "infile_list": ["3genus-AnotmonophyleticCandB.tre", "3genus-taxonomy.tre"],
       "expected": "non-monophyletic"
   }
