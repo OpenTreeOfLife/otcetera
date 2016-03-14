@@ -85,7 +85,7 @@ void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
 
 template <typename N>
 std::vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
-                                               const std::set<N *> & boundaries) {
+                                                  const std::set<N *> & boundaries) {
     std::set<N *> seen;
     std::vector<N *> r;
     N * curr = root;
@@ -209,6 +209,7 @@ void incorporateHigherTaxonNode(N* higherTaxonNd,
                                 LostTaxonMap & ltm) {
     assert(higherTaxonNd);
     assert(rootSolnNd);
+    LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
     const auto & taxDes = higherTaxonNd->getData().desIds;
     assert(taxDes.size() > 1);
     N * currSolnNd = rootSolnNd;
@@ -264,11 +265,15 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     assert(rootSolnNd->hasOttId());
     assert(!rootSolnNd->isTip());
     const auto ottId = rootSolnNd->getOttId();
+    LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
     assert(ott2soln.at(ottId) == rootSolnNd);
     N * rootTaxonNd = ott2tax.at(ottId);
+    LOG(DEBUG) << " root taxon is " << rootTaxonNd->getName();
     assert(!rootTaxonNd->isTip());
     // this will have the IDs for all of the include taxa for this slice of the tree
     auto & solnDesIds = rootSolnNd->getData().desIds;
+    assert(!solnDesIds.empty());
+    dbWriteOttSet("solnRoot desIds = ", solnDesIds);
     // desIds fields of the solution tree are filled in by the caller before this function.
     //  here we fill in those fields for the taxonomy nodes.
     //Here we add the sampled IDs to desId fields ofthe relevant taxa. This is potentially
@@ -287,6 +292,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         solnLeaves.insert(ott2soln.at(effectiveTipOttId));
         taxaLeaves.insert(ott2tax.at(effectiveTipOttId));
     }
+    dbWriteOttSet("rootTaxonNd desIds = ", rootTaxonNd->getData().desIds);
     // If a tip of the solution is a higher taxon, then we should
     //  graft on the other tips here...
     for (auto l : solnLeaves) {
@@ -367,7 +373,7 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution) {
         }
     }
     map<long, N*> ott_to_sol;
-    const auto snVec = all_internal_nodes_post(solution);
+    const auto snVec = all_nodes(solution);
     // postorder walk over solution. Every time we find a taxon assigned to a taxon
     //  we augment the slice of the tree that is rooted at that node (and is the
     //  subtree that is cut at the deepest taxonomic node)
@@ -451,6 +457,7 @@ int main(int argc, char *argv[]) {
     const auto lostTaxa = unpruneTaxa(taxonomy, solution);
     nameUnamedNodes(solution);
     writeTreeAsNewick(std::cout, solution);
+    std::cout << std::endl;
     if (!lostTaxaJSONFilename.empty()) {
         writeLostTaxa(lostTaxaJSONStream, lostTaxa);
     }
