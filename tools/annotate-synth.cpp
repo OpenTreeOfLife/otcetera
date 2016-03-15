@@ -48,7 +48,7 @@ Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 Tree_t::node_type* nmParent(Tree_t::node_type* node);
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
-string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node);
+string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
 Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits);
 Tree_t::node_type* get_root(Tree_t::node_type* node);
 const Tree_t::node_type* get_root(const Tree_t::node_type* node);
@@ -99,12 +99,16 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 }
 
 
-string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node) {
+string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
     string name = node->getName();
-    if (node->hasOttId()){
-        name = "ott" + std::to_string(node->getOttId());
+    try
+    {
+        return getSourceNodeName(name);
     }
-    return getSourceNodeName(name);
+    catch (std::exception& e)
+    {
+        return name;
+    }
 }
 
 // assumes `node` is marked with `bits`. Returns the parent of `node` and
@@ -349,7 +353,7 @@ void add_element(map<string, Map<string, string>>& m, map<string, Set<pair<strin
 {
     string synth = synth_node->getName();
     string source = source_from_tree_name(input_tree.getName());
-    string node = getSourceNodeNameFromNameOrOttId(input_node);
+    string node = getSourceNodeNameIfAvailable(input_node);
 
     pair<string,string> x{source, node};
 
