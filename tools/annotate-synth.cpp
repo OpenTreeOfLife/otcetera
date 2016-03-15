@@ -11,17 +11,25 @@
 using namespace otc;
 using json = nlohmann::json;
 using std::vector;
+template <typename T, typename U>
+using Map = std::unordered_multimap<T,U>;
+template <typename T, typename U>
+using map = std::unordered_map<T,U>;
+template <typename T>
+using Set = std::unordered_set<T>;
 using std::string;
-using std::map;
+//using std::map;
 using std::pair;
+using std::tuple;
 
 // TODO: Could we exemplify tips here, if we had access to the taxonomy?
 
 namespace std
 {
-template<>
-struct hash<std::pair<string,json>> {
-    std::size_t operator()(const std::pair<string,json>& p) const noexcept {return std::hash<string>()(p.first) * std::hash<json>()(p.second);}
+template<typename T, typename U>
+struct hash<pair<T,U>>
+{
+    std::size_t operator()(const std::pair<T,U>& p) const noexcept {return std::hash<T>()(p.first) * std::hash<U>()(p.second);}
 };
 }
 
@@ -40,7 +48,7 @@ Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 Tree_t::node_type* nmParent(Tree_t::node_type* node);
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
-string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node);
+string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
 Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits);
 Tree_t::node_type* get_root(Tree_t::node_type* node);
 const Tree_t::node_type* get_root(const Tree_t::node_type* node);
@@ -51,7 +59,6 @@ void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& con
 void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
 void trace_clean_marks(Tree_t::node_type* node);
 void trace_clean_marks_from_synth(const Tree_t& tree);
-json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree);
 
 bool prune_unrecognized = true;
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
@@ -92,12 +99,16 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 }
 
 
-string getSourceNodeNameFromNameOrOttId(const Tree_t::node_type* node) {
+string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
     string name = node->getName();
-    if (node->hasOttId()){
-        name = "ott" + std::to_string(node->getOttId());
+    try
+    {
+        return getSourceNodeName(name);
     }
-    return getSourceNodeName(name);
+    catch (std::exception& e)
+    {
+        return name;
+    }
 }
 
 // assumes `node` is marked with `bits`. Returns the parent of `node` and
@@ -245,13 +256,7 @@ void trace_clean_marks_from_synth(const Tree_t& tree) {
     }
 }
 
-json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree) {
-    string source = source_from_tree_name(input_tree.getName());
-    string node_in_study = getSourceNodeNameFromNameOrOttId(input_node);
-    return {source,node_in_study};
-}
-
-void pruneUnmapped(Tree_t& tree, const std::map<long,const Tree_t::node_type*>& taxOttIdToNode)
+void pruneUnmapped(Tree_t& tree, const map<long,const Tree_t::node_type*>& taxOttIdToNode)
 {
     vector<Tree_t::node_type*> remove;
     for(auto nd: iter_leaf(tree))
@@ -274,22 +279,106 @@ void pruneUnmapped(Tree_t& tree, const std::map<long,const Tree_t::node_type*>& 
     }
 }
 
+json get_support_blob_as_array(const Map<string,string>& M)
+{
+    json support_blob = json::object();
+    auto m_it = M.begin();
+    for (;  m_it != M.end();  )
+    {
+        string source_id = (*m_it).first;
+        
+        json nodes_array = json::array();
+        
+        // Iterate over all map elements with key == source_id
+        auto keyRange = M.equal_range(source_id);
+        for (auto s_it = keyRange.first;  s_it != keyRange.second;  ++s_it)
+            nodes_array.push_back((*s_it).second);
+        
+        support_blob[source_id] = nodes_array;
+
+        m_it = keyRange.second;
+    }
+    return support_blob;
+}
+
+json get_support_blob_as_single_element(const Map<string,string>& M)
+{
+    json support_blob = json::object();
+    auto m_it = M.begin();
+    for (;  m_it != M.end();  )
+    {
+        string source_id = (*m_it).first;
+        
+        json element;
+        
+        // Iterate over all map elements with key == source_id
+        auto keyRange = M.equal_range(source_id);
+        int count = 0;
+        for (auto s_it = keyRange.first;  s_it != keyRange.second;  ++s_it)
+        {
+            element = (*s_it).second;
+            ++count;
+        }
+        assert(count == 1);
+
+        support_blob[source_id] = element;
+
+        m_it = keyRange.second;
+    }
+    return support_blob;
+}
+
+void set_support_blob_as_array(json& j, const map<string,Map<string,string>>& m, const string& field, const string& name)
+{
+    json support_blob;
+    auto it = m.find(name);
+    if (it != m.end())
+        support_blob = get_support_blob_as_array(it->second);
+    if (not support_blob.empty())
+        j[field] = support_blob;
+}
+
+void set_support_blob_as_single_element(json& j, const map<string,Map<string,string>>& m, const string& field, const string& name)
+{
+    json support_blob;
+    auto it = m.find(name);
+    if (it != m.end())
+        support_blob = get_support_blob_as_single_element(it->second);
+    if (not support_blob.empty())
+        j[field] = support_blob;
+}
+
+void add_element(map<string, Map<string, string>>& m, map<string, Set<pair<string,string>>>& s,
+                 const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+{
+    string synth = synth_node->getName();
+    string source = source_from_tree_name(input_tree.getName());
+    string node = getSourceNodeNameIfAvailable(input_node);
+
+    pair<string,string> x{source, node};
+
+    if (not s[synth].count(x))
+    {
+        s[synth].insert(x);
+        m[synth].insert(x);
+    }
+}
 
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     json document;
     std::unique_ptr<Tree_t> summaryTree;
-    std::map<long,const Tree_t::node_type*> taxOttIdToNode;
-    std::map<long,Tree_t::node_type*> summaryOttIdToNode;
-    std::unordered_multimap<string,json> supported_by;
-    std::unordered_multimap<string,json> partial_path_of;
-    std::unordered_multimap<string,json> conflicts_with;
-    std::unordered_multimap<string,json> could_resolve;
-    std::unordered_multimap<string,json> terminal;
-    std::unordered_set<pair<string,json>> supported_by_set;
-    std::unordered_set<pair<string,json>> partial_path_of_set;
-    std::unordered_set<pair<string,json>> conflicts_with_set;
-    std::unordered_set<pair<string,json>> could_resolve_set;
-    std::unordered_set<pair<string,json>> terminal_set;
+    map<long,const Tree_t::node_type*> taxOttIdToNode;
+    map<long,Tree_t::node_type*> summaryOttIdToNode;
+    map<string, Map<string,string>> supported_by;
+    map<string, Map<string,string>> partial_path_of;
+    map<string, Map<string,string>> conflicts_with;
+    map<string, Map<string,string>> could_resolve;
+    map<string, Map<string,string>> terminal;
+    map<string, Set<pair<string, string>>> supported_by_set;
+    map<string, Set<pair<string, string>>> partial_path_of_set;
+    map<string, Set<pair<string, string>>> conflicts_with_set;
+    map<string, Set<pair<string, string>>> could_resolve_set;
+    map<string, Set<pair<string, string>>> terminal_set;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
@@ -298,52 +387,27 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
-        if (not terminal_set.count(x))
-        {
-            terminal_set.insert(x);
-            terminal.insert(x);
-        }
+        add_element(terminal, terminal_set, synth_node, input_node, input_tree);
     }
 
     void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
-        if (not supported_by_set.count(x))
-        {
-            supported_by_set.insert(x);
-            supported_by.insert(x);
-        }
+        add_element(supported_by, supported_by_set, synth_node, input_node, input_tree);
     }
 
     void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
-        if (not partial_path_of_set.count(x))
-        {
-            partial_path_of_set.insert(x);
-            partial_path_of.insert(x);
-        }
+        add_element(partial_path_of, partial_path_of_set, synth_node, input_node, input_tree);
     }
 
     void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
-        if (not conflicts_with_set.count(x))
-        {
-            conflicts_with_set.insert(x);
-            conflicts_with.insert(x);
-        }
+        add_element(conflicts_with, conflicts_with_set, synth_node, input_node, input_tree);
     }
 
     void set_could_resolve(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        auto x = std::pair<string,json>({synth_node->getName(), source_node(input_node,input_tree)});
-        if (not could_resolve_set.count(x))
-        {
-            could_resolve_set.insert(x);
-            could_resolve.insert(x);
-        }
+        add_element(could_resolve, could_resolve_set, synth_node, input_node, input_tree);
     }
 
     bool summarize(OTCLI &otCLI) override {
@@ -362,51 +426,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 //            if (nd->hasOttId())
 //                name = "ott" + std::to_string(nd->getOttId());
 
-            {
-                json j_supported_by = json::array();
+            set_support_blob_as_single_element(node, terminal, "terminal", name);
+            set_support_blob_as_single_element(node, supported_by, "supported_by", name);
+            set_support_blob_as_array(node, partial_path_of, "partial_path_of", name);
+            set_support_blob_as_array(node, conflicts_with, "conflicts_with", name);
+            set_support_blob_as_array(node, could_resolve, "could_resolve", name);
 
-                auto range = supported_by.equal_range(name);
-                for (auto iter = range.first; iter!=range.second; ++iter)
-                    j_supported_by.push_back(iter->second);
-                if (not j_supported_by.empty())
-                    node["supported_by"] = j_supported_by;
-            }
-            {
-                json j_terminal = json::array();
-
-                auto range = terminal.equal_range(name);
-                for (auto iter = range.first; iter!=range.second; ++iter)
-                    j_terminal.push_back(iter->second);
-                if (not j_terminal.empty())
-                    node["terminal"] = j_terminal;
-            }
-            {
-                json j_partial_path_of = json::array();
-
-                auto range = partial_path_of.equal_range(name);
-                for (auto iter = range.first; iter!=range.second; ++iter)
-                    j_partial_path_of.push_back(iter->second);
-                if (not j_partial_path_of.empty())
-                    node["partial_path_of"] = j_partial_path_of;
-            }
-            {
-                json j_conflicts_with = json::array();
-
-                auto range = conflicts_with.equal_range(name);
-                for (auto iter = range.first; iter!=range.second; ++iter)
-                    j_conflicts_with.push_back(iter->second);
-                if (not j_conflicts_with.empty())
-                    node["conflicts_with"] = j_conflicts_with;
-            }
-            {
-                json j_could_resolve = json::array();
-
-                auto range = could_resolve.equal_range(name);
-                for (auto iter = range.first; iter!=range.second; ++iter)
-                    j_could_resolve.push_back(iter->second);
-                if (not j_could_resolve.empty())
-                    node["could_resolve"] = j_could_resolve;
-            }
             if (not node.empty())
                 nodes[name] = node;
         }
