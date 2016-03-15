@@ -231,10 +231,11 @@ template <typename N>
 void incorporateHigherTaxonNode(N* higherTaxonNd,
                                 N* rootSolnNd,
                                 std::set<N *> & nodesAddedForTaxa,
+                                const std::set<N *> barriers,
                                 LostTaxonMap & ltm) {
     assert(higherTaxonNd);
     assert(rootSolnNd);
-    //LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
+    LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
     const auto & taxDes = higherTaxonNd->getData().desIds;
     assert(taxDes.size() > 0);
     N * currSolnNd = rootSolnNd;
@@ -245,10 +246,20 @@ void incorporateHigherTaxonNode(N* higherTaxonNd,
         const auto & solDes = currSolnNd->getData().desIds;
         if (solDes == taxDes) {
             if (higherTaxonNd->isOutDegreeOneNode()) {
-                auto nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
-                nodesAddedForTaxa.insert(nt);
-            } else if (nodesAddedForTaxa.count(currSolnNd) > 0
-                       || (currSolnNd->hasOttId() && currSolnNd->getOttId() != higherTaxonNd->getOttId())) {
+                if (currSolnNd == rootSolnNd) {
+                    auto nt = bisect_branch_with_new_child(rootSolnNd);
+                    nt->setName(higherTaxonNd->getName());
+                    nt->setOttId(higherTaxonNd->getOttId());
+                    nt->getData().desIds = solDes;
+                    nodesAddedForTaxa.insert(nt);
+                } else {
+                    auto nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
+                    nodesAddedForTaxa.insert(nt);
+                }
+            } else if (currSolnNd != rootSolnNd
+                       && (nodesAddedForTaxa.count(currSolnNd) > 0
+                           || (currSolnNd->hasOttId() 
+                               && currSolnNd->getOttId() != higherTaxonNd->getOttId()))) {
                 auto nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
                 nodesAddedForTaxa.insert(nt);
             } else {
@@ -264,25 +275,48 @@ void incorporateHigherTaxonNode(N* higherTaxonNd,
             dbWriteOttSet("tax - sol", d);
             auto od = set_difference_as_set(solDes, taxDes);
             dbWriteOttSet("sol - tax", od);
+        } else {
+            dbWriteOttSet("sol superset", solDes);
         }
         assert(isProperSubset(taxDes, solDes));
         // look in this subtree for the higher taxon 
         tipmostMRCA = currSolnNd;
         N * nextSolnNd = nullptr;
         for (auto c : iter_child(*currSolnNd)) {
-            const auto & cdesId = c->getData().desIds;
-            if (!areDisjoint(cdesId, taxDes)) {
-                if (nextSolnNd == nullptr) {
-                    nextSolnNd = c;
+            if (barriers.count(c) > 0) {
+                assert(c->hasOttId());
+                auto cottid = c->getOttId();
+                if (taxDes.count(cottid) == 1) {
+                    if (taxDes.size() == 1) {
+                        assert (nextSolnNd == nullptr);
+                        nextSolnNd = c;
+                        break;
+                    } else {
+                        assert(tipmostMRCA != nullptr);
+                        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, tipmostMRCA, ltm);
+                        return;
+                    }
+                }
+            } else {
+                const auto & cdesId = c->getData().desIds;
+                dbWriteOttSet("  c desIds", cdesId);        
+                dbWriteOttSet("  taxDes  ", taxDes);        
+                if (!areDisjoint(cdesId, taxDes)) {
+                    LOG(DEBUG) << "not disjoint nextSolnNd=" << (long) nextSolnNd;
+                    if (nextSolnNd == nullptr) {
+                        nextSolnNd = c;
+                    } else {
+                        // More than one child of currSolnNd, has a member of the taxon,
+                        // so this is the mrca
+                        // The fact that we are here (not in the branch above where we
+                        //  tested for equality), means that this solution will not
+                        //  display this taxon
+                        assert(tipmostMRCA != nullptr);
+                        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, tipmostMRCA, ltm);
+                        return;
+                    }
                 } else {
-                    // More than one child of currSolnNd, has a member of the taxon,
-                    // so this is the mrca
-                    // The fact that we are here (not in the branch above where we
-                    //  tested for equality), means that this solution will not
-                    //  display this taxon
-                    assert(tipmostMRCA != nullptr);
-                    addChildrenOfNonMonophyleticTaxon(higherTaxonNd, tipmostMRCA, ltm);
-                    return;
+                    LOG(DEBUG) << "disjoint!";
                 }
             }
         }
@@ -300,15 +334,15 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     assert(rootSolnNd->hasOttId());
     assert(!rootSolnNd->isTip());
     const auto ottId = rootSolnNd->getOttId();
-    //LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
+    LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
     assert(ott2soln.at(ottId) == rootSolnNd);
     N * rootTaxonNd = ott2tax.at(ottId);
-    //LOG(DEBUG) << " root taxon is " << rootTaxonNd->getName();
+    LOG(DEBUG) << " root taxon is " << rootTaxonNd->getName();
     assert(!rootTaxonNd->isTip());
     // this will have the IDs for all of the include taxa for this slice of the tree
     auto & solnDesIds = rootSolnNd->getData().desIds;
     assert(!solnDesIds.empty());
-    ///dbWriteOttSet("solnRoot desIds = ", solnDesIds);
+    dbWriteOttSet("solnRoot desIds    = ", solnDesIds);
     // desIds fields of the solution tree are filled in by the caller before this function.
     //  here we fill in those fields for the taxonomy nodes.
     //Here we add the sampled IDs to desId fields ofthe relevant taxa. This is potentially
@@ -327,7 +361,29 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         solnLeaves.insert(ott2soln.at(effectiveTipOttId));
         taxaLeaves.insert(ott2tax.at(effectiveTipOttId));
     }
-    ///dbWriteOttSet("rootTaxonNd desIds = ", rootTaxonNd->getData().desIds);
+    dbWriteOttSet("rootTaxonNd desIds = ", rootTaxonNd->getData().desIds);
+    /* TEMP double check of desIDs */
+    for (auto n : solnLeaves) {
+        auto c = n;
+        while (true) {
+            const auto cdes = c->getData().desIds;
+            auto p = c->getParent();
+            const auto pdes = p->getData().desIds;
+            if (!isSubset(cdes, pdes)) {
+                dbWriteOttSet("cdes", cdes);
+                dbWriteOttSet("pdes", pdes);
+                if (c->hasOttId()) {
+                    LOG(DEBUG) << "c has id" << c->getOttId();
+                }
+                assert(false);
+            }
+            if (p == rootSolnNd) {
+                break;
+            }
+            c = p;
+        }
+    }
+    // END TEMP
     // If a tip of the solution is a higher taxon, then we should
     //  graft on the other tips here...
     for (auto l : solnLeaves) {
@@ -360,7 +416,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     //  are correctly added in the tip->root orientation).
     std::set<N *> nodesAddedForTaxa;
     for (auto higherTaxonNd : postOrderInTaxNd) {
-        incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, ltm);
+        incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, solnLeaves, ltm);
     }
     // for the sake of a low memory footprint, here we 
     //  clear out the desIds fields for this slice of the tree.
@@ -381,6 +437,8 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             c = c->getParent();
         }
     }
+    rootSolnNd->getData().desIds.clear();
+    rootSolnNd->getData().desIds.insert(ottId);
 }
 
 
@@ -425,11 +483,18 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution) {
         if (nd->hasOttId()){
             ott_to_sol[nd->getOttId()] = nd;
             if (!nd->isTip()) {
+                dbWriteOttSet("before currSolnNd", nd->getData().desIds);
+                if (p) {
+                    dbWriteOttSet("before p of SolnNd", p->getData().desIds);
+                }
                 // unpruneTaxaForSubtree will deal with this slice of the
                 //tree
                 unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, ltm);
-                // we treat this named node as a tip for the next deeper slice
-                nd->getData().desIds.clear();
+                dbWriteOttSet("after currSolnNd", nd->getData().desIds);
+                if (p) {
+                    dbWriteOttSet("after p of SolnNd", p->getData().desIds);    
+                    assert(p == nd->getParent());
+                }
             }
             nd->getData().desIds.insert(nd->getOttId());
             if (p) {
