@@ -328,7 +328,7 @@ json get_support_blob_as_single_element(const Map<string,string>& M)
 
         m_it = keyRange.second;
     }
-    return support_blob;`
+    return support_blob;
 }
 
 void set_support_blob_as_array(json& j, const map<string,Map<string,string>>& m, const string& field, const string& name)
