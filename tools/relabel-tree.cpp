@@ -153,7 +153,7 @@ string format_with_taxonomy(const string& orig, const string& format, const taxo
             throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in taxonomy-based format string '"<<format<<"'";
         pos = loc + 1;
     }
-    while (pos < format.size());
+    while (pos < static_cast<int>(format.size()));
 
     return result;
 }
@@ -182,7 +182,7 @@ string format_without_taxonomy(const string& orig, const string& format)
             throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in non-taxonomy-based format string '"<<format<<"'";
         pos = loc + 1;
     }
-    while (pos < format.size());
+    while (pos < static_cast<int>(format.size()));
 
     return result;
 }

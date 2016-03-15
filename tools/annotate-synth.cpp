@@ -31,7 +31,7 @@ struct hash<pair<T,U>>
 {
     std::size_t operator()(const std::pair<T,U>& p) const noexcept {return std::hash<T>()(p.first) * std::hash<U>()(p.second);}
 };
-};
+}
 
 struct RTNodeDepth {
     int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)

@@ -4,15 +4,36 @@
 //  over trees (contrast w/tree_util.h)
 // Depends on: tree.h tree_util.h tree_iter.h 
 // Depended on by: tools
-
+#include <vector>
 #include "otc/otc_base_includes.h"
 #include "otc/tree_iter.h"
 #include "otc/error.h"
 #include "otc/util.h"
 #include "otc/debug.h"
 namespace otc {
+template<typename T, typename CONTAINER>
+void show_children_in_set(std::ostream & out, T nd, const CONTAINER & ancestral);
+template<typename T, typename CONTAINER>
+int count_children_in_set(T nd, const CONTAINER & ancestral);
+template<typename T, typename CONTAINER>
+bool is_monotypic_in_set(T nd, const CONTAINER & ancestral);
+template<typename T>
+void collapse_split_and_del_node(T* nd);
+template<typename T>
+long n_internal_with_ott_id(const T& tree);
+template<typename T>
+long n_internal(const T& tree);
+template<typename T>
+long n_internal_out_degree_1(const T& tree);
+template<typename T>
+long n_internal_out_degree_many(const T & tree);
+template<typename T>
+long n_nodes(const T& tree);
 template<typename T>
 std::string newick(const T &t);
+template <typename T>
+T* bisect_branch_with_new_child(T* x);
+
 
 template<typename T>
 unsigned int countPolytomies(const T & tree);
@@ -29,9 +50,173 @@ inline void cullRefsToNodeFromData(RootedTree<T, U> & tree, RootedTreeNode<T> *t
 const std::set<long> & getDesOttIds(RootedTreeNode<RTSplits> & nd);
 template<typename T>
 std::size_t pruneTipsWithoutIds(T & tree);
+template <typename T>
+std::vector<typename T::node_type*> all_nodes(T& tree);
+template <typename N>
+std::vector<N *> all_children(N * node);
 
 
 //// impl
+template <typename N>
+inline std::vector<N *> all_children(N * node) {
+    std::vector<N *> r;
+    for (auto c : iter_child(*node)) {
+        r.push_back(c);
+    }
+    return r;
+}
+
+// breaks the branch from x to its parent by allocating
+//  a new node (which is returned) and assigning all of
+//  the children of `x` to that node.
+//  The returned node will be the only child of `x` and
+//  all of the original children of x will be the children
+//  of the returned node.
+template<typename T>
+T* bisect_branch_with_new_child(T* x) {
+    assert(x);
+    assert(x->getParent());
+    auto xc = new T(x);
+    while (x->getFirstChild()) {
+        auto nd = x->getFirstChild();
+        nd->detachThisNode();
+        xc->addChild(nd);
+    }
+    assert(not x->hasChildren());
+    x->addChild(xc);
+    return xc;
+}
+
+// breaks the branch from x to its parent by allocating
+//  a new node (which is returned) and putting it in between
+//  `x` and the parent of `x`
+template<typename T>
+T* bisect_branch_with_new_parent(T* x) {
+    assert(x);
+    assert(x->getParent());
+    auto xc = new T(x);
+    while (x->getFirstChild()) {
+        auto nd = x->getFirstChild();
+        nd->detachThisNode();
+        xc->addChild(nd);
+    }
+    assert(not x->hasChildren());
+    x->addChild(xc);
+    return xc;
+}
+template<typename T, typename CONTAINER>
+inline void show_children_in_set(std::ostream & out, T nd, const CONTAINER& ancestral) {
+    out << nd->getName() << " children: ";
+    for (auto c = nd->getFirstChild(); c; c = c->getNextSib()) {
+        if (ancestral.count(c)) {
+            out << "'" << c->getName() << "' ";
+        }
+    }
+    std::cerr << std::endl;
+}
+
+template<typename T, typename CONTAINER>
+inline int count_children_in_set(T nd, const CONTAINER & ancestral) {
+    int count = 0;
+    for(auto c = nd->getFirstChild(); c; c = c->getNextSib()) {
+        if (ancestral.count(c)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+template<typename T, typename CONTAINER>
+inline bool is_monotypic_in_set(T nd, const CONTAINER & ancestral) {
+    return (count_children_in_set(nd, ancestral) == 1);
+}
+
+template<typename T>
+void collapse_split_and_del_node(T* nd) {
+    while (nd->getFirstChild()) {
+        auto nd2 = nd->getFirstChild();
+        nd2->detachThisNode();
+        nd->addSibOnLeft(nd2);
+    }
+    nd->detachThisNode();
+    delete nd;
+}
+
+template<typename T>
+inline long n_internal_with_ott_id(const T& tree) {
+    long count = 0;
+    for (auto nd: iter_post_const(tree)) {
+        if (not nd->isTip() and nd->hasOttId()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+template<typename T>
+inline long n_internal(const T& tree) {
+    long count = 0;
+    for (auto nd: iter_post_const(tree)) {
+        if (not nd->isTip()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+template<typename T>
+inline long n_internal_out_degree_1(const T& tree) {
+    long count = 0;
+    for (auto nd: iter_post_const(tree)) {
+        if (not nd->isTip() and nd->isOutDegreeOneNode()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+template<typename T>
+inline long n_internal_out_degree_many(const T & tree) {
+    long count = 0;
+    for(auto nd: iter_post_const(tree)) {
+        if (not nd->isTip() and not nd->isOutDegreeOneNode()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+template<typename T>
+inline long n_nodes(const T& tree) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    long count = 0;
+    for(auto nd: iter_post_const(tree)){
+        count++;
+    }
+    return count;
+}
+
+template <typename T>
+inline std::vector<typename T::node_type*> all_nodes(T& tree) {
+    std::vector<typename T::node_type*> nodes;
+    for(auto nd: iter_post(tree)) {
+        nodes.push_back(nd);
+    }
+    return nodes;
+}
+
+template <typename T>
+inline std::vector<typename T::node_type*> all_internal_nodes_post(T& tree) {
+    std::vector<typename T::node_type*> nodes;
+    for(auto nd: iter_post(tree)) {
+        if (!nd->isTip()) {
+            nodes.push_back(nd);
+        }
+    }
+    return nodes;
+}
+
 
 template<typename T>
 unsigned int countPolytomies(const T & tree) {

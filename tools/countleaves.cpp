@@ -12,7 +12,6 @@ static bool listTips = false;
 
 template<typename T>
 bool listTipOttIds(OTCLI & , T * tree) {
-    auto c = 0U;
     for (auto nd : iter_leaf_const(*tree)) {
         assert(nd->hasOttId());
         std::cout << nd->getOttId() << '\n';
@@ -26,9 +25,13 @@ bool writeNumLeaves(OTCLI & otCLI, std::unique_ptr<T> tree) {
         return listTipOttIds(otCLI, tree.get());
     }
     auto c = 0U;
+    // the nd loop var is unused
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
     for (auto nd : iter_leaf_const(*tree)) {
         c += 1;
     }
+#pragma GCC diagnostic pop
     std::cout << c << '\n';
     return true;
 }

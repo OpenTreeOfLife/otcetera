@@ -77,7 +77,7 @@ namespace otc
         const auto& taxonomy = *this;
         std::unique_ptr<Tree_t> tree(new Tree_t);
         vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
-        for(int i=0;i<taxonomy.size();i++)
+        for(auto i = 0U; i < taxonomy.size() ; i++)
         {
             const auto& line = taxonomy[i];
 
