@@ -59,7 +59,6 @@ void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& con
 void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
 void trace_clean_marks(Tree_t::node_type* node);
 void trace_clean_marks_from_synth(const Tree_t& tree);
-json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree);
 
 bool prune_unrecognized = true;
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
@@ -251,12 +250,6 @@ void trace_clean_marks_from_synth(const Tree_t& tree) {
         auto leaf2 = summary_node(leaf);
         trace_clean_marks(leaf2);
     }
-}
-
-json source_node(const Tree_t::node_type* input_node, const Tree_t& input_tree) {
-    string source = source_from_tree_name(input_tree.getName());
-    string node_in_study = getSourceNodeNameFromNameOrOttId(input_node);
-    return {source,node_in_study};
 }
 
 void pruneUnmapped(Tree_t& tree, const map<long,const Tree_t::node_type*>& taxOttIdToNode)
