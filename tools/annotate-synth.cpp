@@ -372,12 +372,14 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     map<string, Map<string,string>> supported_by;
     map<string, Map<string,string>> partial_path_of;
     map<string, Map<string,string>> conflicts_with;
-    map<string, Map<string,string>> could_resolve;
+    map<string, Map<string,string>> resolves;
+    map<string, Map<string,string>> resolved_by;
     map<string, Map<string,string>> terminal;
     map<string, Set<pair<string, string>>> supported_by_set;
     map<string, Set<pair<string, string>>> partial_path_of_set;
     map<string, Set<pair<string, string>>> conflicts_with_set;
-    map<string, Set<pair<string, string>>> could_resolve_set;
+    map<string, Set<pair<string, string>>> resolves_set;
+    map<string, Set<pair<string, string>>> resolved_by_set;
     map<string, Set<pair<string, string>>> terminal_set;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
@@ -405,9 +407,14 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         add_element(conflicts_with, conflicts_with_set, synth_node, input_node, input_tree);
     }
 
-    void set_could_resolve(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_resolved_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
     {
-        add_element(could_resolve, could_resolve_set, synth_node, input_node, input_tree);
+        add_element(resolved_by, resolved_by_set, synth_node, input_node, input_tree);
+    }
+
+    void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    {
+        add_element(resolves, resolves_set, synth_node, input_node, input_tree);
     }
 
     bool summarize(OTCLI &otCLI) override {
@@ -428,9 +435,10 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
             set_support_blob_as_single_element(node, terminal, "terminal", name);
             set_support_blob_as_single_element(node, supported_by, "supported_by", name);
-            set_support_blob_as_array(node, partial_path_of, "partial_path_of", name);
+            set_support_blob_as_single_element(node, partial_path_of, "partial_path_of", name);
             set_support_blob_as_array(node, conflicts_with, "conflicts_with", name);
-            set_support_blob_as_array(node, could_resolve, "could_resolve", name);
+            set_support_blob_as_single_element(node, resolves, "resolves", name);
+            set_support_blob_as_array(node, resolved_by, "resolved_by", name);
 
             if (not node.empty())
                 nodes[name] = node;
@@ -485,7 +493,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                 }
             }
             assert(is_marked(MRCA_include,1));
-            bool conflicts_or_could_resolve = is_marked(MRCA_include,2);
+            bool conflicts_or_resolved_by = is_marked(MRCA_include,2);
 
             find_conflicts(tree, conflicts);
             trace_clean_marks_from_synth(tree);
@@ -495,8 +503,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             for(auto conflicting_node: conflicts)
                 set_conflicts_with(conflicting_node, nd, tree);
 
-            if (conflicts.empty() and conflicts_or_could_resolve)
-                set_could_resolve(MRCA_include, nd, tree);
+            if (conflicts.empty() and conflicts_or_resolved_by)
+                set_resolved_by(MRCA_include, nd, tree);
 
 #ifdef CHECK_MARKS
             for(const auto nd2: iter_post_const(*summaryTree))
