@@ -387,7 +387,12 @@ NumAddedTuple unpruneTaxaForSubtree(N *rootSolnNd,
     //  are correctly added in the tip->root orientation).
     std::set<N *> nodesAddedForTaxa;
     for (auto higherTaxonNd : postOrderInTaxNd) {
-        numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, ltm);
+        if (higherTaxonNd == rootTaxonNd) {
+            moveUnsampledChildren(higherTaxonNd, rootSolnNd);
+            numMerged += 1 ;
+        } else {
+            numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, ltm);
+        }
     }
     // for the sake of a low memory footprint, here we 
     //  clear out the desIds fields for this slice of the tree.
