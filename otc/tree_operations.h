@@ -75,7 +75,6 @@ inline std::vector<N *> all_children(N * node) {
 template<typename T>
 T* bisect_branch_with_new_child(T* x) {
     assert(x);
-    assert(x->getParent());
     auto xc = new T(x);
     while (x->getFirstChild()) {
         auto nd = x->getFirstChild();
@@ -93,7 +92,6 @@ T* bisect_branch_with_new_child(T* x) {
 template<typename T>
 T* bisect_branch_with_new_parent(T* x) {
     assert(x);
-    assert(x->getParent());
     auto xc = new T(x);
     while (x->getFirstChild()) {
         auto nd = x->getFirstChild();

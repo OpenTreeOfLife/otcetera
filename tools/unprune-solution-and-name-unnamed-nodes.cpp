@@ -128,6 +128,7 @@ std::vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
         } else {
             seen.insert(curr);
             if (boundaries.count(curr) == 0) {
+                //LOG(DEBUG) << "higherTaxPreOrderBelowBoundaries adding " << curr->getOttId();
                 r.push_back(curr);
                 for (auto c : iter_child(*curr)) {
                     if (!c->getData().desIds.empty()) {
@@ -229,6 +230,15 @@ void addChildrenOfNonMonophyleticTaxon(N * taxon,
 }
 
 
+template <typename N>
+N * bisect_branch_with_new_child_copy_info(N * curr, N * infoSource) {
+    N * nt = bisect_branch_with_new_child(curr);
+    nt->setName(infoSource->getName());
+    nt->setOttId(infoSource->getOttId());
+    nt->getData().desIds = curr->getData().desIds;
+    return nt;
+}
+
 // returns the number of nodes on the backbone that are merged with this higher taxon
 //      because the taxon was compatible (the same as) the node - will be either 0 or 1.
 template <typename N>
@@ -238,7 +248,7 @@ std::size_t incorporateHigherTaxonNode(N* higherTaxonNd,
                                 LostTaxonMap & ltm) {
     assert(higherTaxonNd);
     assert(rootSolnNd);
-    //LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
+    LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
     const auto & taxDes = higherTaxonNd->getData().desIds;
     assert(taxDes.size() > 0);
     N * currSolnNd = rootSolnNd;
@@ -251,19 +261,23 @@ std::size_t incorporateHigherTaxonNode(N* higherTaxonNd,
             N * nt = nullptr;
             if (higherTaxonNd->isOutDegreeOneNode()) {
                 if (currSolnNd == rootSolnNd) {
-                    nt = bisect_branch_with_new_child(rootSolnNd);
-                    nt->setName(higherTaxonNd->getName());
-                    nt->setOttId(higherTaxonNd->getOttId());
-                    nt->getData().desIds = solDes;
+                    LOG(DEBUG) << "adding Monotypic child";
+                    nt = bisect_branch_with_new_child_copy_info(currSolnNd, higherTaxonNd);
                 } else {
+                    LOG(DEBUG) << "introduceMonotypicParent";
                     nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
                 }
-            } else if (currSolnNd != rootSolnNd
-                       && (nodesAddedForTaxa.count(currSolnNd) > 0
-                           || (currSolnNd->hasOttId() 
-                               && currSolnNd->getOttId() != higherTaxonNd->getOttId()))) {
-                nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
+            } else if (currSolnNd->hasOttId() 
+                      && currSolnNd->getOttId() != higherTaxonNd->getOttId()) {
+                if (currSolnNd == rootSolnNd) {
+                    LOG(DEBUG) << "Adding forking child to make parent monotypic";
+                    nt = bisect_branch_with_new_child_copy_info(currSolnNd, higherTaxonNd);
+                } else {
+                    LOG(DEBUG) << "addParentAndMoveUnsampledTaxChildren";
+                    nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
+                }
             } else {
+                LOG(DEBUG) << "moveUnsampledChildren";
                 moveUnsampledChildren(higherTaxonNd, currSolnNd);
             }
             if (nt != nullptr) {
