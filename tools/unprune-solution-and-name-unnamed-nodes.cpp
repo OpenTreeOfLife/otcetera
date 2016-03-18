@@ -92,7 +92,7 @@ void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm) {
     }
     json document;
     document["non_monophyletic_taxa"] = lostTaxa;
-    out << document.dump(4) << std::endl;
+    out << document.dump(1) << std::endl;
 }
 
 // adds ottId to the desIds field of every node from firstNd down to ancAndLast (inclusive)
@@ -558,7 +558,7 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution, std::ostream * statsStreamP
         output["num_leaves_added"] = numLeavesAdded;
         document["input"] = input;
         document["output"] = output;
-        *statsStreamPtr << document.dump(4) << std::endl;
+        *statsStreamPtr << document.dump(1) << std::endl;
     }
     return ltm;
 }
