@@ -444,7 +444,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                 nodes[name] = node;
         }
         document["nodes"] = nodes;
-        std::cout<<document.dump(4)<<std::endl;
+        std::cout<<document.dump(1)<<std::endl;
         return true;
     }
 

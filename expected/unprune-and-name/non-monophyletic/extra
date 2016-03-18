@@ -1,15 +1,15 @@
 {
-    "non_monophyletic_taxa": {
-        "ott4": {
-            "attachment_points": {
-                "mrcaott1ott2": [
-                    "ott2"
-                ],
-                "mrcaott1ott9": [
-                    "ott1"
-                ]
-            },
-            "mrca": "mrcaott1ott2"
-        }
-    }
+ "non_monophyletic_taxa": {
+  "ott4": {
+   "attachment_points": {
+    "mrcaott1ott2": [
+     "ott2"
+    ],
+    "mrcaott1ott9": [
+     "ott1"
+    ]
+   },
+   "mrca": "mrcaott1ott2"
+  }
+ }
 }

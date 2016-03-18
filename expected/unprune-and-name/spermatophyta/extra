@@ -1,15 +1,15 @@
 {
-    "non_monophyletic_taxa": {
-        "ott950174": {
-            "attachment_points": {
-                "mrcaott4736806ott5422413": [
-                    "ott4736806"
-                ],
-                "mrcaott5422413ott5435764": [
-                    "mrcaott5435764ott5435765"
-                ]
-            },
-            "mrca": "mrcaott4736806ott5422413"
-        }
-    }
+ "non_monophyletic_taxa": {
+  "ott950174": {
+   "attachment_points": {
+    "mrcaott4736806ott5422413": [
+     "ott4736806"
+    ],
+    "mrcaott5422413ott5435764": [
+     "mrcaott5435764ott5435765"
+    ]
+   },
+   "mrca": "mrcaott4736806ott5422413"
+  }
+ }
 }
