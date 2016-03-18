@@ -18,12 +18,12 @@ bool suppressMonotypicAndWrite(OTCLI & , std::unique_ptr<T> tree);
 void suppressMonotypicFast(Tree_t& tree)
 {
     std::vector<Tree_t::node_type*> remove;
-    for(auto nd:iter_pre(tree))
-        if (nd->isOutDegreeOneNode())
+    for (auto nd:iter_pre(tree)) {
+        if (nd->isOutDegreeOneNode()) {
             remove.push_back(nd);
-
-    for(auto nd: remove)
-    {
+        }
+    }
+    for (auto nd: remove) {
         auto child = nd->getFirstChild();
         child->detachThisNode();
         nd->addSibOnRight(child);

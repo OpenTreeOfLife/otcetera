@@ -1,4 +1,5 @@
 #include "otc/supertree_util.h"
+#include <regex>
 namespace otc {
 
 std::string string_between_chars(const std::string & s, char beforeC, char endC) {
@@ -25,20 +26,15 @@ std::string source_from_tree_name(const std::string& name) {
 }
 
 std::string getSourceNodeName(const std::string& name) {
-    const char* start = name.c_str();
-    const char* end = name.c_str() + name.size();
-    while(strchr(" \t_",*start) and start < end) {
-        start++;
+    std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
+    std::smatch matches;
+    if (std::regex_match(name,matches,e))
+    {
+        assert(matches.size() >= 2);
+        return matches[2];
     }
-    while(strchr(" \t_",*(end-1)) and start < end) {
-        end--;
-    }
-    if (start >= end) {
-        throw OTCError() << "Node name '" << name << "' contracted to nothing!";
-    }
-    const std::size_t offset = static_cast<std::size_t>(start - name.c_str());
-    const std::size_t len = static_cast<std::size_t>(end - start);
-    return name.substr(offset, len);
+    else
+        throw OTCError()<<"'"<<name<<"' does not contain a node name!";
 }
 
 bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,

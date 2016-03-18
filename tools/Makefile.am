@@ -24,16 +24,17 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-graft-solutions \
 				otc-unprune-solution \
 				otc-name-unnamed-nodes \
+				otc-unprune-solution-and-name-unnamed-nodes \
 				otc-annotate-synth \
 				otc-taxonomy-parser \
 				otc-relabel-tree \
-				otc-tree-tool
+				otc-tree-tool \
+				otc-version-reporter
 
 LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS)
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
-
 
 otc_subproblem_stats_SOURCES = subproblemstats.cpp
 otc_subproblem_stats_CPPFLAGS = $(AM_CPPFLAGS)
@@ -113,5 +114,15 @@ otc_relabel_tree_CPPFLAGS = $(AM_CPPFLAGS)
 otc_tree_tool_SOURCES = tree-tool.cpp
 otc_tree_tool_CPPFLAGS = $(AM_CPPFLAGS)
 
+otc_unprune_solution_and_name_unnamed_nodes_SOURCES = unprune-solution-and-name-unnamed-nodes.cpp
+otc_unprune_solution_and_name_unnamed_nodes_CPPFLAGS = $(AM_CPPFLAGS)
+
+gitversion.h: $(abs_top_srcdir)/.git/HEAD $(abs_top_srcdir)/.git/index
+	echo "const char *gitversion = \"$(shell git rev-parse HEAD)\";" > $@
+
+otc_version_reporter_SOURCES = $(builddir)/gitversion.h version-reporter.cpp
+otc_version_reporter_CPPFLAGS = $(AM_CPPFLAGS)
+
 check:
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
+

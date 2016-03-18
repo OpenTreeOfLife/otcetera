@@ -13,6 +13,9 @@ Some set comparisons (in util.h) were based on
    http://stackoverflow.com/posts/1964252/revisions
 by http://stackoverflow.com/users/127669/graphics-noob
 
+The gitversion trick for the otc-version-reporter is from
+  http://stackoverflow.com/questions/6526451/how-to-include-git-commit-number-into-a-c-executable
+
 # Installation
 
 ## prerequisites

@@ -113,18 +113,15 @@ class RootedTreeNode {
 
             // Connect right (from n)
             n->rSib = rSib;
-            if (n->rSib)
+            if (n->rSib) {
                 n->rSib->lSib = n;
-            else
-            {
+            } else {
                 assert(parent->rChild == this);
                 parent->rChild = n;
             }
-
             // Connect left (from n)
             n->lSib = this;
             rSib = n;
-
             // Connect up (from n)
             n->parent = parent;
         }
@@ -186,20 +183,41 @@ class RootedTreeNode {
         void detachThisNode() {
             assert(parent);
             assert(parent->hasChildren());
-
-            if (lSib)
+            if (lSib){
                 lSib->rSib = rSib;
-            else
+            } else {
                 parent->lChild = rSib;
-
-            if (rSib)
+            }
+            if (rSib) {
                 rSib->lSib = lSib;
-            else
+            } else {
                 parent->rChild = lSib;
-
+            }
             parent = nullptr;
             rSib = nullptr;
             lSib = nullptr;
+        }
+
+        // places `n` into the parent node's child array in the place
+        // of `this`. None of the pointer's of `this` are modified, but
+        //  `this` will no longer be findable by its parent.
+        void replaceThisNode(node_type *n) const {
+            assert (n != nullptr);
+            assert(parent);
+            assert(parent->hasChildren());
+            n->lSib = lSib;
+            if (lSib){
+                lSib->rSib = n;
+            } else {
+                parent->lChild = n;
+            }
+            n->rSib = rSib;
+            if (rSib) {
+                rSib->lSib = n;
+            } else {
+                parent->rChild = n;
+            }
+            n->parent = parent;
         }
     public:
         void writeAsNewick(std::ostream &out,
