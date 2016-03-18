@@ -231,11 +231,14 @@ void addChildrenOfNonMonophyleticTaxon(N * taxon,
 
 
 template <typename N>
-N * bisect_branch_with_new_child_copy_info(N * curr, N * infoSource) {
-    N * nt = bisect_branch_with_new_child(curr);
-    nt->setName(infoSource->getName());
-    nt->setOttId(infoSource->getOttId());
-    nt->getData().desIds = curr->getData().desIds;
+N * special_bisect_with_new_child(N * taxNode, N * currSolnNd, bool moveUnsamp) {
+    N * nt = bisect_branch_with_new_child(currSolnNd);
+    nt->setName(taxNode->getName());
+    nt->setOttId(taxNode->getOttId());
+    nt->getData().desIds = currSolnNd->getData().desIds;
+    if (moveUnsamp) {
+        moveUnsampledChildren(taxNode, nt);
+    }
     return nt;
 }
 
@@ -262,7 +265,7 @@ std::size_t incorporateHigherTaxonNode(N* higherTaxonNd,
             if (higherTaxonNd->isOutDegreeOneNode()) {
                 if (currSolnNd == rootSolnNd) {
                     LOG(DEBUG) << "adding Monotypic child";
-                    nt = bisect_branch_with_new_child_copy_info(currSolnNd, higherTaxonNd);
+                    nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, false);
                 } else {
                     LOG(DEBUG) << "introduceMonotypicParent";
                     nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
@@ -271,7 +274,7 @@ std::size_t incorporateHigherTaxonNode(N* higherTaxonNd,
                       && currSolnNd->getOttId() != higherTaxonNd->getOttId()) {
                 if (currSolnNd == rootSolnNd) {
                     LOG(DEBUG) << "Adding forking child to make parent monotypic";
-                    nt = bisect_branch_with_new_child_copy_info(currSolnNd, higherTaxonNd);
+                    nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, true);
                 } else {
                     LOG(DEBUG) << "addParentAndMoveUnsampledTaxChildren";
                     nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
