@@ -484,10 +484,9 @@ void set_support_blob_as_single_element(json& j, const map<string,Map<string,str
 }
 
 void add_element(map<string, Map<string, string>>& m, map<string, set<pair<string,string>>>& s,
-                 const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+                 const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
 {
     string synth = synth_node->getName();
-    string source = source_from_tree_name(input_tree.getName());
     string node = getSourceNodeNameIfAvailable(input_node);
 
     pair<string,string> x{source, node};
@@ -543,34 +542,34 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     virtual ~DisplayedStatsState(){}
 
-    void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(terminal, terminal_set, synth_node, input_node, input_tree);
+        add_element(terminal, terminal_set, synth_node, input_node, source);
     }
 
-    void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(supported_by, supported_by_set, synth_node, input_node, input_tree);
+        add_element(supported_by, supported_by_set, synth_node, input_node, source);
     }
 
-    void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(partial_path_of, partial_path_of_set, synth_node, input_node, input_tree);
+        add_element(partial_path_of, partial_path_of_set, synth_node, input_node, source);
     }
 
-    void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(conflicts_with, conflicts_with_set, synth_node, input_node, input_tree);
+        add_element(conflicts_with, conflicts_with_set, synth_node, input_node, source);
     }
 
-    void set_resolved_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_resolved_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(resolved_by, resolved_by_set, synth_node, input_node, input_tree);
+        add_element(resolved_by, resolved_by_set, synth_node, input_node, source);
     }
 
-    void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(resolves, resolves_set, synth_node, input_node, input_tree);
+        add_element(resolves, resolves_set, synth_node, input_node, source);
     }
 
     bool summarize(OTCLI &otCLI) override {
@@ -609,7 +608,10 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         auto induced_tree = get_induced_tree(tree, get_ottid_to_const_node_map(tree), *summaryTree, constSummaryOttIdToNode);
         induced_tree->setName(tree.getName());
         auto induced_summary_tree = get_induced_tree(*summaryTree, constSummaryOttIdToNode, tree, get_ottid_to_const_node_map(tree));
+
         computeDepth(*induced_tree);
+        computeDegree(*induced_tree);
+
         computeDepth(*induced_summary_tree);
 
         vector<Tree_t::node_type*> conflicts;
@@ -626,6 +628,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             summary_node(leaf) = leaf2;
         }
         
+        string source = source_from_tree_name(tree.getName());
+
         for(const auto nd: iter_post_const(*induced_tree))
         {
             if (not nd->getParent()) continue;
@@ -646,7 +650,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             {
                 assert(mark(MRCA_include) == 1);
                 for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
-                    set_terminal(path_node, nd, *induced_tree);
+                    set_terminal(path_node, nd, source);
             }
             else if (mark(MRCA_include) == 1)
             {
@@ -654,14 +658,14 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                 {
                     auto path_node = MRCA_include;
                     do {
-                        set_supported_by(path_node, nd, *induced_tree);
+                        set_supported_by(path_node, nd, source);
                         path_node = path_node->getParent();
                     } while(path_node->isOutDegreeOneNode());
                 }
                 else
                 {
                     for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
-                        set_partial_path_of(path_node, nd, *induced_tree);
+                        set_partial_path_of(path_node, nd, source);
                 }
             }
             assert(is_marked(MRCA_include,1));
@@ -673,10 +677,10 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             if (nd->isTip() or mark(MRCA_include) == 1) assert(conflicts.empty());
 
             for(auto conflicting_node: conflicts)
-                set_conflicts_with(conflicting_node, nd, *induced_tree);
+                set_conflicts_with(conflicting_node, nd, source);
 
             if (conflicts.empty() and conflicts_or_resolved_by)
-                set_resolved_by(MRCA_include, nd, *induced_tree);
+                set_resolved_by(MRCA_include, nd, source);
 
 #ifdef CHECK_MARKS
             for(const auto nd2: iter_post_const(*induced_summary_tree))
