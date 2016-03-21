@@ -16,7 +16,7 @@ using Map = std::unordered_multimap<T,U>;
 template <typename T, typename U>
 using map = std::unordered_map<T,U>;
 template <typename T>
-using Set = std::unordered_set<T>;
+using set = std::unordered_set<T>;
 using std::string;
 //using std::map;
 using std::pair;
@@ -348,7 +348,7 @@ void set_support_blob_as_single_element(json& j, const map<string,Map<string,str
         j[field] = support_blob;
 }
 
-void add_element(map<string, Map<string, string>>& m, map<string, Set<pair<string,string>>>& s,
+void add_element(map<string, Map<string, string>>& m, map<string, set<pair<string,string>>>& s,
                  const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
 {
     string synth = synth_node->getName();
@@ -375,12 +375,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     map<string, Map<string,string>> resolves;
     map<string, Map<string,string>> resolved_by;
     map<string, Map<string,string>> terminal;
-    map<string, Set<pair<string, string>>> supported_by_set;
-    map<string, Set<pair<string, string>>> partial_path_of_set;
-    map<string, Set<pair<string, string>>> conflicts_with_set;
-    map<string, Set<pair<string, string>>> resolves_set;
-    map<string, Set<pair<string, string>>> resolved_by_set;
-    map<string, Set<pair<string, string>>> terminal_set;
+    map<string, set<pair<string, string>>> supported_by_set;
+    map<string, set<pair<string, string>>> partial_path_of_set;
+    map<string, set<pair<string, string>>> conflicts_with_set;
+    map<string, set<pair<string, string>>> resolves_set;
+    map<string, set<pair<string, string>>> resolved_by_set;
+    map<string, set<pair<string, string>>> terminal_set;
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
