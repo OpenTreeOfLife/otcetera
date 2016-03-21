@@ -61,7 +61,7 @@ void trace_clean_marks(Tree_t::node_type* node);
 void trace_clean_marks_from_synth(const Tree_t& tree);
 
 bool prune_unrecognized = true;
-bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
+bool handlePruneUnrecognizedTips(OTCLI &, const std::string &) {
     prune_unrecognized = false;
     return true;
 }
