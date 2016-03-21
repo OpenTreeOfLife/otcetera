@@ -1,4 +1,4 @@
-#include "gitversion.h"
+#include "git_version.h"
 #include "config.h"
 #include <boost/version.hpp>
 #include <iostream>
