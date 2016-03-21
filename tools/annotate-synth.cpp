@@ -499,11 +499,32 @@ void add_element(map<string, Map<string, string>>& m, map<string, set<pair<strin
     }
 }
 
+map<long, const node_t*> get_ottid_to_const_node_map(const Tree_t& T)
+{
+    map<long, const node_t*> ottid;
+    for(auto nd: iter_pre_const(T))
+        if (nd->hasOttId())
+            ottid[nd->getOttId()] = nd;
+
+    return ottid;
+}
+
+map<long, node_t*> get_ottid_to_node_map(Tree_t& T)
+{
+    map<long, node_t*> ottid;
+    for(auto nd: iter_pre(T))
+        if (nd->hasOttId())
+            ottid[nd->getOttId()] = nd;
+
+    return ottid;
+}
+
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     json document;
     std::unique_ptr<Tree_t> summaryTree;
     map<long,const Tree_t::node_type*> taxOttIdToNode;
     map<long,Tree_t::node_type*> summaryOttIdToNode;
+    map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
     map<string, Map<string,string>> supported_by;
     map<string, Map<string,string>> partial_path_of;
     map<string, Map<string,string>> conflicts_with;
@@ -585,11 +606,27 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     void mapNextTree(OTCLI & , const Tree_t & tree, bool ) //isTaxoComp is third param
     {
+        auto induced_tree = get_induced_tree(tree, get_ottid_to_const_node_map(tree), *summaryTree, constSummaryOttIdToNode);
+        induced_tree->setName(tree.getName());
+        auto induced_summary_tree = get_induced_tree(*summaryTree, constSummaryOttIdToNode, tree, get_ottid_to_const_node_map(tree));
+        computeDepth(*induced_tree);
+        computeDepth(*induced_summary_tree);
+
         vector<Tree_t::node_type*> conflicts;
         string source_name = source_from_tree_name(tree.getName());
         document["sources"].push_back(source_name);
+
+        auto map1 = get_ottid_to_node_map(*induced_tree);
+        auto map2 = get_ottid_to_node_map(*induced_summary_tree);
         
-        for(const auto nd: iter_post_const(tree))
+        // make leaves of induced_tree point to leaves of induced_summary_tree.
+        for(auto leaf: iter_leaf(*induced_tree))
+        {
+            auto leaf2 = map2.at(leaf->getOttId());
+            summary_node(leaf) = leaf2;
+        }
+        
+        for(const auto nd: iter_post_const(*induced_tree))
         {
             if (not nd->getParent()) continue;
 
@@ -609,7 +646,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             {
                 assert(mark(MRCA_include) == 1);
                 for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
-                    set_terminal(path_node, nd, tree);
+                    set_terminal(path_node, nd, *induced_tree);
             }
             else if (mark(MRCA_include) == 1)
             {
@@ -617,32 +654,32 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                 {
                     auto path_node = MRCA_include;
                     do {
-                        set_supported_by(path_node, nd, tree);
+                        set_supported_by(path_node, nd, *induced_tree);
                         path_node = path_node->getParent();
                     } while(path_node->isOutDegreeOneNode());
                 }
                 else
                 {
                     for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
-                        set_partial_path_of(path_node, nd, tree);
+                        set_partial_path_of(path_node, nd, *induced_tree);
                 }
             }
             assert(is_marked(MRCA_include,1));
             bool conflicts_or_resolved_by = is_marked(MRCA_include,2);
 
-            find_conflicts(tree, conflicts);
-            trace_clean_marks_from_synth(tree);
+            find_conflicts(*induced_tree, conflicts);
+            trace_clean_marks_from_synth(*induced_tree);
             
             if (nd->isTip() or mark(MRCA_include) == 1) assert(conflicts.empty());
 
             for(auto conflicting_node: conflicts)
-                set_conflicts_with(conflicting_node, nd, tree);
+                set_conflicts_with(conflicting_node, nd, *induced_tree);
 
             if (conflicts.empty() and conflicts_or_resolved_by)
-                set_resolved_by(MRCA_include, nd, tree);
+                set_resolved_by(MRCA_include, nd, *induced_tree);
 
 #ifdef CHECK_MARKS
-            for(const auto nd2: iter_post_const(*summaryTree))
+            for(const auto nd2: iter_post_const(*induced_summary_tree))
             {
                 assert(mark(nd2) == 0);
             }
@@ -668,6 +705,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             for(auto nd: iter_post(*summaryTree))
                 if (nd->hasOttId())
                     summaryOttIdToNode[nd->getOttId()] = nd;
+            constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
             return true;
         }
         if (prune_unrecognized)
