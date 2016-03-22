@@ -82,11 +82,13 @@ bool handlePruneUnrecognizedTips(OTCLI &, const std::string &) {
 }
 
 inline int depth(const Tree_t::node_type* node) {
+    assert(node->getData().depth > 0);
     return node->getData().depth;
 }
 
 
 inline int& depth(Tree_t::node_type* node) {
+    assert(node->getData().depth > 0);
     return node->getData().depth;
 }
 
@@ -455,9 +457,46 @@ map<long, node_t*> get_ottid_to_node_map(Tree_t& T)
     return ottid;
 }
 
+void remove_monotypic_node(node_t* nd)
+{
+    auto child = nd->getFirstChild();
+    child->detachThisNode();
+    nd->addSibOnRight(child);
+    nd->detachThisNode();
+}
+
+map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
+{
+    map<string,string> to_child;
+
+    std::vector<Tree_t::node_type*> remove;
+    for (auto nd:iter_post(tree)) {
+        if (nd->isOutDegreeOneNode()) {
+            remove.push_back(nd);
+        }
+    }
+
+    for (auto nd: remove)
+    {
+        assert(nd->isOutDegreeOneNode());
+        auto child = nd->getFirstChild();
+        assert(not child->isOutDegreeOneNode());
+
+        if (nd->getName().size())
+        {
+            assert(to_child.count(nd->getName()) == 0);
+            to_child[nd->getName()] = child->getName();
+            remove_monotypic_node(nd);
+            delete nd;
+        }
+    }
+    return to_child;
+}
+
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     json document;
     std::unique_ptr<Tree_t> summaryTree;
+    map<string,string> monotypic_nodes;
     map<long,const Tree_t::node_type*> taxOttIdToNode;
     map<long,Tree_t::node_type*> summaryOttIdToNode;
     map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
@@ -535,6 +574,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             if (not node.empty())
                 nodes[name] = node;
         }
+
+        // Copy support information to monotypic nodes from their first non-monotypic descendant
+        for(const auto& m: monotypic_nodes)
+            if (nodes.find(m.second) != nodes.end())
+                nodes[m.first] = nodes[m.second];
+
         document["nodes"] = nodes;
         std::cout<<document.dump(1)<<std::endl;
         return true;
@@ -669,14 +714,15 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     }
 
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) override {
-        computeDepth(*tree);
         assert(taxonomy != nullptr);
         if (summaryTree == nullptr) {
             summaryTree = std::move(tree);
+            monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
             for(auto nd: iter_post(*summaryTree))
                 if (nd->hasOttId())
                     summaryOttIdToNode[nd->getOttId()] = nd;
             constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
+            computeDepth(*summaryTree);
             return true;
         }
         if (prune_unrecognized)
