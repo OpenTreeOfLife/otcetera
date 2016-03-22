@@ -493,6 +493,27 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
     return to_child;
 }
 
+void destroy_children(node_t* node)
+{
+    vector<node_t*> nodes;
+    while(auto n = node->getFirstChild())
+    {
+        n->detachThisNode();
+        nodes.push_back(n);
+    }
+
+    for(std::size_t i = 0; i < nodes.size(); i++) {
+        while(auto n = node->getFirstChild())
+        {
+            n->detachThisNode();
+            nodes.push_back(n);
+        }
+        delete nodes[i];
+    }
+
+    assert(node->isTip());
+}
+
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     json document;
     std::unique_ptr<Tree_t> summaryTree;
@@ -616,7 +637,11 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
         int L = countLeaves(*induced_tree);
         assert(L == countLeaves(*induced_summary_tree));
         
-        for(const auto nd: iter_post_const(*induced_tree))
+        vector<node_t*> tree_nodes;
+        for(auto nd: iter_post(*induced_tree))
+            tree_nodes.push_back(nd);
+
+        for(auto nd: tree_nodes)
         {
             if (not nd->getParent()) continue;
 
@@ -640,10 +665,14 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             }
 
             // Find the list of nodes in the input tree that are below nd.
-            auto leaves1 = leaf_nodes_below(nd);
+            auto leaves1 = leaf_nodes_below(const_cast<const node_t*>(nd));
 
             // Since nd is not a tip, and not monotypic, it should have at least 2 leaves below it.
             assert(leaves1.size() >= 2);
+
+            int L2 = 0;
+            for(auto nd: leaves1)
+                L2 += n_tips(nd);
 
             // Find the corresponding list of nodes in the summary tree
             auto leaves2 = map_to_summary(leaves1);
@@ -662,7 +691,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             {
                 auto nd = nodes[i];
                 if (nd->isTip())
-                    n_include_tips(nd) = 1;
+                    n_include_tips(nd) = n_tips(nd);
                 auto p = nd->getParent();
                 assert(p);
                 assert(nd != MRCA);
@@ -671,7 +700,10 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             }
             
             // If MRCA includes all and only the tips under nd, then MRCA is supporting or partial_path_of
-            if (n_include_tips(MRCA) == n_tips(MRCA))
+            bool conflicts_or_resolved_by = n_include_tips(MRCA) < n_tips(MRCA);
+
+            // Supported_by or partial_path_of
+            if (not conflicts_or_resolved_by)
             {
                 assert(MRCA->getParent());
                 if (MRCA->getParent()->getData().n_tips > MRCA->getData().n_tips)
@@ -680,11 +712,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                     for(auto nd2 = MRCA;nd2 and nd2->getData().n_tips == MRCA->getData().n_tips;nd2 = nd2->getParent())
                         set_partial_path_of(nd2, nd, source);
             }
-            bool conflicts_or_resolved_by = n_include_tips(MRCA) < n_tips(MRCA);
 
             conflicts.clear();
             for(auto nd: nodes)
-                if (n_include_tips(nd) < n_tips(nd) and n_include_tips(nd) < L)
+                // If we have (a) some, but not all of the include group
+                //            (b) any of the exclude group
+                if (n_include_tips(nd) < n_tips(nd) and n_include_tips(nd) < L2)
                     conflicts.push_back(nd);
 
             for(auto nd: nodes)
@@ -700,6 +733,15 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             for(const auto nd2: iter_post_const(*induced_summary_tree))
                 assert(n_include_tips(nd2) == 0);
 #endif
+
+            // nd -> MRCA
+            if (not conflicts_or_resolved_by)
+            {
+                summary_node(nd) = MRCA;
+
+                destroy_children(nd);
+                destroy_children(MRCA);
+            }
         }
     }
 
