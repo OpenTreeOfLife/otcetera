@@ -26,7 +26,7 @@ std::string source_from_tree_name(const std::string& name) {
 }
 
 std::string getSourceNodeName(const std::string& name) {
-    std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
+    static std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
     std::smatch matches;
     if (std::regex_match(name,matches,e))
     {
