@@ -75,12 +75,6 @@ const Tree_t::node_type* get_root(const Tree_t::node_type* node);
 void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts);
 void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
 
-bool prune_unrecognized = true;
-bool handlePruneUnrecognizedTips(OTCLI &, const std::string &) {
-    prune_unrecognized = false;
-    return true;
-}
-
 inline int depth(const Tree_t::node_type* node) {
     assert(node->getData().depth > 0);
     return node->getData().depth;
@@ -329,29 +323,6 @@ std::unique_ptr<Tree_t> get_induced_tree(const Tree_t& T1, const map<long, const
     return get_induced_tree(induced_leaves);
 }
 
-
-void pruneUnmapped(Tree_t& tree, const map<long,const Tree_t::node_type*>& taxOttIdToNode)
-{
-    vector<Tree_t::node_type*> remove;
-    for(auto nd: iter_leaf(tree))
-    {
-        long id = nd->getOttId();
-        if (not taxOttIdToNode.count(id))
-            remove.push_back(nd);
-    }
-
-    for(auto nd: remove)
-    {
-        auto parent = nd->getParent();
-        pruneAndDelete(tree, nd);
-        while(parent and not parent->hasOttId() and parent->isTip())
-        {
-            auto tmp = parent;
-            parent = parent->getParent();
-            pruneAndDelete(tree, tmp);
-        }
-    }
-}
 
 json get_support_blob_as_array(const Map<string,string>& M)
 {
@@ -767,8 +738,6 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             computeDepth(*summaryTree);
             return true;
         }
-        if (prune_unrecognized)
-            pruneUnmapped(*tree, taxOttIdToNode);
         requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
         computeDepth(*tree);
         computeSummaryLeaves(*tree, summaryOttIdToNode);
@@ -792,10 +761,6 @@ int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-annotate-synth",
                 explanation.c_str(),
                 "taxonomy.tre synth.tre inp1.tre inp2.tre ...");
-    otCLI.addFlag('p',
-                  "Prune input tips that are not part of the supertree.  Defaults to false",
-                  handlePruneUnrecognizedTips,
-                  true);
     otCLI.addFlag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
