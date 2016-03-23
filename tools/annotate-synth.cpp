@@ -101,14 +101,11 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
     string name = node->getName();
-    try
-    {
-        return getSourceNodeName(name);
-    }
-    catch (std::exception& e)
-    {
+    auto source = getSourceNodeName(name);
+    if (source)
+        return *source;
+    else
         return name;
-    }
 }
 
 // assumes `node` is marked with `bits`. Returns the parent of `node` and
