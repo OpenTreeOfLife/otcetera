@@ -1,4 +1,5 @@
 #include "otc/otcli.h"
+#include "otc/supertree_util.h"
 #include "json.hpp"
 using namespace otc;
 using json = nlohmann::json;
@@ -39,12 +40,27 @@ inline OttIdSet findIncludedTipIds(const T & nd, const Y & container) {
 }
 
 
+static bool transferNodeNameToExemplars = true; //use -t command line flag to set this to false
 
 template<typename T, typename Y>
 inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
+    bool hasNodeName = false;
+    std::string noden;
+    if (transferNodeNameToExemplars) {
+        std::string onn = nd->getName();
+        auto opts = getSourceNodeName(onn);
+        if (opts) {
+            noden = *opts;
+            hasNodeName = true;
+        }
+    }
     for (auto oid : oids) {
         auto x = tree.createNode(nullptr);
         x->setOttId(oid);
+        if (hasNodeName) {
+            std::string n = noden + " ott" + std::to_string(oid);
+            x->setName(n);
+        }
         nd->addSibOnLeft(x);
     }
     nd->detachThisNode();
@@ -288,6 +304,12 @@ bool handleJSONOutput(OTCLI & otCLI, const std::string &narg) {
 }
 
 
+bool handleUseJustOTTID(OTCLI & otCLI, const std::string &narg) {
+    transferNodeNameToExemplars = false;
+    return true;
+}
+
+
 int main(int argc, char *argv[]) {
     const char * helpMsg = "takes an -e flag specifying an export diretory and at least 2 newick file paths: " \
         "a full taxonomy tree some number of input trees. Any tip in non-taxonomic input that is mapped to " \
@@ -317,5 +339,9 @@ int main(int argc, char *argv[]) {
                   "Name of an output JSON file that summarizes the set of IDs used to exemplify each taxon.",
                   handleJSONOutput,
                   true);
+    otCLI.addFlag('t',
+                  "Label exemplified taxa with just OTT ID. If omitted, they are labelled with nodeID_ottID",
+                  handleUseJustOTTID,
+                  false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);
 }
