@@ -2,6 +2,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <cstdlib>
 
 ///////////////////////////////////////////////////////////////
 // pragmas are MTH mods to silence clang
@@ -42,6 +43,12 @@ OTCLI::OTCLI(const char *title,
     } else {
         defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
         defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+    }
+    auto logFilePath = std::getenv("OTCETERA_LOGFILE");
+    if (logFilePath) {
+        defaultConf.set(el::Level::Global, el::ConfigurationType::Filename, logFilePath);
+    } else {
+        std::cerr << "Not setting logFilePath\n";
     }
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
