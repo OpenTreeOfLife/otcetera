@@ -243,6 +243,7 @@ namespace otc
 
             back().parent_index = loc->second;
             back().depth = (*this)[back().parent_index].depth + 1;
+            (*this)[back().parent_index].out_degree++;
             index[back().id] = size() - 1;
         }
         LOG(TRACE)<<"records read = "<<count;

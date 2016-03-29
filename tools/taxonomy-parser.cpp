@@ -5,7 +5,9 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <boost/program_options.hpp>
+#include <boost/optional.hpp>
 #include <bitset>
+#include <regex>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -34,6 +36,76 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
 namespace po = boost::program_options;
 using po::variables_map;
+using namespace boost::property_tree;
+
+
+boost::optional<string> interpolate(const ptree& pt, const string& section_name, const string& key)
+{
+    static std::regex KEYCRE ("%\\(([^)]+)\\)s");
+
+    if (not pt.get_child_optional(section_name))
+        return boost::none;
+
+    const ptree& section = pt.get_child(section_name);
+
+    if (not section.get_optional<string>(key))
+        return boost::none;
+    
+    string value = section.get<string>(key);
+
+    for(int i=0;i<20 and value.find('%') != string::npos;i++)
+    {
+        string value2;
+        int p1=0;
+        int p2=0;
+        while (p1 < value.size())
+        {
+            p2 = value.find('%', p1);
+            if (p2 == string::npos) p2 = value.size(); 
+            value2 += value.substr(p1, p2-p1);
+            if (p2 == value.size()) break;
+            
+            if (p2+1 >= value.size())
+                throw OTCError()<<"Found '%' at end of string!";
+
+            char c = value[p2+1];
+            if (c == '%')
+            {
+                value2 += "%";
+                p1 = p2 + 1;
+                continue;
+            }
+            else if (c == '(')
+            {
+                std::cmatch m;
+                bool matched = std::regex_search(value.c_str()+p2, value.c_str()+value.size(), m, KEYCRE);
+                if (not matched)
+                    throw OTCError()<<"Bad interpolation variable reference: '"<<value.substr(p2)<<"'";
+
+                string name = m[1];
+                if (not section.get_optional<string>(name))
+                    throw OTCError()<<"Reference to undefined key '"<<name<<"' in "<<key<<" = "<<value<<"\n";
+                value2 += section.get<string>(name);
+                p1 = p2 + m.length(0);
+            }
+            else
+                throw OTCError()<<"Bad interpolation variable reference: '"<<value.substr(p2)<<"'";
+        }
+        value = value2;
+    }
+
+    return value;
+}
+
+
+template <typename T>
+boost::optional<T> load_config(const string& filename, const string& section, const string& name)
+{
+    ptree pt;
+    ini_parser::read_ini(filename, pt);
+    return interpolate(pt, section, name);
+//    return pt.get_optional<T>(entry);
+}
 
 variables_map parse_cmd_line(int argc,char* argv[]) 
 { 
@@ -54,6 +126,11 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description output("Output options");
     output.add_options()
+        ("find,S",value<string>(),"Show taxa whose names match regex <arg>")
+        ("degree,D",value<long>(),"Show out the degree of node <arg>")
+        ("children,C",value<long>(),"Show the children of node <arg>")
+        ("parent,P",value<long>(),"Show the parent taxon of node <arg>")
+        ("high-degree-nodes",value<int>(),"Show the top <arg> high-degree nodes")
         ("write-tree,T","Write out the result as a tree")
         ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
         ("name,N", value<long>(), "Return name of the given ID")
@@ -73,6 +150,25 @@ variables_map parse_cmd_line(int argc,char* argv[])
                                                     "Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
                                                     "Read a taxonomy, clean it, and then make a tree or some other operation.",
                                                     visible, invisible, p);
+
+    if (not vm.count("taxonomy"))
+    {
+        auto homedir = std::getenv("HOME");
+        if (not homedir)
+            throw OTCError()<<"Taxonomy dir not specified on command line, and can't read ~/.opentree because $HOME is not set.";
+
+        string path = homedir;
+        path += "/.opentree";
+
+//        auto dir = load_config<string>(path,"opentree.ott");
+        auto dir = load_config<string>(path,"opentree","ott");
+
+        if (not dir)
+            throw OTCError()<<"Taxonomy dir not specified on command line or in ~/.opentree.";
+
+        vm.insert({"taxonomy",po::variable_value(*dir,true)});
+    }
+
     return vm;
 }
 
@@ -123,6 +219,11 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
             std::cout<<"depth="<<rec->depth<<"   id="<<rec->id<<"   uniqname='"<<rec->uniqname<<"'\n";
 }
 
+void show_rec(const taxonomy_record& rec)
+{
+    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"\n";
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -150,6 +251,54 @@ int main(int argc, char* argv[])
 
         Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 
+        if (args.count("find"))
+        {
+            string s = args["find"].as<string>();
+            std::regex e(s);
+            for(const auto& rec: taxonomy)
+            {
+                std::cmatch m;
+                if (std::regex_match(rec.name.data(), rec.name.data()+rec.name.size(), m, e))
+                    show_rec(rec);
+            }
+            exit(0);
+        }
+        else if (args.count("degree"))
+        {
+            long id = args["degree"].as<long>();
+            std::cout<<"degree = "<<taxonomy[taxonomy.index.at(id)].out_degree<<std::endl;
+            exit(0);
+        }
+        else if (args.count("children"))
+        {
+            long id = args["children"].as<long>();
+
+            for(const auto& rec: taxonomy)
+            {
+                long parent_id = taxonomy[rec.parent_index].id;
+                if (parent_id == id)
+                    show_rec(rec);
+            }
+            exit(0);
+        }
+        else if (args.count("parent"))
+        {
+            long id = args["parent"].as<long>();
+            auto parent_index = taxonomy[taxonomy.index.at(id)].parent_index;
+            std::cout<<"parent = "<<taxonomy[parent_index].id<<std::endl;
+            exit(0);
+        }
+        else if (args.count("high-degree-nodes"))
+        {
+            int n = args["high-degree-nodes"].as<int>();
+            vector<int> index(taxonomy.size());
+            for(int i=0;i<index.size();i++)
+                index[i] = i;
+            std::sort(index.begin(), index.end(), [&taxonomy](int i, int j){return taxonomy[i].out_degree > taxonomy[j].out_degree;});
+            for(int i=0;i<n;i++)
+                show_rec(taxonomy[index[i]]);
+            exit(0);
+        }
         if (args.count("write-tree"))
         {
             auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};

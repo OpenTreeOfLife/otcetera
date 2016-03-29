@@ -35,12 +35,33 @@ struct hash<pair<T,U>>
 
 struct RTNodeDepth {
     int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
-    int mark = 0;
+    int n_tips = 0;
+    int n_include_tips = 0;
     RootedTreeNode<RTNodeDepth>* summary_node;
 };
 
 using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
 using node_t = Tree_t::node_type;
+
+int n_include_tips(const node_t* node)
+{
+    return node->getData().n_include_tips;
+}
+
+int n_tips(const node_t* node)
+{
+    return node->getData().n_tips;
+}
+
+int& n_include_tips(node_t* node)
+{
+    return node->getData().n_include_tips;
+}
+
+int& n_tips(node_t* node)
+{
+    return node->getData().n_tips;
+}
 
 int depth(const Tree_t::node_type* node);
 int& depth(Tree_t::node_type* node);
@@ -49,29 +70,19 @@ Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 Tree_t::node_type* nmParent(Tree_t::node_type* node);
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
-Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits);
 Tree_t::node_type* get_root(Tree_t::node_type* node);
 const Tree_t::node_type* get_root(const Tree_t::node_type* node);
-Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2);
-Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, int bits);
-Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, int bits1, int bits2);
 void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts);
 void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
-void trace_clean_marks(Tree_t::node_type* node);
-void trace_clean_marks_from_synth(const Tree_t& tree);
-
-bool prune_unrecognized = true;
-bool handlePruneUnrecognizedTips(OTCLI &, const std::string &) {
-    prune_unrecognized = false;
-    return true;
-}
 
 inline int depth(const Tree_t::node_type* node) {
+    assert(node->getData().depth > 0);
     return node->getData().depth;
 }
 
 
 inline int& depth(Tree_t::node_type* node) {
+    assert(node->getData().depth > 0);
     return node->getData().depth;
 }
 
@@ -91,6 +102,21 @@ inline Tree_t::node_type* nmParent(Tree_t::node_type* node) {
     return node;
 }
 
+// Compute number of tips at this node or below it
+void compute_tips(Tree_t& tree)
+{
+    // Iterate over nodes, leaves first
+    for(auto nd: iter_post(tree))
+    {
+        if (nd->isTip())
+            nd->getData().n_tips = 1;
+
+        auto p = nd->getParent();
+        if (p)
+            p->getData().n_tips += nd->getData().n_tips;
+    }
+}
+
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
     for(auto leaf: iter_leaf(tree)) {
@@ -108,15 +134,6 @@ string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
         return name;
 }
 
-// assumes `node` is marked with `bits`. Returns the parent of `node` and
-//  also marks the parent with `bits` as a side effect.
-Tree_t::node_type* trace_to_parent(Tree_t::node_type* node, int bits) {
-    assert(is_marked(node, bits));
-    node = node->getParent(); // move to parent and mark it.
-    set_mark(node, bits);
-    return node;
-}
-
 Tree_t::node_type* get_root(Tree_t::node_type* node) {
     while (node->getParent()) {
         node = node->getParent();
@@ -132,77 +149,25 @@ const Tree_t::node_type* get_root(const Tree_t::node_type* node)
     return node;
 }
 
-/// Walk up the tree from node1 and node2 until we find the common ancestor, marking all the way.
-// for X=1,2 and Y = 3-X
-//      assumes nodeX is marked by bitsX 
-//      returns the MRCA, and guarantees that the path from MRCA to nodeX is marked with bitsX
-//  if nodeX is nullptr, returns the other nodeY marked by bitsY
-Tree_t::node_type* trace_find_MRCA(Tree_t::node_type* node1, Tree_t::node_type* node2, int bits1, int bits2) {
-    assert(node1 or node2);
-    if (not node1) {
-        assert(is_marked(node2, bits2));
-        return node2;
-    }
-    if (not node2) {
-        assert(is_marked(node1, bits1));
-        return node1;
-    }
-    assert(node1 and node2);
-    assert(get_root(node1) == get_root(node2));
-    assert(is_marked(node1, bits1));
-    assert(is_marked(node2, bits2));
-    while (depth(node1) > depth(node2)){
-        node1 = trace_to_parent(node1, bits1);
-    }
-    while (depth(node1) < depth(node2)){
-        node2 = trace_to_parent(node2, bits2);
-    }
-    assert(depth(node1) == depth(node2));
-    while (node1 != node2) {
-        assert(node1->getParent());
-        assert(node2->getParent());
-        node1 = trace_to_parent(node1, bits1);
-        node2 = trace_to_parent(node2, bits2);
-    }
-    assert(node1 == node2);
-    assert(is_marked(node1, bits1));
-    assert(is_marked(node2, bits2));
-    return node1;
-}
-
-// traces the summary nodes that correspond to the leaves of `node` back to their MRCA
-//  on the summary tree. All of the nodes in this induced tree will be flagged by setting
-//  `bits` to 1.
-// returns the MRCA node (in the summary tree)
-Tree_t::node_type* trace_include_group_find_MRCA(const Tree_t::node_type* node, int bits) {
-    Tree_t::node_type* MRCA = nullptr;
-    for (auto leaf: iter_leaf_n_const(*node)) {
-        auto leaf2 = summary_node(leaf);
-        mark(leaf2) |= bits;
-        MRCA = trace_find_MRCA(MRCA, leaf2, bits, bits);
-        assert(is_marked(MRCA, bits));
-        if (MRCA->hasChildren()) {
-            assert(countMarkedChildren(MRCA,bits)>0);
-        }
-    }
-    return MRCA;
-}
-
 // assumes `node` is marked with `bits`. Returns the parent of `node` and
 //  also marks the parent with `bits` as a side effect.
 const node_t* trace_to_parent(const node_t* node, set<const node_t*>& nodes) {
     assert(nodes.count(node));
-    node = node->getParent(); // move to parent and mark it.
+    node = node->getParent(); // move to parent and insert it.
     nodes.insert(node);
     return node;
 }
 
-/// Walk up the tree from node1 and node2 until we find the common ancestor, marking all the way.
-// for X=1,2 and Y = 3-X
-//      assumes nodeX is marked by bitsX 
-//      returns the MRCA, and guarantees that the path from MRCA to nodeX is marked with bitsX
-//  if nodeX is nullptr, returns the other nodeY marked by bitsY
-const node_t* trace_find_MRCA(const node_t* node1, const node_t* node2, set<const node_t*>& nodes)
+node_t* trace_to_parent(node_t* node, set<node_t*>& nodes) {
+    assert(nodes.count(node));
+    node = node->getParent(); // move to parent and insert it.
+    nodes.insert(node);
+    return node;
+}
+
+/// Walk up the tree from node1 and node2 until we find the common ancestor, putting nodes into set `nodes`.
+template <typename N>
+N* trace_find_MRCA(N* node1, N* node2, set<N*>& nodes)
 {
     assert(node1 or node2);
     if (not node1) {
@@ -236,11 +201,43 @@ const node_t* trace_find_MRCA(const node_t* node1, const node_t* node2, set<cons
     return node1;
 }
 
-std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const Tree_t::node_type*>& leaves)
+template <typename N>
+vector<N*> leaf_nodes_below(N* node)
+{
+    vector<N*> nodes;
+    for(auto nd: iter_leaf_n_const(*node))
+        nodes.push_back(nd);
+    return nodes;
+}
+
+vector<node_t*> map_to_summary(const vector<const node_t*>& nodes)
+{
+    vector<node_t*> nodes2(nodes.size(),nullptr);
+    for(int i=0;i<nodes2.size();i++)
+        nodes2[i] = summary_node(nodes[i]);
+    return nodes2;
+}
+
+auto find_induced_nodes(const vector<node_t*>& leaves)
+{
+    set<node_t*> nodes;
+    node_t* MRCA = nullptr;
+    for(auto leaf: leaves)
+    {
+        nodes.insert(leaf);
+        MRCA = trace_find_MRCA(MRCA, leaf, nodes);
+    }
+    vector<node_t*> vnodes;
+    for(auto nd: nodes)
+        vnodes.push_back(nd);
+    return vnodes;
+}
+
+std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const node_t*>& leaves)
 {
     // 1. Find MRCA and all nodes in the tree
     const Tree_t::node_type* MRCA = nullptr;
-    std::unordered_set<const Tree_t::node_type*> nodes;
+    set<const node_t*> nodes;
     for(auto leaf: leaves)
     {
         nodes.insert(leaf);
@@ -327,93 +324,6 @@ std::unique_ptr<Tree_t> get_induced_tree(const Tree_t& T1, const map<long, const
 }
 
 
-// Assumes that the version of the summary tree induced by the include group of `node` has
-//  already been marked with `bits1`.
-// Returns the MRCA of the exclude group, and assures that every node in the version of the
-//  summary tree induced by the exclude group is flagged with `bits2` 
-Tree_t::node_type* trace_exclude_group_find_MRCA(const Tree_t::node_type* node, int bits1, int bits2) {
-    // Using bits1 to exclude leafs seems like a dumb way to iterate over excluded leaves.
-    node = get_root(node);
-    Tree_t::node_type* MRCA = nullptr;
-    for(auto leaf: iter_leaf_n(*node)) {
-        auto leaf2 = summary_node(leaf);
-        if (!is_marked(leaf2, bits1)) {
-            mark(leaf2) |= bits2;
-            MRCA = trace_find_MRCA(MRCA, leaf2, bits2, bits2);
-        }
-    }
-    return MRCA;
-}
-
-// Walks from `node` to the induced root (real root or the deepest node with some mark).
-// adds the a node to `conflicts` if that node is marked by the include AND exclude bit
-//  but the node is NOT the deepest node marked with the include flag.
-// The latter (but...NOT) condition avoids flagging nodes that are polytomies which
-//  could be resolved in favor of a node as "conflict" nodes.
-// This is sub-optimal, because we walk each branch n times if it has n children.
-// There a conflict will be discovered n times if it has n children.
-// We currently hack around this by checking for duplicate entries in the hash.
-void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts) {
-    while (node and mark(node)) {
-        if (is_marked(node,1)
-            and is_marked(node,2)
-            and node->getParent()
-            and is_marked(node->getParent(), 1)) {
-            conflicts.push_back(node);
-        }
-        node = node->getParent();
-    } 
-}
-
-// calls find_anc_conflicts for each leaf to fill `conflicts`
-void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts) {
-    conflicts.clear();
-    for(auto leaf: iter_leaf_const(tree)) {
-        auto leaf2 = summary_node(leaf);
-        find_anc_conflicts(leaf2, conflicts);
-    }
-}
-
-
-void trace_clean_marks(Tree_t::node_type* node) {
-    while (node and mark(node)) {
-        mark(node) = 0;
-        node = node->getParent();
-        // MTH should  be able to bail out here if the next node is already mark(node) == 0, right?
-    } 
-}
-
-// sets marks to 0 for all nodes of the summary tree that are induced by the leaf set of tree.
-void trace_clean_marks_from_synth(const Tree_t& tree) {
-    for(auto leaf: iter_leaf_const(tree)) {
-        auto leaf2 = summary_node(leaf);
-        trace_clean_marks(leaf2);
-    }
-}
-
-void pruneUnmapped(Tree_t& tree, const map<long,const Tree_t::node_type*>& taxOttIdToNode)
-{
-    vector<Tree_t::node_type*> remove;
-    for(auto nd: iter_leaf(tree))
-    {
-        long id = nd->getOttId();
-        if (not taxOttIdToNode.count(id))
-            remove.push_back(nd);
-    }
-
-    for(auto nd: remove)
-    {
-        auto parent = nd->getParent();
-        pruneAndDelete(tree, nd);
-        while(parent and not parent->hasOttId() and parent->isTip())
-        {
-            auto tmp = parent;
-            parent = parent->getParent();
-            pruneAndDelete(tree, tmp);
-        }
-    }
-}
-
 json get_support_blob_as_array(const Map<string,string>& M)
 {
     json support_blob = json::object();
@@ -484,10 +394,9 @@ void set_support_blob_as_single_element(json& j, const map<string,Map<string,str
 }
 
 void add_element(map<string, Map<string, string>>& m, map<string, set<pair<string,string>>>& s,
-                 const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+                 const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
 {
     string synth = synth_node->getName();
-    string source = source_from_tree_name(input_tree.getName());
     string node = getSourceNodeNameIfAvailable(input_node);
 
     pair<string,string> x{source, node};
@@ -499,11 +408,90 @@ void add_element(map<string, Map<string, string>>& m, map<string, set<pair<strin
     }
 }
 
+map<long, const node_t*> get_ottid_to_const_node_map(const Tree_t& T)
+{
+    map<long, const node_t*> ottid;
+    for(auto nd: iter_pre_const(T))
+        if (nd->hasOttId())
+            ottid[nd->getOttId()] = nd;
+
+    return ottid;
+}
+
+map<long, node_t*> get_ottid_to_node_map(Tree_t& T)
+{
+    map<long, node_t*> ottid;
+    for(auto nd: iter_pre(T))
+        if (nd->hasOttId())
+            ottid[nd->getOttId()] = nd;
+
+    return ottid;
+}
+
+void remove_monotypic_node(node_t* nd)
+{
+    auto child = nd->getFirstChild();
+    child->detachThisNode();
+    nd->addSibOnRight(child);
+    nd->detachThisNode();
+}
+
+map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
+{
+    map<string,string> to_child;
+
+    std::vector<Tree_t::node_type*> remove;
+    for (auto nd:iter_post(tree)) {
+        if (nd->isOutDegreeOneNode()) {
+            remove.push_back(nd);
+        }
+    }
+
+    for (auto nd: remove)
+    {
+        assert(nd->isOutDegreeOneNode());
+        auto child = nd->getFirstChild();
+        assert(not child->isOutDegreeOneNode());
+
+        if (nd->getName().size())
+        {
+            assert(to_child.count(nd->getName()) == 0);
+            to_child[nd->getName()] = child->getName();
+            remove_monotypic_node(nd);
+            delete nd;
+        }
+    }
+    return to_child;
+}
+
+void destroy_children(node_t* node)
+{
+    vector<node_t*> nodes;
+    while(auto n = node->getFirstChild())
+    {
+        n->detachThisNode();
+        nodes.push_back(n);
+    }
+
+    for(std::size_t i = 0; i < nodes.size(); i++) {
+        while(auto n = node->getFirstChild())
+        {
+            n->detachThisNode();
+            nodes.push_back(n);
+        }
+        delete nodes[i];
+    }
+
+    assert(node->isTip());
+}
+
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     json document;
     std::unique_ptr<Tree_t> summaryTree;
+    map<string,string> monotypic_nodes;
     map<long,const Tree_t::node_type*> taxOttIdToNode;
     map<long,Tree_t::node_type*> summaryOttIdToNode;
+    map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
     map<string, Map<string,string>> supported_by;
     map<string, Map<string,string>> partial_path_of;
     map<string, Map<string,string>> conflicts_with;
@@ -522,34 +510,34 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     virtual ~DisplayedStatsState(){}
 
-    void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(terminal, terminal_set, synth_node, input_node, input_tree);
+        add_element(terminal, terminal_set, synth_node, input_node, source);
     }
 
-    void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(supported_by, supported_by_set, synth_node, input_node, input_tree);
+        add_element(supported_by, supported_by_set, synth_node, input_node, source);
     }
 
-    void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(partial_path_of, partial_path_of_set, synth_node, input_node, input_tree);
+        add_element(partial_path_of, partial_path_of_set, synth_node, input_node, source);
     }
 
-    void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(conflicts_with, conflicts_with_set, synth_node, input_node, input_tree);
+        add_element(conflicts_with, conflicts_with_set, synth_node, input_node, source);
     }
 
-    void set_resolved_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_resolved_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(resolved_by, resolved_by_set, synth_node, input_node, input_tree);
+        add_element(resolved_by, resolved_by_set, synth_node, input_node, source);
     }
 
-    void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const Tree_t& input_tree)
+    void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
     {
-        add_element(resolves, resolves_set, synth_node, input_node, input_tree);
+        add_element(resolves, resolves_set, synth_node, input_node, source);
     }
 
     bool summarize(OTCLI &otCLI) override {
@@ -578,6 +566,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
             if (not node.empty())
                 nodes[name] = node;
         }
+
+        // Copy support information to monotypic nodes from their first non-monotypic descendant
+        for(const auto& m: monotypic_nodes)
+            if (nodes.find(m.second) != nodes.end())
+                nodes[m.first] = nodes[m.second];
+
         document["nodes"] = nodes;
         std::cout<<document.dump(1)<<std::endl;
         return true;
@@ -585,68 +579,140 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     void mapNextTree(OTCLI & , const Tree_t & tree, bool ) //isTaxoComp is third param
     {
+        auto induced_tree = get_induced_tree(tree, get_ottid_to_const_node_map(tree), *summaryTree, constSummaryOttIdToNode);
+        induced_tree->setName(tree.getName());
+        auto induced_summary_tree = get_induced_tree(*summaryTree, constSummaryOttIdToNode, tree, get_ottid_to_const_node_map(tree));
+
+        computeDepth(*induced_tree);
+        compute_tips(*induced_tree);
+
+        computeDepth(*induced_summary_tree);
+        compute_tips(*induced_summary_tree);
+
         vector<Tree_t::node_type*> conflicts;
         string source_name = source_from_tree_name(tree.getName());
         document["sources"].push_back(source_name);
+
+        auto map1 = get_ottid_to_node_map(*induced_tree);
+        auto map2 = get_ottid_to_node_map(*induced_summary_tree);
         
-        for(const auto nd: iter_post_const(tree))
+        // make leaves of induced_tree point to leaves of induced_summary_tree.
+        for(auto leaf: iter_leaf(*induced_tree))
+        {
+            auto leaf2 = map2.at(leaf->getOttId());
+            summary_node(leaf) = leaf2;
+        }
+        
+        string source = source_from_tree_name(tree.getName());
+
+        int L = countLeaves(*induced_tree);
+        assert(L == countLeaves(*induced_summary_tree));
+        
+        vector<node_t*> tree_nodes;
+        for(auto nd: iter_post(*induced_tree))
+            tree_nodes.push_back(nd);
+
+        for(auto nd: tree_nodes)
         {
             if (not nd->getParent()) continue;
 
             // Ignore knuckles in input trees.
-            //
-            // Note that in general, if we've pruned this tree down to match the shared taxon set
-            // then this could produce knuckles.
+            // (Note that in general, if we've pruned this tree down to match the shared taxon set
+            //  then this could produce knuckles that were not originally there.)
             if (nd->isOutDegreeOneNode()) continue;
 
-            auto MRCA_include = trace_include_group_find_MRCA(nd, 1);
-            assert(not is_marked(MRCA_include,2));
-            auto MRCA_exclude = trace_exclude_group_find_MRCA(nd, 1, 2);
-
-            MRCA_exclude = trace_find_MRCA(MRCA_include, MRCA_exclude, 0, 2);
-
+            // If this node contains all tips under it, then it doesn't correspond to a split.
+            if (nd->getData().n_tips == L) continue;
+            
+            // If this node is a tip, the mark the corresponding nodes
             if (nd->isTip())
             {
-                assert(mark(MRCA_include) == 1);
-                for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
-                    set_terminal(path_node, nd, tree);
+                auto nd2 = summary_node(nd);
+                set_terminal(nd2, nd, source);
+                nd2 = nd2->getParent();
+                for(;nd2 and nd2->isOutDegreeOneNode();nd2 = nd2->getParent())
+                    set_terminal(nd2, nd, source);
+                continue;
             }
-            else if (mark(MRCA_include) == 1)
+
+            // Find the list of nodes in the input tree that are below nd.
+            auto leaves1 = leaf_nodes_below(const_cast<const node_t*>(nd));
+
+            // Since nd is not a tip, and not monotypic, it should have at least 2 leaves below it.
+            assert(leaves1.size() >= 2);
+
+            int L2 = 0;
+            for(auto nd: leaves1)
+                L2 += n_tips(nd);
+
+            // Find the corresponding list of nodes in the summary tree
+            auto leaves2 = map_to_summary(leaves1);
+
+            // Find the nodes in the induced tree of those nodes
+            vector<node_t*> nodes = find_induced_nodes(leaves2);
+
+            // Sort the nodes by depth to ensure all children occur before their parents -- unfortunately n*log(n) !
+            std::sort(nodes.begin(), nodes.end(), [](auto x, auto y){return depth(x) > depth(y);});
+
+            // The MRCA should be the last node in the vector.
+            auto MRCA = nodes.back();
+
+            // The n_include_tips for a parent node should count the n_include_tips for this node
+            for(int i=0;i<nodes.size()-1;i++)
             {
-                if (MRCA_include->getParent() and mark(nmParent(MRCA_include)) == 2)
-                {
-                    auto path_node = MRCA_include;
-                    do {
-                        set_supported_by(path_node, nd, tree);
-                        path_node = path_node->getParent();
-                    } while(path_node->isOutDegreeOneNode());
-                }
-                else
-                {
-                    for(auto path_node = MRCA_include;path_node and not is_marked(path_node,2);path_node = path_node->getParent())
-                        set_partial_path_of(path_node, nd, tree);
-                }
+                auto nd = nodes[i];
+                if (nd->isTip())
+                    n_include_tips(nd) = n_tips(nd);
+                auto p = nd->getParent();
+                assert(p);
+                assert(nd != MRCA);
+                n_include_tips(p) += n_include_tips(nd);
+                assert(n_include_tips(nd) <= n_tips(nd));
             }
-            assert(is_marked(MRCA_include,1));
-            bool conflicts_or_resolved_by = is_marked(MRCA_include,2);
-
-            find_conflicts(tree, conflicts);
-            trace_clean_marks_from_synth(tree);
             
-            if (nd->isTip() or mark(MRCA_include) == 1) assert(conflicts.empty());
+            // If MRCA includes all and only the tips under nd, then MRCA is supporting or partial_path_of
+            bool conflicts_or_resolved_by = n_include_tips(MRCA) < n_tips(MRCA);
 
+            // Supported_by or partial_path_of
+            if (not conflicts_or_resolved_by)
+            {
+                assert(MRCA->getParent());
+                if (MRCA->getParent()->getData().n_tips > MRCA->getData().n_tips)
+                    set_supported_by(MRCA, nd, source);
+                else
+                    for(auto nd2 = MRCA;nd2 and nd2->getData().n_tips == MRCA->getData().n_tips;nd2 = nd2->getParent())
+                        set_partial_path_of(nd2, nd, source);
+            }
+
+            conflicts.clear();
+            for(auto nd: nodes)
+                // If we have (a) some, but not all of the include group
+                //            (b) any of the exclude group
+                if (n_include_tips(nd) < n_tips(nd) and n_include_tips(nd) < L2)
+                    conflicts.push_back(nd);
+
+            for(auto nd: nodes)
+                n_include_tips(nd) = 0;
+            
             for(auto conflicting_node: conflicts)
-                set_conflicts_with(conflicting_node, nd, tree);
+                set_conflicts_with(conflicting_node, nd, source);
 
             if (conflicts.empty() and conflicts_or_resolved_by)
-                set_resolved_by(MRCA_include, nd, tree);
+                set_resolved_by(MRCA, nd, source);
 
 #ifdef CHECK_MARKS
-            for(const auto nd2: iter_post_const(*summaryTree))
-            {
-                assert(mark(nd2) == 0);
-            }
+            for(const auto nd2: iter_post_const(*induced_summary_tree))
+                assert(n_include_tips(nd2) == 0);
 #endif
+
+            // nd -> MRCA
+            if (not conflicts_or_resolved_by)
+            {
+                summary_node(nd) = MRCA;
+
+                destroy_children(nd);
+                destroy_children(MRCA);
+            }
         }
     }
 
@@ -661,17 +727,17 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     }
 
     bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) override {
-        computeDepth(*tree);
         assert(taxonomy != nullptr);
         if (summaryTree == nullptr) {
             summaryTree = std::move(tree);
+            monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
             for(auto nd: iter_post(*summaryTree))
                 if (nd->hasOttId())
                     summaryOttIdToNode[nd->getOttId()] = nd;
+            constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
+            computeDepth(*summaryTree);
             return true;
         }
-        if (prune_unrecognized)
-            pruneUnmapped(*tree, taxOttIdToNode);
         requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
         computeDepth(*tree);
         computeSummaryLeaves(*tree, summaryOttIdToNode);
@@ -695,10 +761,6 @@ int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-annotate-synth",
                 explanation.c_str(),
                 "taxonomy.tre synth.tre inp1.tre inp2.tre ...");
-    otCLI.addFlag('p',
-                  "Prune input tips that are not part of the supertree.  Defaults to false",
-                  handlePruneUnrecognizedTips,
-                  true);
     otCLI.addFlag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
