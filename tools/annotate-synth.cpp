@@ -756,6 +756,21 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
                                       log_resolved_by,
                                       log_terminal);
         }
+        {
+            auto log_supported_by    = [this, &source_name](const node_t* node2, const node_t* node1) {};
+            auto log_partial_path_of = [this, &source_name](const node_t* node2, const node_t* node1) {};
+            auto log_conflicts_with  = [this, &source_name](const node_t* node2, const node_t* node1) {};
+            auto log_resolved_by     = [this, &source_name](const node_t* node2, const node_t* node1) {set_resolves(node1,node2,source_name);};
+            auto log_terminal        = [this, &source_name](const node_t* node2, const node_t* node1) {};
+
+            perform_conflict_analysis(*summaryTree, constSummaryOttIdToNode,
+                                      tree, ottid_to_node,
+                                      log_supported_by,
+                                      log_partial_path_of,
+                                      log_conflicts_with,
+                                      log_resolved_by,
+                                      log_terminal);
+        }
     }
 
     virtual bool processTaxonomyTree(OTCLI & otCLI) override {
