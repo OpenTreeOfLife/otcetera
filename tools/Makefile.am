@@ -55,7 +55,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-tree-tool \
 				otc-version-reporter
 
-LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS)
+
+LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS) 
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
