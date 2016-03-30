@@ -315,12 +315,16 @@ vector<const Tree_t::node_type*> get_induced_leaves(const Tree_t& T1, const map<
     return leaves;
 }
 
+// Get the subtree of T1 connecting the leaves of T1 that are also in T2.
 std::unique_ptr<Tree_t> get_induced_tree(const Tree_t& T1, const map<long, const Tree_t::node_type*>& nodes1,
                                          const Tree_t& T2, const map<long, const Tree_t::node_type*>& nodes2)
 {
     auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
 
-    return get_induced_tree(induced_leaves);
+    auto induced_tree =  get_induced_tree(induced_leaves);
+    induced_tree->setName(T1.getName());
+
+    return induced_tree;
 }
 
 
@@ -485,6 +489,158 @@ void destroy_children(node_t* node)
     assert(node->isTip());
 }
 
+typedef std::function<void(const node_t* node2, const node_t* node1)> node_logger_t;
+
+// Map nodes of T1 onto T2.
+// * Monotypic nodes of T1 are ignored.
+// * Leaves of T1 should correspond to leaves of T2, or nothing in T2. (?)
+// * Each non-monotypic node of T1 will equal (supported_by/partial_path_of), conflict with, or be a terminal of nodes in T2.
+// * A node of T1 can equal one node of T2 (supported_by) or several nodes of T2 (partial_path_of).
+// * A node of T1 can conflict with several nodes of T2.
+// * A node of T1
+void perform_conflict_analysis(const Tree_t& tree1,
+                               const map<long, const node_t*>& ottid_to_node1,
+                               const Tree_t& tree2,
+                               const map<long, const node_t*>& ottid_to_node2,
+                               node_logger_t log_supported_by,
+                               node_logger_t log_partial_path_of,
+                               node_logger_t log_conflicts_with,
+                               node_logger_t log_resolved_by,
+                               node_logger_t log_terminal)
+{
+    // Handle non-leaf correspondence?
+    auto induced_tree1 = get_induced_tree(tree1, ottid_to_node1, tree2, ottid_to_node2);
+    auto induced_tree2 = get_induced_tree(tree2, ottid_to_node2, tree1, ottid_to_node1);
+
+    computeDepth(*induced_tree1);
+    compute_tips(*induced_tree1);
+
+    computeDepth(*induced_tree2);
+    compute_tips(*induced_tree2);
+
+    vector<Tree_t::node_type*> conflicts;
+
+    auto map1 = get_ottid_to_node_map(*induced_tree1);
+    auto map2 = get_ottid_to_node_map(*induced_tree2);
+        
+    // make summary_node field of induced_tree1 leaves point to leaves of induced_tree2.
+    for(auto leaf: iter_leaf(*induced_tree1))
+    {
+        auto leaf2 = map2.at(leaf->getOttId());
+        summary_node(leaf) = leaf2;
+    }
+        
+    int L = countLeaves(*induced_tree1);
+    assert(L == countLeaves(*induced_tree2));
+        
+    vector<node_t*> tree_nodes;
+    for(auto nd: iter_post(*induced_tree1))
+        tree_nodes.push_back(nd);
+
+    for(auto nd: tree_nodes)
+    {
+        if (not nd->getParent()) continue;
+
+        // Ignore knuckles in input trees.
+        // (Note that in general, if we've pruned this tree down to match the shared taxon set
+        //  then this could produce knuckles that were not originally there.)
+        if (nd->isOutDegreeOneNode()) continue;
+
+        // If this node contains all tips under it, then it doesn't correspond to a split.
+        if (nd->getData().n_tips == L) continue;
+            
+        // If this node is a tip, the mark the corresponding nodes
+        if (nd->isTip())
+        {
+            auto nd2 = summary_node(nd);
+            log_terminal(nd2, nd);
+            nd2 = nd2->getParent();
+            for(;nd2 and nd2->isOutDegreeOneNode();nd2 = nd2->getParent())
+                log_terminal(nd2, nd);
+            continue;
+        }
+
+        // Find the list of nodes in the input tree that are below nd.
+        auto leaves1 = leaf_nodes_below(const_cast<const node_t*>(nd));
+
+        // Since nd is not a tip, and not monotypic, it should have at least 2 leaves below it.
+        assert(leaves1.size() >= 2);
+
+        int L2 = 0;
+        for(auto nd: leaves1)
+            L2 += n_tips(nd);
+
+        // Find the corresponding list of nodes in the summary tree
+        auto leaves2 = map_to_summary(leaves1);
+
+        // Find the nodes in the induced tree of those nodes
+        vector<node_t*> nodes = find_induced_nodes(leaves2);
+
+        // Sort the nodes by depth to ensure all children occur before their parents -- unfortunately n*log(n) !
+        std::sort(nodes.begin(), nodes.end(), [](auto x, auto y){return depth(x) > depth(y);});
+
+        // The MRCA should be the last node in the vector.
+        auto MRCA = nodes.back();
+
+        // The n_include_tips for a parent node should count the n_include_tips for this node
+        for(int i=0;i<nodes.size()-1;i++)
+        {
+            auto nd = nodes[i];
+            if (nd->isTip())
+                n_include_tips(nd) = n_tips(nd);
+            auto p = nd->getParent();
+            assert(p);
+            assert(nd != MRCA);
+            n_include_tips(p) += n_include_tips(nd);
+            assert(n_include_tips(nd) <= n_tips(nd));
+        }
+            
+        // If MRCA includes all and only the tips under nd, then MRCA is supporting or partial_path_of
+        bool conflicts_or_resolved_by = n_include_tips(MRCA) < n_tips(MRCA);
+
+        // Supported_by or partial_path_of
+        if (not conflicts_or_resolved_by)
+        {
+            assert(MRCA->getParent());
+            if (MRCA->getParent()->getData().n_tips > MRCA->getData().n_tips)
+                log_supported_by(MRCA, nd);
+            else
+                for(auto nd2 = MRCA;nd2 and nd2->getData().n_tips == MRCA->getData().n_tips;nd2 = nd2->getParent())
+                    log_partial_path_of(nd2, nd);
+        }
+
+        conflicts.clear();
+        for(auto nd: nodes)
+            // If we have (a) some, but not all of the include group
+            //            (b) any of the exclude group
+            if (n_include_tips(nd) < n_tips(nd) and n_include_tips(nd) < L2)
+                conflicts.push_back(nd);
+
+        for(auto nd: nodes)
+            n_include_tips(nd) = 0;
+            
+        for(auto conflicting_node: conflicts)
+            log_conflicts_with(conflicting_node, nd);
+
+        if (conflicts.empty() and conflicts_or_resolved_by)
+            log_resolved_by(MRCA, nd);
+
+#ifdef CHECK_MARKS
+        for(const auto nd2: iter_post_const(*induced_tree2))
+            assert(n_include_tips(nd2) == 0);
+#endif
+
+        // nd -> MRCA
+        if (not conflicts_or_resolved_by)
+        {
+            summary_node(nd) = MRCA;
+
+            destroy_children(nd);
+            destroy_children(MRCA);
+        }
+    }
+}
+
 struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
     json document;
     std::unique_ptr<Tree_t> summaryTree;
@@ -579,140 +735,41 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
 
     void mapNextTree(OTCLI & , const Tree_t & tree, bool ) //isTaxoComp is third param
     {
-        auto induced_tree = get_induced_tree(tree, get_ottid_to_const_node_map(tree), *summaryTree, constSummaryOttIdToNode);
-        induced_tree->setName(tree.getName());
-        auto induced_summary_tree = get_induced_tree(*summaryTree, constSummaryOttIdToNode, tree, get_ottid_to_const_node_map(tree));
-
-        computeDepth(*induced_tree);
-        compute_tips(*induced_tree);
-
-        computeDepth(*induced_summary_tree);
-        compute_tips(*induced_summary_tree);
-
-        vector<Tree_t::node_type*> conflicts;
         string source_name = source_from_tree_name(tree.getName());
         document["sources"].push_back(source_name);
 
-        auto map1 = get_ottid_to_node_map(*induced_tree);
-        auto map2 = get_ottid_to_node_map(*induced_summary_tree);
-        
-        // make leaves of induced_tree point to leaves of induced_summary_tree.
-        for(auto leaf: iter_leaf(*induced_tree))
+
+        auto ottid_to_node = get_ottid_to_const_node_map(tree);
+
         {
-            auto leaf2 = map2.at(leaf->getOttId());
-            summary_node(leaf) = leaf2;
+            auto log_supported_by    = [this, &source_name](const node_t* node2, const node_t* node1) {set_supported_by(node2,node1,source_name);};
+            auto log_partial_path_of = [this, &source_name](const node_t* node2, const node_t* node1) {set_partial_path_of(node2,node1,source_name);};
+            auto log_conflicts_with  = [this, &source_name](const node_t* node2, const node_t* node1) {set_conflicts_with(node2,node1,source_name);};
+            auto log_resolved_by     = [this, &source_name](const node_t* node2, const node_t* node1) {set_resolved_by(node2,node1,source_name);};
+            auto log_terminal        = [this, &source_name](const node_t* node2, const node_t* node1) {set_terminal(node2,node1,source_name);};
+
+            perform_conflict_analysis(tree, ottid_to_node,
+                                      *summaryTree, constSummaryOttIdToNode,
+                                      log_supported_by,
+                                      log_partial_path_of,
+                                      log_conflicts_with,
+                                      log_resolved_by,
+                                      log_terminal);
         }
-        
-        string source = source_from_tree_name(tree.getName());
-
-        int L = countLeaves(*induced_tree);
-        assert(L == countLeaves(*induced_summary_tree));
-        
-        vector<node_t*> tree_nodes;
-        for(auto nd: iter_post(*induced_tree))
-            tree_nodes.push_back(nd);
-
-        for(auto nd: tree_nodes)
         {
-            if (not nd->getParent()) continue;
+            auto log_supported_by    = [this, &source_name](const node_t* node2, const node_t* node1) {};
+            auto log_partial_path_of = [this, &source_name](const node_t* node2, const node_t* node1) {};
+            auto log_conflicts_with  = [this, &source_name](const node_t* node2, const node_t* node1) {};
+            auto log_resolved_by     = [this, &source_name](const node_t* node2, const node_t* node1) {set_resolves(node1,node2,source_name);};
+            auto log_terminal        = [this, &source_name](const node_t* node2, const node_t* node1) {};
 
-            // Ignore knuckles in input trees.
-            // (Note that in general, if we've pruned this tree down to match the shared taxon set
-            //  then this could produce knuckles that were not originally there.)
-            if (nd->isOutDegreeOneNode()) continue;
-
-            // If this node contains all tips under it, then it doesn't correspond to a split.
-            if (nd->getData().n_tips == L) continue;
-            
-            // If this node is a tip, the mark the corresponding nodes
-            if (nd->isTip())
-            {
-                auto nd2 = summary_node(nd);
-                set_terminal(nd2, nd, source);
-                nd2 = nd2->getParent();
-                for(;nd2 and nd2->isOutDegreeOneNode();nd2 = nd2->getParent())
-                    set_terminal(nd2, nd, source);
-                continue;
-            }
-
-            // Find the list of nodes in the input tree that are below nd.
-            auto leaves1 = leaf_nodes_below(const_cast<const node_t*>(nd));
-
-            // Since nd is not a tip, and not monotypic, it should have at least 2 leaves below it.
-            assert(leaves1.size() >= 2);
-
-            int L2 = 0;
-            for(auto nd: leaves1)
-                L2 += n_tips(nd);
-
-            // Find the corresponding list of nodes in the summary tree
-            auto leaves2 = map_to_summary(leaves1);
-
-            // Find the nodes in the induced tree of those nodes
-            vector<node_t*> nodes = find_induced_nodes(leaves2);
-
-            // Sort the nodes by depth to ensure all children occur before their parents -- unfortunately n*log(n) !
-            std::sort(nodes.begin(), nodes.end(), [](auto x, auto y){return depth(x) > depth(y);});
-
-            // The MRCA should be the last node in the vector.
-            auto MRCA = nodes.back();
-
-            // The n_include_tips for a parent node should count the n_include_tips for this node
-            for(int i=0;i<nodes.size()-1;i++)
-            {
-                auto nd = nodes[i];
-                if (nd->isTip())
-                    n_include_tips(nd) = n_tips(nd);
-                auto p = nd->getParent();
-                assert(p);
-                assert(nd != MRCA);
-                n_include_tips(p) += n_include_tips(nd);
-                assert(n_include_tips(nd) <= n_tips(nd));
-            }
-            
-            // If MRCA includes all and only the tips under nd, then MRCA is supporting or partial_path_of
-            bool conflicts_or_resolved_by = n_include_tips(MRCA) < n_tips(MRCA);
-
-            // Supported_by or partial_path_of
-            if (not conflicts_or_resolved_by)
-            {
-                assert(MRCA->getParent());
-                if (MRCA->getParent()->getData().n_tips > MRCA->getData().n_tips)
-                    set_supported_by(MRCA, nd, source);
-                else
-                    for(auto nd2 = MRCA;nd2 and nd2->getData().n_tips == MRCA->getData().n_tips;nd2 = nd2->getParent())
-                        set_partial_path_of(nd2, nd, source);
-            }
-
-            conflicts.clear();
-            for(auto nd: nodes)
-                // If we have (a) some, but not all of the include group
-                //            (b) any of the exclude group
-                if (n_include_tips(nd) < n_tips(nd) and n_include_tips(nd) < L2)
-                    conflicts.push_back(nd);
-
-            for(auto nd: nodes)
-                n_include_tips(nd) = 0;
-            
-            for(auto conflicting_node: conflicts)
-                set_conflicts_with(conflicting_node, nd, source);
-
-            if (conflicts.empty() and conflicts_or_resolved_by)
-                set_resolved_by(MRCA, nd, source);
-
-#ifdef CHECK_MARKS
-            for(const auto nd2: iter_post_const(*induced_summary_tree))
-                assert(n_include_tips(nd2) == 0);
-#endif
-
-            // nd -> MRCA
-            if (not conflicts_or_resolved_by)
-            {
-                summary_node(nd) = MRCA;
-
-                destroy_children(nd);
-                destroy_children(MRCA);
-            }
+            perform_conflict_analysis(*summaryTree, constSummaryOttIdToNode,
+                                      tree, ottid_to_node,
+                                      log_supported_by,
+                                      log_partial_path_of,
+                                      log_conflicts_with,
+                                      log_resolved_by,
+                                      log_terminal);
         }
     }
 
