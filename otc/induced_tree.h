@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <memory>
 #include "otc/tree.h"
+#include "otc/tree_operations.h"
 
 template <typename node_t>
 node_t* trace_to_parent(node_t* node, std::unordered_set<node_t*>& nodes) {

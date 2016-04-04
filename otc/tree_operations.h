@@ -5,6 +5,7 @@
 // Depends on: tree.h tree_util.h tree_iter.h 
 // Depended on by: tools
 #include <vector>
+#include <unordered_map>
 #include "otc/otc_base_includes.h"
 #include "otc/tree_iter.h"
 #include "otc/error.h"
@@ -1311,6 +1312,39 @@ inline std::string newick(const T &t) {
 }
 
 
+template <typename Tree_t>
+std::unordered_map<long, const typename Tree_t::node_type*> get_ottid_to_const_node_map(const Tree_t& T)
+{
+  std::unordered_map<long, const typename Tree_t::node_type*> ottid;
+  for(auto nd: iter_pre_const(T))
+    if (nd->hasOttId())
+      ottid[nd->getOttId()] = nd;
+
+  return ottid;
+}
+
+template <typename Tree_t>
+std::unordered_map<long, typename Tree_t::node_type*> get_ottid_to_node_map(Tree_t& T)
+{
+    std::unordered_map<long, typename Tree_t::node_type*> ottid;
+    for(auto nd: iter_pre(T))
+        if (nd->hasOttId())
+            ottid[nd->getOttId()] = nd;
+
+    return ottid;
+}
+
+template <typename N>
+auto get_root(N* node)
+{
+    while (node->getParent()){
+        node = node->getParent();
+    }
+    return node;
+}
+
+
+ 
 }// namespace otc
 #endif
 
