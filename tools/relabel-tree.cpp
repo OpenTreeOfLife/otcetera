@@ -109,16 +109,6 @@ long root_ott_id_from_file(const string& filename)
     }
 }
 
-unique_ptr<Tree_t> get_tree(const string& filename)
-{
-    vector<unique_ptr<Tree_t>> trees;
-    std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
-    ParsingRules rules;
-    rules.requireOttIds = false;
-    otc::processTrees(filename,rules,a);//[&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;});
-    return std::move(trees[0]);
-}
-
 string format_with_taxonomy(const string& orig, const string& format, const taxonomy_record& rec)
 {
     string result;
@@ -234,7 +224,7 @@ int main(int argc, char* argv[])
 
         bool keep_non_ott = not args.count("unlabel-non-taxa");
 
-        auto tree = get_tree(args["tree"].as<string>());
+        auto tree = get_tree<Tree_t>(args["tree"].as<string>());
 
         Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 

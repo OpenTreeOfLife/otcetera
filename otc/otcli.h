@@ -11,6 +11,7 @@
 #include "otc/tree_iter.h"
 #include <boost/tokenizer.hpp>
 #include <boost/program_options.hpp>
+#include <memory>
 namespace otc {
 bool get_bool(const std::string& arg, const std::string& context);
 
@@ -106,6 +107,23 @@ inline bool processTrees(const std::string& filename,
         if (not cbr) return false;
     }
     return true;
+}
+
+template<typename Tree_t>
+std::unique_ptr<Tree_t> get_tree(const std::string& filename, const ParsingRules& rules)
+{
+    std::vector<std::unique_ptr<Tree_t>> trees;
+    std::function<bool(std::unique_ptr<Tree_t>)> proc = [&](std::unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
+    otc::processTrees(filename,rules,proc);
+    return std::move(trees[0]);
+}
+
+template<typename Tree_t>
+std::unique_ptr<Tree_t> get_tree(const std::string& filename)
+{
+    ParsingRules rules;
+    rules.requireOttIds = false;
+    return get_tree<Tree_t>(filename, rules);
 }
 
 template<typename T>
