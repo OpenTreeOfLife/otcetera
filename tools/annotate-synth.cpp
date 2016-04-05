@@ -1,6 +1,5 @@
 // See https://github.com/OpenTreeOfLife/opentree/wiki/Open-Tree-of-Life-APIs-v3#synthetic-tree
-#include "otc/otcli.h"
-#include "otc/supertree_util.h"
+#include <iostream>
 #include <tuple>
 #include <sstream>
 #include <cstring>
@@ -8,6 +7,8 @@
 #include <unordered_set>
 #include "json.hpp"
 #include "otc/conflict.h"
+#include "otc/otcli.h"
+#include "otc/supertree_util.h"
 
 using namespace otc;
 using json = nlohmann::json;
@@ -22,8 +23,48 @@ using std::string;
 //using std::map;
 using std::pair;
 using std::tuple;
+using std::unique_ptr;
+using std::string;
+
+namespace po = boost::program_options;
+using po::variables_map;
 
 // TODO: Could we exemplify tips here, if we had access to the taxonomy?
+variables_map parse_cmd_line(int argc,char* argv[]) 
+{ 
+    using namespace po;
+
+    // named options
+    options_description invisible("Invisible options");
+    invisible.add_options()
+        ("taxonomy", value<string>(),"Filename for the taxonomy")
+        ("synth", value<string>(),"Filename for the synthesis tree")
+        ("input", value<vector<string>>()->composing(),"Filename for input trees")
+        ;
+
+//    options_description taxonomy("Taxonomy options");
+//    taxonomy.add_options()
+//        ("config,c",value<string>(),"Config file containing flags to filter")
+//        ("clean",value<string>(),"Comma-separated string of flags to filter")
+//        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
+//        ;
+
+    options_description visible;
+    visible.add(otc::standard_options());
+
+    // positional options
+    positional_options_description p;
+    p.add("taxonomy", 1);
+    p.add("synth", 1);
+    p.add("input", -1);
+
+    variables_map vm = otc::parse_cmd_line_standard(argc, argv,
+                                                    "Usage: otc-annotate-synth <taxonomy-tree> <synth-tree> <input tree1> <input tree2> ... [OPTIONS]\n"
+                                                    "Annotate the synthesis tree with support & conflict information from the input trees.\n",
+                                                    visible, invisible, p);
+
+    return vm;
+}
 
 namespace std
 {
@@ -230,187 +271,184 @@ void destroy_children(node_t* node)
     assert(node->isTip());
 }
 
-struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<Tree_t> {
-    json document;
-    std::unique_ptr<Tree_t> summaryTree;
-    map<string,string> monotypic_nodes;
-    map<long,const Tree_t::node_type*> taxOttIdToNode;
-    map<long,Tree_t::node_type*> summaryOttIdToNode;
-    map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
-    map<string, Map<string,string>> supported_by;
-    map<string, Map<string,string>> partial_path_of;
-    map<string, Map<string,string>> conflicts_with;
-    map<string, Map<string,string>> resolves;
-    map<string, Map<string,string>> resolved_by;
-    map<string, Map<string,string>> terminal;
-    map<string, set<pair<string, string>>> supported_by_set;
-    map<string, set<pair<string, string>>> partial_path_of_set;
-    map<string, set<pair<string, string>>> conflicts_with_set;
-    map<string, set<pair<string, string>>> resolves_set;
-    map<string, set<pair<string, string>>> resolved_by_set;
-    map<string, set<pair<string, string>>> terminal_set;
-    int numErrors = 0;
-    bool treatTaxonomyAsLastTree = false;
-    bool headerEmitted = false;
+json document;
+std::unique_ptr<Tree_t> taxonomy;
+std::unique_ptr<Tree_t> summaryTree;
+map<string,string> monotypic_nodes;
+map<long,const Tree_t::node_type*> taxOttIdToNode;
+map<long,Tree_t::node_type*> summaryOttIdToNode;
+map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
+map<string, Map<string,string>> supported_by;
+map<string, Map<string,string>> partial_path_of;
+map<string, Map<string,string>> conflicts_with;
+map<string, Map<string,string>> resolves;
+map<string, Map<string,string>> resolved_by;
+map<string, Map<string,string>> terminal;
+map<string, set<pair<string, string>>> supported_by_set;
+map<string, set<pair<string, string>>> partial_path_of_set;
+map<string, set<pair<string, string>>> conflicts_with_set;
+map<string, set<pair<string, string>>> resolves_set;
+map<string, set<pair<string, string>>> resolved_by_set;
+map<string, set<pair<string, string>>> terminal_set;
+int numErrors = 0;
+bool headerEmitted = false;
 
-    virtual ~DisplayedStatsState(){}
+void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
+{
+    add_element(terminal, terminal_set, synth_node, input_node, source);
+}
 
-    void set_terminal(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
+void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
+{
+    add_element(supported_by, supported_by_set, synth_node, input_node, source);
+}
+
+void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
+{
+    add_element(partial_path_of, partial_path_of_set, synth_node, input_node, source);
+}
+
+void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
+{
+    add_element(conflicts_with, conflicts_with_set, synth_node, input_node, source);
+}
+
+void set_resolved_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
+{
+    add_element(resolved_by, resolved_by_set, synth_node, input_node, source);
+}
+
+void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
+{
+    add_element(resolves, resolves_set, synth_node, input_node, source);
+}
+
+bool summarize() {
+    
+    document["num_tips"] = countLeaves(*summaryTree);
+    document["root_ott_id"] = summaryTree->getRoot()->getOttId();
+    
+    json nodes;
+    for(auto nd: iter_post_const(*summaryTree))
     {
-        add_element(terminal, terminal_set, synth_node, input_node, source);
-    }
-
-    void set_supported_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
-    {
-        add_element(supported_by, supported_by_set, synth_node, input_node, source);
-    }
-
-    void set_partial_path_of(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
-    {
-        add_element(partial_path_of, partial_path_of_set, synth_node, input_node, source);
-    }
-
-    void set_conflicts_with(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
-    {
-        add_element(conflicts_with, conflicts_with_set, synth_node, input_node, source);
-    }
-
-    void set_resolved_by(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
-    {
-        add_element(resolved_by, resolved_by_set, synth_node, input_node, source);
-    }
-
-    void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
-    {
-        add_element(resolves, resolves_set, synth_node, input_node, source);
-    }
-
-    bool summarize(OTCLI &otCLI) override {
-        if (treatTaxonomyAsLastTree) {
-            mapNextTree(otCLI, *taxonomy, true);
-        }
-
-        document["num_tips"] = countLeaves(*summaryTree);
-        document["root_ott_id"] = summaryTree->getRoot()->getOttId();
-
-        json nodes;
-        for(auto nd: iter_post_const(*summaryTree))
-        {
-            json node;
-            string name = nd->getName();
+        json node;
+        string name = nd->getName();
 //            if (nd->hasOttId())
 //                name = "ott" + std::to_string(nd->getOttId());
+        
+        set_support_blob_as_single_element(node, terminal, "terminal", name);
+        set_support_blob_as_single_element(node, supported_by, "supported_by", name);
+        set_support_blob_as_single_element(node, partial_path_of, "partial_path_of", name);
+        set_support_blob_as_array(node, conflicts_with, "conflicts_with", name);
+        set_support_blob_as_single_element(node, resolves, "resolves", name);
+        set_support_blob_as_array(node, resolved_by, "resolved_by", name);
 
-            set_support_blob_as_single_element(node, terminal, "terminal", name);
-            set_support_blob_as_single_element(node, supported_by, "supported_by", name);
-            set_support_blob_as_single_element(node, partial_path_of, "partial_path_of", name);
-            set_support_blob_as_array(node, conflicts_with, "conflicts_with", name);
-            set_support_blob_as_single_element(node, resolves, "resolves", name);
-            set_support_blob_as_array(node, resolved_by, "resolved_by", name);
-
-            if (not node.empty())
-                nodes[name] = node;
-        }
-
-        // Copy support information to monotypic nodes from their first non-monotypic descendant
-        for(const auto& m: monotypic_nodes)
-            if (nodes.find(m.second) != nodes.end())
-                nodes[m.first] = nodes[m.second];
-
-        document["nodes"] = nodes;
-        std::cout<<document.dump(1)<<std::endl;
-        return true;
+        if (not node.empty())
+            nodes[name] = node;
     }
 
-    void mapNextTree(OTCLI & , const Tree_t & tree, bool ) //isTaxoComp is third param
-    {
-        string source_name = source_from_tree_name(tree.getName());
-        document["sources"].push_back(source_name);
+    // Copy support information to monotypic nodes from their first non-monotypic descendant
+    for(const auto& m: monotypic_nodes)
+        if (nodes.find(m.second) != nodes.end())
+            nodes[m.first] = nodes[m.second];
 
-
-        auto ottid_to_node = get_ottid_to_const_node_map(tree);
-
-        {
-            auto log_supported_by    = [this, &source_name](const node_t* node2, const node_t* node1) {set_supported_by(node2,node1,source_name);};
-            auto log_partial_path_of = [this, &source_name](const node_t* node2, const node_t* node1) {set_partial_path_of(node2,node1,source_name);};
-            auto log_conflicts_with  = [this, &source_name](const node_t* node2, const node_t* node1) {set_conflicts_with(node2,node1,source_name);};
-            auto log_resolved_by     = [this, &source_name](const node_t* node2, const node_t* node1) {set_resolved_by(node2,node1,source_name);};
-            auto log_terminal        = [this, &source_name](const node_t* node2, const node_t* node1) {set_terminal(node2,node1,source_name);};
-
-            perform_conflict_analysis(tree, ottid_to_node,
-                                      *summaryTree, constSummaryOttIdToNode,
-                                      log_supported_by,
-                                      log_partial_path_of,
-                                      log_conflicts_with,
-                                      log_resolved_by,
-                                      log_terminal);
-        }
-        {
-            auto log_supported_by    = [this, &source_name](const node_t*, const node_t*) {};
-            auto log_partial_path_of = [this, &source_name](const node_t*, const node_t*) {};
-            auto log_conflicts_with  = [this, &source_name](const node_t*, const node_t*) {};
-            auto log_resolved_by     = [this, &source_name](const node_t* node2, const node_t* node1) {set_resolves(node1,node2,source_name);};
-            auto log_terminal        = [this, &source_name](const node_t*, const node_t*) {};
-
-            perform_conflict_analysis(*summaryTree, constSummaryOttIdToNode,
-                                      tree, ottid_to_node,
-                                      log_supported_by,
-                                      log_partial_path_of,
-                                      log_conflicts_with,
-                                      log_resolved_by,
-                                      log_terminal);
-        }
-    }
-
-    virtual bool processTaxonomyTree(OTCLI & otCLI) override {
-        TaxonomyDependentTreeProcessor<Tree_t>::processTaxonomyTree(otCLI);
-        otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
-        otCLI.getParsingRules().requireOttIds = false;
-        for(auto nd: iter_post_const(*taxonomy))
-            if (nd->hasOttId())
-                taxOttIdToNode[nd->getOttId()] = nd;
-        return true;
-    }
-
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree) override {
-        assert(taxonomy != nullptr);
-        if (summaryTree == nullptr) {
-            summaryTree = std::move(tree);
-            monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
-            for(auto nd: iter_post(*summaryTree))
-                if (nd->hasOttId())
-                    summaryOttIdToNode[nd->getOttId()] = nd;
-            constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
-            computeDepth(*summaryTree);
-            return true;
-        }
-        requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
-        computeDepth(*tree);
-        computeSummaryLeaves(*tree, summaryOttIdToNode);
-
-        mapNextTree(otCLI, *tree, false);
-        return true;
-    }
-
-};
-bool handleCountTaxonomy(OTCLI & otCLI, const std::string &);
-
-bool handleCountTaxonomy(OTCLI & otCLI, const std::string &) {
-    DisplayedStatsState * proc = static_cast<DisplayedStatsState *>(otCLI.blob);
-    assert(proc != nullptr);
-    proc->treatTaxonomyAsLastTree = true;
+    document["nodes"] = nodes;
+    std::cout<<document.dump(1)<<std::endl;
     return true;
 }
 
+void mapNextTree(const Tree_t & tree) //isTaxoComp is third param
+{
+    string source_name = source_from_tree_name(tree.getName());
+    document["sources"].push_back(source_name);
+
+
+    auto ottid_to_node = get_ottid_to_const_node_map(tree);
+
+    {
+        auto log_supported_by    = [&source_name](const node_t* node2, const node_t* node1) {set_supported_by(node2,node1,source_name);};
+        auto log_partial_path_of = [&source_name](const node_t* node2, const node_t* node1) {set_partial_path_of(node2,node1,source_name);};
+        auto log_conflicts_with  = [&source_name](const node_t* node2, const node_t* node1) {set_conflicts_with(node2,node1,source_name);};
+        auto log_resolved_by     = [&source_name](const node_t* node2, const node_t* node1) {set_resolved_by(node2,node1,source_name);};
+        auto log_terminal        = [&source_name](const node_t* node2, const node_t* node1) {set_terminal(node2,node1,source_name);};
+
+        perform_conflict_analysis(tree, ottid_to_node,
+                                  *summaryTree, constSummaryOttIdToNode,
+                                  log_supported_by,
+                                  log_partial_path_of,
+                                  log_conflicts_with,
+                                  log_resolved_by,
+                                  log_terminal);
+    }
+    {
+        auto log_supported_by    = [&source_name](const node_t*, const node_t*) {};
+        auto log_partial_path_of = [&source_name](const node_t*, const node_t*) {};
+        auto log_conflicts_with  = [&source_name](const node_t*, const node_t*) {};
+        auto log_resolved_by     = [&source_name](const node_t* node2, const node_t* node1) {set_resolves(node1,node2,source_name);};
+        auto log_terminal        = [&source_name](const node_t*, const node_t*) {};
+
+        perform_conflict_analysis(*summaryTree, constSummaryOttIdToNode,
+                                  tree, ottid_to_node,
+                                  log_supported_by,
+                                  log_partial_path_of,
+                                  log_conflicts_with,
+                                  log_resolved_by,
+                                  log_terminal);
+    }
+}
+
+bool processTaxonomyTree()  {
+    for(auto nd: iter_post_const(*taxonomy))
+        if (nd->hasOttId())
+            taxOttIdToNode[nd->getOttId()] = nd;
+    return true;
+}
+
+bool processSummaryTree() {
+    monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
+    for(auto nd: iter_post(*summaryTree))
+        if (nd->hasOttId())
+            summaryOttIdToNode[nd->getOttId()] = nd;
+    constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
+    computeDepth(*summaryTree);
+    return true;
+}
+
+bool processSourceTree(std::unique_ptr<Tree_t> tree) {
+    assert(taxonomy != nullptr);
+
+    requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
+    computeDepth(*tree);
+    computeSummaryLeaves(*tree, summaryOttIdToNode);
+
+    mapNextTree(*tree);
+    return true;
+}
+
+
 int main(int argc, char *argv[]) {
-    std::string explanation{"takes at least 2 newick file paths: a taxonomy, a full supertree, and some number of input trees.\n"};
-    OTCLI otCLI("otc-annotate-synth",
-                explanation.c_str(),
-                "taxonomy.tre synth.tre inp1.tre inp2.tre ...");
-    otCLI.addFlag('x',
-                  "Automatically treat the taxonomy as an input in terms of supporting groups",
-                  handleCountTaxonomy,
-                  false);
-    DisplayedStatsState proc;
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    try
+    {
+        variables_map args = parse_cmd_line(argc,argv);
+        string tax = args["taxonomy"].as<string>();
+        string synth = args["synth"].as<string>();
+        vector<string> inputs = args["input"].as<vector<string>>();
+
+        taxonomy = get_tree<Tree_t>(args["taxonomy"].as<string>());
+        processTaxonomyTree();
+
+        summaryTree = get_tree<Tree_t>(args["synth"].as<string>());
+        processSummaryTree();
+
+        vector<unique_ptr<Tree_t>> inputTrees;
+        for(const auto& filename: args["input"].as<vector<string>>())
+            processSourceTree(get_tree<Tree_t>(filename));
+
+        summarize();
+    }
+    catch (std::exception& e)
+    {
+        std::cerr<<"otc-annotate-synth: Error! "<<e.what()<<std::endl;
+        exit(1);
+    }
 }
