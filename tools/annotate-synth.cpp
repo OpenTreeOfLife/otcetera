@@ -37,7 +37,6 @@ variables_map parse_cmd_line(int argc,char* argv[])
     // named options
     options_description invisible("Invisible options");
     invisible.add_options()
-        ("taxonomy", value<string>(),"Filename for the taxonomy")
         ("synth", value<string>(),"Filename for the synthesis tree")
         ("input", value<vector<string>>()->composing(),"Filename for input trees")
         ;
@@ -54,12 +53,11 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     // positional options
     positional_options_description p;
-    p.add("taxonomy", 1);
     p.add("synth", 1);
     p.add("input", -1);
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
-                                                    "Usage: otc-annotate-synth <taxonomy-tree> <synth-tree> <input tree1> <input tree2> ... [OPTIONS]\n"
+                                                    "Usage: otc-annotate-synth <synth-tree> <input tree1> <input tree2> ... [OPTIONS]\n"
                                                     "Annotate the synthesis tree with support & conflict information from the input trees.\n",
                                                     visible, invisible, p);
 
@@ -272,10 +270,8 @@ void destroy_children(node_t* node)
 }
 
 json document;
-std::unique_ptr<Tree_t> taxonomy;
 std::unique_ptr<Tree_t> summaryTree;
 map<string,string> monotypic_nodes;
-map<long,const Tree_t::node_type*> taxOttIdToNode;
 map<long,Tree_t::node_type*> summaryOttIdToNode;
 map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
 map<string, Map<string,string>> supported_by;
@@ -397,13 +393,6 @@ void mapNextTree(const Tree_t & tree) //isTaxoComp is third param
     }
 }
 
-bool processTaxonomyTree()  {
-    for(auto nd: iter_post_const(*taxonomy))
-        if (nd->hasOttId())
-            taxOttIdToNode[nd->getOttId()] = nd;
-    return true;
-}
-
 bool processSummaryTree() {
     monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
     for(auto nd: iter_post(*summaryTree))
@@ -414,10 +403,8 @@ bool processSummaryTree() {
     return true;
 }
 
-bool processSourceTree(std::unique_ptr<Tree_t> tree) {
-    assert(taxonomy != nullptr);
-
-    requireTipsToBeMappedToTerminalTaxa(*tree, taxOttIdToNode);
+bool processSourceTree(std::unique_ptr<Tree_t> tree)
+{
     computeDepth(*tree);
     computeSummaryLeaves(*tree, summaryOttIdToNode);
 
@@ -430,12 +417,8 @@ int main(int argc, char *argv[]) {
     try
     {
         variables_map args = parse_cmd_line(argc,argv);
-        string tax = args["taxonomy"].as<string>();
         string synth = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
-
-        taxonomy = get_tree<Tree_t>(args["taxonomy"].as<string>());
-        processTaxonomyTree();
 
         summaryTree = get_tree<Tree_t>(args["synth"].as<string>());
         processSummaryTree();
