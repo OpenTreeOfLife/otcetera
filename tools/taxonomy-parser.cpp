@@ -147,7 +147,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     p.add("taxonomy", -1);
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
-                                                    "Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
+                                                    "Usage: otc-taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
                                                     "Read a taxonomy, clean it, and then make a tree or some other operation.",
                                                     visible, invisible, p);
 
