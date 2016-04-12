@@ -109,6 +109,39 @@ long root_ott_id_from_file(const string& filename)
     }
 }
 
+bool format_needs_taxonomy(const string& format)
+{
+    int pos = 0;
+    do {
+        auto loc = format.find('%',pos);
+        if (loc == string::npos)
+            break;
+        loc++;
+        if (format[loc] == 0)
+            std::abort();
+        else if (format[loc] == 'I')
+            return true;
+        else if (format[loc] == 'N')
+            return true;
+        else if (format[loc] == 'U')
+            return true;
+        else if (format[loc] == 'R')
+            return true;
+        else if (format[loc] == 'S')
+            return true;
+        else if (format[loc] == 'L')
+            ;
+        else if (format[loc] == '%')
+            ;
+        else
+            throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in taxonomy-based format string '"<<format<<"'";
+        pos = loc + 1;
+    }
+    while (pos < static_cast<int>(format.size()));
+
+    return false;
+}
+
 string format_with_taxonomy(const string& orig, const string& format, const taxonomy_record& rec)
 {
     string result;
@@ -205,57 +238,64 @@ int main(int argc, char* argv[])
         if (not args.count("tree"))
             throw OTCError()<<"Please specify the newick tree to be relabelled!";
         
-        if (not args.count("taxonomy"))
-            throw OTCError()<<"Please specify the taxonomy directory!";
-
-        string taxonomy_dir = args["taxonomy"].as<string>();
-
-        long keep_root = -1;
-        if (args.count("root"))
-            keep_root = args["root"].as<long>();
-        else if (args.count("config"))
-            keep_root = root_ott_id_from_file(args["config"].as<string>());
-        
-        bitset<32> cleaning_flags = 0;
-        if (args.count("config"))
-            cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
-        if (args.count("clean"))
-            cleaning_flags |= flags_from_string(args["clean"].as<string>());
-
-        bool keep_non_ott = not args.count("unlabel-non-taxa");
-
         auto tree = get_tree<Tree_t>(args["tree"].as<string>());
-
-        Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
 
         string format_tax = args["format-tax"].as<string>();
         string format_unknown = args["format-unknown"].as<string>();
 
         if (args.count("del-monotypic"))
             suppressMonotypicFast(*tree);
+
+        boost::optional<Taxonomy> taxonomy = boost::none;
+        
+        if (format_needs_taxonomy(format_tax))
+        {
+            if (not args.count("taxonomy"))
+                throw OTCError()<<"Please specify the taxonomy directory!";
+
+            string taxonomy_dir = args["taxonomy"].as<string>();
+
+            long keep_root = -1;
+            if (args.count("root"))
+                keep_root = args["root"].as<long>();
+            else if (args.count("config"))
+                keep_root = root_ott_id_from_file(args["config"].as<string>());
+        
+            bitset<32> cleaning_flags = 0;
+            if (args.count("config"))
+                cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
+            if (args.count("clean"))
+                cleaning_flags |= flags_from_string(args["clean"].as<string>());
+
+            taxonomy = Taxonomy(taxonomy_dir, cleaning_flags, keep_root);
+        }
         
         for(auto nd: iter_pre(*tree))
         {
             if (nd->hasOttId())
             {
                 int id = nd->getOttId();
-                const auto& record = taxonomy.record_from_id(id);
-                string name = format_with_taxonomy(nd->getName(), format_tax, record);
-                nd->setName(std::move(name));
+                if (taxonomy)
+                {
+                    const auto& record = (*taxonomy).record_from_id(id);
+                    nd->setName( format_with_taxonomy(nd->getName(), format_tax, record) );
+                }
+                else
+                    nd->setName( format_without_taxonomy(nd->getName(), format_tax ) );
             }
             else
             {
                 string name = format_without_taxonomy(nd->getName(), format_unknown);
                 nd->setName(std::move(name));
             }
-
         }
 
         writeTreeAsNewick(cout, *tree);
+        std::cout<<std::endl;
     }
     catch (std::exception& e)
     {
-        cerr<<"otc-taxonomy-parser: Error! "<<e.what()<<std::endl;
+        cerr<<"otc-relabel-tree: Error! "<<e.what()<<std::endl;
         exit(1);
     }
 }
