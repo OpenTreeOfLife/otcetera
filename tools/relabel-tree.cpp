@@ -109,7 +109,7 @@ long root_ott_id_from_file(const string& filename)
     }
 }
 
-bool format_needs_taxonomy(const string& format)
+char format_needs_taxonomy(const string& format)
 {
     int pos = 0;
     do {
@@ -120,21 +120,21 @@ bool format_needs_taxonomy(const string& format)
         if (format[loc] == 0)
             std::abort();
         else if (format[loc] == 'I')
-            return true;
+            return 'I';
         else if (format[loc] == 'N')
-            return true;
+            return 'N';
         else if (format[loc] == 'U')
-            return true;
+            return 'U';
         else if (format[loc] == 'R')
-            return true;
+            return 'R';
         else if (format[loc] == 'S')
-            return true;
+            return 'S';
         else if (format[loc] == 'L')
             ;
         else if (format[loc] == '%')
             ;
         else
-            throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in taxonomy-based format string '"<<format<<"'";
+            throw OTCError()<<"Invalid format specification '%"<<format[loc]<<"' in format string '"<<format<<"'";
         pos = loc + 1;
     }
     while (pos < static_cast<int>(format.size()));
@@ -173,7 +173,7 @@ string format_with_taxonomy(const string& orig, const string& format, const taxo
         else if (format[loc] == '%')
             result += '%';
         else
-            throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in taxonomy-based format string '"<<format<<"'";
+            throw OTCError()<<"Invalid format specification '%"<<format[loc]<<"' in taxonomy-based format string '"<<format<<"'";
         pos = loc + 1;
     }
     while (pos < static_cast<int>(format.size()));
@@ -202,7 +202,7 @@ string format_without_taxonomy(const string& orig, const string& format)
         else if (format[loc] == '%')
             result += '%';
         else
-            throw OTCError()<<"Invalid format specification %"<<format[loc]<<" in non-taxonomy-based format string '"<<format<<"'";
+            throw OTCError()<<"Invalid format specification '%"<<format[loc]<<"' in non-taxonomy-based format string '"<<format<<"'";
         pos = loc + 1;
     }
     while (pos < static_cast<int>(format.size()));
@@ -238,13 +238,8 @@ int main(int argc, char* argv[])
         if (not args.count("tree"))
             throw OTCError()<<"Please specify the newick tree to be relabelled!";
         
-        auto tree = get_tree<Tree_t>(args["tree"].as<string>());
-
         string format_tax = args["format-tax"].as<string>();
         string format_unknown = args["format-unknown"].as<string>();
-
-        if (args.count("del-monotypic"))
-            suppressMonotypicFast(*tree);
 
         boost::optional<Taxonomy> taxonomy = boost::none;
         
@@ -269,7 +264,15 @@ int main(int argc, char* argv[])
 
             taxonomy = Taxonomy(taxonomy_dir, cleaning_flags, keep_root);
         }
+
+        if (char c = format_needs_taxonomy(format_unknown))
+            throw OTCError()<<"Cannot use taxonomy-based specifier '%"<<c<<"' in non-taxonomy format string '"<<format_unknown<<"'";
         
+        auto tree = get_tree<Tree_t>(args["tree"].as<string>());
+
+        if (args.count("del-monotypic"))
+            suppressMonotypicFast(*tree);
+
         for(auto nd: iter_pre(*tree))
         {
             if (nd->hasOttId())
