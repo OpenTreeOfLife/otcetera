@@ -1335,7 +1335,7 @@ std::unordered_map<long, typename Tree_t::node_type*> get_ottid_to_node_map(Tree
 }
 
 template <typename N>
-auto get_root(N* node)
+N* get_root(N* node)
 {
     while (node->getParent()){
         node = node->getParent();
