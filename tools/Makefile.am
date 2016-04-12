@@ -53,10 +53,15 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-taxonomy-parser \
 				otc-relabel-tree \
 				otc-tree-tool \
-				otc-version-reporter
+				otc-version-reporter \
+				otc-munge-names
 
 
 LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS) 
+
+otc_munge_names_SOURCES = mungenames.cpp
+otc_munge_names_CPPFLAGS = $(AM_CPPFLAGS)
+
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
