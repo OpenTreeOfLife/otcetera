@@ -98,6 +98,8 @@ namespace otc
 //    std::cerr<<"#tree nodes = "<<n_nodes(*tree)<<std::endl;
         return tree;
     }
-
+    long root_ott_id_from_file(const std::string& filename);
+    std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
+    Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
 }
 #endif

@@ -83,39 +83,6 @@ variables_map parse_cmd_line(int argc,char* argv[])
                                                     "Read a taxonomy, clean it, and then make a tree or some other operation.",
                                                     visible, invisible, p);
 
-    if (not vm.count("taxonomy"))
-    {
-        OTCError E ;
-
-        E<<"Taxonomy dir not specified on command line.";
-
-        vector<string> config_files;
-        if (vm.count("config"))
-            config_files.push_back(vm["config"].as<string>());
-        
-        auto dot_file = dot_opentree();
-        if (not dot_file and not std::getenv("HOME"))
-            E<<"\n  Not looking in ~/.opentree: $HOME is not set";
-        else if (not dot_file)
-            E<<"\n  Not looking in ~/.opentree: cannot open file";
-        else
-            config_files.push_back(*dot_file);
-        
-        auto dir = load_config(config_files,"opentree","ott");
-        
-        if (not dir)
-        {
-            if (config_files.empty())
-                E<<"\n  No config files specified";
-            else
-                for(const auto& f: config_files)
-                    E<<"\n  '"<<f<<"': No variable ott in section [opentree]";
-            throw E;
-        }
-
-        vm.insert({"taxonomy",po::variable_value(*dir,true)});
-    }
-
     return vm;
 }
 
@@ -127,19 +94,6 @@ long n_nodes(const Tree_t& T) {
         count++;
     }
     return count;
-}
-
-long root_ott_id_from_file(const string& filename)
-{
-    boost::property_tree::ptree pt;
-    boost::property_tree::ini_parser::read_ini(filename, pt);
-    try {
-        return pt.get<long>("synthesis.root_ott_id");
-    }
-    catch (...)
-    {
-        return -1;
-    }
 }
 
 void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
@@ -182,21 +136,7 @@ int main(int argc, char* argv[])
         if (not args.count("taxonomy"))
             throw OTCError()<<"Please specify the taxonomy directory!";
         
-        string taxonomy_dir = args["taxonomy"].as<string>();
-
-        long keep_root = -1;
-        if (args.count("root"))
-            keep_root = args["root"].as<long>();
-        else if (args.count("config"))
-            keep_root = root_ott_id_from_file(args["config"].as<string>());
-        
-        bitset<32> cleaning_flags = 0;
-        if (args.count("config"))
-            cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
-        if (args.count("clean"))
-            cleaning_flags |= flags_from_string(args["clean"].as<string>());
-
-        Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
+        auto taxonomy = load_taxonomy(args);
 
         if (args.count("find"))
         {

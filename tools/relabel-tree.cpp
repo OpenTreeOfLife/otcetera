@@ -96,19 +96,6 @@ long n_nodes(const Tree_t& T) {
     return count;
 }
 
-long root_ott_id_from_file(const string& filename)
-{
-    boost::property_tree::ptree pt;
-    boost::property_tree::ini_parser::read_ini(filename, pt);
-    try {
-        return pt.get<long>("synthesis.root_ott_id");
-    }
-    catch (...)
-    {
-        return -1;
-    }
-}
-
 char format_needs_taxonomy(const string& format)
 {
     int pos = 0;
@@ -244,26 +231,7 @@ int main(int argc, char* argv[])
         boost::optional<Taxonomy> taxonomy = boost::none;
         
         if (format_needs_taxonomy(format_tax))
-        {
-            if (not args.count("taxonomy"))
-                throw OTCError()<<"Please specify the taxonomy directory!";
-
-            string taxonomy_dir = args["taxonomy"].as<string>();
-
-            long keep_root = -1;
-            if (args.count("root"))
-                keep_root = args["root"].as<long>();
-            else if (args.count("config"))
-                keep_root = root_ott_id_from_file(args["config"].as<string>());
-        
-            bitset<32> cleaning_flags = 0;
-            if (args.count("config"))
-                cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
-            if (args.count("clean"))
-                cleaning_flags |= flags_from_string(args["clean"].as<string>());
-
-            taxonomy = Taxonomy(taxonomy_dir, cleaning_flags, keep_root);
-        }
+            taxonomy = load_taxonomy(args);
 
         if (char c = format_needs_taxonomy(format_unknown))
             throw OTCError()<<"Cannot use taxonomy-based specifier '%"<<c<<"' in non-taxonomy format string '"<<format_unknown<<"'";
