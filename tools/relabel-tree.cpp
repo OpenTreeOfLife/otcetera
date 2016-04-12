@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <regex>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
@@ -62,6 +63,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     output.add_options()
         ("format-tax",value<string>()->default_value("%L"),"Form of labels to write for taxonomy nodes.")
         ("format-unknown",value<string>()->default_value("%L"),"Form of labels to write for non-taxonomy nodes.")
+        ("replace,r",value<string>(),"Perform a regex replacement on all labels")
 //        ("label-regex", value<string>(), "Return name of the given ID")
         ;
 
@@ -258,6 +260,32 @@ int main(int argc, char* argv[])
             {
                 string name = format_without_taxonomy(nd->getName(), format_unknown);
                 nd->setName(std::move(name));
+            }
+        }
+
+        if (args.count("replace"))
+        {
+            string match_replace = args["replace"].as<string>();
+            if (match_replace.empty())
+                throw OTCError()<<"Empty pattern for argument 'replace'!";
+            char sep = match_replace[0];
+
+            if (std::count(match_replace.begin(), match_replace.end(), sep) !=3)
+                throw OTCError()<<"Delimiter '"<<sep<<"' does not occur exactly three times in '"<<match_replace<<"'!";
+            if (match_replace.back() != sep)
+                throw OTCError()<<"Pattern '"<<match_replace<<"' does not end with delimiter '"<<sep<<"'";
+
+            int loc2 = match_replace.find(sep,1);
+            int loc3 = match_replace.find(sep,loc2+1);
+            
+            std::regex match (match_replace.substr(1,loc2-1));
+            string replace = match_replace.substr(loc2+1,loc3-loc2-1);
+
+            for(auto nd: iter_pre(*tree))
+            {
+                string name = nd->getName();
+                name = std::regex_replace(name,match,replace);
+                nd->setName(name);
             }
         }
 
