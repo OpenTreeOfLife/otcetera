@@ -1,7 +1,11 @@
 #include "config_file.h"
 #include <regex>
 #include "error.h"
+#include <fstream>
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/filesystem/operations.hpp>
+
+namespace fs = boost::filesystem;
 
 using std::string;
 using std::vector;
@@ -96,6 +100,12 @@ optional<string> dot_opentree()
 
     string path = homedir;
     path += "/.opentree";
+
+    std::ifstream test(path);
+    if (not test)
+        return boost::none;
+    test.close();
+
     return path;
 }
 
