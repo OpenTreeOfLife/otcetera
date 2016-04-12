@@ -85,18 +85,33 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     if (not vm.count("taxonomy"))
     {
-        auto homedir = std::getenv("HOME");
-        if (not homedir)
-            throw OTCError()<<"Taxonomy dir not specified on command line, and can't read ~/.opentree because $HOME is not set.";
+        OTCError E ;
 
-        string path = homedir;
-        path += "/.opentree";
+        E<<"Taxonomy dir not specified on command line.";
 
-//        auto dir = load_config<string>(path,"opentree.ott");
-        auto dir = load_config<string>(path,"opentree","ott");
-
+        vector<string> config_files;
+        if (vm.count("config"))
+            config_files.push_back(vm["config"].as<string>());
+        
+        auto dot_file = dot_opentree();
+        if (not dot_file and not std::getenv("HOME"))
+            E<<"\n  Not looking in ~/.opentree: $HOME is not set";
+        else if (not dot_file)
+            E<<"\n  Not looking in ~/.opentree: cannot open file";
+        else
+            config_files.push_back(*dot_file);
+        
+        auto dir = load_config(config_files,"opentree","ott");
+        
         if (not dir)
-            throw OTCError()<<"Taxonomy dir not specified on command line or in ~/.opentree.";
+        {
+            if (config_files.empty())
+                E<<"\n  No config files specified";
+            else
+                for(const auto& f: config_files)
+                    E<<"\n  '"<<f<<"': No variable ott in section [opentree]";
+            throw E;
+        }
 
         vm.insert({"taxonomy",po::variable_value(*dir,true)});
     }
