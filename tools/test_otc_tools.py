@@ -18,6 +18,7 @@ def test_invoc(tag, invocation, result_dir):
     obt_outf = os.path.join(result_dir, 'obtained-output')
     obt_errf = os.path.join(result_dir, 'obtained-error')
     obt_exitf = os.path.join(result_dir, 'obtained-exit')
+    obt_extraf = os.path.join(result_dir, 'obtained-extra')
     NUM_TESTS += 1
     with codecs.open(obt_outf, 'w', encoding='utf-8') as ob_o:
         with codecs.open(obt_errf, 'w', encoding='utf-8') as ob_e:
@@ -29,6 +30,7 @@ def test_invoc(tag, invocation, result_dir):
                 ob_ex.write('{e:d}\n'.format(e=exit_code))
     exp_outf = os.path.join(result_dir, 'output')
     exp_synth = os.path.join(result_dir, 'out.tre')
+    exp_extraf = os.path.join(result_dir, 'extra')
     if os.path.exists(exp_outf):
         expected_output = codecs.open(exp_outf, 'r', encoding='utf-8').read()
         obtained_output = codecs.open(obt_outf, 'r', encoding='utf-8').read()
@@ -43,6 +45,13 @@ def test_invoc(tag, invocation, result_dir):
                                  obt_outf]):
             FAILED_TESTS.append(tag)
             error('OUTPUT TREE differed for {}:\n'.format(tag))
+    if os.path.exists(exp_extraf):
+        expected_output = codecs.open(exp_extraf, 'r', encoding='utf-8').read()
+        obtained_output = codecs.open(obt_extraf, 'r', encoding='utf-8').read()
+        if obtained_output != expected_output:
+            FAILED_TESTS.append(tag)
+            error('EXTRA file output differed for {}:\n'.format(tag))
+            subprocess.call(['diff', exp_extraf, obt_extraf])
             
     exp_exitf = os.path.join(result_dir, 'exit')
     if os.path.exists(exp_exitf):

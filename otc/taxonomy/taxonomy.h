@@ -41,6 +41,7 @@ namespace otc
         boost::string_ref uniqname;
         std::bitset<32> flags;
         int depth = 0;
+        int out_degree = 0;
         taxonomy_record(taxonomy_record&& tr) = default;
         explicit taxonomy_record(const std::string& line);
     };
@@ -77,7 +78,7 @@ namespace otc
         const auto& taxonomy = *this;
         std::unique_ptr<Tree_t> tree(new Tree_t);
         vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
-        for(int i=0;i<taxonomy.size();i++)
+        for(auto i = 0U; i < taxonomy.size() ; i++)
         {
             const auto& line = taxonomy[i];
 
@@ -97,6 +98,8 @@ namespace otc
 //    std::cerr<<"#tree nodes = "<<n_nodes(*tree)<<std::endl;
         return tree;
     }
-
+    long root_ott_id_from_file(const std::string& filename);
+    std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
+    Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
 }
 #endif

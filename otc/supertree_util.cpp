@@ -25,16 +25,17 @@ std::string source_from_tree_name(const std::string& name) {
     return string_between_chars(name, ' ', '.');
 }
 
-std::string getSourceNodeName(const std::string& name) {
-    std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
+boost::optional<std::string> getSourceNodeName(const std::string& name) {
+    static std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
     std::smatch matches;
     if (std::regex_match(name,matches,e))
     {
         assert(matches.size() >= 2);
-        return matches[2];
+        std::string source = matches[2];
+        return source;
     }
     else
-        throw OTCError()<<"'"<<name<<"' does not contain a node name!";
+        return boost::none;
 }
 
 bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,

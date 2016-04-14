@@ -1,5 +1,8 @@
 #include "otc/otcli.h"
+#include "otc/supertree_util.h"
+#include "json.hpp"
 using namespace otc;
+using json = nlohmann::json;
 
 template<typename T>
 bool writeTreeOrDie(OTCLI & otCLI, const std::string & fp, const T & tree, bool useStdOut) {
@@ -37,15 +40,62 @@ inline OttIdSet findIncludedTipIds(const T & nd, const Y & container) {
 }
 
 
+static bool transferNodeNameToExemplars = true; //use -t command line flag to set this to false
 
 template<typename T, typename Y>
 inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
+    bool hasNodeName = false;
+    std::string noden;
+    if (transferNodeNameToExemplars) {
+        std::string onn = nd->getName();
+        auto opts = getSourceNodeName(onn);
+        if (opts) {
+            noden = *opts;
+            hasNodeName = true;
+        }
+    }
     for (auto oid : oids) {
         auto x = tree.createNode(nullptr);
         x->setOttId(oid);
+        if (hasNodeName) {
+            std::string n = noden + " ott" + std::to_string(oid);
+            x->setName(n);
+        }
         nd->addSibOnLeft(x);
     }
     nd->detachThisNode();
+}
+
+void writeJSONLogForExemplifications(const std::string & outfilename,
+                                     const std::map<OttId, OttIdSet> & exemplificationsForJSONLog,
+                                     const std::map<OttId, std::list<std::string> > & exemplifedTaxonToTreeNamesForJSONLog) {
+    std::ofstream outstream(outfilename);
+    if (!outstream.good()) {
+        throw OTCError() << "Could not open the output filepath \"" << outfilename << "\"\n";
+    }
+    json document;
+    json exemp;
+    for (auto p: exemplificationsForJSONLog) {
+        const auto & ottId = p.first;
+        const auto & expandedSet = p.second;
+        json thisTaxon;
+        json exemplarsJSON = json::array();
+        for (auto eid : expandedSet) {
+            std::string eOttIdStr = "ott" + std::to_string(eid);
+            exemplarsJSON.push_back(eOttIdStr);
+        }
+        thisTaxon["exemplars_used"] = exemplarsJSON;
+        const auto & treeList = exemplifedTaxonToTreeNamesForJSONLog.at(ottId);
+        json treeNamesJSON = json::array();
+        for (auto treeName : treeList) {
+            treeNamesJSON.push_back(treeName);
+        }
+        thisTaxon["trees_modified"] = treeNamesJSON;
+        std::string ottIdStr = "ott" + std::to_string(ottId);
+        exemp[ottIdStr] = thisTaxon;
+    }
+    document["taxa_exemplified"] = exemp;
+    outstream << document.dump(1) << std::endl;
 }
 
 struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
@@ -60,6 +110,10 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     std::string exportDir;
     std::ofstream nonEmptyFileStream;
     std::string outputNonEmptyTreeOutput;
+    std::string outputJSONLogFile;
+    bool storeLogInfo = false;
+    std::map<OttId, OttIdSet> exemplificationsForJSONLog;
+    std::map<OttId, std::list<std::string> > exemplifedTaxonToTreeNamesForJSONLog;
 
     virtual ~NonTerminalsToExemplarsState(){}
     NonTerminalsToExemplarsState()
@@ -102,6 +156,9 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
             LOG(INFO) << "Exemplifying OTT-ID" << nid << " with:";
             for (auto rid : exemplarIDs) {
                 LOG(INFO) << "    " << rid;
+            }
+            if (storeLogInfo) {
+                exemplificationsForJSONLog[nid] = exemplarIDs;
             }
             for (auto treeNdPair : treeNdPairList) {
                 TreeMappedEmptyNodes * treeP = treeNdPair.first;
@@ -150,6 +207,9 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
             }
         }
         nonEmptyFileStream.close();
+        if (storeLogInfo) {
+            writeJSONLogForExemplifications(outputJSONLogFile, exemplificationsForJSONLog, exemplifedTaxonToTreeNamesForJSONLog);
+        }
         return true;
     }
     
@@ -186,6 +246,9 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 insertAncestorsToParaphyleticSet(taxoNode, includedNodes);
             }
             if (!taxoNode->isTip()) {
+                if (storeLogInfo) {
+                    exemplifedTaxonToTreeNamesForJSONLog[ottId].push_back(raw->getName());
+                }
                 TreeNdPair tnp{raw, nd};
                 nonTermToMappedPhylo[taxoNode].push_back(tnp);
             }
@@ -229,13 +292,30 @@ bool handleNonemptyTreeOutput(OTCLI & otCLI, const std::string &narg) {
     return true;
 }
 
+bool handleJSONOutput(OTCLI & otCLI, const std::string &narg) {
+    NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
+    assert(proc != nullptr);
+    if (narg.empty()) {
+        throw OTCError("Expecting a list of IDs after the -j argument.");
+    }
+    proc->outputJSONLogFile = narg;
+    proc->storeLogInfo = true;
+    return true;
+}
+
+
+bool handleUseJustOTTID(OTCLI & otCLI, const std::string &narg) {
+    transferNodeNameToExemplars = false;
+    return true;
+}
+
 
 int main(int argc, char *argv[]) {
     const char * helpMsg = "takes an -e flag specifying an export diretory and at least 2 newick file paths: " \
         "a full taxonomy tree some number of input trees. Any tip in non-taxonomic input that is mapped to " \
         "non-terminal taoxn will be remapped such that the parent of the non-terminal tip will hold all of " \
-        "the expanded exemplars. The exemplars will be the union of tips that (a) occur below this non-terminal " \
-        "taxon in the taxonomy and (b) occur, or are used as an exemplar, in another input tree. The modified " \
+        "the expanded exemplars. The exemplars will be the any tip which both (a) is contained in this non-terminal " \
+        "taxon in the taxonomy and (b) occurs (or has been chosen as an exemplar), in another input tree. The modified " \
         "version of each input will be written in the export directory. Trees with no non-terminal tips should " \
         "be unaltered. The taxonomy written out will be the taxonomy restricted to the set of leaves that are " \
         "leaves of the exported trees";
@@ -252,8 +332,16 @@ int main(int argc, char *argv[]) {
                   handleStdout,
                   false);
     otCLI.addFlag('n',
-                  "ARG is and output file that will list the filename of input tree that was not empty",
+                  "ARG is and output file that will list the filename for each input tree that was not empty",
                   handleNonemptyTreeOutput,
                   true);
+    otCLI.addFlag('j',
+                  "Name of an output JSON file that summarizes the set of IDs used to exemplify each taxon.",
+                  handleJSONOutput,
+                  true);
+    otCLI.addFlag('t',
+                  "Label exemplified taxa with just OTT ID. If omitted, they are labelled with nodeID_ottID",
+                  handleUseJustOTTID,
+                  false);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);
 }

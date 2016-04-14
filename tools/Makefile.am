@@ -1,3 +1,27 @@
+GIT_VERSION_CMD = $(SHELL) $(top_srcdir)/scripts/git_version.sh
+git_version.stamp:
+	@if test -f "$(srcdir)/git_version.h"; then \
+		if test -f "git_version.h"; then :; \
+		else \
+			cp "$(srcdir)/git_version.h" "git_version.h"; \
+		fi; \
+	fi
+	$(GIT_VERSION_CMD) -k -s $(top_srcdir) -o git_version.h
+	@if test -s "$(srcdir)/git_version.h"; then \
+		if cmp "$(srcdir)/git_version.h" "git_version.h"; then :; \
+		else \
+			echo "Error: $(srcdir)/git_version.h and git_version.h differ."; \
+			echo "       You probably want to remove the former."; \
+			exit 1; \
+		fi; \
+	fi
+
+dist-hook: git_version.stamp
+	if test -f "git_version.h"; then \
+		$(SED) -e 's|^#undef GIT_IS_DIST.*|#define GIT_IS_DIST 1|' \
+			"git_version.h" > "$(distdir)/git_version.h"; \
+	fi
+
 LDADD       = @top_builddir@/otc/libotcetera.la
 AM_CPPFLAGS = -I@top_srcdir@/otc $(BOOST_CPPFLAGS)
 AM_LDFLAGS = $(BOOST_PROGRAM_OPTIONS_LDFLAGS)
@@ -24,16 +48,23 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-graft-solutions \
 				otc-unprune-solution \
 				otc-name-unnamed-nodes \
+				otc-unprune-solution-and-name-unnamed-nodes \
 				otc-annotate-synth \
 				otc-taxonomy-parser \
 				otc-relabel-tree \
-				otc-tree-tool
+				otc-tree-tool \
+				otc-version-reporter \
+				otc-munge-names
 
-LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS)
+
+LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS) 
+
+otc_munge_names_SOURCES = mungenames.cpp
+otc_munge_names_CPPFLAGS = $(AM_CPPFLAGS)
+
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
-
 
 otc_subproblem_stats_SOURCES = subproblemstats.cpp
 otc_subproblem_stats_CPPFLAGS = $(AM_CPPFLAGS)
@@ -113,5 +144,17 @@ otc_relabel_tree_CPPFLAGS = $(AM_CPPFLAGS)
 otc_tree_tool_SOURCES = tree-tool.cpp
 otc_tree_tool_CPPFLAGS = $(AM_CPPFLAGS)
 
+otc_unprune_solution_and_name_unnamed_nodes_SOURCES = unprune-solution-and-name-unnamed-nodes.cpp
+otc_unprune_solution_and_name_unnamed_nodes_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_version_reporter_SOURCES = version-reporter.cpp
+otc_version_reporter_CPPFLAGS = $(AM_CPPFLAGS)
+
+nodist_otc_version_reporter_SOURCES = git_version.h
+
+# always "rebuild" these
+BUILT_SOURCES = version-reporter.cpp git_version.stamp
+
 check:
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
+

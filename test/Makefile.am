@@ -4,6 +4,7 @@ bin_PROGRAMS = testotcgreedyforest \
 					testotcnewicktoken \
 					testotctreefromnewick \
 					testotctreeiter
+LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS)
 
 testotcnewicktoken_SOURCES = test_otc_newicktoken.cpp
 testotcnewicktoken_CPPFLAGS = $(AM_CPPFLAGS)

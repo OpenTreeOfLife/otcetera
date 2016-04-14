@@ -19,7 +19,8 @@ libotcetera_la_HEADERS = \
 	tree_util.h \
 	util.h \
 	taxonomy/taxonomy.h \
-	taxonomy/flags.h
+	taxonomy/flags.h \
+	config_file.h
 
 libotcetera_la_SOURCES = \
 	embedded_tree.cpp \
@@ -36,4 +37,5 @@ libotcetera_la_SOURCES = \
 	util.cpp \
 	write_dot.cpp \
 	taxonomy/taxonomy.cpp \
-	taxonomy/flags.cpp
+	taxonomy/flags.cpp \
+	config_file.cpp

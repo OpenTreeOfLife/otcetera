@@ -5,7 +5,9 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <boost/program_options.hpp>
+#include <boost/optional.hpp>
 #include <bitset>
+#include <regex>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -13,6 +15,7 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
+#include "otc/config_file.h"
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -34,6 +37,7 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
 namespace po = boost::program_options;
 using po::variables_map;
+using namespace boost::property_tree;
 
 variables_map parse_cmd_line(int argc,char* argv[]) 
 { 
@@ -54,6 +58,11 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description output("Output options");
     output.add_options()
+        ("find,S",value<string>(),"Show taxa whose names match regex <arg>")
+        ("degree,D",value<long>(),"Show out the degree of node <arg>")
+        ("children,C",value<long>(),"Show the children of node <arg>")
+        ("parent,P",value<long>(),"Show the parent taxon of node <arg>")
+        ("high-degree-nodes",value<int>(),"Show the top <arg> high-degree nodes")
         ("write-tree,T","Write out the result as a tree")
         ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
         ("name,N", value<long>(), "Return name of the given ID")
@@ -70,9 +79,10 @@ variables_map parse_cmd_line(int argc,char* argv[])
     p.add("taxonomy", -1);
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
-                                                    "Usage: taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
+                                                    "Usage: otc-taxonomy-parser <taxonomy-dir> [OPTIONS]\n"
                                                     "Read a taxonomy, clean it, and then make a tree or some other operation.",
                                                     visible, invisible, p);
+
     return vm;
 }
 
@@ -84,19 +94,6 @@ long n_nodes(const Tree_t& T) {
         count++;
     }
     return count;
-}
-
-long root_ott_id_from_file(const string& filename)
-{
-    boost::property_tree::ptree pt;
-    boost::property_tree::ini_parser::read_ini(filename, pt);
-    try {
-        return pt.get<long>("synthesis.root_ott_id");
-    }
-    catch (...)
-    {
-        return -1;
-    }
 }
 
 void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
@@ -123,6 +120,11 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
             std::cout<<"depth="<<rec->depth<<"   id="<<rec->id<<"   uniqname='"<<rec->uniqname<<"'\n";
 }
 
+void show_rec(const taxonomy_record& rec)
+{
+    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"\n";
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -134,22 +136,56 @@ int main(int argc, char* argv[])
         if (not args.count("taxonomy"))
             throw OTCError()<<"Please specify the taxonomy directory!";
         
-        string taxonomy_dir = args["taxonomy"].as<string>();
+        auto taxonomy = load_taxonomy(args);
 
-        long keep_root = -1;
-        if (args.count("root"))
-            keep_root = args["root"].as<long>();
-        else if (args.count("config"))
-            keep_root = root_ott_id_from_file(args["config"].as<string>());
-        
-        bitset<32> cleaning_flags = 0;
-        if (args.count("config"))
-            cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
-        if (args.count("clean"))
-            cleaning_flags |= flags_from_string(args["clean"].as<string>());
+        if (args.count("find"))
+        {
+            string s = args["find"].as<string>();
+            std::regex e(s);
+            for(const auto& rec: taxonomy)
+            {
+                std::cmatch m;
+                if (std::regex_match(rec.name.data(), rec.name.data()+rec.name.size(), m, e))
+                    show_rec(rec);
+            }
+            exit(0);
+        }
+        else if (args.count("degree"))
+        {
+            long id = args["degree"].as<long>();
+            std::cout<<"degree = "<<taxonomy[taxonomy.index.at(id)].out_degree<<std::endl;
+            exit(0);
+        }
+        else if (args.count("children"))
+        {
+            long id = args["children"].as<long>();
 
-        Taxonomy taxonomy(taxonomy_dir, cleaning_flags, keep_root);
-
+            for(const auto& rec: taxonomy)
+            {
+                long parent_id = taxonomy[rec.parent_index].id;
+                if (parent_id == id)
+                    show_rec(rec);
+            }
+            exit(0);
+        }
+        else if (args.count("parent"))
+        {
+            long id = args["parent"].as<long>();
+            auto parent_index = taxonomy[taxonomy.index.at(id)].parent_index;
+            std::cout<<"parent = "<<taxonomy[parent_index].id<<std::endl;
+            exit(0);
+        }
+        else if (args.count("high-degree-nodes"))
+        {
+            int n = args["high-degree-nodes"].as<int>();
+            vector<int> index(taxonomy.size());
+            for(int i=0;i<index.size();i++)
+                index[i] = i;
+            std::sort(index.begin(), index.end(), [&taxonomy](int i, int j){return taxonomy[i].out_degree > taxonomy[j].out_degree;});
+            for(int i=0;i<n;i++)
+                show_rec(taxonomy[index[i]]);
+            exit(0);
+        }
         if (args.count("write-tree"))
         {
             auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};

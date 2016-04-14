@@ -66,6 +66,11 @@ else
 fi
 AC_SUBST(MAYBE_TEST_DIR)
 AC_PROG_MAKE_SET
+
+# Write our compilation flags to config.h so that we can report them with the version info.
+AC_DEFINE_UNQUOTED([CONFIG_FLAGS],["$AM_CXXFLAGS $CXXFLAGS"] , ["AM_CXXFLAGS that we used to compile."])
+AC_DEFINE_UNQUOTED([_ARCH_],["$host"] , ["Host architecture."])
+
 AC_CONFIG_FILES([					\
 	Makefile 						\
 	otc/Makefile					\
