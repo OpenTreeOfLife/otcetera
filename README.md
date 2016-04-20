@@ -100,6 +100,25 @@ life tools perform on taxonomic names with special characters (because only the
 OTT id is used to associate labels in different trees)
   2. a full supertree tree and taxonomy tree have the same leaf set in terms of OTT ids
 
+## Config file
+
+### The `~/.opentree` file
+You may optionally initialize the global config file `~/.opentree` to specify
+the location of the OpenTree Taxonomy (OTT).  Currently the only use of this
+file in otcetera is to avoid specifying the taxonomy argument on the command-line
+to a few commands.
+
+The config file should contain the [opentree] section with a definition for the variable
+`ott`:
+
+    [opentree]
+    home = /home/USER/OpenTree
+    ...
+    ott = %(home)s/ott/ott2.9draft12/
+    ...
+
+You can optionally define a variable such as `home` to point to the parent directory.
+Then you can reference that directory by writing `%(home)s` in other variables in the same section.
 
 ## Tools for checking a supertree against inputs
 
@@ -375,6 +394,9 @@ otc-relabel-tree in.tre --format-tax="%N ott%I" --taxonomy=<ott-dir> --del-monot
 
 Format codes are given in `otc-relabel-tree -h`.  It is also possible to relabel
 non-taxonomy nodes, but without refering to taxonomy fields.
+
+It is possible to avoid specifying the taxonomy, if the the file `~/.opentree` contains
+a config file specifying the location of OTT.
 
 ### getting the full distribution of out-degree counts for a tree
 
