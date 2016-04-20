@@ -374,10 +374,10 @@ with the smallest, and second-smallest annotations, respectively.
 
 ### Creating annotations for the synthesis tree
 
-This tool takes a series of newick trees: a taxonomy, a full supertree, and some number of input trees.
+This tool takes a series of newick trees: a full supertree, and some number of input trees.
 
 ```sh
-otc-annotate-synth taxonomy.tre super.tre inp1.tre inp2.tree ...
+otc-annotate-synth super.tre inp1.tre inp2.tree ...
 ```
 
 It outputs a JSON document with fields describing relationships between the input tree edges and the
