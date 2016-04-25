@@ -58,6 +58,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description output("Output options");
     output.add_options()
+        ("show-root,R","Show the ottid of the root node")
         ("find,S",value<string>(),"Show taxa whose names match regex <arg>")
         ("degree,D",value<long>(),"Show out the degree of node <arg>")
         ("children,C",value<long>(),"Show the children of node <arg>")
@@ -135,6 +136,10 @@ int main(int argc, char* argv[])
 
         auto taxonomy = load_taxonomy(args);
 
+        if (args.count("show-root"))
+        {
+            std::cout<<taxonomy[0].id<<std::endl;
+        }
         if (args.count("find"))
         {
             string s = args["find"].as<string>();
