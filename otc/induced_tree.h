@@ -6,6 +6,19 @@
 #include "otc/tree.h"
 #include "otc/tree_operations.h"
 
+template <typename N>
+inline int depth(const N* node) {
+    assert(node->getData().depth > 0);
+    return node->getData().depth;
+}
+
+
+template <typename N>
+inline int& depth(N* node) {
+    assert(node->getData().depth > 0);
+    return node->getData().depth;
+}
+
 template <typename node_t>
 node_t* trace_to_parent(node_t* node, std::unordered_set<node_t*>& nodes) {
     assert(nodes.count(node));
