@@ -256,7 +256,7 @@ namespace otc
 
         std::ifstream forwards_stream(path + "/forwards.tsv");
         if (not forwards_stream)
-            throw OTCError()<<"Could not open file '"<<filename<<"'.";
+            throw OTCError()<<"Could not open file '"<<path + "/forwards.tsv"<<"'.";
 
         std::getline(forwards_stream, line);
         while(std::getline(forwards_stream, line))
