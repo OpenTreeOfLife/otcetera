@@ -1,31 +1,43 @@
 #include "otc/otcli.h"
+#include <unordered_set>
+#include "otc/induced_tree.h"
+#include "otc/tree_operations.h"
+
 using namespace otc;
+using std::vector;
+
+
+struct RTNodeDepth {
+    int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
+    RootedTreeNode<RTNodeDepth>* summary_node;
+};
+
+using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
 
 struct InducedSubtreeState
-  : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
-    std::set<long> inducingIds;
+  : public TaxonomyDependentTreeProcessor<Tree_t> {
+    std::unordered_set<long> inducingIds;
     virtual ~InducedSubtreeState(){}
 
     // write the induced tree to the output stream
     virtual bool summarize(OTCLI &otCLI) override {
-        // find the LIA of the induced taxa
-        auto mrca = findMRCAUsingDesIds(*taxonomy, inducingIds);
-        // do a filtered pre-order traversal
-        NodeWithSplitsPred sf = [this](const NodeWithSplits &nd){
-            return haveIntersection(this->inducingIds, nd.getData().desIds);
-        };
-        writeNewickFiltered(otCLI.out, mrca, sf);
-        otCLI.out << ";\n";
+        auto tax_node_map = get_ottid_to_const_node_map(*taxonomy);
+        vector<const Tree_t::node_type*> leaves;
+        for(auto id: inducingIds)
+            leaves.push_back(tax_node_map.at(id));
+        computeDepth(*taxonomy);
+        auto induced_tree = get_induced_tree<Tree_t>(leaves);
+        writeTreeAsNewick(otCLI.out, *induced_tree);
+        otCLI.out << std::endl;
         return true;
     }
 
     // accumulate the set of leaves to include in inducingIds
-    virtual bool processSourceTree(OTCLI &,
-                                   std::unique_ptr<TreeMappedWithSplits> tree) override {
+    virtual bool processSourceTree(OTCLI &, std::unique_ptr<Tree_t> tree) override {
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
-        auto ls = getOttIdSetForLeaves(*tree);
-        inducingIds.insert(ls.begin(), ls.end());
+        for(auto leaf: iter_leaf_const(*tree))
+            inducingIds.insert(leaf->getOttId());
         return true;
     }
 };
