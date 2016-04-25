@@ -57,6 +57,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("degree-of",value<long>(), "Show the degree of node <arg>")
         ("children-of",value<long>(), "List the children of node <arg>")
         ("parent-of",value<long>(), "List the parent of node <arg>")
+        ("count-nodes","Show the number of leaves")
+        ("count-leaves","Show the number of leaves")
         ;
 
     options_description visible;
@@ -78,6 +80,16 @@ long n_nodes(const Tree_t& T) {
 #pragma GCC diagnostic ignored  "-Wunused-variable"
     long count = 0;
     for(auto nd: iter_post_const(T)){
+        count++;
+    }
+    return count;
+}
+
+long n_leaves(const Tree_t& T) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    long count = 0;
+    for(auto nd: iter_leaf_const(T)){
         count++;
     }
     return count;
@@ -213,6 +225,14 @@ int main(int argc, char* argv[])
                 std::cout<<nd->getParent()->getName()<<"\n";
             else
                 std::cout<<"No parent: that node is the root.\n";
+        }
+        else if (args.count("count-nodes"))
+        {
+            std::cout<<n_nodes(*tree)<<std::endl;
+        }
+        else if (args.count("count-leaves"))
+        {
+            std::cout<<n_leaves(*tree)<<std::endl;
         }
         else {
             writeTreeAsNewick(std::cout, *tree);
