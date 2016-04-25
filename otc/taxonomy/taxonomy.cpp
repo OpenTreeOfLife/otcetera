@@ -255,19 +255,19 @@ namespace otc
         taxonomy_stream.close();
 
         std::ifstream forwards_stream(path + "/forwards.tsv");
-        if (not forwards_stream)
-            throw OTCError()<<"Could not open file '"<<path + "/forwards.tsv"<<"'.";
-
-        std::getline(forwards_stream, line);
-        while(std::getline(forwards_stream, line))
+        if (forwards_stream)
         {
-            char* temp;
-            long old_id = std::strtoul(line.c_str(), &temp, 10);
-            assert(*temp == '\t');
-            const char* temp2 = temp+1;
-            long new_id = std::strtoul(temp2, &temp, 10);
-            if (index.count(new_id))
-                forwards[old_id] = new_id;
+            std::getline(forwards_stream, line);
+            while(std::getline(forwards_stream, line))
+            {
+                char* temp;
+                long old_id = std::strtoul(line.c_str(), &temp, 10);
+                assert(*temp == '\t');
+                const char* temp2 = temp+1;
+                long new_id = std::strtoul(temp2, &temp, 10);
+                if (index.count(new_id))
+                    forwards[old_id] = new_id;
+            }
         }
     }
 
