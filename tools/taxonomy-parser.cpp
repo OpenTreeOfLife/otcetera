@@ -133,9 +133,6 @@ int main(int argc, char* argv[])
     {
         variables_map args = parse_cmd_line(argc,argv);
 
-        if (not args.count("taxonomy"))
-            throw OTCError()<<"Please specify the taxonomy directory!";
-        
         auto taxonomy = load_taxonomy(args);
 
         if (args.count("find"))
