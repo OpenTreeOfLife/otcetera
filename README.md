@@ -47,8 +47,19 @@ header files using your operating system's package manager.
 
 Many BOOST modules are header-only.  However, some modules require linking to an installed
 library archive.  You must install library archives for at least these BOOST libraries:
- * Program_options
 
+    cd "${BOOST_ROOT}"
+    b2 program_options
+    b2 system
+    b2 filesystem
+
+If you do not do a full installation of BOOST, then you will need to add the
+libraries to your dynamic library loading path. On Mac:
+
+    export DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$BOOST_ROOT/bin.v2/libs/program_options/build/darwin-4.2.1/release/threading-multi/:$BOOST_ROOT/bin.v2/libs/system/build/darwin-4.2.1/release/threading-multi:$BOOST_ROOT/bin.v2/libs/filesystem/build/darwin-4.2.1/release/threading-multi 
+
+on most other unix variants the variable is called `LD_LIBRARY_PATH` (without the `DY`
+prefix); also note that the path to the libraries in the build BOOST dir is platform-dependent.
 
 ## configuration + building
 
