@@ -992,6 +992,35 @@ inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * m
     // delete monotypic_nd
 }
 
+template <typename T>
+inline void delMonotypicNode(typename T::node_type* nd, T& tree) {
+    assert(nd->isOutDegreeOneNode());
+    auto child = nd->getFirstChild();
+    child->detachThisNode();
+
+    if (nd->getParent())
+    {
+        nd->addSibOnRight(child);
+        nd->detachThisNode();
+    }
+    else
+        tree._setRoot(child);
+
+    delete nd;
+ }
+
+template <typename T>
+void suppressMonotypicFast(T& tree)
+{
+    std::vector<typename T::node_type*> remove;
+    for(auto nd:iter_pre(tree))
+        if (nd->isOutDegreeOneNode())
+            remove.push_back(nd);
+
+    for(auto nd: remove)
+        delMonotypicNode(nd, tree);
+}
+ 
 // nd must be unnnamed (or the aliases would not be fixed because we can't call replaceMappingsToNodeWithAlias)
 template<typename T>
 inline void collapseInternalIntoPar(typename T::node_type * nd,

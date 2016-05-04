@@ -9,6 +9,7 @@
 #include "otc/conflict.h"
 #include "otc/otcli.h"
 #include "otc/supertree_util.h"
+#include "otc/tree_operations.h"
 
 using namespace otc;
 using json = nlohmann::json;
@@ -199,14 +200,6 @@ void add_element(map<string, Map<string, string>>& m, map<string, set<pair<strin
     }
 }
 
-void remove_monotypic_node(node_t* nd)
-{
-    auto child = nd->getFirstChild();
-    child->detachThisNode();
-    nd->addSibOnRight(child);
-    nd->detachThisNode();
-}
-
 map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 {
     map<string,string> to_child;
@@ -220,17 +213,15 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 
     for (auto nd: remove)
     {
-        assert(nd->isOutDegreeOneNode());
-        auto child = nd->getFirstChild();
-        assert(not child->isOutDegreeOneNode());
-
         if (nd->getName().size())
         {
+            auto child = nd->getFirstChild();
+            assert(not child->isOutDegreeOneNode());
+            assert(child->getName().size());
             assert(to_child.count(nd->getName()) == 0);
             to_child[nd->getName()] = child->getName();
-            remove_monotypic_node(nd);
-            delete nd;
         }
+        delMonotypicNode(nd,tree);
     }
     return to_child;
 }
