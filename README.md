@@ -47,8 +47,19 @@ header files using your operating system's package manager.
 
 Many BOOST modules are header-only.  However, some modules require linking to an installed
 library archive.  You must install library archives for at least these BOOST libraries:
- * Program_options
 
+    cd "${BOOST_ROOT}"
+    b2 program_options
+    b2 system
+    b2 filesystem
+
+If you do not do a full installation of BOOST, then you will need to add the
+libraries to your dynamic library loading path. On Mac:
+
+    export DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$BOOST_ROOT/bin.v2/libs/program_options/build/darwin-4.2.1/release/threading-multi/:$BOOST_ROOT/bin.v2/libs/system/build/darwin-4.2.1/release/threading-multi:$BOOST_ROOT/bin.v2/libs/filesystem/build/darwin-4.2.1/release/threading-multi 
+
+on most other unix variants the variable is called `LD_LIBRARY_PATH` (without the `DY`
+prefix); also note that the path to the libraries in the build BOOST dir is platform-dependent.
 
 ## configuration + building
 
@@ -100,6 +111,25 @@ life tools perform on taxonomic names with special characters (because only the
 OTT id is used to associate labels in different trees)
   2. a full supertree tree and taxonomy tree have the same leaf set in terms of OTT ids
 
+## Config file
+
+### The `~/.opentree` file
+You may optionally initialize the global config file `~/.opentree` to specify
+the location of the OpenTree Taxonomy (OTT).  Currently the only use of this
+file in otcetera is to avoid specifying the taxonomy argument on the command-line
+to a few commands.
+
+The config file should contain the [opentree] section with a definition for the variable
+`ott`:
+
+    [opentree]
+    home = /home/USER/OpenTree
+    ...
+    ott = %(home)s/ott/ott2.9draft12/
+    ...
+
+You can optionally define a variable such as `home` to point to the parent directory.
+Then you can reference that directory by writing `%(home)s` in other variables in the same section.
 
 ## Tools for checking a supertree against inputs
 
@@ -355,10 +385,10 @@ with the smallest, and second-smallest annotations, respectively.
 
 ### Creating annotations for the synthesis tree
 
-This tool takes a series of newick trees: a taxonomy, a full supertree, and some number of input trees.
+This tool takes a series of newick trees: a full supertree, and some number of input trees.
 
 ```sh
-otc-annotate-synth taxonomy.tre super.tre inp1.tre inp2.tree ...
+otc-annotate-synth super.tre inp1.tre inp2.tree ...
 ```
 
 It outputs a JSON document with fields describing relationships between the input tree edges and the
@@ -375,6 +405,9 @@ otc-relabel-tree in.tre --format-tax="%N ott%I" --taxonomy=<ott-dir> --del-monot
 
 Format codes are given in `otc-relabel-tree -h`.  It is also possible to relabel
 non-taxonomy nodes, but without refering to taxonomy fields.
+
+It is possible to avoid specifying the taxonomy, if the the file `~/.opentree` contains
+a config file specifying the location of OTT.
 
 ### getting the full distribution of out-degree counts for a tree
 

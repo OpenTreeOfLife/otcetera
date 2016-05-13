@@ -199,23 +199,6 @@ string format_without_taxonomy(const string& orig, const string& format)
     return result;
 }
 
-void suppressMonotypicFast(Tree_t& tree)
-{
-    std::vector<Tree_t::node_type*> remove;
-    for(auto nd:iter_pre(tree))
-        if (nd->isOutDegreeOneNode())
-            remove.push_back(nd);
-
-    for(auto nd: remove)
-    {
-        auto child = nd->getFirstChild();
-        child->detachThisNode();
-        nd->addSibOnRight(child);
-        nd->detachThisNode();
-        delete nd;
-    }
-}
-
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);

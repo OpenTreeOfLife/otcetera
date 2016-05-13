@@ -9,6 +9,7 @@
 #include "otc/conflict.h"
 #include "otc/otcli.h"
 #include "otc/supertree_util.h"
+#include "otc/tree_operations.h"
 
 using namespace otc;
 using json = nlohmann::json;
@@ -83,25 +84,12 @@ struct RTNodeDepth {
 using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
 using node_t = Tree_t::node_type;
 
-int depth(const Tree_t::node_type* node);
-int& depth(Tree_t::node_type* node);
 Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
 void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts);
 void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
-
-inline int depth(const Tree_t::node_type* node) {
-    assert(node->getData().depth > 0);
-    return node->getData().depth;
-}
-
-
-inline int& depth(Tree_t::node_type* node) {
-    assert(node->getData().depth > 0);
-    return node->getData().depth;
-}
 
 inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
     return node->getData().summary_node;
@@ -212,14 +200,6 @@ void add_element(map<string, Map<string, string>>& m, map<string, set<pair<strin
     }
 }
 
-void remove_monotypic_node(node_t* nd)
-{
-    auto child = nd->getFirstChild();
-    child->detachThisNode();
-    nd->addSibOnRight(child);
-    nd->detachThisNode();
-}
-
 map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 {
     map<string,string> to_child;
@@ -233,17 +213,15 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 
     for (auto nd: remove)
     {
-        assert(nd->isOutDegreeOneNode());
-        auto child = nd->getFirstChild();
-        assert(not child->isOutDegreeOneNode());
-
         if (nd->getName().size())
         {
+            auto child = nd->getFirstChild();
+            assert(not child->isOutDegreeOneNode());
+            assert(child->getName().size());
             assert(to_child.count(nd->getName()) == 0);
             to_child[nd->getName()] = child->getName();
-            remove_monotypic_node(nd);
-            delete nd;
         }
+        delMonotypicNode(nd,tree);
     }
     return to_child;
 }

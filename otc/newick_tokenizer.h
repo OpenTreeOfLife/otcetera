@@ -168,7 +168,7 @@ class NewickTokenizer {
                     endPos(endPosition),
                     comments(embeddedComments),
                     state(tokenState) {
-                    LOG(TRACE) << "created token for \"" << content << "\"";
+                    //LOG(TRACE) << "created token for \"" << content << "\"";
                 }
             public:
                 const std::string tokenContent;
@@ -197,11 +197,11 @@ class NewickTokenizer {
                     return !(*this == other);
                 }
                 Token operator*() const {
-                    LOG(TRACE) << "* operator";
+                    //LOG(TRACE) << "* operator";
                     return Token(currWord, *prevPos, *currentPos, comments, currTokenState);
                 }
                 iterator & operator++() {
-                    LOG(TRACE) << "increment";
+                    //LOG(TRACE) << "increment";
                     if (this->atEnd) {
                         throw std::out_of_range("Incremented a dead NewickTokenizer::iterator");
                     }
@@ -296,7 +296,7 @@ class NewickTokenizer {
                     numUnclosedParens(0) {
                     currentPos = &firstPosSlot;
                     prevPos = &secondPosSlot;
-                    LOG(TRACE) << "create live";
+                    //LOG(TRACE) << "create live";
                     ++(*this);
                 }
                 iterator(std::istream &inp) // USE in end() ONLY!
@@ -308,7 +308,7 @@ class NewickTokenizer {
                     currTokenState(NWK_NOT_IN_TREE),
                     prevTokenState(NWK_NOT_IN_TREE),
                     numUnclosedParens(0) {
-                    LOG(TRACE) << "create dead";
+                    //LOG(TRACE) << "create dead";
 
                 }
                 std::istream & inputStream;
@@ -332,7 +332,7 @@ class NewickTokenizer {
             return b;
         }
         iterator end() {
-            LOG(TRACE) << "NewickTokenizer.end()";
+            //LOG(TRACE) << "NewickTokenizer.end()";
             return iterator(this->inputStream);
         }
     private:
