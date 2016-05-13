@@ -7,3 +7,5 @@ build*
 COPYING
 INSTALL
 *gmon.out
+*.o
+*.lo
