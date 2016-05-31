@@ -138,7 +138,8 @@ int main(int argc, char* argv[])
 
         if (args.count("show-root"))
         {
-            std::cout<<taxonomy[0].id<<std::endl;
+            show_rec(taxonomy[0]);
+            exit(0);
         }
         if (args.count("find"))
         {
@@ -174,7 +175,7 @@ int main(int argc, char* argv[])
         {
             long id = args["parent"].as<long>();
             auto parent_index = taxonomy[taxonomy.index.at(id)].parent_index;
-            std::cout<<"parent = "<<taxonomy[parent_index].id<<std::endl;
+            show_rec(taxonomy[parent_index]);
             exit(0);
         }
         else if (args.count("high-degree-nodes"))
