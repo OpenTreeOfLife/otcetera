@@ -63,7 +63,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     output.add_options()
         ("format-tax",value<string>()->default_value("%L"),"Form of labels to write for taxonomy nodes.")
         ("format-unknown",value<string>()->default_value("%L"),"Form of labels to write for non-taxonomy nodes.")
-        ("replace,r",value<string>(),"Perform a regex replacement on all labels")
+        ("replace,R",value<string>(),"Perform a regex replacement on all labels")
 //        ("label-regex", value<string>(), "Return name of the given ID")
         ;
 
