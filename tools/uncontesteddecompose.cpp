@@ -4,6 +4,7 @@ using namespace otc;
 class UncontestedTaxonDecompose : public EmbeddingCLI {
     public:
     std::string exportDir;
+    std::string subproblemIdFile;
     std::ostream * exportStream;
     bool userRequestsRetentionOfTipsMappedToContestedTaxa;
 
@@ -74,6 +75,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg);
 bool handleExportToStdoutSubproblems(OTCLI & otCLI, const std::string &narg);
 bool handleRetainTipsMapToContestedTaxaSubproblems(OTCLI & otCLI, const std::string &narg);
+bool handleListSubproblemIds(OTCLI & otCLI, const std::string &narg);
 
 bool handleExportToStdoutSubproblems(OTCLI & otCLI, const std::string &) {
     UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
@@ -93,11 +95,22 @@ bool handleExportSubproblems(OTCLI & otCLI, const std::string &narg) {
     UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
     assert(proc != nullptr);
     if (narg.empty()) {
-        throw OTCError("Expecting a list of IDs after the -b argument.");
+        throw OTCError("Expecting a directory after the -e argument.");
     }
     proc->exportDir = narg;
     return true;
 }
+
+bool handleListSubproblemIds(OTCLI & otCLI, const std::string &narg) {
+    UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
+    assert(proc != nullptr);
+    if (narg.empty()) {
+        throw OTCError("Expecting a filepath after the -x argument.");
+    }
+    proc->subproblemIdFile = narg;
+    return true;
+}
+
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-uncontested-decompose",
@@ -116,6 +129,10 @@ int main(int argc, char *argv[]) {
                   "If present, the tips in input trees which are mapped to contested taxa. The default behavior is to prune these tips",
                   handleRetainTipsMapToContestedTaxaSubproblems,
                   false);
+    otCLI.addFlag('x',
+                  "ARG should be the name of a file. a line listing the name (but not the full path) over every created .tre file will be written to this file.",
+                  handleListSubproblemIds,
+                  true);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
 

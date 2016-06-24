@@ -435,8 +435,9 @@ void debugPrintNd2Par(const char * p, const T & m) {
 // Only resolves cases in which there is a deeper polytomy that is compatible with 
 //  the taxon - resolved to make the taxon monophyletic...
 // This allows export of deeper subproblems to be performed.
+// returns the name (not the full path) of the tree file written or an empty string
 template<typename T, typename U>
-void NodeEmbedding<T, U>::exportSubproblemAndResolve(
+std::string NodeEmbedding<T, U>::exportSubproblemAndResolve(
                             T & scaffoldNode,
                             const std::string & exportDir,
                             std::ostream * exportStream,
@@ -450,11 +451,15 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
     std::ofstream provFileStream;
     std::ostream * treeExpStream = exportStream;
     std::ostream * provExpStream = exportStream;
+    std::string retStr;
     if (exportStream == nullptr) {
         std::string outFilename = exportDir;
         outFilename.append("/ott");
         outFilename += std::to_string(scaffOTTId);
         outFilename += ".tre";
+        retStr.append("ott");
+        retStr += std::to_string(scaffOTTId);
+        retStr += ".tre";
         std::string provOutFilename = exportDir;
         provOutFilename.append("/ott");
         provOutFilename += std::to_string(scaffOTTId);
@@ -660,6 +665,7 @@ void NodeEmbedding<T, U>::exportSubproblemAndResolve(
     }
     //debugPrint(scaffoldNode, 7, sn2ne);
     //debugNodeEmbedding("leaving exportSubproblemAndResolve", false, sn2ne);
+    return retStr;
 }
 
 

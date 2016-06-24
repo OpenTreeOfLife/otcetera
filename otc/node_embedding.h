@@ -167,7 +167,7 @@ class NodeEmbedding {
                             const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const;
     void resolveGivenUncontestedMonophyly(T & scaffoldNode,
                                           SupertreeContextWithSplits & sc);
-    void exportSubproblemAndResolve(T & scaffoldNode,
+    std::string exportSubproblemAndResolve(T & scaffoldNode,
                                     const std::string & exportDir,
                                     std::ostream * exportStream, // nonnull to override exportdir
                                     SupertreeContextWithSplits & sc);
