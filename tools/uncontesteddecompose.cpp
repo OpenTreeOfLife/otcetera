@@ -6,12 +6,14 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
     std::string exportDir;
     std::string subproblemIdFile;
     std::ostream * exportStream;
+    std::ostream * subproblemIdStream;
     bool userRequestsRetentionOfTipsMappedToContestedTaxa;
 
     virtual ~UncontestedTaxonDecompose(){}
     UncontestedTaxonDecompose()
         :EmbeddingCLI(),
         exportStream(nullptr),
+        subproblemIdStream(nullptr),
         userRequestsRetentionOfTipsMappedToContestedTaxa(false) {
     }
 
@@ -32,10 +34,13 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
             //}
             LOG(INFO) << "    Uncontested";
-            thr.exportSubproblemAndResolve(*scaffoldNd, exportDir, exportStream, sc);
+            auto fn = thr.exportSubproblemAndResolve(*scaffoldNd, exportDir, exportStream, sc);
             //if (scaffoldNd->getParent()) {
             //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
             //}
+            if ((subproblemIdStream != nullptr) && (!fn.empty())) {
+                *subproblemIdStream << fn << '\n';
+            }
         }
     }
 
@@ -66,8 +71,17 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
     }
 
     bool summarize(OTCLI &otCLI) override {
+        std::ofstream sif;
+        if (!subproblemIdFile.empty()) {
+            sif.open(subproblemIdFile.c_str());
+            if (!sif.good()) {
+                throw OTCError("Could not open subproblem ID file");
+            }
+            subproblemIdStream = &sif;
+        }
         cloneTaxonomyAsASourceTree();
         exportSubproblems(otCLI);
+        subproblemIdStream = nullptr;
         return true;
     }
 };
