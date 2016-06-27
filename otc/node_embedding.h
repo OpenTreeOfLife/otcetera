@@ -125,7 +125,7 @@ class NodeEmbedding {
         }
         return false;
     }
-    std::list<std::size_t> getContestingTrees() const {
+    std::list<std::size_t> getContestingTreeIndices() const {
         std::list<std::size_t> r;
         for (auto i : edgeBelowEmbeddings) {
             if (treeContestsMonophyly(i.second)) {
