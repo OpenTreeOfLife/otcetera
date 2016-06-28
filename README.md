@@ -83,6 +83,12 @@ To use g++, substitute `reconf-gcc.sh` for `reconf-clang.sh` in that work flow.
 Python 2 (recent enough to have the subprocess module as part of the standard lib)
 is required for the `make check` operation to succeed.
 
+Those `reconf-...sh` scripts set the installation prefix to an `installed` sub-directory
+of your build directory as the prefix for the installation. So, you will need to 
+add `$PWD/installed/bin` to your `PATH` environmental variable to use the version
+of the otc tools that you just installed. Depending on your platform, you may have to
+add the `$PWD/installed/lib` to your `LD_LIBRARY_PATH` variable.
+
 # Documentation
 A LaTeX documentation file is [./doc/summarizing-taxonomy-plus-trees.tex](./doc/summarizing-taxonomy-plus-trees.tex)
 periodically, that is compiled and posted.
