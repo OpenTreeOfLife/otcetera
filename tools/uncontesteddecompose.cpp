@@ -30,14 +30,29 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             //auto p = scaffoldNd->getParent();
             LOG(INFO) << "    Contested";
             if (documentP != nullptr) {
-                auto contestingTreeInds = thr.getContestingTreeIndices();
-                json cTreeNameList = json::array();
-                for (auto treei : contestingTreeInds) {
+                auto treeIndToContestingNodeMap = thr.getHowTreeContestsMonophylyMaps();
+                json treeIDToNodeMapJSON;
+                for (auto treeCNMPair : treeIndToContestingNodeMap) {
+                    auto & treei = treeCNMPair.first;
+                    auto & parToChildSetMap = treeCNMPair.second;
                     const auto ct = treePtrByIndex.at(treei);
-                    cTreeNameList.push_back(ct->getName());
+                    json parToChildSetJSON = json::array();
+                    for (auto parChildSetPair : parToChildSetMap) {
+                        json pcsObj;
+                        const auto & parNode = parChildSetPair.first;
+                        const auto & childSet = parChildSetPair.second;
+                        json childSetAsJSONList = json::array();
+                        for (auto childP : childSet) {
+                            childSetAsJSONList.push_back(childP->getName());
+                        }
+                        pcsObj["parent"] = parNode->getName();
+                        pcsObj["children_from_taxon"] = childSetAsJSONList;
+                        parToChildSetJSON.push_back(pcsObj);
+                    }
+                    treeIDToNodeMapJSON[ct->getName()] = parToChildSetJSON;
                 }
                 std::string ottIdStr = "ott" + std::to_string(scaffoldNd->getOttId());
-                (*documentP)[ottIdStr] = cTreeNameList;
+                (*documentP)[ottIdStr] = treeIDToNodeMapJSON;
             }
             thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
             //_getEmbeddingForNode(p).debugNodeEmbedding("after thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
