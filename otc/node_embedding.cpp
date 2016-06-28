@@ -1092,7 +1092,7 @@ bool NodeEmbedding<T, U>::reportIfContested(std::ostream & out,
                        const std::vector<NodeWithSplits *> & aliasedBy,
                        bool verbose) const {
     if (isContested()) {
-        auto c = getContestingTrees();
+        auto c = getContestingTreeIndices();
         for (auto cti : c) {
             auto ctree = treePtrByIndex.at(cti);
             const OttIdSet ls = getOttIdSetForLeaves(*ctree);

@@ -1,10 +1,13 @@
 #include "otc/embedding_cli.h"
+#include "json.hpp"
 using namespace otc;
+using json = nlohmann::json;
 
 class UncontestedTaxonDecompose : public EmbeddingCLI {
     public:
     std::string exportDir;
     std::string subproblemIdFile;
+    std::string contestingLogFile;
     std::ostream * exportStream;
     std::ostream * subproblemIdStream;
     bool userRequestsRetentionOfTipsMappedToContestedTaxa;
@@ -17,7 +20,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         userRequestsRetentionOfTipsMappedToContestedTaxa(false) {
     }
 
-    void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc) {
+    void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc, json * documentP) {
         assert(!scaffoldNd->isTip());
         auto & thr = _getEmbeddingForNode(scaffoldNd);
 
@@ -26,6 +29,31 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             //thr.debugNodeEmbedding("before thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
             //auto p = scaffoldNd->getParent();
             LOG(INFO) << "    Contested";
+            if (documentP != nullptr) {
+                auto treeIndToContestingNodeMap = thr.getHowTreeContestsMonophylyMaps();
+                json treeIDToNodeMapJSON;
+                for (auto treeCNMPair : treeIndToContestingNodeMap) {
+                    auto & treei = treeCNMPair.first;
+                    auto & parToChildSetMap = treeCNMPair.second;
+                    const auto ct = treePtrByIndex.at(treei);
+                    json parToChildSetJSON = json::array();
+                    for (auto parChildSetPair : parToChildSetMap) {
+                        json pcsObj;
+                        const auto & parNode = parChildSetPair.first;
+                        const auto & childSet = parChildSetPair.second;
+                        json childSetAsJSONList = json::array();
+                        for (auto childP : childSet) {
+                            childSetAsJSONList.push_back(childP->getName());
+                        }
+                        pcsObj["parent"] = parNode->getName();
+                        pcsObj["children_from_taxon"] = childSetAsJSONList;
+                        parToChildSetJSON.push_back(pcsObj);
+                    }
+                    treeIDToNodeMapJSON[ct->getName()] = parToChildSetJSON;
+                }
+                std::string ottIdStr = "ott" + std::to_string(scaffoldNd->getOttId());
+                (*documentP)[ottIdStr] = treeIDToNodeMapJSON;
+            }
             thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
             //_getEmbeddingForNode(p).debugNodeEmbedding("after thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
         } else {
@@ -44,7 +72,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         }
     }
 
-    void exportSubproblems(OTCLI &) {
+    void exportSubproblems(OTCLI &, json * documentP) {
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{treePtrByIndex, scaffoldNdToNodeEmbedding, *tax};
         if (userRequestsRetentionOfTipsMappedToContestedTaxa) {
@@ -66,7 +94,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         }
         for (auto nd : postOrder) {
             assert(!nd->isTip());
-            exportOrCollapse(nd, sc);
+            exportOrCollapse(nd, sc, documentP);
         }
     }
 
@@ -79,9 +107,22 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             }
             subproblemIdStream = &sif;
         }
+        json * documentP = nullptr;
+        json document;
+        std::ofstream clf;
+        if (!contestingLogFile.empty()) {
+            clf.open(contestingLogFile.c_str());
+            if (!clf.good()) {
+                throw OTCError("Could not open contesting log file");
+            }
+            documentP = &document;
+        }
         cloneTaxonomyAsASourceTree();
-        exportSubproblems(otCLI);
+        exportSubproblems(otCLI, documentP);
         subproblemIdStream = nullptr;
+        if (documentP != nullptr) {
+            clf << document.dump(1) << std::endl;
+        }
         return true;
     }
 };
@@ -125,6 +166,15 @@ bool handleListSubproblemIds(OTCLI & otCLI, const std::string &narg) {
     return true;
 }
 
+bool handleContestingLog(OTCLI & otCLI, const std::string &narg) {
+    UncontestedTaxonDecompose * proc = static_cast<UncontestedTaxonDecompose *>(otCLI.blob);
+    assert(proc != nullptr);
+    if (narg.empty()) {
+        throw OTCError("Expecting a filepath after the -c argument.");
+    }
+    proc->contestingLogFile = narg;
+    return true;
+}
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-uncontested-decompose",
@@ -144,8 +194,12 @@ int main(int argc, char *argv[]) {
                   handleRetainTipsMapToContestedTaxaSubproblems,
                   false);
     otCLI.addFlag('x',
-                  "ARG should be the name of a file. a line listing the name (but not the full path) over every created .tre file will be written to this file.",
+                  "ARG should be a file path. a line listing the name (but not the full path) over every created .tre file will be written to this file.",
                   handleListSubproblemIds,
+                  true);
+    otCLI.addFlag('c',
+                  "ARG should be a file path. A JSON representation of the trees that contest each taxon will be written to that filepath.",
+                  handleContestingLog,
                   true);
     return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
 }
