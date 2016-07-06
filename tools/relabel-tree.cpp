@@ -70,6 +70,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
     options_description tree("Tree options");
     tree.add_options()
         ("del-monotypic","Remove monotypic nodes.")
+        ("prune-flags",value<string>(),"Comma-separate list of flags to prune from tree")
+        ("filter-flags",value<string>(),"Comma-separate list of flags to filter from tree")
         ;
 
     options_description visible;
@@ -199,6 +201,62 @@ string format_without_taxonomy(const string& orig, const string& format)
     return result;
 }
 
+
+void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags)
+{
+  vector<Tree_t::node_type*> nodes;
+  for(auto nd: iter_post(tree))
+    nodes.push_back(nd);
+
+  for(auto nd: nodes)
+  {
+    if (not nd->hasOttId()) continue;
+
+    auto id = nd->getOttId();
+    if ((taxonomy.record_from_id(id).flags & prune_flags).any())
+    {
+      if (nd == tree.getRoot())
+      {
+	if (nd->isOutDegreeOneNode())
+	{
+	  auto newroot = nd->getFirstChild();
+	  newroot->detachThisNode();
+	  tree._setRoot(newroot);
+	}
+	else
+	  throw OTCError()<<"The root has flags set for pruning, but is not monotypic!";
+      }
+      while(nd->hasChildren())
+      {
+	auto c = nd->getFirstChild();
+	c->detachThisNode();
+	nd->addSibOnLeft(c);
+      }
+      nd->detachThisNode();
+    }
+  }
+}
+
+void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags)
+{
+  vector<Tree_t::node_type*> nodes;
+  for(auto nd: iter_post(tree))
+    nodes.push_back(nd);
+
+  for(auto nd: nodes)
+  {
+    if (not nd->hasOttId()) continue;
+
+    auto id = nd->getOttId();
+    if ((taxonomy.record_from_id(id).flags & prune_flags).any())
+    {
+      if (nd == tree.getRoot())
+	throw OTCError()<<"The root has flags set for pruning!";
+      nd->detachThisNode();
+    }
+  }
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -215,13 +273,27 @@ int main(int argc, char* argv[])
 
         boost::optional<Taxonomy> taxonomy = boost::none;
         
-        if (format_needs_taxonomy(format_tax))
+        if (format_needs_taxonomy(format_tax) or args.count("prune-flags"))
             taxonomy = load_taxonomy(args);
 
         if (char c = format_needs_taxonomy(format_unknown))
             throw OTCError()<<"Cannot use taxonomy-based specifier '%"<<c<<"' in non-taxonomy format string '"<<format_unknown<<"'";
         
         auto tree = get_tree<Tree_t>(args["tree"].as<string>());
+
+	if (args.count("prune-flags"))
+	{
+  	    auto flags = flags_from_string(args["prune-flags"].as<string>());
+
+	    pruneTreeByFlags(*tree, *taxonomy, flags);
+	}
+
+	if (args.count("filter-flags"))
+	{
+  	    auto flags = flags_from_string(args["filter-flags"].as<string>());
+
+	    filterTreeByFlags(*tree, *taxonomy, flags);
+	}
 
         if (args.count("del-monotypic"))
             suppressMonotypicFast(*tree);
