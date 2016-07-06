@@ -93,12 +93,11 @@ namespace otc
         }
 
         int flag = 0;
-        boost::spirit::qi::parse(start, end, flag_symbols, flag);
-        if (start != end)
-        {
-            std::cout<<"fail!";
-            std::abort();
-        }
+	auto cur = start;
+	boost::spirit::qi::parse(cur, end, flag_symbols, flag);
+	if (cur != end)
+	    throw OTCError()<<"Flag '"<<string(start,end)<<"' not recognized.";
+
         return flag;
     }
 
