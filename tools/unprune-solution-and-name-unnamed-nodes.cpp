@@ -469,7 +469,7 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution, std::ostream * statsStreamP
     const auto numTaxaMonotypicInternals = monotypicOttIds.size();
     map<long, N*> ott_to_sol;
     const auto snVec = all_nodes(solution);
-    // postorder walk over solution. Every time we find a taxon assigned to a taxon
+    // postorder walk over solution. Every time we find a node assigned to a taxon
     //  we augment the slice of the tree that is rooted at that node (and is the
     //  subtree that is cut at the deepest taxonomic node)
     std::size_t startNumSolnLeaves = 0;

@@ -13,5 +13,10 @@
       "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
       "infile_list": ["spermatophyta_synth.tre", "spermatophyta_taxonomy.tre"],
       "expected": "spermatophyta"
+  },
+  {
+      "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
+      "infile_list": ["AtoG-ABvC-soln.tre", "AtoG-taxonomy.tre"],
+      "expected": "monotypic"
   }
 ]
