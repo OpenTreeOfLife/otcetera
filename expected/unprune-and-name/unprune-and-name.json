@@ -18,5 +18,15 @@
       "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
       "infile_list": ["AtoG-ABvC-soln.tre", "AtoG-taxonomy.tre"],
       "expected": "monotypic"
+  },
+  {
+      "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
+      "infile_list": ["AtoG-ABvC-soln-forkingmono.tre", "AtoG-taxonomy-forkingmono.tre"],
+      "expected": "forkingmono"
+  },
+  {
+      "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-jobtained-extra", "<INFILELIST>"],
+      "infile_list": ["AtoG-ABvC-soln-forkingmono-other.tre", "AtoG-taxonomy-forkingmono.tre"],
+      "expected": "forkingmono"
   }
 ]
