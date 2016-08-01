@@ -175,6 +175,9 @@ void moveUnsampledChildren(N * taxon, N * solnNode) {
     }
 }
 
+// Walk tipward from the @mrca until we find subtrees whose
+// leaves are purely descendants of @taxon.  Record these
+// subtrees as the attachment points in @ltl.
 template <typename N>
 void registerAttachmentPoints(const N * taxon,
                               N * mrca,
