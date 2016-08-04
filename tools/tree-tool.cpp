@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <regex>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -13,6 +14,10 @@
 #include "otc/taxonomy/flags.h"
 
 #include <boost/range/adaptor/reversed.hpp>
+
+#include <boost/filesystem/operations.hpp>
+
+namespace fs = boost::filesystem;
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -59,6 +64,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("parent-of",value<long>(), "List the parent of node <arg>")
         ("count-nodes","Show the number of leaves")
         ("count-leaves","Show the number of leaves")
+        ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
         ;
 
     options_description visible;
@@ -170,6 +176,81 @@ void show_high_degree_nodes(const Tree_t& tree, int n)
     } 
 }
 
+void create_file( const fs::path & ph, const std::string & contents )
+{
+  std::ofstream f( ph.string().c_str() );
+
+  if (not f)
+    throw OTCError()<<"Could not create empty file '"<<ph.string()<<"'";
+
+  if (not contents.empty())
+    f << contents;
+}
+
+std::string remove_ott_suffix(std::string name) {
+    static std::regex ott("(.*)[_ ]ott.*");
+    std::smatch matches;
+    if (std::regex_match(name,matches,ott))
+    {
+        name = matches[1];
+    }
+    return name;
+}
+
+void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
+{
+  fs::path new_dir = dirname;
+
+  if (fs::exists(new_dir))
+    throw OTCError()<<"File '"<<dirname<<"' already exists!";
+
+  fs::create_directories(new_dir);
+
+  // Create empty files
+  for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
+    create_file(new_dir / name, "");
+
+  // Write the about.json file.
+  create_file(new_dir/"about.json",string("{\"inputs\":[\"") + tree.getName() + "\"]}");
+
+  // Write the new version file.
+  create_file(new_dir/"version.txt","0.0");
+
+  // Write the new taxonomy file.
+  {
+    std::ofstream tf ((new_dir/"taxonomy.tsv").string());
+    tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t"<<std::endl;
+    string sep = "\t|\t";
+    for(auto nd: iter_pre_const(tree))
+    {
+      tf<<nd->getOttId();
+      /* */ tf<<sep;
+      if (nd->getParent())
+	tf<<nd->getParent()->getOttId();
+      /* */ tf<<sep;
+      tf<<remove_ott_suffix(nd->getName());
+      /* */ tf<<sep;
+      tf<<"no rank";
+      /* */ tf<<sep;
+      tf<<"tree:0";
+      //      tf<<"tree:"<<tree.getName();
+      /* */ tf<<sep;
+      /* */ tf<<sep;
+      /* */ tf<<sep;
+      tf<<"\n";
+    }
+
+    tf.close();
+  }
+
+  // Write the new forwards file.
+  {
+    std::ofstream ff((new_dir/"forwards.tsv").string());
+    ff << "id\treplacement\n";
+    ff.close();
+  }
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -234,6 +315,11 @@ int main(int argc, char* argv[])
         {
             std::cout<<n_leaves(*tree)<<std::endl;
         }
+	else if (args.count("write-taxonomy"))
+	{
+	  string dirname = args["write-taxonomy"].as<string>();
+	  writeTreeAsTaxonomy(dirname, *tree);
+	}
         else {
             writeTreeAsNewick(std::cout, *tree);
             std::cout << std::endl;
