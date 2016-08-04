@@ -207,13 +207,16 @@ void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
   fs::create_directories(new_dir);
 
   // Create empty files
-  for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
+  for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "weaklog.csv"})
     create_file(new_dir / name, "");
 
   // Write the about.json file.
   create_file(new_dir/"about.json",string("{\"inputs\":[\"") + tree.getName() + "\"]}");
 
-  // Write the new version file.
+  // Write the synonyms.tsv file.
+  create_file(new_dir/"synonyms.tsv","name\t|\tuid\t|\ttype\t|\tuniqname\t|\t\n");
+
+  // Write the version file.
   create_file(new_dir/"version.txt","0.0");
 
   // Write the new taxonomy file.
