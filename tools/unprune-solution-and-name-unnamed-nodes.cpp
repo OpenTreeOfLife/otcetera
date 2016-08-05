@@ -329,7 +329,7 @@ using NumAddedTuple = std::tuple<std::size_t, std::size_t, std::size_t>;
 // If the taxon conflicts with the solution, then the unsampled taxa are attached at the
 //  MRCA of the taxon in the solution, and an entry is added mapping the taxon's OTT Id
 //  to a LostTaxonLocation object that explains where the elements of the taxon are located.
-// returns a pair of numbers:
+// returns a triple of numbers:
 //      0 is number of new nodes added along the soln backbone (this does not include)
 //          the internal nodes transferred from the taxonomy to the solution.
 //      1 is the number of internal nodes that were merged with an existing node on the
