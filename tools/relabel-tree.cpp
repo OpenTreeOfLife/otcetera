@@ -41,6 +41,8 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 namespace po = boost::program_options;
 using po::variables_map;
 
+void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy);
+
 variables_map parse_cmd_line(int argc,char* argv[]) 
 { 
     using namespace po;
@@ -70,6 +72,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     options_description tree("Tree options");
     tree.add_options()
         ("del-monotypic","Remove monotypic nodes.")
+        ("del-higher-taxon-tips","Prune the tree such that no tips are taxa above the species level.")
         ("prune-flags",value<string>(),"Comma-separate list of flags to prune from tree")
         ("filter-flags",value<string>(),"Comma-separate list of flags to filter from tree")
         ;
@@ -94,7 +97,7 @@ long n_nodes(const Tree_t& T) {
 #pragma clang diagnostic ignored  "-Wunused-variable"
 #pragma GCC diagnostic ignored  "-Wunused-variable"
     long count = 0;
-    for(auto nd: iter_post_const(T)){
+    for(auto nd: iter_post_const(T)) {
         count++;
     }
     return count;
@@ -104,28 +107,26 @@ char format_needs_taxonomy(const string& format)
 {
     int pos = 0;
     do {
-        auto loc = format.find('%',pos);
+        auto loc = format.find('%', pos);
         if (loc == string::npos)
             break;
         loc++;
-        if (format[loc] == 0)
+        const auto nc = format[loc];
+        if (nc == 0) {
             std::abort();
-        else if (format[loc] == 'I')
-            return 'I';
-        else if (format[loc] == 'N')
-            return 'N';
-        else if (format[loc] == 'U')
-            return 'U';
-        else if (format[loc] == 'R')
-            return 'R';
-        else if (format[loc] == 'S')
-            return 'S';
-        else if (format[loc] == 'L')
-            ;
-        else if (format[loc] == '%')
-            ;
-        else
-            throw OTCError()<<"Invalid format specification '%"<<format[loc]<<"' in format string '"<<format<<"'";
+        }
+        if (nc == 'I' 
+            || nc == 'N'
+            || nc == 'U'
+            || nc == 'R'
+            || nc == 'S') {
+            return nc;
+        } else if (nc == 'L' || nc == '%') {
+            ; // pass
+        }
+        else {
+            throw OTCError() << "Invalid format specification '%" << nc << "' in format string '" << format << "'";
+        }
         pos = loc + 1;
     }
     while (pos < static_cast<int>(format.size()));
@@ -136,219 +137,200 @@ char format_needs_taxonomy(const string& format)
 string format_with_taxonomy(const string& orig, const string& format, const taxonomy_record& rec)
 {
     string result;
-    
     int pos = 0;
     do {
         auto loc = format.find('%',pos);
-        if (loc == string::npos)
-        {
+        if (loc == string::npos) {
             result += format.substr(pos);
             break;
         }
-        result += format.substr(pos,loc-pos);
+        result += format.substr(pos, loc - pos);
         loc++;
-        if (format[loc] == 0)
+        const auto nc = format[loc];
+        if (nc == 0) {
             std::abort();
-        else if (format[loc] == 'I')
+        } 
+        if (nc == 'I') {
             result += std::to_string(rec.id);
-        else if (format[loc] == 'N')
+        } else if (nc == 'N') {
             result += rec.name.to_string();
-        else if (format[loc] == 'U')
+        } else if (nc == 'U') {
             result += rec.uniqname.to_string();
-        else if (format[loc] == 'R')
+        } else if (nc == 'R') {
             result += rec.rank.to_string();
-        else if (format[loc] == 'S')
+        } else if (format[loc] == 'S') {
             result += rec.sourceinfo.to_string();
-        else if (format[loc] == 'L')
+        } else if (format[loc] == 'L') {
             result += orig;
-        else if (format[loc] == '%')
+        } else if (format[loc] == '%') {
             result += '%';
-        else
-            throw OTCError()<<"Invalid format specification '%"<<format[loc]<<"' in taxonomy-based format string '"<<format<<"'";
+        } else {
+            throw OTCError() << "Invalid format specification '%" << nc << "' in taxonomy-based format string '" << format <<"'";
+        }
         pos = loc + 1;
     }
     while (pos < static_cast<int>(format.size()));
-
     return result;
 }
 
 string format_without_taxonomy(const string& orig, const string& format)
 {
     string result;
-    
     int pos = 0;
     do {
         auto loc = format.find('%',pos);
-        if (loc == string::npos)
-        {
+        if (loc == string::npos) {
             result += format.substr(pos);
             break;
         }
-        result += format.substr(pos,loc-pos);
+        result += format.substr(pos, loc - pos);
         loc++;
-        if (format[loc] == 0)
+        const auto nc = format[loc];
+        if (nc == 0) {
             std::abort();
-        else if (format[loc] == 'L')
+        }
+        if (nc == 'L') {
             result += orig;
-        else if (format[loc] == '%')
+        } else if (format[loc] == '%') {
             result += '%';
-        else
-            throw OTCError()<<"Invalid format specification '%"<<format[loc]<<"' in non-taxonomy-based format string '"<<format<<"'";
+        } else {
+            throw OTCError() << "Invalid format specification '%" << nc << "' in non-taxonomy-based format string '" << format <<"'";
+        }
         pos = loc + 1;
     }
     while (pos < static_cast<int>(format.size()));
-
     return result;
 }
 
+void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
+    throw OTCError() << "pruneHigherTaxonTips not implemented yet.";
+}
 
 void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags)
 {
-  vector<Tree_t::node_type*> nodes;
-  for(auto nd: iter_post(tree))
-    nodes.push_back(nd);
-
-  for(auto nd: nodes)
-  {
-    if (not nd->hasOttId()) continue;
-
-    auto id = nd->getOttId();
-    if ((taxonomy.record_from_id(id).flags & prune_flags).any())
-    {
-      if (nd == tree.getRoot())
-      {
-	if (nd->isOutDegreeOneNode())
-	{
-	  auto newroot = nd->getFirstChild();
-	  newroot->detachThisNode();
-	  tree._setRoot(newroot);
-	}
-	else
-	  throw OTCError()<<"The root has flags set for pruning, but is not monotypic!";
-      }
-      while(nd->hasChildren())
-      {
-	auto c = nd->getFirstChild();
-	c->detachThisNode();
-	nd->addSibOnLeft(c);
-      }
-      nd->detachThisNode();
+    vector<Tree_t::node_type*> nodes;
+    for(auto nd: iter_post(tree)) {
+        nodes.push_back(nd);
     }
-  }
+    for(auto nd: nodes) {
+        if (not nd->hasOttId()) {
+            continue;
+        }
+        auto id = nd->getOttId();
+        if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
+            if (nd == tree.getRoot()) {
+                if (nd->isOutDegreeOneNode()) {
+                    auto newroot = nd->getFirstChild();
+                    newroot->detachThisNode();
+                    tree._setRoot(newroot);
+                } else {
+                    throw OTCError()<<"The root has flags set for pruning, but is not monotypic!";
+                }
+            }
+            while (nd->hasChildren()) {
+                auto c = nd->getFirstChild();
+                c->detachThisNode();
+                nd->addSibOnLeft(c);
+            }
+            nd->detachThisNode();
+        }
+    }
 }
 
 void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags)
 {
-  vector<Tree_t::node_type*> nodes;
-  for(auto nd: iter_post(tree))
-    nodes.push_back(nd);
-
-  for(auto nd: nodes)
-  {
-    if (not nd->hasOttId()) continue;
-
-    auto id = nd->getOttId();
-    if ((taxonomy.record_from_id(id).flags & prune_flags).any())
-    {
-      if (nd == tree.getRoot())
-	throw OTCError()<<"The root has flags set for pruning!";
-      nd->detachThisNode();
+    vector<Tree_t::node_type*> nodes;
+    for(auto nd: iter_post(tree)) {
+        nodes.push_back(nd);
     }
-  }
+    for(auto nd: nodes) {
+        if (not nd->hasOttId()) {
+            continue;
+        }
+        auto id = nd->getOttId();
+        if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
+            if (nd == tree.getRoot()) {
+                throw OTCError()<<"The root has flags set for pruning!";
+            }
+            nd->detachThisNode();
+        }
+    }
 }
 
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
-
-    try
-    {
+    try {
         variables_map args = parse_cmd_line(argc,argv);
-
-        if (not args.count("tree"))
+        if (not args.count("tree")) {
             throw OTCError()<<"Please specify the newick tree to be relabelled!";
-        
+        }
         string format_tax = args["format-tax"].as<string>();
         string format_unknown = args["format-unknown"].as<string>();
-
         boost::optional<Taxonomy> taxonomy = boost::none;
-        
-        if (format_needs_taxonomy(format_tax) or args.count("prune-flags"))
+        if (format_needs_taxonomy(format_tax) or args.count("prune-flags")) {
             taxonomy = load_taxonomy(args);
-
-        if (char c = format_needs_taxonomy(format_unknown))
-            throw OTCError()<<"Cannot use taxonomy-based specifier '%"<<c<<"' in non-taxonomy format string '"<<format_unknown<<"'";
-        
-        auto tree = get_tree<Tree_t>(args["tree"].as<string>());
-
-	if (args.count("prune-flags"))
-	{
-  	    auto flags = flags_from_string(args["prune-flags"].as<string>());
-
-	    pruneTreeByFlags(*tree, *taxonomy, flags);
-	}
-
-	if (args.count("filter-flags"))
-	{
-  	    auto flags = flags_from_string(args["filter-flags"].as<string>());
-
-	    filterTreeByFlags(*tree, *taxonomy, flags);
-	}
-
-        if (args.count("del-monotypic"))
-            suppressMonotypicFast(*tree);
-
-        for(auto nd: iter_pre(*tree))
-        {
-            if (nd->hasOttId())
-            {
-                int id = nd->getOttId();
-                if (taxonomy)
-                {
-                    const auto& record = (*taxonomy).record_from_id(id);
-                    nd->setName( format_with_taxonomy(nd->getName(), format_tax, record) );
-                }
-                else
-                    nd->setName( format_without_taxonomy(nd->getName(), format_tax ) );
-            }
-            else
-            {
-                string name = format_without_taxonomy(nd->getName(), format_unknown);
-                nd->setName(std::move(name));
-            }
         }
-
-        if (args.count("replace"))
-        {
+        if (char c = format_needs_taxonomy(format_unknown)) {
+            throw OTCError()<<"Cannot use taxonomy-based specifier '%"<<c<<"' in non-taxonomy format string '"<<format_unknown<<"'";
+        }
+        auto tree = get_tree<Tree_t>(args["tree"].as<string>());
+        
+        if (args.count("prune-flags")) {
+            auto flags = flags_from_string(args["prune-flags"].as<string>());
+            pruneTreeByFlags(*tree, *taxonomy, flags);
+        }
+        if (args.count("filter-flags")) {
+            auto flags = flags_from_string(args["filter-flags"].as<string>());
+            filterTreeByFlags(*tree, *taxonomy, flags);
+        }
+        if (args.count("del-monotypic")) {
+            suppressMonotypicFast(*tree);
+        }
+        if (args.count("del-higher-taxon-tips")) {
+            pruneHigherTaxonTips(*tree, *taxonomy);
+        }
+        for(auto nd: iter_pre(*tree)) {
+            string name;
+            if (nd->hasOttId()) {
+                int id = nd->getOttId();
+                if (taxonomy) {
+                    const auto& record = (*taxonomy).record_from_id(id);
+                    name = format_with_taxonomy(nd->getName(), format_tax, record);
+                } else {
+                    name = format_without_taxonomy(nd->getName(), format_tax);
+                }
+            } else {
+                name = format_without_taxonomy(nd->getName(), format_unknown);
+            }
+            nd->setName(std::move(name));
+        }
+        if (args.count("replace")) {
             string match_replace = args["replace"].as<string>();
-            if (match_replace.empty())
+            if (match_replace.empty()) {
                 throw OTCError()<<"Empty pattern for argument 'replace'!";
+            }
             char sep = match_replace[0];
-
-            if (std::count(match_replace.begin(), match_replace.end(), sep) !=3)
+            if (std::count(match_replace.begin(), match_replace.end(), sep) !=3) {
                 throw OTCError()<<"Delimiter '"<<sep<<"' does not occur exactly three times in '"<<match_replace<<"'!";
-            if (match_replace.back() != sep)
+            }
+            if (match_replace.back() != sep) {
                 throw OTCError()<<"Pattern '"<<match_replace<<"' does not end with delimiter '"<<sep<<"'";
-
-            int loc2 = match_replace.find(sep,1);
-            int loc3 = match_replace.find(sep,loc2+1);
-            
-            std::regex match (match_replace.substr(1,loc2-1));
-            string replace = match_replace.substr(loc2+1,loc3-loc2-1);
-
-            for(auto nd: iter_pre(*tree))
-            {
+            }
+            int loc2 = match_replace.find(sep, 1);
+            int loc3 = match_replace.find(sep, loc2 + 1);
+            std::regex match (match_replace.substr(1, loc2 - 1));
+            string replace = match_replace.substr(loc2 + 1, loc3 - loc2 - 1);
+            for(auto nd: iter_pre(*tree)) {
                 string name = nd->getName();
                 name = std::regex_replace(name,match,replace);
                 nd->setName(name);
             }
         }
-
         writeTreeAsNewick(cout, *tree);
         std::cout<<std::endl;
     }
-    catch (std::exception& e)
-    {
+    catch (std::exception& e) {
         cerr<<"otc-relabel-tree: Error! "<<e.what()<<std::endl;
         exit(1);
     }
