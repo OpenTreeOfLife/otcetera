@@ -13,6 +13,8 @@
 #include <boost/tokenizer.hpp>
 #include <bitset>
 #include <set>
+#include <map>
+#include "json.hpp"
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -20,7 +22,6 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
-
 INITIALIZE_EASYLOGGINGPP
 
 using namespace otc;
@@ -33,6 +34,8 @@ using std::endl;
 using std::bitset;
 using std::unique_ptr;
 using std::set;
+using std::map;
+using json = nlohmann::json;
 
 using boost::spirit::qi::symbols;
 using boost::string_ref;
@@ -43,7 +46,8 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 namespace po = boost::program_options;
 using po::variables_map;
 
-std::map<std::string, OttIdOSet> globalCauseToPrunedMap;
+typedef map<string, OttIdOSet> Cause2IDSetMap;
+Cause2IDSetMap globalCauseToPrunedMap;
 
 void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy);
 
@@ -65,8 +69,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("taxonomy", value<string>(),"Directory name for the taxonomy")
         ;
 
-    options_description output("Relabelling options");
-    output.add_options()
+    options_description relabel("Relabelling options");
+    relabel.add_options()
         ("format-tax",value<string>()->default_value("%L"),"Form of labels to write for taxonomy nodes.")
         ("format-unknown",value<string>()->default_value("%L"),"Form of labels to write for non-taxonomy nodes.")
         ("replace,R",value<string>(),"Perform a regex replacement on all labels")
@@ -82,8 +86,13 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("filter-flags",value<string>(),"Comma-separate list of flags to filter from tree")
         ;
 
+    options_description output("Output options");
+    output.add_options()
+        ("json,j","filepath to an output JSON log")
+        ;
+
     options_description visible;
-    visible.add(taxonomy).add(output).add(tree).add(otc::standard_options());
+    visible.add(taxonomy).add(relabel).add(tree).add(output).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -305,13 +314,40 @@ void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> pr
     }
 }
 
+void writeLog(std::ofstream & out, const Cause2IDSetMap &csmap) {
+    json document;
+    for (auto csp: csmap) {
+        const auto & cause = csp.first;
+        const auto & idSet = csp.second;
+        if (idSet.empty()) {
+            continue;
+        }
+        json id_array = json::array();
+        for (auto oid: idSet) {
+            id_array.push_back(oid);
+        }
+        document[cause] = id_array;
+    }
+    out << document.dump(1) << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
+    std::ofstream jlogf;
+    std::ofstream * json_log = nullptr;
     try {
         variables_map args = parse_cmd_line(argc,argv);
         if (not args.count("tree")) {
             throw OTCError()<<"Please specify the newick tree to be relabelled!";
+        }
+        if (args.count("json")) {
+            string jf = args["json"].as<string>();
+            jlogf.open(jf);
+            if (!jlogf.good()) {
+                throw OTCError() << "Could not open JSON log file at \"" << jf << "\"";
+            }
+            json_log = &jlogf;
         }
         string format_tax = args["format-tax"].as<string>();
         string format_unknown = args["format-unknown"].as<string>();
@@ -377,6 +413,9 @@ int main(int argc, char* argv[])
         }
         writeTreeAsNewick(cout, *tree);
         std::cout<<std::endl;
+        if (json_log && !globalCauseToPrunedMap.empty()) {
+            writeLog(*json_log, globalCauseToPrunedMap);
+        }
     }
     catch (std::exception& e) {
         cerr<<"otc-relabel-tree: Error! "<<e.what()<<std::endl;
