@@ -373,9 +373,11 @@ void mapNextTree(const Tree_t & tree) //isTaxoComp is third param
 
 bool processSummaryTree() {
     monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
-    for(auto nd: iter_post(*summaryTree))
-        if (nd->hasOttId())
+    for(auto nd: iter_post(*summaryTree)) {
+        if (nd->hasOttId()) {
             summaryOttIdToNode[nd->getOttId()] = nd;
+        }
+    }
     constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
     computeDepth(*summaryTree);
     return true;
@@ -385,26 +387,23 @@ bool processSourceTree(std::unique_ptr<Tree_t> tree)
 {
     computeDepth(*tree);
     computeSummaryLeaves(*tree, summaryOttIdToNode);
-
     mapNextTree(*tree);
     return true;
 }
 
 
 int main(int argc, char *argv[]) {
-    try
-    {
+    try {
         variables_map args = parse_cmd_line(argc,argv);
-        string synth = args["synth"].as<string>();
+        string synthfilename = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
-
-        summaryTree = get_tree<Tree_t>(args["synth"].as<string>());
+        
+        summaryTree = get_tree<Tree_t>(synthfilename);
         processSummaryTree();
-
         vector<unique_ptr<Tree_t>> inputTrees;
-        for(const auto& filename: args["input"].as<vector<string>>())
+        for(const auto& filename: inputs) {
             processSourceTree(get_tree<Tree_t>(filename));
-
+        }
         summarize();
     }
     catch (std::exception& e)
