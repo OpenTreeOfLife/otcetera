@@ -12,6 +12,7 @@
 #include <boost/utility/string_ref.hpp>
 #include <boost/tokenizer.hpp>
 #include <bitset>
+#include <set>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -31,6 +32,7 @@ using std::cerr;
 using std::endl;
 using std::bitset;
 using std::unique_ptr;
+using std::set;
 
 using boost::spirit::qi::symbols;
 using boost::string_ref;
@@ -40,6 +42,8 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
 namespace po = boost::program_options;
 using po::variables_map;
+
+std::map<std::string, OttIdOSet> globalCauseToPrunedMap;
 
 void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy);
 
@@ -72,7 +76,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
     options_description tree("Tree options");
     tree.add_options()
         ("del-monotypic","Remove monotypic nodes.")
-        ("del-higher-taxon-tips","Prune the tree such that no tips are taxa above the species level.")
+        ("del-higher-taxon-tips","Prune the tree such that no tips mapped to taxa with the rank \"genus\", " \
+         "\"subgenus\", or \"species group\".")
         ("prune-flags",value<string>(),"Comma-separate list of flags to prune from tree")
         ("filter-flags",value<string>(),"Comma-separate list of flags to filter from tree")
         ;
@@ -203,7 +208,50 @@ string format_without_taxonomy(const string& orig, const string& format)
 }
 
 void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
-    throw OTCError() << "pruneHigherTaxonTips not implemented yet.";
+    auto & prunedTipSet = globalCauseToPrunedMap[string("higher-taxon-tip")];
+    // first we collect the tips to prune
+    set<Tree_t::node_type*> tipsToPrune;
+    for (auto nd: iter_leaf(tree)) {
+        if (not nd->hasOttId()) {
+            throw OTCError() << "Tip \"" << nd->getName() << "\" lacks an OTT ID.";
+        }
+        const auto ottId = nd->getOttId();
+        const auto & taxonrecord = taxonomy.record_from_id(ottId);
+        const auto & rank = taxonrecord.rank;
+        if (rank == "genus" || rank == "subgenus" || rank == "species group") {
+            tipsToPrune.insert(nd);
+            prunedTipSet.insert(ottId);
+        }
+    }
+    const auto root = tree.getRoot();
+    // now delete the tips and put their parents in a queue to check (to see if they've become tips)
+    set<Tree_t::node_type*> toCheckNext;
+    for (auto nd: tipsToPrune) {
+        if (nd == root) {
+            throw OTCError() << "Please do not call this program with a dot tree.";
+        }
+        toCheckNext.insert(nd->getParent());
+        nd->detachThisNode();
+    }
+    auto & prunedInternalSet = globalCauseToPrunedMap[string("monotypic-after-higher-taxon-tip-prune")];
+    while (!toCheckNext.empty()) {
+        set<Tree_t::node_type*> parSet;
+        for (auto nd: toCheckNext) {
+            if (!nd->hasChildren()) {
+                if (nd == root) {
+                    throw OTCError() << "The tree was pruned to non-existence!";
+                }
+                if (not nd->hasOttId()) {
+                    throw OTCError() << "Node \"" << nd->getName() << "\" lacks an OTT ID.";
+                }
+                const auto ottId = nd->getOttId();
+                prunedInternalSet.insert(ottId);
+                parSet.insert(nd->getParent());
+                nd->detachThisNode();
+            }
+        }
+        toCheckNext.swap(parSet);
+    }
 }
 
 void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags)
