@@ -88,7 +88,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description output("Output options");
     output.add_options()
-        ("json,j","filepath to an output JSON log")
+        ("json,j", value<string>(), "filepath to an output JSON log")
         ;
 
     options_description visible;
@@ -242,7 +242,7 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
         toCheckNext.insert(nd->getParent());
         nd->detachThisNode();
     }
-    auto & prunedInternalSet = globalCauseToPrunedMap[string("monotypic-after-higher-taxon-tip-prune")];
+    auto & prunedInternalSet = globalCauseToPrunedMap[string("empty-after-higher-taxon-tip-prune")];
     while (!toCheckNext.empty()) {
         set<Tree_t::node_type*> parSet;
         for (auto nd: toCheckNext) {
@@ -352,7 +352,14 @@ int main(int argc, char* argv[])
         string format_tax = args["format-tax"].as<string>();
         string format_unknown = args["format-unknown"].as<string>();
         boost::optional<Taxonomy> taxonomy = boost::none;
-        if (format_needs_taxonomy(format_tax) or args.count("prune-flags")) {
+        const bool do_prune_flags = args.count("prune-flags");
+        const bool do_filter_flags = args.count("filter-flags");
+        const bool do_prune_higher = args.count("del-higher-taxon-tips");
+        const bool needs_taxonomy = (format_needs_taxonomy(format_tax)
+                                     or do_prune_flags
+                                     or do_filter_flags
+                                     or do_prune_higher);
+        if (needs_taxonomy) {
             taxonomy = load_taxonomy(args);
         }
         if (char c = format_needs_taxonomy(format_unknown)) {
@@ -360,18 +367,18 @@ int main(int argc, char* argv[])
         }
         auto tree = get_tree<Tree_t>(args["tree"].as<string>());
         
-        if (args.count("prune-flags")) {
+        if (do_prune_flags) {
             auto flags = flags_from_string(args["prune-flags"].as<string>());
             pruneTreeByFlags(*tree, *taxonomy, flags);
         }
-        if (args.count("filter-flags")) {
+        if (do_filter_flags) {
             auto flags = flags_from_string(args["filter-flags"].as<string>());
             filterTreeByFlags(*tree, *taxonomy, flags);
         }
         if (args.count("del-monotypic")) {
             suppressMonotypicFast(*tree);
         }
-        if (args.count("del-higher-taxon-tips")) {
+        if (do_prune_higher) {
             pruneHigherTaxonTips(*tree, *taxonomy);
         }
         for(auto nd: iter_pre(*tree)) {
