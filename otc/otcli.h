@@ -104,7 +104,9 @@ inline bool processTrees(const std::string& filename,
         treeName.append(filepathToFilename(filename));
         nt->setName(treeName);
         const auto cbr = treePtr(std::move(nt));
-        if (not cbr) return false;
+        if (not cbr) {
+            return false;
+        }
     }
     return true;
 }
