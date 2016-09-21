@@ -124,7 +124,8 @@ std::vector<std::unique_ptr<Tree_t>> get_trees(const std::vector<std::string>& f
 template<typename Tree_t>
 std::vector<std::unique_ptr<Tree_t>> get_trees(const std::string& filename, const ParsingRules& rules)
 {
-    return get_trees<Tree_t>({filename}, rules);
+    const std::vector<std::string> filenameVec = {filename};
+    return get_trees<Tree_t>(filenameVec, rules);
 }
 
 template<typename Tree_t>
