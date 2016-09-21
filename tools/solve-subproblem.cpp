@@ -7,6 +7,8 @@
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "otc/tree_iter.h"
+#include <fstream>
+
 using namespace otc;
 using std::vector;
 using std::unique_ptr;
@@ -48,7 +50,7 @@ unique_ptr<Tree_t> BUILD(const std::vector<int>& tips, const std::vector<const R
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
 void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy);
 set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map);
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t> >& trees, bool verbose);
+unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t> >& trees, const set<long>&, bool verbose);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
 
 namespace po = boost::program_options;
@@ -72,6 +74,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("root-name,n",value<string>(), "Rename the root to this name")
         ("require-ott-ids,o", "Require OTT ids")
         ("prune-unrecognized,p","Prune unrecognized tips")
+	("incertae-sedis,I",value<string>(),"File containing Incertae sedis ids")
         ;
 
     options_description visible;
@@ -256,8 +259,9 @@ set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map) {
     return s2;
 }
 
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, bool verbose) {
+unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<long>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
     auto all_leaves = taxonomy->getRoot()->getData().desIds;
@@ -394,6 +398,20 @@ int main(int argc, char *argv[])
 	    throw OTCError("No trees loaded!");
 	}
 
+	//2.5 Load Incertae Sedis info
+	std::set<long> incertae_sedis;
+	if (args.count("incertae-sedis"))
+	{
+	    auto filename = args["incertae-sedis"].as<string>();
+	    std::ifstream file(filename);
+	    while (file)
+	    {
+		long i;
+		file >> i;
+		incertae_sedis.insert(i);
+	    }
+	}
+
 	// 3. Make a fake taxonomy if asked
 	if (synthesize_taxonomy) {
 	    trees.push_back(make_unresolved_tree(trees, rules.setOttIds));
@@ -427,7 +445,7 @@ int main(int argc, char *argv[])
 	}
 
 	// 7. Perform the synthesis
-	auto tree = combine(trees, verbose);
+	auto tree = combine(trees, incertae_sedis, verbose);
 
 	// 8. Set the root name (if asked)
 	// FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
