@@ -280,6 +280,33 @@ vector<typename Tree_t::node_type const*> get_siblings(typename Tree_t::node_typ
     return sibs;
 }
 
+template<typename Tree_T>
+map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const Tree_t& tree, const set<long>& incertae_sedis)
+{
+    map<typename Tree_t::node_type const*, set<long>> exclude;
+
+    // Set exclude set for root node to the empty set.
+    exclude[tree.getRoot()]; 	    
+
+    for(auto nd: iter_pre_const(tree)) {
+
+	if (nd->isTip()) continue;
+
+	if (nd == tree.getRoot()) continue;
+	
+	// the exclude set contain the INCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
+	set<long> ex = exclude.at(nd->getParent());
+	for(auto nd2: get_siblings<Tree_t>(nd)) {
+	    if (not incertae_sedis.count(nd2->getOttId())) {
+		auto& ex_sib = nd2->getData().desIds;
+		ex.insert(begin(ex_sib),end(ex_sib));
+	    }
+	}
+	exclude[nd] = ex;
+    }
+    return exclude;
+}
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<long>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
@@ -342,29 +369,17 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	}
 	else
 	{
-	    map<typename Tree_t::node_type const*, set<long>> exclude;
-	    // Set exclude set for root node to the empty set.
-	    exclude[tree->getRoot()];
+	    auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
 
-	    for(auto nd: iter_pre_const(*tree)) {
+	    for(auto nd: iter_post_const(*tree)) {
 		// skip leaves
 		if (nd->getData().desIds.size()==1) continue;
 		// skip the root
 		if (leafTaxaIndices.size() == nd->getData().desIds.size()) continue;
 
-		// the exclude set contain the INCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
-		set<long> ex = exclude.at(nd->getParent());
-		for(auto nd2: get_siblings<Tree_t>(nd)) {
-		    if (not incertae_sedis.count(nd2->getOttId())) {
-			auto& ex_sib = nd2->getData().desIds;
-			ex.insert(begin(ex_sib),end(ex_sib));
-		    }
-		}
-		exclude[nd] = ex;
-
 		// construct split
 		const auto descendants = remap(nd->getData().desIds);
-		const auto nondescendants = remap(ex);
+		const auto nondescendants = remap(exclude[nd]);
 		RSplit split = split_from_include_exclude(descendants, nondescendants);
 
 		// add split if consistent
