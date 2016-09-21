@@ -73,7 +73,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("standardize,S", "Write out a standardized subproblem and exit.")
         ("synthesize-taxonomy,T","Synthesize an unresolved taxonomy from all mentioned tips.")
         ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
-        ("root-name,n",value<long>(), "Rename the root to this name")
+        ("root-name,n",value<string>(), "Rename the root to this name")
         ("require-ott-ids,o", "Require OTT ids")
         ("prune-unrecognized,p","Prune unrecognized tips")
         ;
