@@ -49,10 +49,6 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
 void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy);
 set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map);
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t> >& trees, bool verbose);
-bool handleSynthesizeTaxonomy(OTCLI &, const std::string &arg);
-bool handleCladeTips(OTCLI &, const std::string & arg);
-bool handleStandardize(OTCLI& otCLI, const std::string & arg);
-bool handleRootName(OTCLI& otCLI, const std::string & arg);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
 
 namespace po = boost::program_options;
@@ -324,16 +320,6 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, bool verbose
     return tree;
 }
 
-static bool synthesize_taxonomy = false;
-static bool cladeTips = true;
-static bool writeStandardized = false;
-static string rootName = "";
-
-bool handleRootName(OTCLI& , const std::string & arg) {
-    rootName = arg;
-    return true;
-}
-
 /// Create an unresolved taxonomy out of all the input trees.
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids) {
     std::unique_ptr<Tree_t> retTree(new Tree_t());
@@ -385,20 +371,16 @@ int main(int argc, char *argv[])
 	rules.setOttIds = (bool)args.count("require-ott-ids");
 	rules.pruneUnrecognizedInputTips = (bool)args.count("prune-unrecognized");
 
-	synthesize_taxonomy = (bool)args.count("synthesize-taxonomy");
-	cladeTips = not (bool)args.count("no-higher-tips");
+	bool synthesize_taxonomy = (bool)args.count("synthesize-taxonomy");
+	bool cladeTips = not (bool)args.count("no-higher-tips");
 	bool verbose = (bool)args.count("verbose");
-	if (args.count("standardize"))
-	{
+	bool writeStandardized = (bool)args.count("standardize");
+	if (writeStandardized) {
 	    rules.setOttIds = false;
-	    writeStandardized = true;
 	}
 
-	if (args.count("root-name"))
-	{
-	    rootName = args["root-name"].as<string>();
-	}
-
+	bool setRootName = (bool)args.count("root-name");
+	
 	vector<string> filenames = args["subproblem"].as<vector<string>>();
 	
 	// 2. Load trees from subproblem file(s)
@@ -448,8 +430,9 @@ int main(int argc, char *argv[])
 	auto tree = combine(trees, verbose);
 
 	// 8. Set the root name (if asked)
-	if (not rootName.empty()){
-	    tree->getRoot()->setName(rootName);
+	// FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
+	if (setRootName) {
+	    tree->getRoot()->setName(args["root-name"].as<string>());
 	}
 
 	// 9. Write out the summary tree.
