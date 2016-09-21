@@ -55,7 +55,7 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
 std::ostream& operator<<(std::ostream& o, const RSplit& s);
 int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& elements);
 bool empty_intersection(const set<int>& xs, const vector<int>& ys);
-unique_ptr<Tree_t> BUILD(const std::vector<int>& tips, const std::vector<const RSplit*>& splits);
+unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
 void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy);
 set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map);
@@ -332,14 +332,33 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
     for(auto& i: indices) {
         i=-1;
     }
-    // 1. Find splits in order of input trees
+
+    /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<RSplit> consistent;
+    auto add_split_if_consistent = [&all_leaves_indices,verbose,&consistent](auto nd, RSplit&& split)
+	{
+	    consistent.push_back(std::move(split));
+	
+	    auto result = BUILD(all_leaves_indices, consistent);
+	    if (not result) {
+		consistent.pop_back();
+		if (verbose and nd->hasOttId()) {
+		    LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
+		}
+	    } else if (verbose and nd->hasOttId()) {
+		LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
+	    }
+	};
+
+
+    // 1. Find splits in order of input trees
     for(int i=0;i<trees.size();i++)
     {
 	const auto& tree = trees[i];
 
         auto root = tree->getRoot();
         const auto leafTaxa = root->getData().desIds;
+        const auto leafTaxaIndices = remap(leafTaxa);
 
 #ifndef NDEBUG
 #pragma clang diagnostic ignored  "-Wunreachable-code-loop-increment"
@@ -347,55 +366,32 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
             throw OTCError()<<"OTT Id "<<leaf<<" not in taxonomy!";
         }
 #endif
-        const auto leafTaxaIndices = remap(leafTaxa);
-	if (i < trees.size()-1 or incertae_sedis.empty())
-	{
-	    for(auto nd: iter_post_const(*tree)) {
-		if (nd->getData().desIds.size()>1 and leafTaxaIndices.size() > nd->getData().desIds.size()) {
-		    const auto descendants = remap(nd->getData().desIds);
-		    RSplit split{descendants, leafTaxaIndices};
-		    consistent.push_back(split);
-		    auto result = BUILD(all_leaves_indices, consistent);
-		    if (not result) {
-			consistent.pop_back();
-			if (verbose and nd->hasOttId()) {
-			    LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
-			}
-		    } else if (verbose and nd->hasOttId()) {
-			LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
-		    }
-		}
-	    }
-	}
-	else
-	{
+
+	// Handle the taxonomy tree specially when it has Incertae sedis taxa.
+	if (i == trees.size()-1 and not incertae_sedis.empty()) {
 	    auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
 
 	    for(auto nd: iter_post_const(*tree)) {
-		// skip leaves
-		if (nd->getData().desIds.size()==1) continue;
-		// skip the root
-		if (leafTaxaIndices.size() == nd->getData().desIds.size()) continue;
+		if (not nd->isTip() and nd != root) {
+		    // construct split
+		    const auto descendants = remap(nd->getData().desIds);
+		    const auto nondescendants = remap(exclude[nd]);
 
-		// construct split
-		const auto descendants = remap(nd->getData().desIds);
-		const auto nondescendants = remap(exclude[nd]);
-		RSplit split = split_from_include_exclude(descendants, nondescendants);
+		    add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants) );
+		}
+	    }
+	}
+	else {
+	    for(auto nd: iter_post_const(*tree)) {
+		if (not nd->isTip() and nd != root) {
+		    const auto descendants = remap(nd->getData().desIds);
 
-		// add split if consistent
-		consistent.push_back(split);
-		auto result = BUILD(all_leaves_indices, consistent);
-		if (not result) {
-		    consistent.pop_back();
-		    if (verbose and nd->hasOttId()) {
-			LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
-		    }
-		} else if (verbose and nd->hasOttId()) {
-		    LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
+		    add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
 		}
 	    }
 	}
     }
+
     // 2. Construct final tree and add names
     auto tree = BUILD(all_leaves_indices, consistent);
     for(auto nd: iter_pre(*tree)) {
