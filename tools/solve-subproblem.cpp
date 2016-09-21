@@ -43,6 +43,15 @@ struct RSplit {
         }
 };
 
+RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
+{
+    RSplit s;
+    s.in = set_to_vector(i);
+    s.out = set_to_vector(e);
+    set_union(begin(i),end(i),begin(e),end(e),std::inserter(s.all,s.all.end()));
+    return s;
+}
+
 std::ostream& operator<<(std::ostream& o, const RSplit& s);
 int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& elements);
 bool empty_intersection(const set<int>& xs, const vector<int>& ys);
@@ -72,7 +81,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("synthesize-taxonomy,T","Synthesize an unresolved taxonomy from all mentioned tips.")
         ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
         ("root-name,n",value<string>(), "Rename the root to this name")
-        ("require-ott-ids,o", "Require OTT ids")
+        ("allow-no-ids,a", "Allow problems w/o OTT ids")
         ("prune-unrecognized,p","Prune unrecognized tips")
 	("incertae-sedis,I",value<string>(),"File containing Incertae sedis ids")
         ;
@@ -259,6 +268,17 @@ set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map) {
     return s2;
 }
 
+template <typename Tree_t>
+vector<typename Tree_t::node_type const*> get_siblings(typename Tree_t::node_type const* nd)
+{
+    vector<typename Tree_t::node_type const*> sibs;
+    for(auto sib = nd->getFirstSib(); sib; sib = sib->getNextSib()) {
+	if (sib != nd) {
+	    sibs.push_back(sib);
+	}
+    }
+    return sibs;
+}
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<long>& incertae_sedis, bool verbose) {
@@ -287,30 +307,79 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
     }
     // 1. Find splits in order of input trees
     vector<RSplit> consistent;
-    for(const auto& tree: trees) {
+    for(int i=0;i<trees.size();i++)
+    {
+	const auto& tree = trees[i];
+
         auto root = tree->getRoot();
         const auto leafTaxa = root->getData().desIds;
+
+#ifndef NDEBUG
 #pragma clang diagnostic ignored  "-Wunreachable-code-loop-increment"
         for(const auto& leaf: set_difference_as_set(leafTaxa, all_leaves)) {
             throw OTCError()<<"OTT Id "<<leaf<<" not in taxonomy!";
         }
+#endif
         const auto leafTaxaIndices = remap(leafTaxa);
-        for(auto nd: iter_post_const(*tree)) {
-            if (nd->getData().desIds.size()>1 and leafTaxaIndices.size() > nd->getData().desIds.size()) {
-                const auto descendants = remap(nd->getData().desIds);
-                RSplit split{descendants, leafTaxaIndices};
-                consistent.push_back(split);
-                auto result = BUILD(all_leaves_indices, consistent);
-                if (not result) {
-                    consistent.pop_back();
-                    if (verbose and nd->hasOttId()) {
-                        LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
-                    }
-                } else if (verbose and nd->hasOttId()) {
-                    LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
-                }
-            }
-        }
+	if (i < trees.size()-1 or incertae_sedis.empty())
+	{
+	    for(auto nd: iter_post_const(*tree)) {
+		if (nd->getData().desIds.size()>1 and leafTaxaIndices.size() > nd->getData().desIds.size()) {
+		    const auto descendants = remap(nd->getData().desIds);
+		    RSplit split{descendants, leafTaxaIndices};
+		    consistent.push_back(split);
+		    auto result = BUILD(all_leaves_indices, consistent);
+		    if (not result) {
+			consistent.pop_back();
+			if (verbose and nd->hasOttId()) {
+			    LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
+			}
+		    } else if (verbose and nd->hasOttId()) {
+			LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
+		    }
+		}
+	    }
+	}
+	else
+	{
+	    map<typename Tree_t::node_type const*, set<long>> exclude;
+	    // Set exclude set for root node to the empty set.
+	    exclude[tree->getRoot()];
+
+	    for(auto nd: iter_pre_const(*tree)) {
+		// skip leaves
+		if (nd->getData().desIds.size()==1) continue;
+		// skip the root
+		if (leafTaxaIndices.size() == nd->getData().desIds.size()) continue;
+
+		// the exclude set contain the INCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
+		set<long> ex = exclude.at(nd->getParent());
+		for(auto nd2: get_siblings<Tree_t>(nd)) {
+		    if (not incertae_sedis.count(nd2->getOttId())) {
+			auto& ex_sib = nd2->getData().desIds;
+			ex.insert(begin(ex_sib),end(ex_sib));
+		    }
+		}
+		exclude[nd] = ex;
+
+		// construct split
+		const auto descendants = remap(nd->getData().desIds);
+		const auto nondescendants = remap(ex);
+		RSplit split = split_from_include_exclude(descendants, nondescendants);
+
+		// add split if consistent
+		consistent.push_back(split);
+		auto result = BUILD(all_leaves_indices, consistent);
+		if (not result) {
+		    consistent.pop_back();
+		    if (verbose and nd->hasOttId()) {
+			LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
+		    }
+		} else if (verbose and nd->hasOttId()) {
+		    LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
+		}
+	    }
+	}
     }
     // 2. Construct final tree and add names
     auto tree = BUILD(all_leaves_indices, consistent);
@@ -372,7 +441,7 @@ int main(int argc, char *argv[])
 	variables_map args = parse_cmd_line(argc,argv);
   
 	ParsingRules rules;
-	rules.setOttIds = (bool)args.count("require-ott-ids");
+	rules.setOttIds = not (bool)args.count("allow-no-ids");
 	rules.pruneUnrecognizedInputTips = (bool)args.count("prune-unrecognized");
 
 	bool synthesize_taxonomy = (bool)args.count("synthesize-taxonomy");
