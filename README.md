@@ -43,7 +43,7 @@ worked for MTH on Mac on 28-Feb-2015:
 
 ### BOOST C++ libraries
 You also need the BOOST C++ source libraries.  You should install the BOOST libraries and
-header files using your operating system's package manager.
+header files using your operating system's package manager. version 1.58 of boost works; earlier versions might.
 
 Many BOOST modules are header-only.  However, some modules require linking to an installed
 library archive.  You must install library archives for at least these BOOST libraries:
@@ -79,6 +79,7 @@ Then to configure and build with clang use:
     $ make installcheck
 
 To use g++, substitute `reconf-gcc.sh` for `reconf-clang.sh` in that work flow.
+g++ version 5.4 works earlier versions might work.
 
 Python 2 (recent enough to have the subprocess module as part of the standard lib)
 is required for the `make check` operation to succeed.
