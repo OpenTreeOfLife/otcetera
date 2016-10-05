@@ -274,7 +274,7 @@ void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* 
     add_element(resolves, resolves_set, synth_node, input_node, source);
 }
 
-json summarize(const Tree_t& summaryTree) {
+json gen_json(const Tree_t& summaryTree) {
     json document;
     document["num_tips"] = countLeaves(summaryTree);
     document["root_ott_id"] = summaryTree.getRoot()->getOttId();
@@ -344,11 +344,7 @@ void mapNextTree(const Tree_t& summaryTree, const Tree_t & tree, const string& s
 
 void processSummaryTree(Tree_t& summaryTree) {
     monotypic_nodes = suppressAndRecordMonotypic(summaryTree);
-    for(auto nd: iter_post(summaryTree)) {
-        if (nd->hasOttId()) {
-            summaryOttIdToNode[nd->getOttId()] = nd;
-        }
-    }
+    summaryOttIdToNode = get_ottid_to_node_map(summaryTree);
     constSummaryOttIdToNode = get_ottid_to_const_node_map(summaryTree);
     computeDepth(summaryTree);
 }
@@ -359,9 +355,11 @@ int main(int argc, char *argv[]) {
         string synthfilename = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
         
+	// Load and process summary tree.
         auto summaryTree = get_tree<Tree_t>(synthfilename);
         processSummaryTree(*summaryTree);
 
+	// Load and process input trees.
 	json sources;
         for(const auto& filename: inputs) {
 	    auto tree = get_tree<Tree_t>(filename);
@@ -373,7 +371,9 @@ int main(int argc, char *argv[]) {
 
 	    sources.push_back(source_name);
         }
-        auto document = summarize(*summaryTree);
+
+	// Generate json document and print it.
+	auto document = gen_json(*summaryTree);
 	document["sources"] = sources;
 	std::cout<<document.dump(1)<<std::endl;
     }

@@ -40,8 +40,8 @@
   "ott12": {
    "conflicts_with": {
     "tree2": [
-     "node3",
-     "node6"
+     "node6",
+     "node3"
     ]
    },
    "resolves": {
@@ -51,8 +51,8 @@
   "ott13": {
    "conflicts_with": {
     "tree2": [
-     "node3",
-     "node6"
+     "node6",
+     "node3"
     ]
    },
    "supported_by": {
