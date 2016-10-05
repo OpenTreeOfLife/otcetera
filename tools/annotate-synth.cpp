@@ -247,7 +247,6 @@ void destroy_children(node_t* node)
     assert(node->isTip());
 }
 
-json document;
 map<string,string> monotypic_nodes;
 map<long,Tree_t::node_type*> summaryOttIdToNode;
 map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
@@ -296,8 +295,8 @@ void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* 
     add_element(resolves, resolves_set, synth_node, input_node, source);
 }
 
-bool summarize(const Tree_t& summaryTree) {
-    
+json summarize(const Tree_t& summaryTree) {
+    json document;
     document["num_tips"] = countLeaves(summaryTree);
     document["root_ott_id"] = summaryTree.getRoot()->getOttId();
     
@@ -326,8 +325,7 @@ bool summarize(const Tree_t& summaryTree) {
             nodes[m.first] = nodes[m.second];
 
     document["nodes"] = nodes;
-    std::cout<<document.dump(1)<<std::endl;
-    return true;
+    return document;
 }
 
 void mapNextTree(const Tree_t& summaryTree, const Tree_t & tree, const string& source_name) //isTaxoComp is third param
@@ -385,6 +383,7 @@ int main(int argc, char *argv[]) {
         auto summaryTree = get_tree<Tree_t>(synthfilename);
         processSummaryTree(*summaryTree);
 
+	json sources;
         for(const auto& filename: inputs) {
 	    auto tree = get_tree<Tree_t>(filename);
 	    computeDepth(*tree);
@@ -393,9 +392,11 @@ int main(int argc, char *argv[]) {
 	    string source_name = source_from_tree_name(tree->getName());
 	    mapNextTree(*summaryTree, *tree, source_name);
 
-	    document["sources"].push_back(source_name);
+	    sources.push_back(source_name);
         }
-        summarize(*summaryTree);
+        auto document = summarize(*summaryTree);
+	document["sources"] = sources;
+	std::cout<<document.dump(1)<<std::endl;
     }
     catch (std::exception& e)
     {
