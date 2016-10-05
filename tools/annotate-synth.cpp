@@ -383,15 +383,6 @@ bool processSummaryTree() {
     return true;
 }
 
-bool processSourceTree(std::unique_ptr<Tree_t> tree)
-{
-    computeDepth(*tree);
-    computeSummaryLeaves(*tree, summaryOttIdToNode);
-    mapNextTree(*tree);
-    return true;
-}
-
-
 int main(int argc, char *argv[]) {
     try {
         variables_map args = parse_cmd_line(argc,argv);
@@ -402,7 +393,10 @@ int main(int argc, char *argv[]) {
         processSummaryTree();
         vector<unique_ptr<Tree_t>> inputTrees;
         for(const auto& filename: inputs) {
-            processSourceTree(get_tree<Tree_t>(filename));
+	    auto tree = get_tree<Tree_t>(filename);
+	    computeDepth(*tree);
+	    computeSummaryLeaves(*tree, summaryOttIdToNode);
+	    mapNextTree(*tree);
         }
         summarize();
     }
