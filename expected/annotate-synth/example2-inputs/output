@@ -1,0 +1,120 @@
+{
+ "nodes": {
+  "mrcaott1ott4": {
+   "conflicts_with": {
+    "tree2": [
+     "node6"
+    ]
+   },
+   "supported_by": {
+    "tree1": "node3"
+   }
+  },
+  "mrcaott7ott11": {
+   "supported_by": {
+    "tree2": "node9"
+   },
+   "terminal": {
+    "tree1": "node10"
+   }
+  },
+  "mrcaott7ott9": {
+   "supported_by": {
+    "tree2": "node10"
+   },
+   "terminal": {
+    "tree1": "node10"
+   }
+  },
+  "ott1": {
+   "terminal": {
+    "tree1": "node5",
+    "tree2": "node4"
+   }
+  },
+  "ott11": {
+   "terminal": {
+    "tree2": "node13"
+   }
+  },
+  "ott12": {
+   "conflicts_with": {
+    "tree2": [
+     "node6",
+     "node3"
+    ]
+   },
+   "resolves": {
+    "tree1": "node4"
+   }
+  },
+  "ott13": {
+   "conflicts_with": {
+    "tree2": [
+     "node6",
+     "node3"
+    ]
+   },
+   "supported_by": {
+    "tree1": "node4"
+   }
+  },
+  "ott14": {
+   "supported_by": {
+    "tree1": "node2",
+    "tree2": "node2"
+   }
+  },
+  "ott15": {
+   "terminal": {
+    "tree1": "node10",
+    "tree2": "node11"
+   }
+  },
+  "ott16": {
+   "terminal": {
+    "tree2": "node12"
+   }
+  },
+  "ott2": {
+   "terminal": {
+    "tree1": "node6",
+    "tree2": "node8"
+   }
+  },
+  "ott3": {
+   "terminal": {
+    "tree1": "node7"
+   }
+  },
+  "ott4": {
+   "terminal": {
+    "tree1": "node8",
+    "tree2": "node5"
+   }
+  },
+  "ott5": {
+   "terminal": {
+    "tree1": "node9",
+    "tree2": "node7"
+   }
+  },
+  "ott7": {
+   "terminal": {
+    "tree1": "node10",
+    "tree2": "node11"
+   }
+  },
+  "ott9": {
+   "terminal": {
+    "tree2": "node12"
+   }
+  }
+ },
+ "num_tips": 11,
+ "root_ott_id": 17,
+ "sources": [
+  "tree1",
+  "tree2"
+ ]
+}
