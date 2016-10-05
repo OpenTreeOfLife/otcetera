@@ -330,14 +330,9 @@ bool summarize(const Tree_t& summaryTree) {
     return true;
 }
 
-void mapNextTree(const Tree_t& summaryTree, const Tree_t & tree) //isTaxoComp is third param
+void mapNextTree(const Tree_t& summaryTree, const Tree_t & tree, const string& source_name) //isTaxoComp is third param
 {
-    string source_name = source_from_tree_name(tree.getName());
-    document["sources"].push_back(source_name);
-
-
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
-
     {
         auto log_supported_by    = [&source_name](const node_t* node2, const node_t* node1) {set_supported_by(node2,node1,source_name);};
         auto log_partial_path_of = [&source_name](const node_t* node2, const node_t* node1) {set_partial_path_of(node2,node1,source_name);};
@@ -389,12 +384,16 @@ int main(int argc, char *argv[]) {
         
         auto summaryTree = get_tree<Tree_t>(synthfilename);
         processSummaryTree(*summaryTree);
-        vector<unique_ptr<Tree_t>> inputTrees;
+
         for(const auto& filename: inputs) {
 	    auto tree = get_tree<Tree_t>(filename);
 	    computeDepth(*tree);
+
 	    computeSummaryLeaves(*tree, summaryOttIdToNode);
-	    mapNextTree(*summaryTree, *tree);
+	    string source_name = source_from_tree_name(tree->getName());
+	    mapNextTree(*summaryTree, *tree, source_name);
+
+	    document["sources"].push_back(source_name);
         }
         summarize(*summaryTree);
     }
