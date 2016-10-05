@@ -226,7 +226,6 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
     return to_child;
 }
 
-map<string,string> monotypic_nodes;
 map<long,Tree_t::node_type*> summaryOttIdToNode;
 map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
 map<string, Map<string,string>> supported_by;
@@ -274,7 +273,7 @@ void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* 
     add_element(resolves, resolves_set, synth_node, input_node, source);
 }
 
-json gen_json(const Tree_t& summaryTree) {
+json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nodes) {
     json document;
     document["num_tips"] = countLeaves(summaryTree);
     document["root_ott_id"] = summaryTree.getRoot()->getOttId();
@@ -342,24 +341,20 @@ void mapNextTree(const Tree_t& summaryTree, const Tree_t & tree, const string& s
     }
 }
 
-void processSummaryTree(Tree_t& summaryTree) {
-    monotypic_nodes = suppressAndRecordMonotypic(summaryTree);
-    summaryOttIdToNode = get_ottid_to_node_map(summaryTree);
-    constSummaryOttIdToNode = get_ottid_to_const_node_map(summaryTree);
-    computeDepth(summaryTree);
-}
-
 int main(int argc, char *argv[]) {
     try {
         variables_map args = parse_cmd_line(argc,argv);
         string synthfilename = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
         
-	// Load and process summary tree.
+	// 1. Load and process summary tree.
         auto summaryTree = get_tree<Tree_t>(synthfilename);
-        processSummaryTree(*summaryTree);
+	computeDepth(*summaryTree);
+	summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
+	constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
+	auto monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
 
-	// Load and process input trees.
+	// 2. Load and process input trees.
 	json sources;
         for(const auto& filename: inputs) {
 	    auto tree = get_tree<Tree_t>(filename);
@@ -372,8 +367,8 @@ int main(int argc, char *argv[]) {
 	    sources.push_back(source_name);
         }
 
-	// Generate json document and print it.
-	auto document = gen_json(*summaryTree);
+	// 3. Generate json document and print it.
+	auto document = gen_json(*summaryTree, monotypic_nodes);
 	document["sources"] = sources;
 	std::cout<<document.dump(1)<<std::endl;
     }
