@@ -227,7 +227,6 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 }
 
 map<long,Tree_t::node_type*> summaryOttIdToNode;
-map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
 map<string, Map<string,string>> supported_by;
 map<string, Map<string,string>> partial_path_of;
 map<string, Map<string,string>> conflicts_with;
@@ -306,7 +305,10 @@ json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nod
     return document;
 }
 
-void mapNextTree(const Tree_t& summaryTree, const Tree_t & tree, const string& source_name) //isTaxoComp is third param
+void mapNextTree(const Tree_t& summaryTree,
+		 const map<long, const Tree_t::node_type*>& constSummaryOttIdToNode,
+		 const Tree_t & tree,
+		 const string& source_name) //isTaxoComp is third param
 {
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
     {
@@ -351,7 +353,7 @@ int main(int argc, char *argv[]) {
         auto summaryTree = get_tree<Tree_t>(synthfilename);
 	computeDepth(*summaryTree);
 	summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
-	constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
+	auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
 	auto monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
 
 	// 2. Load and process input trees.
@@ -362,7 +364,7 @@ int main(int argc, char *argv[]) {
 
 	    computeSummaryLeaves(*tree, summaryOttIdToNode);
 	    string source_name = source_from_tree_name(tree->getName());
-	    mapNextTree(*summaryTree, *tree, source_name);
+	    mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, source_name);
 
 	    sources.push_back(source_name);
         }
