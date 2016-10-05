@@ -226,7 +226,6 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
     return to_child;
 }
 
-map<long,Tree_t::node_type*> summaryOttIdToNode;
 map<string, Map<string,string>> supported_by;
 map<string, Map<string,string>> partial_path_of;
 map<string, Map<string,string>> conflicts_with;
@@ -352,7 +351,7 @@ int main(int argc, char *argv[]) {
 	// 1. Load and process summary tree.
         auto summaryTree = get_tree<Tree_t>(synthfilename);
 	computeDepth(*summaryTree);
-	summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
+	auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
 	auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
 	auto monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
 
