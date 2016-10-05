@@ -248,7 +248,6 @@ void destroy_children(node_t* node)
 }
 
 json document;
-std::unique_ptr<Tree_t> summaryTree;
 map<string,string> monotypic_nodes;
 map<long,Tree_t::node_type*> summaryOttIdToNode;
 map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
@@ -297,13 +296,13 @@ void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* 
     add_element(resolves, resolves_set, synth_node, input_node, source);
 }
 
-bool summarize() {
+bool summarize(const Tree_t& summaryTree) {
     
-    document["num_tips"] = countLeaves(*summaryTree);
-    document["root_ott_id"] = summaryTree->getRoot()->getOttId();
+    document["num_tips"] = countLeaves(summaryTree);
+    document["root_ott_id"] = summaryTree.getRoot()->getOttId();
     
     json nodes;
-    for(auto nd: iter_post_const(*summaryTree))
+    for(auto nd: iter_post_const(summaryTree))
     {
         json node;
         string name = nd->getName();
@@ -331,7 +330,7 @@ bool summarize() {
     return true;
 }
 
-void mapNextTree(const Tree_t & tree) //isTaxoComp is third param
+void mapNextTree(const Tree_t& summaryTree, const Tree_t & tree) //isTaxoComp is third param
 {
     string source_name = source_from_tree_name(tree.getName());
     document["sources"].push_back(source_name);
@@ -347,7 +346,7 @@ void mapNextTree(const Tree_t & tree) //isTaxoComp is third param
         auto log_terminal        = [&source_name](const node_t* node2, const node_t* node1) {set_terminal(node2,node1,source_name);};
 
         perform_conflict_analysis(tree, ottid_to_node,
-                                  *summaryTree, constSummaryOttIdToNode,
+                                  summaryTree, constSummaryOttIdToNode,
                                   log_supported_by,
                                   log_partial_path_of,
                                   log_conflicts_with,
@@ -361,7 +360,7 @@ void mapNextTree(const Tree_t & tree) //isTaxoComp is third param
         auto log_resolved_by     = [&source_name](const node_t* node2, const node_t* node1) {set_resolves(node1,node2,source_name);};
         auto log_terminal        = [&source_name](const node_t*, const node_t*) {};
 
-        perform_conflict_analysis(*summaryTree, constSummaryOttIdToNode,
+        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode,
                                   tree, ottid_to_node,
                                   log_supported_by,
                                   log_partial_path_of,
@@ -371,16 +370,15 @@ void mapNextTree(const Tree_t & tree) //isTaxoComp is third param
     }
 }
 
-bool processSummaryTree() {
-    monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
-    for(auto nd: iter_post(*summaryTree)) {
+void processSummaryTree(Tree_t& summaryTree) {
+    monotypic_nodes = suppressAndRecordMonotypic(summaryTree);
+    for(auto nd: iter_post(summaryTree)) {
         if (nd->hasOttId()) {
             summaryOttIdToNode[nd->getOttId()] = nd;
         }
     }
-    constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
-    computeDepth(*summaryTree);
-    return true;
+    constSummaryOttIdToNode = get_ottid_to_const_node_map(summaryTree);
+    computeDepth(summaryTree);
 }
 
 int main(int argc, char *argv[]) {
@@ -389,16 +387,16 @@ int main(int argc, char *argv[]) {
         string synthfilename = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
         
-        summaryTree = get_tree<Tree_t>(synthfilename);
-        processSummaryTree();
+        auto summaryTree = get_tree<Tree_t>(synthfilename);
+        processSummaryTree(*summaryTree);
         vector<unique_ptr<Tree_t>> inputTrees;
         for(const auto& filename: inputs) {
 	    auto tree = get_tree<Tree_t>(filename);
 	    computeDepth(*tree);
 	    computeSummaryLeaves(*tree, summaryOttIdToNode);
-	    mapNextTree(*tree);
+	    mapNextTree(*summaryTree, *tree);
         }
-        summarize();
+        summarize(*summaryTree);
     }
     catch (std::exception& e)
     {
