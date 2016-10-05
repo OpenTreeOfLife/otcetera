@@ -226,27 +226,6 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
     return to_child;
 }
 
-void destroy_children(node_t* node)
-{
-    vector<node_t*> nodes;
-    while(auto n = node->getFirstChild())
-    {
-        n->detachThisNode();
-        nodes.push_back(n);
-    }
-
-    for(std::size_t i = 0; i < nodes.size(); i++) {
-        while(auto n = node->getFirstChild())
-        {
-            n->detachThisNode();
-            nodes.push_back(n);
-        }
-        delete nodes[i];
-    }
-
-    assert(node->isTip());
-}
-
 map<string,string> monotypic_nodes;
 map<long,Tree_t::node_type*> summaryOttIdToNode;
 map<long,const Tree_t::node_type*> constSummaryOttIdToNode;
