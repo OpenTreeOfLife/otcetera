@@ -42,12 +42,10 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("input", value<vector<string>>()->composing(),"Filename for input trees")
         ;
 
-//    options_description taxonomy("Taxonomy options");
-//    taxonomy.add_options()
-//        ("config,c",value<string>(),"Config file containing flags to filter")
-//        ("clean",value<string>(),"Comma-separated string of flags to filter")
-//        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
-//        ;
+    options_description reporting("Reporting options");
+    reporting.add_options()
+        ("ignore-monotypic,I",value<string>(),"Ignore monotypic nodes in summary")
+	;
 
     options_description visible;
     visible.add(otc::standard_options());
@@ -59,7 +57,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
                                                     "Usage: otc-annotate-synth <synth-tree> <input tree1> <input tree2> ... [OPTIONS]\n"
-                                                    "Annotate the synthesis tree with support & conflict information from the input trees.\n",
+                                                    "Annotate the synthesis tree with support & conflict information from the input trees.",
                                                     visible, invisible, p);
 
     return vm;
@@ -271,7 +269,7 @@ void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* 
     add_element(resolves, resolves_set, synth_node, input_node, source);
 }
 
-json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nodes) {
+json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nodes, bool ignore_monotypic) {
     json document;
     document["num_tips"] = countLeaves(summaryTree);
     document["root_ott_id"] = summaryTree.getRoot()->getOttId();
@@ -296,9 +294,10 @@ json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nod
     }
 
     // Copy support information to monotypic nodes from their first non-monotypic descendant
-    for(const auto& m: monotypic_nodes)
-        if (nodes.find(m.second) != nodes.end())
-            nodes[m.first] = nodes[m.second];
+    if (not ignore_monotypic)
+	for(const auto& m: monotypic_nodes)
+	    if (nodes.find(m.second) != nodes.end())
+		nodes[m.first] = nodes[m.second];
 
     document["nodes"] = nodes;
     return document;
@@ -347,6 +346,7 @@ int main(int argc, char *argv[]) {
         variables_map args = parse_cmd_line(argc,argv);
         string synthfilename = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
+	bool ignore_monotypic = args.count("ignore-monotypic");
         
 	// 1. Load and process summary tree.
         auto summaryTree = get_tree<Tree_t>(synthfilename);
@@ -369,7 +369,7 @@ int main(int argc, char *argv[]) {
         }
 
 	// 3. Generate json document and print it.
-	auto document = gen_json(*summaryTree, monotypic_nodes);
+	auto document = gen_json(*summaryTree, monotypic_nodes, ignore_monotypic);
 	document["sources"] = sources;
 	std::cout<<document.dump(1)<<std::endl;
     }
