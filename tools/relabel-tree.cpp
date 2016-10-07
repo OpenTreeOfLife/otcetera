@@ -80,8 +80,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     options_description tree("Tree options");
     tree.add_options()
         ("del-monotypic","Remove monotypic nodes.")
-        ("del-higher-taxon-tips","Prune the tree such that no tips mapped to taxa with the rank \"genus\", " \
-         "\"subgenus\", or \"species group\".")
+        ("del-higher-taxon-tips","Prune the tree such that no tips mapped to taxa that have ranks above the species level are tips.")
         ("prune-flags",value<string>(),"Comma-separate list of flags to prune from tree")
         ("filter-flags",value<string>(),"Comma-separate list of flags to filter from tree")
         ;
@@ -227,7 +226,14 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
         const auto ottId = nd->getOttId();
         const auto & taxonrecord = taxonomy.record_from_id(ottId);
         const auto & rank = taxonrecord.rank;
-        if (rank == "genus" || rank == "subgenus" || rank == "species group") {
+        if (rank.length() > 0 && (rank != "no rank"
+                                  && rank != "no rank - terminal"
+                                  && rank != "forma"
+                                  && rank != "species"
+                                  && rank != "subspecies"
+                                  && rank != "subvariety"
+                                  && rank != "varietas"
+                                  && rank != "variety")) {
             tipsToPrune.insert(nd);
             prunedTipSet.insert(ottId);
         }
