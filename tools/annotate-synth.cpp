@@ -86,8 +86,6 @@ Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
-void find_anc_conflicts(Tree_t::node_type* node, vector<Tree_t::node_type*>& conflicts);
-void find_conflicts(const Tree_t& tree, vector<Tree_t::node_type*>& conflicts);
 
 inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
     return node->getData().summary_node;
@@ -340,6 +338,7 @@ void mapNextTree(const Tree_t& summaryTree,
                                   log_terminal);
     }
 }
+
 
 int main(int argc, char *argv[]) {
     try {
