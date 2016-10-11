@@ -350,10 +350,10 @@ int main(int argc, char *argv[]) {
         
 	// 1. Load and process summary tree.
         auto summaryTree = get_tree<Tree_t>(synthfilename);
-	computeDepth(*summaryTree);
 	auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
 	auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
 	auto monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
+	computeDepth(*summaryTree);
 
 	// 2. Load and process input trees.
 	json sources;
