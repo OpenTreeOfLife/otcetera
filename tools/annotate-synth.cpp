@@ -127,6 +127,9 @@ json get_support_blob_as_array(const Map<string,string>& M)
         for (auto s_it = keyRange.first;  s_it != keyRange.second;  ++s_it)
             nodes_array.push_back((*s_it).second);
         
+	// This wastes time, but makes the output order predictable
+	std::sort(nodes_array.begin(), nodes_array.end());
+
         support_blob[source_id] = nodes_array;
 
         m_it = keyRange.second;
