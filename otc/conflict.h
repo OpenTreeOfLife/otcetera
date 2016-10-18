@@ -59,7 +59,7 @@ template <typename N>
 std::vector<N*> map_to_summary(const std::vector<const N*>& nodes)
 {
     std::vector<N*> nodes2(nodes.size(),nullptr);
-    for(int i=0;i<nodes2.size();i++) {
+    for(int i=0;i<(int)nodes2.size();i++) {
         nodes2[i] = summary_node(nodes[i]);
     }
     return nodes2;
@@ -141,7 +141,7 @@ void perform_conflict_analysis(const Tree_t& tree1,
             continue;
         }
         // If this node contains all tips under it, then it doesn't correspond to a split.
-        if (nd->getData().n_tips == L) {
+        if (nd->getData().n_tips == (int)L) {
             continue;
         }
         // If this node is a tip, the mark the corresponding nodes
