@@ -16,6 +16,8 @@ by http://stackoverflow.com/users/127669/graphics-noob
 The gitversion trick for the otc-version-reporter is from
   http://stackoverflow.com/questions/6526451/how-to-include-git-commit-number-into-a-c-executable
 
+https://peerj.com/preprints/2538/ describes some of the tools that are a part of otcetera.
+
 # Installation
 
 ## prerequisites
