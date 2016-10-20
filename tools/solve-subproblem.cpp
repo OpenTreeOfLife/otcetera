@@ -294,7 +294,7 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 
 	if (nd == tree.getRoot()) continue;
 	
-	// the exclude set contain the INCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
+	// the exclude set contain the EXCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
 	set<long> ex = exclude.at(nd->getParent());
 	for(auto nd2: get_siblings<Tree_t>(nd)) {
 	    if (not incertae_sedis.count(nd2->getOttId())) {
