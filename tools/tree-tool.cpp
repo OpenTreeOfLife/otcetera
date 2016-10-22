@@ -62,9 +62,10 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("degree-of",value<long>(), "Show the degree of node <arg>")
         ("children-of",value<long>(), "List the children of node <arg>")
         ("parent-of",value<long>(), "List the parent of node <arg>")
-        ("count-nodes","Show the number of leaves")
+        ("count-nodes","Show the number of nodes")
         ("count-leaves","Show the number of leaves")
         ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
+        ("indented-table","print number of leaves for each internal node")
         ;
 
     options_description visible;
@@ -99,6 +100,36 @@ long n_leaves(const Tree_t& T) {
         count++;
     }
     return count;
+}
+
+void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
+    std::map<const Tree_t::node_type*, long> nd2numLeaves;
+    std::map<const Tree_t::node_type*, long> nd2Indent;
+    long count = 0;
+    for(auto nd: iter_post_const(tree)){
+        auto p = nd->getParent();
+        if (p) {
+            if (nd->isTip()) {
+                nd2numLeaves[p] += 1;
+            } else {
+                nd2numLeaves[p] += nd2numLeaves[nd];
+            }
+        }
+    }
+    for(auto nd: iter_pre_const(tree)){
+        if (nd->isTip()) {
+            continue;
+        }
+        auto p = nd->getParent();
+        if (p) {
+            nd2Indent[nd] = 2 + nd2Indent[p];
+        } else {
+            nd2Indent[nd] = 0;
+        }
+        out << std::string(nd2Indent[nd], ' ');
+        out << nd->getName() << " : " << nd2numLeaves[nd] << '\n';
+    }   
+    
 }
 
 unique_ptr<Tree_t> get_tree(const string& filename)
@@ -283,47 +314,35 @@ int main(int argc, char* argv[])
             tree = slice_tree(std::move(tree), root, slice);
         }
         
-        if (args.count("high-degree-nodes"))
-        {
+        if (args.count("high-degree-nodes")) {
             long n = args["high-degree-nodes"].as<long>();
             show_high_degree_nodes(*tree, n);
-        }
-        else if (args.count("degree-of"))
-        {
+        } else if (args.count("degree-of")) {
             long n = args["degree-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             std::cout<<nd->getOutDegree()<<"\n";
-        }
-        else if (args.count("children-of"))
-        {
+        } else if (args.count("children-of")) {
             long n = args["children-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             for(auto c = nd->getFirstChild(); c; c = c->getNextSib())
                 std::cout<<c->getName()<<"\n";
-        }
-        else if (args.count("parent-of"))
-        {
+        } else if (args.count("parent-of")) {
             long n = args["parent-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             if (nd->getParent())
                 std::cout<<nd->getParent()->getName()<<"\n";
             else
                 std::cout<<"No parent: that node is the root.\n";
-        }
-        else if (args.count("count-nodes"))
-        {
+        } else if (args.count("count-nodes")) {
             std::cout<<n_nodes(*tree)<<std::endl;
-        }
-        else if (args.count("count-leaves"))
-        {
+        } else if (args.count("count-leaves")) {
             std::cout<<n_leaves(*tree)<<std::endl;
-        }
-	else if (args.count("write-taxonomy"))
-	{
-	  string dirname = args["write-taxonomy"].as<string>();
-	  writeTreeAsTaxonomy(dirname, *tree);
-	}
-        else {
+        } else if (args.count("indented-table")) {
+            indented_table_of_node_counts(std::cout, *tree);
+        } else if (args.count("write-taxonomy")) {
+            string dirname = args["write-taxonomy"].as<string>();
+            writeTreeAsTaxonomy(dirname, *tree);
+        } else {
             writeTreeAsNewick(std::cout, *tree);
             std::cout << std::endl;
         }
