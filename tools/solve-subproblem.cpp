@@ -57,7 +57,7 @@ int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& 
 bool empty_intersection(const set<int>& xs, const vector<int>& ys);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
-void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy);
+void add_names(Tree_t& tree, const vector<Tree_t::node_type const*>& taxa);
 set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map);
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t> >& trees, const set<long>&, bool verbose);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
@@ -246,15 +246,80 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits) 
     return BUILD(tips, split_ptrs);
 }
 
+template <typename T>
+bool is_subset(const std::set<T>& set_two, const std::set<T>& set_one)
+{
+    return std::includes(set_one.begin(), set_one.end(), set_two.begin(), set_two.end());
+}
+
+Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd)
+{
+    if (nd->getParent())
+    {
+	auto p = nd->getParent();
+	auto monotypic = tree.createChild(p);
+	nd->detachThisNode();
+	monotypic->addChild(nd);
+	return monotypic;
+    }
+    else
+    {
+	auto monotypic = tree.createRoot();
+	monotypic->addChild(nd);
+	return monotypic;
+    }
+}
+
+void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
+{
+    // name root
+    summary.getRoot()->setName(taxonomy.getRoot()->getName());
+
+    // name tips
+    auto summaryOttIdToNode = get_ottid_to_node_map(summary);
+
+    for(auto nd: iter_leaf_const(taxonomy))
+    {
+	auto id = nd->getOttId();
+	auto nd2 = summaryOttIdToNode.at(id);
+	nd2->setName( nd->getName());
+    }
+}
+
+Tree_t::node_type* find_mrca_of_desids(const set<long>& ids, const std::unordered_map<long, Tree_t::node_type*>& summaryOttIdToNode)
+{
+    int first = *ids.begin();
+    auto node = summaryOttIdToNode.at(first);
+    while( not is_subset(ids, node->getData().desIds) )
+	node = node->getParent();
+    return node;
+}
+
 /// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
-void add_names(unique_ptr<Tree_t>& tree, const unique_ptr<Tree_t>& taxonomy) {
-    clearAndfillDesIdSets(*tree);
-    for(auto n1: iter_post(*tree)) {
-        for(auto n2: iter_post(*taxonomy)) {
-            if (n1->getData().desIds == n2->getData().desIds) {
-                n1->setName( n2->getName());
-            }
-        }
+//  For this function, the taxa is a list of taxa that are displayed by the tree.
+//  It is possible for different names to get assigned to the same node,Therefore, we need only 
+void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
+{
+    auto summaryOttIdToNode = get_ottid_to_node_map(summary);
+
+    clearAndfillDesIdSets(summary);
+
+    for(auto n2: taxa)
+    {
+	auto mrca = find_mrca_of_desids(n2->getData().desIds, summaryOttIdToNode);
+
+	if (not mrca->getName().empty())
+	{
+	    while(mrca->getParent()->isOutDegreeOneNode())
+	    {
+		mrca = mrca->getParent();
+		assert(not mrca->getName().empty());
+	    }
+	    mrca = add_monotypic_parent(summary, mrca);
+	    mrca->getData().desIds = mrca->getFirstChild()->getData().desIds;
+	}
+
+	mrca->setName( n2->getName());
     }
 }
 
@@ -338,20 +403,23 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
     auto add_split_if_consistent = [&all_leaves_indices,verbose,&consistent](auto nd, RSplit&& split)
 	{
 	    consistent.push_back(std::move(split));
-	
+
 	    auto result = BUILD(all_leaves_indices, consistent);
 	    if (not result) {
 		consistent.pop_back();
 		if (verbose and nd->hasOttId()) {
 		    LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
 		}
+		return false;
 	    } else if (verbose and nd->hasOttId()) {
 		LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
 	    }
+	    return true;
 	};
 
 
     // 1. Find splits in order of input trees
+    vector<Tree_t::node_type const*> taxa;
     for(int i=0;i<trees.size();i++)
     {
 	const auto& tree = trees[i];
@@ -377,7 +445,19 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 		    const auto descendants = remap(nd->getData().desIds);
 		    const auto nondescendants = remap(exclude[nd]);
 
-		    add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants) );
+		    if (add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants) ))
+			taxa.push_back(nd);
+		}
+	    }
+	}
+	else if (i == trees.size()-1)
+	{
+	    for(auto nd: iter_post_const(*tree)) {
+		if (not nd->isTip() and nd != root) {
+		    const auto descendants = remap(nd->getData().desIds);
+
+		    if (add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices}))
+			taxa.push_back(nd);
 		}
 	    }
 	}
@@ -400,7 +480,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
             nd->setOttId(ids[index]);
         }
     }
-    add_names(tree, taxonomy);
+    add_root_and_tip_names(*tree, *taxonomy);
+    add_names(*tree, taxa);
     return tree;
 }
 
