@@ -1,0 +1,7 @@
+[
+  {
+      "invocation" : ["otc-relabel-tree", "<INFILELIST>"],
+      "infile_list": ["attachresolved/tree1.tre"],
+      "expected": "simple"
+  }
+]

@@ -175,6 +175,9 @@ void moveUnsampledChildren(N * taxon, N * solnNode) {
     }
 }
 
+// Walk tipward from the @mrca until we find subtrees whose
+// leaves are purely descendants of @taxon.  Record these
+// subtrees as the attachment points in @ltl.
 template <typename N>
 void registerAttachmentPoints(const N * taxon,
                               N * mrca,
@@ -326,7 +329,7 @@ using NumAddedTuple = std::tuple<std::size_t, std::size_t, std::size_t>;
 // If the taxon conflicts with the solution, then the unsampled taxa are attached at the
 //  MRCA of the taxon in the solution, and an entry is added mapping the taxon's OTT Id
 //  to a LostTaxonLocation object that explains where the elements of the taxon are located.
-// returns a pair of numbers:
+// returns a triple of numbers:
 //      0 is number of new nodes added along the soln backbone (this does not include)
 //          the internal nodes transferred from the taxonomy to the solution.
 //      1 is the number of internal nodes that were merged with an existing node on the
@@ -469,7 +472,7 @@ LostTaxonMap unpruneTaxa(T & taxonomy, T & solution, std::ostream * statsStreamP
     const auto numTaxaMonotypicInternals = monotypicOttIds.size();
     map<long, N*> ott_to_sol;
     const auto snVec = all_nodes(solution);
-    // postorder walk over solution. Every time we find a taxon assigned to a taxon
+    // postorder walk over solution. Every time we find a node assigned to a taxon
     //  we augment the slice of the tree that is rooted at that node (and is the
     //  subtree that is cut at the deepest taxonomic node)
     std::size_t startNumSolnLeaves = 0;

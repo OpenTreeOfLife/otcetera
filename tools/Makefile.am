@@ -54,7 +54,9 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-relabel-tree \
 				otc-tree-tool \
 				otc-version-reporter \
-				otc-munge-names
+				otc-munge-names \
+				otc-conflict-stats
+
 
 
 LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS) 
@@ -134,6 +136,9 @@ otc_name_unnamed_nodes_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_annotate_synth_SOURCES = annotate-synth.cpp
 otc_annotate_synth_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_conflict_stats_SOURCES = conflict-stats.cpp
+otc_conflict_stats_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_taxonomy_parser_SOURCES = taxonomy-parser.cpp
 otc_taxonomy_parser_CPPFLAGS = $(AM_CPPFLAGS)

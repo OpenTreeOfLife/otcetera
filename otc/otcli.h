@@ -104,17 +104,34 @@ inline bool processTrees(const std::string& filename,
         treeName.append(filepathToFilename(filename));
         nt->setName(treeName);
         const auto cbr = treePtr(std::move(nt));
-        if (not cbr) return false;
+        if (not cbr) {
+            return false;
+        }
     }
     return true;
 }
 
 template<typename Tree_t>
-std::unique_ptr<Tree_t> get_tree(const std::string& filename, const ParsingRules& rules)
+std::vector<std::unique_ptr<Tree_t>> get_trees(const std::vector<std::string>& filenames, const ParsingRules& rules)
 {
     std::vector<std::unique_ptr<Tree_t>> trees;
     std::function<bool(std::unique_ptr<Tree_t>)> proc = [&](std::unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
-    otc::processTrees(filename,rules,proc);
+    for(auto& filename: filenames)
+	otc::processTrees(filename,rules,proc);
+    return trees;
+}
+
+template<typename Tree_t>
+std::vector<std::unique_ptr<Tree_t>> get_trees(const std::string& filename, const ParsingRules& rules)
+{
+    const std::vector<std::string> filenameVec = {filename};
+    return get_trees<Tree_t>(filenameVec, rules);
+}
+
+template<typename Tree_t>
+std::unique_ptr<Tree_t> get_tree(const std::string& filename, const ParsingRules& rules)
+{
+    auto trees = get_trees<Tree_t>(filename, rules);
     return std::move(trees[0]);
 }
 

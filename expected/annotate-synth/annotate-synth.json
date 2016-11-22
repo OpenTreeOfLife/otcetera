@@ -1,0 +1,17 @@
+[
+  {
+      "invocation" : ["otc-annotate-synth", "<INFILELIST>"],
+      "infile_list": ["example2/synth.tre", "example2/tree1.tre", "example2/tree2.tre"],
+      "expected": "example2-inputs"
+  },
+  {
+      "invocation" : ["otc-annotate-synth", "<INFILELIST>"],
+      "infile_list": ["example2/synth.tre", "example2/taxonomy.tre"],
+      "expected": "example2-tax"
+  },
+  {
+      "invocation" : ["otc-annotate-synth", "<INFILELIST>"],
+      "infile_list": ["annotation_example/summary.tre", "annotation_example/input1.tre"],
+      "expected": "annotation-example"
+  }
+]

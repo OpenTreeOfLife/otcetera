@@ -1,0 +1,104 @@
+{
+ "nodes": {
+  "mrcaott1ott4": {
+   "resolves": {
+    "taxonomy": "ABCD ott14"
+   }
+  },
+  "mrcaott7ott11": {
+   "resolves": {
+    "taxonomy": "root ott17"
+   }
+  },
+  "mrcaott7ott9": {
+   "resolves": {
+    "taxonomy": "root ott17"
+   }
+  },
+  "ott1": {
+   "terminal": {
+    "taxonomy": "A1 ott1"
+   }
+  },
+  "ott10": {
+   "terminal": {
+    "taxonomy": "F2 ott10"
+   }
+  },
+  "ott11": {
+   "terminal": {
+    "taxonomy": "G ott11"
+   }
+  },
+  "ott12": {
+   "supported_by": {
+    "taxonomy": "A12 ott12"
+   }
+  },
+  "ott13": {
+   "supported_by": {
+    "taxonomy": "A ott13"
+   }
+  },
+  "ott14": {
+   "supported_by": {
+    "taxonomy": "ABCD ott14"
+   }
+  },
+  "ott15": {
+   "supported_by": {
+    "taxonomy": "E ott15"
+   }
+  },
+  "ott16": {
+   "supported_by": {
+    "taxonomy": "F ott16"
+   }
+  },
+  "ott2": {
+   "terminal": {
+    "taxonomy": "A2 ott2"
+   }
+  },
+  "ott3": {
+   "terminal": {
+    "taxonomy": "A3 ott3"
+   }
+  },
+  "ott4": {
+   "terminal": {
+    "taxonomy": "B ott4"
+   }
+  },
+  "ott5": {
+   "terminal": {
+    "taxonomy": "C ott5"
+   }
+  },
+  "ott6": {
+   "terminal": {
+    "taxonomy": "D ott6"
+   }
+  },
+  "ott7": {
+   "terminal": {
+    "taxonomy": "E1 ott7"
+   }
+  },
+  "ott8": {
+   "terminal": {
+    "taxonomy": "E2 ott8"
+   }
+  },
+  "ott9": {
+   "terminal": {
+    "taxonomy": "F1 ott9"
+   }
+  }
+ },
+ "num_tips": 11,
+ "root_ott_id": 17,
+ "sources": [
+  "taxonomy"
+ ]
+}

@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <regex>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -13,6 +14,10 @@
 #include "otc/taxonomy/flags.h"
 
 #include <boost/range/adaptor/reversed.hpp>
+
+#include <boost/filesystem/operations.hpp>
+
+namespace fs = boost::filesystem;
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -57,8 +62,10 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("degree-of",value<long>(), "Show the degree of node <arg>")
         ("children-of",value<long>(), "List the children of node <arg>")
         ("parent-of",value<long>(), "List the parent of node <arg>")
-        ("count-nodes","Show the number of leaves")
+        ("count-nodes","Show the number of nodes")
         ("count-leaves","Show the number of leaves")
+        ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
+        ("indented-table","print number of leaves for each internal node")
         ;
 
     options_description visible;
@@ -93,6 +100,36 @@ long n_leaves(const Tree_t& T) {
         count++;
     }
     return count;
+}
+
+void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
+    std::map<const Tree_t::node_type*, long> nd2numLeaves;
+    std::map<const Tree_t::node_type*, long> nd2Indent;
+    long count = 0;
+    for(auto nd: iter_post_const(tree)){
+        auto p = nd->getParent();
+        if (p) {
+            if (nd->isTip()) {
+                nd2numLeaves[p] += 1;
+            } else {
+                nd2numLeaves[p] += nd2numLeaves[nd];
+            }
+        }
+    }
+    for(auto nd: iter_pre_const(tree)){
+        if (nd->isTip()) {
+            continue;
+        }
+        auto p = nd->getParent();
+        if (p) {
+            nd2Indent[nd] = 2 + nd2Indent[p];
+        } else {
+            nd2Indent[nd] = 0;
+        }
+        out << std::string(nd2Indent[nd], ' ');
+        out << nd->getName() << " : " << nd2numLeaves[nd] << '\n';
+    }   
+    
 }
 
 unique_ptr<Tree_t> get_tree(const string& filename)
@@ -170,6 +207,84 @@ void show_high_degree_nodes(const Tree_t& tree, int n)
     } 
 }
 
+void create_file( const fs::path & ph, const std::string & contents )
+{
+  std::ofstream f( ph.string().c_str() );
+
+  if (not f)
+    throw OTCError()<<"Could not create empty file '"<<ph.string()<<"'";
+
+  if (not contents.empty())
+    f << contents;
+}
+
+std::string remove_ott_suffix(std::string name) {
+    static std::regex ott("(.*)[_ ]ott.*");
+    std::smatch matches;
+    if (std::regex_match(name,matches,ott))
+    {
+        name = matches[1];
+    }
+    return name;
+}
+
+void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
+{
+  fs::path new_dir = dirname;
+
+  if (fs::exists(new_dir))
+    throw OTCError()<<"File '"<<dirname<<"' already exists!";
+
+  fs::create_directories(new_dir);
+
+  // Create empty files
+  for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "weaklog.csv"})
+    create_file(new_dir / name, "");
+
+  // Write the about.json file.
+  create_file(new_dir/"about.json",string("{\"inputs\":[\"") + tree.getName() + "\"]}");
+
+  // Write the synonyms.tsv file.
+  create_file(new_dir/"synonyms.tsv","name\t|\tuid\t|\ttype\t|\tuniqname\t|\t\n");
+
+  // Write the version file.
+  create_file(new_dir/"version.txt","0.0");
+
+  // Write the new taxonomy file.
+  {
+    std::ofstream tf ((new_dir/"taxonomy.tsv").string());
+    tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t"<<std::endl;
+    string sep = "\t|\t";
+    for(auto nd: iter_pre_const(tree))
+    {
+      tf<<nd->getOttId();
+      /* */ tf<<sep;
+      if (nd->getParent())
+	tf<<nd->getParent()->getOttId();
+      /* */ tf<<sep;
+      tf<<remove_ott_suffix(nd->getName());
+      /* */ tf<<sep;
+      tf<<"no rank";
+      /* */ tf<<sep;
+      tf<<"tree:0";
+      //      tf<<"tree:"<<tree.getName();
+      /* */ tf<<sep;
+      /* */ tf<<sep;
+      /* */ tf<<sep;
+      tf<<"\n";
+    }
+
+    tf.close();
+  }
+
+  // Write the new forwards file.
+  {
+    std::ofstream ff((new_dir/"forwards.tsv").string());
+    ff << "id\treplacement\n";
+    ff.close();
+  }
+}
+
 int main(int argc, char* argv[])
 {
     std::ios::sync_with_stdio(false);
@@ -199,42 +314,35 @@ int main(int argc, char* argv[])
             tree = slice_tree(std::move(tree), root, slice);
         }
         
-        if (args.count("high-degree-nodes"))
-        {
+        if (args.count("high-degree-nodes")) {
             long n = args["high-degree-nodes"].as<long>();
             show_high_degree_nodes(*tree, n);
-        }
-        else if (args.count("degree-of"))
-        {
+        } else if (args.count("degree-of")) {
             long n = args["degree-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             std::cout<<nd->getOutDegree()<<"\n";
-        }
-        else if (args.count("children-of"))
-        {
+        } else if (args.count("children-of")) {
             long n = args["children-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             for(auto c = nd->getFirstChild(); c; c = c->getNextSib())
                 std::cout<<c->getName()<<"\n";
-        }
-        else if (args.count("parent-of"))
-        {
+        } else if (args.count("parent-of")) {
             long n = args["parent-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             if (nd->getParent())
                 std::cout<<nd->getParent()->getName()<<"\n";
             else
                 std::cout<<"No parent: that node is the root.\n";
-        }
-        else if (args.count("count-nodes"))
-        {
+        } else if (args.count("count-nodes")) {
             std::cout<<n_nodes(*tree)<<std::endl;
-        }
-        else if (args.count("count-leaves"))
-        {
+        } else if (args.count("count-leaves")) {
             std::cout<<n_leaves(*tree)<<std::endl;
-        }
-        else {
+        } else if (args.count("indented-table")) {
+            indented_table_of_node_counts(std::cout, *tree);
+        } else if (args.count("write-taxonomy")) {
+            string dirname = args["write-taxonomy"].as<string>();
+            writeTreeAsTaxonomy(dirname, *tree);
+        } else {
             writeTreeAsNewick(std::cout, *tree);
             std::cout << std::endl;
         }

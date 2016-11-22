@@ -117,6 +117,10 @@ class NodeEmbedding {
         return t;
     }
     static bool treeContestsMonophyly(const PathPairSet & edgesBelowForTree);
+    using ContestingNodeMap = std::map<const T *, std::set<const T *> >;
+    using TreeIndToContestingNodeMap = std::map<std::size_t, ContestingNodeMap >;
+    static std::map<const T *, std::set<const T *> > howTreeContestsMonophyly(const PathPairSet & edgesBelowForTree);
+
     bool isContested() const {
         for (auto i : edgeBelowEmbeddings) {
             if (treeContestsMonophyly(i.second)) {
@@ -125,7 +129,7 @@ class NodeEmbedding {
         }
         return false;
     }
-    std::list<std::size_t> getContestingTrees() const {
+    std::list<std::size_t> getContestingTreeIndices() const {
         std::list<std::size_t> r;
         for (auto i : edgeBelowEmbeddings) {
             if (treeContestsMonophyly(i.second)) {
@@ -133,6 +137,15 @@ class NodeEmbedding {
             }
         }
         return r;
+    }
+    TreeIndToContestingNodeMap getHowTreeContestsMonophylyMaps() const {
+        TreeIndToContestingNodeMap retMap;
+        for (auto i : edgeBelowEmbeddings) {
+            if (treeContestsMonophyly(i.second)) {
+                retMap[i.first] = howTreeContestsMonophyly(i.second);
+            }
+        }
+        return retMap;
     }
     const PathPairSet & getEdgesExiting(std::size_t treeIndex) const {
         auto el = edgeBelowEmbeddings.find(treeIndex);
@@ -167,7 +180,7 @@ class NodeEmbedding {
                             const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const;
     void resolveGivenUncontestedMonophyly(T & scaffoldNode,
                                           SupertreeContextWithSplits & sc);
-    void exportSubproblemAndResolve(T & scaffoldNode,
+    std::string exportSubproblemAndResolve(T & scaffoldNode,
                                     const std::string & exportDir,
                                     std::ostream * exportStream, // nonnull to override exportdir
                                     SupertreeContextWithSplits & sc);
@@ -261,6 +274,21 @@ inline bool NodeEmbedding<T, U>::treeContestsMonophyly(const std::set<PathPairin
         }
     }
     return false;
+}
+
+/// Returns a mapping from phylo parent to children of that taxon that belong to this taxonomic node
+// If the node is contested by this tree, there should be more than one entry in the map
+template<typename T, typename U>
+inline std::map<const T *, std::set<const T *> > NodeEmbedding<T, U>::howTreeContestsMonophyly(const std::set<PathPairing<T, U> *> & edgesBelowForTree) {
+    std::map<const T *, std::set<const T *> > retMap;
+    if (edgesBelowForTree.size() > 1) {
+        for (auto pp : edgesBelowForTree) {
+            auto sp = pp->phyloParent;
+            auto sc = pp->phyloChild;
+            retMap[sp].insert(sc);
+        }
+    }
+    return retMap;
 }
 
 template<typename T>

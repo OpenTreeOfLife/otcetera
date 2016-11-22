@@ -1375,5 +1375,29 @@ N* get_root(N* node)
 
  
 }// namespace otc
+
+template <typename node_t>
+void destroy_children(node_t* node)
+{
+    std::vector<node_t*> nodes;
+    while(auto n = node->getFirstChild())
+    {
+        n->detachThisNode();
+        nodes.push_back(n);
+    }
+
+    for(std::size_t i = 0; i < nodes.size(); i++) {
+        while(auto n = nodes[i]->getFirstChild())
+        {
+            n->detachThisNode();
+            nodes.push_back(n);
+        }
+        delete nodes[i];
+    }
+
+    assert(node->isTip());
+}
+
+
 #endif
 

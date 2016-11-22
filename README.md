@@ -16,6 +16,8 @@ by http://stackoverflow.com/users/127669/graphics-noob
 The gitversion trick for the otc-version-reporter is from
   http://stackoverflow.com/questions/6526451/how-to-include-git-commit-number-into-a-c-executable
 
+https://peerj.com/preprints/2538/ describes some of the tools that are a part of otcetera.
+
 # Installation
 
 ## prerequisites
@@ -43,7 +45,7 @@ worked for MTH on Mac on 28-Feb-2015:
 
 ### BOOST C++ libraries
 You also need the BOOST C++ source libraries.  You should install the BOOST libraries and
-header files using your operating system's package manager.
+header files using your operating system's package manager. version 1.58 of boost works; earlier versions might.
 
 Many BOOST modules are header-only.  However, some modules require linking to an installed
 library archive.  You must install library archives for at least these BOOST libraries:
@@ -79,9 +81,16 @@ Then to configure and build with clang use:
     $ make installcheck
 
 To use g++, substitute `reconf-gcc.sh` for `reconf-clang.sh` in that work flow.
+g++ version 5.4 works earlier versions might work.
 
 Python 2 (recent enough to have the subprocess module as part of the standard lib)
 is required for the `make check` operation to succeed.
+
+Those `reconf-...sh` scripts set the installation prefix to an `installed` sub-directory
+of your build directory as the prefix for the installation. So, you will need to 
+add `$PWD/installed/bin` to your `PATH` environmental variable to use the version
+of the otc tools that you just installed. Depending on your platform, you may have to
+add the `$PWD/installed/lib` to your `LD_LIBRARY_PATH` variable.
 
 # Documentation
 A LaTeX documentation file is [./doc/summarizing-taxonomy-plus-trees.tex](./doc/summarizing-taxonomy-plus-trees.tex)
