@@ -1,0 +1,4 @@
+((ott2,ott3),ott1);
+((ott1,ott2),ott5);
+((ott1,ott5),ott6);
+(ott1,ott6,ott7);

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include "otc/otc_base_includes.h"
 #include "otc/tree_operations.h"
 

@@ -44,6 +44,7 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-suppress-monotypic \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
+				otc-sample-tips \
 				otc-solve-subproblem \
 				otc-graft-solutions \
 				otc-unprune-solution \
@@ -64,6 +65,8 @@ LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIB
 otc_munge_names_SOURCES = mungenames.cpp
 otc_munge_names_CPPFLAGS = $(AM_CPPFLAGS)
 
+otc_sample_tips_SOURCES = sampletips.cpp
+otc_sample_tips_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)

@@ -1,0 +1,7 @@
+[
+  {
+    "invocation" : ["otc-sample-tips", "<INFILELIST>"],
+    "infile_list": ["3genus-ABsynth.tre"],
+    "expected": "sampletips-expected"
+  }
+]
