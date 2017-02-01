@@ -63,6 +63,10 @@ libraries to your dynamic library loading path. On Mac:
 on most other unix variants the variable is called `LD_LIBRARY_PATH` (without the `DY`
 prefix); also note that the path to the libraries in the build BOOST dir is platform-dependent.
 
+# restbed
+
+https://github.com/corvusoft/restbed
+
 ## configuration + building
 
 To run the whole autoreconf stuff in a manner that will add missing bits as needed,
