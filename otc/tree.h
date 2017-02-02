@@ -359,9 +359,9 @@ class RootedTree {
             return nd;
         }
         void clear() {
-            for(auto nd: getAllAttachedNodes())
+            for(auto nd: getAllAttachedNodes()) {
                 delete nd;
-
+            }
             root = NULL;
         }
         std::vector<const node_type *> getAllAttachedNodes() const {

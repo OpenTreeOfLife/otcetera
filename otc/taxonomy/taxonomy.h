@@ -42,6 +42,16 @@ struct taxonomy_record {
     int out_degree = 0;
     taxonomy_record(taxonomy_record&& tr) = default;
     explicit taxonomy_record(const std::string& line);
+    std::vector<std::string> sourceinfoAsVec() const {
+        std::vector<std::string> mt;
+        if (sourceinfo.empty()) {
+            return mt;
+        }
+        std::string sis = std::string(sourceinfo);
+        auto aslist = split_string(sis, ',');
+        mt.assign(aslist.begin(), aslist.end());
+        return mt;
+    }
 };
 
 struct Taxonomy: public std::vector<taxonomy_record> {
@@ -71,6 +81,36 @@ struct Taxonomy: public std::vector<taxonomy_record> {
     Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
 };
 
+class RTTaxNodeData {
+    public:
+    const taxonomy_record * taxonomy_line = nullptr;
+};
+
+template <typename Node_t>
+void populateNodeFromTaxonomyRecord(Node_t & nd,
+                                    const taxonomy_record & line,
+                                    std::function<std::string(const taxonomy_record&)> getName);
+
+
+// default behavior is to set ID and Name from line
+template <typename Node_t>
+inline void populateNodeFromTaxonomyRecord(Node_t & nd,
+                                           const taxonomy_record & line,
+                                           std::function<std::string(const taxonomy_record&)> getName) {
+    nd.setOttId(line.id);
+    nd.setName(getName(line));    
+}
+
+// default behavior is to set ID and Name from line
+template <>
+inline void populateNodeFromTaxonomyRecord(RootedTreeNode<RTTaxNodeData> & nd,
+                                           const taxonomy_record & line,
+                                           std::function<std::string(const taxonomy_record&)>) {
+    nd.setOttId(line.id);
+    nd.getData().taxonomy_line = &line;    
+}
+
+
 template <typename Tree_t>
 std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const taxonomy_record&)> getName) const {
     const auto& taxonomy = *this;
@@ -86,8 +126,7 @@ std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const taxono
             auto parent_nd = node_ptr[line.parent_index];
             nd = tree->createChild(parent_nd);
         }
-        nd->setOttId(line.id);
-        nd->setName(getName(line));
+        populateNodeFromTaxonomyRecord(*nd, line, getName);
         node_ptr[i] = nd;
     }
     return tree;

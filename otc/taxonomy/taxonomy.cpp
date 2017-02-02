@@ -182,7 +182,7 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
     // 3. Read records up to the record containing the root.
     int count = 0;
     if (keep_root != -1) {
-        while(std::getline(taxonomy_stream,line)) {
+        while(std::getline(taxonomy_stream, line)) {
             count++;
             // Add line to vector
             emplace_back(line);

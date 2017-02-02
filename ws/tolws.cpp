@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <list>
+#include <map>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -32,7 +33,8 @@ using json = nlohmann::json;
 typedef std::set<fs::path> fp_set;
 typedef std::pair<bool, fp_set > bool_fp_set; 
 
-using TaxTree_t = RootedTree<RTNodeNoData, RTreeNoData>;
+using TaxTree_t = RootedTree<RTTaxNodeData, RTreeNoData>;
+using SummaryTree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 namespace po = boost::program_options;
 using po::variables_map;
 using namespace boost::property_tree;
@@ -46,13 +48,6 @@ variables_map parse_cmd_line(int argc, char* argv[]) {
         ("taxonomy", value<string>(),"Filename for the taxonomy")
         ;
 
-    options_description taxonomy("Taxonomy options");
-    taxonomy.add_options()
-        ("config,c",value<string>(),"Config file containing flags to filter")
-        ("clean",value<string>(),"Comma-separated string of flags to filter")
-        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
-        ;
-
     options_description output("Server options");
     output.add_options()
         ("tree-dir,D",value<string>(),"Filepath to directory that will hold synthetic tree output")
@@ -61,7 +56,7 @@ variables_map parse_cmd_line(int argc, char* argv[]) {
         ;
 
     options_description visible;
-    visible.add(taxonomy).add(output).add(otc::standard_options());
+    visible.add(output).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -126,11 +121,95 @@ void from_json(const json &j, SourceTreeId & sti);
 void to_json(const json &j, SourceTreeId & sti);
 
 class TreesToServe {
+        list< SummaryTreeAnnotation> annotation_list;
+        list< unique_ptr<SummaryTree_t> > tree_list;
+        map<string, const SummaryTree_t *> id_to_tree;
+        map<string, const SummaryTreeAnnotation *> id_to_annotations;
+        string default_synth_id;
+        const Taxonomy * taxonomy_ptr = nullptr;
+        OttIdSet ott_id_set;
+        unique_ptr<TaxTree_t> taxonomy_tree;
+
     public:
-        SummaryTreeAnnotation sta;
+        void setTaxonomy(const Taxonomy &taxonomy) {
+            assert(taxonomy_ptr == nullptr);
+            taxonomy_ptr = &taxonomy;
+            ott_id_set.clear();
+            auto nodeNamer = [](const auto&){return string();};
+            taxonomy_tree = taxonomy.getTree<TaxTree_t>(nodeNamer);
+        }
+        const Taxonomy & getTaxonomy() const {
+            assert(taxonomy_ptr != nullptr);
+            return *taxonomy_ptr;
+        }
+        void fillOttIdSet(const std::bitset<32> & flags) {
+            ott_id_set.clear();
+            for (const auto nd : iter_node_const(*taxonomy_tree)) {
+                const auto & tax_record = nd->getData().taxonomy_line;
+                auto intersection = flags & tax_record->flags;
+                if (!intersection.any()) {
+                    ott_id_set.insert(tax_record->id);
+                }
+            }
+        }
+        pair<SummaryTree_t &, SummaryTreeAnnotation &> getNewTreeAndAnnotations(const string & configfilename,
+                                                                                const string & filename) {
+            
+            auto cleaning_flags = cleaning_flags_from_config_file(configfilename);
+            fillOttIdSet(cleaning_flags);
+
+            assert(taxonomy_ptr != nullptr);
+            ParsingRules parsingRules;
+            parsingRules.ottIdValidator = &ott_id_set;
+            parsingRules.includeInternalNodesInDesIdSets = true;
+            parsingRules.setOttIdForInternals = true;
+            parsingRules.requireOttIds = true;
+            parsingRules.setOttIds = true;
+            std::ifstream inp;
+            if (!openUTF8File(filename, inp)) {
+                throw OTCError("Could not open \"" + filename + "\"");
+            }
+            LOG(INFO) << "reading \"" << filename << "\"...";
+            ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
+            FilePosStruct pos(filenamePtr);
+            std::unique_ptr<SummaryTree_t> nt = readNextNewick<SummaryTree_t>(inp, pos, parsingRules);
+            tree_list.push_back(move(nt));
+            annotation_list.push_back(SummaryTreeAnnotation());
+            return {*(tree_list.back()), annotation_list.back()};
+        }
+        void registerLastTreeAndAnnotations() {
+            const SummaryTreeAnnotation & sta = annotation_list.back();
+            const SummaryTree_t & tree = *(tree_list.back());
+            default_synth_id = sta.synth_id; // @ TODO need a better system for deciding the default synth ID.
+            id_to_tree[sta.synth_id] = &tree;
+            id_to_annotations[sta.synth_id] = &sta;
+        }
+        void freeLastTreeAndAnnotations() {
+            tree_list.back()->clear();
+            tree_list.pop_back();
+            annotation_list.pop_back();
+        }
+
+        const SummaryTreeAnnotation * getAnnotations(string synth_id) const {
+            const auto & key = synth_id.empty() ? default_synth_id : synth_id;
+            auto mit = id_to_annotations.find(key);
+            return mit == id_to_annotations.end() ? nullptr : mit->second;
+        }
+
+        const SummaryTree_t * getSummaryTree(string synth_id) const {
+            const auto & key = synth_id.empty() ? default_synth_id : synth_id;
+            auto mit = id_to_tree.find(key);
+            return mit == id_to_tree.end() ? nullptr : mit->second;
+        }
+        size_t getNumTrees() const {
+            return id_to_tree.size();
+        }
 };
 
-bool read_tree_and_annotations(const fs::path & treepath, const fs::path & annotationspath, TreesToServe & tts);
+bool read_tree_and_annotations(const fs::path & configpath,
+                               const fs::path & treepath,
+                               const fs::path & annotationspath,
+                               TreesToServe & tts);
 
 // Globals. TODO: lock if we read twice
 fp_set checked_dirs;
@@ -145,6 +224,8 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
     for (auto p : subdir_set) {
         if (!contains(checked_dirs, p)) {
             checked_dirs.insert(p);
+            fs::path configpath = p;
+            configpath /= "config";
             fs::path treepath = p;
             treepath /= "labelled_supertree";
             treepath /= "labelled_supertree.tre";
@@ -153,8 +234,10 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
             annotationspath /= "annotations.json";
             bool was_tree_par = false;
             try {
-                if (fs::is_regular_file(treepath) && fs::is_regular_file(annotationspath)) {
-                    if (read_tree_and_annotations(treepath, annotationspath, tts)) {
+                if (fs::is_regular_file(treepath)
+                    && fs::is_regular_file(annotationspath)
+                    && fs::is_regular_file(configpath)) {
+                    if (read_tree_and_annotations(configpath, treepath, annotationspath, tts)) {
                         known_tree_dirs.insert(p);
                         was_tree_par = true;
                     }
@@ -172,7 +255,10 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
 }
 
 
-bool read_tree_and_annotations(const fs::path & tree_path, const fs::path & annotations_path, TreesToServe & tts) {
+bool read_tree_and_annotations(const fs::path & config_path,
+                               const fs::path & tree_path,
+                               const fs::path & annotations_path,
+                               TreesToServe & tts) {
     std::string annot_str = annotations_path.native();
     std::ifstream annotations_stream(annot_str.c_str());
     json annotations_obj;
@@ -182,8 +268,17 @@ bool read_tree_and_annotations(const fs::path & tree_path, const fs::path & anno
         LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
         throw;
     }
-    tts.sta = annotations_obj;
-    tts.sta.initialized = true;
+    auto tree_and_ann = tts.getNewTreeAndAnnotations(config_path.native(), tree_path.native());
+    try {
+        SummaryTree_t & tree = tree_and_ann.first;
+        SummaryTreeAnnotation & sta = tree_and_ann.second;
+        sta = annotations_obj;
+        sta.initialized = true;
+        tts.registerLastTreeAndAnnotations();
+    } catch (...) {
+        tts.freeLastTreeAndAnnotations();
+        throw;
+    }
     return true;
 }
 
@@ -273,9 +368,83 @@ void from_json(const json &j, SourceTreeId & sti) {
 
 
 TreesToServe tts;
+template<typename T>
+bool extract_from_request(json & j, string opt_name, T & setting, string & response, int & status_code);
 
-void about_method_handler( const shared_ptr< Session > session )
-{
+template<>
+bool extract_from_request(json & j, string opt_name, bool & setting, string & response, int & status_code) {
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_boolean()) {
+            setting = opt->get<bool>();
+            return true;
+        }
+        response = "Expecting ";
+        response += opt_name;
+        response += " to be a boolean.\n";
+        status_code = 400;
+    }
+    return false;
+}
+
+template<>
+bool extract_from_request(json & j, string opt_name, string & setting, string & response, int & status_code) {
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_boolean()) {
+            setting = opt->get<string>();
+            return true;
+        }
+        response = "Expecting ";
+        response += opt_name;
+        response += " to be a string.\n";
+        status_code = 400;
+    }
+    return false;
+}
+
+
+void about_ws_method(const TreesToServe & tts,
+                     const SummaryTree_t * tree_ptr,
+                     const SummaryTreeAnnotation * sta,
+                     bool include_sources,
+                     string & response_str,
+                     int & status_code) {
+    assert(tree_ptr != nullptr);
+    assert(sta != nullptr);
+    const auto & taxonomy = tts.getTaxonomy();
+    status_code = OK;
+    json response;
+    response["date_created"] = sta->date_completed;
+    response["num_source_trees"] = sta->num_source_trees;
+    response["taxonomy_version"] = sta->taxonomy_version;
+    response["filtered_flags"] = sta->filtered_flags_vec;
+    response["synth_id"] = sta->synth_id;
+    if (include_sources) {
+        response["source_id_map"] = sta->full_source_id_map_json;
+        response["sources"] = sta->sources;
+    }
+    json root;
+    auto root_node = tree_ptr->getRoot();
+    auto root_id = root_node->getOttId();
+    const auto & root_taxon = taxonomy.record_from_id(root_id);
+    root["node_id"] = root_node->getName();
+    json taxon;
+    taxon["tax_sources"] = root_taxon.sourceinfoAsVec();
+    auto un = string(root_taxon.uniqname);
+    auto n = string(root_taxon.name);
+    taxon["name"] = n;
+    taxon["uniqname"] = un;
+    auto r = string(root_taxon.rank);
+    taxon["rank"] = r;
+    taxon["ott_id"] = root_taxon.id;
+    
+    root["taxon"] = taxon;
+    response["root"] = root;
+    response_str = response.dump(1);
+}
+
+void about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
 
     size_t content_length = request->get_header( "Content-Length", 0 );
@@ -294,30 +463,22 @@ void about_method_handler( const shared_ptr< Session > session )
             status_code = 400;
         }
         bool include_sources = false;
+        string synth_id;
         if (status_code == OK) {
-            auto opt = parsedargs.find("include_source_list");
-            if (opt != parsedargs.end()) {
-                if (opt->is_boolean()) {
-                    include_sources = opt->get<bool>();
-                } else {
-                    rbody = "Expecting include_source_list to be a boolean.\n";
-                    status_code = 400;
-                }
-            }
+            extract_from_request(parsedargs, "include_source_list", include_sources, rbody, status_code);
         }
         if (status_code == OK) {
-            SummaryTreeAnnotation & sta = tts.sta;
-            json response;
-            response["date_created"] = sta.date_completed;
-            response["num_source_trees"] = sta.num_source_trees;
-            response["taxonomy_version"] = sta.taxonomy_version;
-            response["filtered_flags"] = sta.filtered_flags_vec;
-            response["synth_id"] = sta.synth_id;
-            if (include_sources) {
-                response["source_id_map"] = sta.full_source_id_map_json;
-                response["sources"] = sta.sources;
+            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
+        }
+        if (status_code == OK) {
+            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
+            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            if (sta == nullptr || treeptr == nullptr) {
+               rbody = "Did not recognize the synth_id.\n";
+               status_code = 400;
+            } else {
+                about_ws_method(tts, treeptr, sta, include_sources, rbody, status_code);
             }
-            rbody = response.dump(1);
         }
         session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
@@ -345,12 +506,14 @@ int main( const int argc, char** argv) {
         }
         
         const fs::path topdir{args["tree-dir"].as<string>()};
+        // Must load taxonomy before trees
         auto taxonomy = load_taxonomy(args);
-
+        tts.setTaxonomy(taxonomy);
         if (!read_trees(topdir, tts)) {
             return 2;
         }
-        if (!tts.sta.initialized) {
+        //
+        if (tts.getNumTrees() == 0) {
             cerr << "No tree to serve. Exiting...\n";
             return 3;
         }
