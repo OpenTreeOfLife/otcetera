@@ -32,9 +32,30 @@ using json = nlohmann::json;
 
 typedef std::set<fs::path> fp_set;
 typedef std::pair<bool, fp_set > bool_fp_set; 
+typedef std::pair<const std::string *, const std::string *> src_node_id;
+typedef std::vector<src_node_id> vec_src_node_ids;
+
+class SumTreeNodeData {
+    public:
+    long trav_enter = -1;
+    long trav_exit = -1;
+    vec_src_node_ids supported_by;
+    vec_src_node_ids conflicts_with;
+    vec_src_node_ids resolves;
+    vec_src_node_ids partial_path_of;
+    vec_src_node_ids terminal;
+    bool was_uncontested = false;
+    long num_tips = 0;
+};
+
+typedef RootedTreeNode<SumTreeNodeData> SumTreeNode_t;
+class SumTreeData {
+    public:
+    unordered_map<string, const SumTreeNode_t *> name2node;
+};
 
 using TaxTree_t = RootedTree<RTTaxNodeData, RTreeNoData>;
-using SummaryTree_t = RootedTree<RTNodeNoData, RTreeNoData>;
+using SummaryTree_t = RootedTree<SumTreeNodeData, SumTreeData>;
 namespace po = boost::program_options;
 using po::variables_map;
 using namespace boost::property_tree;
@@ -120,6 +141,31 @@ void from_json(const json &j, SummaryTreeAnnotation & sta);
 void from_json(const json &j, SourceTreeId & sti);
 void to_json(const json &j, SourceTreeId & sti);
 
+template<typename T>
+void setTravesalEntryExit(T & tree) {
+    auto & td = tree.getData();
+    auto & m = td.name2node;
+    long ind = 0;
+    for (auto nd : iter_pre(tree)) {
+        m[nd->getName()] = nd;
+        nd->getData().trav_enter = ind++;
+    }
+    for (auto pnd : iter_post(tree)) {
+        auto fc = pnd->getLastChild();
+        auto & d = pnd->getData();
+        if (fc == nullptr) {
+            d.trav_exit = d.trav_enter;
+            d.num_tips = 1;
+        } else {
+            d.trav_exit = fc->getData().trav_enter;
+            d.num_tips = 0;
+            for (auto c : iter_child_const(*pnd)) {
+                d.num_tips += c->getData().num_tips;
+            }
+        }
+    }
+}
+
 class TreesToServe {
         list< SummaryTreeAnnotation> annotation_list;
         list< unique_ptr<SummaryTree_t> > tree_list;
@@ -173,6 +219,7 @@ class TreesToServe {
             ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
             FilePosStruct pos(filenamePtr);
             std::unique_ptr<SummaryTree_t> nt = readNextNewick<SummaryTree_t>(inp, pos, parsingRules);
+            setTravesalEntryExit(*nt);
             tree_list.push_back(move(nt));
             annotation_list.push_back(SummaryTreeAnnotation());
             return {*(tree_list.back()), annotation_list.back()};
@@ -429,6 +476,7 @@ void about_ws_method(const TreesToServe & tts,
     auto root_id = root_node->getOttId();
     const auto & root_taxon = taxonomy.record_from_id(root_id);
     root["node_id"] = root_node->getName();
+    root["num_tips"] = root_node->getData().num_tips;
     json taxon;
     taxon["tax_sources"] = root_taxon.sourceinfoAsVec();
     auto un = string(root_taxon.uniqname);
