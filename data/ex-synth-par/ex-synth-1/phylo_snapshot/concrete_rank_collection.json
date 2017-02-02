@@ -1,0 +1,27 @@
+{
+    "name": "", 
+    "contributors": [], 
+    "creator": {
+        "login": "", 
+        "name": ""
+    }, 
+    "url": "", 
+    "queries": [], 
+    "decisions": [
+        {
+            "treeID": "t1", 
+            "SHA": 0, 
+            "name": "xx_1@t1.tre\n", 
+            "decision": "INCLUDED", 
+            "studyID": "xx_1"
+        }, 
+        {
+            "treeID": "t2", 
+            "SHA": 0, 
+            "name": "xx_1@t2.tre\n", 
+            "decision": "INCLUDED", 
+            "studyID": "xx_1"
+        }
+    ], 
+    "description": "generated from newicks"
+}

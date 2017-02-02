@@ -1,0 +1,78 @@
+{
+  "nodes": {
+    "mrcaott1ott11": {
+      "conflicts_with": {
+        "xx_1@t2": [
+          "node2"
+        ]
+      },
+      "supported_by": {
+        "xx_1@t1": "node2"
+      }
+    },
+    "ott1": {
+      "terminal": {
+        "xx_1@t1": "node3"
+      }
+    },
+    "ott100": {
+      "terminal": {
+        "xx_1@t1": "node3",
+        "xx_1@t2": "node3"
+      },
+      "was_constrained": true,
+      "was_uncontested": true
+    },
+    "ott1000000": {
+      "was_constrained": true,
+      "was_uncontested": true
+    },
+    "ott11": {
+      "terminal": {
+        "xx_1@t1": "node4"
+      }
+    },
+    "ott12": {
+      "terminal": {
+        "xx_1@t2": "node5"
+      }
+    },
+    "ott2": {
+      "terminal": {
+        "xx_1@t2": "node3"
+      }
+    },
+    "ott200": {
+      "terminal": {
+        "xx_1@t1": "node4",
+        "xx_1@t2": "node5"
+      },
+      "was_constrained": true,
+      "was_uncontested": true
+    },
+    "ott21": {
+      "terminal": {
+        "xx_1@t1": "node5"
+      }
+    },
+    "ott22": {
+      "terminal": {
+        "xx_1@t2": "node4"
+      }
+    },
+    "ott300": {
+      "terminal": {
+        "xx_1@t1": "node5",
+        "xx_1@t2": "node4"
+      },
+      "was_constrained": true,
+      "was_uncontested": true
+    }
+  },
+  "num_tips": 9,
+  "root_ott_id": 1001,
+  "sources": [
+    "xx_1@t1",
+    "xx_1@t2"
+  ]
+}

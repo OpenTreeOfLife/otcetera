@@ -6,9 +6,20 @@
 #include <iostream>
 #include <fstream>
 #include <list>
+#include <boost/program_options.hpp>
+#include <boost/optional.hpp>
 #include <boost/filesystem/operations.hpp>
-#include "otc/util.h"
 
+#include "otc/util.h"
+#include "otc/error.h"
+#include "otc/tree.h"
+#include "otc/otcli.h"
+#include "otc/tree_operations.h"
+#include "otc/taxonomy/taxonomy.h"
+#include "otc/taxonomy/flags.h"
+#include "otc/config_file.h"
+
+INITIALIZE_EASYLOGGINGPP
 
 #include "json.hpp"
 
@@ -20,6 +31,50 @@ using json = nlohmann::json;
 
 typedef std::set<fs::path> fp_set;
 typedef std::pair<bool, fp_set > bool_fp_set; 
+
+using TaxTree_t = RootedTree<RTNodeNoData, RTreeNoData>;
+namespace po = boost::program_options;
+using po::variables_map;
+using namespace boost::property_tree;
+
+
+variables_map parse_cmd_line(int argc, char* argv[]) { 
+    using namespace po;
+    // named options
+    options_description invisible("Invisible options");
+    invisible.add_options()
+        ("taxonomy", value<string>(),"Filename for the taxonomy")
+        ;
+
+    options_description taxonomy("Taxonomy options");
+    taxonomy.add_options()
+        ("config,c",value<string>(),"Config file containing flags to filter")
+        ("clean",value<string>(),"Comma-separated string of flags to filter")
+        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
+        ;
+
+    options_description output("Server options");
+    output.add_options()
+        ("tree-dir,D",value<string>(),"Filepath to directory that will hold synthetic tree output")
+        ("port,P",value<long>(),"Port to bind to.")
+        ("num-threads,t",value<long>(),"number of threads")
+        ;
+
+    options_description visible;
+    visible.add(taxonomy).add(output).add(otc::standard_options());
+
+    // positional options
+    positional_options_description p;
+    p.add("taxonomy", -1);
+
+    variables_map vm = otc::parse_cmd_line_standard(argc, argv,
+                                                    "Usage: otc-tol-ws <taxonomy-dir> -D<dir> [OPTIONS]\n"
+                                                    "Load taxonomy, check dir for synth tree outputs, and serve",
+                                                    visible, invisible, p);
+
+    return vm;
+}
+
 bool_fp_set get_subdirs(const fs::path & dirname) {
     if (!fs::is_directory(dirname)) {
         cerr << "\"" << dirname << "\" is not a directory.\n";
@@ -44,6 +99,7 @@ struct SourceTreeId {
 
 struct SummaryTreeAnnotation {
     public:
+        bool initialized = false;
         std::string date_completed;
         std::string filtered_flags;
         std::vector<std::string> filtered_flags_vec;
@@ -127,6 +183,7 @@ bool read_tree_and_annotations(const fs::path & tree_path, const fs::path & anno
         throw;
     }
     tts.sta = annotations_obj;
+    tts.sta.initialized = true;
     return true;
 }
 
@@ -269,30 +326,52 @@ void about_method_handler( const shared_ptr< Session > session )
 
 
 
-int main( const int argc, const char** argv) {
-    const auto num_threads = 4;
-    const auto port_number = 1984;
-    if (argc != 2) {
-        cerr << "Expecting a command line argument for a path to a directory of synth outputs.\n";
-        return 1;
-    }
-    const fs::path topdir{argv[1]};
-    if (!read_trees(topdir, tts)) {
-        return 2;
+int main( const int argc, char** argv) {
+    std::ios::sync_with_stdio(false);
+    try {
+        variables_map args = parse_cmd_line(argc,argv);
+
+        int num_threads = 4;
+        int port_number = 1984;
+        if (args.count("num-threads")) {
+            port_number = args["num-threads"].as<int>();
+        }
+        if (args.count("port")) {
+            port_number = args["port"].as<int>();
+        }
+        if (!args.count("tree-dir")) {
+            cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
+            return 1;
+        }
+        
+        const fs::path topdir{args["tree-dir"].as<string>()};
+        auto taxonomy = load_taxonomy(args);
+
+        if (!read_trees(topdir, tts)) {
+            return 2;
+        }
+        if (!tts.sta.initialized) {
+            cerr << "No tree to serve. Exiting...\n";
+            return 3;
+        }
+        ////// ROUTES
+        auto resource = make_shared< Resource >( );
+        resource->set_path( "/tree_of_life/about" );
+        resource->set_method_handler( "POST", about_method_handler );
+        /////  SETTINGS
+        auto settings = make_shared< Settings >( );
+        settings->set_port( port_number );
+        settings->set_worker_limit( num_threads );
+        settings->set_default_header( "Connection", "close" );
+        
+        Service service;
+        service.publish( resource );
+        std::cerr << "starting service with " << num_threads << " on port " << port_number << "...\n";
+        service.start( settings );
+        return EXIT_SUCCESS;
+    } catch (std::exception& e) {
+        cerr<<"otc-tol-ws: Error! " << e.what() << std::endl;
+        exit(1);
     }
 
-    auto resource = make_shared< Resource >( );
-    resource->set_path( "/tree_of_life/about" );
-    resource->set_method_handler( "POST", about_method_handler );
-    
-    auto settings = make_shared< Settings >( );
-    settings->set_port( port_number );
-    settings->set_worker_limit( num_threads );
-    settings->set_default_header( "Connection", "close" );
-    
-    Service service;
-    service.publish( resource );
-    std::cerr << "starting service...\n";
-    service.start( settings );
-    return EXIT_SUCCESS;
 }
