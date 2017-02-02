@@ -77,7 +77,7 @@ variables_map parse_cmd_line(int argc, char* argv[]) {
 
 bool_fp_set get_subdirs(const fs::path & dirname) {
     if (!fs::is_directory(dirname)) {
-        cerr << "\"" << dirname << "\" is not a directory.\n";
+        LOG(ERROR) << "\"" << dirname << "\" is not a directory.\n";
         return bool_fp_set(false, fp_set());
     }
     fp_set fps;
@@ -160,11 +160,11 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
                     }
                 }
             } catch (const std::exception & x) {
-                std::cerr << "Exception while reading summary tree directory:\n   ";
-                std::cerr << x.what() << '\n';
+                LOG(WARNING) << "Exception while reading summary tree directory:\n   ";
+                LOG(WARNING) << x.what() << '\n';
             }
             if (!was_tree_par) {
-                std::cerr << "Rejected \"" << p << "\" due to lack of " << treepath << " or lack of " << annotationspath << " or parsing error.\n";
+                LOG(WARNING) << "Rejected \"" << p << "\" due to lack of " << treepath << " or lack of " << annotationspath << " or parsing error.\n";
             }
         }
     }
@@ -179,7 +179,7 @@ bool read_tree_and_annotations(const fs::path & tree_path, const fs::path & anno
     try {
         annotations_stream >> annotations_obj;
     } catch (...) {
-        cerr << "Could not read \"" << annotations_path << "\" as JSON.\n";
+        LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
         throw;
     }
     tts.sta = annotations_obj;
@@ -366,11 +366,11 @@ int main( const int argc, char** argv) {
         
         Service service;
         service.publish( resource );
-        std::cerr << "starting service with " << num_threads << " on port " << port_number << "...\n";
+        LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
         service.start( settings );
         return EXIT_SUCCESS;
     } catch (std::exception& e) {
-        cerr<<"otc-tol-ws: Error! " << e.what() << std::endl;
+        LOG(ERROR) <<"otc-tol-ws: Error! " << e.what() << std::endl;
         exit(1);
     }
 
