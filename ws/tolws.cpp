@@ -143,7 +143,7 @@ struct SummaryTreeAnnotation {
 
 void from_json(const json &j, SummaryTreeAnnotation & sta);
 void from_json(const json &j, SourceTreeId & sti);
-void to_json(const json &j, SourceTreeId & sti);
+void to_json(json &j, const SourceTreeId & sti);
 
 template<typename T>
 void setTravesalEntryExit(T & tree) {
@@ -321,7 +321,8 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
     return true;
 }
 
-vec_src_node_ids extract_node_id_vec(TreesToServe & tts, const json & sbv) {
+vec_src_node_ids extract_node_id_vec(TreesToServe & tts,
+                                     const json & sbv) {
     list<src_node_id> lsni;
     for (json::const_iterator jit = sbv.begin(); jit != sbv.end(); ++jit) {
         const string * kp = tts.getStoredString(jit.key());
@@ -392,12 +393,16 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    
+    const Taxonomy & taxonomy = tts.getTaxonomy();
     auto tree_and_ann = tts.getNewTreeAndAnnotations(config_path.native(), tree_path.native());
     try {
         SummaryTree_t & tree = tree_and_ann.first;
         SummaryTreeAnnotation & sta = tree_and_ann.second;
         sta = annotations_obj;
+        json tref;
+        tref["taxonomy"] = taxonomy.version;
+        sta.full_source_id_map_json[taxonomy.version] = tref;
+
         // read the node annotations and add them to the tree.
         auto node_obj = extract_obj(annotations_obj, "nodes");
         auto & sum_tree_data = tree.getData();
@@ -523,7 +528,7 @@ void from_json(const json &j, SummaryTreeAnnotation & sta) {
     }
 }
 
-void to_json(json &j, SourceTreeId & sti) {
+void to_json(json &j, const SourceTreeId & sti) {
     j = json{{"git_sha", sti.git_sha}, {"study_id", sti.study_id}, {"tree_id", sti.tree_id}};
 }
 
@@ -587,6 +592,73 @@ void add_basic_node_info(const Taxonomy & taxonomy, const SumTreeNode_t & nd, js
         taxon["ott_id"] = nd_taxon.id;
         noderepr["taxon"] = taxon;
     }
+}
+
+inline void add_str_to_str_or_vec_string(json & o, const string * first, const string * second) {
+    const char * studyc = first->c_str();
+    if (o.count(studyc)) {
+        if (o[studyc].is_array()) {
+            o[studyc].push_back(*second);
+        } else {
+            string prev = o[studyc].get<string>();
+            json v = {prev, *second};
+            o[studyc] = v;
+        }
+    } else {
+        o[studyc] = *second;
+    }
+}
+
+void add_support_info_vec(const char * tag,
+                          const vec_src_node_ids & v,
+                          json & noderepr,
+                          set<string> & usedSrcIds,
+                          const string * extra_src=nullptr,
+                          const string * extra_node_id=nullptr) {
+    json o;
+    for (const auto & study_node_pair : v ) {
+        usedSrcIds.insert(*study_node_pair.first);
+        add_str_to_str_or_vec_string(o, study_node_pair.first, study_node_pair.second);
+    }
+    if (extra_src && extra_node_id) {
+        add_str_to_str_or_vec_string(o, extra_src, extra_node_id);
+    }
+    noderepr[tag] = o;
+}
+
+void add_node_support_info(const TreesToServe & tts,
+                           const SumTreeNode_t & nd,
+                           json & noderepr,
+                           set<string> & usedSrcIds) {
+    const Taxonomy & taxonomy = tts.getTaxonomy();
+    const auto & d = nd.getData();
+    const string * extra_src = nullptr;
+    const string * extra_node_id = nullptr;
+    if (nd.hasOttId()) {
+        extra_src = &(taxonomy.version);
+        extra_node_id = &(nd.getName());
+        usedSrcIds.insert(taxonomy.version);
+    }
+    if (extra_src != nullptr || !d.supported_by.empty()) {
+        add_support_info_vec("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
+    }
+    if (!d.conflicts_with.empty()) {
+        add_support_info_vec("conflicts_with", d.conflicts_with, noderepr, usedSrcIds);
+    }
+    if (!d.resolves.empty()) {
+        add_support_info_vec("resolves", d.resolves, noderepr, usedSrcIds);
+    }
+    if (!d.partial_path_of.empty()) {
+        add_support_info_vec("partial_path_of", d.partial_path_of, noderepr, usedSrcIds);
+    }
+    if (!d.terminal.empty()) {
+        add_support_info_vec("terminal", d.terminal, noderepr, usedSrcIds);
+    }
+    if (d.was_uncontested) {
+        noderepr["was_uncontested"] = true;
+        noderepr["was_constrained"] = true;
+    }
+
 }
 
 const SumTreeNode_t * find_mrca(const SumTreeNode_t *f, const SumTreeNode_t *s) {
@@ -693,6 +765,20 @@ void node_info_ws_method(const TreesToServe & tts,
     json response;
     response["synth_id"] = sta->synth_id;
     add_basic_node_info(taxonomy, *focal, response);
+    set<string> usedSrcIds;
+    add_node_support_info(tts, *focal, response, usedSrcIds);
+    json sim;
+    for (auto srcTag : usedSrcIds) {
+        json jt;
+        if (srcTag == taxonomy.version) {
+            jt["taxonomy"] = taxonomy.version;
+        } else {
+            const auto & simentry = sta->source_id_map.at(srcTag);
+            jt = simentry;
+        }
+        sim[srcTag] = jt;   
+    }
+    response["source_id_map"] = sim;
     response_str = response.dump(1);
 }
 
