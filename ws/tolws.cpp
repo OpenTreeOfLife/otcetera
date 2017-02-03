@@ -161,7 +161,7 @@ void setTravesalEntryExit(T & tree) {
             d.trav_exit = d.trav_enter;
             d.num_tips = 1;
         } else {
-            d.trav_exit = fc->getData().trav_enter;
+            d.trav_exit = fc->getData().trav_exit;
             d.num_tips = 0;
             for (auto c : iter_child_const(*pnd)) {
                 d.num_tips += c->getData().num_tips;
@@ -601,6 +601,17 @@ bool extract_from_request(const json & j, string opt_name, vector<string> & sett
     return false;
 }
 
+void add_taxon_info(const taxonomy_record & nd_taxon, json & taxonrepr) {
+    taxonrepr["tax_sources"] = nd_taxon.sourceinfoAsVec();
+    auto un = string(nd_taxon.uniqname);
+    auto n = string(nd_taxon.name);
+    taxonrepr["name"] = n;
+    taxonrepr["uniqname"] = un;
+    auto r = string(nd_taxon.rank);
+    taxonrepr["rank"] = r;
+    taxonrepr["ott_id"] = nd_taxon.id;    
+}
+
 void add_basic_node_info(const Taxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
     noderepr["node_id"] = nd.getName();
     noderepr["num_tips"] = nd.getData().num_tips;
@@ -608,14 +619,7 @@ void add_basic_node_info(const Taxonomy & taxonomy, const SumTreeNode_t & nd, js
         auto nd_id = nd.getOttId();
         const auto & nd_taxon = taxonomy.record_from_id(nd_id);
         json taxon;
-        taxon["tax_sources"] = nd_taxon.sourceinfoAsVec();
-        auto un = string(nd_taxon.uniqname);
-        auto n = string(nd_taxon.name);
-        taxon["name"] = n;
-        taxon["uniqname"] = un;
-        auto r = string(nd_taxon.rank);
-        taxon["rank"] = r;
-        taxon["ott_id"] = nd_taxon.id;
+        add_taxon_info(nd_taxon, taxon);
         noderepr["taxon"] = taxon;
     }
 }
@@ -690,6 +694,7 @@ void add_node_support_info(const TreesToServe & tts,
 const SumTreeNode_t * find_mrca(const SumTreeNode_t *f, const SumTreeNode_t *s) {
     const auto * fdata = &(f->getData());
     const auto sec_ind = s->getData().trav_enter;
+    //cerr << "f->name = " << f->getName() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
         f = f->getParent();
         if (f == nullptr) {
@@ -697,6 +702,7 @@ const SumTreeNode_t * find_mrca(const SumTreeNode_t *f, const SumTreeNode_t *s) 
             return nullptr;
         }
         fdata = &(f->getData());
+        //cerr << "f->name = " << f->getName() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     }
     return f;
 }
@@ -865,6 +871,22 @@ void mrca_ws_method(const TreesToServe & tts,
     add_basic_node_info(taxonomy, *focal, mrcaj);
     set<string> usedSrcIds;
     add_node_support_info(tts, *focal, mrcaj, usedSrcIds);
+    if (!focal->hasOttId()) {
+        auto anc = focal->getParent();
+        assert(anc != nullptr);
+        while (!anc->hasOttId()) {
+            anc = anc->getParent();
+            if (anc == nullptr) {
+                response_str = "No ancestors were taxa. That is odd.\n";
+                status_code = 500;
+                return;
+            }
+        }
+        json nt;
+        const auto & anc_taxon = taxonomy.record_from_id(anc->getOttId());
+        add_taxon_info(anc_taxon, nt);
+        response["nearest_taxon"] = nt;
+    }
     response["mrca"] = mrcaj;
     // now write source_id_map
     json sim;
