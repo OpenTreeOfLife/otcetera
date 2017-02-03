@@ -7,6 +7,7 @@
 #include <fstream>
 #include <list>
 #include <map>
+#include <regex>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -49,9 +50,12 @@ class SumTreeNodeData {
 };
 
 typedef RootedTreeNode<SumTreeNodeData> SumTreeNode_t;
+typedef vector<const SumTreeNode_t *> SumTreeNodeVec_t;
+typedef pair<const SumTreeNode_t *, SumTreeNodeVec_t> BrokenMRCAAttachVec;
 class SumTreeData {
     public:
     unordered_map<string, const SumTreeNode_t *> name2node;
+    unordered_map<string, BrokenMRCAAttachVec> broken_taxa;
 };
 
 using TaxTree_t = RootedTree<RTTaxNodeData, RTreeNoData>;
@@ -268,6 +272,7 @@ class TreesToServe {
 bool read_tree_and_annotations(const fs::path & configpath,
                                const fs::path & treepath,
                                const fs::path & annotationspath,
+                               const fs::path & brokentaxapath,
                                TreesToServe & tts);
 
 // Globals. TODO: lock if we read twice
@@ -288,6 +293,9 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
             fs::path treepath = p;
             treepath /= "labelled_supertree";
             treepath /= "labelled_supertree.tre";
+            fs::path brokentaxapath = p;
+            brokentaxapath /= "labelled_supertree";
+            brokentaxapath /= "broken_taxa.json";
             fs::path annotationspath = p;
             annotationspath /= "annotated_supertree";
             annotationspath /= "annotations.json";
@@ -296,7 +304,7 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
                 if (fs::is_regular_file(treepath)
                     && fs::is_regular_file(annotationspath)
                     && fs::is_regular_file(configpath)) {
-                    if (read_tree_and_annotations(configpath, treepath, annotationspath, tts)) {
+                    if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, tts)) {
                         known_tree_dirs.insert(p);
                         was_tree_par = true;
                     }
@@ -327,13 +335,14 @@ vec_src_node_ids extract_node_id_vec(TreesToServe & tts, const json & sbv) {
 }
 
 
-json & extract_obj(json &j, const char * field) {
+const json & extract_obj(const json &j, const char * field) {
     auto dc_el = j.find(field);
     if (dc_el == j.end()) {
         throw OTCError() << "Missing \"" << field << "\" field.\n";
     }
     if (dc_el->is_object()) {
-        return j[field];
+        json & k = const_cast<json &>(j);
+        return k[field];
     }
     throw OTCError() << "Expected \"" << field << "\" field to be a string.\n";
 }
@@ -363,6 +372,7 @@ OttId extract_unsigned_long(const json &j, const char * field) {
 bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & tree_path,
                                const fs::path & annotations_path,
+                               const fs::path & brokentaxa_path,
                                TreesToServe & tts) {
     std::string annot_str = annotations_path.native();
     std::ifstream annotations_stream(annot_str.c_str());
@@ -373,13 +383,24 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
         throw;
     }
+    std::string bt_str = brokentaxa_path.native();
+    std::ifstream brokentaxa_stream(bt_str.c_str());
+    json brokentaxa_obj;
+    try {
+        brokentaxa_stream >> brokentaxa_obj;
+    } catch (...) {
+        LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
+        throw;
+    }
+    
     auto tree_and_ann = tts.getNewTreeAndAnnotations(config_path.native(), tree_path.native());
     try {
         SummaryTree_t & tree = tree_and_ann.first;
         SummaryTreeAnnotation & sta = tree_and_ann.second;
         sta = annotations_obj;
+        // read the node annotations and add them to the tree.
         auto node_obj = extract_obj(annotations_obj, "nodes");
-        const auto & sum_tree_data = tree.getData();
+        auto & sum_tree_data = tree.getData();
         const auto & n2n = sum_tree_data.name2node;
         for (json::const_iterator nit = node_obj.begin(); nit != node_obj.end(); ++nit) {
             string k = nit.key();
@@ -417,7 +438,30 @@ bool read_tree_and_annotations(const fs::path & config_path,
                 }
             }
         }
-    
+        auto & tree_broken_taxa = sum_tree_data.broken_taxa;
+        // read the info from the broken taxa file
+        if (brokentaxa_obj.count("non_monophyletic_taxa")
+            && (!brokentaxa_obj["non_monophyletic_taxa"].is_null())) {
+            auto & nmt_obj = extract_obj(brokentaxa_obj, "non_monophyletic_taxa");
+            for (json::const_iterator btit = nmt_obj.begin(); btit != nmt_obj.end(); ++btit) {
+                string broken_ott = btit.key();
+                auto & dest_obj = btit.value();
+                string mrca_id = extract_string(dest_obj, "mrca");
+                auto & attach_obj = extract_obj(dest_obj, "attachment_points");
+                list<string> attach_id_list;
+                for (json::const_iterator ai_it = attach_obj.begin(); ai_it != attach_obj.end(); ++ai_it) {
+                    attach_id_list.push_back(ai_it.key());
+                }
+                const SumTreeNode_t * mrca_nd = n2n.at(mrca_id);
+                vector<const SumTreeNode_t *> avec;
+                avec.reserve(attach_id_list.size());
+                for (auto attach_id : attach_id_list) {
+                    avec.push_back(n2n.at(attach_id));
+                }
+                tree_broken_taxa[broken_ott] = BrokenMRCAAttachVec(mrca_nd, avec);
+            }
+        }
+
         sta.initialized = true;
         tts.registerLastTreeAndAnnotations();
     } catch (...) {
@@ -492,10 +536,10 @@ void from_json(const json &j, SourceTreeId & sti) {
 
 TreesToServe tts;
 template<typename T>
-bool extract_from_request(json & j, string opt_name, T & setting, string & response, int & status_code);
+bool extract_from_request(const json & j, string opt_name, T & setting, string & response, int & status_code);
 
 template<>
-bool extract_from_request(json & j, string opt_name, bool & setting, string & response, int & status_code) {
+bool extract_from_request(const json & j, string opt_name, bool & setting, string & response, int & status_code) {
     auto opt = j.find(opt_name);
     if (opt != j.end()) {
         if (opt->is_boolean()) {
@@ -511,10 +555,10 @@ bool extract_from_request(json & j, string opt_name, bool & setting, string & re
 }
 
 template<>
-bool extract_from_request(json & j, string opt_name, string & setting, string & response, int & status_code) {
+bool extract_from_request(const json & j, string opt_name, string & setting, string & response, int & status_code) {
     auto opt = j.find(opt_name);
     if (opt != j.end()) {
-        if (opt->is_boolean()) {
+        if (opt->is_string()) {
             setting = opt->get<string>();
             return true;
         }
@@ -527,21 +571,78 @@ bool extract_from_request(json & j, string opt_name, string & setting, string & 
 }
 
 void add_basic_node_info(const Taxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
-    auto nd_id = nd.getOttId();
-    const auto & nd_taxon = taxonomy.record_from_id(nd_id);
     noderepr["node_id"] = nd.getName();
     noderepr["num_tips"] = nd.getData().num_tips;
-    json taxon;
-    taxon["tax_sources"] = nd_taxon.sourceinfoAsVec();
-    auto un = string(nd_taxon.uniqname);
-    auto n = string(nd_taxon.name);
-    taxon["name"] = n;
-    taxon["uniqname"] = un;
-    auto r = string(nd_taxon.rank);
-    taxon["rank"] = r;
-    taxon["ott_id"] = nd_taxon.id;
-    noderepr["taxon"] = taxon;
+    if (nd.hasOttId()) {
+        auto nd_id = nd.getOttId();
+        const auto & nd_taxon = taxonomy.record_from_id(nd_id);
+        json taxon;
+        taxon["tax_sources"] = nd_taxon.sourceinfoAsVec();
+        auto un = string(nd_taxon.uniqname);
+        auto n = string(nd_taxon.name);
+        taxon["name"] = n;
+        taxon["uniqname"] = un;
+        auto r = string(nd_taxon.rank);
+        taxon["rank"] = r;
+        taxon["ott_id"] = nd_taxon.id;
+        noderepr["taxon"] = taxon;
+    }
 }
+
+const SumTreeNode_t * find_mrca(const SumTreeNode_t *f, const SumTreeNode_t *s) {
+    const auto * fdata = &(f->getData());
+    const auto sec_ind = s->getData().trav_enter;
+    while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
+        f = f->getParent();
+        if (f == nullptr) {
+            assert(false); 
+            return nullptr;
+        }
+        fdata = &(f->getData());
+    }
+    return f;
+}
+
+const std::regex mrca_id_pattern("^mrca(ott\\d+)(ott\\d+)$");
+const std::regex ott_id_pattern("^ott(\\d+)$");
+
+const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
+                                          const string & node_id,
+                                          bool & was_broken) {
+    was_broken = false;
+    const auto & tree_data = tree.getData();
+    auto n2nit = tree_data.name2node.find(node_id);
+    if (n2nit != tree_data.name2node.end()) {
+        return n2nit->second;
+    }
+    std::smatch matches;
+    if (std::regex_match(node_id, matches, mrca_id_pattern)) {
+        assert(matches.size() >= 2);
+        std::string first_id = matches[1];
+        std::string second_id = matches[2];
+        bool bogus = false;
+        auto fir_nd = find_node_by_id_str(tree, first_id, bogus);
+        if (fir_nd == nullptr) {
+            return nullptr;
+        }
+        auto sec_nd = find_node_by_id_str(tree, second_id, bogus);
+        if (sec_nd == nullptr) {
+            return nullptr;
+        }
+        return find_mrca(fir_nd, sec_nd);
+    }
+    if (std::regex_match(node_id, matches, ott_id_pattern)) {
+        auto bt_it = tree_data.broken_taxa.find(node_id);
+        if (bt_it == tree_data.broken_taxa.end()) {
+            return nullptr;
+        }
+        // if found we return the MRCA pointer in the first slot of the pair.
+        was_broken = true;
+        return bt_it->second.first;
+    }
+    return nullptr;
+}
+
 
 void about_ws_method(const TreesToServe &tts,
                      const SummaryTree_t * tree_ptr,
@@ -579,32 +680,19 @@ void node_info_ws_method(const TreesToServe & tts,
                      int & status_code) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
+    bool was_broken = false;
+    const SumTreeNode_t * focal = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+    bool is_broken = false;
+    if (focal == nullptr) {
+        response_str = "node_id was not found.\n";
+        status_code = 404;
+        return;
+    }
     const auto & taxonomy = tts.getTaxonomy();
     status_code = OK;
     json response;
-    response["date_created"] = sta->date_completed;
-    response["num_source_trees"] = sta->num_source_trees;
-    response["taxonomy_version"] = sta->taxonomy_version;
-    response["filtered_flags"] = sta->filtered_flags_vec;
     response["synth_id"] = sta->synth_id;
-    json root;
-    auto root_node = tree_ptr->getRoot();
-    auto root_id = root_node->getOttId();
-    const auto & root_taxon = taxonomy.record_from_id(root_id);
-    root["node_id"] = root_node->getName();
-    root["num_tips"] = root_node->getData().num_tips;
-    json taxon;
-    taxon["tax_sources"] = root_taxon.sourceinfoAsVec();
-    auto un = string(root_taxon.uniqname);
-    auto n = string(root_taxon.name);
-    taxon["name"] = n;
-    taxon["uniqname"] = un;
-    auto r = string(root_taxon.rank);
-    taxon["rank"] = r;
-    taxon["ott_id"] = root_taxon.id;
-    
-    root["taxon"] = taxon;
-    response["root"] = root;
+    add_basic_node_info(taxonomy, *focal, response);
     response_str = response.dump(1);
 }
 
@@ -674,7 +762,10 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
             extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
         }
         if (status_code == OK) {
-            extract_from_request(parsedargs, "node_id", node_id, rbody, status_code);
+            if (!extract_from_request(parsedargs, "node_id", node_id, rbody, status_code)) {
+                rbody = "node_id is required.\n";
+                status_code = 400;
+            }
         }
         if (status_code == OK) {
             const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
@@ -727,8 +818,9 @@ int main( const int argc, char** argv) {
         auto resource = make_shared< Resource >( );
         resource->set_path( "/tree_of_life/about" );
         resource->set_method_handler( "POST", about_method_handler );
-        resource->set_path( "/tree_of_life/node_info" );
-        resource->set_method_handler( "POST", node_info_method_handler );
+        auto r2 = make_shared< Resource >( );
+        r2->set_path( "/tree_of_life/node_info" );
+        r2->set_method_handler( "POST", node_info_method_handler );
         /////  SETTINGS
         auto settings = make_shared< Settings >( );
         settings->set_port( port_number );
@@ -737,6 +829,7 @@ int main( const int argc, char** argv) {
         
         Service service;
         service.publish( resource );
+        service.publish( r2 );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
         service.start( settings );
         return EXIT_SUCCESS;
@@ -744,5 +837,4 @@ int main( const int argc, char** argv) {
         LOG(ERROR) <<"otc-tol-ws: Error! " << e.what() << std::endl;
         exit(1);
     }
-
 }
