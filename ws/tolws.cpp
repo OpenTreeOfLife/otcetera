@@ -757,7 +757,7 @@ void node_info_ws_method(const TreesToServe & tts,
     bool is_broken = false;
     if (focal == nullptr) {
         response_str = "node_id was not found.\n";
-        status_code = 404;
+        status_code = 400;
         return;
     }
     const auto & taxonomy = tts.getTaxonomy();
@@ -767,6 +767,19 @@ void node_info_ws_method(const TreesToServe & tts,
     add_basic_node_info(taxonomy, *focal, response);
     set<string> usedSrcIds;
     add_node_support_info(tts, *focal, response, usedSrcIds);
+    if (include_lineage) {
+        json lineage_arr;
+        const SumTreeNode_t * anc = focal->getParent();
+        while (anc) {
+            json ancj;
+            add_basic_node_info(taxonomy, *anc, ancj);
+            add_node_support_info(tts, *anc, ancj, usedSrcIds);
+            lineage_arr.push_back(ancj);
+            anc = anc->getParent();
+        }
+        response["lineage"] = lineage_arr;
+    }
+    // now write source_id_map
     json sim;
     for (auto srcTag : usedSrcIds) {
         json jt;
