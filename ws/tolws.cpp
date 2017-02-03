@@ -575,6 +575,32 @@ bool extract_from_request(const json & j, string opt_name, string & setting, str
     return false;
 }
 
+template<>
+bool extract_from_request(const json & j, string opt_name, vector<string> & setting, string & response, int & status_code) {
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_array()) {
+            for (json::const_iterator sIt = opt->begin(); sIt != opt->end(); ++sIt) {
+                if (sIt->is_string()) {
+                    setting.push_back(sIt->get<string>());
+                } else {
+                    response = "Expecting ";
+                    response += opt_name;
+                    response += " to be an array of strings.\n";
+                    status_code = 400;
+                    return false;
+                }   
+            }
+            return true;
+        }
+        response = "Expecting ";
+        response += opt_name;
+        response += " to be an array of strings.\n";
+        status_code = 400;
+    }
+    return false;
+}
+
 void add_basic_node_info(const Taxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
     noderepr["node_id"] = nd.getName();
     noderepr["num_tips"] = nd.getData().num_tips;
@@ -795,6 +821,50 @@ void node_info_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
+void mrca_ws_method(const TreesToServe & tts,
+                     const SummaryTree_t * tree_ptr,
+                     const SummaryTreeAnnotation * sta,
+                     const vector<string> & node_id_vec,
+                     string & response_str,
+                     int & status_code) {
+    assert(tree_ptr != nullptr);
+    assert(sta != nullptr);
+    bool was_broken = false;
+    const SumTreeNode_t * focal = nullptr;
+    bool first = true;
+    for (auto node_id : node_id_vec) {
+        find_node_by_id_str(*tree_ptr, node_id, was_broken);
+    }
+    bool is_broken = false;
+    if (focal == nullptr) {
+        response_str = "node_id was not found.\n";
+        status_code = 400;
+        return;
+    }
+    const auto & taxonomy = tts.getTaxonomy();
+    status_code = OK;
+    json response;
+    response["synth_id"] = sta->synth_id;
+    add_basic_node_info(taxonomy, *focal, response);
+    set<string> usedSrcIds;
+    add_node_support_info(tts, *focal, response, usedSrcIds);
+    // now write source_id_map
+    json sim;
+    for (auto srcTag : usedSrcIds) {
+        json jt;
+        if (srcTag == taxonomy.version) {
+            jt["taxonomy"] = taxonomy.version;
+        } else {
+            const auto & simentry = sta->source_id_map.at(srcTag);
+            jt = simentry;
+        }
+        sim[srcTag] = jt;   
+    }
+    response["source_id_map"] = sim;
+    response_str = response.dump(1);
+}
+
+
 
 void about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
@@ -880,14 +950,52 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
-
+void mrca_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+        stringstream id;
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        try {
+            if (!body.empty()) {
+                parsedargs = json::parse(body);
+            }
+        } catch (...) {
+            rbody = "Could not parse body of call as JSON.\n";
+            status_code = 400;
+        }
+        string synth_id;
+        vector<string> node_id_vec;
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
+        }
+        if (status_code == OK) {
+            if (!extract_from_request(parsedargs, "node_ids", node_id_vec, rbody, status_code)) {
+                rbody = "node_ids is required.\n";
+                status_code = 400;
+            }
+        }
+        if (status_code == OK) {
+            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
+            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            if (sta == nullptr || treeptr == nullptr) {
+               rbody = "Did not recognize the synth_id.\n";
+               status_code = 400;
+            } else {
+                mrca_ws_method(tts, treeptr, sta, node_id_vec, rbody, status_code);
+            }
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
 
 
 int main( const int argc, char** argv) {
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);
-
         int num_threads = 4;
         int port_number = 1984;
         if (args.count("num-threads")) {
@@ -900,7 +1008,6 @@ int main( const int argc, char** argv) {
             cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
             return 1;
         }
-        
         const fs::path topdir{args["tree-dir"].as<string>()};
         // Must load taxonomy before trees
         auto taxonomy = load_taxonomy(args);
@@ -914,12 +1021,15 @@ int main( const int argc, char** argv) {
             return 3;
         }
         ////// ROUTES
-        auto resource = make_shared< Resource >( );
-        resource->set_path( "/tree_of_life/about" );
-        resource->set_method_handler( "POST", about_method_handler );
-        auto r2 = make_shared< Resource >( );
-        r2->set_path( "/tree_of_life/node_info" );
-        r2->set_method_handler( "POST", node_info_method_handler );
+        auto r_about = make_shared< Resource >( );
+        r_about->set_path( "/tree_of_life/about" );
+        r_about->set_method_handler( "POST", about_method_handler );
+        auto r_node_info = make_shared< Resource >( );
+        r_node_info->set_path( "/tree_of_life/node_info" );
+        r_node_info->set_method_handler( "POST", node_info_method_handler );
+        auto r_mrca = make_shared< Resource >( );
+        r_mrca->set_path( "/tree_of_life/mrca" );
+        r_mrca->set_method_handler( "POST", mrca_method_handler );
         /////  SETTINGS
         auto settings = make_shared< Settings >( );
         settings->set_port( port_number );
@@ -927,8 +1037,9 @@ int main( const int argc, char** argv) {
         settings->set_default_header( "Connection", "close" );
         
         Service service;
-        service.publish( resource );
-        service.publish( r2 );
+        service.publish( r_about );
+        service.publish( r_node_info );
+        service.publish( r_mrca );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
         service.start( settings );
         return EXIT_SUCCESS;
