@@ -175,8 +175,20 @@ class TreesToServe {
         const Taxonomy * taxonomy_ptr = nullptr;
         OttIdSet ott_id_set;
         unique_ptr<TaxTree_t> taxonomy_tree;
+        map<string, const string *> stored_strings;
+        list<string> stored_strings_list;
 
     public:
+        const string * getStoredString(const string & k) {
+            const string * v = stored_strings[k];
+            if (v == nullptr) {
+                stored_strings_list.push_back(k);
+                v = &(stored_strings_list.back());
+                stored_strings[k] = v;
+            }
+            return v;
+        }
+
         void setTaxonomy(const Taxonomy &taxonomy) {
             assert(taxonomy_ptr == nullptr);
             taxonomy_ptr = &taxonomy;
@@ -301,32 +313,29 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
     return true;
 }
 
+vec_src_node_ids extract_node_id_vec(TreesToServe & tts, const json & sbv) {
+    list<src_node_id> lsni;
+    for (json::const_iterator jit = sbv.begin(); jit != sbv.end(); ++jit) {
+        const string * kp = tts.getStoredString(jit.key());
+        const auto & v = jit.value();
+        for (json::const_iterator vit = v.begin(); vit != v.end(); ++vit) {
+            const string * vp = tts.getStoredString(*vit);
+            lsni.push_back(src_node_id(kp, vp));
+        } 
+    }
+    return vec_src_node_ids(lsni.begin(), lsni.end());
+}
 
-bool read_tree_and_annotations(const fs::path & config_path,
-                               const fs::path & tree_path,
-                               const fs::path & annotations_path,
-                               TreesToServe & tts) {
-    std::string annot_str = annotations_path.native();
-    std::ifstream annotations_stream(annot_str.c_str());
-    json annotations_obj;
-    try {
-        annotations_stream >> annotations_obj;
-    } catch (...) {
-        LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
-        throw;
+
+json & extract_obj(json &j, const char * field) {
+    auto dc_el = j.find(field);
+    if (dc_el == j.end()) {
+        throw OTCError() << "Missing \"" << field << "\" field.\n";
     }
-    auto tree_and_ann = tts.getNewTreeAndAnnotations(config_path.native(), tree_path.native());
-    try {
-        SummaryTree_t & tree = tree_and_ann.first;
-        SummaryTreeAnnotation & sta = tree_and_ann.second;
-        sta = annotations_obj;
-        sta.initialized = true;
-        tts.registerLastTreeAndAnnotations();
-    } catch (...) {
-        tts.freeLastTreeAndAnnotations();
-        throw;
+    if (dc_el->is_object()) {
+        return j[field];
     }
-    return true;
+    throw OTCError() << "Expected \"" << field << "\" field to be a string.\n";
 }
 
 std::string extract_string(const json &j, const char * field) {
@@ -349,6 +358,73 @@ OttId extract_unsigned_long(const json &j, const char * field) {
         return dc_el->get<OttId>();
     }
     throw OTCError() << "Expected \"" << field << "\" field to be a non-negative integer.\n";
+}
+
+bool read_tree_and_annotations(const fs::path & config_path,
+                               const fs::path & tree_path,
+                               const fs::path & annotations_path,
+                               TreesToServe & tts) {
+    std::string annot_str = annotations_path.native();
+    std::ifstream annotations_stream(annot_str.c_str());
+    json annotations_obj;
+    try {
+        annotations_stream >> annotations_obj;
+    } catch (...) {
+        LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
+        throw;
+    }
+    auto tree_and_ann = tts.getNewTreeAndAnnotations(config_path.native(), tree_path.native());
+    try {
+        SummaryTree_t & tree = tree_and_ann.first;
+        SummaryTreeAnnotation & sta = tree_and_ann.second;
+        sta = annotations_obj;
+        auto node_obj = extract_obj(annotations_obj, "nodes");
+        const auto & sum_tree_data = tree.getData();
+        const auto & n2n = sum_tree_data.name2node;
+        for (json::const_iterator nit = node_obj.begin(); nit != node_obj.end(); ++nit) {
+            string k = nit.key();
+            auto stnit = n2n.find(k);
+            if (stnit == n2n.end()) {
+                throw OTCError() << "Node " << k << " from annotations not found in tree.";
+            }
+            const SumTreeNode_t * stn = stnit->second;
+            SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(stn);
+            SumTreeNodeData & mstnd = mstn->getData();
+            const auto & supportj = nit.value();
+            for (json::const_iterator sbit = supportj.begin(); sbit != supportj.end(); ++sbit) {
+                const auto & sbk = sbit.key();
+                const auto & sbv = sbit.value();
+                if (sbk == "conflicts_with") {
+                    mstnd.conflicts_with = extract_node_id_vec(tts, sbv);
+                } else if (sbk == "supported_by") {
+                    mstnd.supported_by = extract_node_id_vec(tts, sbv);
+                } else if (sbk == "terminal") {
+                    mstnd.terminal = extract_node_id_vec(tts, sbv);
+                } else if (sbk == "partial_path_of") {
+                    mstnd.partial_path_of = extract_node_id_vec(tts, sbv);
+                } else if (sbk == "resolves") {
+                    mstnd.resolves = extract_node_id_vec(tts, sbv);
+                } else if (sbk == "was_uncontested") {
+                    if (sbv.is_boolean()) {
+                        mstnd.was_uncontested =  sbv.get<bool>();
+                    } else {
+                        throw OTCError() << "Expected was_uncontested to be a boolean.";
+                    }
+                } else {
+                    if (sbk != "was_constrained") {
+                        throw OTCError() << "Unrecognized annotations key " << sbit.key();
+                    }
+                }
+            }
+        }
+    
+        sta.initialized = true;
+        tts.registerLastTreeAndAnnotations();
+    } catch (...) {
+        tts.freeLastTreeAndAnnotations();
+        throw;
+    }
+    return true;
 }
 
 void from_json(const json &j, SummaryTreeAnnotation & sta) {
@@ -450,8 +526,24 @@ bool extract_from_request(json & j, string opt_name, string & setting, string & 
     return false;
 }
 
+void add_basic_node_info(const Taxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
+    auto nd_id = nd.getOttId();
+    const auto & nd_taxon = taxonomy.record_from_id(nd_id);
+    noderepr["node_id"] = nd.getName();
+    noderepr["num_tips"] = nd.getData().num_tips;
+    json taxon;
+    taxon["tax_sources"] = nd_taxon.sourceinfoAsVec();
+    auto un = string(nd_taxon.uniqname);
+    auto n = string(nd_taxon.name);
+    taxon["name"] = n;
+    taxon["uniqname"] = un;
+    auto r = string(nd_taxon.rank);
+    taxon["rank"] = r;
+    taxon["ott_id"] = nd_taxon.id;
+    noderepr["taxon"] = taxon;
+}
 
-void about_ws_method(const TreesToServe & tts,
+void about_ws_method(const TreesToServe &tts,
                      const SummaryTree_t * tree_ptr,
                      const SummaryTreeAnnotation * sta,
                      bool include_sources,
@@ -473,6 +565,30 @@ void about_ws_method(const TreesToServe & tts,
     }
     json root;
     auto root_node = tree_ptr->getRoot();
+    add_basic_node_info(taxonomy, *root_node, root);
+    response["root"] = root;
+    response_str = response.dump(1);
+}
+
+void node_info_ws_method(const TreesToServe & tts,
+                     const SummaryTree_t * tree_ptr,
+                     const SummaryTreeAnnotation * sta,
+                     const string & node_id,
+                     bool include_lineage,
+                     string & response_str,
+                     int & status_code) {
+    assert(tree_ptr != nullptr);
+    assert(sta != nullptr);
+    const auto & taxonomy = tts.getTaxonomy();
+    status_code = OK;
+    json response;
+    response["date_created"] = sta->date_completed;
+    response["num_source_trees"] = sta->num_source_trees;
+    response["taxonomy_version"] = sta->taxonomy_version;
+    response["filtered_flags"] = sta->filtered_flags_vec;
+    response["synth_id"] = sta->synth_id;
+    json root;
+    auto root_node = tree_ptr->getRoot();
     auto root_id = root_node->getOttId();
     const auto & root_taxon = taxonomy.record_from_id(root_id);
     root["node_id"] = root_node->getName();
@@ -492,11 +608,10 @@ void about_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
+
 void about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
-
     size_t content_length = request->get_header( "Content-Length", 0 );
-
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
         stringstream id;
         json parsedargs;
@@ -526,6 +641,49 @@ void about_method_handler( const shared_ptr< Session > session ) {
                status_code = 400;
             } else {
                 about_ws_method(tts, treeptr, sta, include_sources, rbody, status_code);
+            }
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
+
+
+void node_info_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+        stringstream id;
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        try {
+            if (!body.empty()) {
+                parsedargs = json::parse(body);
+            }
+        } catch (...) {
+            rbody = "Could not parse body of call as JSON.\n";
+            status_code = 400;
+        }
+        bool include_lineage = false;
+        string synth_id;
+        string node_id;
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
+        }
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
+        }
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "node_id", node_id, rbody, status_code);
+        }
+        if (status_code == OK) {
+            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
+            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            if (sta == nullptr || treeptr == nullptr) {
+               rbody = "Did not recognize the synth_id.\n";
+               status_code = 400;
+            } else {
+                node_info_ws_method(tts, treeptr, sta, node_id, include_lineage, rbody, status_code);
             }
         }
         session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
@@ -569,6 +727,8 @@ int main( const int argc, char** argv) {
         auto resource = make_shared< Resource >( );
         resource->set_path( "/tree_of_life/about" );
         resource->set_method_handler( "POST", about_method_handler );
+        resource->set_path( "/tree_of_life/node_info" );
+        resource->set_method_handler( "POST", node_info_method_handler );
         /////  SETTINGS
         auto settings = make_shared< Settings >( );
         settings->set_port( port_number );
