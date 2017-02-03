@@ -833,11 +833,27 @@ void mrca_ws_method(const TreesToServe & tts,
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
     for (auto node_id : node_id_vec) {
-        find_node_by_id_str(*tree_ptr, node_id, was_broken);
+        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+        if (n == nullptr) {
+            response_str = "node_id \"";
+            response_str += node_id;
+            response_str += "\" was not recognized.\n";
+            status_code = 400;
+            return;
+        }
+        if (first) {
+            first = false;
+            focal = n;
+        } else {
+            focal = find_mrca(focal, n);
+            if (focal == nullptr) {
+                break;
+            }
+        }
     }
     bool is_broken = false;
     if (focal == nullptr) {
-        response_str = "node_id was not found.\n";
+        response_str = "MRCA of taxa was not found.\n";
         status_code = 400;
         return;
     }
@@ -845,9 +861,11 @@ void mrca_ws_method(const TreesToServe & tts,
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
-    add_basic_node_info(taxonomy, *focal, response);
+    json mrcaj;
+    add_basic_node_info(taxonomy, *focal, mrcaj);
     set<string> usedSrcIds;
-    add_node_support_info(tts, *focal, response, usedSrcIds);
+    add_node_support_info(tts, *focal, mrcaj, usedSrcIds);
+    response["mrca"] = mrcaj;
     // now write source_id_map
     json sim;
     for (auto srcTag : usedSrcIds) {
