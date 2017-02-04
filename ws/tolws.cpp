@@ -8,6 +8,7 @@
 #include <list>
 #include <map>
 #include <regex>
+#include <sstream>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -576,6 +577,22 @@ bool extract_from_request(const json & j, string opt_name, string & setting, str
 }
 
 template<>
+bool extract_from_request(const json & j, string opt_name, int & setting, string & response, int & status_code) {
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_number()) {
+            setting = opt->get<int>();
+            return true;
+        }
+        response = "Expecting ";
+        response += opt_name;
+        response += " to be a string.\n";
+        status_code = 400;
+    }
+    return false;
+}
+
+template<>
 bool extract_from_request(const json & j, string opt_name, vector<string> & setting, string & response, int & status_code) {
     auto opt = j.find(opt_name);
     if (opt != j.end()) {
@@ -786,7 +803,6 @@ void node_info_ws_method(const TreesToServe & tts,
     assert(sta != nullptr);
     bool was_broken = false;
     const SumTreeNode_t * focal = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-    bool is_broken = false;
     if (focal == nullptr) {
         response_str = "node_id was not found.\n";
         status_code = 400;
@@ -824,6 +840,9 @@ void node_info_ws_method(const TreesToServe & tts,
         sim[srcTag] = jt;   
     }
     response["source_id_map"] = sim;
+    if (was_broken) {
+        response["response_for_mrca_of_broken_taxon"] = true; //@TODO: discuss and document
+    }
     response_str = response.dump(1);
 }
 
@@ -905,6 +924,125 @@ void mrca_ws_method(const TreesToServe & tts,
 }
 
 
+const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
+                                           const string & node_id, 
+                                           int height_limit,
+                                           int tip_limit,
+                                           string & response_str,
+                                           int & status_code) {
+    assert(tree_ptr != nullptr);
+    bool was_broken = false;
+    const SumTreeNode_t * focal = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+    if (focal == nullptr) {
+        response_str = "node_id was not found.\n";
+        status_code = 400;
+        return nullptr;
+    }
+    if (was_broken) {
+        response_str = "node_id was not found.\n";
+        status_code = 400;
+        return nullptr;
+    }
+    if (focal->getData().num_tips > tip_limit
+        && height_limit < 0) {
+        response_str = "The requested subtree is too large to be returned via the API. Download the entire tree.\n";
+        status_code = 400;
+        return nullptr;  
+    }
+    return focal;
+}
+
+enum NodeNameStyle {
+    NNS_NAME_ONLY = 0,
+    NNS_ID_ONLY = 1,
+    NNS_NAME_AND_ID = 2
+};
+
+class NodeNamerSupportedByStasher {
+    public:
+        mutable set<const string *> study_id_set;
+        NodeNameStyle nns;
+        const Taxonomy & taxonomy;
+        NodeNamerSupportedByStasher(NodeNameStyle in_nns, const Taxonomy &tax)
+            :nns(in_nns),
+            taxonomy(tax) {
+        }
+
+        string operator()(const SumTreeNode_t *nd) const {
+            const string & id_str = nd->getName(); // in this tree the "name" is really the "ott###" string
+            const SumTreeNodeData & d = nd->getData();
+            for (auto & p : d.supported_by) {
+                study_id_set.insert(p.first);
+            }
+            if (nns != NodeNameStyle::NNS_ID_ONLY && nd->hasOttId()) {
+                const auto & tr = taxonomy.record_from_id(nd->getOttId());
+                const auto & taxon_name = tr.name;
+                if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
+                    string ret;
+                    ret.reserve(taxon_name.length() + 1 + id_str.length());
+                    ret = string(taxon_name);
+                    ret += ' ';
+                    ret += id_str;
+                    return ret;    
+                } else {
+                    return string(taxon_name);
+                }
+            }
+            return id_str;
+        }
+};
+
+void newick_subtree_ws_method(const TreesToServe & tts,
+                     const SummaryTree_t * tree_ptr,
+                     const SummaryTreeAnnotation * sta,
+                     const string & node_id,
+                     NodeNameStyle label_format, 
+                     int height_limit,
+                     string & response_str,
+                     int & status_code) {
+    const int NEWICK_TIP_LIMIT = 25000;
+    const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
+    if (focal == nullptr) {
+        return;
+    }
+    assert(sta != nullptr);
+    const auto & taxonomy = tts.getTaxonomy();
+    status_code = OK;
+    json response;
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    writeNewickGeneric<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, height_limit);
+    response["newick"] = out.str();
+    json ss_arr;
+    for (auto study_it_ptr : nnsbs.study_id_set) {
+        ss_arr.push_back(*study_it_ptr);
+    }
+    response["supporting_studies"] = ss_arr;
+    response_str = response.dump(1);
+}
+
+void arguson_subtree_ws_method(const TreesToServe & tts,
+                     const SummaryTree_t * tree_ptr,
+                     const SummaryTreeAnnotation * sta,
+                     const string & node_id,
+                     int height_limit,
+                     string & response_str,
+                     int & status_code) {
+    const int NEWICK_TIP_LIMIT = 25000;
+    auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
+    if (focal == nullptr) {
+        return;
+    }
+    assert(sta != nullptr);
+    const auto & taxonomy = tts.getTaxonomy();
+    status_code = OK;
+    json response;
+    response_str = response.dump(1);
+}
+
+
+///////////////////////
+// handlers that are registered as callback
 
 void about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
@@ -1031,6 +1169,84 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+void subtree_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+        stringstream id;
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        try {
+            if (!body.empty()) {
+                parsedargs = json::parse(body);
+            }
+        } catch (...) {
+            rbody = "Could not parse body of call as JSON.\n";
+            status_code = 400;
+        }
+        string synth_id;
+        string node_id;
+        string format = "newick"; // : (string) Defines the tree format; either "newick" or "arguson"; default="newick"
+        string label_format = "name_and_id";// :  one of “name”, “id”, or “name_and_id”; default = “name_and_id”
+        int height_limit = -1; // :
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
+        }
+        if (status_code == OK) {
+            if (!extract_from_request(parsedargs, "node_id", node_id, rbody, status_code)) {
+                rbody = "node_id is required.\n";
+                status_code = 400;
+            }
+        }
+        NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
+        if (status_code == OK) {
+            if (extract_from_request(parsedargs, "format", format, rbody, status_code)) {
+                if (format != "newick" && format != "arguson") {
+                    rbody = "format must be \"newick\" or \"arguson\".\n";
+                    status_code = 400;
+                } else if (format == "arguson") {
+                    height_limit = 3;
+                }
+            }
+        }
+        if (status_code == OK && format == "newick") {
+            if (extract_from_request(parsedargs, "label_format", label_format, rbody, status_code)) {
+                if (label_format != "name_and_id"
+                    && label_format != "id"
+                    && label_format != "name") {
+                    rbody = "label_format must be \"name_and_id\", \"name\" or \"id\".\n";
+                    status_code = 400;
+                }
+                if (label_format == "id") {
+                    nns = NodeNameStyle::NNS_ID_ONLY;
+                } else if (label_format == "name") {
+                    nns = NodeNameStyle::NNS_NAME_ONLY;
+                }
+            }
+        }
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "height_limit", height_limit, rbody, status_code);
+        }
+        if (status_code == OK) {
+            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
+            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            if (sta == nullptr || treeptr == nullptr) {
+               rbody = "Did not recognize the synth_id.\n";
+               status_code = 400;
+            } else if (format == "newick") {
+                newick_subtree_ws_method(tts, treeptr, sta,
+                                         node_id, nns, height_limit,
+                                         rbody, status_code);
+            } else {
+                arguson_subtree_ws_method(tts, treeptr, sta,
+                                         node_id, height_limit,
+                                         rbody, status_code);    
+            }
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
 
 int main( const int argc, char** argv) {
     std::ios::sync_with_stdio(false);
@@ -1070,6 +1286,9 @@ int main( const int argc, char** argv) {
         auto r_mrca = make_shared< Resource >( );
         r_mrca->set_path( "/tree_of_life/mrca" );
         r_mrca->set_method_handler( "POST", mrca_method_handler );
+        auto r_subtree = make_shared< Resource >( );
+        r_subtree->set_path( "/tree_of_life/subtree" );
+        r_subtree->set_method_handler( "POST", subtree_method_handler );
         /////  SETTINGS
         auto settings = make_shared< Settings >( );
         settings->set_port( port_number );
@@ -1080,6 +1299,7 @@ int main( const int argc, char** argv) {
         service.publish( r_about );
         service.publish( r_node_info );
         service.publish( r_mrca );
+        service.publish( r_subtree );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
         service.start( settings );
         return EXIT_SUCCESS;
