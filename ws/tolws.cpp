@@ -708,7 +708,8 @@ void add_node_support_info(const TreesToServe & tts,
 
 }
 
-const SumTreeNode_t * find_mrca(const SumTreeNode_t *f, const SumTreeNode_t *s) {
+const SumTreeNode_t * find_mrca(const SumTreeNode_t *f,
+                                const SumTreeNode_t *s) {
     const auto * fdata = &(f->getData());
     const auto sec_ind = s->getData().trav_enter;
     //cerr << "f->name = " << f->getName() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
@@ -995,6 +996,95 @@ class NodeNamerSupportedByStasher {
         }
 };
 
+template<typename C, typename T, typename Y>
+inline void writeVisitedNewick(std::ostream & out,
+                               const C & visited,
+                               T nd,
+                               Y & nodeNamer) {
+    assert(nd != nullptr);
+    if (!(nd->isTip())) {
+        bool first = true;
+        for (auto c : iter_child_const(*nd)) {
+            if (visited.count(c)) {
+                if (first) {
+                    out << '(';
+                    first = false;
+                } else {
+                    out << ',';
+                }
+                writeVisitedNewick<C, T, Y>(out, visited, c, nodeNamer);
+            }
+        }
+        if (!first) {
+            out << ')';
+        }
+    }
+    writeEscapedForNewick(out, nodeNamer(nd));
+}
+
+
+void induced_subtree_ws_method(const TreesToServe & tts,
+                     const SummaryTree_t * tree_ptr,
+                     const SummaryTreeAnnotation * sta,
+                     const vector<string> & node_id_vec,
+                     NodeNameStyle label_format, 
+                     string & response_str,
+                     int & status_code) {
+    assert(tree_ptr != nullptr);
+    assert(sta != nullptr);
+    bool was_broken = false;
+    const SumTreeNode_t * focal = nullptr;
+    bool first = true;
+    set<const SumTreeNode_t *> tip_nodes;
+    for (auto node_id : node_id_vec) {
+        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+        tip_nodes.insert(n);
+        if (n == nullptr) {
+            response_str = "node_id \"";
+            response_str += node_id;
+            response_str += "\" was not recognized.\n";
+            status_code = 400;
+            return;
+        }
+        if (first) {
+            first = false;
+            focal = n;
+        } else {
+            focal = find_mrca(focal, n);
+            if (focal == nullptr) {
+                break;
+            }
+        }
+    }
+    bool is_broken = false;
+    if (focal == nullptr) {
+        response_str = "MRCA of taxa was not found.\n";
+        status_code = 400;
+        return;
+    }
+    set<const SumTreeNode_t *> visited;
+    visited.insert(focal);
+    for (auto tni : tip_nodes) {
+        auto cnd = tni;
+        while (visited.count(cnd) == 0) {
+            visited.insert(cnd);
+            cnd = cnd->getParent(); 
+        } 
+    }
+    const auto & taxonomy = tts.getTaxonomy();
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    writeVisitedNewick(out, visited, focal, nnsbs);
+    json response;
+    response["newick"] = out.str();
+    json ss_arr;
+    for (auto study_it_ptr : nnsbs.study_id_set) {
+        ss_arr.push_back(*study_it_ptr);
+    }
+    response["supporting_studies"] = ss_arr;
+    response_str = response.dump(1);
+}
+
 void newick_subtree_ws_method(const TreesToServe & tts,
                      const SummaryTree_t * tree_ptr,
                      const SummaryTreeAnnotation * sta,
@@ -1115,6 +1205,49 @@ void about_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+void get_synth_and_node_id(const json &j, string & synth_id, string & node_id, string & rbody, int & status_code) {
+    if (status_code == OK) {
+        extract_from_request(j, "synth_id", synth_id, rbody, status_code);
+    }
+    if (status_code == OK) {
+        if (!extract_from_request(j, "node_id", node_id, rbody, status_code)) {
+            rbody = "node_id is required.\n";
+            status_code = 400;
+        }
+    }
+}
+
+void get_synth_and_node_id_vec(const json &j, string & synth_id, vector<string> & vec_node_ids, string & rbody, int & status_code) {
+    if (status_code == OK) {
+        extract_from_request(j, "synth_id", synth_id, rbody, status_code);
+    }
+    if (status_code == OK) {
+        if (!extract_from_request(j, "node_ids", vec_node_ids, rbody, status_code)) {
+            rbody = "node_ids is required.\n";
+            status_code = 400;
+        }
+    }
+}
+
+
+void get_label_format(const json &j, NodeNameStyle & nns, string & rbody, int & status_code) {
+    string label_format = "name_and_id";
+    if (status_code == OK) {
+        if (extract_from_request(j, "label_format", label_format, rbody, status_code)) {
+            if (label_format != "name_and_id"
+                && label_format != "id"
+                && label_format != "name") {
+                rbody = "label_format must be \"name_and_id\", \"name\" or \"id\".\n";
+                status_code = 400;
+            }
+            if (label_format == "id") {
+                nns = NodeNameStyle::NNS_ID_ONLY;
+            } else if (label_format == "name") {
+                nns = NodeNameStyle::NNS_NAME_ONLY;
+            }
+        }
+    }
+}
 
 void node_info_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
@@ -1135,17 +1268,9 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
         bool include_lineage = false;
         string synth_id;
         string node_id;
+        get_synth_and_node_id(parsedargs, synth_id, node_id, rbody, status_code);
         if (status_code == OK) {
             extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
-        }
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
-        }
-        if (status_code == OK) {
-            if (!extract_from_request(parsedargs, "node_id", node_id, rbody, status_code)) {
-                rbody = "node_id is required.\n";
-                status_code = 400;
-            }
         }
         if (status_code == OK) {
             const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
@@ -1179,15 +1304,7 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
         }
         string synth_id;
         vector<string> node_id_vec;
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
-        }
-        if (status_code == OK) {
-            if (!extract_from_request(parsedargs, "node_ids", node_id_vec, rbody, status_code)) {
-                rbody = "node_ids is required.\n";
-                status_code = 400;
-            }
-        }
+        get_synth_and_node_id_vec(parsedargs, synth_id, node_id_vec, rbody, status_code);
         if (status_code == OK) {
             const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
             const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
@@ -1221,18 +1338,8 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
         string synth_id;
         string node_id;
         string format = "newick"; // : (string) Defines the tree format; either "newick" or "arguson"; default="newick"
-        string label_format = "name_and_id";// :  one of “name”, “id”, or “name_and_id”; default = “name_and_id”
         int height_limit = -1; // :
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
-        }
-        if (status_code == OK) {
-            if (!extract_from_request(parsedargs, "node_id", node_id, rbody, status_code)) {
-                rbody = "node_id is required.\n";
-                status_code = 400;
-            }
-        }
-        NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
+        get_synth_and_node_id(parsedargs, synth_id, node_id, rbody, status_code);
         if (status_code == OK) {
             if (extract_from_request(parsedargs, "format", format, rbody, status_code)) {
                 if (format != "newick" && format != "arguson") {
@@ -1243,20 +1350,9 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
                 }
             }
         }
+        NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
         if (status_code == OK && format == "newick") {
-            if (extract_from_request(parsedargs, "label_format", label_format, rbody, status_code)) {
-                if (label_format != "name_and_id"
-                    && label_format != "id"
-                    && label_format != "name") {
-                    rbody = "label_format must be \"name_and_id\", \"name\" or \"id\".\n";
-                    status_code = 400;
-                }
-                if (label_format == "id") {
-                    nns = NodeNameStyle::NNS_ID_ONLY;
-                } else if (label_format == "name") {
-                    nns = NodeNameStyle::NNS_NAME_ONLY;
-                }
-            }
+            get_label_format(parsedargs, nns, rbody, status_code);
         }
         if (status_code == OK) {
             extract_from_request(parsedargs, "height_limit", height_limit, rbody, status_code);
@@ -1275,6 +1371,44 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
                 arguson_subtree_ws_method(tts, treeptr, sta,
                                          node_id, height_limit,
                                          rbody, status_code);    
+            }
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
+
+
+void induced_subtree_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+        stringstream id;
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        try {
+            if (!body.empty()) {
+                parsedargs = json::parse(body);
+            }
+        } catch (...) {
+            rbody = "Could not parse body of call as JSON.\n";
+            status_code = 400;
+        }
+        string synth_id;
+        vector<string> node_id_vec;
+        get_synth_and_node_id_vec(parsedargs, synth_id, node_id_vec, rbody, status_code);
+        NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
+        get_label_format(parsedargs, nns, rbody, status_code);
+        if (status_code == OK) {
+            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
+            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            if (sta == nullptr || treeptr == nullptr) {
+               rbody = "Did not recognize the synth_id.\n";
+               status_code = 400;
+            } else {
+                induced_subtree_ws_method(tts, treeptr, sta,
+                                         node_id_vec, nns,
+                                         rbody, status_code);
             }
         }
         session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
@@ -1322,6 +1456,9 @@ int main( const int argc, char** argv) {
         auto r_subtree = make_shared< Resource >( );
         r_subtree->set_path( "/tree_of_life/subtree" );
         r_subtree->set_method_handler( "POST", subtree_method_handler );
+        auto r_induced_subtree = make_shared< Resource >( );
+        r_induced_subtree->set_path( "/tree_of_life/induced_subtree" );
+        r_induced_subtree->set_method_handler( "POST", induced_subtree_method_handler );
         /////  SETTINGS
         auto settings = make_shared< Settings >( );
         settings->set_port( port_number );
@@ -1333,6 +1470,7 @@ int main( const int argc, char** argv) {
         service.publish( r_node_info );
         service.publish( r_mrca );
         service.publish( r_subtree );
+        service.publish( r_induced_subtree );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
         service.start( settings );
         return EXIT_SUCCESS;
