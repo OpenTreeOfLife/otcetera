@@ -792,6 +792,42 @@ void about_ws_method(const TreesToServe &tts,
     response_str = response.dump(1);
 }
 
+inline void add_lineage(json & j, const SumTreeNode_t * focal, const Taxonomy & taxonomy, set<string> & usedSrcIds) {
+    json lineage_arr;
+    const SumTreeNode_t * anc = focal->getParent();
+    if (!anc) {
+        vector<string> c;
+        j["lineage"] = c;
+        return;
+    }
+    while (anc) {
+        json ancj;
+        add_basic_node_info(taxonomy, *anc, ancj);
+        add_node_support_info(tts, *anc, ancj, usedSrcIds);
+        lineage_arr.push_back(ancj);
+        anc = anc->getParent();
+    }
+    j["lineage"] = lineage_arr;
+}
+
+inline void add_source_id_map(json & j,
+                              const set<string> & usedSrcIds,
+                              const Taxonomy & taxonomy,
+                              const SummaryTreeAnnotation * sta ) {
+    json sim;
+    for (auto srcTag : usedSrcIds) {
+        json jt;
+        if (srcTag == taxonomy.version) {
+            jt["taxonomy"] = taxonomy.version;
+        } else {
+            const auto & simentry = sta->source_id_map.at(srcTag);
+            jt = simentry;
+        }
+        sim[srcTag] = jt;   
+    }
+    j["source_id_map"] = sim;
+}
+
 void node_info_ws_method(const TreesToServe & tts,
                      const SummaryTree_t * tree_ptr,
                      const SummaryTreeAnnotation * sta,
@@ -812,34 +848,13 @@ void node_info_ws_method(const TreesToServe & tts,
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
-    add_basic_node_info(taxonomy, *focal, response);
     set<string> usedSrcIds;
+    add_basic_node_info(taxonomy, *focal, response);
     add_node_support_info(tts, *focal, response, usedSrcIds);
     if (include_lineage) {
-        json lineage_arr;
-        const SumTreeNode_t * anc = focal->getParent();
-        while (anc) {
-            json ancj;
-            add_basic_node_info(taxonomy, *anc, ancj);
-            add_node_support_info(tts, *anc, ancj, usedSrcIds);
-            lineage_arr.push_back(ancj);
-            anc = anc->getParent();
-        }
-        response["lineage"] = lineage_arr;
+        add_lineage(response, focal, taxonomy, usedSrcIds);
     }
-    // now write source_id_map
-    json sim;
-    for (auto srcTag : usedSrcIds) {
-        json jt;
-        if (srcTag == taxonomy.version) {
-            jt["taxonomy"] = taxonomy.version;
-        } else {
-            const auto & simentry = sta->source_id_map.at(srcTag);
-            jt = simentry;
-        }
-        sim[srcTag] = jt;   
-    }
-    response["source_id_map"] = sim;
+    add_source_id_map(response, usedSrcIds, taxonomy, sta);
     if (was_broken) {
         response["response_for_mrca_of_broken_taxon"] = true; //@TODO: discuss and document
     }
@@ -907,19 +922,7 @@ void mrca_ws_method(const TreesToServe & tts,
         response["nearest_taxon"] = nt;
     }
     response["mrca"] = mrcaj;
-    // now write source_id_map
-    json sim;
-    for (auto srcTag : usedSrcIds) {
-        json jt;
-        if (srcTag == taxonomy.version) {
-            jt["taxonomy"] = taxonomy.version;
-        } else {
-            const auto & simentry = sta->source_id_map.at(srcTag);
-            jt = simentry;
-        }
-        sim[srcTag] = jt;   
-    }
-    response["source_id_map"] = sim;
+    add_source_id_map(response, usedSrcIds, taxonomy, sta);
     response_str = response.dump(1);
 }
 
@@ -1021,6 +1024,30 @@ void newick_subtree_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
+
+template<typename T>
+inline void write_arguson(json & j,
+                          const TreesToServe & tts,
+                          const SummaryTreeAnnotation * sta,
+                          const Taxonomy & taxonomy,
+                          T nd,
+                          long height_limit,
+                          set<string> & usedSrcIds) {
+    assert(nd != nullptr);
+    if (!(nd->isTip()) && height_limit != 0) {
+        json c_array;
+        const long nhl = height_limit - 1;
+        for (auto c : iter_child_const(*nd)) {
+            json cj;
+            write_arguson<T>(cj, tts, sta, taxonomy, c, nhl, usedSrcIds);
+            c_array.push_back(cj);
+        }
+        j["children"] = c_array;
+    }
+    add_basic_node_info(taxonomy, *nd, j);
+    add_node_support_info(tts, *nd, j, usedSrcIds);
+}
+
 void arguson_subtree_ws_method(const TreesToServe & tts,
                      const SummaryTree_t * tree_ptr,
                      const SummaryTreeAnnotation * sta,
@@ -1037,6 +1064,12 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
     const auto & taxonomy = tts.getTaxonomy();
     status_code = OK;
     json response;
+    response["synth_id"] = sta->synth_id;
+    set<string> usedSrcIds;
+    json a;
+    write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+    add_lineage(a, focal, taxonomy, usedSrcIds);
+    response["arguson"] = a;
     response_str = response.dump(1);
 }
 
