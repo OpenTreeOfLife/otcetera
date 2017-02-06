@@ -58,6 +58,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description output("Output options");
     output.add_options()
+	("any-flag",value<string>(),"Show nodes with one of these flags")
+	("all-flags",value<string>(),"Show nodes with all of these flags")
         ("show-root,R","Show the ottid of the root node")
         ("find,S",value<string>(),"Show taxa whose names match regex <arg>")
         ("degree,D",value<long>(),"Show out the degree of node <arg>")
@@ -72,8 +74,12 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("version,V","Taxonomy version")
         ;
 
+    options_description formatting("Formatting options");
+    formatting.add_options()
+	("id-only","Only show the id number of the selected taxa");
+
     options_description visible;
-    visible.add(taxonomy).add(output).add(otc::standard_options());
+    visible.add(taxonomy).add(output).add(formatting).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -123,7 +129,7 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
 
 void show_rec(const taxonomy_record& rec)
 {
-    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"\n";
+    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"    flags = "<<flags_to_string(rec.flags)<<"\n";
 }
 
 int main(int argc, char* argv[])
@@ -141,6 +147,30 @@ int main(int argc, char* argv[])
             show_rec(taxonomy[0]);
             exit(0);
         }
+	else if (args.count("any-flag") or args.count("all-flags"))
+	{
+	    std::bitset<32> any_flags;
+	    if (args.count("any-flag"))
+		any_flags = flags_from_string(args["any-flag"].as<string>());
+
+	    std::bitset<32> all_flags;
+	    if (args.count("all-flag"))
+		any_flags = flags_from_string(args["all-flag"].as<string>());
+
+	    bool id_only = args.count("id-only");
+	    // Currently this option is mostly used to print out the incertae sedis ott numbers.
+	    // But obviously it could be more general: by combining this with --clean, we get
+            // (~clean1 AND ... AND ~cleanN) AND (any-flag1 OR .... OR any-flagM)
+
+            for(const auto& rec: taxonomy)
+		if ((rec.flags&any_flags).any() and (all_flags == (rec.flags&all_flags)))
+		{
+		    if (id_only)
+			std::cout<<rec.id<<"\n";
+		    else
+			show_rec(rec);
+		}
+	}
         if (args.count("find"))
         {
             string s = args["find"].as<string>();
