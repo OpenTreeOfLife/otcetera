@@ -76,7 +76,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description formatting("Formatting options");
     formatting.add_options()
-	("format",value<string>()->default_value("%I"),"Form of line to write for each taxonomy record");
+	("format",value<string>()->default_value("ott%I  flags=%F"),"Form of line to write for each taxonomy record");
 
     options_description visible;
     visible.add(taxonomy).add(output).add(formatting).add(otc::standard_options());
