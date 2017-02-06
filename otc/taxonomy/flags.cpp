@@ -153,6 +153,6 @@ namespace otc
         for(int i=0;i<32;i++)
             if (flags.test(i))
                 f.push_back(string_for_flag(i));
-        return boost::algorithm::join(f, ", ");
+        return boost::algorithm::join(f, ",");
     }
 }
