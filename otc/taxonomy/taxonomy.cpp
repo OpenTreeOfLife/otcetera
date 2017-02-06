@@ -363,6 +363,8 @@ namespace otc
 		result += rec.uniqname.to_string();
 	    } else if (nc == 'R') {
 		result += rec.rank.to_string();
+	    } else if (nc == 'F') {
+		result += flags_to_string(rec.flags);
 	    } else if (format[loc] == 'S') {
 		result += rec.sourceinfo.to_string();
 	    } else if (format[loc] == 'L') {
@@ -394,6 +396,7 @@ namespace otc
 		|| nc == 'N'
 		|| nc == 'U'
 		|| nc == 'R'
+		|| nc == 'F'
 		|| nc == 'S') {
 		return nc;
 	    } else if (nc == 'L' || nc == '%') {
