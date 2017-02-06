@@ -58,7 +58,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description output("Output options");
     output.add_options()
-	("any-flag",value<string>(),"Show nodes with one of these flags")
+	("any-flags",value<string>(),"Show nodes with one of these flags")
 	("all-flags",value<string>(),"Show nodes with all of these flags")
         ("show-root,R","Show the ottid of the root node")
         ("find,S",value<string>(),"Show taxa whose names match regex <arg>")
@@ -76,7 +76,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description formatting("Formatting options");
     formatting.add_options()
-	("id-only","Only show the id number of the selected taxa");
+	("format",value<string>()->default_value("%I"),"Form of line to write for each taxonomy record");
 
     options_description visible;
     visible.add(taxonomy).add(output).add(formatting).add(otc::standard_options());
@@ -147,29 +147,25 @@ int main(int argc, char* argv[])
             show_rec(taxonomy[0]);
             exit(0);
         }
-	else if (args.count("any-flag") or args.count("all-flags"))
+	else if (args.count("any-flags") or args.count("all-flags"))
 	{
-	    std::bitset<32> any_flags;
-	    if (args.count("any-flag"))
-		any_flags = flags_from_string(args["any-flag"].as<string>());
+	    // Currently this option is mostly used to print out the incertae sedis ott numbers.
 
 	    std::bitset<32> all_flags;
-	    if (args.count("all-flag"))
-		any_flags = flags_from_string(args["all-flag"].as<string>());
+	    if (args.count("all-flags"))
+		all_flags = flags_from_string(args["all-flags"].as<string>());
+
+	    std::bitset<32> any_flags = all_flags;
+	    if (args.count("any-flags"))
+		any_flags = flags_from_string(args["any-flags"].as<string>());
 
 	    bool id_only = args.count("id-only");
-	    // Currently this option is mostly used to print out the incertae sedis ott numbers.
-	    // But obviously it could be more general: by combining this with --clean, we get
-            // (~clean1 AND ... AND ~cleanN) AND (any-flag1 OR .... OR any-flagM)
+
+	    string format=args["format"].as<string>();
 
             for(const auto& rec: taxonomy)
 		if ((rec.flags&any_flags).any() and (all_flags == (rec.flags&all_flags)))
-		{
-		    if (id_only)
-			std::cout<<rec.id<<"\n";
-		    else
-			show_rec(rec);
-		}
+		    std::cout<<format_with_taxonomy("No original label",format,rec)<<"\n";
 	}
         if (args.count("find"))
         {
