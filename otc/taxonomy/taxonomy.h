@@ -101,5 +101,10 @@ namespace otc
     long root_ott_id_from_file(const std::string& filename);
     std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
     Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
+
+    // formatting options.
+    std::string format_with_taxonomy(const std::string& orig, const std::string& format, const taxonomy_record& rec);
+    std::string format_without_taxonomy(const std::string& orig, const std::string& format);
+    char format_needs_taxonomy(const std::string& format);
 }
 #endif
