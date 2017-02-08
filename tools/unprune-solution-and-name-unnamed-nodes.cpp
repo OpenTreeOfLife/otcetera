@@ -105,6 +105,10 @@ void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
         if (firstNd == ancAndLast) {
             return;
         }
+
+	// If this triggers, then ancAndLast is not an ancestor of firstNd
+	assert(firstNd->getParent());
+
         firstNd = firstNd->getParent();
     }
 }
