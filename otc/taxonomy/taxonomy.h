@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <map>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
@@ -19,6 +20,8 @@
 #include "otc/tree.h"
 #include "otc/tree_operations.h"
 
+#include "json.hpp"
+
 // 1. Write a parser to read the lines faster
 // 2. Avoid memory allocation -- by mmapping the taxonomy file?
 // 3. Convert the flags into a bitmask
@@ -27,6 +30,52 @@
 // * What are the triplet-inference rules for the Incertae Sedis problem?
 
 namespace otc {
+
+enum TaxonomicRank {
+    RANK_DOMAIN,
+    RANK_SUPERKINGDOM,
+    RANK_KINGDOM,
+    RANK_SUBKINGDOM,
+    RANK_INFRAKINGDOM,
+    RANK_SUPERPHYLUM,
+    RANK_PHYLUM,
+    RANK_DIVISION,
+    RANK_SUBPHYLUM,
+    RANK_SUBDIVISION,
+    RANK_INFRAPHYLUM,
+    RANK_SUPERCLASS,
+    RANK_CLASS,
+    RANK_SUBCLASS,
+    RANK_INFRACLASS,
+    RANK_SUPERORDER,
+    RANK_ORDER,
+    RANK_SUBORDER,
+    RANK_INFRAORDER,
+    RANK_PARVORDER,
+    RANK_SUPERFAMILY,
+    RANK_FAMILY,
+    RANK_SUBFAMILY,
+    RANK_SUPERTRIBE,
+    RANK_TRIBE,
+    RANK_SUBTRIBE,
+    RANK_GENUS,
+    RANK_SUBGENUS,
+    RANK_SECTION,
+    RANK_SUBSECTION,
+    RANK_SPECIES_GROUP,
+    RANK_SPECIES_SUBGROUP,
+    RANK_SPECIES,
+    RANK_SUBSPECIES,
+    RANK_INFRASPECIFICNAME,
+    RANK_FORMA,
+    RANK_SUBFORM,
+    RANK_VARIETAS,
+    RANK_VARIETY,
+    RANK_SUBVARIETY,
+    RANK_NO_RANK,
+    RANK_NO_RANK_TERMINAL
+};
+
 
 struct taxonomy_record {
     std::string line;
@@ -82,31 +131,71 @@ struct Taxonomy: public std::vector<taxonomy_record> {
     Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
 };
 
+
+class RTRichTaxNodeData {
+    public:
+    TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
+    nlohmann::json sources;
+};
+typedef RootedTreeNode<RTRichTaxNodeData> RTRichTaxNode;
+
+class RTRichTaxTreeData {
+    public:
+    std::map<unsigned long, const RTRichTaxNode *> ncbi_id_map;
+    std::map<unsigned long, const RTRichTaxNode *> gbif_id_map;
+    std::map<unsigned long, const RTRichTaxNode *> worms_id_map;
+    std::map<unsigned long, const RTRichTaxNode *> if_id_map;
+    std::map<unsigned long, const RTRichTaxNode *> irmng_id_map;
+};
+
+typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;
+
+struct RichTaxonomy {
+    std::unordered_map<long,long> forwards;
+    long keep_root;
+    std::bitset<32> cleaning_flags;
+    std::string path;
+    std::string version;
+    std::string version_number;
+    const RichTaxTree & getTree() const {
+        return *tree;
+    }
+    /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
+    RichTaxonomy(const Taxonomy &);
+    private:
+    std::unique_ptr<RichTaxTree> tree;
+};
+
+
+
 class RTTaxNodeData {
     public:
     const taxonomy_record * taxonomy_line = nullptr;
 };
 
-template <typename Node_t>
+template <typename Node_t, typename TREE>
 void populateNodeFromTaxonomyRecord(Node_t & nd,
                                     const taxonomy_record & line,
-                                    std::function<std::string(const taxonomy_record&)> getName);
+                                    std::function<std::string(const taxonomy_record&)> getName,
+                                    TREE & tree);
 
 
 // default behavior is to set ID and Name from line
-template <typename Node_t>
+template <typename Node_t, typename TREE>
 inline void populateNodeFromTaxonomyRecord(Node_t & nd,
                                            const taxonomy_record & line,
-                                           std::function<std::string(const taxonomy_record&)> getName) {
+                                           std::function<std::string(const taxonomy_record&)> getName,
+                                           TREE & ) {
     nd.setOttId(line.id);
     nd.setName(getName(line));    
 }
 
 // default behavior is to set ID and Name from line
-template <>
+template <typename TREE>
 inline void populateNodeFromTaxonomyRecord(RootedTreeNode<RTTaxNodeData> & nd,
                                            const taxonomy_record & line,
-                                           std::function<std::string(const taxonomy_record&)>) {
+                                           std::function<std::string(const taxonomy_record&)>,
+                                           TREE &) {
     nd.setOttId(line.id);
     nd.getData().taxonomy_line = &line;    
 }
@@ -127,7 +216,7 @@ std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const taxono
             auto parent_nd = node_ptr[line.parent_index];
             nd = tree->createChild(parent_nd);
         }
-        populateNodeFromTaxonomyRecord(*nd, line, getName);
+        populateNodeFromTaxonomyRecord(*nd, line, getName, *tree);
         node_ptr[i] = nd;
     }
     return tree;
@@ -136,6 +225,7 @@ std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const taxono
 long root_ott_id_from_file(const std::string& filename);
 std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
 Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
+RichTaxonomy load_rich_taxonomy(const boost::program_options::variables_map& args);
 
 } // namespace
 #endif

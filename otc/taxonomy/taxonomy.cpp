@@ -6,6 +6,8 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <map>
+#include <set>
 #include <bitset>
 #include <fstream>
 #include <regex>
@@ -29,6 +31,8 @@ using std::cerr;
 using std::endl;
 using std::bitset;
 using std::ofstream;
+using std::map;
+using std::set;
 
 using boost::string_ref;
 
@@ -39,6 +43,8 @@ using po::variables_map;
 
 namespace otc
 {
+
+std::set<std::string> rank_strings;
 
 taxonomy_record::taxonomy_record(const string& line_)
     :line(line_) {
@@ -68,6 +74,7 @@ taxonomy_record::taxonomy_record(const string& line_)
     if (not uniqname.size()) {
         uniqname = name;
     }
+    rank_strings.insert(string(rank));
 }
 
 const taxonomy_record& Taxonomy::record_from_id(long id) const {
@@ -163,7 +170,7 @@ void Taxonomy::write(const std::string& newdirname) {
 }
 
 
-const std::regex ott_version_pattern("^ott([.0-9]+)draft.*");
+const std::regex ott_version_pattern("^([.0-9]+)draft.*");
 
 Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
     :keep_root(kr),
@@ -254,6 +261,10 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
             }
         }
     }
+
+    for (auto rs : rank_strings) {
+        std::cerr << "rankstring: \"" << rs << "\"\n"; 
+    }
 }
 
 std::string get_taxonomy_dir(const variables_map& args) {
@@ -316,5 +327,126 @@ Taxonomy load_taxonomy(const variables_map& args) {
     return {taxonomy_dir, cleaning_flags, keep_root};
 }
 
+RichTaxonomy load_rich_taxonomy(const variables_map& args) {
+    Taxonomy tax = load_taxonomy(args);
+    return {tax};
+}
+
+map<string, TaxonomicRank> rankNameToEnum = 
+    {   {"domain", RANK_DOMAIN},
+        {"superkingdom", RANK_SUPERKINGDOM},
+        {"kingdom", RANK_KINGDOM},
+        {"subkingdom", RANK_SUBKINGDOM},
+        {"infrakingdom", RANK_INFRAKINGDOM},
+        {"superphylum", RANK_SUPERPHYLUM},
+        {"phylum", RANK_PHYLUM},
+        {"division", RANK_DIVISION},
+        {"subphylum", RANK_SUBPHYLUM},
+        {"subdivision", RANK_SUBDIVISION},
+        {"infraphylum", RANK_INFRAPHYLUM},
+        {"superclass", RANK_SUPERCLASS},
+        {"class", RANK_CLASS},
+        {"subclass", RANK_SUBCLASS},
+        {"infraclass", RANK_INFRACLASS},
+        {"superorder", RANK_SUPERORDER},
+        {"order", RANK_ORDER},
+        {"suborder", RANK_SUBORDER},
+        {"infraorder", RANK_INFRAORDER},
+        {"parvorder", RANK_PARVORDER},
+        {"superfamily", RANK_SUPERFAMILY},
+        {"family", RANK_FAMILY},
+        {"subfamily", RANK_SUBFAMILY},
+        {"supertribe", RANK_SUPERTRIBE},
+        {"tribe", RANK_TRIBE},
+        {"subtribe", RANK_SUBTRIBE},
+        {"genus", RANK_GENUS},
+        {"subgenus", RANK_SUBGENUS},
+        {"section", RANK_SECTION},
+        {"subsection", RANK_SUBSECTION},
+        {"species group", RANK_SPECIES_GROUP},
+        {"species subgroup", RANK_SPECIES_SUBGROUP},
+        {"species", RANK_SPECIES},
+        {"subspecies", RANK_SUBSPECIES},
+        {"infraspecificname", RANK_INFRASPECIFICNAME},
+        {"forma", RANK_FORMA},
+        {"subform", RANK_SUBFORM},
+        {"varietas", RANK_VARIETAS},
+        {"variety", RANK_VARIETY},
+        {"subvariety", RANK_SUBVARIETY},
+        {"no rank", RANK_NO_RANK},
+        {"no rank - terminal", RANK_NO_RANK_TERMINAL},
+        {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
+    };
+
+const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
+// default behavior is to set ID and Name from line
+template <>
+inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
+                                           const taxonomy_record & line,
+                                           std::function<std::string(const taxonomy_record&)>,
+                                           RichTaxTree & tree) {
+    nd.setOttId(line.id);
+    auto & data = nd.getData();
+    auto & tree_data = tree.getData();
+    const string rank = string(line.rank);
+    if (rank == "natio") {
+        LOG(WARNING) << "Converting rank natio to RANK_INFRASPECIFICNAME";
+    }
+    auto reit = rankNameToEnum.find(rank);
+    if (reit == rankNameToEnum.end()) {
+        throw OTCError() << "Rank string not recognized: \"" << rank << "\"";
+    }
+    data.rank = reit->second;
+    auto vs = line.sourceinfoAsVec();
+    RTRichTaxNode * this_node = &nd;
+    for (auto src_entry : vs) {
+        auto pref_id = split_string(src_entry, ':');
+        if (pref_id.size() != 2) {
+            throw OTCError() << "Expecting exactly 1 colon in a source ID string. Found: \"" << src_entry << "\".";
+        }
+        const string & prefix = *pref_id.begin();
+        if (indexed_source_prefixes.count(prefix) == 0) {
+            continue;
+        }
+        const string & id_str = *pref_id.rbegin();
+        data.sources.push_back(src_entry);
+        std::size_t pos;
+        //LOG(INFO) << src_entry;
+        try {
+            unsigned long foreign_id  = std::stoul(id_str.c_str(), &pos);
+            if (pos < id_str.length()) {
+                throw OTCError() << "Could not convert ID to unsigned long \"" << src_entry << "\"";
+            }
+            if (prefix == "ncbi") {
+                tree_data.ncbi_id_map[foreign_id] = this_node;
+            } else if (prefix == "gbif") {
+                tree_data.gbif_id_map[foreign_id] = this_node;
+            } else if (prefix == "worms") {
+                tree_data.worms_id_map[foreign_id] = this_node;
+            } else if (prefix == "if") {
+                tree_data.if_id_map[foreign_id] = this_node;
+            } else if (prefix == "irmng") {
+                tree_data.irmng_id_map[foreign_id] = this_node;
+            } else {
+                assert(false);
+            }
+        } catch (OTCError & x) {
+            throw;
+        } catch (...) {
+            LOG(WARNING) << "Could not convert ID to unsigned long \"" << src_entry << "\"";
+        }
+    }
+
+}
+
+RichTaxonomy::RichTaxonomy(const Taxonomy & t)
+    :forwards(t.forwards),
+    keep_root(t.keep_root),
+    path(t.path),
+    version(t.version),
+    version_number(t.version_number) {
+    auto nodeNamer = [](const auto&){return string();};
+    this->tree = t.getTree<RichTaxTree>(nodeNamer);
+}
 
 } //namespace otc

@@ -1467,7 +1467,11 @@ int main( const int argc, char** argv) {
         }
         const fs::path topdir{args["tree-dir"].as<string>()};
         // Must load taxonomy before trees
+        LOG(INFO) << "reading taxonomy...";
+        auto rtaxonomy = load_rich_taxonomy(args);
+        return 1;
         auto taxonomy = load_taxonomy(args);
+        
         tts.setTaxonomy(taxonomy);
         if (!read_trees(topdir, tts)) {
             return 2;

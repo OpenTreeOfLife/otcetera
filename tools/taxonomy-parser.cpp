@@ -182,8 +182,9 @@ int main(int argc, char* argv[])
         {
             int n = args["high-degree-nodes"].as<int>();
             vector<int> index(taxonomy.size());
-            for(int i=0;i<index.size();i++)
+            for(int i = 0 ; i < (int)index.size(); i++) {
                 index[i] = i;
+            }
             std::sort(index.begin(), index.end(), [&taxonomy](int i, int j){return taxonomy[i].out_degree > taxonomy[j].out_degree;});
             for(int i=0;i<n;i++)
                 show_rec(taxonomy[index[i]]);
