@@ -163,6 +163,19 @@ vector<long> get_ids_from_tree(const string& filename)
     return ids;
 }
 
+vector<long> get_ids_matching_regex(const Taxonomy& taxonomy, const string& rgx)
+{
+    std::regex e(rgx);
+    vector<long> ids;
+    for(const auto& rec: taxonomy)
+    {
+	std::cmatch m;
+	if (std::regex_match(rec.name.data(), rec.name.data()+rec.name.size(), m, e))
+	    ids.push_back(rec.id);
+    }
+    return ids;
+}
+
 bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags)
 {
     if ((flags&all_flags) != all_flags) return false;
@@ -235,13 +248,22 @@ int main(int argc, char* argv[])
 	    auto ids = get_ids_from_tree(args["in-tree"].as<string>());
 
 	    show_taxonomy_ids(taxonomy, format, ids, flags_match);
+	    exit(0);
 	}
 	else if (args.count("in-file"))
 	{
 	    auto ids = get_ids_from_file(args["in-file"].as<string>());
 
 	    show_taxonomy_ids(taxonomy, format, ids, flags_match);
+	    exit(0);
 	}
+        else if (args.count("find"))
+        {
+	    vector<long> ids = get_ids_matching_regex(taxonomy, args["find"].as<string>());
+
+	    show_taxonomy_ids(taxonomy, format, ids, flags_match);
+            exit(0);
+        }
 	else if (args.count("any-flags") or args.count("all-flags"))
 	{
 	    string format=args["format"].as<string>();
@@ -249,20 +271,10 @@ int main(int argc, char* argv[])
             for(const auto& rec: taxonomy)
 		if (flags_match(rec.flags))
 		    std::cout<<format_with_taxonomy("No original label",format,rec)<<"\n";
+	    exit(0);
 	}
-        if (args.count("find"))
-        {
-            string s = args["find"].as<string>();
-            std::regex e(s);
-            for(const auto& rec: taxonomy)
-            {
-                std::cmatch m;
-                if (std::regex_match(rec.name.data(), rec.name.data()+rec.name.size(), m, e))
-                    show_rec(rec);
-            }
-            exit(0);
-        }
-        else if (args.count("degree"))
+
+        if (args.count("degree"))
         {
             long id = args["degree"].as<long>();
             std::cout<<"degree = "<<taxonomy[taxonomy.index.at(id)].out_degree<<std::endl;
