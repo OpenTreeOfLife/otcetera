@@ -793,6 +793,24 @@ void about_ws_method(const TreesToServe &tts,
     response_str = response.dump(1);
 }
 
+void tax_about_ws_method(const TreesToServe &tts,
+                         string & response_str,
+                         int & status_code) {
+    const auto & taxonomy = tts.getTaxonomy();
+    status_code = OK;
+    json response;
+    string weburl;
+    weburl = "https://tree.opentreeoflife.org/about/taxonomy-version/ott";
+    weburl += taxonomy.version_number;
+    response["weburl"] = weburl;
+    response["author"] = "open tree of life project";
+    response["name"] = "ott";
+    response["source"] = taxonomy.version;
+    response["version"] = taxonomy.version_number;
+    response_str = response.dump(1);
+}
+
+
 inline void add_lineage(json & j, const SumTreeNode_t * focal, const Taxonomy & taxonomy, set<string> & usedSrcIds) {
     json lineage_arr;
     const SumTreeNode_t * anc = focal->getParent();
@@ -1415,6 +1433,22 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+void tax_about_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & ) {
+        stringstream id;
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        if (status_code == OK) {
+            tax_about_ws_method(tts, rbody, status_code);
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
+
+
 int main( const int argc, char** argv) {
     std::ios::sync_with_stdio(false);
     try {
@@ -1444,6 +1478,7 @@ int main( const int argc, char** argv) {
             return 3;
         }
         ////// ROUTES
+        // tree web services
         auto r_about = make_shared< Resource >( );
         r_about->set_path( "/tree_of_life/about" );
         r_about->set_method_handler( "POST", about_method_handler );
@@ -1459,6 +1494,10 @@ int main( const int argc, char** argv) {
         auto r_induced_subtree = make_shared< Resource >( );
         r_induced_subtree->set_path( "/tree_of_life/induced_subtree" );
         r_induced_subtree->set_method_handler( "POST", induced_subtree_method_handler );
+        // taxonomy web services
+        auto r_tax_about = make_shared< Resource >( );
+        r_tax_about->set_path( "/taxonomy/about" );
+        r_tax_about->set_method_handler( "POST", tax_about_method_handler );
         /////  SETTINGS
         auto settings = make_shared< Settings >( );
         settings->set_port( port_number );
@@ -1471,6 +1510,7 @@ int main( const int argc, char** argv) {
         service.publish( r_mrca );
         service.publish( r_subtree );
         service.publish( r_induced_subtree );
+        service.publish( r_tax_about );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
         service.start( settings );
         return EXIT_SUCCESS;

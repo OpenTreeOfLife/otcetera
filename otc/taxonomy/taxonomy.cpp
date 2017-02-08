@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <bitset>
 #include <fstream>
-
+#include <regex>
 #include <boost/filesystem/operations.hpp>
 
 namespace fs = boost::filesystem;
@@ -162,11 +162,22 @@ void Taxonomy::write(const std::string& newdirname) {
     }
 }
 
+
+const std::regex ott_version_pattern("^ott([.0-9]+)draft.*");
+
 Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
     :keep_root(kr),
-    cleaning_flags(cf),
+     cleaning_flags(cf),
      path(dir),
      version(strip_trailing_whitespace(readStrContentOfUTF8File(dir + "/version.txt"))) {
+    std::smatch matches;
+    if (std::regex_match(version, matches, ott_version_pattern)) {
+        assert(matches.size() == 2);
+        version_number = matches[1];
+    } else {
+        throw OTCError() << "Could not parse version number out of ott version string " << version;
+    }
+
     string filename = path + "/taxonomy.tsv";
     // 1. Open the file.
     std::ifstream taxonomy_stream(filename);

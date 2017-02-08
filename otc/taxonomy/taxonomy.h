@@ -61,6 +61,7 @@ struct Taxonomy: public std::vector<taxonomy_record> {
     std::bitset<32> cleaning_flags;
     std::string path;
     std::string version;
+    std::string version_number;
     template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const taxonomy_record&)>) const;
 
           taxonomy_record& record_from_id(long id);
