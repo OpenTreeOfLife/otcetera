@@ -8,7 +8,9 @@
 #include <list>
 #include <map>
 #include <regex>
+#include <csignal>
 #include <sstream>
+#include <thread>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -1455,6 +1457,28 @@ void tax_about_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+Service * global_service_ptr = nullptr;
+
+void kill_service_worker() {
+    Service * gp = global_service_ptr;
+    global_service_ptr = nullptr;
+    if (gp == nullptr) {
+        return;
+    }
+    LOG(WARNING) <<  "Stopping service...";
+    gp->stop();
+    LOG(WARNING) <<  "Service stopped...";
+}
+
+void sigterm_handler( const int signal_number )
+{
+    LOG(WARNING) <<  "Received signal number " << signal_number;
+    if (global_service_ptr != nullptr) {
+        std::thread killer_thread(kill_service_worker);
+        killer_thread.detach();
+    }
+}
+
 
 int main( const int argc, char** argv) {
     std::ios::sync_with_stdio(false);
@@ -1517,17 +1541,25 @@ int main( const int argc, char** argv) {
         settings->set_default_header( "Connection", "close" );
         
         Service service;
+        global_service_ptr = &service;
         service.publish( r_about );
         service.publish( r_node_info );
         service.publish( r_mrca );
         service.publish( r_subtree );
         service.publish( r_induced_subtree );
         service.publish( r_tax_about );
+        service.set_signal_handler( SIGINT, sigterm_handler );
+        service.set_signal_handler( SIGTERM, sigterm_handler );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
-        service.start( settings );
+        try {
+            service.start( settings );
+        } catch (std::exception & x) {
+            LOG(ERROR) << "Exiting due to an exception after service.start: " << x.what();
+            return 1;
+        }
         return EXIT_SUCCESS;
     } catch (std::exception& e) {
         LOG(ERROR) <<"otc-tol-ws: Error! " << e.what() << std::endl;
-        exit(1);
+        return 1;
     }
 }
