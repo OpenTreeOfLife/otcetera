@@ -78,6 +78,7 @@ enum TaxonomicRank {
 
 extern const std::map<TaxonomicRank, std::string> rankEnumToName;
 extern const std::string emptyStringForMissingRank;
+extern const std::set<std::string> indexed_source_prefixes;
 
 inline const std::string & to_string(const TaxonomicRank &r) {
     auto i = rankEnumToName.find(r);
@@ -159,6 +160,12 @@ class RTRichTaxNodeData {
     name_map_iterator name_map_it;
     name_map_iterator uniqname_map_it;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
+    const std::string & getName() const {
+        return name_map_it->first;
+    }
+    const std::string & getUniqname() const {
+        return uniqname_map_it->first;
+    }
 };
 
 typedef RootedTreeNode<RTRichTaxNodeData> RTRichTaxNode;
@@ -169,6 +176,10 @@ class TaxonomicJuniorSynonym {
     typedef std::map<std::string, const RootedTreeNode<RTRichTaxNodeData> *>::iterator name_map_iterator;
     name_map_iterator name_map_it;
     const RTRichTaxNode * primary;
+    const std::string & getName() const {
+        return name_map_it->first;
+    }
+    
 };
 
 

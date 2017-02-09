@@ -591,7 +591,23 @@ bool extract_from_request(const json & j, string opt_name, int & setting, string
         }
         response = "Expecting ";
         response += opt_name;
-        response += " to be a string.\n";
+        response += " to be a number.\n";
+        status_code = 400;
+    }
+    return false;
+}
+
+template<>
+bool extract_from_request(const json & j, string opt_name, long & setting, string & response, int & status_code) {
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_number()) {
+            setting = opt->get<long>();
+            return true;
+        }
+        response = "Expecting ";
+        response += opt_name;
+        response += " to be a number.\n";
         status_code = 400;
     }
     return false;
@@ -1197,6 +1213,36 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
 }
 
 
+void taxon_info_ws_method(const TreesToServe & tts,
+                          const RTRichTaxNode * taxon_node,
+                          bool include_lineage,
+                          bool include_children,
+                          bool include_terminal_descendants,
+                          string & response_str,
+                          int & status_code) {
+    const auto & taxonomy = tts.getTaxonomy();
+    assert(taxon_node != nullptr);
+    const auto & taxonomy_tree = taxonomy.getTree();
+    const auto & taxonomy_tree_data = taxonomy_tree.getData();
+    const auto & node_data = taxon_node->getData();
+    json response;
+    response["source"] = taxonomy.version;
+    response["ott_id"] = taxon_node->getOttId();
+    response["name"] = node_data.getName();
+    response["uniqname"] = node_data.getUniqname();
+    response["tax_sources"] = node_data.sources;
+    response["flags"] = flags_to_string_vec(node_data.flags);
+    json syn_list;
+    for (auto tjs : node_data.junior_synonyms) {
+        syn_list.push_back(tjs->getName());
+    }
+    response["synonyms"] = syn_list;
+    //add_lineage(a, focal, taxonomy, usedSrcIds);
+    //response["arguson"] = a;
+    response_str = response.dump(1);
+}
+        
+
 ///////////////////////
 // handlers that are registered as callback
 
@@ -1237,6 +1283,7 @@ void about_method_handler( const shared_ptr< Session > session ) {
         session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
+
 
 void get_synth_and_node_id(const json &j, string & synth_id, string & node_id, string & rbody, int & status_code) {
     if (status_code == OK) {
@@ -1463,6 +1510,127 @@ void tax_about_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+
+void taxon_info_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+        stringstream id;
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        try {
+            if (!body.empty()) {
+                parsedargs = json::parse(body);
+            }
+        } catch (...) {
+            rbody = "Could not parse body of call as JSON.\n";
+            status_code = 400;
+        }
+        bool include_lineage = false;
+        bool include_children = false;
+        bool include_terminal_descendants = false;
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
+        }
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "include_children", include_children, rbody, status_code);
+        }
+        if (status_code == OK) {
+            extract_from_request(parsedargs, "include_terminal_descendants", include_terminal_descendants, rbody, status_code);
+        }
+        long ott_id;
+        string source_id;
+        bool supplied_ott_id = false;
+        bool supplied_source_id = false;
+        const RTRichTaxNode * taxon_node = nullptr;
+        const auto & taxonomy = tts.getTaxonomy();
+        const auto & taxonomy_tree = taxonomy.getTree();
+        const auto & taxonomy_tree_data = taxonomy_tree.getData();
+        if (status_code == OK) {
+            supplied_ott_id = extract_from_request(parsedargs, "ott_id", ott_id, rbody, status_code);
+        }
+        if (status_code == OK) {
+            supplied_source_id = extract_from_request(parsedargs, "source_id", source_id, rbody, status_code);
+        }
+        if (status_code == OK) {
+            if (supplied_ott_id && supplied_source_id) {
+                rbody = "ott_id or source_id arguments cannot both be supplied.";
+        
+            } else if ((!supplied_source_id) && (!supplied_ott_id)) {
+                rbody = "An ott_id or source_id argument is required.";
+                status_code = 400;
+            }
+        }
+        if (status_code == OK && supplied_source_id) {
+            auto pref_id = split_string(source_id, ':');
+            if (pref_id.size() != 2) {
+                rbody = "Expecting exactly 1 colon in a source ID string. Found: \"";
+                rbody += source_id;
+                rbody += "\".";
+                status_code = 400;
+            } else {
+                string source_prefix = *pref_id.begin();
+                if (indexed_source_prefixes.count(source_prefix) == 0) {
+                    rbody = "IDs from source ";
+                    rbody += source_prefix ;
+                    rbody += " are not known or not indexed for searching.";
+                    status_code = 400;
+                } else {
+                    string id_str = *pref_id.rbegin();
+                    try {
+                        std::size_t pos;
+                        long foreign_id  = std::stol(id_str.c_str(), &pos);
+                        if (pos < id_str.length()) {
+                            rbody = "Expecting the ID portion of the source_id to be numeric. Found: ";
+                            rbody += id_str;
+                            status_code = 400;
+                        }
+                        try {
+                            if (source_prefix == "ncbi") {
+                                taxon_node = taxonomy_tree_data.ncbi_id_map.at(foreign_id);
+                            } else if (source_prefix == "gbif") {
+                                taxon_node = taxonomy_tree_data.gbif_id_map.at(foreign_id);
+                            } else if (source_prefix == "worms") {
+                                taxon_node = taxonomy_tree_data.worms_id_map.at(foreign_id);
+                            } else if (source_prefix == "if") {
+                                taxon_node = taxonomy_tree_data.if_id_map.at(foreign_id);
+                            } else if (source_prefix == "irmng") {
+                                taxon_node = taxonomy_tree_data.irmng_id_map.at(foreign_id);
+                            } else {
+                                assert(false);
+                            }
+                        } catch (std::out_of_range & x) {
+                            rbody = "No taxon in the taxonomy is associated with source_id of ";
+                            rbody += source_id;
+                            status_code = 400;
+                        }
+                    } catch (...) {
+                        rbody = "Expecting the ID portion of the source_id to be numeric. Found: ";
+                        rbody += id_str;
+                        status_code = 400;
+                    }   
+                }
+            }
+        }
+        if (status_code == OK && supplied_ott_id) {
+            taxon_node = taxonomy.taxonFromId(ott_id);
+            if (taxon_node) {
+                rbody = "Unrecognized OTT ID: ";
+                rbody += to_string(ott_id);
+                status_code = 400;
+            }
+        }
+        if (status_code == OK) {
+            assert(taxon_node != nullptr);
+            taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants, rbody, status_code);
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
+
+
+/// End of method_handler. Start of global service related code
 Service * global_service_ptr = nullptr;
 
 void kill_service_worker() {
@@ -1549,6 +1717,9 @@ int main( const int argc, char** argv) {
         auto r_tax_about = make_shared< Resource >( );
         r_tax_about->set_path( "/taxonomy/about" );
         r_tax_about->set_method_handler( "POST", tax_about_method_handler );
+        auto r_taxon_info = make_shared< Resource >( );
+        r_taxon_info->set_path( "/taxonomy/taxon_info" );
+        r_taxon_info->set_method_handler( "POST", taxon_info_method_handler );
         /////  SETTINGS
         auto settings = make_shared< Settings >( );
         settings->set_port( port_number );
@@ -1564,6 +1735,7 @@ int main( const int argc, char** argv) {
         service.publish( r_subtree );
         service.publish( r_induced_subtree );
         service.publish( r_tax_about );
+        service.publish( r_taxon_info );
         service.set_signal_handler( SIGINT, sigterm_handler );
         service.set_signal_handler( SIGTERM, sigterm_handler );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...";
