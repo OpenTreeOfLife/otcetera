@@ -56,6 +56,13 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("root,r", value<long>(), "OTT id of root node of subtree to keep")
         ;
 
+    options_description selection("Selection options");
+    selection.add_options()
+	("any-flags",value<string>(),"Show records with one of these flags")
+	("all-flags",value<string>(),"Show records with all of these flags")
+	("in-tree",value<string>(),"Show records from OTT ids in tree")
+	("in-file",value<string>(),"Show records of integer ids in file");
+
     options_description output("Output options");
     output.add_options()
         ("show-root,R","Show the ottid of the root node")
@@ -72,8 +79,12 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("version,V","Taxonomy version")
         ;
 
+    options_description formatting("Formatting options");
+    formatting.add_options()
+	("format",value<string>()->default_value("ott%I\t'%U'\tflags=%F"),"Form of line to write for each taxonomy record");
+
     options_description visible;
-    visible.add(taxonomy).add(output).add(otc::standard_options());
+    visible.add(taxonomy).add(selection).add(output).add(formatting).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -123,8 +134,95 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
 
 void show_rec(const taxonomy_record& rec)
 {
-    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"\n";
+    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"    flags = "<<flags_to_string(rec.flags)<<"\n";
 }
+
+vector<long> get_ids_from_file(const string& filename)
+{
+    vector<long> ids;
+    std::ifstream file(filename);
+    while (file)
+    {
+	long i;
+	file >> i;
+	ids.push_back(i);
+    }
+    return ids;
+}
+
+vector<long> get_ids_from_tree(const string& filename)
+{
+    vector<long> ids;
+    auto tree = get_tree<Tree_t>(filename);
+    for(auto nd: iter_post_const(*tree))
+    {
+	auto id = nd->getOttId();
+	if (id != -1)
+	    ids.push_back(id);
+    }
+    return ids;
+}
+
+vector<long> get_ids_matching_regex(const Taxonomy& taxonomy, const string& rgx)
+{
+    std::regex e(rgx);
+    vector<long> ids;
+    for(const auto& rec: taxonomy)
+    {
+	std::cmatch m;
+	if (std::regex_match(rec.name.data(), rec.name.data()+rec.name.size(), m, e))
+	    ids.push_back(rec.id);
+    }
+    return ids;
+}
+
+bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags)
+{
+    if ((flags&all_flags) != all_flags) return false;
+    if (any_flags.any() and (flags&any_flags).none()) return false;
+    return true;
+}
+
+void show_taxonomy_ids(const Taxonomy& taxonomy, const string& format, const vector<long>& ids,
+		       std::function<bool(tax_flags)> flags_match)
+{
+    for(auto id: ids)
+    {
+	id = taxonomy.map(id);
+	try
+	{
+	    auto& rec = taxonomy.record_from_id(id);
+	    if (flags_match(rec.flags))
+		std::cout<<format_with_taxonomy("No original label",format,rec)<<"\n";
+	}
+	catch (...) {
+	    std::cerr<<"id="<<id<<": not in taxonomy!";
+	}
+    }
+}
+
+std::function<bool(tax_flags)> get_flags_match(variables_map& args)
+{
+    tax_flags all_flags;
+    if (args.count("all-flags"))
+	all_flags = flags_from_string(args["all-flags"].as<string>());
+
+    tax_flags any_flags;
+    if (args.count("any-flags"))
+	any_flags = flags_from_string(args["any-flags"].as<string>());
+
+    
+    if (any_flags.any() and all_flags.any())
+	return [all_flags,any_flags](tax_flags flags) {return (flags&any_flags).any() and
+		                                              (flags&all_flags)==all_flags; };
+    else if (any_flags.any())
+	return [any_flags](tax_flags flags) { return (flags&any_flags).any(); };
+    else if (all_flags.any())
+	return [all_flags](tax_flags flags) { return (flags&all_flags)==all_flags; };
+    else
+	return [](tax_flags){return true;};
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -132,28 +230,51 @@ int main(int argc, char* argv[])
 
     try
     {
-        variables_map args = parse_cmd_line(argc,argv);
+        auto args = parse_cmd_line(argc,argv);
 
-        auto taxonomy = load_taxonomy(args);
+	auto format = args["format"].as<string>();
+
+	auto flags_match = get_flags_match(args);
+
+	auto taxonomy = load_taxonomy(args);
 
         if (args.count("show-root"))
         {
             show_rec(taxonomy[0]);
             exit(0);
         }
-        if (args.count("find"))
+	else if (args.count("in-tree"))
+	{
+	    auto ids = get_ids_from_tree(args["in-tree"].as<string>());
+
+	    show_taxonomy_ids(taxonomy, format, ids, flags_match);
+	    exit(0);
+	}
+	else if (args.count("in-file"))
+	{
+	    auto ids = get_ids_from_file(args["in-file"].as<string>());
+
+	    show_taxonomy_ids(taxonomy, format, ids, flags_match);
+	    exit(0);
+	}
+        else if (args.count("find"))
         {
-            string s = args["find"].as<string>();
-            std::regex e(s);
-            for(const auto& rec: taxonomy)
-            {
-                std::cmatch m;
-                if (std::regex_match(rec.name.data(), rec.name.data()+rec.name.size(), m, e))
-                    show_rec(rec);
-            }
+	    vector<long> ids = get_ids_matching_regex(taxonomy, args["find"].as<string>());
+
+	    show_taxonomy_ids(taxonomy, format, ids, flags_match);
             exit(0);
         }
-        else if (args.count("degree"))
+	else if (args.count("any-flags") or args.count("all-flags"))
+	{
+	    string format=args["format"].as<string>();
+
+            for(const auto& rec: taxonomy)
+		if (flags_match(rec.flags))
+		    std::cout<<format_with_taxonomy("No original label",format,rec)<<"\n";
+	    exit(0);
+	}
+
+        if (args.count("degree"))
         {
             long id = args["degree"].as<long>();
             std::cout<<"degree = "<<taxonomy[taxonomy.index.at(id)].out_degree<<std::endl;

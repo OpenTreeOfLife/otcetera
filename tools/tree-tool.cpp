@@ -64,6 +64,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("parent-of",value<long>(), "List the parent of node <arg>")
         ("count-nodes","Show the number of nodes")
         ("count-leaves","Show the number of leaves")
+        ("show-leaves","Show the number of leaves")
+        ("show-internal","Show the number of leaves")
         ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
         ("indented-table","print number of leaves for each internal node")
         ;
@@ -92,6 +94,12 @@ long n_nodes(const Tree_t& T) {
     return count;
 }
 
+void show_nodes(const Tree_t& T) {
+    for(auto nd: iter_post_const(T))
+	if (nd->getName().size())
+	    std::cout<<nd->getName()<<"\n";
+}
+
 long n_leaves(const Tree_t& T) {
 #pragma clang diagnostic ignored  "-Wunused-variable"
 #pragma GCC diagnostic ignored  "-Wunused-variable"
@@ -100,6 +108,18 @@ long n_leaves(const Tree_t& T) {
         count++;
     }
     return count;
+}
+
+void show_leaf_nodes(const Tree_t& T) {
+    for(auto nd: iter_leaf_const(T))
+	if (nd->getName().size())
+	    std::cout<<nd->getName()<<"\n";
+}
+
+void show_internal_nodes(const Tree_t& T) {
+    for(auto nd: iter_post_const(T))
+	if (nd->getName().size() and not nd->isTip())
+	    std::cout<<nd->getName()<<"\n";
 }
 
 void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
@@ -335,8 +355,14 @@ int main(int argc, char* argv[])
                 std::cout<<"No parent: that node is the root.\n";
         } else if (args.count("count-nodes")) {
             std::cout<<n_nodes(*tree)<<std::endl;
+        } else if (args.count("show-nodes")) {
+            show_nodes(*tree);
         } else if (args.count("count-leaves")) {
             std::cout<<n_leaves(*tree)<<std::endl;
+        } else if (args.count("show-leaves")) {
+            show_leaf_nodes(*tree);
+        } else if (args.count("show-internal")) {
+            show_internal_nodes(*tree);
         } else if (args.count("indented-table")) {
             indented_table_of_node_counts(std::cout, *tree);
         } else if (args.count("write-taxonomy")) {

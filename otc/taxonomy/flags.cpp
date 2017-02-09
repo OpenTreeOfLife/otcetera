@@ -108,7 +108,7 @@ namespace otc
         return flag_from_string(start, end);
     }
 
-    std::bitset<32> flags_from_string(const char* start, const char* end)
+    tax_flags flags_from_string(const char* start, const char* end)
     {
         assert(start <= end);
 
@@ -125,14 +125,14 @@ namespace otc
         return flags;
     }
 
-    std::bitset<32> flags_from_string(const string& s)
+    tax_flags flags_from_string(const string& s)
     {
         const char* start = s.c_str();
         const char* end = start + s.length();
         return flags_from_string(start, end);
     }
 
-    std::bitset<32> cleaning_flags_from_config_file(const string& filename)
+    tax_flags cleaning_flags_from_config_file(const string& filename)
     {
         boost::property_tree::ptree pt;
         boost::property_tree::ini_parser::read_ini(filename, pt);
@@ -147,14 +147,13 @@ namespace otc
         return matches[0];
     }
 
-    std::string flags_to_string(const std::bitset<32> flags)
+    std::string flags_to_string(const tax_flags flags)
     {
         vector<string> f = flags_to_string_vec(flags);
         return boost::algorithm::join(f, ", ");
     }
 
-    std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags)
-    {
+    std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags) {
         vector<string> f;
         for(int i=0;i<32;i++) {
             if (flags.test(i)) {
