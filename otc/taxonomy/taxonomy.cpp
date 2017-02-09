@@ -379,6 +379,52 @@ map<string, TaxonomicRank> rankNameToEnum =
     };
 
 const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
+
+template<typename T>
+void process_source_info_vec(const std::vector<std::string> & vs,
+                             RTRichTaxTreeData & tree_data,
+                             T & data,
+                             const RTRichTaxNode * this_node) {
+    for (auto src_entry : vs) {
+        auto pref_id = split_string(src_entry, ':');
+        if (pref_id.size() != 2) {
+            throw OTCError() << "Expecting exactly 1 colon in a source ID string. Found: \"" << src_entry << "\".";
+        }
+        const string & prefix = *pref_id.begin();
+        if (indexed_source_prefixes.count(prefix) == 0) {
+            continue;
+        }
+        const string & id_str = *pref_id.rbegin();
+        data.sources.push_back(src_entry);
+        std::size_t pos;
+        //LOG(INFO) << src_entry;
+        try {
+            unsigned long foreign_id  = std::stoul(id_str.c_str(), &pos);
+            if (pos < id_str.length()) {
+                throw OTCError() << "Could not convert ID to unsigned long \"" << src_entry << "\"";
+            }
+            if (prefix == "ncbi") {
+                tree_data.ncbi_id_map[foreign_id] = this_node;
+            } else if (prefix == "gbif") {
+                tree_data.gbif_id_map[foreign_id] = this_node;
+            } else if (prefix == "worms") {
+                tree_data.worms_id_map[foreign_id] = this_node;
+            } else if (prefix == "if") {
+                tree_data.if_id_map[foreign_id] = this_node;
+            } else if (prefix == "irmng") {
+                tree_data.irmng_id_map[foreign_id] = this_node;
+            } else {
+                assert(false);
+            }
+        } catch (OTCError & x) {
+            throw;
+        } catch (...) {
+            LOG(WARNING) << "Could not convert ID to unsigned long \"" << src_entry << "\"";
+        }
+    }
+}
+
+
 // default behavior is to set ID and Name from line
 template <>
 inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
@@ -433,44 +479,59 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
     }
     data.rank = reit->second;
     auto vs = line.sourceinfoAsVec();
-    for (auto src_entry : vs) {
-        auto pref_id = split_string(src_entry, ':');
-        if (pref_id.size() != 2) {
-            throw OTCError() << "Expecting exactly 1 colon in a source ID string. Found: \"" << src_entry << "\".";
-        }
-        const string & prefix = *pref_id.begin();
-        if (indexed_source_prefixes.count(prefix) == 0) {
-            continue;
-        }
-        const string & id_str = *pref_id.rbegin();
-        data.sources.push_back(src_entry);
-        std::size_t pos;
-        //LOG(INFO) << src_entry;
-        try {
-            unsigned long foreign_id  = std::stoul(id_str.c_str(), &pos);
-            if (pos < id_str.length()) {
-                throw OTCError() << "Could not convert ID to unsigned long \"" << src_entry << "\"";
-            }
-            if (prefix == "ncbi") {
-                tree_data.ncbi_id_map[foreign_id] = this_node;
-            } else if (prefix == "gbif") {
-                tree_data.gbif_id_map[foreign_id] = this_node;
-            } else if (prefix == "worms") {
-                tree_data.worms_id_map[foreign_id] = this_node;
-            } else if (prefix == "if") {
-                tree_data.if_id_map[foreign_id] = this_node;
-            } else if (prefix == "irmng") {
-                tree_data.irmng_id_map[foreign_id] = this_node;
-            } else {
-                assert(false);
-            }
-        } catch (OTCError & x) {
-            throw;
-        } catch (...) {
-            LOG(WARNING) << "Could not convert ID to unsigned long \"" << src_entry << "\"";
-        }
-    }
+    process_source_info_vec(vs, tree_data, data, this_node);
+}
 
+
+
+void RichTaxonomy::readSynonyms() {
+    RTRichTaxTreeData & tree_data = this->tree->getData();
+    string filename = path + "/synonyms.tsv";
+    std::ifstream synonyms_file(filename);
+        if (not synonyms_file) {
+        throw OTCError() << "Could not open file '" << filename << "'.";
+    }
+    // 2. Read and check the first line
+    string line;
+    std::getline(synonyms_file, line);
+    if (line != "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t") {
+        throw OTCError() << "First line of file '" << filename << "' is not a synonym header.";
+    }
+    while(std::getline(synonyms_file, line)) {
+        const char* start[5];
+        const char* end[5];
+        start[0] = line.c_str();
+        for(int i=0; i < 4; i++) {
+            end[i] = std::strstr(start[i],"\t|\t");
+            start[i + 1] = end[i] + 3;
+        }
+        end[4] = start[0] + line.length() - 3 ; // -3 for the \t|\t
+        char *temp;
+        string name = string(start[0], end[0] - start[0]);
+        unsigned long id = std::strtoul(start[1], &temp, 10);
+        const RTRichTaxNode * primary = tree_data.id2node.at(id);
+        string sourceinfo = string(start[4], end[4] - start[4]);
+        auto nit = tree_data.name2node.lower_bound(name);
+
+        typedef std::pair<string, const RTRichTaxNode *> name_map_pair;
+        if (nit->first != name) {
+            nit = tree_data.name2node.insert(nit, name_map_pair(name, primary));
+        } else {
+            if (nit->second != nullptr) {
+                tree_data.homonym2node[name].push_back(nit->second);
+                nit->second = nullptr;
+            }
+            tree_data.homonym2node[name].push_back(primary);
+        }
+        this->synonyms.push_back(TaxonomicJuniorSynonym());
+        TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
+        tjs.primary = primary;
+        tjs.name_map_it = nit;
+        auto vs = comma_separated_as_vec(sourceinfo);
+        process_source_info_vec(vs, tree_data, tjs, primary);
+        RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
+        mp->getData().junior_synonyms.push_back(&tjs);
+    }
 }
 
 RichTaxonomy::RichTaxonomy(const Taxonomy & t)
@@ -481,9 +542,10 @@ RichTaxonomy::RichTaxonomy(const Taxonomy & t)
     version_number(t.version_number) {
     auto nodeNamer = [](const auto&){return string();};
     this->tree = t.getTree<RichTaxTree>(nodeNamer);
-    cerr << "End of RichTaxonomy ctor. Enter something....\n";
-    char c;
-    std::cin >> c;
+    this->readSynonyms();
+    //cerr << "End of RichTaxonomy ctor. Enter something....\n";
+    //char c;
+    //std::cin >> c;
 }
 
 } //namespace otc

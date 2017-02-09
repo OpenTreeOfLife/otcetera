@@ -77,6 +77,18 @@ enum TaxonomicRank {
 };
 
 
+
+inline std::vector<std::string> comma_separated_as_vec(const std::string & sourceinfo) {
+    std::vector<std::string> mt;
+    if (sourceinfo.empty()) {
+        return mt;
+    }
+    std::string sis = std::string(sourceinfo);
+    auto aslist = split_string(sis, ',');
+    mt.assign(aslist.begin(), aslist.end());
+    return mt;
+}
+
 struct taxonomy_record {
     std::string line;
     long id = 0;
@@ -92,14 +104,8 @@ struct taxonomy_record {
     taxonomy_record(taxonomy_record&& tr) = default;
     explicit taxonomy_record(const std::string& line);
     std::vector<std::string> sourceinfoAsVec() const {
-        std::vector<std::string> mt;
-        if (sourceinfo.empty()) {
-            return mt;
-        }
-        std::string sis = std::string(sourceinfo);
-        auto aslist = split_string(sis, ',');
-        mt.assign(aslist.begin(), aslist.end());
-        return mt;
+        std::string si = std::string(sourceinfo);
+        return comma_separated_as_vec(si);
     }
 };
 
@@ -131,6 +137,7 @@ struct Taxonomy: public std::vector<taxonomy_record> {
     Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
 };
 
+class TaxonomicJuniorSynonym;
 
 class RTRichTaxNodeData {
     public:
@@ -140,9 +147,20 @@ class RTRichTaxNodeData {
     typedef std::map<std::string, const RootedTreeNode<RTRichTaxNodeData> *>::iterator name_map_iterator;
     name_map_iterator name_map_it;
     name_map_iterator uniqname_map_it;
+    std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
 };
 
 typedef RootedTreeNode<RTRichTaxNodeData> RTRichTaxNode;
+
+class TaxonomicJuniorSynonym {
+    public:
+    nlohmann::json sources;
+    typedef std::map<std::string, const RootedTreeNode<RTRichTaxNodeData> *>::iterator name_map_iterator;
+    name_map_iterator name_map_it;
+    const RTRichTaxNode * primary;
+};
+
+
 
 class RTRichTaxTreeData {
     public:
@@ -174,6 +192,8 @@ struct RichTaxonomy {
     RichTaxonomy(const Taxonomy &);
     private:
     std::unique_ptr<RichTaxTree> tree;
+    std::list<TaxonomicJuniorSynonym> synonyms;
+    void readSynonyms();
 };
 
 
