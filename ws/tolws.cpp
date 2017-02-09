@@ -14,6 +14,12 @@
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/operations.hpp>
+// PID reporting from https://github.com/Corvusoft/restbed/blob/master/example/signal_handling/source/example.cpp
+#ifdef _WIN32
+    #include <process.h>
+#else
+    #include <unistd.h>
+#endif
 
 #include "otc/util.h"
 #include "otc/error.h"
@@ -1479,6 +1485,15 @@ void sigterm_handler( const int signal_number )
     }
 }
 
+void ready_handler( Service& )
+{
+#ifdef _WIN32
+    LOG(INFO) << "Service is ready PID is "<< _getpid();
+#else
+    LOG(INFO) << "Service is ready PID is "<< getpid();
+#endif
+}
+
 
 int main( const int argc, char** argv) {
     std::ios::sync_with_stdio(false);
@@ -1542,6 +1557,7 @@ int main( const int argc, char** argv) {
         
         Service service;
         global_service_ptr = &service;
+        service.set_ready_handler( ready_handler );
         service.publish( r_about );
         service.publish( r_node_info );
         service.publish( r_mrca );
@@ -1550,7 +1566,7 @@ int main( const int argc, char** argv) {
         service.publish( r_tax_about );
         service.set_signal_handler( SIGINT, sigterm_handler );
         service.set_signal_handler( SIGTERM, sigterm_handler );
-        LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...\n";
+        LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...";
         try {
             service.start( settings );
         } catch (std::exception & x) {

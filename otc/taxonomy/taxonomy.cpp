@@ -262,9 +262,9 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
         }
     }
 
-    for (auto rs : rank_strings) {
-        std::cerr << "rankstring: \"" << rs << "\"\n"; 
-    }
+    //for (auto rs : rank_strings) {
+    //    std::cerr << "rankstring: \"" << rs << "\"\n"; 
+    //}
 }
 
 std::string get_taxonomy_dir(const variables_map& args) {
