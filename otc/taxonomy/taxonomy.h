@@ -76,6 +76,17 @@ enum TaxonomicRank {
     RANK_NO_RANK_TERMINAL
 };
 
+extern const std::map<TaxonomicRank, std::string> rankEnumToName;
+extern const std::string emptyStringForMissingRank;
+
+inline const std::string & to_string(const TaxonomicRank &r) {
+    auto i = rankEnumToName.find(r);
+    if (i == rankEnumToName.end()) {
+        return emptyStringForMissingRank;
+    }
+    return i->second;
+}
+
 
 
 inline std::vector<std::string> comma_separated_as_vec(const std::string & sourceinfo) {
@@ -190,10 +201,25 @@ struct RichTaxonomy {
     }
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     RichTaxonomy(const Taxonomy &);
+    RichTaxonomy(RichTaxonomy &&) = default;
+    const RTRichTaxNode * taxonFromId(OttId ott_id) const {
+        //Returns node * or nullptr if not found.
+        const auto & td = tree->getData();
+        auto i2n_it = td.id2node.find(ott_id);
+        if (i2n_it == td.id2node.end()) {
+            auto fit = forwards.find(ott_id);
+            if (fit == forwards.end()) {
+                return nullptr;
+            }
+            return taxonFromId(fit->second);
+        }
+        return i2n_it->second;
+    }
     private:
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
     void readSynonyms();
+    RichTaxonomy(const RichTaxonomy &) = delete;
 };
 
 

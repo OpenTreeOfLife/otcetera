@@ -332,7 +332,7 @@ RichTaxonomy load_rich_taxonomy(const variables_map& args) {
     return {tax};
 }
 
-map<string, TaxonomicRank> rankNameToEnum = 
+const map<string, TaxonomicRank> rankNameToEnum = 
     {   {"domain", RANK_DOMAIN},
         {"superkingdom", RANK_SUPERKINGDOM},
         {"kingdom", RANK_KINGDOM},
@@ -377,6 +377,53 @@ map<string, TaxonomicRank> rankNameToEnum =
         {"no rank - terminal", RANK_NO_RANK_TERMINAL},
         {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
     };
+
+const map<TaxonomicRank, string> rankEnumToName = 
+    {   {RANK_DOMAIN, "domain"},
+        {RANK_SUPERKINGDOM, "superkingdom"},
+        {RANK_KINGDOM, "kingdom"},
+        {RANK_SUBKINGDOM, "subkingdom"},
+        {RANK_INFRAKINGDOM, "infrakingdom"},
+        {RANK_SUPERPHYLUM, "superphylum"},
+        {RANK_PHYLUM, "phylum"},
+        {RANK_DIVISION, "division"},
+        {RANK_SUBPHYLUM, "subphylum"},
+        {RANK_SUBDIVISION, "subdivision"},
+        {RANK_INFRAPHYLUM, "infraphylum"},
+        {RANK_SUPERCLASS, "superclass"},
+        {RANK_CLASS, "class"},
+        {RANK_SUBCLASS, "subclass"},
+        {RANK_INFRACLASS, "infraclass"},
+        {RANK_SUPERORDER, "superorder"},
+        {RANK_ORDER, "order"},
+        {RANK_SUBORDER, "suborder"},
+        {RANK_INFRAORDER, "infraorder"},
+        {RANK_PARVORDER, "parvorder"},
+        {RANK_SUPERFAMILY, "superfamily"},
+        {RANK_FAMILY, "family"},
+        {RANK_SUBFAMILY, "subfamily"},
+        {RANK_SUPERTRIBE, "supertribe"},
+        {RANK_TRIBE, "tribe"},
+        {RANK_SUBTRIBE, "subtribe"},
+        {RANK_GENUS, "genus"},
+        {RANK_SUBGENUS, "subgenus"},
+        {RANK_SECTION, "section"},
+        {RANK_SUBSECTION, "subsection"},
+        {RANK_SPECIES_GROUP, "species group"},
+        {RANK_SPECIES_SUBGROUP, "species subgroup"},
+        {RANK_SPECIES, "species"},
+        {RANK_SUBSPECIES, "subspecies"},
+        {RANK_INFRASPECIFICNAME, "infraspecificname"},
+        {RANK_FORMA, "forma"},
+        {RANK_SUBFORM, "subform"},
+        {RANK_VARIETAS, "varietas"},
+        {RANK_VARIETY, "variety"},
+        {RANK_SUBVARIETY, "subvariety"},
+        {RANK_NO_RANK, "no rank"},
+        {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
+        {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT
+    };
+const std::string emptyStringForMissingRank;
 
 const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
 

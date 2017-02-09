@@ -177,12 +177,10 @@ class TreesToServe {
         map<string, const SummaryTree_t *> id_to_tree;
         map<string, const SummaryTreeAnnotation *> id_to_annotations;
         string default_synth_id;
-        const Taxonomy * taxonomy_ptr = nullptr;
-        OttIdSet ott_id_set;
-        unique_ptr<TaxTree_t> taxonomy_tree;
+        const RichTaxonomy * taxonomy_ptr = nullptr;
         map<string, const string *> stored_strings;
         list<string> stored_strings_list;
-
+        const RichTaxTree * taxonomy_tree = nullptr;
     public:
         const string * getStoredString(const string & k) {
             const string * v = stored_strings[k];
@@ -194,32 +192,31 @@ class TreesToServe {
             return v;
         }
 
-        void setTaxonomy(const Taxonomy &taxonomy) {
+        void setTaxonomy(const RichTaxonomy &taxonomy) {
             assert(taxonomy_ptr == nullptr);
             taxonomy_ptr = &taxonomy;
-            ott_id_set.clear();
-            auto nodeNamer = [](const auto&){return string();};
-            taxonomy_tree = taxonomy.getTree<TaxTree_t>(nodeNamer);
+            taxonomy_tree = &(taxonomy.getTree());
         }
-        const Taxonomy & getTaxonomy() const {
+        const RichTaxonomy & getTaxonomy() const {
             assert(taxonomy_ptr != nullptr);
             return *taxonomy_ptr;
         }
-        void fillOttIdSet(const std::bitset<32> & flags) {
+        void fillOttIdSet(const std::bitset<32> & flags, OttIdSet & ott_id_set) {
             ott_id_set.clear();
             for (const auto nd : iter_node_const(*taxonomy_tree)) {
-                const auto & tax_record = nd->getData().taxonomy_line;
-                auto intersection = flags & tax_record->flags;
+                const auto & tax_record_flags = nd->getData().flags;
+                auto intersection = flags & tax_record_flags;
                 if (!intersection.any()) {
-                    ott_id_set.insert(tax_record->id);
+                    ott_id_set.insert(nd->getOttId());
                 }
             }
         }
         pair<SummaryTree_t &, SummaryTreeAnnotation &> getNewTreeAndAnnotations(const string & configfilename,
                                                                                 const string & filename) {
             
+            OttIdSet ott_id_set;
             auto cleaning_flags = cleaning_flags_from_config_file(configfilename);
-            fillOttIdSet(cleaning_flags);
+            fillOttIdSet(cleaning_flags, ott_id_set);
 
             assert(taxonomy_ptr != nullptr);
             ParsingRules parsingRules;
@@ -394,7 +391,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    const Taxonomy & taxonomy = tts.getTaxonomy();
+    const RichTaxonomy & taxonomy = tts.getTaxonomy();
     auto tree_and_ann = tts.getNewTreeAndAnnotations(config_path.native(), tree_path.native());
     try {
         SummaryTree_t & tree = tree_and_ann.first;
@@ -618,25 +615,29 @@ bool extract_from_request(const json & j, string opt_name, vector<string> & sett
     return false;
 }
 
-void add_taxon_info(const taxonomy_record & nd_taxon, json & taxonrepr) {
-    taxonrepr["tax_sources"] = nd_taxon.sourceinfoAsVec();
-    auto un = string(nd_taxon.uniqname);
-    auto n = string(nd_taxon.name);
+void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
+    const auto & taxon_data = nd_taxon.getData();
+    taxonrepr["tax_sources"] = taxon_data.sources;
+    auto un = string(taxon_data.uniqname_map_it->first);
+    auto n = string(taxon_data.name_map_it->first);
     taxonrepr["name"] = n;
     taxonrepr["uniqname"] = un;
-    auto r = string(nd_taxon.rank);
-    taxonrepr["rank"] = r;
-    taxonrepr["ott_id"] = nd_taxon.id;    
+    const auto & rs = to_string(taxon_data.rank);
+    taxonrepr["rank"] = rs;
+    taxonrepr["ott_id"] = nd_taxon.getOttId();    
 }
 
-void add_basic_node_info(const Taxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
+void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
     noderepr["node_id"] = nd.getName();
     noderepr["num_tips"] = nd.getData().num_tips;
     if (nd.hasOttId()) {
         auto nd_id = nd.getOttId();
-        const auto & nd_taxon = taxonomy.record_from_id(nd_id);
+        const auto * nd_taxon = taxonomy.taxonFromId(nd_id);
+        if (nd_taxon == nullptr) {
+            throw OTCError() << "OTT Id " << nd_id << " not found in taxonomy! Please report this bug";
+        }
         json taxon;
-        add_taxon_info(nd_taxon, taxon);
+        add_taxon_info(taxonomy, *nd_taxon, taxon);
         noderepr["taxon"] = taxon;
     }
 }
@@ -677,7 +678,7 @@ void add_node_support_info(const TreesToServe & tts,
                            const SumTreeNode_t & nd,
                            json & noderepr,
                            set<string> & usedSrcIds) {
-    const Taxonomy & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.getTaxonomy();
     const auto & d = nd.getData();
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
@@ -811,7 +812,7 @@ void tax_about_ws_method(const TreesToServe &tts,
 }
 
 
-inline void add_lineage(json & j, const SumTreeNode_t * focal, const Taxonomy & taxonomy, set<string> & usedSrcIds) {
+inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonomy & taxonomy, set<string> & usedSrcIds) {
     json lineage_arr;
     const SumTreeNode_t * anc = focal->getParent();
     if (!anc) {
@@ -831,7 +832,7 @@ inline void add_lineage(json & j, const SumTreeNode_t * focal, const Taxonomy & 
 
 inline void add_source_id_map(json & j,
                               const set<string> & usedSrcIds,
-                              const Taxonomy & taxonomy,
+                              const RichTaxonomy & taxonomy,
                               const SummaryTreeAnnotation * sta ) {
     json sim;
     for (auto srcTag : usedSrcIds) {
@@ -936,8 +937,11 @@ void mrca_ws_method(const TreesToServe & tts,
             }
         }
         json nt;
-        const auto & anc_taxon = taxonomy.record_from_id(anc->getOttId());
-        add_taxon_info(anc_taxon, nt);
+        const RTRichTaxNode * anc_taxon = taxonomy.taxonFromId(anc->getOttId());
+        if (anc_taxon == nullptr) {
+            throw OTCError() << "Ancd OTT Id " << anc->getOttId() << " not found in taxonomy! Please report this bug";
+        }
+        add_taxon_info(taxonomy, *anc_taxon, nt);
         response["nearest_taxon"] = nt;
     }
     response["mrca"] = mrcaj;
@@ -984,8 +988,8 @@ class NodeNamerSupportedByStasher {
     public:
         mutable set<const string *> study_id_set;
         NodeNameStyle nns;
-        const Taxonomy & taxonomy;
-        NodeNamerSupportedByStasher(NodeNameStyle in_nns, const Taxonomy &tax)
+        const RichTaxonomy & taxonomy;
+        NodeNamerSupportedByStasher(NodeNameStyle in_nns, const RichTaxonomy &tax)
             :nns(in_nns),
             taxonomy(tax) {
         }
@@ -997,8 +1001,11 @@ class NodeNamerSupportedByStasher {
                 study_id_set.insert(p.first);
             }
             if (nns != NodeNameStyle::NNS_ID_ONLY && nd->hasOttId()) {
-                const auto & tr = taxonomy.record_from_id(nd->getOttId());
-                const auto & taxon_name = tr.name;
+                const auto * tr = taxonomy.taxonFromId(nd->getOttId());
+                if (tr == nullptr) {
+                    throw OTCError() << "OTT Id " << nd->getOttId() << " in namer not found in taxonomy! Please report this bug";
+                }
+                const auto & taxon_name = tr->getData().uniqname_map_it->first;
                 if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
                     string ret;
                     ret.reserve(taxon_name.length() + 1 + id_str.length());
@@ -1137,7 +1144,7 @@ template<typename T>
 inline void write_arguson(json & j,
                           const TreesToServe & tts,
                           const SummaryTreeAnnotation * sta,
-                          const Taxonomy & taxonomy,
+                          const RichTaxonomy & taxonomy,
                           T nd,
                           long height_limit,
                           set<string> & usedSrcIds) {
@@ -1468,12 +1475,10 @@ int main( const int argc, char** argv) {
         const fs::path topdir{args["tree-dir"].as<string>()};
         // Must load taxonomy before trees
         LOG(INFO) << "reading taxonomy...";
-        auto rtaxonomy = load_rich_taxonomy(args);
+        RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
         //cerr << "back in main. Enter something....\n";
         //char c;
         //std::cin >> c;
-        return 1;
-        auto taxonomy = load_taxonomy(args);
         
         tts.setTaxonomy(taxonomy);
         if (!read_trees(topdir, tts)) {
