@@ -385,10 +385,45 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
                                            const taxonomy_record & line,
                                            std::function<std::string(const taxonomy_record&)>,
                                            RichTaxTree & tree) {
+    RTRichTaxNode * this_node = &nd;
     nd.setOttId(line.id);
     auto & data = nd.getData();
     auto & tree_data = tree.getData();
+    nd.setOttId(line.id);
+    tree_data.id2node[nd.getOttId()] = this_node;
+    string name = string(line.name);
+    auto nit = tree_data.name2node.lower_bound(name);
+    typedef std::pair<string, const RTRichTaxNode *> name_map_pair;
+    if (nit->first != name) {
+        nit = tree_data.name2node.insert(nit, name_map_pair(name, this_node));
+    } else {
+        if (nit->second != nullptr) {
+            tree_data.homonym2node[name].push_back(nit->second);
+            nit->second = nullptr;
+        }
+        tree_data.homonym2node[name].push_back(this_node);
+    }
+    data.name_map_it = nit;
+    string uname = string(line.uniqname);
+    if (uname != name) {
+        auto r2 = tree_data.name2node.insert(name_map_pair(uname, this_node));
+        assert(r2.second); // should be uniq.
+        data.uniqname_map_it = r2.first;
+    } else {
+        data.uniqname_map_it = data.name_map_it;
+    }
+    data.flags = line.flags;
+    // If the flag combination is new, store the JSON representation
+    if (tree_data.flags2json.count(data.flags) == 0) {
+        vector<string> vf = flags_to_string_vec(data.flags);
+        tree_data.flags2json[data.flags] = nlohmann::json();
+        auto & fj = tree_data.flags2json[data.flags];
+        for (auto fs : vf) {
+            fj.push_back(fs);
+        }
+    }
     const string rank = string(line.rank);
+
     if (rank == "natio") {
         LOG(WARNING) << "Converting rank natio to RANK_INFRASPECIFICNAME";
     }
@@ -398,7 +433,6 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
     }
     data.rank = reit->second;
     auto vs = line.sourceinfoAsVec();
-    RTRichTaxNode * this_node = &nd;
     for (auto src_entry : vs) {
         auto pref_id = split_string(src_entry, ':');
         if (pref_id.size() != 2) {
@@ -447,6 +481,9 @@ RichTaxonomy::RichTaxonomy(const Taxonomy & t)
     version_number(t.version_number) {
     auto nodeNamer = [](const auto&){return string();};
     this->tree = t.getTree<RichTaxTree>(nodeNamer);
+    cerr << "End of RichTaxonomy ctor. Enter something....\n";
+    char c;
+    std::cin >> c;
 }
 
 } //namespace otc

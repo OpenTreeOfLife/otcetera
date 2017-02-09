@@ -136,7 +136,12 @@ class RTRichTaxNodeData {
     public:
     TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
     nlohmann::json sources;
+    std::bitset<32> flags;
+    typedef std::map<std::string, const RootedTreeNode<RTRichTaxNodeData> *>::iterator name_map_iterator;
+    name_map_iterator name_map_it;
+    name_map_iterator uniqname_map_it;
 };
+
 typedef RootedTreeNode<RTRichTaxNodeData> RTRichTaxNode;
 
 class RTRichTaxTreeData {
@@ -146,6 +151,11 @@ class RTRichTaxTreeData {
     std::map<unsigned long, const RTRichTaxNode *> worms_id_map;
     std::map<unsigned long, const RTRichTaxNode *> if_id_map;
     std::map<unsigned long, const RTRichTaxNode *> irmng_id_map;
+    std::unordered_map<std::bitset<32>, nlohmann::json> flags2json;
+    std::map<std::string, const RTRichTaxNode *> name2node; // null if homonym, then check homonym2node
+
+    std::map<OttId, const RTRichTaxNode *> id2node;
+    std::map<std::string, std::vector<const RTRichTaxNode *> > homonym2node;
 };
 
 typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;

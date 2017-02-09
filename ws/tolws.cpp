@@ -1469,6 +1469,9 @@ int main( const int argc, char** argv) {
         // Must load taxonomy before trees
         LOG(INFO) << "reading taxonomy...";
         auto rtaxonomy = load_rich_taxonomy(args);
+        cerr << "back in main. Enter something....\n";
+        char c;
+        std::cin >> c;
         return 1;
         auto taxonomy = load_taxonomy(args);
         
