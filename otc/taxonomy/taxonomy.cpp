@@ -597,9 +597,9 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, long kr)
     auto nodeNamer = [](const auto&){return string();};
     this->tree = getTree<RichTaxTree>(nodeNamer);
     this->readSynonyms();
-    //cerr << "End of RichTaxonomy ctor. Enter something....\n";
-    //char c;
-    //std::cin >> c;
+    // Could call:
+    // index.clear(); 
+    // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move
 }
 
 string format_with_taxonomy(const string& orig, const string& format, const taxonomy_record& rec) {
