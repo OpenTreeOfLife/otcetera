@@ -328,8 +328,21 @@ Taxonomy load_taxonomy(const variables_map& args) {
 }
 
 RichTaxonomy load_rich_taxonomy(const variables_map& args) {
-    Taxonomy tax = load_taxonomy(args);
-    return {tax};
+    string taxonomy_dir = get_taxonomy_dir(args);
+    long keep_root = -1;
+    if (args.count("root")) {
+        keep_root = args["root"].as<long>();
+    } else if (args.count("config")) {
+        keep_root = root_ott_id_from_file(args["config"].as<string>());
+    }
+    bitset<32> cleaning_flags = 0;
+    if (args.count("config")) {
+        cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
+    }
+    if (args.count("clean")) {
+        cleaning_flags |= flags_from_string(args["clean"].as<string>());
+    }
+    return {taxonomy_dir, cleaning_flags, keep_root};
 }
 
 const map<string, TaxonomicRank> rankNameToEnum = 
@@ -442,7 +455,7 @@ void process_source_info_vec(const std::vector<std::string> & vs,
             continue;
         }
         const string & id_str = *pref_id.rbegin();
-        data.sources.push_back(src_entry);
+        //data.sources.push_back(src_entry);
         std::size_t pos;
         //LOG(INFO) << src_entry;
         try {
@@ -484,9 +497,10 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
     auto & tree_data = tree.getData();
     nd.setOttId(line.id);
     tree_data.id2node[nd.getOttId()] = this_node;
-    string name = string(line.name);
+    data.tax_record = &line;
+    auto name = data.getName();
     auto nit = tree_data.name2node.lower_bound(name);
-    typedef std::pair<string, const RTRichTaxNode *> name_map_pair;
+    typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
     if (nit->first != name) {
         nit = tree_data.name2node.insert(nit, name_map_pair(name, this_node));
     } else {
@@ -496,27 +510,23 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
         }
         tree_data.homonym2node[name].push_back(this_node);
     }
-    data.name_map_it = nit;
-    string uname = string(line.uniqname);
+    auto uname = data.getUniqname();
     if (uname != name) {
         auto r2 = tree_data.name2node.insert(name_map_pair(uname, this_node));
         assert(r2.second); // should be uniq.
-        data.uniqname_map_it = r2.first;
-    } else {
-        data.uniqname_map_it = data.name_map_it;
     }
-    data.flags = line.flags;
+    auto flags = data.getFlags();
     // If the flag combination is new, store the JSON representation
-    if (tree_data.flags2json.count(data.flags) == 0) {
-        vector<string> vf = flags_to_string_vec(data.flags);
-        tree_data.flags2json[data.flags] = nlohmann::json();
-        auto & fj = tree_data.flags2json[data.flags];
+    if (tree_data.flags2json.count(flags) == 0) {
+        vector<string> vf = flags_to_string_vec(flags);
+        tree_data.flags2json[flags] = nlohmann::json();
+        auto & fj = tree_data.flags2json[flags];
         for (auto fs : vf) {
             fj.push_back(fs);
         }
     }
+    /*
     const string rank = string(line.rank);
-
     if (rank == "natio") {
         LOG(WARNING) << "Converting rank natio to RANK_INFRASPECIFICNAME";
     }
@@ -525,6 +535,7 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
         throw OTCError() << "Rank string not recognized: \"" << rank << "\"";
     }
     data.rank = reit->second;
+    */
     auto vs = line.sourceinfoAsVec();
     process_source_info_vec(vs, tree_data, data, this_node);
 }
@@ -558,22 +569,22 @@ void RichTaxonomy::readSynonyms() {
         unsigned long id = std::strtoul(start[1], &temp, 10);
         const RTRichTaxNode * primary = tree_data.id2node.at(id);
         string sourceinfo = string(start[4], end[4] - start[4]);
+        
+        this->synonyms.emplace_back(name, primary, sourceinfo);
+        TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
         auto nit = tree_data.name2node.lower_bound(name);
-
-        typedef std::pair<string, const RTRichTaxNode *> name_map_pair;
-        if (nit->first != name) {
-            nit = tree_data.name2node.insert(nit, name_map_pair(name, primary));
+        boost::string_ref name_ref = tjs.name;
+        typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
+        if (nit->first != name_ref) {
+            nit = tree_data.name2node.insert(nit, name_map_pair(name_ref, primary));
         } else {
             if (nit->second != nullptr) {
-                tree_data.homonym2node[name].push_back(nit->second);
+                tree_data.homonym2node[name_ref].push_back(nit->second);
                 nit->second = nullptr;
             }
-            tree_data.homonym2node[name].push_back(primary);
+            tree_data.homonym2node[name_ref].push_back(primary);
         }
-        this->synonyms.push_back(TaxonomicJuniorSynonym());
-        TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
-        tjs.primary = primary;
-        tjs.name_map_it = nit;
+        
         auto vs = comma_separated_as_vec(sourceinfo);
         process_source_info_vec(vs, tree_data, tjs, primary);
         RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
@@ -581,14 +592,10 @@ void RichTaxonomy::readSynonyms() {
     }
 }
 
-RichTaxonomy::RichTaxonomy(const Taxonomy & t)
-    :forwards(t.forwards),
-    keep_root(t.keep_root),
-    path(t.path),
-    version(t.version),
-    version_number(t.version_number) {
+RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, long kr)
+    :Taxonomy(dir, cf, kr) {
     auto nodeNamer = [](const auto&){return string();};
-    this->tree = t.getTree<RichTaxTree>(nodeNamer);
+    this->tree = getTree<RichTaxTree>(nodeNamer);
     this->readSynonyms();
     //cerr << "End of RichTaxonomy ctor. Enter something....\n";
     //char c;
@@ -690,5 +697,6 @@ string format_without_taxonomy(const string& orig, const string& format) {
     } while (pos < static_cast<int>(format.size()));
     return result;
 }
+
 
 } //namespace otc

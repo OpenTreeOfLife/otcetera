@@ -101,6 +101,16 @@ inline std::vector<std::string> comma_separated_as_vec(const std::string & sourc
     return mt;
 }
 
+inline nlohmann::json sources_vec_as_json(const std::vector<std::string> & vs) {
+    nlohmann::json j;
+    for (auto src_entry : vs) {
+        j.push_back(src_entry);
+    }
+    return j;
+
+}
+
+
 struct taxonomy_record {
     std::string line;
     long id = 0;
@@ -153,18 +163,25 @@ class TaxonomicJuniorSynonym;
 
 class RTRichTaxNodeData {
     public:
-    TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
-    nlohmann::json sources;
-    std::bitset<32> flags;
-    typedef std::map<std::string, const RootedTreeNode<RTRichTaxNodeData> *>::iterator name_map_iterator;
-    name_map_iterator name_map_it;
-    name_map_iterator uniqname_map_it;
+    //TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
+    //nlohmann::json sources;
+    const taxonomy_record * tax_record;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
-    const std::string & getName() const {
-        return name_map_it->first;
+    boost::string_ref getName() const {
+        return tax_record->name;
     }
-    const std::string & getUniqname() const {
-        return uniqname_map_it->first;
+    boost::string_ref getUniqname() const {
+        return tax_record->uniqname;
+    }
+    boost::string_ref getRank() const {
+        return tax_record->rank;
+    }
+    const std::bitset<32> getFlags() const {
+        return tax_record->flags;
+    }
+    nlohmann::json getSourcesJSON() const {
+        auto vs = tax_record->sourceinfoAsVec();
+        return sources_vec_as_json(vs);
     }
 };
 
@@ -172,16 +189,23 @@ typedef RootedTreeNode<RTRichTaxNodeData> RTRichTaxNode;
 
 class TaxonomicJuniorSynonym {
     public:
-    nlohmann::json sources;
-    typedef std::map<std::string, const RootedTreeNode<RTRichTaxNodeData> *>::iterator name_map_iterator;
-    name_map_iterator name_map_it;
+    TaxonomicJuniorSynonym(const std::string & namestring,
+                           const RTRichTaxNode *senior_synonym,
+                           const std::string & sources)
+        :name(namestring),
+        source_string(sources),
+        primary(senior_synonym) {
+    }
+    const std::string name;
+    const std::string source_string;
     const RTRichTaxNode * primary;
     const std::string & getName() const {
-        return name_map_it->first;
+        return name;
     }
-    
+    // deleting copy ctor because we are using string_refs, so it is important
+    //    that the object not be copied.
+    TaxonomicJuniorSynonym(const TaxonomicJuniorSynonym &) = delete;
 };
-
 
 
 class RTRichTaxTreeData {
@@ -192,26 +216,20 @@ class RTRichTaxTreeData {
     std::map<unsigned long, const RTRichTaxNode *> if_id_map;
     std::map<unsigned long, const RTRichTaxNode *> irmng_id_map;
     std::unordered_map<std::bitset<32>, nlohmann::json> flags2json;
-    std::map<std::string, const RTRichTaxNode *> name2node; // null if homonym, then check homonym2node
+    std::map<boost::string_ref, const RTRichTaxNode *> name2node; // null if homonym, then check homonym2node
 
     std::map<OttId, const RTRichTaxNode *> id2node;
-    std::map<std::string, std::vector<const RTRichTaxNode *> > homonym2node;
+    std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym2node;
 };
 
 typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;
 
-struct RichTaxonomy {
-    std::unordered_map<long,long> forwards;
-    long keep_root;
-    std::bitset<32> cleaning_flags;
-    std::string path;
-    std::string version;
-    std::string version_number;
-    const RichTaxTree & getTree() const {
+struct RichTaxonomy : public Taxonomy {
+    const RichTaxTree & getTaxTree() const {
         return *tree;
     }
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-    RichTaxonomy(const Taxonomy &);
+    RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
     RichTaxonomy(RichTaxonomy &&) = default;
     const RTRichTaxNode * taxonFromId(OttId ott_id) const {
         //Returns node * or nullptr if not found.

@@ -11,6 +11,7 @@
 #include <csignal>
 #include <sstream>
 #include <thread>
+#include <ctime>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -203,7 +204,7 @@ class TreesToServe {
         void setTaxonomy(const RichTaxonomy &taxonomy) {
             assert(taxonomy_ptr == nullptr);
             taxonomy_ptr = &taxonomy;
-            taxonomy_tree = &(taxonomy.getTree());
+            taxonomy_tree = &(taxonomy.getTaxTree());
         }
         const RichTaxonomy & getTaxonomy() const {
             assert(taxonomy_ptr != nullptr);
@@ -212,7 +213,7 @@ class TreesToServe {
         void fillOttIdSet(const std::bitset<32> & flags, OttIdSet & ott_id_set) {
             ott_id_set.clear();
             for (const auto nd : iter_node_const(*taxonomy_tree)) {
-                const auto & tax_record_flags = nd->getData().flags;
+                const auto & tax_record_flags = nd->getData().getFlags();
                 auto intersection = flags & tax_record_flags;
                 if (!intersection.any()) {
                     ott_id_set.insert(nd->getOttId());
@@ -641,13 +642,10 @@ bool extract_from_request(const json & j, string opt_name, vector<string> & sett
 
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.getData();
-    taxonrepr["tax_sources"] = taxon_data.sources;
-    auto un = string(taxon_data.uniqname_map_it->first);
-    auto n = string(taxon_data.name_map_it->first);
-    taxonrepr["name"] = n;
-    taxonrepr["uniqname"] = un;
-    const auto & rs = to_string(taxon_data.rank);
-    taxonrepr["rank"] = rs;
+    taxonrepr["tax_sources"] = taxon_data.getSourcesJSON();
+    taxonrepr["name"] = string(taxon_data.getName());
+    taxonrepr["uniqname"] = string(taxon_data.getUniqname());
+    taxonrepr["rank"] = string(taxon_data.getRank());
     taxonrepr["ott_id"] = nd_taxon.getOttId();    
 }
 
@@ -1029,16 +1027,16 @@ class NodeNamerSupportedByStasher {
                 if (tr == nullptr) {
                     throw OTCError() << "OTT Id " << nd->getOttId() << " in namer not found in taxonomy! Please report this bug";
                 }
-                const auto & taxon_name = tr->getData().uniqname_map_it->first;
+                string taxon_name = string(tr->getData().getUniqname());
                 if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
                     string ret;
                     ret.reserve(taxon_name.length() + 1 + id_str.length());
-                    ret = string(taxon_name);
+                    ret = taxon_name;
                     ret += ' ';
                     ret += id_str;
                     return ret;    
                 } else {
-                    return string(taxon_name);
+                    return taxon_name;
                 }
             }
             return id_str;
@@ -1222,16 +1220,16 @@ void taxon_info_ws_method(const TreesToServe & tts,
                           int & status_code) {
     const auto & taxonomy = tts.getTaxonomy();
     assert(taxon_node != nullptr);
-    const auto & taxonomy_tree = taxonomy.getTree();
+    const auto & taxonomy_tree = taxonomy.getTaxTree();
     const auto & taxonomy_tree_data = taxonomy_tree.getData();
     const auto & node_data = taxon_node->getData();
     json response;
     response["source"] = taxonomy.version;
     response["ott_id"] = taxon_node->getOttId();
-    response["name"] = node_data.getName();
-    response["uniqname"] = node_data.getUniqname();
-    response["tax_sources"] = node_data.sources;
-    response["flags"] = flags_to_string_vec(node_data.flags);
+    response["name"] = string(node_data.getName());
+    response["uniqname"] = string(node_data.getUniqname());
+    response["tax_sources"] = node_data.getSourcesJSON();
+    response["flags"] = flags_to_string_vec(node_data.getFlags());
     json syn_list;
     for (auto tjs : node_data.junior_synonyms) {
         syn_list.push_back(tjs->getName());
@@ -1545,7 +1543,7 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
         bool supplied_source_id = false;
         const RTRichTaxNode * taxon_node = nullptr;
         const auto & taxonomy = tts.getTaxonomy();
-        const auto & taxonomy_tree = taxonomy.getTree();
+        const auto & taxonomy_tree = taxonomy.getTaxTree();
         const auto & taxonomy_tree_data = taxonomy_tree.getData();
         if (status_code == OK) {
             supplied_ott_id = extract_from_request(parsedargs, "ott_id", ott_id, rbody, status_code);
@@ -1664,6 +1662,8 @@ void ready_handler( Service& )
 
 
 int main( const int argc, char** argv) {
+    time_t start_time;
+    time(&start_time);
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);
@@ -1683,17 +1683,14 @@ int main( const int argc, char** argv) {
         // Must load taxonomy before trees
         LOG(INFO) << "reading taxonomy...";
         RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
-        for (auto i : taxonomy.getTree().getData().id2node) {
-            cerr << "ott id = " << i.    first << '\n';
-        }
-        //cerr << "back in main. Enter something....\n";
-        //char c;
-        //std::cin >> c;
-        
+        time_t post_tax_time;
+        time(&post_tax_time);
         tts.setTaxonomy(taxonomy);
         if (!read_trees(topdir, tts)) {
             return 2;
         }
+        time_t post_trees_time;
+        time(&post_trees_time);
         //
         if (tts.getNumTrees() == 0) {
             cerr << "No tree to serve. Exiting...\n";
@@ -1742,6 +1739,13 @@ int main( const int argc, char** argv) {
         service.set_signal_handler( SIGINT, sigterm_handler );
         service.set_signal_handler( SIGTERM, sigterm_handler );
         LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...";
+        time_t service_prep_time;
+        time(&service_prep_time);
+        LOG(INFO) << "Taxonomy reading took " << difftime(post_tax_time, start_time) << " seconds.";
+        LOG(INFO) << "Tree reading took " << difftime(post_trees_time, post_tax_time) << " seconds.";
+        LOG(INFO) << "Service prep took " << difftime(service_prep_time, post_trees_time) << " seconds.";
+        LOG(INFO) << "Total boot took " << difftime(service_prep_time, start_time) << " seconds.";
+        
         try {
             service.start( settings );
         } catch (std::exception & x) {
