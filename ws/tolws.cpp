@@ -1615,7 +1615,7 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
         }
         if (status_code == OK && supplied_ott_id) {
             taxon_node = taxonomy.taxonFromId(ott_id);
-            if (taxon_node) {
+            if (taxon_node == nullptr) {
                 rbody = "Unrecognized OTT ID: ";
                 rbody += to_string(ott_id);
                 status_code = 400;
@@ -1683,6 +1683,9 @@ int main( const int argc, char** argv) {
         // Must load taxonomy before trees
         LOG(INFO) << "reading taxonomy...";
         RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
+        for (auto i : taxonomy.getTree().getData().id2node) {
+            cerr << "ott id = " << i.    first << '\n';
+        }
         //cerr << "back in main. Enter something....\n";
         //char c;
         //std::cin >> c;
