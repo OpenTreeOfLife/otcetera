@@ -12,7 +12,7 @@
 #include <fstream>
 #include <regex>
 #include <boost/filesystem/operations.hpp>
-
+#include <boost/algorithm/string/join.hpp>
 namespace fs = boost::filesystem;
 
 #include "otc/error.h"
@@ -33,6 +33,7 @@ using std::bitset;
 using std::ofstream;
 using std::map;
 using std::set;
+using nlohmann::json;
 
 using boost::string_ref;
 
@@ -519,7 +520,7 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
     // If the flag combination is new, store the JSON representation
     if (tree_data.flags2json.count(flags) == 0) {
         vector<string> vf = flags_to_string_vec(flags);
-        tree_data.flags2json[flags] = nlohmann::json();
+        tree_data.flags2json[flags] = json();
         auto & fj = tree_data.flags2json[flags];
         for (auto fs : vf) {
             fj.push_back(fs);
@@ -698,5 +699,62 @@ string format_without_taxonomy(const string& orig, const string& format) {
     return result;
 }
 
+
+string extract_long_as_string(const json & j, string opt_name) {
+    long r;
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_number()) {
+            r = opt->get<long>();
+            string rs = std::to_string(r);
+            return rs;
+        }
+    }
+    throw OTCError() << "Expecting a \"" << opt_name << "\" property that refers to an integer.";
+}
+
+string extract_string(const json & j, string opt_name) {
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_number()) {
+            return opt->get<string>();
+        }
+    }
+    throw OTCError() << "Expecting a \"" << opt_name << "\" property that refers to an string.";
+}
+
+void RichTaxonomy::addTaxonomicAdditionString(const std::string &s) {
+    json j;
+    try {
+        j = json::parse(s);
+    } catch (std::exception & x) {
+        throw OTCError() << "Error parsing JSON for taxonomic addition: " << x.what();
+    }
+    auto tax_arr_it = j.find("taxa");
+    if (tax_arr_it == j.end() || !tax_arr_it->is_array()) {
+        throw OTCError() << "Expecting a taxonomic addition to have \"taxa\" property referring to an array.";
+    }
+    auto tax_arr = j["taxa"];
+    string amend_id = extract_string(j, "id");
+    for (json::const_iterator tax_add_it = tax_arr.begin(); tax_add_it != tax_arr.end(); ++tax_add_it) {
+        vector<string> elements;
+        const json & taxon_addition = *tax_add_it;
+        elements.reserve(8);
+        string ott_id = extract_long_as_string(taxon_addition, "ott_id");
+        string source = amend_id;
+        source += ":";
+        source += ott_id;
+        elements.push_back(ott_id);
+        elements.push_back(extract_long_as_string(taxon_addition, "parent"));
+        elements.push_back(extract_string(taxon_addition, "name"));
+        elements.push_back(extract_string(taxon_addition, "rank"));
+        elements.push_back(source);
+        elements.push_back(string());
+        elements.push_back(string());
+        elements.push_back(string());
+        string fake_line = boost::algorithm::join(elements, "\t|\t");
+        //process_taxonomy_line(fake_line);
+    }
+}
 
 } //namespace otc

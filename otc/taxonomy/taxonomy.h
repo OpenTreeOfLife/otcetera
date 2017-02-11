@@ -244,6 +244,7 @@ struct RichTaxonomy : public Taxonomy {
         }
         return i2n_it->second;
     }
+    void addTaxonomicAdditionString(const std::string &s);
     private:
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
