@@ -30,7 +30,6 @@ using std::bitset;
 using std::unique_ptr;
 
 using boost::spirit::qi::symbols;
-using boost::string_ref;
 using namespace boost::spirit;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;

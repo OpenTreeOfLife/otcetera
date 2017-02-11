@@ -29,6 +29,7 @@
 // 5. Can we assign OTT IDs to internal nodes of a tree while accounting for Incertae Sedis taxa?
 // * What are the triplet-inference rules for the Incertae Sedis problem?
 
+
 namespace otc {
 
 enum TaxonomicRank {
@@ -123,7 +124,10 @@ struct taxonomy_record {
     std::bitset<32> flags;
     int depth = 0;
     int out_degree = 0;
+    taxonomy_record& operator=(taxonomy_record&& tr) = default;
+    taxonomy_record& operator=(const taxonomy_record& tr) = delete;
     taxonomy_record(taxonomy_record&& tr) = default;
+    taxonomy_record(taxonomy_record& tr) = delete;
     explicit taxonomy_record(const std::string& line);
     std::vector<std::string> sourceinfoAsVec() const {
         std::string si = std::string(sourceinfo);
