@@ -9,7 +9,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/utility/string_ref.hpp>
 #include <boost/tokenizer.hpp>
 #include <bitset>
 #include <set>
@@ -38,7 +37,6 @@ using std::map;
 using json = nlohmann::json;
 
 using boost::spirit::qi::symbols;
-using boost::string_ref;
 using namespace boost::spirit;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;

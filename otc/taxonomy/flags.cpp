@@ -11,7 +11,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/utility/string_ref.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <bitset>
 
@@ -30,7 +29,6 @@ using std::endl;
 using std::bitset;
 
 using boost::spirit::qi::symbols;
-using boost::string_ref;
 using namespace boost::spirit;
 
 // https://github.com/OpenTreeOfLife/taxomachine/blob/master/src/main/java/org/opentree/taxonomy/OTTFlag.java
