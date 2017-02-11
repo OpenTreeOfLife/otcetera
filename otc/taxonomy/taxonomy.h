@@ -42,7 +42,10 @@ namespace otc
         std::bitset<32> flags;
         int depth = 0;
         int out_degree = 0;
+	taxonomy_record& operator=(taxonomy_record&& tr) = default;
+	taxonomy_record& operator=(const taxonomy_record& tr) = delete;
         taxonomy_record(taxonomy_record&& tr) = default;
+        taxonomy_record(const taxonomy_record& tr) = delete;
         explicit taxonomy_record(const std::string& line);
     };
 
