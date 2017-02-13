@@ -164,5 +164,6 @@ nodist_otc_version_reporter_SOURCES = git_version.h
 BUILT_SOURCES = version-reporter.cpp git_version.stamp
 
 check:
+	cp $(abs_top_srcdir)/data/is_incertae_sedis.txt ./
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
 

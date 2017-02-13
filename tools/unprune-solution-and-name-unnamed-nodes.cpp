@@ -20,13 +20,19 @@ using std::map;
 
 static std::string lostTaxaJSONFilename;
 static std::string statsJSONFilename;
+static std::string incertaeSedisFilename;
 
 struct RTNodePartialDesSet {
     std::set<long> desIds;
+    OttIdSet * nonexcluded_ids; // union of IDs that descend from any child of an ancestor marked as incertae sedis
     long smallestChild  = 0;
 };
 
-using Tree_t = RootedTree<RTNodePartialDesSet, RTreeNoData>;
+struct RTTreeIncertaeSedisHolder {
+    std::list<OttIdSet> ownedIdSets; // used for memory management.
+};
+
+using Tree_t = RootedTree<RTNodePartialDesSet, RTTreeIncertaeSedisHolder>;
 
 inline long smallestChild(const Tree_t::node_type* node) {
     return node->getData().smallestChild;
@@ -583,6 +589,11 @@ bool handleStatsJSON(OTCLI&, const std::string & arg) {
     return true;
 }
 
+bool handleIncertaeSedis(OTCLI&, const std::string & arg) {
+    incertaeSedisFilename = arg;
+    return true;
+}
+
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-unprune-solution-and-name-unnamed-nodes",
                 "Takes a phylogenetic estimate (the first tree file) and a taxonomy (the second tree file).\n"
@@ -603,6 +614,10 @@ int main(int argc, char *argv[]) {
     otCLI.addFlag('s',
                   "Produce a JSON file with stats about the inputs and outputs",
                   handleStatsJSON,
+                  true);
+    otCLI.addFlag('i',
+                  "Optional list of IDs of tree in the exemplified taxonomy that are incertae sedis",
+                  handleIncertaeSedis,
                   true);
     vector<unique_ptr<Tree_t>> trees;
     auto get = [&trees](OTCLI &, unique_ptr<Tree_t> nt) {trees.push_back(std::move(nt)); return true;};
@@ -633,9 +648,25 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         statsStreamPtr = & statsJSONStream;
-
     }
-   
+    OttIdSet incertae_sedis_ids;
+    if (!incertaeSedisFilename.empty()) {
+        std::ifstream incert_sed_id_file(incertaeSedisFilename.c_str());
+        if (!incert_sed_id_file.good()) {
+            std::cerr << "Could not open the incertae sedis ID file: " << incertaeSedisFilename << "\n";
+            return 1;
+        }
+        string line;
+        while (std::getline(incert_sed_id_file, line)) {
+            char* temp;
+            long ott_id = std::strtoul(line.c_str(), &temp, 10);
+            if (*temp != '\0' && *temp != '\n') {
+                std::cerr << "Expecting just numbers and newlines in incertae sedis file found: " << line << "\n";
+                return 1;
+            }
+            incertae_sedis_ids.insert(ott_id);
+        }
+    }
     auto & solution = *(trees.at(0));
     auto & taxonomy = *(trees.at(1));
     const auto lostTaxa = unpruneTaxa(taxonomy, solution, statsStreamPtr);

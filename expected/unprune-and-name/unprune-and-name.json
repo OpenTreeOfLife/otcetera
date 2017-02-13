@@ -1,5 +1,10 @@
 [
   {
+      "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "-iis_incertae_sedis.txt", "<INFILELIST>"],
+      "infile_list": ["is_synth.tre", "is_taxonomy.tre"],
+      "expected": "incertae-sedis"
+  },
+  {
       "invocation" : ["otc-unprune-solution-and-name-unnamed-nodes", "<INFILELIST>"],
       "infile_list": ["3genus-ACvB.tre", "3genus-taxonomy.tre"],
       "expected": "simple-unprune"
