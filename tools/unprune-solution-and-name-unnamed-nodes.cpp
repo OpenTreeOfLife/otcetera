@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stack>
 #include <tuple>
+#include <deque>
 #include "json.hpp"
 #include "otc/otcli.h"
 #include "otc/node_naming.h"
@@ -77,6 +78,7 @@ void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 // impl.
 
 using json = nlohmann::json;
+using std::deque;
 using std::list;
 using std::map;
 using std::ostream;
@@ -477,7 +479,11 @@ struct UnpruneStats {
     size_t numTaxaLeaves = 0U;
     size_t numTaxaForkingInternals = 0U;
     size_t numTipsDesFromIncertaeSedis = 0U;
-    size_t numInternalsDesFromIncertaeSedis = 0U;    
+    size_t numInternalsDesFromIncertaeSedis = 0U;
+    // maps inc_sed taxa nodes to tips in solution that are descendants of that taxon.
+    map<Node_t *, set<Node_t *> > inc_sed_taxon_to_sampled_tips;
+    // maps inc_sed taxon that is not monophyletic to MRCA in solution.
+    map<Node_t *, Node_t *> non_monophyletic_inc_sed;
 };
 
 void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_ids) {
@@ -548,9 +554,9 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
     }
 }
 
-void fillDesIdsForIncertaeSedis(const map<long, Node_t *> & ott_to_tax,
-                                const OttIdSet & incertae_sedis_ids, 
-                                UnpruneStats & unprune_stats) {
+void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
+                                    const OttIdSet & incertae_sedis_ids, 
+                                    UnpruneStats & unprune_stats) {
     // As a part of implementing the incertae sedis logic, we also fill the desIds of the taxonomy.
     // This info is used to create the "non-excluded" sets, but it is expensive to do on the whole 
     //    taxonomy, so we just do it for subtrees rooted at an incertae sedis taxon...
@@ -600,6 +606,100 @@ void indexNodesByOttId(Tree_t & taxonomy,
             throw OTCError() << "There is a node in taxonomy without an OTT ID.\n";
         }
     }
+}
+
+// uses non-empty desId in tax nodes to figure out which descendants of any incertae sedis
+//    taxon are sampled in the solution
+void findIncertaeSedisInSolution(Tree_t & taxonomy,
+                                 Tree_t & solution,
+                                 const map<long, Node_t *> & ott_to_tax,
+                                 UnpruneStats & unprune_stats) {
+    auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
+    for (auto snd: iter_leaf(solution)) {
+        if (!snd->hasOttId()) {
+            throw OTCError() << "Tip "<< snd->getName() << " in solution lacks an OTT ID";
+        }
+        auto ott_id = snd->getOttId();
+        auto taxon_node = ott_to_tax.at(ott_id);
+        if (taxon_node->getData().desIds.empty()) {
+            continue;    
+        }
+        to_tips_map[taxon_node].insert(snd);
+        auto anc = taxon_node->getParent();
+        while (anc && !(anc->getData().desIds.empty())) {
+            to_tips_map[anc].insert(snd);
+            anc = anc->getParent();
+        }
+    }
+}
+
+template <typename N>
+N * find_mrca_without_desids(const set<N *> & tip_node_set) {
+    if (tip_node_set.size() < 2)  {
+        if (tip_node_set.empty()) {
+            return nullptr;
+        }
+        return *tip_node_set.begin();
+    }
+    auto nit = tip_node_set.begin();
+    N * curr = *nit++;
+    deque<N *> root_to_mrca;
+    set<N *> seen_nodes;
+    set<N *> dequed_nodes;
+    while (curr != nullptr) {
+        root_to_mrca.push_front(curr);
+        seen_nodes.insert(curr);
+        dequed_nodes.insert(curr);
+        curr = curr->getParent();
+    }
+    for (; nit != tip_node_set.end(); ++nit) {
+        curr = *nit;
+        while (curr != nullptr) {
+            if (seen_nodes.count(curr) != 0) {
+                if (dequed_nodes.count(curr) != 0) {
+                    while (root_to_mrca.back() != curr) {
+                        auto td = root_to_mrca.back();
+                        root_to_mrca.pop_back();
+                        dequed_nodes.erase(td);
+                        if (root_to_mrca.size() == 1) {
+                            return root_to_mrca.back();
+                        }
+                    }
+                }
+                break;
+            } else {
+                seen_nodes.insert(curr);
+            }
+        }
+
+    }
+    return root_to_mrca.back();
+}
+
+// Taxa that are descendants of an incertae sedis taxon, will demand some special handling..
+// so we find out which ones are not found in the solution before calling unprunePreppedInputs
+// results are stored in unprune_stats. This relies on having been filled...
+void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
+                                        Tree_t & solution,
+                                        const map<long, Node_t *> & ott_to_tax,
+                                        UnpruneStats & unprune_stats) {
+    auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
+    for (auto ttm_it: to_tips_map) {
+        auto inc_sed_taxon = ttm_it.first;
+        const auto & sampled = ttm_it.second;
+        if (sampled.size() < 2) {
+            continue;
+        }
+        const auto nonexc = inc_sed_taxon->getData().nonexcluded_ids;
+        assert(nonexc != nullptr);
+        auto soln_mrca = find_mrca_without_desids(sampled);
+        for (auto t : iter_leaf_n(*soln_mrca)) {
+            if (sampled.count(t) == 0 && 0 == nonexc->count(t->getOttId())) {
+                unprune_stats.non_monophyletic_inc_sed[inc_sed_taxon] = soln_mrca;
+            }
+        }
+    }
+
 }
 
 // last step in unpruneTaxa
@@ -678,11 +778,23 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
     indexNodesByOttId(taxonomy, ott_to_tax, monotypicOttIds, unprune_stats);
     // filling the nonexcluded IDs (next step) needs the desIds filled for the parts of 
     //    the taxonomy that descend from an incertae sedis taxon.
-    fillDesIdsForIncertaeSedis(ott_to_tax, incertae_sedis_ids, unprune_stats);
+    // Note that we'll use empty desIds of a taxonomy node as a flag that that taxon is 
+    //    not a descendant of an incertae sedis taxon.
+    fillDesIdsForIncertaeSedisOnly(ott_to_tax, incertae_sedis_ids, unprune_stats);
     // Now we fill in the unique non-excluded Ids. A non-excluded ID for an internal
     //    node y is the ID of a taxon that is a descendant of some incertae sedis taxon x
     //    where x is child of one of the ancestors of the node y.
     fillNonexcludeIDFields(taxonomy, incertae_sedis_ids);
+    // record tips in the sample that are incertae sedis descendants
+    findIncertaeSedisInSolution(taxonomy,
+                                solution,
+                                ott_to_tax,
+                                unprune_stats);
+    // note which ones can't be in the solution
+    findBrokenIncertaeSedisDescendants(taxonomy,
+                                       solution,
+                                       ott_to_tax,
+                                       unprune_stats);
     // Unprune, collecting stats
     unprunePreppedInputs(taxonomy,
                          solution,
