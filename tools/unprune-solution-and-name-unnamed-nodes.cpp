@@ -362,7 +362,7 @@ using NumAddedTuple = tuple<size_t, size_t, size_t>;
 //      2 is the number of solution leaves that were expanded to internals
 template <typename N>
 NumAddedTuple unpruneTaxaForSubtree(N *rootSolnNd,
-                           map<long, N*> & ott2tax, 
+                           const map<long, N*> & ott2tax, 
                            map<long, N*> & ott2soln, 
                            LostTaxonMap & ltm) {
     assert(rootSolnNd);
@@ -463,6 +463,23 @@ NumAddedTuple unpruneTaxaForSubtree(N *rootSolnNd,
     return NumAddedTuple(nodesAddedForTaxa.size(), numMerged, numExpanded);
 }
 
+
+struct UnpruneStats {
+    size_t startNumNamedInternalsInSoln = 0U;
+    size_t numUnnamedInternalsInSoln = 0U;
+    size_t startNumSolnLeaves = 0U;
+    size_t startNumSolnMonotypicInternals = 0U;
+    size_t startNumSolnForkingInternals = 0U;
+    size_t numInternalsAddedToBackbone = 0U;
+    size_t numInternalsMergedOnBackbone = 0U;
+    size_t numLeavesExpanded = 0U;
+    size_t out_degree_many1 = 0U;
+    size_t numTaxaLeaves = 0U;
+    size_t numTaxaForkingInternals = 0U;
+    size_t numTipsDesFromIncertaeSedis = 0U;
+    size_t numInternalsDesFromIncertaeSedis = 0U;    
+};
+
 void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_ids) {
     // Assuming that incertae sedis taxa are fairly rare, there will be lots of nodes that 
     //    share the same set of non-excluded taxa. Thus we have an owning store and lots
@@ -531,13 +548,14 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
     }
 }
 
-pair<size_t, size_t> fillDesIdsForIncertaeSedis(const map<long, Node_t *> & ott_to_tax,
-                                                const OttIdSet & incertae_sedis_ids) {
+void fillDesIdsForIncertaeSedis(const map<long, Node_t *> & ott_to_tax,
+                                const OttIdSet & incertae_sedis_ids, 
+                                UnpruneStats & unprune_stats) {
     // As a part of implementing the incertae sedis logic, we also fill the desIds of the taxonomy.
     // This info is used to create the "non-excluded" sets, but it is expensive to do on the whole 
     //    taxonomy, so we just do it for subtrees rooted at an incertae sedis taxon...
-    size_t num_tips_des_from_incertae_sedis = 0;
-    size_t num_internals_des_from_incertae_sedis = 0;
+    unprune_stats.numTipsDesFromIncertaeSedis = 0;
+    unprune_stats.numInternalsDesFromIncertaeSedis = 0;
     for (auto ist_id: incertae_sedis_ids) {
         if (ott_to_tax.count(ist_id) == 0) {
             throw OTCError() << "Incertae sedis ID (" << ist_id << ") not in taxonomy.";
@@ -549,9 +567,9 @@ pair<size_t, size_t> fillDesIdsForIncertaeSedis(const map<long, Node_t *> & ott_
             if (di_ref.empty()) {
                 di_ref.insert(nd->getOttId());
                 if (nd->isTip()) {
-                    ++num_tips_des_from_incertae_sedis;
+                    unprune_stats.numTipsDesFromIncertaeSedis += 1;
                 } else {
-                    ++num_internals_des_from_incertae_sedis;
+                    unprune_stats.numInternalsDesFromIncertaeSedis += 1;
                     for (auto c : iter_child(*nd)) {
                         const auto & cdi_ref = c->getData().desIds;
                         di_ref.insert(cdi_ref.begin(), cdi_ref.end());
@@ -560,29 +578,13 @@ pair<size_t, size_t> fillDesIdsForIncertaeSedis(const map<long, Node_t *> & ott_
             }
         }
     }
-    return pair<size_t, size_t>(num_internals_des_from_incertae_sedis, num_tips_des_from_incertae_sedis);
 }
 
 
-// Note that this function will steal some nodes from `taxonomy`
-//  so, on output that will no longer be a valid tree. This should
-//  be fine if both taxonomy and solution go out of scope together.
-template<typename T>
-LostTaxonMap unpruneTaxa(T & taxonomy,
-                         T & solution,
-                         std::ostream * statsStreamPtr,
-                         const OttIdSet & incertae_sedis_ids) {
-    LostTaxonMap ltm;
-    typedef typename T::node_type N;
-    const auto out_degree_many1 = n_internal_out_degree_many(taxonomy);
-    size_t startNumNamedInternalsInSoln = 0;
-    size_t numUnnamedInternalsInSoln = 0;
-    size_t numTaxaLeaves = 0;
-    size_t numTaxaForkingInternals = 0;
-    // 1. First, remove nodes from the taxonomy that do not occur in the solution
-    // 1a. Index taxonomy by OttId.
-    map<long, N*> ott_to_tax;
-    OttIdSet monotypicOttIds;
+void indexNodesByOttId(Tree_t & taxonomy,
+                       map<long, Node_t *> & ott_to_tax,
+                       OttIdSet & monotypicOttIds,
+                       UnpruneStats & unprune_stats) {
     for (auto nd: iter_post(taxonomy)){
         if (nd->hasOttId()) {
             const OttId taxon_ott_id = nd->getOttId();
@@ -590,41 +592,31 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
             if (nd->isOutDegreeOneNode()) {
                 monotypicOttIds.insert(nd->getOttId());
             } else if (nd->isTip()) {
-                numTaxaLeaves += 1;
+                unprune_stats.numTaxaLeaves += 1;
             } else {
-                numTaxaForkingInternals += 1;
+                unprune_stats.numTaxaForkingInternals += 1;
             }
         } else {
             throw OTCError() << "There is a node in taxonomy without an OTT ID.\n";
         }
     }
+}
 
-    // filling the nonexcluded IDs (next step) needs the desIds filled for the parts of 
-    //    the taxonomy that descend from an incertae sedis taxon.
-    auto flagging_response = fillDesIdsForIncertaeSedis(ott_to_tax, incertae_sedis_ids);
-    const auto num_tips_des_from_incertae_sedis = flagging_response.second;
-    const auto num_internals_des_from_incertae_sedis = flagging_response.first;
-    
-    // Now we fill in the unique non-excluded Ids. A non-excluded ID for an internal
-    //    node y is the ID of a taxon that is a descendant of some incertae sedis taxon x
-    //    where x is child of one of the ancestors of the node y.
-    fillNonexcludeIDFields(taxonomy, incertae_sedis_ids);
-
-    const auto numTaxaMonotypicInternals = monotypicOttIds.size();
-    map<long, N*> ott_to_sol;
+// last step in unpruneTaxa
+void unprunePreppedInputs(Tree_t & taxonomy,
+                          Tree_t & solution,
+                          const OttIdSet & incertae_sedis_ids,
+                          const map<long, Node_t *> & ott_to_tax,
+                          LostTaxonMap & ltm,
+                          UnpruneStats & unprune_stats) {
+    map<long, Node_t*> ott_to_sol;
     const auto snVec = all_nodes(solution);
     // postorder walk over solution. Every time we find a node assigned to a taxon
     //  we augment the slice of the tree that is rooted at that node (and is the
     //  subtree that is cut at the deepest taxonomic node)
-    size_t startNumSolnLeaves = 0;
-    size_t startNumSolnMonotypicInternals = 0;
-    size_t startNumSolnForkingInternals = 0;
-    size_t numInternalsAddedToBackbone = 0;
-    size_t numInternalsMergedOnBackbone = 0;
-    size_t numLeavesExpanded = 0;
     for (auto nd: snVec){
         if (nd->isTip()) {
-            startNumSolnLeaves += 1;
+            unprune_stats.startNumSolnLeaves += 1;
             if (!nd->hasOttId()) {
                 throw OTCError() << "Tip "<< nd->getName() << " in solution lacks an OTT ID";
             }
@@ -633,22 +625,21 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
             }
         } else {
             if (nd->isOutDegreeOneNode()) {
-                startNumSolnMonotypicInternals += 1;
+                unprune_stats.startNumSolnMonotypicInternals += 1;
             } else {
-                startNumSolnForkingInternals += 1;
+                unprune_stats.startNumSolnForkingInternals += 1;
             }
         }
         auto p = nd->getParent();
         if (nd->hasOttId()){
             ott_to_sol[nd->getOttId()] = nd;
             if (!nd->isTip()) {
-                startNumNamedInternalsInSoln += 1;
-                // unpruneTaxaForSubtree will deal with this slice of the
-                //tree
+                unprune_stats.startNumNamedInternalsInSoln += 1;
+                // unpruneTaxaForSubtree will deal with this slice of the tree
                 const auto x = unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, ltm);
-                numInternalsAddedToBackbone += std::get<0>(x);
-                numInternalsMergedOnBackbone += std::get<1>(x);
-                numLeavesExpanded += std::get<2>(x);
+                unprune_stats.numInternalsAddedToBackbone += std::get<0>(x);
+                unprune_stats.numInternalsMergedOnBackbone += std::get<1>(x);
+                unprune_stats.numLeavesExpanded += std::get<2>(x);
                 if (p) {
                     assert(p == nd->getParent());
                 }
@@ -660,7 +651,7 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
             }
         } else {
             if (!nd->isTip()) {
-                numUnnamedInternalsInSoln += 1;
+                unprune_stats.numUnnamedInternalsInSoln += 1;
             }
             if (p) {
                 const auto & d = nd->getData().desIds;
@@ -668,6 +659,39 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
             }
         }
     }
+}
+
+// Note that this function will steal some nodes from `taxonomy`
+//  so, on output that will no longer be a valid tree. This should
+//  be fine if both taxonomy and solution go out of scope together.
+template<typename T>
+LostTaxonMap unpruneTaxa(T & taxonomy,
+                         T & solution,
+                         std::ostream * statsStreamPtr,
+                         const OttIdSet & incertae_sedis_ids) {
+    LostTaxonMap ltm;
+    UnpruneStats unprune_stats;
+    unprune_stats.out_degree_many1 = n_internal_out_degree_many(taxonomy);
+    // 1. First, index taxonomy by OttId.
+    map<long, Node_t *> ott_to_tax;
+    OttIdSet monotypicOttIds;
+    indexNodesByOttId(taxonomy, ott_to_tax, monotypicOttIds, unprune_stats);
+    // filling the nonexcluded IDs (next step) needs the desIds filled for the parts of 
+    //    the taxonomy that descend from an incertae sedis taxon.
+    fillDesIdsForIncertaeSedis(ott_to_tax, incertae_sedis_ids, unprune_stats);
+    // Now we fill in the unique non-excluded Ids. A non-excluded ID for an internal
+    //    node y is the ID of a taxon that is a descendant of some incertae sedis taxon x
+    //    where x is child of one of the ancestors of the node y.
+    fillNonexcludeIDFields(taxonomy, incertae_sedis_ids);
+    // Unprune, collecting stats
+    unprunePreppedInputs(taxonomy,
+                         solution,
+                         incertae_sedis_ids,
+                         ott_to_tax,
+                         ltm,
+                         unprune_stats);
+
+    const auto numTaxaMonotypicInternals = monotypicOttIds.size();
     // This is similar to, but different from, the number of non-monotypic nodes reject.
     // That is because the rejected nodes are marked as monotypic if they have no ANCESTRAL children.
     const auto numTaxaRejected = ltm.size();
@@ -678,31 +702,31 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
         }
     }
     const auto numForkingTaxaRejected = numTaxaRejected - numMonotypicTaxaRejected;
-    const auto startNumSolnInternals = startNumSolnMonotypicInternals + startNumSolnForkingInternals;
-    const auto numTaxaInternals = numTaxaMonotypicInternals + numTaxaForkingInternals;
-    const auto numInternalsAddedByUnpruning = numTaxaInternals - numTaxaRejected - numInternalsMergedOnBackbone;
-    const auto numLeavesAdded = numTaxaLeaves - startNumSolnLeaves;
-    std::cerr << "Leaves:           solution = " << startNumSolnLeaves << "   taxonomy = " << numTaxaLeaves << std::endl;
+    const auto startNumSolnInternals = unprune_stats.startNumSolnMonotypicInternals + unprune_stats.startNumSolnForkingInternals;
+    const auto numTaxaInternals = numTaxaMonotypicInternals + unprune_stats.numTaxaForkingInternals;
+    const auto numInternalsAddedByUnpruning = numTaxaInternals - numTaxaRejected - unprune_stats.numInternalsMergedOnBackbone;
+    const auto numLeavesAdded = unprune_stats.numTaxaLeaves - unprune_stats.startNumSolnLeaves;
+    std::cerr << "Leaves:           solution = " << unprune_stats.startNumSolnLeaves << "   taxonomy = " << unprune_stats.numTaxaLeaves << std::endl;
     std::cerr << "Internal:         solution = " << startNumSolnInternals << "   taxonomy = " << numTaxaInternals << std::endl;
-    std::cerr << "Internal splits:  solution = " << startNumSolnForkingInternals << "   taxonomy = " << numTaxaForkingInternals << std::endl;
+    std::cerr << "Internal splits:  solution = " << unprune_stats.startNumSolnForkingInternals << "   taxonomy = " << unprune_stats.numTaxaForkingInternals << std::endl;
     std::cerr << "Taxa rejected: = " << numTaxaRejected << std::endl;
     std::cerr << "Taxonomy splits: #rejected by phylo inputs = " << numForkingTaxaRejected << std::endl;
-    std::cerr << "Solution splits: input # with OTT Ids       = " << startNumNamedInternalsInSoln << std::endl;
+    std::cerr << "Solution splits: input # with OTT Ids       = " << unprune_stats.startNumNamedInternalsInSoln << std::endl;
     if (statsStreamPtr) {
         json document;
         json input;
         json output;
-        input["num_solution_leaves"] = startNumSolnLeaves;
-        input["num_taxonomy_leaves"] = numTaxaLeaves;
+        input["num_solution_leaves"] = unprune_stats.startNumSolnLeaves;
+        input["num_taxonomy_leaves"] = unprune_stats.numTaxaLeaves;
         input["num_solution_internals"] = startNumSolnInternals;
         input["num_taxonomy_internals"] = numTaxaInternals;
-        input["num_solution_splits"] = startNumSolnForkingInternals;
-        input["num_taxonomy_splits"] = numTaxaForkingInternals;
+        input["num_solution_splits"] = unprune_stats.startNumSolnForkingInternals;
+        input["num_taxonomy_splits"] = unprune_stats.numTaxaForkingInternals;
         input["num_incertae_sedis_taxa"] = incertae_sedis_ids.size();
         output["num_taxa_rejected"] = numTaxaRejected;
         output["num_taxonomy_splits_rejected"] = numForkingTaxaRejected;
-        output["num_taxonomy_internals_merged"] = numInternalsMergedOnBackbone;
-        output["num_solution_leaves_expanded"] = numLeavesExpanded;
+        output["num_taxonomy_internals_merged"] = unprune_stats.numInternalsMergedOnBackbone;
+        output["num_solution_leaves_expanded"] = unprune_stats.numLeavesExpanded;
         output["num_leaves_added"] = numLeavesAdded;
         document["input"] = input;
         document["output"] = output;
