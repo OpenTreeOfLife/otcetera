@@ -20,6 +20,11 @@ using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
 
+int depth(const Tree_t::node_type* nd)
+{
+    return nd->getData().depth;
+}
+
 /// Create a SORTED vector from a set
 template <typename T>
 vector<T> set_to_vector(const set<T>& s) {
@@ -75,19 +80,22 @@ variables_map parse_cmd_line(int argc,char* argv[])
         ("subproblem", value<vector<string>>()->composing(),"File containing ordered subproblem trees.")
         ;
 
-    options_description output("Some options");
+    options_description output("Standard options");
     output.add_options()
-        ("standardize,S", "Write out a standardized subproblem and exit.")
-        ("synthesize-taxonomy,T","Synthesize an unresolved taxonomy from all mentioned tips.")
-        ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
-        ("root-name,n",value<string>(), "Rename the root to this name")
-        ("allow-no-ids,a", "Allow problems w/o OTT ids")
-        ("prune-unrecognized,p","Prune unrecognized tips")
 	("incertae-sedis,I",value<string>(),"File containing Incertae sedis ids")
+        ("root-name,n",value<string>(), "Rename the root to this name")
+        ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
+        ("prune-unrecognized,p","Prune unrecognized tips");
+    
+    options_description other("Other options");
+    other.add_options()
+        ("synthesize-taxonomy,T","Make unresolved taxonomy from input tips.")
+        ("allow-no-ids,a", "Allow problems w/o OTT ids")
+        ("standardize,S", "Write out a standardized subproblem and exit.")
         ;
 
     options_description visible;
-    visible.add(output).add(otc::standard_options());
+    visible.add(output).add(other).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -295,6 +303,57 @@ Tree_t::node_type* find_mrca_of_desids(const set<long>& ids, const std::unordere
     return node;
 }
 
+bool is_ancestor_of(const Tree_t::node_type* n1, const Tree_t::node_type* n2)
+{
+    // make sure the depth fields are initialized
+    assert(n1 == n2 or depth(n1) != 0 or depth(n2) != 0);
+
+    if (depth(n2) > depth(n1))
+    {
+	while (depth(n2) != depth(n1))
+	    n2 = n2->getParent();
+	return (n2 == n1);
+    }
+    else
+	return false;
+}
+
+
+const Tree_t::node_type* find_unique_maximum(const vector<const Tree_t::node_type*>& nodes)
+{
+    for(int i=0;i<nodes.size();i++)
+    {
+	bool is_ancestor = true;
+	for(int j=0;j<nodes.size() and is_ancestor;j++)
+	{
+	    if (j==i) continue;
+	    if (not is_ancestor_of(nodes[i],nodes[j])) is_ancestor = false;
+	}
+	if (is_ancestor)
+	    return nodes[i];
+    }
+    return nullptr;
+}
+
+const Tree_t::node_type* select_canonical_ottid(const vector<const Tree_t::node_type*>& names)
+{
+    // We should only have to make this choice if there are at least 2 names to choose from.
+    assert(names.size() >= 2);
+
+    // Do something more intelligent here - perhaps prefer non-incertae-sedis taxa, and then choose lowest ottid.
+    return names.front();
+}
+
+void register_ottid_equivalences(const Tree_t::node_type* canonical, const vector<const Tree_t::node_type*>& names)
+{
+    // First pass - actually we should write on a JSON file.
+    std::cerr<<canonical->getName()<<" (canonical): equivalent to ";
+    for(auto name: names)
+	std::cerr<<name->getName()<<" ";
+    std::cerr<<"\n";
+}
+
+
 /// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
 //  For this function, the taxa is a list of taxa that are displayed by the tree.
 //  It is possible for different names to get assigned to the same node,Therefore, we need only 
@@ -302,24 +361,53 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
 {
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
 
+    // 1. Set the desIds for the summary
     clearAndfillDesIdSets(summary);
 
+    // 2. Associate each summary node with all the taxon nodes with that map to it.
+    map<Tree_t::node_type*, vector<const Tree_t::node_type*>> name_groups;
     for(auto n2: taxa)
     {
 	auto mrca = find_mrca_of_desids(n2->getData().desIds, summaryOttIdToNode);
 
-	if (not mrca->getName().empty())
+	if (not name_groups.count(mrca))
+	    name_groups[mrca] = {};
+
+	name_groups[mrca].push_back(n2);
+    }
+
+    // 3. Handle each summary 
+    for(auto& name_group: name_groups)
+    {
+	auto summary_node = name_group.first;
+	auto& names = name_group.second;
+
+	// 3.1. As long as there is a unique root-most name, put that name in a monotypic parent.
+	// This can occur when a node has two children, and one of them is an incertae sedis taxon that is moved more tip-ward.
+	while (auto max = find_unique_maximum(names))
 	{
-	    while(mrca->getParent()->isOutDegreeOneNode())
+	    if (names.size() == 1)
+		summary_node->setName(max->getName());
+	    else
 	    {
-		mrca = mrca->getParent();
-		assert(not mrca->getName().empty());
+		auto p = add_monotypic_parent(summary, summary_node);
+		p->setName(max->getName());
+		p->getData().desIds = p->getFirstChild()->getData().desIds;
 	    }
-	    mrca = add_monotypic_parent(summary, mrca);
-	    mrca->getData().desIds = mrca->getFirstChild()->getData().desIds;
+	    names.erase(std::remove(names.begin(), names.end(), max), names.end());
 	}
 
-	mrca->setName( n2->getName());
+	// 3.2. Select a canonical name from the remaining names.
+	if (not names.empty())
+	{
+	    // Select a specific ottid as the canonical name for this summary node
+	    auto canonical = select_canonical_ottid(names);
+	    summary_node->setName(canonical->getName());
+
+	    // Write out the equivalence of the remaining ottids to the canonical ottid
+	    names.erase(std::remove(names.begin(), names.end(), canonical), names.end());
+	    register_ottid_equivalences(canonical, names);
+	}
     }
 }
 
@@ -607,7 +695,8 @@ int main(int argc, char *argv[])
 	    }
 	}
 
-	// 7. Perform the synthesis
+        // 7. Perform the synthesis
+	computeDepth(*trees.back());
 	auto tree = combine(trees, incertae_sedis, verbose);
 
 	// 8. Set the root name (if asked)
