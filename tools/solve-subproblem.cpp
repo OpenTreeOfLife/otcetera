@@ -565,6 +565,8 @@ int main(int argc, char *argv[])
 	{
 	    auto filename = args["incertae-sedis"].as<string>();
 	    std::ifstream file(filename);
+	    if (not file)
+		throw OTCError()<<"Cannot open incertae sedis file '"<<filename<<"'";
 	    while (file)
 	    {
 		long i;
