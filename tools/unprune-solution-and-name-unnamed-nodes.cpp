@@ -298,13 +298,37 @@ N * special_bisect_with_new_child(N * taxNode, N * currSolnNd, bool moveUnsamp) 
     return nt;
 }
 
+// Looks through the children of `currSolnNd` If one has all the desIds that are
+//    flagged by taxon_node, it returns that node. Otherwise nullptr.
+// Used for starting from an ancestor of the taxa in taxon_node and moving one
+//    step closer to the MRCA of those taxa
+Node_t * find_single_child_with_all_marked_taxa(Node_t * currSolnNd, const Node_t * taxon_node) {
+    const auto & taxon_data = taxon_node->getData();
+    const auto & taxon_des = taxon_data.desIds;
+    Node_t * nextSolnNd = nullptr;
+    for (auto c : iter_child(*currSolnNd)) {
+        const auto & cdesId = c->getData().desIds;
+        if (!areDisjoint(cdesId, taxon_des)) {
+            //LOG(DEBUG) << "not disjoint nextSolnNd=" << (long) nextSolnNd;
+            if (nextSolnNd == nullptr) {
+                nextSolnNd = c;
+            } else {
+                return nullptr;
+            }
+        }
+    }
+    assert(nextSolnNd != nullptr);
+    return nextSolnNd;
+}
+
 // returns the number of nodes on the backbone that are merged with this higher taxon
 //      because the taxon was compatible (the same as) the node - will be either 0 or 1.
 template <typename N>
 size_t incorporateHigherTaxonNode(N* higherTaxonNd,
                                   N* rootSolnNd,
                                   set<N *> & nodesAddedForTaxa,
-                                  LostTaxonMap & ltm) {
+                                  LostTaxonMap & ltm,
+                                  const map<long, N*> & ott2tax) {
     assert(higherTaxonNd);
     assert(rootSolnNd);
     LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
@@ -317,78 +341,85 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
     N * tipmostMRCA = nullptr;
     // the root of the solution, must have all of the constituent taxa
     assert(isSubset(taxDes, rootSolnNd->getData().desIds));
-    // here we walk tipward.
+    // here we walk tipward to find the MRCA of the taxa in taxDes
     while (true) {
-        const auto & solDes = currSolnNd->getData().desIds;
-        auto extra = set_difference_as_set(taxDes, solDes);
-        bool hasExcludedExtras = false;
-        for (auto e: extra) {
-            if (nonexcluded_ids.count(e) == 0) {
-                hasExcludedExtras = true;
-                break;
-            }
+        N * nextSolnNd = find_single_child_with_all_marked_taxa(currSolnNd, higherTaxonNd);
+        if (nextSolnNd == nullptr) {
+            break;
         }
-        bool hasAllInc = isSubset(taxDes, solDes);
-        bool matchesTaxon = hasAllInc && (!hasExcludedExtras);
-        if (matchesTaxon) {
-            N * nt = nullptr;
-            if (higherTaxonNd->isOutDegreeOneNode()) {
-                if (currSolnNd == rootSolnNd) {
-                    LOG(DEBUG) << "adding Monotypic child";
-                    nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, false);
-                } else {
-                    LOG(DEBUG) << "introduceMonotypicParent";
-                    nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
-                }
-            } else {
-                //CODE HERE....
-                    if (currSolnNd->hasOttId() 
-                          && currSolnNd->getOttId() != higherTaxonNd->getOttId()) {
-                    if (currSolnNd == rootSolnNd) {
-                        LOG(DEBUG) << "Adding forking child to make parent monotypic";
-                        nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, true);
-                    } else {
-                        LOG(DEBUG) << "addParentAndMoveUnsampledTaxChildren";
-                        nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
-                    }
-                } else {
-                    LOG(DEBUG) << "moveUnsampledChildren";
-                    moveUnsampledChildren(higherTaxonNd, currSolnNd);
-                }
-            }
-            if (nt != nullptr) {
-                nodesAddedForTaxa.insert(nt);
-                return 0U;
-            }
-            return 1U;
-        }
-        assert(isProperSubset(taxDes, solDes));
-        // look in this subtree for the higher taxon 
-        tipmostMRCA = currSolnNd;
-        N * nextSolnNd = nullptr;
-        for (auto c : iter_child(*currSolnNd)) {
-            const auto & cdesId = c->getData().desIds;
-            //dbWriteOttSet("  c desIds", cdesId);        
-            //dbWriteOttSet("  taxDes  ", taxDes);        
-            if (!areDisjoint(cdesId, taxDes)) {
-                //LOG(DEBUG) << "not disjoint nextSolnNd=" << (long) nextSolnNd;
-                if (nextSolnNd == nullptr) {
-                    nextSolnNd = c;
-                } else {
-                    // More than one child of currSolnNd, has a member of the taxon,
-                    // so this is the mrca
-                    // The fact that we are here (not in the branch above where we
-                    //  tested for equality), means that this solution will not
-                    //  display this taxon
-                    assert(tipmostMRCA != nullptr);
-                    addChildrenOfNonMonophyleticTaxon(higherTaxonNd, tipmostMRCA, ltm);
-                    return 0U;
-                }
-            }
-        }
-        assert(nextSolnNd != nullptr);
         currSolnNd = nextSolnNd;
     }
+    assert(currSolnNd != nullptr);
+    const auto & solDes = currSolnNd->getData().desIds;
+    assert(isSubset(taxDes, solDes));
+    auto extra = set_difference_as_set(solDes, taxDes);
+    bool hasExcludedExtras = false;
+    for (auto e: extra) {
+        if (nonexcluded_ids.count(e) == 0) {
+            hasExcludedExtras = true;
+            break;
+        }
+    }
+    if (hasExcludedExtras) {
+        // the MRCA of this taxon in the solution contains nodes that are in the taxon's exclude
+        //    set. So this taxon in broken in this solution.
+        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm);
+        return 0U;
+    }
+    // This solution node has the same descendant set of this taxon.
+    // It could either be the only child of the taxon (if the taxon) is 
+    //    monotypic, or it could be labelled with this OTT ID.
+    N * nt = nullptr;
+    // the easiest case is if the solution node has the same taxon ID
+    //    just move the unsampled children.
+    if (currSolnNd->hasOttId() && currSolnNd->getOttId() == higherTaxonNd->getOttId()) {
+        LOG(DEBUG) << "moveUnsampledChildren";
+        moveUnsampledChildren(higherTaxonNd, currSolnNd);
+        return 1U;
+    }
+    // The monotypic case is also easy... add a monotypic node to the solution.
+    if (higherTaxonNd->isOutDegreeOneNode()) {
+        // careful to keep the root of the subproblem the same node structure, which
+        //    may require swapping data to make the root the new deeper monotypic taxon....
+        if (currSolnNd == rootSolnNd) {
+            LOG(DEBUG) << "adding Monotypic child";
+            nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, false);
+        } else {
+            LOG(DEBUG) << "introduceMonotypicParent";
+            nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
+        }
+    } else {
+        // In the world of incertae sedis, we need to worry about the case of the node
+        //    already having a label, but not being a descendant of higher taxon.
+        // We only want to add a new node to the solution if the solution node that
+        //    we have found is associated with a descendant taxon of
+        bool add_new_node = false;
+
+        if (currSolnNd->hasOttId()) {
+            // we have to check the taxonomy tree to find out...
+            auto potential_des = ott2tax.at(currSolnNd->getOttId());
+            add_new_node = isAncDecPair(higherTaxonNd, potential_des);
+        }
+        if (add_new_node) {
+            if (currSolnNd == rootSolnNd) {
+                LOG(DEBUG) << "Adding forking child to make parent monotypic";
+                nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, true);
+            } else {
+                LOG(DEBUG) << "addParentAndMoveUnsampledTaxChildren";
+                nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
+            }
+        } else {
+            LOG(DEBUG) << "moveUnsampledChildren";
+            moveUnsampledChildren(higherTaxonNd, currSolnNd);
+            currSolnNd->setName(higherTaxonNd->getName());
+            currSolnNd->setOttId(higherTaxonNd->getOttId());
+        }
+    }
+    if (nt != nullptr) {
+        nodesAddedForTaxa.insert(nt);
+        return 0U;
+    }
+    return 1U;
 }
 
 
@@ -485,8 +516,6 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         }
     }
 
-    //bool isAncDecPair(const T * nd1, const T *nd2)
-
     size_t numExpanded = 0;
     // If a tip of the solution is a higher taxon, then we should
     //  graft on the other tips here...
@@ -525,7 +554,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             moveUnsampledChildren(higherTaxonNd, rootSolnNd);
             numMerged += 1 ;
         } else {
-            numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, ltm);
+            numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, ltm, ott2tax);
         }
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
@@ -534,7 +563,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 moveUnsampledChildren(is_taxon_ptr, rootSolnNd);
                 numMerged += 1 ;
             } else {
-                numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, ltm);
+                numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, ltm, ott2tax);
             }
         }
     }
