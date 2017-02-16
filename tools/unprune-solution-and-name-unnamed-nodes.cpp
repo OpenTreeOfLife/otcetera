@@ -68,15 +68,6 @@ class LostTaxonLocation {
 };
 typedef std::map<int, LostTaxonLocation> LostTaxonMap;
 
-template<typename T>
-LostTaxonMap unpruneTaxa(T & taxonomy,
-                         T & solution,
-                         std::ostream * statsStreamPtr,
-                         const OttIdSet & incertae_sedis_ids);
-
-void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
-
-
 struct UnpruneStats {
     size_t startNumNamedInternalsInSoln = 0U;
     size_t numUnnamedInternalsInSoln = 0U;
@@ -95,7 +86,21 @@ struct UnpruneStats {
     std::map<Node_t *, std::set<Node_t *> > inc_sed_taxon_to_sampled_tips;
     // maps inc_sed taxon that is not monophyletic to MRCA in solution.
     std::map<Node_t *, Node_t *> non_monophyletic_inc_sed;
+    LostTaxonMap lost_taxa;
+    OttIdSet monotypic_ott_ids;
+    const OttIdSet & incertae_sedis_ids;
+    UnpruneStats(const OttIdSet & inc_sed_ids)
+        :incertae_sedis_ids(inc_sed_ids) {
+    }
 };
+
+
+template<typename T>
+void unpruneTaxa(T & taxonomy,
+                 T & solution,
+                 UnpruneStats & unprune_stats);
+
+void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 
 
 // impl.
@@ -297,21 +302,35 @@ N * special_bisect_with_new_child(N * taxNode, N * currSolnNd, bool moveUnsamp) 
 //      because the taxon was compatible (the same as) the node - will be either 0 or 1.
 template <typename N>
 size_t incorporateHigherTaxonNode(N* higherTaxonNd,
-                                N* rootSolnNd,
-                                set<N *> & nodesAddedForTaxa,
-                                LostTaxonMap & ltm) {
+                                  N* rootSolnNd,
+                                  set<N *> & nodesAddedForTaxa,
+                                  LostTaxonMap & ltm) {
     assert(higherTaxonNd);
     assert(rootSolnNd);
     LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
-    const auto & taxDes = higherTaxonNd->getData().desIds;
+    const auto & taxData = higherTaxonNd->getData();
+    const auto & taxDes = taxData.desIds;
     assert(taxDes.size() > 0);
+    assert(taxData.nonexcluded_ids != nullptr);
+    const auto & nonexcluded_ids = *taxData.nonexcluded_ids;
     N * currSolnNd = rootSolnNd;
     N * tipmostMRCA = nullptr;
     // the root of the solution, must have all of the constituent taxa
     assert(isSubset(taxDes, rootSolnNd->getData().desIds));
+    // here we walk tipward.
     while (true) {
         const auto & solDes = currSolnNd->getData().desIds;
-        if (solDes == taxDes) {
+        auto extra = set_difference_as_set(taxDes, solDes);
+        bool hasExcludedExtras = false;
+        for (auto e: extra) {
+            if (nonexcluded_ids.count(e) == 0) {
+                hasExcludedExtras = true;
+                break;
+            }
+        }
+        bool hasAllInc = isSubset(taxDes, solDes);
+        bool matchesTaxon = hasAllInc && (!hasExcludedExtras);
+        if (matchesTaxon) {
             N * nt = nullptr;
             if (higherTaxonNd->isOutDegreeOneNode()) {
                 if (currSolnNd == rootSolnNd) {
@@ -321,18 +340,21 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
                     LOG(DEBUG) << "introduceMonotypicParent";
                     nt = introduceMonotypicParent(higherTaxonNd, currSolnNd);
                 }
-            } else if (currSolnNd->hasOttId() 
-                      && currSolnNd->getOttId() != higherTaxonNd->getOttId()) {
-                if (currSolnNd == rootSolnNd) {
-                    LOG(DEBUG) << "Adding forking child to make parent monotypic";
-                    nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, true);
-                } else {
-                    LOG(DEBUG) << "addParentAndMoveUnsampledTaxChildren";
-                    nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
-                }
             } else {
-                LOG(DEBUG) << "moveUnsampledChildren";
-                moveUnsampledChildren(higherTaxonNd, currSolnNd);
+                //CODE HERE....
+                    if (currSolnNd->hasOttId() 
+                          && currSolnNd->getOttId() != higherTaxonNd->getOttId()) {
+                    if (currSolnNd == rootSolnNd) {
+                        LOG(DEBUG) << "Adding forking child to make parent monotypic";
+                        nt = special_bisect_with_new_child(higherTaxonNd, currSolnNd, true);
+                    } else {
+                        LOG(DEBUG) << "addParentAndMoveUnsampledTaxChildren";
+                        nt = addParentAndMoveUnsampledTaxChildren(higherTaxonNd, currSolnNd);
+                    }
+                } else {
+                    LOG(DEBUG) << "moveUnsampledChildren";
+                    moveUnsampledChildren(higherTaxonNd, currSolnNd);
+                }
             }
             if (nt != nullptr) {
                 nodesAddedForTaxa.insert(nt);
@@ -383,8 +405,8 @@ template <typename N>
 void unpruneTaxaForSubtree(N *rootSolnNd,
                            const map<long, N*> & ott2tax, 
                            map<long, N*> & ott2soln, 
-                           LostTaxonMap & ltm,
                            UnpruneStats & unprune_stats) {
+    LostTaxonMap & ltm = unprune_stats.lost_taxa;
     assert(rootSolnNd);
     assert(rootSolnNd->hasOttId());
     assert(!rootSolnNd->isTip());
@@ -645,14 +667,14 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
 
 void indexNodesByOttId(Tree_t & taxonomy,
                        map<long, Node_t *> & ott_to_tax,
-                       OttIdSet & monotypicOttIds,
                        UnpruneStats & unprune_stats) {
+    OttIdSet & moi = unprune_stats.monotypic_ott_ids;
     for (auto nd: iter_post(taxonomy)){
         if (nd->hasOttId()) {
             const OttId taxon_ott_id = nd->getOttId();
             ott_to_tax[taxon_ott_id] = nd;
             if (nd->isOutDegreeOneNode()) {
-                monotypicOttIds.insert(nd->getOttId());
+                moi.insert(nd->getOttId());
             } else if (nd->isTip()) {
                 unprune_stats.numTaxaLeaves += 1;
             } else {
@@ -763,7 +785,6 @@ void unprunePreppedInputs(Tree_t & taxonomy,
                           Tree_t & solution,
                           const OttIdSet & incertae_sedis_ids,
                           const map<long, Node_t *> & ott_to_tax,
-                          LostTaxonMap & ltm,
                           UnpruneStats & unprune_stats) {
     map<long, Node_t*> ott_to_sol;
     const auto snVec = all_nodes(solution);
@@ -795,7 +816,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
             auto & nd_di = nd->getData().desIds;
             if (!nd->isTip()) {
                 unprune_stats.startNumNamedInternalsInSoln += 1;
-                unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, ltm, unprune_stats);
+                unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, unprune_stats);
                 if (p) {
                     assert(p == nd->getParent());
                 }
@@ -822,17 +843,14 @@ void unprunePreppedInputs(Tree_t & taxonomy,
 //  so, on output that will no longer be a valid tree. This should
 //  be fine if both taxonomy and solution go out of scope together.
 template<typename T>
-LostTaxonMap unpruneTaxa(T & taxonomy,
-                         T & solution,
-                         std::ostream * statsStreamPtr,
-                         const OttIdSet & incertae_sedis_ids) {
-    LostTaxonMap ltm;
-    UnpruneStats unprune_stats;
+void unpruneTaxa(T & taxonomy,
+                 T & solution,
+                 UnpruneStats & unprune_stats) {
+    const OttIdSet & incertae_sedis_ids = unprune_stats.incertae_sedis_ids;
     unprune_stats.out_degree_many1 = n_internal_out_degree_many(taxonomy);
     // 1. First, index taxonomy by OttId.
     map<long, Node_t *> ott_to_tax;
-    OttIdSet monotypicOttIds;
-    indexNodesByOttId(taxonomy, ott_to_tax, monotypicOttIds, unprune_stats);
+    indexNodesByOttId(taxonomy, ott_to_tax, unprune_stats);
     // filling the nonexcluded IDs (next step) needs the desIds filled for the parts of 
     //    the taxonomy that descend from an incertae sedis taxon.
     // Note that we'll use empty desIds of a taxonomy node as a flag that that taxon is 
@@ -860,14 +878,13 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
         nd->getData().desIds.clear();
     }
     // Unprune, collecting stats
-    unprunePreppedInputs(taxonomy,
-                         solution,
-                         incertae_sedis_ids,
-                         ott_to_tax,
-                         ltm,
-                         unprune_stats);
+    unprunePreppedInputs(taxonomy, solution, incertae_sedis_ids, ott_to_tax, unprune_stats);
+}
 
-    const auto numTaxaMonotypicInternals = monotypicOttIds.size();
+void reportStats(const UnpruneStats & unprune_stats, ostream * statsStreamPtr) {
+    const OttIdSet & monotypicOttIds = unprune_stats.monotypic_ott_ids;
+    const LostTaxonMap & ltm = unprune_stats.lost_taxa;
+    auto numTaxaMonotypicInternals = monotypicOttIds.size();
     // This is similar to, but different from, the number of non-monotypic nodes reject.
     // That is because the rejected nodes are marked as monotypic if they have no ANCESTRAL children.
     const auto numTaxaRejected = ltm.size();
@@ -898,7 +915,7 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
         input["num_taxonomy_internals"] = numTaxaInternals;
         input["num_solution_splits"] = unprune_stats.startNumSolnForkingInternals;
         input["num_taxonomy_splits"] = unprune_stats.numTaxaForkingInternals;
-        input["num_incertae_sedis_taxa"] = incertae_sedis_ids.size();
+        input["num_incertae_sedis_taxa"] = unprune_stats.incertae_sedis_ids.size();
         output["num_taxa_rejected"] = numTaxaRejected;
         output["num_taxonomy_splits_rejected"] = numForkingTaxaRejected;
         output["num_taxonomy_internals_merged"] = unprune_stats.numInternalsMergedOnBackbone;
@@ -908,7 +925,6 @@ LostTaxonMap unpruneTaxa(T & taxonomy,
         document["output"] = output;
         *statsStreamPtr << document.dump(1) << std::endl;
     }
-    return ltm;
 }
 
 bool handleLostTaxaJSON(OTCLI&, const string & arg) {
@@ -1001,12 +1017,14 @@ int main(int argc, char *argv[]) {
     }
     auto & solution = *(trees.at(0));
     auto & taxonomy = *(trees.at(1));
-    const auto lostTaxa = unpruneTaxa(taxonomy, solution, statsStreamPtr, incertae_sedis_ids);
+    UnpruneStats unprune_stats(incertae_sedis_ids);
+    unpruneTaxa(taxonomy, solution, unprune_stats);
+    reportStats(unprune_stats, statsStreamPtr);
     nameUnamedNodes(solution);
     writeTreeAsNewick(std::cout, solution);
     std::cout << std::endl;
     if (!lostTaxaJSONFilename.empty()) {
-        writeLostTaxa(lostTaxaJSONStream, lostTaxa);
+        writeLostTaxa(lostTaxaJSONStream, unprune_stats.lost_taxa);
         lostTaxaJSONStream.close();
     }
     if (statsStreamPtr) {
