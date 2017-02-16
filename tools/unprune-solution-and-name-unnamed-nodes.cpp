@@ -439,11 +439,13 @@ void registerCoveringOfIncSed(OttId effectiveTipOttId,
                               const map<long, Node_t *> & ott2soln, 
                               const UnpruneStats & unprune_stats,
                               std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map) {
+    LOG(DEBUG) << "registerCoveringOfIncSed for " << effectiveTipOttId;
     const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
     auto anc = effTipTaxonNd->getParent();
     auto effTipSolnNd = ott2soln.at(effectiveTipOttId);
     while (anc &&  inc_sed_internals.find(anc) != inc_sed_internals.end()) {
         curr_slice_inc_sed_map[anc].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
+        anc = anc->getParent();
     }
 }
 
@@ -490,14 +492,17 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map;
     set<Node_t *> inc_sed_that_are_proper_children;
     for (auto effectiveTipOttId : solnDesIds) {
+        LOG(DEBUG) << "checking effective tip " << effectiveTipOttId;
         auto effTipTaxonNd = ott2tax.at(effectiveTipOttId);
         auto is_map_it = inc_sed_map.find(effTipTaxonNd);
         // see if this "tip" is an incertae sedis taxon.
         bool is_inc_sed = is_map_it != inc_sed_map.end();
+        bool is_tip_inc_sed = false;
         if (!is_inc_sed && effTipTaxonNd->isTip()) {
             auto corres_soln_tip = ott2soln.at(effectiveTipOttId);
             if (unprune_stats.inc_sed_soln_tips.count(corres_soln_tip) > 0) {
                 is_inc_sed = true;
+                is_tip_inc_sed = true;
             }
         }
         bool is_proper_des = false;
@@ -519,6 +524,9 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             is_proper_des = true;
         }
         if (is_proper_des) {
+            if (is_inc_sed && !is_tip_inc_sed) {
+                inc_sed_that_are_proper_children.insert(rootTaxonNd);
+            }
             effTipTaxonNd->getData().desIds.clear();
             addToDesIdsForAnc(effectiveTipOttId, effTipTaxonNd, rootTaxonNd);
             solnLeaves.insert(ott2soln.at(effectiveTipOttId));
