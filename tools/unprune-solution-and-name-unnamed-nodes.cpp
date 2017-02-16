@@ -225,6 +225,7 @@ void moveUnsampledChildren(N * taxon, N * solnNode) {
     const auto children = all_children(taxon);
     for (auto child : children) {
         if (child->getData().desIds.empty()) {
+            LOG(DEBUG) << "moveUnsampledChildren moving " << child->getOttId();
             child->detachThisNode();
             solnNode->addChild(child);
         }
@@ -371,6 +372,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
     if (hasExcludedExtras) {
         // the MRCA of this taxon in the solution contains nodes that are in the taxon's exclude
         //    set. So this taxon in broken in this solution.
+        LOG(DEBUG) << "taxon " << higherTaxonNd->getOttId() << " is not monophyletic. Adding other children...";
         addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm);
         return 0U;
     }
@@ -438,12 +440,15 @@ void registerCoveringOfIncSed(OttId effectiveTipOttId,
                               Node_t * effTipTaxonNd,
                               const map<long, Node_t *> & ott2soln, 
                               const UnpruneStats & unprune_stats,
-                              std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map) {
-    LOG(DEBUG) << "registerCoveringOfIncSed for " << effectiveTipOttId;
+                              std::map<Node_t *, std::set<TaxSolnNdPair> > & curr_slice_inc_sed_map) {
+    //LOG(DEBUG) << "registerCoveringOfIncSed for " << effectiveTipOttId;
     const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
     auto anc = effTipTaxonNd->getParent();
+    effTipTaxonNd->getData().desIds.insert(effectiveTipOttId);
     auto effTipSolnNd = ott2soln.at(effectiveTipOttId);
     while (anc &&  inc_sed_internals.find(anc) != inc_sed_internals.end()) {
+        //LOG(DEBUG) << "registerCoveringOfIncSed added " << effectiveTipOttId << " to " << anc->getOttId();
+        anc->getData().desIds.insert(effectiveTipOttId);
         curr_slice_inc_sed_map[anc].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
         anc = anc->getParent();
     }
@@ -491,8 +496,9 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     set<N *> taxaLeaves;
     std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map;
     set<Node_t *> inc_sed_that_are_proper_children;
+    dbWriteOttSet(" effective tips: ", solnDesIds);
     for (auto effectiveTipOttId : solnDesIds) {
-        LOG(DEBUG) << "checking effective tip " << effectiveTipOttId;
+        //LOG(DEBUG) << "checking effective tip " << effectiveTipOttId;
         auto effTipTaxonNd = ott2tax.at(effectiveTipOttId);
         auto is_map_it = inc_sed_map.find(effTipTaxonNd);
         // see if this "tip" is an incertae sedis taxon.
@@ -541,7 +547,16 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     // need to process inc. sed. splits in reverse order by level, to mimic the postorder sweep
     map<int, list<Node_t *> > inc_sed_to_deal_with_by_level;
     set<Node_t *> inc_sed_mapping_deeper;
-    
+
+    // DEBUGGING
+    OttIdSet db_inc_sed_ott_ids;
+    for (auto scism_it: curr_slice_inc_sed_map) {
+        auto & inc_sed_taxon = scism_it.first;
+        db_inc_sed_ott_ids.insert(inc_sed_taxon->getOttId());
+    }
+    dbWriteOttSet("Incertae sedis taxa for the current slice...", db_inc_sed_ott_ids);
+    // End DB out
+
     // Now we can use curr_slice_inc_sed_map to figure out which inc. sedis. taxa will be dealt with in this slice;
     for (auto scism_it: curr_slice_inc_sed_map) {
         auto & inc_sed_taxon = scism_it.first;
@@ -554,7 +569,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         if (full_soln_set.size() == 0) {
             continue; // we don't need to worry about incertae sedis taxa with no descendants stored. these have been dealt with
         }
-        LOG(DEBUG) << "inc. sed. " << inc_sed_taxon << " in this slice with " << included_leaf_pair_set.size() << " of " << gsit->second.size() << " sampled tips";
+        LOG(DEBUG) << "inc. sed. " << inc_sed_taxon->getOttId() << " in this slice with " << included_leaf_pair_set.size() << " of " << gsit->second.size() << " sampled tips";
         if (full_soln_set.size() == included_leaf_pair_set.size()) {
             // all of the sampled member of this incertae sedis taxon are sampled in this slice...
             int tax_level = inc_sed_taxon->getData().tax_level;
@@ -634,6 +649,10 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             }
             c = c->getParent();
         }
+    }
+    for (auto scism_it: curr_slice_inc_sed_map) {
+        auto & inc_sed_taxon = scism_it.first;
+        inc_sed_taxon->getData().desIds.clear();
     }
     rootSolnNd->getData().desIds.clear();
     rootSolnNd->getData().desIds.insert(ottId);
