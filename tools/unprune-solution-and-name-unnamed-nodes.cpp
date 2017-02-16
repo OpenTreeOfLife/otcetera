@@ -304,6 +304,8 @@ N * special_bisect_with_new_child(N * taxNode, N * currSolnNd, bool moveUnsamp) 
 // Used for starting from an ancestor of the taxa in taxon_node and moving one
 //    step closer to the MRCA of those taxa
 Node_t * find_single_child_with_all_marked_taxa(Node_t * currSolnNd, const Node_t * taxon_node) {
+    dbWriteOttSet(" find_single_child_with_all_marked_taxa taxon desIds", taxon_node->getData().desIds);
+    dbWriteOttSet(" find_single_child_with_all_marked_taxa currSolnNd desIds", currSolnNd->getData().desIds);
     const auto & taxon_data = taxon_node->getData();
     const auto & taxon_des = taxon_data.desIds;
     Node_t * nextSolnNd = nullptr;
@@ -318,7 +320,6 @@ Node_t * find_single_child_with_all_marked_taxa(Node_t * currSolnNd, const Node_
             }
         }
     }
-    assert(nextSolnNd != nullptr);
     return nextSolnNd;
 }
 
