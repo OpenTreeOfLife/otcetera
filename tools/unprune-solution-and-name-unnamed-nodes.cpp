@@ -379,7 +379,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
     // the easiest case is if the solution node has the same taxon ID
     //    just move the unsampled children.
     if (currSolnNd->hasOttId() && currSolnNd->getOttId() == higherTaxonNd->getOttId()) {
-        LOG(DEBUG) << "moveUnsampledChildren";
+        LOG(DEBUG) << "same ID call moveUnsampledChildren";
         moveUnsampledChildren(higherTaxonNd, currSolnNd);
         return 1U;
     }
@@ -400,11 +400,13 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
         // We only want to add a new node to the solution if the solution node that
         //    we have found is associated with a descendant taxon of
         bool add_new_node = false;
-
         if (currSolnNd->hasOttId()) {
             // we have to check the taxonomy tree to find out...
             auto potential_des = ott2tax.at(currSolnNd->getOttId());
             add_new_node = isAncDecPair(higherTaxonNd, potential_des);
+            if ((!add_new_node) && rootSolnNd == currSolnNd) {
+                add_new_node = isAncDecPair(potential_des, higherTaxonNd);
+            }
         }
         if (add_new_node) {
             if (currSolnNd == rootSolnNd) {
