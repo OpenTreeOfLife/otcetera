@@ -150,11 +150,11 @@ void writeLostTaxa(ostream & out, const LostTaxonMap & ltm) {
 // adds ottId to the desIds field of every node from firstNd down to ancAndLast (inclusive)
 template <typename N>
 void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
-    LOG(DEBUG) << "Adding " << ottId << " to desIds for all taxa from " << firstNd->getOttId() << " to " << ancAndLast->getOttId();
+    //LOG(DEBUG) << "Adding " << ottId << " to desIds for all taxa from " << firstNd->getOttId() << " to " << ancAndLast->getOttId();
     assert(firstNd);
     while (true) {
         firstNd->getData().desIds.insert(ottId);
-        LOG(DEBUG) << "addToDesIdsForAnc hit " << firstNd->getOttId();
+        //LOG(DEBUG) << "addToDesIdsForAnc hit " << firstNd->getOttId();
         //LOG(DEBUG) << "adding " << ottId << " to node " << firstNd->getName(); dbWriteOttSet(" its desIds", firstNd->getData().desIds);
         if (firstNd == ancAndLast) {
             return;
