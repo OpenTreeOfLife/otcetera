@@ -86,6 +86,7 @@ struct UnpruneStats {
     std::map<Node_t *, std::set<Node_t *> > inc_sed_taxon_to_sampled_tips;
     // maps inc_sed taxon that is not monophyletic to MRCA in solution.
     std::map<Node_t *, Node_t *> non_monophyletic_inc_sed;
+    std::map<Node_t *, OttIdSet> non_monophyletic_inc_sed_to_desIds;
     LostTaxonMap lost_taxa;
     OttIdSet monotypic_ott_ids;
     const OttIdSet & incertae_sedis_ids;
@@ -327,8 +328,9 @@ template <typename N>
 size_t incorporateHigherTaxonNode(N* higherTaxonNd,
                                   N* rootSolnNd,
                                   set<N *> & nodesAddedForTaxa,
-                                  LostTaxonMap & ltm,
+                                  UnpruneStats & unprune_stats,
                                   const map<long, N*> & ott2tax) {
+    LostTaxonMap & ltm = unprune_stats.lost_taxa;
     assert(higherTaxonNd);
     assert(rootSolnNd);
     LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
@@ -348,6 +350,9 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
             break;
         }
         currSolnNd = nextSolnNd;
+    }
+    if (unprune_stats.non_monophyletic_inc_sed.count(higherTaxonNd) > 0) {
+        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm);
     }
     assert(currSolnNd != nullptr);
     const auto & solDes = currSolnNd->getData().desIds;
@@ -437,7 +442,6 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                            const map<long, N*> & ott2tax, 
                            map<long, N*> & ott2soln, 
                            UnpruneStats & unprune_stats) {
-    LostTaxonMap & ltm = unprune_stats.lost_taxa;
     assert(rootSolnNd);
     assert(rootSolnNd->hasOttId());
     assert(!rootSolnNd->isTip());
@@ -554,7 +558,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             moveUnsampledChildren(higherTaxonNd, rootSolnNd);
             numMerged += 1 ;
         } else {
-            numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, ltm, ott2tax);
+            numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, unprune_stats, ott2tax);
         }
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
@@ -563,7 +567,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 moveUnsampledChildren(is_taxon_ptr, rootSolnNd);
                 numMerged += 1 ;
             } else {
-                numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, ltm, ott2tax);
+                numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, unprune_stats, ott2tax);
             }
         }
     }
@@ -589,7 +593,21 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     rootSolnNd->getData().desIds.clear();
     rootSolnNd->getData().desIds.insert(ottId);
     // here we need to update the altered inc_sed taxon maps...
-
+    // All the ones finished in this slice can be deleted from maps...
+    for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
+        for (auto is_taxon_ptr : is_it->second) {
+            unprune_stats.inc_sed_taxon_to_sampled_tips.erase(is_taxon_ptr);
+        }
+    }
+    // all of the ones with MRCA deeper need to have the rootSolnNd registered as the "sampled tip" (even though it really isn't a tip)
+    for (auto is_taxon_ptr : inc_sed_mapping_deeper) {
+        auto samp_tip_set = unprune_stats.inc_sed_taxon_to_sampled_tips.at(is_taxon_ptr);
+        auto & stsp = curr_slice_inc_sed_map[is_taxon_ptr];
+        for (TaxSolnNdPair tsp : stsp) {
+            samp_tip_set.erase(tsp.second);
+        }
+        samp_tip_set.insert(rootSolnNd);
+    }
     unprune_stats.numInternalsAddedToBackbone += nodesAddedForTaxa.size();
     unprune_stats.numInternalsMergedOnBackbone += numMerged;
     unprune_stats.numLeavesExpanded += numExpanded;
@@ -803,6 +821,8 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
         for (auto t : iter_leaf_n(*soln_mrca)) {
             if (sampled.count(t) == 0 && 0 == nonexc->count(t->getOttId())) {
                 unprune_stats.non_monophyletic_inc_sed[inc_sed_taxon] = soln_mrca;
+                unprune_stats.non_monophyletic_inc_sed_to_desIds[inc_sed_taxon] = inc_sed_taxon->getData().desIds;
+                break;
             }
         }
     }
