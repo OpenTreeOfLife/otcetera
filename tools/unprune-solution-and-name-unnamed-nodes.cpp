@@ -430,6 +430,20 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
     return 1U;
 }
 
+typedef pair<Node_t *, Node_t *> TaxSolnNdPair;
+
+void registerCoveringOfIncSed(OttId effectiveTipOttId, 
+                              Node_t * effTipTaxonNd,
+                              const map<long, Node_t *> & ott2soln, 
+                              const UnpruneStats & unprune_stats,
+                              std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map) {
+    const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
+    auto anc = effTipTaxonNd->getParent();
+    auto effTipSolnNd = ott2soln.at(effectiveTipOttId);
+    while (anc &&  inc_sed_internals.find(anc) != inc_sed_internals.end()) {
+        curr_slice_inc_sed_map[anc].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
+    }
+}
 
 // Moves unsampled taxa from the taxanomy (by finding them in `ott2tax`) to a slice of the
 //  solution tree that is rooted at `rootSolnNd`.
@@ -471,7 +485,6 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
     set<N *> solnLeaves;
     set<N *> taxaLeaves;
-    typedef pair<Node_t *, Node_t *> TaxSolnNdPair;
     std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map;
     set<Node_t *> inc_sed_that_are_proper_children;
     for (auto effectiveTipOttId : solnDesIds) {
@@ -479,15 +492,19 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         auto is_map_it = inc_sed_map.find(effTipTaxonNd);
         // see if this "tip" is an incertae sedis taxon.
         bool is_inc_sed = is_map_it != inc_sed_map.end();
-        if (is_inc_sed && rootNonExclude->count(effectiveTipOttId) > 0) {
-            // this "tip" taxon is nonexcluded incertae sedis taxon from deeper in tree...
-            if (inc_sed_map.find(effTipTaxonNd) != inc_sed_map.end()) {
-                throw OTCError() << "Incertae sedis taxon " << effectiveTipOttId << " is a tip for slice " << ottId << ", but is still in the inc_sed_taxon_to_sampled_tips map!";
-            }
-            auto anc = effTipTaxonNd->getParent();
-            auto effTipSolnNd = ott2soln.at(effectiveTipOttId);
-            while (anc &&  inc_sed_internals.find(anc) != inc_sed_internals.end()) {
-                curr_slice_inc_sed_map[anc].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
+        if (is_inc_sed) {
+            if (rootNonExclude->count(effectiveTipOttId) > 0) {
+                // this "tip" taxon is nonexcluded incertae sedis taxon from deeper in tree...
+                if (inc_sed_map.find(effTipTaxonNd) != inc_sed_map.end()) {
+                    throw OTCError() << "Incertae sedis taxon " << effectiveTipOttId << " is a tip for slice " << ottId << ", but is still in the inc_sed_taxon_to_sampled_tips map!";
+                }
+                registerCoveringOfIncSed(effectiveTipOttId, 
+                                         effTipTaxonNd,
+                                         ott2soln, 
+                                         unprune_stats,
+                                         curr_slice_inc_sed_map);
+            } else {
+                inc_sed_that_are_proper_children.insert(effTipTaxonNd);
             }
         } else {
             // this "tip" taxon is a descendant taxon of this slice
@@ -500,6 +517,11 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             taxaLeaves.insert(ott2tax.at(effectiveTipOttId));
         }    
     }
+    bool root_taxon_is_inc_sed = inc_sed_map.find(rootTaxonNd) != inc_sed_map.end();
+    if (root_taxon_is_inc_sed) {
+        inc_sed_that_are_proper_children.insert(rootTaxonNd);
+    }
+        
     // need to process inc. sed. splits in reverse order by level, to mimic the postorder sweep
     map<int, list<Node_t *> > inc_sed_to_deal_with_by_level;
     set<Node_t *> inc_sed_mapping_deeper;
@@ -513,6 +535,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             throw OTCError() << "Incertae sedis taxon " << inc_sed_taxon->getOttId() << " included in slice " << ottId << ", but was not found in the inc_sed_taxon_to_sampled_tips map!";
         }
         auto & full_soln_set = gsit->second;
+        LOG(DEBUG) << "inc. sed. " << inc_sed_taxon << " in this slice with " << included_leaf_pair_set.size() << " of " << gsit->second.size() << " sampled tips";
         if (full_soln_set.size() == included_leaf_pair_set.size()) {
             // all of the sampled member of this incertae sedis taxon are sampled in this slice...
             int tax_level = inc_sed_taxon->getData().tax_level;
@@ -597,19 +620,26 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     rootSolnNd->getData().desIds.insert(ottId);
     // here we need to update the altered inc_sed taxon maps...
     // All the ones finished in this slice can be deleted from maps...
+    for (auto is_taxon_ptr : inc_sed_that_are_proper_children) {
+        LOG(DEBUG) << "removing des " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips";
+        unprune_stats.inc_sed_taxon_to_sampled_tips.erase(is_taxon_ptr);
+    }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
         for (auto is_taxon_ptr : is_it->second) {
+            LOG(DEBUG) << "removing " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips";
             unprune_stats.inc_sed_taxon_to_sampled_tips.erase(is_taxon_ptr);
         }
     }
     // all of the ones with MRCA deeper need to have the rootSolnNd registered as the "sampled tip" (even though it really isn't a tip)
     for (auto is_taxon_ptr : inc_sed_mapping_deeper) {
-        auto samp_tip_set = unprune_stats.inc_sed_taxon_to_sampled_tips.at(is_taxon_ptr);
+        auto & samp_tip_set = unprune_stats.inc_sed_taxon_to_sampled_tips.at(is_taxon_ptr);
+        LOG(DEBUG) << "altering " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips from " << samp_tip_set.size();
         auto & stsp = curr_slice_inc_sed_map[is_taxon_ptr];
         for (TaxSolnNdPair tsp : stsp) {
             samp_tip_set.erase(tsp.second);
         }
         samp_tip_set.insert(rootSolnNd);
+        LOG(DEBUG) << "    to " << samp_tip_set.size();
     }
     unprune_stats.numInternalsAddedToBackbone += nodesAddedForTaxa.size();
     unprune_stats.numInternalsMergedOnBackbone += numMerged;
@@ -694,6 +724,7 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
     // This info is used to create the "non-excluded" sets, but it is expensive to do on the whole 
     //    taxonomy, so we just do it for subtrees rooted at an incertae sedis taxon...
     for (auto ist_id: incertae_sedis_ids) {
+        //LOG(DEBUG) << ""
         if (ott_to_tax.count(ist_id) == 0) {
             throw OTCError() << "Incertae sedis ID (" << ist_id << ") not in taxonomy.";
         }
@@ -703,7 +734,6 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
             // empty check is just an optimization to avoid recalculating the results for a node.
             if (di_ref.empty()) {
                 di_ref.insert(nd->getOttId());
-                assert (!nd->isTip());
                 unprune_stats.inc_sed_internals.insert(nd);
                 for (auto c : iter_child(*nd)) {
                     const auto & cdi_ref = c->getData().desIds;
