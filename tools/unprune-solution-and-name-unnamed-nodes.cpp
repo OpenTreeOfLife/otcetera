@@ -60,12 +60,12 @@ class LostTaxonLocation {
         mrca(mrcaNd) {
     }
     void addAttachmentPoint(Tree_t::node_type *attach, Tree_t::node_type *child) {
-        attachNode2AttachedVec[attach].push_back(child);
+        attachNode2AttachedVec[attach].insert(child);
     }
     public: //@TMP should be private.
     long ottId = 0L;
     Tree_t::node_type * mrca = nullptr;
-    using node_vec = std::vector<Tree_t::node_type *>;
+    using node_vec = std::set<Tree_t::node_type *>;
     using attach2node_vec = std::map<Tree_t::node_type *, node_vec>;
     // for each attachment point, we store which subtrees for this taxon attach there.
     attach2node_vec attachNode2AttachedVec;
@@ -109,6 +109,8 @@ void unpruneTaxa(T & taxonomy,
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 template <typename N>
 N * find_mrca_without_desids(const std::set<N *> & tip_node_set, std::set<N*> * induced_nodes = nullptr);
+template <typename N>
+void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v = nullptr);
 
 // impl.
 
@@ -228,7 +230,7 @@ N * addParentAndMoveUnsampledTaxChildren(N * taxon, N * solnChild) {
 // Moves all of the children of taxon that have empty desIds fields
 //  to be children of solnNode.
 template <typename N>
-void moveUnsampledChildren(N * taxon, N * solnNode) {
+void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v) {
     assert(taxon);
     assert(solnNode);
     const auto children = all_children(taxon);
@@ -238,6 +240,9 @@ void moveUnsampledChildren(N * taxon, N * solnNode) {
             LOG(DEBUG) << "moveUnsampledChildren moving " << child->getOttId();
             child->detachThisNode();
             solnNode->addChild(child);
+            if (v) {
+                v->insert(child);
+            }
         }
     }
 }
@@ -286,14 +291,18 @@ void registerAttachmentPoints(const N * taxon,
 
 
 void fixLostTaxonMap(OttId ott_id,
-                     const OttIdSet & tip_ids,
+                     const OttIdSet & tip_ids, //@TODO bad name! see note below
                      const map<long, Node_t*> & ott_to_sol,
                      UnpruneStats & unprune_stats) {
     LOG(DEBUG) << "fixLostTaxonMap for " << ott_id;
     dbWriteOttSet("  tip_ids", tip_ids);
     std::set<Node_t *> tips;
     for (auto i : tip_ids) {
-        tips.insert(ott_to_sol.at(i));
+        auto x = ott_to_sol.find(i);
+        // "tip_ids" currently is all desIds of the incertae sedis taxon  - includes higher taxa which may not be in soln.
+        if (x != ott_to_sol.end()) {
+            tips.insert(x->second);
+        }
     }
     std::set<Node_t *> visited;
     Node_t * mrca = find_mrca_without_desids(tips, &visited);
@@ -331,8 +340,8 @@ void fixLostTaxonMap(OttId ott_id,
     for (auto n: at_set) {
         auto & att_vec = attachment[n];
         for (auto c : iter_child(*n)) {
-            if (visited.count(c) > 0) {
-                att_vec.push_back(c);
+            if (tips.count(c) >0 || no_interloper.count(c) > 0) {
+                att_vec.insert(c);
             }
         }
     }
@@ -346,11 +355,18 @@ void addChildrenOfNonMonophyleticTaxon(N * taxon,
     assert(mrca);
     assert(taxon->hasOttId());
     const auto ottId = taxon->getOttId();
-    assert(ltm.count(ottId) == 0); // should be adding a new element
+    if (ltm.count(ottId) > 0) {
+        LOG(DEBUG) << " LTM for " << ottId << " again. this can happen if it is incertae sedis.";
+    }
     ltm[ottId] = LostTaxonLocation(ottId, mrca);
     auto & ltl = ltm[ottId];
     registerAttachmentPoints(taxon, mrca, ltl);
-    moveUnsampledChildren(taxon, mrca);
+    std::set<N *> v;
+    moveUnsampledChildren(taxon, mrca, &v);
+    if (!v.empty()) {
+        auto & s = ltl.attachNode2AttachedVec[mrca];
+        s.insert(v.begin(), v.end());
+    }
 }
 
 
@@ -1075,10 +1091,15 @@ void unprunePreppedInputs(Tree_t & taxonomy,
             }
         }
     }
+
     // Currently, we don't do the correct bookkeeping to get an accurate
     //    lost taxon map for non-monophyletic incertae sedis taxa during construction
     //    of the unpruned tree.
     //   So we'll just replace those entries here, so they are correct on exit.
+    ott_to_sol.clear();
+    for (auto n : iter_leaf(solution)) {
+        ott_to_sol[n->getOttId()] = n;
+    }
     const auto & id_to_fix_map = unprune_stats.non_monophyletic_inc_sed_to_desIds;
     for (auto pit : id_to_fix_map) {
         OttId broken_ott_id = pit.first;
