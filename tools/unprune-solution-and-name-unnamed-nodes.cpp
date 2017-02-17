@@ -18,6 +18,7 @@ static std::string lostTaxaJSONFilename;
 static std::string statsJSONFilename;
 static std::string incertaeSedisFilename;
 
+
 struct RTNodePartialDesSet;
 using Node_t = RootedTreeNode<RTNodePartialDesSet>;
 
@@ -90,7 +91,7 @@ struct UnpruneStats {
     std::map<Node_t *, std::set<Node_t *> > inc_sed_taxon_to_sampled_tips;
     // maps inc_sed taxon that is not monophyletic to MRCA in solution.
     std::map<Node_t *, Node_t *> non_monophyletic_inc_sed;
-    std::map<Node_t *, OttIdSet> non_monophyletic_inc_sed_to_desIds;
+    std::map<OttId, OttIdSet> non_monophyletic_inc_sed_to_desIds;
     LostTaxonMap lost_taxa;
     OttIdSet monotypic_ott_ids;
     const OttIdSet & incertae_sedis_ids;
@@ -106,7 +107,8 @@ void unpruneTaxa(T & taxonomy,
                  UnpruneStats & unprune_stats);
 
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
-
+template <typename N>
+N * find_mrca_without_desids(const std::set<N *> & tip_node_set, std::set<N*> * induced_nodes = nullptr);
 
 // impl.
 
@@ -277,6 +279,58 @@ void registerAttachmentPoints(const N * taxon,
                         toDealWith.push(c);
                     }
                 }
+            }
+        }
+    }
+}
+
+
+void fixLostTaxonMap(OttId ott_id,
+                     const OttIdSet & tip_ids,
+                     const map<long, Node_t*> & ott_to_sol,
+                     UnpruneStats & unprune_stats) {
+    std::set<Node_t *> tips;
+    for (auto i : tip_ids) {
+        tips.insert(ott_to_sol.at(i));
+    }
+    std::set<Node_t *> visited;
+    Node_t * mrca = find_mrca_without_desids(tips, &visited);
+    std::set<Node_t *> no_interloper;
+    for (auto n: visited) {
+        if (tips.count(n) == 0) {
+            bool has_interloper = false;
+            for (auto c : iter_child(*n)) {
+                if (visited.count(c) == 0) {
+                    has_interloper = true;
+                    break;
+                }
+            }
+            if (!has_interloper) {
+                no_interloper.insert(n);
+            }
+        }
+    }
+    set<Node_t *> at_set;
+    for (auto n : tips) {
+        if (n == mrca) {
+            at_set.insert(mrca);
+            continue;
+        }
+        auto p = n->getParent();
+        while (p != mrca && no_interloper.count(p) > 0) {
+            p = p->getParent();
+        }
+        at_set.insert(p);
+    }
+    LostTaxonLocation ltl(ott_id, mrca);
+    unprune_stats.lost_taxa[ott_id] = ltl;
+    auto & attachment = unprune_stats.lost_taxa[ott_id].attachNode2AttachedVec;
+    attachment.clear();
+    for (auto n: at_set) {
+        auto & att_vec = attachment[n];
+        for (auto c : iter_child(*n)) {
+            if (visited.count(c) > 0) {
+                att_vec.push_back(c);
             }
         }
     }
@@ -858,28 +912,33 @@ void findIncertaeSedisInSolution(Tree_t & taxonomy,
 }
 
 template <typename N>
-N * find_mrca_without_desids(const set<N *> & tip_node_set) {
+N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_nodes) {
     if (tip_node_set.size() < 2)  {
         if (tip_node_set.empty()) {
             return nullptr;
         }
-        return *tip_node_set.begin();
+        N * r = *tip_node_set.begin();
+        if (induced_nodes) {
+            induced_nodes->insert(r);
+        }
+        return r;
     }
     auto nit = tip_node_set.begin();
     N * curr = *nit++;
     deque<N *> root_to_mrca;
-    set<N *> seen_nodes;
+    set<N *> local_induced_nodes;
+    set<N *> * seen_nodes = (induced_nodes == nullptr ? &local_induced_nodes : induced_nodes);
     set<N *> dequed_nodes;
     while (curr != nullptr) {
         root_to_mrca.push_front(curr);
-        seen_nodes.insert(curr);
+        seen_nodes->insert(curr);
         dequed_nodes.insert(curr);
         curr = curr->getParent();
     }
     for (; nit != tip_node_set.end(); ++nit) {
         curr = *nit;
         while (curr != nullptr) {
-            if (seen_nodes.count(curr) != 0) {
+            if (seen_nodes->count(curr) != 0) {
                 if (dequed_nodes.count(curr) != 0) {
                     while (root_to_mrca.back() != curr) {
                         auto td = root_to_mrca.back();
@@ -892,12 +951,23 @@ N * find_mrca_without_desids(const set<N *> & tip_node_set) {
                 }
                 break;
             } else {
-                seen_nodes.insert(curr);
+                seen_nodes->insert(curr);
             }
         }
-
     }
-    return root_to_mrca.back();
+    N * r = root_to_mrca.back();
+    if (induced_nodes != nullptr) {
+        N * p = r->getParent();
+        while (p != nullptr) {
+            if (induced_nodes->count(p) > 0) {
+                induced_nodes->erase(p);
+            } else {
+                break;
+            }
+            p = p->getParent();
+        }
+    }
+    return r;
 }
 
 // Taxa that are descendants of an incertae sedis taxon, will demand some special handling..
@@ -920,7 +990,7 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
         for (auto t : iter_leaf_n(*soln_mrca)) {
             if (sampled.count(t) == 0 && 0 == nonexc->count(t->getOttId())) {
                 unprune_stats.non_monophyletic_inc_sed[inc_sed_taxon] = soln_mrca;
-                unprune_stats.non_monophyletic_inc_sed_to_desIds[inc_sed_taxon] = inc_sed_taxon->getData().desIds;
+                unprune_stats.non_monophyletic_inc_sed_to_desIds[inc_sed_taxon->getOttId()] = inc_sed_taxon->getData().desIds;
                 break;
             }
         }
@@ -984,6 +1054,16 @@ void unprunePreppedInputs(Tree_t & taxonomy,
                 p->getData().desIds.insert(d.begin(), d.end());
             }
         }
+    }
+    // Currently, we don't do the correct bookkeeping to get an accurate
+    //    lost taxon map for non-monophyletic incertae sedis taxa during construction
+    //    of the unpruned tree.
+    //   So we'll just replace those entries here, so they are correct on exit.
+    const auto & id_to_fix_map = unprune_stats.non_monophyletic_inc_sed_to_desIds;
+    for (auto pit : id_to_fix_map) {
+        OttId broken_ott_id = pit.first;
+        const auto & tip_ids = pit.second;
+        fixLostTaxonMap(pit.first, pit.second, ott_to_sol, unprune_stats);
     }
 }
 
