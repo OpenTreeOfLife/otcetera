@@ -72,6 +72,7 @@ class LostTaxonLocation {
 
 };
 typedef std::map<int, LostTaxonLocation> LostTaxonMap;
+typedef std::pair<Node_t *, Node_t *> childParPair;
 
 struct UnpruneStats {
     size_t startNumNamedInternalsInSoln = 0U;
@@ -156,8 +157,7 @@ void writeLostTaxa(ostream & out, const LostTaxonMap & ltm) {
 }
 
 // adds ottId to the desIds field of every node from firstNd down to ancAndLast (inclusive)
-template <typename N>
-void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
+void addToDesIdsForAnc(long ottId, Node_t *firstNd, Node_t *ancAndLast, const map<long, childParPair> & ott2tax) {
     LOG(DEBUG) << "Adding " << ottId << " to desIds for all taxa from " << firstNd->getOttId() << " to " << ancAndLast->getOttId();
     assert(firstNd);
     while (true) {
@@ -169,7 +169,8 @@ void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
         }
         // If this triggers, then ancAndLast is not an ancestor of firstNd
         assert(firstNd->getParent());
-        firstNd = firstNd->getParent();
+        auto fid = firstNd->getOttId();
+        firstNd = ott2tax.at(fid).second; // parent in unaltered taxonomy.
     }
 }
 
@@ -419,7 +420,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
                                   set<N *> & nodesAddedForTaxa,
                                   UnpruneStats & unprune_stats,
                                   bool recordInLTM,
-                                  const map<long, N*> & ott2tax) {
+                                  const map<long, childParPair> & ott2tax) {
     LostTaxonMap & ltm = unprune_stats.lost_taxa;
     assert(higherTaxonNd);
     assert(rootSolnNd);
@@ -493,7 +494,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
         bool add_new_node = false;
         if (currSolnNd->hasOttId()) {
             // we have to check the taxonomy tree to find out...
-            auto potential_des = ott2tax.at(currSolnNd->getOttId());
+            auto potential_des = ott2tax.at(currSolnNd->getOttId()).first;
             add_new_node = isAncDecPair(higherTaxonNd, potential_des);
             if ((!add_new_node) && rootSolnNd == currSolnNd) {
                 add_new_node = isAncDecPair(potential_des, higherTaxonNd);
@@ -552,7 +553,7 @@ void registerCoveringOfIncSed(OttId effectiveTipOttId,
 // Returns the set of IDs that should  
 template <typename N>
 void unpruneTaxaForSubtree(N *rootSolnNd,
-                           const map<long, N*> & ott2tax, 
+                           const map<long, childParPair> & ott2tax, 
                            map<long, N*> & ott2soln, 
                            UnpruneStats & unprune_stats) {
     assert(rootSolnNd);
@@ -560,7 +561,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     const auto ottId = rootSolnNd->getOttId();
     LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
     assert(ott2soln.at(ottId) == rootSolnNd);
-    N * rootTaxonNd = ott2tax.at(ottId);
+    N * rootTaxonNd = ott2tax.at(ottId).first;
     assert(rootTaxonNd != nullptr);
     assert(!rootTaxonNd->isTip());
     const OttIdSet * rootNonExclude = rootTaxonNd->getData().nonexcluded_ids;
@@ -588,7 +589,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     typedef pair<OttId, OttId> carriedIDRealId;
     list<carriedIDRealId > queuedForFlagging;
     for (auto effectiveTipOttId : solnDesIds) {
-        auto effTipTaxonNd = ott2tax.at(effectiveTipOttId);
+        auto effTipTaxonNd = ott2tax.at(effectiveTipOttId).first;
         effTipTaxa.push_back(effTipTaxonNd);
         auto is_map_it = inc_sed_map.find(effTipTaxonNd);
         // see if this "tip" is an incertae sedis taxon.
@@ -642,21 +643,16 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     // now we flag all of the desIds for the proper
     for (auto cr_pair : queuedForFlagging) {
         auto realTipOttId = cr_pair.second;
-        auto effTipTaxonNd = ott2tax.at(realTipOttId);
+        auto effTipTaxonNd = ott2tax.at(realTipOttId).first;
         effTipTaxonNd->getData().desIds.clear();
     }
     for (auto cr_pair : queuedForFlagging) {
         auto carriedTipId = cr_pair.first;
         auto threadedThroughOttId = cr_pair.second;
-        Node_t * effTipTaxonNd = ott2tax.at(threadedThroughOttId);
-        addToDesIdsForAnc(threadedThroughOttId, effTipTaxonNd, rootTaxonNd);
+        Node_t * effTipTaxonNd = ott2tax.at(carriedTipId).first;
+        addToDesIdsForAnc(carriedTipId, effTipTaxonNd, rootTaxonNd, ott2tax);
         solnLeaves.insert(ott2soln.at(threadedThroughOttId));
-        taxaLeaves.insert(effTipTaxonNd);  
-        if (carriedTipId != threadedThroughOttId) {
-            effTipTaxonNd = ott2tax.at(carriedTipId);
-            addToDesIdsForAnc(carriedTipId, effTipTaxonNd, rootTaxonNd);
-            taxaLeaves.insert(effTipTaxonNd);  
-        }
+        taxaLeaves.insert(effTipTaxonNd);
     }   
     // need to process inc. sed. splits in reverse order by level, to mimic the postorder sweep
     map<int, list<Node_t *> > inc_sed_to_deal_with_by_level;
@@ -701,7 +697,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         if (l->isTip()) {
             assert(l->hasOttId());
             auto leafOttId = l->getOttId();
-            auto taxonForLeaf = ott2tax.at(leafOttId);
+            auto taxonForLeaf = ott2tax.at(leafOttId).first;
             if (!taxonForLeaf->isTip()) {
                 numExpanded += 1;
                 auto cvec = all_children(taxonForLeaf);
@@ -888,7 +884,7 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
     }
 }
 
-void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
+void fillDesIdsForIncertaeSedisOnly(const map<long, childParPair> & ott_to_tax,
                                     const OttIdSet & incertae_sedis_ids, 
                                     UnpruneStats & unprune_stats) {
     // As a part of implementing the incertae sedis logic, we also fill the desIds of the taxonomy.
@@ -900,7 +896,7 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
             throw OTCError() << "Incertae sedis ID (" << ist_id << ") not in taxonomy.";
         }
         LOG(DEBUG) << "Filling desIds for incertae sedis " << ist_id;
-        auto taxon = ott_to_tax.at(ist_id);
+        auto taxon = ott_to_tax.at(ist_id).first;
         for (auto nd: iter_post_n(*taxon)) {
             auto & di_ref = nd->getData().desIds;
             // empty check is just an optimization to avoid recalculating the results for a node.
@@ -919,13 +915,13 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
 
 
 void indexNodesByOttId(Tree_t & taxonomy,
-                       map<long, Node_t *> & ott_to_tax,
+                       map<long, childParPair> & ott_to_tax,
                        UnpruneStats & unprune_stats) {
     OttIdSet & moi = unprune_stats.monotypic_ott_ids;
     for (auto nd: iter_post(taxonomy)){
         if (nd->hasOttId()) {
             const OttId taxon_ott_id = nd->getOttId();
-            ott_to_tax[taxon_ott_id] = nd;
+            ott_to_tax[taxon_ott_id] = childParPair(nd, nd->getParent());
             if (nd->isOutDegreeOneNode()) {
                 moi.insert(nd->getOttId());
             } else if (nd->isTip()) {
@@ -943,7 +939,7 @@ void indexNodesByOttId(Tree_t & taxonomy,
 //    taxon are sampled in the solution
 void findIncertaeSedisInSolution(Tree_t & taxonomy,
                                  Tree_t & solution,
-                                 const map<long, Node_t *> & ott_to_tax,
+                                 const map<long, childParPair> & ott_to_tax,
                                  UnpruneStats & unprune_stats) {
     auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto snd: iter_leaf(solution)) {
@@ -951,7 +947,7 @@ void findIncertaeSedisInSolution(Tree_t & taxonomy,
             throw OTCError() << "Tip "<< snd->getName() << " in solution lacks an OTT ID";
         }
         auto ott_id = snd->getOttId();
-        auto taxon_node = ott_to_tax.at(ott_id);
+        auto taxon_node = ott_to_tax.at(ott_id).first;
         if (ott_id == 5144555) {
             dbWriteOttSet("target desIds", taxon_node->getData().desIds);
         }
@@ -1050,7 +1046,7 @@ N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_no
 // results are stored in unprune_stats. This relies on having been filled...
 void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
                                         Tree_t & solution,
-                                        const map<long, Node_t *> & ott_to_tax,
+                                        const map<long, childParPair> & ott_to_tax,
                                         UnpruneStats & unprune_stats) {
     const auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     LOG(DEBUG) << " # incertae_sedis is " << unprune_stats.inc_sed_taxon_to_sampled_tips.size();
@@ -1082,7 +1078,7 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
 void unprunePreppedInputs(Tree_t & taxonomy,
                           Tree_t & solution,
                           const OttIdSet & incertae_sedis_ids,
-                          const map<long, Node_t *> & ott_to_tax,
+                          const map<long, childParPair> & ott_to_tax,
                           UnpruneStats & unprune_stats) {
     map<long, Node_t*> ott_to_sol;
     const auto snVec = all_nodes(solution);
@@ -1114,7 +1110,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
             auto ott_id = nd->getOttId();
             ott_to_sol[ott_id] = nd;
             auto & nd_di = nd->getData().desIds;
-            auto taxon_node = ott_to_tax.at(ott_id);
+            auto taxon_node = ott_to_tax.at(ott_id).first;
             if (nd->isTip()) {
                 nd_di.insert(ott_id);
             }
@@ -1172,7 +1168,7 @@ void unpruneTaxa(T & taxonomy,
     const OttIdSet & incertae_sedis_ids = unprune_stats.incertae_sedis_ids;
     unprune_stats.out_degree_many1 = n_internal_out_degree_many(taxonomy);
     // 1. First, index taxonomy by OttId.
-    map<long, Node_t *> ott_to_tax;
+    map<long, childParPair> ott_to_tax;
     indexNodesByOttId(taxonomy, ott_to_tax, unprune_stats);
     // filling the nonexcluded IDs (next step) needs the desIds filled for the parts of 
     //    the taxonomy that descend from an incertae sedis taxon.
