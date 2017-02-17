@@ -289,6 +289,8 @@ void fixLostTaxonMap(OttId ott_id,
                      const OttIdSet & tip_ids,
                      const map<long, Node_t*> & ott_to_sol,
                      UnpruneStats & unprune_stats) {
+    LOG(DEBUG) << "fixLostTaxonMap for " << ott_id;
+    dbWriteOttSet("  tip_ids", tip_ids);
     std::set<Node_t *> tips;
     for (auto i : tip_ids) {
         tips.insert(ott_to_sol.at(i));
@@ -930,6 +932,10 @@ N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_no
     set<N *> * seen_nodes = (induced_nodes == nullptr ? &local_induced_nodes : induced_nodes);
     set<N *> dequed_nodes;
     while (curr != nullptr) {
+        if (curr->hasOttId())
+            LOG(DEBUG) << "mrca pushing " << curr->getOttId();
+        else
+            LOG(DEBUG) << "mrca pushing address " << curr;
         root_to_mrca.push_front(curr);
         seen_nodes->insert(curr);
         dequed_nodes.insert(curr);
@@ -937,11 +943,20 @@ N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_no
     }
     for (; nit != tip_node_set.end(); ++nit) {
         curr = *nit;
+        if (curr->hasOttId())
+            LOG(DEBUG) << "mrca checking " << curr->getOttId();
+        else
+            LOG(DEBUG) << "mrca checking address " << curr;
         while (curr != nullptr) {
             if (seen_nodes->count(curr) != 0) {
                 if (dequed_nodes.count(curr) != 0) {
                     while (root_to_mrca.back() != curr) {
                         auto td = root_to_mrca.back();
+                        if (td->hasOttId())
+                            LOG(DEBUG) << "mrca popping " << td->getOttId();
+                        else
+                            LOG(DEBUG) << "mrca popping address " << td;
+                        
                         root_to_mrca.pop_back();
                         dequed_nodes.erase(td);
                         if (root_to_mrca.size() == 1) {
@@ -953,6 +968,7 @@ N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_no
             } else {
                 seen_nodes->insert(curr);
             }
+            curr = curr->getParent();
         }
     }
     N * r = root_to_mrca.back();
@@ -978,6 +994,7 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
                                         const map<long, Node_t *> & ott_to_tax,
                                         UnpruneStats & unprune_stats) {
     auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
+    LOG(DEBUG) << " # incertae_sedis is " << unprune_stats.inc_sed_taxon_to_sampled_tips.size();
     for (auto ttm_it: to_tips_map) {
         auto inc_sed_taxon = ttm_it.first;
         const auto & sampled = ttm_it.second;
@@ -985,17 +1002,20 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
             continue;
         }
         const auto nonexc = inc_sed_taxon->getData().nonexcluded_ids;
+        const auto taxon_des = inc_sed_taxon->getData().desIds;
         assert(nonexc != nullptr);
         auto soln_mrca = find_mrca_without_desids(sampled);
         for (auto t : iter_leaf_n(*soln_mrca)) {
+            LOG(DEBUG) << " visiting leaf " << t->getOttId() << " to see if it breaks " << inc_sed_taxon->getOttId();
             if (sampled.count(t) == 0 && 0 == nonexc->count(t->getOttId())) {
+                LOG(DEBUG) << "Inc. sed. " << inc_sed_taxon->getOttId() << " is not monophyletic.";
                 unprune_stats.non_monophyletic_inc_sed[inc_sed_taxon] = soln_mrca;
                 unprune_stats.non_monophyletic_inc_sed_to_desIds[inc_sed_taxon->getOttId()] = inc_sed_taxon->getData().desIds;
                 break;
             }
         }
     }
-
+    LOG(DEBUG) << " # non monophyletic incertae_sedis is " << unprune_stats.non_monophyletic_inc_sed_to_desIds.size();
 }
 
 // last step in unpruneTaxa
