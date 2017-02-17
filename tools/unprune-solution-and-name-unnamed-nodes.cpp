@@ -18,18 +18,22 @@ static std::string lostTaxaJSONFilename;
 static std::string statsJSONFilename;
 static std::string incertaeSedisFilename;
 
+struct RTNodePartialDesSet;
+using Node_t = RootedTreeNode<RTNodePartialDesSet>;
+
 struct RTNodePartialDesSet {
     std::set<long> desIds;
     OttIdSet * nonexcluded_ids = nullptr; // union of IDs that descend from any child of an ancestor marked as incertae sedis
     long smallestChild  = 0;
     int tax_level = -1;
+    // set for descendants of incertae sedis taxa to indicate which clade hold the taxon
+    Node_t * reprInSolnBy = nullptr; 
 };
 
 struct RTTreeIncertaeSedisHolder {
     std::list<OttIdSet> ownedIdSets; // used for memory management.
 };
 
-using Node_t = RootedTreeNode<RTNodePartialDesSet>;
 using Tree_t = RootedTree<RTNodePartialDesSet, RTTreeIncertaeSedisHolder>;
 
 inline long smallestChild(const Tree_t::node_type* node) {
@@ -167,13 +171,15 @@ void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
 
 template <typename N>
 vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
-                                                  const set<N *> & boundaries) {
+                                             const set<N *> & boundaries) {
     set<N *> seen;
     vector<N *> r;
     N * curr = root;
     assert(!curr->getData().desIds.empty());
+    assert(curr->getData().reprInSolnBy == nullptr);
     stack<N *> toDealWith;
     while (true) {
+        LOG(DEBUG) << "higherTaxPreOrderBelowBoundaries visiting " << curr->getOttId();
         if (seen.count(curr) > 0) {
             if (toDealWith.empty()) {
                 return r;
@@ -184,10 +190,11 @@ vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
         } else {
             seen.insert(curr);
             if (boundaries.count(curr) == 0) {
-                //LOG(DEBUG) << "higherTaxPreOrderBelowBoundaries adding " << curr->getOttId();
+                LOG(DEBUG) << "higherTaxPreOrderBelowBoundaries adding " << curr->getOttId();
                 r.push_back(curr);
                 for (auto c : iter_child(*curr)) {
-                    if (!c->getData().desIds.empty()) {
+                    auto & cd = c->getData();
+                    if (!cd.desIds.empty() && cd.reprInSolnBy == nullptr) {
                         toDealWith.push(c);
                     }
                 }
@@ -224,7 +231,8 @@ void moveUnsampledChildren(N * taxon, N * solnNode) {
     assert(solnNode);
     const auto children = all_children(taxon);
     for (auto child : children) {
-        if (child->getData().desIds.empty()) {
+        auto & cd = child->getData();
+        if (cd.desIds.empty() && cd.reprInSolnBy == nullptr) {
             LOG(DEBUG) << "moveUnsampledChildren moving " << child->getOttId();
             child->detachThisNode();
             solnNode->addChild(child);
@@ -497,9 +505,11 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map;
     set<Node_t *> inc_sed_that_are_proper_children;
     dbWriteOttSet(" effective tips: ", solnDesIds);
+    list<Node_t *> effTipTaxa;
     for (auto effectiveTipOttId : solnDesIds) {
         //LOG(DEBUG) << "checking effective tip " << effectiveTipOttId;
         auto effTipTaxonNd = ott2tax.at(effectiveTipOttId);
+        effTipTaxa.push_back(effTipTaxonNd);
         auto is_map_it = inc_sed_map.find(effTipTaxonNd);
         // see if this "tip" is an incertae sedis taxon.
         bool is_inc_sed = is_map_it != inc_sed_map.end();
@@ -592,8 +602,10 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 numExpanded += 1;
                 auto cvec = all_children(taxonForLeaf);
                 for (auto c : cvec) {
-                    taxonForLeaf->removeChild(c);
-                    l->addChild(c);
+                    if (c->getData().reprInSolnBy == nullptr) {
+                        taxonForLeaf->removeChild(c);
+                        l->addChild(c);
+                    }
                 }
             }
         }
@@ -614,6 +626,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     //  are correctly added in the tip->root orientation).
     set<N *> nodesAddedForTaxa;
     for (auto higherTaxonNd : postOrderInTaxNd) {
+        LOG(DEBUG) << "dealing with " << higherTaxonNd->getOttId();
         if (higherTaxonNd == rootTaxonNd) {
             moveUnsampledChildren(higherTaxonNd, rootSolnNd);
             numMerged += 1 ;
@@ -623,6 +636,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
         for (auto is_taxon_ptr : is_it->second) {
+            LOG(DEBUG) << "dealing with Incertae sedis " << is_taxon_ptr->getOttId() << " from level " << is_it->first;
             if (is_taxon_ptr == rootTaxonNd) {
                 moveUnsampledChildren(is_taxon_ptr, rootSolnNd);
                 numMerged += 1 ;
@@ -676,6 +690,18 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         LOG(DEBUG) << "altering " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips from " << samp_tip_set.size();
         auto & stsp = curr_slice_inc_sed_map[is_taxon_ptr];
         for (TaxSolnNdPair tsp : stsp) {
+            // for the deeper parts of the tree the tips in this slice need to be annotated
+            //    to reflect the fact that they have already been included in a taxonomic node
+            Node_t * spike_nd = tsp.first;
+            rootSolnNd->getData().desIds.insert(spike_nd->getOttId());
+            while (true) {
+                if (inc_sed_mapping_deeper.count(spike_nd) > 0) {
+                    break;
+                }
+                spike_nd->getData().reprInSolnBy = rootTaxonNd;
+                spike_nd = spike_nd->getParent();
+                assert(spike_nd != nullptr);
+            }
             samp_tip_set.erase(tsp.second);
         }
         samp_tip_set.insert(rootSolnNd);
