@@ -581,7 +581,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         if (is_inc_sed) {
             if (rootNonExclude->count(effectiveTipOttId) > 0) {
                 // this "tip" taxon is nonexcluded incertae sedis taxon from deeper in tree...
-                if (is_map_it->second.size() > 0) {
+                if (!is_tip_inc_sed && is_map_it->second.size() > 0) {
                     throw OTCError() << "Incertae sedis taxon " << effectiveTipOttId << " is a tip for slice " << ottId << ", but is still in the inc_sed_taxon_to_sampled_tips map!";
                 }
                 registerCoveringOfIncSed(effectiveTipOttId, 
@@ -993,7 +993,7 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
                                         Tree_t & solution,
                                         const map<long, Node_t *> & ott_to_tax,
                                         UnpruneStats & unprune_stats) {
-    auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
+    const auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     LOG(DEBUG) << " # incertae_sedis is " << unprune_stats.inc_sed_taxon_to_sampled_tips.size();
     for (auto ttm_it: to_tips_map) {
         auto inc_sed_taxon = ttm_it.first;
@@ -1124,6 +1124,9 @@ void unpruneTaxa(T & taxonomy,
     //    unprune_stats.inc_sed_taxon_to_sampled_tips and the nonexcluded_ids sets
     for (auto nd: iter_post(taxonomy)) {
         nd->getData().desIds.clear();
+    }
+    for (auto el : unprune_stats.inc_sed_taxon_to_sampled_tips) {
+        LOG(DEBUG) << " unprune_stats.inc_sed_taxon_to_sampled_tips key " << el.first->getOttId() << " has " << el.second.size() << " sampled tips";
     }
     // Unprune, collecting stats
     unprunePreppedInputs(taxonomy, solution, incertae_sedis_ids, ott_to_tax, unprune_stats);
