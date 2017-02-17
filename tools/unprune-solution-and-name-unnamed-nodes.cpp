@@ -158,7 +158,7 @@ void writeLostTaxa(ostream & out, const LostTaxonMap & ltm) {
 // adds ottId to the desIds field of every node from firstNd down to ancAndLast (inclusive)
 template <typename N>
 void addToDesIdsForAnc(long ottId, N *firstNd, N *ancAndLast) {
-    //LOG(DEBUG) << "Adding " << ottId << " to desIds for all taxa from " << firstNd->getOttId() << " to " << ancAndLast->getOttId();
+    LOG(DEBUG) << "Adding " << ottId << " to desIds for all taxa from " << firstNd->getOttId() << " to " << ancAndLast->getOttId();
     assert(firstNd);
     while (true) {
         firstNd->getData().desIds.insert(ottId);
@@ -550,7 +550,6 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                            UnpruneStats & unprune_stats) {
     assert(rootSolnNd);
     assert(rootSolnNd->hasOttId());
-    assert(!rootSolnNd->isTip());
     const auto ottId = rootSolnNd->getOttId();
     LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
     assert(ott2soln.at(ottId) == rootSolnNd);
@@ -577,9 +576,9 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map;
     set<Node_t *> inc_sed_that_are_proper_children;
     dbWriteOttSet(" effective tips: ", solnDesIds);
+    dbWriteOttSet(" rootNonExclude: ", *rootNonExclude);
     list<Node_t *> effTipTaxa;
     for (auto effectiveTipOttId : solnDesIds) {
-        //LOG(DEBUG) << "checking effective tip " << effectiveTipOttId;
         auto effTipTaxonNd = ott2tax.at(effectiveTipOttId);
         effTipTaxa.push_back(effTipTaxonNd);
         auto is_map_it = inc_sed_map.find(effTipTaxonNd);
@@ -594,6 +593,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             }
         }
         bool is_proper_des = false;
+        LOG(DEBUG) << "checking effective tip " << effectiveTipOttId << " is_inc_sed = " << is_inc_sed;
         if (is_inc_sed) {
             if (rootNonExclude->count(effectiveTipOttId) > 0) {
                 // this "tip" taxon is nonexcluded incertae sedis taxon from deeper in tree...
@@ -613,7 +613,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         }
         if (is_proper_des) {
             if (is_inc_sed && !is_tip_inc_sed) {
-                inc_sed_that_are_proper_children.insert(rootTaxonNd);
+                inc_sed_that_are_proper_children.insert(effTipTaxonNd);
             }
             effTipTaxonNd->getData().desIds.clear();
             addToDesIdsForAnc(effectiveTipOttId, effTipTaxonNd, rootTaxonNd);
@@ -866,6 +866,7 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
         if (ott_to_tax.count(ist_id) == 0) {
             throw OTCError() << "Incertae sedis ID (" << ist_id << ") not in taxonomy.";
         }
+        LOG(DEBUG) << "Filling desIds for incertae sedis " << ist_id;
         auto taxon = ott_to_tax.at(ist_id);
         for (auto nd: iter_post_n(*taxon)) {
             auto & di_ref = nd->getData().desIds;
@@ -879,6 +880,7 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, Node_t *> & ott_to_tax,
                 }
             }
         }
+        dbWriteOttSet("the desIds set is ", taxon->getData().desIds);
     }
 }
 
@@ -917,15 +919,23 @@ void findIncertaeSedisInSolution(Tree_t & taxonomy,
         }
         auto ott_id = snd->getOttId();
         auto taxon_node = ott_to_tax.at(ott_id);
+        if (ott_id == 5144555) {
+            dbWriteOttSet("target desIds", taxon_node->getData().desIds);
+        }
         if (taxon_node->getData().desIds.empty()) {
             continue;    
         }
         unprune_stats.inc_sed_soln_tips.insert(snd);
         auto anc = taxon_node->getParent();
+        to_tips_map[taxon_node].insert(snd);
         while (anc && !(anc->getData().desIds.empty())) {
             to_tips_map[anc].insert(snd);
             anc = anc->getParent();
         }
+    }
+    // db
+    for (auto x : to_tips_map) {
+        LOG(DEBUG) << "findIncertaeSedisInSolution recorded entry in inc_sed_taxon_to_sampled_tips for " << x.first->getOttId();    
     }
 }
 
@@ -948,10 +958,10 @@ N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_no
     set<N *> * seen_nodes = (induced_nodes == nullptr ? &local_induced_nodes : induced_nodes);
     set<N *> dequed_nodes;
     while (curr != nullptr) {
-        if (curr->hasOttId())
-            LOG(DEBUG) << "mrca pushing " << curr->getOttId();
-        else
-            LOG(DEBUG) << "mrca pushing address " << curr;
+        // if (curr->hasOttId())
+        //     LOG(DEBUG) << "mrca pushing " << curr->getOttId();
+        // else
+        //     LOG(DEBUG) << "mrca pushing address " << curr;
         root_to_mrca.push_front(curr);
         seen_nodes->insert(curr);
         dequed_nodes.insert(curr);
@@ -959,19 +969,19 @@ N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_no
     }
     for (; nit != tip_node_set.end(); ++nit) {
         curr = *nit;
-        if (curr->hasOttId())
-            LOG(DEBUG) << "mrca checking " << curr->getOttId();
-        else
-            LOG(DEBUG) << "mrca checking address " << curr;
+        // if (curr->hasOttId())
+        //     LOG(DEBUG) << "mrca checking " << curr->getOttId();
+        // else
+        //     LOG(DEBUG) << "mrca checking address " << curr;
         while (curr != nullptr) {
             if (seen_nodes->count(curr) != 0) {
                 if (dequed_nodes.count(curr) != 0) {
                     while (root_to_mrca.back() != curr) {
                         auto td = root_to_mrca.back();
-                        if (td->hasOttId())
-                            LOG(DEBUG) << "mrca popping " << td->getOttId();
-                        else
-                            LOG(DEBUG) << "mrca popping address " << td;
+                        // if (td->hasOttId())
+                        //     LOG(DEBUG) << "mrca popping " << td->getOttId();
+                        // else
+                        //     LOG(DEBUG) << "mrca popping address " << td;
                         
                         root_to_mrca.pop_back();
                         dequed_nodes.erase(td);
@@ -1013,6 +1023,7 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
     LOG(DEBUG) << " # incertae_sedis is " << unprune_stats.inc_sed_taxon_to_sampled_tips.size();
     for (auto ttm_it: to_tips_map) {
         auto inc_sed_taxon = ttm_it.first;
+        LOG(DEBUG) << " incertae_sedis taxon: " << inc_sed_taxon->getOttId();
         const auto & sampled = ttm_it.second;
         if (sampled.size() < 2) {
             continue;
@@ -1048,6 +1059,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
     // Note that the desIds field of soln is only filled in for slices. Once a 
     //    node with an OTT Id is hit, that ID will represent the entire clade for deeper
     //    nodes.
+    auto & inc_sed_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto nd: snVec){
         if (nd->isTip()) {
             unprune_stats.startNumSolnLeaves += 1;
@@ -1066,15 +1078,24 @@ void unprunePreppedInputs(Tree_t & taxonomy,
         }
         auto p = nd->getParent();
         if (nd->hasOttId()){
-            ott_to_sol[nd->getOttId()] = nd;
+            auto ott_id = nd->getOttId();
+            ott_to_sol[ott_id] = nd;
             auto & nd_di = nd->getData().desIds;
-            if (!nd->isTip()) {
+            auto taxon_node = ott_to_tax.at(ott_id);
+            if (nd->isTip()) {
+                nd_di.insert(ott_id);
+            }
+            if (!taxon_node->isTip()) {
                 unprune_stats.startNumNamedInternalsInSoln += 1;
                 unpruneTaxaForSubtree(nd, ott_to_tax, ott_to_sol, unprune_stats);
                 if (p) {
                     assert(p == nd->getParent());
                 }
             } else {
+                auto ismit = inc_sed_map.find(taxon_node);
+                if (ismit != inc_sed_map.end() && !ismit->second.empty()) {
+                    ismit->second.clear(); // flag this as a finished inc. sed. taxon because it is a tip
+                }
                 nd_di.insert(nd->getOttId());
             }
             if (p) {
