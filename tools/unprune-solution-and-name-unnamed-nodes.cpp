@@ -661,11 +661,13 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     for (auto is_taxon_ptr : inc_sed_that_are_proper_children) {
         LOG(DEBUG) << "removing des " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips";
         unprune_stats.inc_sed_taxon_to_sampled_tips.at(is_taxon_ptr).clear();
+        is_taxon_ptr->detachThisNode();
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
         for (auto is_taxon_ptr : is_it->second) {
             LOG(DEBUG) << "removing " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips";
             unprune_stats.inc_sed_taxon_to_sampled_tips.at(is_taxon_ptr).clear();
+            is_taxon_ptr->detachThisNode();
         }
     }
     // all of the ones with MRCA deeper need to have the rootSolnNd registered as the "sampled tip" (even though it really isn't a tip)
