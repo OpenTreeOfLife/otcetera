@@ -187,7 +187,6 @@ void show_taxonomy_ids(const Taxonomy& taxonomy, const string& format, const vec
 {
     for(auto id: ids)
     {
-	id = taxonomy.map(id);
 	try
 	{
 	    auto& rec = taxonomy.record_from_id(id);
@@ -195,7 +194,7 @@ void show_taxonomy_ids(const Taxonomy& taxonomy, const string& format, const vec
 		std::cout<<format_with_taxonomy("No original label",format,rec)<<"\n";
 	}
 	catch (...) {
-	    std::cerr<<"id="<<id<<": not in taxonomy!";
+	    std::cerr<<"id="<<id<<": not in taxonomy!\n";
 	}
     }
 }
