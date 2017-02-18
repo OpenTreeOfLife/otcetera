@@ -217,6 +217,7 @@ N * introduceMonotypicParent(N * taxon, N * solnChild) {
     solnChild->replaceThisNode(nn);
     nn->setName(taxon->getName());
     nn->setOttId(taxon->getOttId());
+    taxon->getData().reprInSolnBy = nn;
     nn->addChild(solnChild);
     nn->getData().desIds = solnChild->getData().desIds;
     return nn;
@@ -621,6 +622,9 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                                          unprune_stats,
                                          curr_slice_inc_sed_map,
                                          ott2tax);
+                if (effTipTaxonNd->isTip()) {
+                    taxaLeaves.insert(effTipTaxonNd);
+                }
             } else {
                 LOG(DEBUG) << "checking effective tip " << effectiveTipOttId << " proper +  inc_sed";
                 is_proper_des = true;
@@ -710,6 +714,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 for (auto c : cvec) {
                     if (c->getData().reprInSolnBy == nullptr) {
                         taxonForLeaf->removeChild(c);
+                        c->getData().reprInSolnBy = l;
                         l->addChild(c);
                     }
                 }
@@ -759,6 +764,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     // for the sake of a low memory footprint, here we 
     //  clear out the desIds fields for this slice of the tree.
     for (auto n : taxaLeaves) {
+        n->getData().reprInSolnBy = rootSolnNd;
         n->getData().desIds.clear();
     }
     for (auto n : postOrderInTaxNd) {
