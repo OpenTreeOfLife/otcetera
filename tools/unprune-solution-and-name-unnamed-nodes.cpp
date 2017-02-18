@@ -167,10 +167,11 @@ void addToDesIdsForAnc(long ottId, Node_t *firstNd, Node_t *ancAndLast, const ma
         if (firstNd == ancAndLast) {
             return;
         }
-        // If this triggers, then ancAndLast is not an ancestor of firstNd
-        assert(firstNd->getParent());
         auto fid = firstNd->getOttId();
         firstNd = ott2tax.at(fid).second; // parent in unaltered taxonomy.
+        // If this triggers, then ancAndLast is not an ancestor of firstNd
+        assert(firstNd);
+        
     }
 }
 
@@ -238,7 +239,7 @@ void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v) {
     for (auto child : children) {
         auto & cd = child->getData();
         if (cd.desIds.empty() && cd.reprInSolnBy == nullptr) {
-            LOG(DEBUG) << "moveUnsampledChildren moving " << child->getOttId();
+            //LOG(DEBUG) << "moveUnsampledChildren moving " << child->getOttId();
             child->detachThisNode();
             solnNode->addChild(child);
             if (v) {
@@ -528,17 +529,21 @@ void registerCoveringOfIncSed(OttId effectiveTipOttId,
                               Node_t * effTipTaxonNd,
                               const map<long, Node_t *> & ott2soln, 
                               const UnpruneStats & unprune_stats,
-                              std::map<Node_t *, std::set<TaxSolnNdPair> > & curr_slice_inc_sed_map) {
+                              std::map<Node_t *, std::set<TaxSolnNdPair> > & curr_slice_inc_sed_map,
+                              const map<long, childParPair> & ott2tax) {
     //LOG(DEBUG) << "registerCoveringOfIncSed for " << effectiveTipOttId;
     const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
-    auto anc = effTipTaxonNd->getParent();
+    auto anc = ott2tax.at(effectiveTipOttId).second;
     effTipTaxonNd->getData().desIds.insert(effectiveTipOttId);
     auto effTipSolnNd = ott2soln.at(effectiveTipOttId);
+    if (inc_sed_internals.find(effTipTaxonNd) != inc_sed_internals.end()) {
+        curr_slice_inc_sed_map[effTipTaxonNd].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
+    }
     while (anc &&  inc_sed_internals.find(anc) != inc_sed_internals.end()) {
         //LOG(DEBUG) << "registerCoveringOfIncSed added " << effectiveTipOttId << " to " << anc->getOttId();
         anc->getData().desIds.insert(effectiveTipOttId);
         curr_slice_inc_sed_map[anc].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
-        anc = anc->getParent();
+        anc = ott2tax.at(anc->getOttId()).second;
     }
 }
 
@@ -614,7 +619,8 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                                          effTipTaxonNd,
                                          ott2soln, 
                                          unprune_stats,
-                                         curr_slice_inc_sed_map);
+                                         curr_slice_inc_sed_map,
+                                         ott2tax);
             } else {
                 LOG(DEBUG) << "checking effective tip " << effectiveTipOttId << " proper +  inc_sed";
                 is_proper_des = true;
@@ -734,6 +740,8 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             bool recordInLTM = inc_sed_that_are_proper_children.find(higherTaxonNd) == inc_sed_that_are_proper_children.end();
             numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, unprune_stats, recordInLTM, ott2tax);
         }
+        LOG(DEBUG) << "reprInSolnBy marked for " << higherTaxonNd->getOttId();
+        higherTaxonNd->getData().reprInSolnBy = rootSolnNd;
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
         for (auto is_taxon_ptr : is_it->second) {
@@ -744,6 +752,8 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             } else {
                 numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, unprune_stats, false, ott2tax);
             }
+            LOG(DEBUG) << "reprInSolnBy marked for " << is_taxon_ptr->getOttId();
+            is_taxon_ptr->getData().reprInSolnBy = rootSolnNd;
         }
     }
     // for the sake of a low memory footprint, here we 
@@ -776,13 +786,17 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     for (auto is_taxon_ptr : inc_sed_that_are_proper_children) {
         LOG(DEBUG) << "removing des " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips";
         unprune_stats.inc_sed_taxon_to_sampled_tips.at(is_taxon_ptr).clear();
-        is_taxon_ptr->detachThisNode();
+        if (is_taxon_ptr->getParent()) {
+            is_taxon_ptr->detachThisNode();
+        }
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
         for (auto is_taxon_ptr : is_it->second) {
             LOG(DEBUG) << "removing " << is_taxon_ptr->getOttId() << " from inc_sed_taxon_to_sampled_tips";
             unprune_stats.inc_sed_taxon_to_sampled_tips.at(is_taxon_ptr).clear();
-            is_taxon_ptr->detachThisNode();
+            if (is_taxon_ptr->getParent()) {
+                is_taxon_ptr->detachThisNode();
+            }
         }
     }
     // all of the ones with MRCA deeper need to have the rootSolnNd registered as the "sampled tip" (even though it really isn't a tip)
@@ -795,10 +809,12 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             //    to reflect the fact that they have already been included in a taxonomic node
             Node_t * spike_nd = tsp.first;
             rootSolnNd->getData().desIds.insert(spike_nd->getOttId());
+            //flagIncSedAs
             while (true) {
                 if (inc_sed_mapping_deeper.count(spike_nd) > 0) {
                     break;
                 }
+                LOG(DEBUG) << "reprInSolnBy marked for " << spike_nd->getOttId();
                 spike_nd->getData().reprInSolnBy = rootTaxonNd;
                 spike_nd = spike_nd->getParent();
                 assert(spike_nd != nullptr);
