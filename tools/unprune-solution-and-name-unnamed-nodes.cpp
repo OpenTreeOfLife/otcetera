@@ -93,6 +93,7 @@ struct UnpruneStats {
     // maps inc_sed taxon that is not monophyletic to MRCA in solution.
     std::map<Node_t *, Node_t *> non_monophyletic_inc_sed;
     std::map<OttId, OttIdSet> non_monophyletic_inc_sed_to_desIds;
+    std::map<OttId, OttIdSet> synonym_map;
     LostTaxonMap lost_taxa;
     OttIdSet monotypic_ott_ids;
     const OttIdSet & incertae_sedis_ids;
@@ -130,7 +131,9 @@ using std::unique_ptr;
 using std::vector;
 
 
-void writeLostTaxa(ostream & out, const LostTaxonMap & ltm) {
+void writeLostTaxa(ostream & out,
+                   const LostTaxonMap & ltm, 
+                   const map<OttId, OttIdSet> & synmap) {
     json lostTaxa;
     for (auto ltmEl : ltm) {
         const auto & ottId = ltmEl.first;
@@ -151,8 +154,19 @@ void writeLostTaxa(ostream & out, const LostTaxonMap & ltm) {
         lostTaxonLocation["attachment_points"] = apjson;
         lostTaxa["ott" + std::to_string(ottId)] = lostTaxonLocation;
     }
+    json synTaxa;
+    for (auto synEl : synmap) {
+        const auto & ottId = synEl.first;
+        const auto & synset = synEl.second;
+        json synj;
+        for (auto jsEl : synset) {
+            synj.push_back("ott" + std::to_string(jsEl));
+        }
+        synTaxa["ott" + std::to_string(ottId)] = synj;
+    }
     json document;
     document["non_monophyletic_taxa"] = lostTaxa;
+    document["taxa_matching_multiple_ott_ids"] = synTaxa;
     out << document.dump(1) << std::endl;
 }
 
@@ -513,8 +527,12 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
         } else {
             LOG(DEBUG) << "moveUnsampledChildren";
             moveUnsampledChildren(higherTaxonNd, currSolnNd);
-            currSolnNd->setName(higherTaxonNd->getName());
-            currSolnNd->setOttId(higherTaxonNd->getOttId());
+            if (currSolnNd->hasOttId()) {
+                unprune_stats.synonym_map[currSolnNd->getOttId()].insert(higherTaxonNd->getOttId());
+            } else {
+                currSolnNd->setName(higherTaxonNd->getName());
+                currSolnNd->setOttId(higherTaxonNd->getOttId());
+            }
         }
     }
     if (nt != nullptr) {
@@ -1368,7 +1386,9 @@ int main(int argc, char *argv[]) {
     writeTreeAsNewick(std::cout, solution);
     std::cout << std::endl;
     if (!lostTaxaJSONFilename.empty()) {
-        writeLostTaxa(lostTaxaJSONStream, unprune_stats.lost_taxa);
+        writeLostTaxa(lostTaxaJSONStream,
+                      unprune_stats.lost_taxa,
+                      unprune_stats.synonym_map);
         lostTaxaJSONStream.close();
     }
     if (statsStreamPtr) {
