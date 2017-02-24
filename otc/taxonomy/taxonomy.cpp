@@ -320,10 +320,10 @@ Taxonomy load_taxonomy(const variables_map& args) {
     }
     bitset<32> cleaning_flags = 0;
     if (args.count("config")) {
-        cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
+        cleaning_flags = cleaning_flags_from_config_file(args["config"].as<string>());
     }
     if (args.count("clean")) {
-        cleaning_flags |= flags_from_string(args["clean"].as<string>());
+        cleaning_flags = flags_from_string(args["clean"].as<string>());
     }
     return {taxonomy_dir, cleaning_flags, keep_root};
 }
@@ -338,10 +338,10 @@ RichTaxonomy load_rich_taxonomy(const variables_map& args) {
     }
     bitset<32> cleaning_flags = 0;
     if (args.count("config")) {
-        cleaning_flags |= cleaning_flags_from_config_file(args["config"].as<string>());
+        cleaning_flags = cleaning_flags_from_config_file(args["config"].as<string>());
     }
     if (args.count("clean")) {
-        cleaning_flags |= flags_from_string(args["clean"].as<string>());
+        cleaning_flags = flags_from_string(args["clean"].as<string>());
     }
     return {taxonomy_dir, cleaning_flags, keep_root};
 }
