@@ -328,6 +328,7 @@ T * rootToTipSearchByDesIds(T * nd, const OttIdSet &oids) {
         curr = nextNd;
     }
 }
+
 template<typename T, typename U>
 RootedTreeNode<T> * FTree<T, U>::getMRCA(const OttIdSet &ottIdSet) {
     if (ottIdSet.empty()) {
