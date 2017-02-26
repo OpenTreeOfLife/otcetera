@@ -1642,8 +1642,7 @@ void kill_service_worker() {
     LOG(WARNING) <<  "Service stopped...";
 }
 
-void sigterm_handler( const int signal_number )
-{
+void sigterm_handler( const int signal_number ) {
     LOG(WARNING) <<  "Received signal number " << signal_number;
     if (global_service_ptr != nullptr) {
         std::thread killer_thread(kill_service_worker);
@@ -1651,8 +1650,7 @@ void sigterm_handler( const int signal_number )
     }
 }
 
-void ready_handler( Service& )
-{
+void ready_handler( Service& ) {
 #ifdef _WIN32
     LOG(INFO) << "Service is ready PID is "<< _getpid();
 #else
