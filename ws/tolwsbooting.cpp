@@ -24,6 +24,58 @@ bool_fp_set get_subdirs(const fs::path & dirname) {
 namespace otc {
 
 
+void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta) {
+    sta.date_completed = extract_string(j, "date_completed");
+    sta.filtered_flags = extract_string(j, "filtered_flags");
+    auto splitff = split_string(sta.filtered_flags, ',');
+    sta.filtered_flags_vec.assign(splitff.begin(), splitff.end());
+    // generated_by gets converted back to a string
+    auto gb_el = j.find("generated_by");
+    if (gb_el == j.end()) {
+        throw OTCError() << "Missing generated_by field.\n";
+    }
+    sta.generated_by = gb_el->dump();
+    sta.num_leaves_in_exemplified_taxonomy = extract_unsigned_long(j, "num_leaves_in_exemplified_taxonomy");
+    sta.num_source_studies = extract_unsigned_long(j, "num_source_studies");
+    sta.num_source_trees = extract_unsigned_long(j, "num_source_trees");
+    sta.num_tips = extract_unsigned_long(j, "num_tips");
+    sta.root_ott_id = extract_unsigned_long(j, "root_ott_id");
+    sta.root_taxon_name = extract_string(j, "root_taxon_name");
+    sta.synth_id = extract_string(j, "synth_id");
+    sta.taxonomy_version = extract_string(j, "taxonomy_version");
+    sta.tree_id = extract_string(j, "tree_id");
+    auto sim_el = j.find("source_id_map");
+    if (sim_el == j.end()) {
+        throw OTCError() << "Missing source_id_map field.\n";
+    }
+    if (!sim_el->is_object()) {
+        throw OTCError() << "Expected \"source_id_map\" field to be an object.\n";
+    }
+    try {
+        for (nlohmann::json::const_iterator sim_it = sim_el->begin(); sim_it != sim_el->end(); ++sim_it) {
+            sta.source_id_map[sim_it.key()] = sim_it.value(); 
+        }
+    } catch (OTCError & x) {
+        throw OTCError() << "Error reading source_id_map field: " << x.what();
+    }
+    sta.full_source_id_map_json = *sim_el;
+    auto s_el = j.find("sources");
+    if (s_el == j.end()) {
+        throw OTCError() << "Missing sources field.\n";
+    }
+    if (!s_el->is_array()) {
+        throw OTCError() << "Expected \"sources\" field to be an array.\n";
+    }
+    sta.sources.resize(s_el->size());
+    for (auto i = 0U; i < s_el->size(); ++i) {
+        try {
+            sta.sources[i] = s_el->at(i).get<std::string>();
+        } catch (OTCError & x) {
+            throw OTCError() << "Error expected each element of the sources array to be a string: " << x.what();
+        }
+    }
+}
+
 
 bool read_tree_and_annotations(const fs::path & configpath,
                                const fs::path & treepath,
