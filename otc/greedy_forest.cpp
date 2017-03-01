@@ -319,7 +319,7 @@ bool GreedyBandedForest<T, U>::performSetOfSingleBandMerges(
     LOG(WARNING) << itbSet.size() <<  " bands for a tree. It is not a great idea to merge these one at at time...";
     LOG(DEBUG) << itbSet.size() <<  " bands for a tree. It is not a great idea to merge these one at at time...";
     //            writeForestDOTToFN("writingForestMerge.dot");
-    //            NOT_IMPLEMENTED;
+    //            assert("not implemented"[0] == 'f');;
     std::vector<InterTreeBand<typename T::data_type> * > postOrd;
     postOrd.reserve(itbSet.size());
     FTree<RTSplits, MappedWithSplitsData> & toDie = *sortedTrees.at(treeInd);
@@ -501,7 +501,7 @@ GreedyBandedForest<T, U>::findGrandparentThatIsRootOrBandSharing(
             }
         }
     }
-    UNREACHABLE;
+    OTC_UNREACHABLE;
 }
 
 template<typename T, typename U>
@@ -535,7 +535,7 @@ bool GreedyBandedForest<T, U>::mergeSingleBandedTree(
     band->removeNode(dn);
     band->removeFromSet(rn, movedNodeSet);
     if (p.second != rn) {
-        NOT_IMPLEMENTED;
+        assert("not implemented"[0] == 'f');;
     }
     auto anc = findGrandparentThatIsRootOrBandSharing(donorTree, dn, recipientTree);
     bool r = true;

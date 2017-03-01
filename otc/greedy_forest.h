@@ -35,10 +35,10 @@ class GreedyBandedForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     void finalizeTree(SupertreeContextWithSplits *sc);
     void writeFirstTree(std::ostream & treeFileStream);
     void setPossibleMonophyletic(U & /*scaffoldNode*/) {
-        NOT_IMPLEMENTED; //
+        assert("not implemented"[0] == 'f');; //
     }
     bool possibleMonophyleticGroupStillViable() {
-        NOT_IMPLEMENTED; //
+        assert("not implemented"[0] == 'f');; //
     }
     void finishResolutionOfEmbeddedClade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits * sc);
     private:
