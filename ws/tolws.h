@@ -295,7 +295,7 @@ inline void from_json(const nlohmann::json &j, SourceTreeId & sti) {
     sti.tree_id = extract_string(j, "tree_id");
 }
 
-void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta) {
+inline void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta) {
     sta.date_completed = extract_string(j, "date_completed");
     sta.filtered_flags = extract_string(j, "filtered_flags");
     auto splitff = split_string(sta.filtered_flags, ',');
