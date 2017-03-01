@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -111,7 +112,6 @@ inline nlohmann::json sources_vec_as_json(const std::vector<std::string> & vs) {
 
 }
 
-
 struct taxonomy_record {
     std::string line;
     long id = 0;
@@ -120,7 +120,7 @@ struct taxonomy_record {
     boost::string_ref name;
     boost::string_ref rank;
     boost::string_ref sourceinfo;
-    boost::string_ref uniqname;
+    boost::string_ref uniqname; // will point to name field, if empty in .tsv
     std::bitset<32> flags;
     int depth = 0;
     int out_degree = 0;
@@ -135,32 +135,69 @@ struct taxonomy_record {
     }
 };
 
-struct Taxonomy: public std::vector<taxonomy_record> {
-    std::unordered_map<long,int> index;
-    std::unordered_map<long,long> forwards;
+// returns a vector [0, 1, 2, ... sz-1]
+inline std::vector<int> get_index_vec(std::size_t sz) {
+    std::vector<int> iv(sz);
+    for(int i = 0 ; i < (int)sz; i++) {
+        iv[i] = i;
+    }
+    return iv;
+}
+
+
+class Taxonomy: public std::vector<taxonomy_record> {
+    protected:
+    std::unordered_map<long, int> index;
+    std::unordered_map<long, long> forwards;
+    std::unordered_set<long> deprecated;
     long keep_root;
     std::bitset<32> cleaning_flags;
     std::string path;
     std::string version;
     std::string version_number;
+    public:
     template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const taxonomy_record&)>) const;
 
-          taxonomy_record& record_from_id(long id);
+    const std::string & get_version() const {
+        return version;
+    }
+
+    const std::string & get_version_number() const {
+        return version_number;
+    }
+
+    taxonomy_record& record_from_id(long id);
+    
     const taxonomy_record& record_from_id(long id) const;
     
+    taxonomy_record& record_from_unforwarded_id(long id) {
+        return at(index.at(id));
+    }
+    
+    const taxonomy_record& record_from_unforwarded_id(long id) const {
+        return at(index.at(id));
+    }
+
     /// Index of the root record
     constexpr static int root_index() {
         return 0;
     }
 
-    /// Given an OTT ID, forward if necessary and return the current ID.  Returns -1 if not found.
+
+    /// Given an OTT ID, forward if necessary and return the current Ott ID.
+    //    Returns -1 if not found and not known to be deprecated.
+    //    -2 if known to be deprecated.
+    //  Note that relying on -1 and -2 requires having read in the deprecated.tsv
+    //    file (which is optional)
     long map(long id) const;
 
     /// Write out a taxonomy to directory dirname
     void write(const std::string& dirname);
 
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-    Taxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
+    Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), long keep_root=-1);
+    protected:
+    void read_forwards_file(std::string filepath);
 };
 
 class TaxonomicJuniorSynonym;

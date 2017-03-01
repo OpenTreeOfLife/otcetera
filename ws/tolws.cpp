@@ -407,8 +407,8 @@ bool read_tree_and_annotations(const fs::path & config_path,
         SummaryTreeAnnotation & sta = tree_and_ann.second;
         sta = annotations_obj;
         json tref;
-        tref["taxonomy"] = taxonomy.version;
-        sta.full_source_id_map_json[taxonomy.version] = tref;
+        tref["taxonomy"] = taxonomy.get_version();
+        sta.full_source_id_map_json[taxonomy.get_version()] = tref;
 
         // read the node annotations and add them to the tree.
         auto node_obj = extract_obj(annotations_obj, "nodes");
@@ -705,9 +705,9 @@ void add_node_support_info(const TreesToServe & tts,
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
     if (nd.hasOttId()) {
-        extra_src = &(taxonomy.version);
+        extra_src = &(taxonomy.get_version());
         extra_node_id = &(nd.getName());
-        usedSrcIds.insert(taxonomy.version);
+        usedSrcIds.insert(taxonomy.get_version());
     }
     if (extra_src != nullptr || !d.supported_by.empty()) {
         add_support_info_vec("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
@@ -824,12 +824,12 @@ void tax_about_ws_method(const TreesToServe &tts,
     json response;
     string weburl;
     weburl = "https://tree.opentreeoflife.org/about/taxonomy-version/ott";
-    weburl += taxonomy.version_number;
+    weburl += taxonomy.get_version_number();
     response["weburl"] = weburl;
     response["author"] = "open tree of life project";
     response["name"] = "ott";
-    response["source"] = taxonomy.version;
-    response["version"] = taxonomy.version_number;
+    response["source"] = taxonomy.get_version();
+    response["version"] = taxonomy.get_version_number();
     response_str = response.dump(1);
 }
 
@@ -859,8 +859,8 @@ inline void add_source_id_map(json & j,
     json sim;
     for (auto srcTag : usedSrcIds) {
         json jt;
-        if (srcTag == taxonomy.version) {
-            jt["taxonomy"] = taxonomy.version;
+        if (srcTag == taxonomy.get_version()) {
+            jt["taxonomy"] = taxonomy.get_version();
         } else {
             const auto & simentry = sta->source_id_map.at(srcTag);
             jt = simentry;
@@ -1224,7 +1224,7 @@ void taxon_info_ws_method(const TreesToServe & tts,
     const auto & taxonomy_tree_data = taxonomy_tree.getData();
     const auto & node_data = taxon_node->getData();
     json response;
-    response["source"] = taxonomy.version;
+    response["source"] = taxonomy.get_version();
     response["ott_id"] = taxon_node->getOttId();
     response["name"] = string(node_data.getName());
     response["uniqname"] = string(node_data.getUniqname());

@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <set>
 #include <bitset>
@@ -34,6 +35,8 @@ using std::ofstream;
 using std::map;
 using std::set;
 using nlohmann::json;
+using std::ifstream;
+using std::unordered_set;
 
 using boost::string_ref;
 
@@ -58,12 +61,6 @@ taxonomy_record::taxonomy_record(const string& line_)
         end[i] = std::strstr(start[i],"\t|\t");
         start[i+1] = end[i] + 3;
     }
-//    boost::container::small_vector<string_ref,10> words;
-//    for (string_ref&& r : iter_split(v, line, token_finder(is_any_of(","))) |
-//             transformed([](R const& r){return boost::string_ref(&*r.begin(), r.size());})
-//        )
-//        words.push_back(r);
-
     char *temp;
     id = std::strtoul(start[0], &temp, 10);
     parent_id = std::strtoul(start[1], &temp, 10);
@@ -90,8 +87,7 @@ const taxonomy_record& Taxonomy::record_from_id(long id) const {
         // If id is in the forwarding table, then newid should be in the taxonomy
         assert(loc != index.end());
     }
-    int index = loc->second;
-    return (*this)[index];
+    return (*this)[loc->second];
 }
 
 taxonomy_record& Taxonomy::record_from_id(long id) {
@@ -106,8 +102,7 @@ taxonomy_record& Taxonomy::record_from_id(long id) {
         // If id is in the forwarding table, then newid should be in the taxonomy
         assert(loc != index.end());
     }
-    int index = loc->second;
-    return (*this)[index];
+    return (*this)[loc->second];
 }
 
 long Taxonomy::map(long old_id) const {
@@ -117,6 +112,9 @@ long Taxonomy::map(long old_id) const {
     auto loc = forwards.find(old_id);
     if (loc != forwards.end()) {
         return loc->second;
+    }
+    if (deprecated.count(old_id) != 0) {
+        return -2;
     }
     return -1;
 }
@@ -173,7 +171,9 @@ void Taxonomy::write(const std::string& newdirname) {
 
 const std::regex ott_version_pattern("^([.0-9]+)draft.*");
 
-Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
+Taxonomy::Taxonomy(const string& dir,
+                   bitset<32> cf,
+                   long kr)
     :keep_root(kr),
      cleaning_flags(cf),
      path(dir),
@@ -185,10 +185,9 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
     } else {
         throw OTCError() << "Could not parse version number out of ott version string " << version;
     }
-
     string filename = path + "/taxonomy.tsv";
     // 1. Open the file.
-    std::ifstream taxonomy_stream(filename);
+    ifstream taxonomy_stream(filename);
     if (not taxonomy_stream) {
         throw OTCError() << "Could not open file '" << filename << "'.";
     }
@@ -225,7 +224,7 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
     }
     index[back().id] = size() - 1;
     // 4. Read the remaining records
-    while(std::getline(taxonomy_stream,line)) {
+    while(std::getline(taxonomy_stream, line)) {
         count++;
         // Add line to vector
         emplace_back(line);
@@ -248,24 +247,57 @@ Taxonomy::Taxonomy(const string& dir, bitset<32> cf, long kr)
     LOG(TRACE)<<"records read = "<<count;
     LOG(TRACE)<<"records kept = "<<size();
     taxonomy_stream.close();
-    std::ifstream forwards_stream(path + "/forwards.tsv");
+    /*
+    if (read_deprecated) {
+        read_deprecated_file(path + "/deprecated.tsv");
+    }
+    */
+    read_forwards_file(path + "/forwards.tsv");
+}
+
+void Taxonomy::read_forwards_file(string filepath) {
+    ifstream forwards_stream(filepath);
     if (forwards_stream) {
+        string line;
         std::getline(forwards_stream, line);
         while(std::getline(forwards_stream, line)) {
             char* temp;
             long old_id = std::strtoul(line.c_str(), &temp, 10);
-            assert(*temp == '\t');
+            if (*temp != '\t') {
+                throw OTCError() << "Expecting a tab after first Id in forwards file, " << filepath << "\nGot:\n" << line ;
+            }
             const char* temp2 = temp+1;
             long new_id = std::strtoul(temp2, &temp, 10);
-            if (index.count(new_id)) {
-                forwards[old_id] = new_id;
+            forwards[old_id] = new_id;
+        }
+    }
+    // walk through the full forwards table, and try to find any that are multiple
+    //    step paths of forwards.
+    unordered_set<long> need_iterating;
+    for (auto old_new : forwards) {
+        auto new_id = old_new.second;
+        if (new_id >= 0) {
+            long nnid = this->map(new_id);
+            if (nnid != new_id) {
+                need_iterating.insert(old_new.first);
             }
         }
     }
-
-    //for (auto rs : rank_strings) {
-    //    std::cerr << "rankstring: \"" << rs << "\"\n"; 
-    //}
+    while (!need_iterating.empty()) {
+        unordered_set<long> scratch;
+        for (auto old_id: need_iterating) {
+            auto fm_it = forwards.find(old_id);
+            assert(fm_it != forwards.end());
+            auto curr_new_id = fm_it->second;
+            long nnid = this->map(fm_it->second);
+            assert(nnid != fm_it->second);
+            fm_it->second = nnid;
+            if (nnid > 0 && nnid != this->map(nnid)) {
+                scratch.insert(old_id);
+            }
+        }
+        need_iterating = scratch;
+    }
 }
 
 std::string get_taxonomy_dir(const variables_map& args) {
@@ -526,17 +558,6 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
             fj.push_back(fs);
         }
     }
-    /*
-    const string rank = string(line.rank);
-    if (rank == "natio") {
-        LOG(WARNING) << "Converting rank natio to RANK_INFRASPECIFICNAME";
-    }
-    auto reit = rankNameToEnum.find(rank);
-    if (reit == rankNameToEnum.end()) {
-        throw OTCError() << "Rank string not recognized: \"" << rank << "\"";
-    }
-    data.rank = reit->second;
-    */
     auto vs = line.sourceinfoAsVec();
     process_source_info_vec(vs, tree_data, data, this_node);
 }
@@ -546,7 +567,7 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
 void RichTaxonomy::readSynonyms() {
     RTRichTaxTreeData & tree_data = this->tree->getData();
     string filename = path + "/synonyms.tsv";
-    std::ifstream synonyms_file(filename);
+    ifstream synonyms_file(filename);
         if (not synonyms_file) {
         throw OTCError() << "Could not open file '" << filename << "'.";
     }
