@@ -25,7 +25,7 @@ optional<string> interpolate(const ptree& pt, const string& section_name, const 
         return boost::none;
     }
     string value = section.get<string>(key);
-    for(int i=0;i<20 and value.find('%') != string::npos;i++) {
+    for(int i = 0; i < 20 and value.find('%') != string::npos; i++) {
         string value2;
         size_t p1 = 0U;
         size_t p2 = 0U;
@@ -67,40 +67,35 @@ optional<string> interpolate(const ptree& pt, const string& section_name, const 
 }
 
 
-optional<string> load_config(const string& filename, const string& section, const string& name)
-{
+optional<string> load_config(const string& filename, const string& section, const string& name) {
     ptree pt;
     boost::property_tree::ini_parser::read_ini(filename, pt);
     return interpolate(pt, section, name);
-//    return pt.get_optional<T>(entry);
 }
 
-optional<string> load_config(const vector<string>& filenames, const string& section, const string& name)
-{
-    for(const auto& filename: filenames)
-    {
+optional<string> load_config(const vector<string>& filenames, const string& section, const string& name) {
+    for(const auto& filename: filenames) {
         auto result = load_config(filename, section, name);
-        if (result)
+        if (result) {
             return result;
+        }
     }
     return boost::none;
 }
 
-optional<string> dot_opentree()
-{
+optional<string> dot_opentree() {
     auto homedir = std::getenv("HOME");
-    if (not homedir)
+    if (not homedir) {
         return boost::none;
-
+    }
     string path = homedir;
     path += "/.opentree";
-
     std::ifstream test(path);
-    if (not test)
+    if (not test) {
         return boost::none;
+    }
     test.close();
-
     return path;
 }
 
-}
+} // namespace otc
