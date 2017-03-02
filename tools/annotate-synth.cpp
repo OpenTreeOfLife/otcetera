@@ -272,7 +272,7 @@ void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* 
 
 json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nodes, bool ignore_monotypic) {
     json document;
-    document["num_tips"] = countLeaves(summaryTree);
+    document["num_tips"] = count_leaves(summaryTree);
     document["root_ott_id"] = summaryTree.get_root()->get_ott_id();
     
     json nodes;

@@ -644,7 +644,7 @@ std::string NodeEmbedding<T, U>::export_subproblem_and_resolve(
                 debugPrintNd2Par("lnd2par", lnd2par);
                 assert(false);
             }
-            sortChildOrderByLowestDesOttId(toWrite.get_root());
+            sort_children_by_lowest_des_ott_id(toWrite.get_root());
             writeTreeAsNewick(*treeExpStream, toWrite);
             *treeExpStream << "\n";
         }
@@ -1022,14 +1022,14 @@ bool NodeEmbedding<T, U>::report_if_contested(std::ostream & out,
             const auto & edges = get_edges_exiting(cti);
             const std::string prefix = getContestedPreamble(*nd, *ctree);
             if (verbose) {
-                reportOnConflicting(out, prefix, nd, edges, ls);
+                report_on_conflicting(out, prefix, nd, edges, ls);
             } else {
                 out << prefix << '\n';
             }
             for (auto na : aliasedBy) {
                 const std::string p2 = getContestedPreamble(*na, *ctree);
                 if (verbose) {
-                    reportOnConflicting(out, p2, na, edges, ls);
+                    report_on_conflicting(out, p2, na, edges, ls);
                 } else {
                     out << prefix << '\n';
                 }
@@ -1041,7 +1041,7 @@ bool NodeEmbedding<T, U>::report_if_contested(std::ostream & out,
 }
 
 template<typename T, typename U>
-void reportOnConflicting(std::ostream & out,
+void report_on_conflicting(std::ostream & out,
                         const std::string & prefix,
                         const T * scaffold,
                         const std::set<PathPairing<T, U> *> & exitPaths,
@@ -1082,7 +1082,7 @@ void reportOnConflicting(std::ostream & out,
     if (desIdSet2NdConflicting.empty()) {
         out << "VERY ODD " << prefix << ", desIdSet2NdConflicting but desIdSet2NdConflicting is empty()!\n";
         //assert(false); // not reachable if we are calling is_contested first as a test.
-        throw OTCError("Expecting is_contested to have guarded call to reportOnConflicting");
+        throw OTCError("Expecting is_contested to have guarded call to report_on_conflicting");
     }
     for (const auto & mIt : desIdSet2NdConflicting) {
         const auto & di = mIt.first;

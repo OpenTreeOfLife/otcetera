@@ -30,7 +30,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     assert(trees.size() == 2);
     auto& solution = *trees[0];
     auto& taxonomy = *trees[1];
-    std::cerr << "Leaves:           solution = " << countLeaves(solution) << "   taxonomy = " << countLeaves(taxonomy) << std::endl;
+    std::cerr << "Leaves:           solution = " << count_leaves(solution) << "   taxonomy = " << count_leaves(taxonomy) << std::endl;
     std::cerr << "Internal:         solution = " << n_internal(solution) << "   taxonomy = " << n_internal(taxonomy) << std::endl;
     std::cerr << "Internal splits:  solution = " << n_internal_out_degree_many(solution) << "   taxonomy = " << n_internal_out_degree_many(taxonomy) << std::endl;
     const auto out_degree_many1 = n_internal_out_degree_many(taxonomy);
@@ -244,9 +244,9 @@ int main(int argc, char *argv[]) {
     bool set_ott_ids = otCLI.get_parsing_rules().set_ott_ids;
     // Add fake Ott Ids to tips
     if (not set_ott_ids) {
-        auto name_to_id = createIdsFromNames(*trees.back());
+        auto name_to_id = create_ids_from_names(*trees.back());
         for(auto& tree: trees) {
-            setIdsFromNames(*tree, name_to_id);
+            set_ids_from_names(*tree, name_to_id);
         }
     }
     if (trees.size() != 2) {

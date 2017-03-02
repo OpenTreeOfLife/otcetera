@@ -10,7 +10,7 @@
 #include <boost/optional.hpp>
 
 namespace otc {
-std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
+std::unique_ptr<TreeMappedWithSplits> clone_tree(const TreeMappedWithSplits &);
 
 template<typename T, typename U>
 void update_ancestral_path_ott_id_set(T * nd,
@@ -19,12 +19,12 @@ void update_ancestral_path_ott_id_set(T * nd,
                                 std::map<const T *, NodeEmbedding<T, U> > & m);
 
 template<typename T>
-bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup);
+bool can_be_resolved_to_display_inc_exc_group(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup);
 template<typename T>
-bool canBeResolvedToDisplayOnlyIncGroup(const T *nd, const OttIdSet & incGroup);
+bool can_be_resolved_to_display_only_inc_exc_group(const T *nd, const OttIdSet & incGroup);
 
 template<typename T, typename U>
-void reportOnConflicting(std::ostream & out,
+void report_on_conflicting(std::ostream & out,
                          const std::string & prefix,
                          const T * scaffold,
                          const std::set<PathPairing<T, U> *> & exitPaths,
@@ -32,27 +32,27 @@ void reportOnConflicting(std::ostream & out,
 
 // takes 2 "includeGroups" from different PhyloStatements.
 //  `culled` has been pruned down to the common leaf_set, and the common leaf_set is passed in as `leaf_set
-bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled, const OttIdSet & complete, const OttIdSet & leaf_set);
+bool culled_and_complete_incompat_wrt_leaf_set(const OttIdSet & culled, const OttIdSet & complete, const OttIdSet & leaf_set);
 
 template<typename T, typename U>
-void copyStructureToResolvePolytomy(const T * srcPoly,
+void copy_structure_to_resolve_polytomy(const T * srcPoly,
                                     U & destTree,
                                     typename U::node_type * destPoly,
                                     SupertreeContextWithSplits *);
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
-bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leaf_set);
+bool can_be_resolved_to_display(const T *nd, const OttIdSet & incGroup, const OttIdSet & leaf_set);
 
 
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
-inline bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leaf_set) {
+inline bool can_be_resolved_to_display(const T *nd, const OttIdSet & incGroup, const OttIdSet & leaf_set) {
     const OttIdSet excGroup = set_difference_as_set(leaf_set, incGroup);
-    return canBeResolvedToDisplayIncExcGroup(nd, incGroup, excGroup);
+    return can_be_resolved_to_display_inc_exc_group(nd, incGroup, excGroup);
 }
 
 template<typename T>
-void addDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
+void add_des_ids_to_node_and_anc(T * nd, const OttIdSet & oid) {
     nd->get_data().desIds.insert(begin(oid), end(oid));
     for (auto anc : iter_anc(*nd)) {
         anc->get_data().desIds.insert(begin(oid), end(oid));
@@ -60,7 +60,7 @@ void addDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
 }
 
 template<typename T>
-void removeDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
+void remove_des_ids_from_node_and_anc(T * nd, const OttIdSet & oid) {
     nd->get_data().desIds = set_difference_as_set(nd->get_data().desIds, oid);
     for (auto anc : iter_anc(*nd)) {
         anc->get_data().desIds = set_difference_as_set(anc->get_data().desIds, oid);
@@ -70,7 +70,7 @@ void removeDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
 // used post-suppression of monotypic taxa to create a map
 //  from the alias to the original OTT ID.
 template<typename T>
-inline std::map<long, long> generateIdRemapping(const T & tree) {
+inline std::map<long, long> generate_id_remapping(const T & tree) {
     const auto & id2ndMap = tree.get_data().ottIdToNode;
     std::map<long, long> r;
     for (const auto & idNdPair : id2ndMap) {
@@ -85,7 +85,7 @@ inline std::map<long, long> generateIdRemapping(const T & tree) {
 }
 
 //currently not copying names
-inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
+inline std::unique_ptr<TreeMappedWithSplits> clone_tree(const TreeMappedWithSplits &tree) {
     TreeMappedWithSplits * rawTreePtr = new TreeMappedWithSplits();
     try {
         NodeWithSplits * newRoot = rawTreePtr->create_root();
@@ -124,10 +124,10 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
 }
 
 template<typename T>
-void sortChildOrderByLowestDesOttId(T *nd);
+void sort_children_by_lowest_des_ott_id(T *nd);
 
 template<typename T>
-void sortChildOrderByLowestDesOttId(T *deepest) {
+void sort_children_by_lowest_des_ott_id(T *deepest) {
     std::map<T *, long> node2Id;
     std::set<T *> internals;
     for (auto nd : iter_post_n(*deepest)) {
@@ -168,7 +168,7 @@ void sortChildOrderByLowestDesOttId(T *deepest) {
 // returns true if all of the children of nd which intersect with incGroup do NOT intersect w/ excGroup.
 // NOTE: `nd` is assumed to be a common anc of all IDs in incGroup!
 template<typename T>
-inline bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup) {
+inline bool can_be_resolved_to_display_inc_exc_group(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup) {
     for (auto c : iter_child_const(*nd)) {
         if (haveIntersection(incGroup, c->get_data().desIds) && haveIntersection(excGroup, c->get_data().desIds)) {
             return false;
@@ -180,7 +180,7 @@ inline bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incG
 // returns true if all of the children of nd which intersect with incGroup do NOT intersect w/ excGroup.
 // NOTE: `nd` is assumed to be a common anc of all IDs in incGroup!
 template<typename T>
-inline bool canBeResolvedToDisplayOnlyIncGroup(const T *nd, const OttIdSet & incGroup) {
+inline bool can_be_resolved_to_display_only_inc_exc_group(const T *nd, const OttIdSet & incGroup) {
     for (auto c : iter_child_const(*nd)) {
         const auto & cdi = c->get_data().desIds;
         if (haveIntersection(incGroup, cdi) && (!isSubset(cdi, incGroup))) {
@@ -193,44 +193,44 @@ inline bool canBeResolvedToDisplayOnlyIncGroup(const T *nd, const OttIdSet & inc
 /// Functions below here are hackier in that they codify systems for embedding IDs in newick labels
 
 template<typename T>
-inline std::map<std::string, long> createIdsFromNames(const T & taxonomy);
+inline std::map<std::string, long> create_ids_from_names(const T & taxonomy);
 template<typename T>
-inline std::map<std::string, long> createIdsFromNamesFromTrees(const T& treeColl);
+inline std::map<std::string, long> create_ids_from_names_from_trees(const T& treeColl);
 // awkward should merge the following 2 functions and use template specialization
 template<typename T>
-void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string, long>& name_to_id);
+void set_ids_from_names_and_refresh(T& tree, const std::map<std::string, long>& name_to_id);
 template<typename T>
-void setIdsFromNames(T& tree, const std::map<std::string, long>& name_to_id);
+void set_ids_from_names(T& tree, const std::map<std::string, long>& name_to_id);
 template<typename T>
-void fillIdMapFromNames(const T & taxonomy, std::map<std::string, long> & name_to_id, long &nextId, bool allowRep);
-std::string addOttId(const std::string & s, long id);
+void fill_id_map_from_names(const T & taxonomy, std::map<std::string, long> & name_to_id, long &nextId, bool allowRep);
+std::string add_ott_id(const std::string & s, long id);
 template<typename T>
-inline void relabelNodesWithOttId(T& tree);
+inline void relabel_nodes_with_ott_id(T& tree);
 /// Create a mapping from name -> id.
 /// throws exception for repeated names or unnamed tips
 template<typename T>
-inline std::map<std::string, long> createIdsFromNames(const T& taxonomy) {
+inline std::map<std::string, long> create_ids_from_names(const T& taxonomy) {
     long id = 1;
     std::map<std::string, long> name_to_id;
-    fillIdMapFromNames(taxonomy, name_to_id, id, false);
+    fill_id_map_from_names(taxonomy, name_to_id, id, false);
     return name_to_id;
 }
 
 /// Create a mapping from name -> id.
 /// throws exception for unnamed tips - does NOT verify that a name only occurs once in a tree!
 template<typename T>
-inline std::map<std::string, long> createIdsFromNamesFromTrees(const T& treeColl) {
+inline std::map<std::string, long> create_ids_from_names_from_trees(const T& treeColl) {
     long id = 1;
     std::map<std::string, long> name_to_id;
     for (const auto & tree : treeColl) {
-        fillIdMapFromNames(*tree, name_to_id, id, true);
+        fill_id_map_from_names(*tree, name_to_id, id, true);
     }
     return name_to_id;
 }
 
 
 template<typename T>
-inline void fillIdMapFromNames(const T & tree, std::map<std::string, long> & name_to_id, long & nextId, bool allowRep) {
+inline void fill_id_map_from_names(const T & tree, std::map<std::string, long> & name_to_id, long & nextId, bool allowRep) {
     for(auto nd: iter_post_const(tree)) {
         if (nd->get_name().size()) {
             const std::string name = nd->get_name();
@@ -250,7 +250,7 @@ inline void fillIdMapFromNames(const T & tree, std::map<std::string, long> & nam
 
 /// Set ids on the tree based on the name
 template<typename T>
-inline void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string,long> & name_to_id) {
+inline void set_ids_from_names_and_refresh(T& tree, const std::map<std::string,long> & name_to_id) {
     for(auto nd: iter_post(tree)){
         if (nd->get_name().size()) {
             const auto name = nd->get_name();
@@ -270,7 +270,7 @@ inline void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string,long> 
 
 /// Set ids on the tree based on the name
 template<typename T>
-inline void setIdsFromNames(T& tree, const std::map<std::string,long> & name_to_id) {
+inline void set_ids_from_names(T& tree, const std::map<std::string,long> & name_to_id) {
     for(auto nd: iter_post(tree)){
         if (nd->get_name().size()) {
             const auto name = nd->get_name();
@@ -287,7 +287,7 @@ inline void setIdsFromNames(T& tree, const std::map<std::string,long> & name_to_
 }
 
 
-inline std::string addOttId(const std::string & s, long id) {
+inline std::string add_ott_id(const std::string & s, long id) {
     std::string tag = "ott" + std::to_string(id);
     if (not s.size()) {
         return tag;
@@ -297,20 +297,20 @@ inline std::string addOttId(const std::string & s, long id) {
 }
 
 template<typename T>
-inline void relabelNodesWithOttId(T& tree) {
+inline void relabel_nodes_with_ott_id(T& tree) {
     for(auto nd: iter_pre(tree)){
         if (nd->has_ott_id()){
-            nd->setName(addOttId(nd->get_name(),nd->get_ott_id()));
+            nd->setName(add_ott_id(nd->get_name(),nd->get_ott_id()));
         }
     }
 }
 
 template<typename N>
-std::size_t countChildren(const N * nd);
+std::size_t count_children(const N * nd);
 template<typename T>
-std::size_t countLeaves(const T& tree);
+std::size_t count_leaves(const T& tree);
 template<typename T>
-std::size_t countLeavesSubTree(const T* node);
+std::size_t count_leaves_subtree(const T* node);
 template<typename N>
 int mark(const N* node);
 template<typename N>
@@ -320,10 +320,10 @@ bool is_marked(const N* node, int bits);
 template<typename N>
 void set_mark(N* node, int bits);
 template<typename N>
-std::size_t countMarkedChildren(const N* nd, int bits);
+std::size_t count_marked_children(const N* nd, int bits);
 
 template<typename T>
-inline std::size_t countLeaves(const T& tree) {
+inline std::size_t count_leaves(const T& tree) {
     std::size_t count = 0U;
     for(auto nd: iter_post_const(tree)) {
         if (nd->isTip()) {
@@ -334,7 +334,7 @@ inline std::size_t countLeaves(const T& tree) {
 }
 
 template<typename N>
-inline std::size_t countLeavesSubTree(const N * tree) {
+inline std::size_t count_leaves_subtree(const N * tree) {
     std::size_t count = 0U;
     for(auto nd: iter_post_n_const(tree)) {
         if (nd->isTip()) {
@@ -345,7 +345,7 @@ inline std::size_t countLeavesSubTree(const N * tree) {
 }
 
 template<typename N>
-std::size_t countChildren(const N * nd) {
+std::size_t count_children(const N * nd) {
     std::size_t count = 0;
     for(auto nd2: iter_child_const(*nd)){
         count++;
@@ -374,7 +374,7 @@ inline void set_mark(N* node, int bits) {
 }
 
 template<typename N>
-inline std::size_t countMarkedChildren(const N* nd, int bits) {
+inline std::size_t count_marked_children(const N* nd, int bits) {
     std::size_t count = 0;
     for(auto nd2: iter_child_const(*nd)) {
         if (is_marked(nd2, bits)) {

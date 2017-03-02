@@ -500,7 +500,7 @@ OttIdSet FTree<T, U>::add_phylo_statement_at_node(const PhyloStatement & ps,
             assert(contains(includeGroupA->get_data().desIds, oid));
         }
     }
-    addDesIdsToNdAndAnc(includeGroupA, ps.include_group);
+    add_des_ids_to_node_and_anc(includeGroupA, ps.include_group);
     dbWriteOttSet("    later includeGroupA->get_data().desIds", includeGroupA->get_data().desIds);
     for (auto oid : ps.exclude_group) {
         if (!ott_id_is_connected(oid)) {

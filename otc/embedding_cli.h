@@ -48,7 +48,7 @@ class EmbeddingCLI
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         //check_tree_invariants(*taxonomy);
         suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy, false);
-        monotypicRemapping = generateIdRemapping(*taxonomy);
+        monotypicRemapping = generate_id_remapping(*taxonomy);
         //check_tree_invariants(*taxonomy);
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
             _get_embedding_for_node(nd); // side effect is introducint a new, empty embedding
@@ -78,7 +78,7 @@ class EmbeddingCLI
     bool clone_taxonomy_as_a_source_tree() {
         assert(taxonomy != nullptr);
         assert(taxonomyAsSource == nullptr);
-        std::unique_ptr<TreeMappedWithSplits> tree = cloneTree(*taxonomy);
+        std::unique_ptr<TreeMappedWithSplits> tree = clone_tree(*taxonomy);
         taxonomyAsSource = tree.get();
         std::size_t treeIndex = inputTreesToIndex.size();
         inputTreesToIndex[std::move(tree)] = treeIndex;

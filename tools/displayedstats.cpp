@@ -128,7 +128,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
                     }
                     return CN{NDSE::FORKING_DISPLAYED, rn};
                 }
-                if (canBeResolvedToDisplayOnlyIncGroup(rn, ndi)) {
+                if (can_be_resolved_to_display_only_inc_exc_group(rn, ndi)) {
                     if (nd->isOutDegreeOneNode()) {
                         return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
                     }
@@ -160,7 +160,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
                     return CN{NDSE::FORKING_DISPLAYED, rn};
                 }
                 const auto exc = set_difference_as_set(leaf_set, ndi);
-                if (canBeResolvedToDisplayIncExcGroup(rn, ndi, exc)) {
+                if (can_be_resolved_to_display_inc_exc_group(rn, ndi, exc)) {
                     if (nd->isOutDegreeOneNode()) {
                         return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
                     }

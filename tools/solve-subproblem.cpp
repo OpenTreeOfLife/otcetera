@@ -671,16 +671,16 @@ int main(int argc, char *argv[])
 
 	// 4. Add fake Ott Ids to tips and compute desIds (if asked)
 	if (not rules.set_ott_ids) {
-	    auto name_to_id = createIdsFromNames(*trees.back());
+	    auto name_to_id = create_ids_from_names(*trees.back());
 	    for(auto& tree: trees) {
-		setIdsFromNamesAndRefresh(*tree, name_to_id);
+		set_ids_from_names_and_refresh(*tree, name_to_id);
 	    }
 	}
 
 	// 5. Write out subproblem with newly minted ottids (if asked)
 	if (writeStandardized) {
 	    for(const auto& tree: trees) {
-		relabelNodesWithOttId(*tree);
+		relabel_nodes_with_ott_id(*tree);
 		std::cout<<newick(*tree)<<"\n";
 	    }
 	    return 0;

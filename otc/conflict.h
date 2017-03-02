@@ -113,8 +113,8 @@ void perform_conflict_analysis(const Tree_t& tree1,
         summary_node(leaf) = leaf2;
     }
         
-    auto L = countLeaves(*induced_tree1);
-    assert(L == countLeaves(*induced_tree2));
+    auto L = count_leaves(*induced_tree1);
+    assert(L == count_leaves(*induced_tree2));
         
     std::vector<typename Tree_t::node_type*> tree_nodes;
     for(auto nd: iter_post(*induced_tree1)) {

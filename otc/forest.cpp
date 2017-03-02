@@ -202,7 +202,7 @@ std::pair<bool, bool> RootedForest<T, U>::check_with_previously_added_statement(
             if (exactLS && prevInc == ps.include_group) {
                 return std::pair<bool, bool>(false, true);
             }
-            if (culledAndCompleteIncompatWRTLeafSet(relIncGroup, prevInc, relLeafSet)) {
+            if (culled_and_complete_incompat_wrt_leaf_set(relIncGroup, prevInc, relLeafSet)) {
                 return std::pair<bool, bool>(true, false);
             }
         }
@@ -339,7 +339,7 @@ bool RootedForest<T, U>::check_can_add_ingroup_overlapping_phylo_statement_to_gr
                 dbWriteOttSet(" found a node with desIds:  ", includeGroupA->get_data().desIds);
                 dbWriteOttSet(" which includes the excludegroup members:  ", excInc);
             }
-            if (!canBeResolvedToDisplayIncExcGroup(includeGroupA, ps.include_group, excInc)) {
+            if (!can_be_resolved_to_display_inc_exc_group(includeGroupA, ps.include_group, excInc)) {
                 return false; // the MRCA of the include_group had interdigitated members of the exclude_group
             }
         }

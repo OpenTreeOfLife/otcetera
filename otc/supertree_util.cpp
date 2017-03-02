@@ -38,7 +38,7 @@ boost::optional<std::string> get_source_node_name(const std::string& name) {
         return boost::none;
 }
 
-bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,
+bool culled_and_complete_incompat_wrt_leaf_set(const OttIdSet & culled,
                                                 const OttIdSet & complete,
                                                 const OttIdSet & leaf_set) {
     //TMP this could be more efficient. See areCompatibleDesIdSets

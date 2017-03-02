@@ -84,9 +84,9 @@ int main(int argc, char *argv[]) {
         throw e;
     }
     if (not set_ott_ids) {
-        auto name_to_id = createIdsFromNamesFromTrees(trees);
+        auto name_to_id = create_ids_from_names_from_trees(trees);
         for(auto& tree: trees) {
-            setIdsFromNames(*tree, name_to_id);
+            set_ids_from_names(*tree, name_to_id);
         }
     }
     std::unordered_map<long,Tree_t::node_type*> my_leaf;
