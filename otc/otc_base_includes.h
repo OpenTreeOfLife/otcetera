@@ -38,6 +38,10 @@ template<typename T, typename U> class NodeEmbedding;
 template<typename T, typename U> class SupertreeContext;
 template<typename T, typename U> class RootedForest;
 
+struct RTNodeSmallestChild {
+    OttId smallest_child = 0;
+};
+
 using RootedTreeNodeNoData = RootedTreeNode<RTNodeNoData>;
 using RootedTreeTopologyNoData = RootedTree<RTNodeNoData, RTreeNoData> ;
 using NodeWithSplits = RootedTreeNode<RTSplits>;

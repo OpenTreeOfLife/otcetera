@@ -6,19 +6,7 @@ using namespace otc;
 using std::vector;
 using std::unique_ptr;
 
-struct RTNodePartialDesSet {
-    long smallestChild  = 0;
-};
-
-using Tree_t = RootedTree<RTNodePartialDesSet, RTreeNoData>;
-
-inline long smallestChild(const Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
-
-inline long& smallestChild(Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
+using Tree_t = RootedTree<RTNodeSmallestChild, RTreeNoData>;
 
 template<typename T>
 void writeTreesFromSampledTipsToEncodeStructure(T & tree, std::ostream & outStream);
@@ -55,7 +43,7 @@ void writeSmallestIDForEachChild(const N &ndRef, std::ostream & outStream) {
         } else {
             outStream << ',';
         }
-        outStream << "ott" << smallestChild(c);
+        outStream << "ott" << smallest_child(c);
     }
     outStream << ')';
 }
@@ -90,7 +78,7 @@ void writeTreesFromSampledTipsOnePerInternalAllChildrenOneSib(const T & tree, st
         bool found_sib = false;
         for (auto possible_sib: iter_child_const(*anc)) {
             if ((possible_sib != nd) and (!isAncestorDesNoIter(possible_sib, nd))) {
-                outStream << "ott" << smallestChild(possible_sib);
+                outStream << "ott" << smallest_child(possible_sib);
                 found_sib = true;
                 break;
             }
@@ -131,7 +119,7 @@ void emitNewickForNamedInternal(const N * node, std::ostream & outStream, bool i
             if (node->isTip()) {
                 outStream << "ott" << node->getOttId();
             } else {
-                outStream << "ott" << smallestChild(node);
+                outStream << "ott" << smallest_child(node);
             }
         } else {
             emitNewickForSubtreeIndirectRecursion(node, outStream);

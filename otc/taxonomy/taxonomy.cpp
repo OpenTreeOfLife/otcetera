@@ -476,7 +476,7 @@ const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irm
 template<typename T>
 void process_source_info_vec(const std::vector<std::string> & vs,
                              RTRichTaxTreeData & tree_data,
-                             T & data,
+                             T & ,
                              const RTRichTaxNode * this_node) {
     for (auto src_entry : vs) {
         auto pref_id = split_string(src_entry, ':');

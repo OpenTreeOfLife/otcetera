@@ -12,19 +12,7 @@ using std::vector;
 using std::unique_ptr;
 using std::string;
 
-struct RTNodeSmallestChild {
-    long smallestChild = 0;
-};
-
 using Tree_t = RootedTree<RTNodeSmallestChild, RTreeNoData>;
-
-inline long smallestChild(const Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
-
-inline long& smallestChild(Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-name-unnamed-nodes",

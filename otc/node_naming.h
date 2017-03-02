@@ -11,10 +11,10 @@ namespace otc {
 
 std::string makeName(const std::string& prefix, long number);
 std::string makeMRCAName(long number1, long number2);
-template<typename T>
-long smallestChild(const typename T::node_type* node);
-template<typename T>
-long& smallestChild(typename T::node_type* node);
+template<typename N>
+OttId smallest_child(const N* node);
+template<typename N>
+OttId& smallest_child(N* node);
 template<typename T>
 void calculateSmallestChild(T& tree);
 template<typename T>
@@ -22,17 +22,27 @@ void sortBySmallestChild(T& tree);
 template<typename T>
 void nameUnamedNodes(const T & tree);
 
+template<typename N>
+inline OttId smallest_child(const N * node) {
+    return node->getData().smallest_child;
+}
+
+template<typename N>
+inline OttId& smallest_child(N * node) {
+    return node->getData().smallest_child;
+}
+
 template<typename T>
 void calculateSmallestChild(T& tree) {
     for (auto nd: iter_post(tree)) {
         if (nd->isTip()) {
-            smallestChild(nd) = nd->getOttId();
+            smallest_child(nd) = nd->getOttId();
         } else {
-            auto sc = smallestChild(nd->getFirstChild());
+            auto sc = smallest_child(nd->getFirstChild());
             for(auto c: iter_child(*nd)) {
-                sc = std::min(sc, smallestChild(c));
+                sc = std::min(sc, smallest_child(c));
             }
-            smallestChild(nd) = sc;
+            smallest_child(nd) = sc;
         }
     }
 }
@@ -50,7 +60,7 @@ void sortBySmallestChild(T& tree) {
         std::sort(begin(children),
                   end(children),
                   [](const auto& nd1, const auto& nd2)
-                  {return smallestChild(nd1) < smallestChild(nd2);});
+                  {return smallest_child(nd1) < smallest_child(nd2);});
         while (not children.empty()) {
             auto x = children.back();
             children.pop_back();
@@ -94,8 +104,8 @@ void nameUnamedNodes(T & tree) {
             assert(not nd->isTip());
             assert(not nd->isOutDegreeOneNode());
 
-            auto id1 = smallestChild(nd->getFirstChild());
-            auto id2 = smallestChild(nd->getFirstChild()->getNextSib());
+            auto id1 = smallest_child(nd->getFirstChild());
+            auto id2 = smallest_child(nd->getFirstChild()->getNextSib());
             auto name = makeMRCAName(id1,id2);
             if (names.count(name)) {
                 throw OTCError()<<"Synthesized name '"<<name<<"' already exists in the tree!";

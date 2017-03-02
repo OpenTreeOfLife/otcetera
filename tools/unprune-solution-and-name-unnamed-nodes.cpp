@@ -25,7 +25,7 @@ using Node_t = RootedTreeNode<RTNodePartialDesSet>;
 struct RTNodePartialDesSet {
     std::set<long> desIds;
     OttIdSet * nonexcluded_ids = nullptr; // union of IDs that descend from any child of an ancestor marked as incertae sedis
-    long smallestChild  = 0;
+    OttId smallest_child  = 0;
     int tax_level = -1;
     // set for descendants of incertae sedis taxa to indicate which clade hold the taxon
     Node_t * reprInSolnBy = nullptr; 
@@ -37,13 +37,6 @@ struct RTTreeIncertaeSedisHolder {
 
 using Tree_t = RootedTree<RTNodePartialDesSet, RTTreeIncertaeSedisHolder>;
 
-inline long smallestChild(const Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
-
-inline long& smallestChild(Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
 
 // Stores pointers for a taxon X which not in the solution.
 //   points to the MRCA, and all of the attachment points for 
@@ -53,9 +46,11 @@ inline long& smallestChild(Tree_t::node_type* node) {
 //      2. an ancestor of at least one taxon that is not contained in the taxon X.
 //      3. has at least one child (an attached node) that consists entirely
 //          of member of taxon X
-class LostTaxonLocation {
+class LostTaxonDetails {
+    using node_vec = std::set<Tree_t::node_type *>;
+    using attach2node_vec = std::map<Tree_t::node_type *, node_vec>;
     public:
-    LostTaxonLocation(long oid=0, Tree_t::node_type *mrcaNd=nullptr)
+    LostTaxonDetails(long oid=0, Tree_t::node_type *mrcaNd=nullptr)
         :ottId(oid),
         mrca(mrcaNd) {
     }
@@ -65,13 +60,11 @@ class LostTaxonLocation {
     public: //@TMP should be private.
     long ottId = 0L;
     Tree_t::node_type * mrca = nullptr;
-    using node_vec = std::set<Tree_t::node_type *>;
-    using attach2node_vec = std::map<Tree_t::node_type *, node_vec>;
     // for each attachment point, we store which subtrees for this taxon attach there.
     attach2node_vec attachNode2AttachedVec;
-
+    OttIdSet intrudingTaxa;
 };
-typedef std::map<int, LostTaxonLocation> LostTaxonMap;
+typedef std::map<OttId, LostTaxonDetails> LostTaxonMap;
 typedef std::pair<Node_t *, Node_t *> childParPair;
 
 struct UnpruneStats {
@@ -104,10 +97,7 @@ struct UnpruneStats {
 
 
 template<typename T>
-void unpruneTaxa(T & taxonomy,
-                 T & solution,
-                 UnpruneStats & unprune_stats);
-
+void unpruneTaxa(T & taxonomy, T & solution, UnpruneStats & unprune_stats);
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 template <typename N>
 N * find_mrca_without_desids(const std::set<N *> & tip_node_set, std::set<N*> * induced_nodes = nullptr);
@@ -270,7 +260,7 @@ void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v) {
 template <typename N>
 void registerAttachmentPoints(const N * taxon,
                               N * mrca,
-                              LostTaxonLocation & ltl) {
+                              LostTaxonDetails & ltl) {
     assert(taxon);
     assert(mrca);
     set<N *> visited;
@@ -351,7 +341,7 @@ void fixLostTaxonMap(OttId ott_id,
         }
         at_set.insert(p);
     }
-    LostTaxonLocation ltl(ott_id, mrca);
+    LostTaxonDetails ltl(ott_id, mrca);
     unprune_stats.lost_taxa[ott_id] = ltl;
     auto & attachment = unprune_stats.lost_taxa[ott_id].attachNode2AttachedVec;
     attachment.clear();
@@ -374,12 +364,12 @@ void addChildrenOfNonMonophyleticTaxon(N * taxon,
     assert(mrca);
     assert(taxon->hasOttId());
     const auto ottId = taxon->getOttId();
-    LostTaxonLocation * ltl = nullptr;
+    LostTaxonDetails * ltl = nullptr;
     if (registerInLTM) {
         if (ltm.count(ottId) > 0) {
             LOG(DEBUG) << " LTM for " << ottId << " again. this can happen if it is incertae sedis.";
         }
-        ltm[ottId] = LostTaxonLocation(ottId, mrca);
+        ltm[ottId] = LostTaxonDetails(ottId, mrca);
         ltl = &(ltm[ottId]);
         registerAttachmentPoints(taxon, mrca, *ltl);
     }
@@ -573,7 +563,7 @@ void registerCoveringOfIncSed(OttId effectiveTipOttId,
 //    taxa that are in this slice.
 // If the taxon conflicts with the solution, then the unsampled taxa are attached at the
 //  MRCA of the taxon in the solution, and an entry is added mapping the taxon's OTT Id
-//  to a LostTaxonLocation object that explains where the elements of the taxon are located.
+//  to a LostTaxonDetails object that explains where the elements of the taxon are located.
 // Returns the set of IDs that should  
 template <typename N>
 void unpruneTaxaForSubtree(N *rootSolnNd,
