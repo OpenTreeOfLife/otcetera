@@ -12,20 +12,20 @@ namespace otc {
 template<typename T, typename U> class SupertreeContext;
 
 template<typename T, typename U>
-inline void updateAncestralPathOttIdSet(T * nd,
+inline void update_ancestral_path_ott_id_set(T * nd,
                                         const OttIdSet & oldEls,
                                         const OttIdSet & newEls,
                                         std::map<const T *, NodeEmbedding<T, U> > & m) {
     auto & curr = m.at(nd);
     assert(oldEls.size() > 0);
-    LOG(DEBUG) << "  " << nd->get_ott_id() << " calling updateAllPathsOttIdSets";
-    if (!curr.updateAllPathsOttIdSets(oldEls, newEls)) {
+    LOG(DEBUG) << "  " << nd->get_ott_id() << " calling update_all_paths_ott_id_sets";
+    if (!curr.update_all_paths_ott_id_sets(oldEls, newEls)) {
         return;
     }
     for (auto anc : iter_anc(*nd)) {
         auto & ant = m.at(anc);
-        LOG(DEBUG) << "  " << anc->get_ott_id() << " calling updateAllPathsOttIdSets";
-        if (!ant.updateAllPathsOttIdSets(oldEls, newEls)) {
+        LOG(DEBUG) << "  " << anc->get_ott_id() << " calling update_all_paths_ott_id_sets";
+        if (!ant.update_all_paths_ott_id_sets(oldEls, newEls)) {
             return;
         }
     }
@@ -66,7 +66,7 @@ class NodeEmbedding {
     //  If we are requested to retain nodes mapped to non-terminal nodes in the scaffold, and
     //      these scaffold nodes are contested we run into some ugliness.
     //  The code was not designed for this case. The scaffold node is pruned by
-    //      of collapseGroup. This means that these phyloNodes will be "unembedded".
+    //      of collapse_group. This means that these phyloNodes will be "unembedded".
     //  The hack for covering this case is to simply propagate pointers to such nodes (and their
     //      parent nodes) back in the scaffold every time a group is collapsed. 
     //  This allows these retained tips to be emitted as a part of the subproblem when
@@ -77,14 +77,14 @@ class NodeEmbedding {
     NodeEmbedding(T * scaffNode)
         :embeddedNode(scaffNode) {
     }
-    std::size_t getTotalNumNodeMappings() const {
+    std::size_t get_total_num_node_mappings() const {
         unsigned long t = 0U;
         for (auto i : nodeEmbeddings) {
             t += i.second.size();
         }
         return t;
     }
-    std::set<U *> getPhyloNodes(std::size_t treeIndex) const {
+    std::set<U *> get_phylo_nodes(std::size_t treeIndex) const {
         auto neIt = nodeEmbeddings.find(treeIndex);
         std::set<U *> r;
         if (neIt == nodeEmbeddings.end()) {
@@ -95,21 +95,21 @@ class NodeEmbedding {
         }
         return r;
     }
-    std::size_t getNumLoopTrees() const {
+    std::size_t get_num_loop_trees() const {
         std::set<std::size_t> keys;
         for (auto i : loopEmbeddings) {
             keys.insert(i.first);
         }
         return keys.size();
     }
-    std::size_t getTotalNumLoops() const {
+    std::size_t get_total_num_loops() const {
         unsigned long t = 0U;
         for (auto i : loopEmbeddings) {
             t += i.second.size();
         }
         return t;
     }
-    std::size_t getTotalNumEdgeBelowTraversals() const {
+    std::size_t get_total_num_edges_below_traversals() const {
         unsigned long t = 0U;
         for (auto i : edgeBelowEmbeddings) {
             t += i.second.size();
@@ -121,7 +121,7 @@ class NodeEmbedding {
     using TreeIndToContestingNodeMap = std::map<std::size_t, ContestingNodeMap >;
     static std::map<const T *, std::set<const T *> > how_tree_constests_monophyly(const PathPairSet & edgesBelowForTree);
 
-    bool isContested() const {
+    bool is_contested() const {
         for (auto i : edgeBelowEmbeddings) {
             if (does_tree_constest_monophyly(i.second)) {
                 return true;
@@ -129,7 +129,7 @@ class NodeEmbedding {
         }
         return false;
     }
-    std::list<std::size_t> getContestingTreeIndices() const {
+    std::list<std::size_t> get_contesting_tree_indices() const {
         std::list<std::size_t> r;
         for (auto i : edgeBelowEmbeddings) {
             if (does_tree_constest_monophyly(i.second)) {
@@ -138,7 +138,7 @@ class NodeEmbedding {
         }
         return r;
     }
-    TreeIndToContestingNodeMap getHowTreeContestsMonophylyMaps() const {
+    TreeIndToContestingNodeMap get_how_tree_contests_monophyly_maps() const {
         TreeIndToContestingNodeMap retMap;
         for (auto i : edgeBelowEmbeddings) {
             if (does_tree_constest_monophyly(i.second)) {
@@ -147,56 +147,56 @@ class NodeEmbedding {
         }
         return retMap;
     }
-    const PathPairSet & getEdgesExiting(std::size_t treeIndex) const {
+    const PathPairSet & get_edges_exiting(std::size_t treeIndex) const {
         auto el = edgeBelowEmbeddings.find(treeIndex);
         assert(el != edgeBelowEmbeddings.end());
         return el->second;
     }
     // some trees contest monophyly. Return true if these trees are obviously overruled
     //   by higher ranking trees so that we can avoid the more expensive unconstrained phylo graph 
-    bool highRankingTreesPreserveMonophyly(std::size_t ) {
+    bool high_ranking_trees_preserve_monophyly(std::size_t ) {
         return false;
     }
-    const OttIdSet & getRelevantDesIdsFromPath(const PathPairing<T, U> & pps);
-    OttIdSet getRelevantDesIdsFromPathPairSet(const PathPairSet & pps);
-    OttIdSet getRelevantDesIds(const std::map<const T *,
+    const OttIdSet & get_relevant_des_ids_from_path(const PathPairing<T, U> & pps);
+    OttIdSet get_relevant_des_ids_from_path_pair_set(const PathPairSet & pps);
+    OttIdSet get_relevant_des_ids(const std::map<const T *,
                                NodeEmbedding<T, U> > & eForNd,
                                std::size_t treeIndex);
 
-    void collapseSourceEdge(const T * phyloParent,
+    void collapse_source_edge(const T * phyloParent,
                             PathPairing<T, U> * path);
-    void collapseSourceEdgesToForceOneEntry(T & ,
+    void collapse_source_edge_to_force_one_entry(T & ,
                                             PathPairSet & pps,
                                             std::size_t treeIndex,
                                             SupertreeContextWithSplits &);
-    void resolveGivenContestedMonophyly(T & scaffoldNode,
+    void resolve_given_contested_monophyly(T & scaffoldNode,
                                         SupertreeContextWithSplits & sc);
-    std::set<PathPairPtr> getAllChildExitPaths(
+    std::set<PathPairPtr> get_all_child_exit_paths(
                             const T & scaffoldNode,
                             const std::map<const T *, NodeEmbedding<T, U> > & sc) const;
-    std::set<PathPairPtr> getAllChildExitPathsForTree(
+    std::set<PathPairPtr> get_all_child_exit_paths_for_tree(
                             const T & scaffoldNode,
                             std::size_t treeIndex,
                             const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const;
-    void resolveGivenUncontestedMonophyly(T & scaffoldNode,
+    void resolve_given_uncontested_monophyly(T & scaffoldNode,
                                           SupertreeContextWithSplits & sc);
-    std::string exportSubproblemAndResolve(T & scaffoldNode,
+    std::string export_subproblem_and_resolve(T & scaffoldNode,
                                     const std::string & exportDir,
                                     std::ostream * exportStream, // nonnull to override exportdir
                                     SupertreeContextWithSplits & sc);
-    void collapseGroup(T & scaffoldNode, SupertreeContext<T, U> & sc);
-    void pruneCollapsedNode(T & scaffoldNode, SupertreeContextWithSplits & sc);
+    void collapse_group(T & scaffoldNode, SupertreeContext<T, U> & sc);
+    void prune_collapsed_node(T & scaffoldNode, SupertreeContextWithSplits & sc);
     
-    bool reportIfContested(std::ostream & out,
+    bool report_if_contested(std::ostream & out,
                            const T * nd,
                            const std::vector<TreeMappedWithSplits *> & treePtrByIndex,
                            const std::vector<NodeWithSplits *> & aliasedBy,
                            bool verbose) const;
-    bool updateAllPathsOttIdSets(const OttIdSet & oldEls, const OttIdSet & newEls) {
+    bool update_all_paths_ott_id_sets(const OttIdSet & oldEls, const OttIdSet & newEls) {
         bool r = update_all_mapped_paths_ott_id_sets(loopEmbeddings, oldEls, newEls);
         return update_all_mapped_paths_ott_id_sets(edgeBelowEmbeddings, oldEls, newEls) || r;
     }
-    std::vector<const PathPairing<T, U> *> getAllIncomingPathPairs(
+    std::vector<const PathPairing<T, U> *> get_all_incoming_path_pairs(
                         const std::map<const T *, NodeEmbedding<T, U> > & eForNd,
                         std::size_t treeIndex) const;
     bool debug_node_embeddings(const char * tag,
@@ -211,12 +211,12 @@ class NodeEmbedding {
     void add_exit_embeddings(std::size_t treeIndex, PathPairPtr pp) {
         edgeBelowEmbeddings[treeIndex].insert(pp);
     }
-    void set_ott_idForExitEmbeddings(
+    void set_ott_id_for_exit_embeddings(
                         T * newScaffDes,
                         long ottId,
                         std::map<const T *, NodeEmbedding<T, U> > & n2ne);
-    void mergeExitEmbeddingsIfMultiple();
-    void resolveParentInFavorOfThisNode(
+    void merge_exit_embeddings_if_multiple();
+    void resolve_parent_in_favor_of_this_node(
                         T & scaffoldNode,
                         std::size_t treeIndex,
                         SupertreeContextWithSplits & sc);

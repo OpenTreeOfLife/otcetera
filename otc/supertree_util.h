@@ -13,7 +13,7 @@ namespace otc {
 std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &);
 
 template<typename T, typename U>
-void updateAncestralPathOttIdSet(T * nd,
+void update_ancestral_path_ott_id_set(T * nd,
                                 const OttIdSet & oldEls,
                                 const OttIdSet & newEls,
                                 std::map<const T *, NodeEmbedding<T, U> > & m);

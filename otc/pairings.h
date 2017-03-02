@@ -12,7 +12,7 @@ namespace otc {
 template<typename T, typename U> class NodeEmbedding;
 
 template<typename T, typename U>
-void updateAncestralPathOttIdSet(T * nd,
+void update_ancestral_path_ott_id_set(T * nd,
                                  const OttIdSet & oldEls,
                                  const OttIdSet & newEls,
                                  std::map<const T *, NodeEmbedding<T, U> > & m);
@@ -79,7 +79,7 @@ class PathPairing {
     void updateDesIdsForSelfAndAnc(const OttIdSet & oldIds,
                                    const OttIdSet & newIds,
                                    std::map<const U *, NodeEmbedding<T, U> > & m) {
-        updateAncestralPathOttIdSet(scaffoldDes, oldIds, newIds, m);
+        update_ancestral_path_ott_id_set(scaffoldDes, oldIds, newIds, m);
         currChildOttIdSet = newIds;
         dbWriteOttSet(" updateDesIdsForSelfAndAnc onExit currChildOttIdSet = ", currChildOttIdSet);
     }

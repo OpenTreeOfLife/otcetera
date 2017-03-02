@@ -73,8 +73,8 @@ void GreedyBandedForest<T, U>::finish_resolution_of_embedded_clade(U & scaffoldN
     check_all_node_pointers_iter(scaffoldNode);
     assert(beforePar == scaffoldNode.getParent());
     // merge multiple exit paths (if needed) and remap all path pairings out of this node...
-    embedding->mergeExitEmbeddingsIfMultiple();
-    embedding->set_ott_idForExitEmbeddings(&scaffoldNode, snoid, sc->scaffold2NodeEmbedding);
+    embedding->merge_exit_embeddings_if_multiple();
+    embedding->set_ott_id_for_exit_embeddings(&scaffoldNode, snoid, sc->scaffold2NodeEmbedding);
 }
 
 template<typename T, typename U>

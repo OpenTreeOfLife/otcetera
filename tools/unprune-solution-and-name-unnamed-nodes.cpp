@@ -1372,7 +1372,7 @@ int main(int argc, char *argv[]) {
     UnpruneStats unprune_stats(incertae_sedis_ids);
     unpruneTaxa(taxonomy, solution, unprune_stats);
     reportStats(unprune_stats, statsStreamPtr);
-    nameUnamedNodes(solution);
+    name_unnamed_nodes(solution);
     writeTreeAsNewick(std::cout, solution);
     std::cout << std::endl;
     if (!lostTaxaJSONFilename.empty()) {

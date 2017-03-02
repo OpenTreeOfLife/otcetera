@@ -9,18 +9,18 @@
 
 namespace otc {
 
-std::string makeName(const std::string& prefix, long number);
-std::string makeMRCAName(long number1, long number2);
+std::string make_name(const std::string& prefix, long number);
+std::string make_mrca_name(long number1, long number2);
 template<typename N>
 OttId smallest_child(const N* node);
 template<typename N>
 OttId& smallest_child(N* node);
 template<typename T>
-void calculateSmallestChild(T& tree);
+void calculate_smallest_child(T& tree);
 template<typename T>
-void sortBySmallestChild(T& tree);
+void sort_by_smallest_child(T& tree);
 template<typename T>
-void nameUnamedNodes(const T & tree);
+void name_unnamed_nodes(const T & tree);
 
 template<typename N>
 inline OttId smallest_child(const N * node) {
@@ -33,7 +33,7 @@ inline OttId& smallest_child(N * node) {
 }
 
 template<typename T>
-void calculateSmallestChild(T& tree) {
+void calculate_smallest_child(T& tree) {
     for (auto nd: iter_post(tree)) {
         if (nd->isTip()) {
             smallest_child(nd) = nd->get_ott_id();
@@ -48,7 +48,7 @@ void calculateSmallestChild(T& tree) {
 }
 
 template<typename T>
-void sortBySmallestChild(T& tree) {
+void sort_by_smallest_child(T& tree) {
     const std::vector<typename T::node_type*> nodes = all_nodes(tree);
     for (auto nd: nodes) {
         std::vector<typename T::node_type*> children;
@@ -70,9 +70,9 @@ void sortBySmallestChild(T& tree) {
 }
 
 template<typename T>
-void nameUnamedNodes(T & tree) {
-    calculateSmallestChild(tree);
-    sortBySmallestChild(tree);
+void name_unnamed_nodes(T & tree) {
+    calculate_smallest_child(tree);
+    sort_by_smallest_child(tree);
     
     std::unordered_set<std::string> names;
     for(auto nd:iter_pre(tree)) {
@@ -106,7 +106,7 @@ void nameUnamedNodes(T & tree) {
 
             auto id1 = smallest_child(nd->getFirstChild());
             auto id2 = smallest_child(nd->getFirstChild()->getNextSib());
-            auto name = makeMRCAName(id1,id2);
+            auto name = make_mrca_name(id1,id2);
             if (names.count(name)) {
                 throw OTCError()<<"Synthesized name '"<<name<<"' already exists in the tree!";
             }
@@ -117,11 +117,11 @@ void nameUnamedNodes(T & tree) {
     }
 }
 
-inline std::string makeName(const std::string& pre, long number) {
+inline std::string make_name(const std::string& pre, long number) {
     return pre + std::to_string(number);
 }
 
-inline std::string makeMRCAName(long number1, long number2) {
+inline std::string make_mrca_name(long number1, long number2) {
     const static std::string mrca_prefix = "mrcaott";
     return mrca_prefix + std::to_string(number1) + "ott" + std::to_string(number2);
 }

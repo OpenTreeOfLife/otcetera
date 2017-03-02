@@ -252,7 +252,7 @@ void writeDOTEmbeddingForNode(std::ostream & out,
             writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
         }
     }
-    const auto incoming = thr.getAllIncomingPathPairs(eForNd, treeIndex);
+    const auto incoming = thr.get_all_incoming_path_pairs(eForNd, treeIndex);
     for (auto pp : incoming) {
         writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
     }

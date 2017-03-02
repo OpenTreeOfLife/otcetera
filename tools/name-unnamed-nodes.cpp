@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     }
     // Add names to unnamed nodes
     for(const auto& tree: trees) {
-        nameUnamedNodes(*tree);
+        name_unnamed_nodes(*tree);
     }
     for(const auto& tree: trees) {
         writeTreeAsNewick(std::cout, *tree);

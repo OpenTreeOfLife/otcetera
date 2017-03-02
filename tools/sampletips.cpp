@@ -28,7 +28,7 @@ SampleMode gSampleMode = SampleMode::TREE_PER_INTERNAL_ALL_CHILDREN_ONE_SIB;
 
 template<typename T>
 void writeTreesFromSampledTipsToEncodeStructure(T & tree, std::ostream & outStream, SampleMode sm) {
-    calculateSmallestChild(tree);
+    calculate_smallest_child(tree);
     writeTreesFromSampledTipsToEncodeStructureDecoratedTree(tree, outStream, sm);
 }
 
