@@ -58,6 +58,6 @@ int main(int argc, char *argv[]) {
                  "   , ( ) : ; [ ] { } ' <TAB> <NEWLINE>",
                  {"some.tre"});
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnl = cleanNamesAndWrite<Tree_t>;
-    return treeProcessingMain<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
 }
 

@@ -25,7 +25,7 @@ bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg);
 bool handleRootName(OTCLI &, const std::string & arg);
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().set_ott_ids = get_bool(arg,"-o: ");
+    otCLI.get_parsing_rules().set_ott_ids = get_bool(arg,"-o: ");
     return true;
 }
 
@@ -39,11 +39,11 @@ int main(int argc, char *argv[]) {
                 "Takes a series of tree files, which are treated as subproblem solutions.\n"
                 "Each solution tree should have an OTT Id at the root.\n",
                 "solutions.tre");
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   "Require OTT ids.  Defaults to true",
                   handleRequireOttIds,
                   true);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "Rename the root to this name",
                   handleRootName,
                   true);
@@ -54,14 +54,14 @@ int main(int argc, char *argv[]) {
     }
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
         return 1;
     }
 
     if (trees.empty()) {
         throw OTCError("No trees loaded!");
     }
-    const bool set_ott_ids = otCLI.getParsingRules().set_ott_ids;
+    const bool set_ott_ids = otCLI.get_parsing_rules().set_ott_ids;
     vector<std::size_t> no_root_label;
     for (std::size_t i = 0U; i < trees.size(); i++) {
         if (trees[i]->get_root()->get_name().empty()) {

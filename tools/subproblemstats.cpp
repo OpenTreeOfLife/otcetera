@@ -115,6 +115,6 @@ int main(int argc, char *argv[]) {
     SubproblemStatsState sss;
     gSubproblemStatsState = &sss;
     SubproblemStatsState proc;
-    return treeProcessingMain<Tree_t>(otCLI, argc, argv, rss, summarize, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, rss, summarize, 1);
 
 }

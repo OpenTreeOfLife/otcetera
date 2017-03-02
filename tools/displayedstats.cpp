@@ -450,8 +450,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
     virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
-        otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = false;
-        otCLI.getParsingRules().require_ott_ids = false;
+        otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
+        otCLI.get_parsing_rules().require_ott_ids = false;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set
@@ -495,13 +495,13 @@ int main(int argc, char *argv[]) {
                 explanation.c_str(),
                 "synth.tre inp1.tre inp2.tre ...");
     DisplayedStatsState proc;
-    otCLI.addFlag('x',
+    otCLI.add_flag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
                   false);
-    otCLI.addFlag('j',
+    otCLI.add_flag('j',
                   "Output JSON for node support, instead of displaying statistics.",
                   handleJSON,
                   false);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
 }

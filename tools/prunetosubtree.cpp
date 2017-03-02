@@ -132,23 +132,23 @@ int main(int argc, char *argv[]) {
                 "-n5315,3512 some.tre");
     SubtreePrunerState cts;
     otCLI.blob = static_cast<void *>(&cts);
-    otCLI.addFlag('p',
+    otCLI.add_flag('p',
                   "ARG=a comma separated list of OTT numbers. The parent of the MRCA of the IDs will be printed.",
                   handleParentFlag,
                   true);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "ARG=a comma separated list of OTT numbers. The MRCA of the IDs will be printed.",
                   handleNodeFlag,
                   true);
-    otCLI.addFlag('s',
+    otCLI.add_flag('s',
                   "ARG=a comma separated list of OTT numbers. The siblings of the MRCA of the IDs will be printed.",
                   handleSiblingsFlag,
                   true);
-    otCLI.addFlag('c',
+    otCLI.add_flag('c',
                   "ARG=a comma separated list of OTT numbers. The children of the MRCA of the IDs will be printed.",
                   handleChildrenFlag,
                   true);
-    auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
+    auto rc = tree_processing_main<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
     if (rc == 0) {
         cts.summarize(otCLI);
         return cts.numErrors;

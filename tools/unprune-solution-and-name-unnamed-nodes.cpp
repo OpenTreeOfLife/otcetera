@@ -1307,15 +1307,15 @@ int main(int argc, char *argv[]) {
                 "identifier, then that taxon is the same definition as the taxon with that identifier in the\n"
                 "taxonomic tree. In other words, it does not verify the validity of the internal node names that do exist.\n",
                 "-jout/lost-taxa.json solution.tre taxonomy.tre");
-    otCLI.addFlag('j',
+    otCLI.add_flag('j',
                   "Produce a JSON file that notes where the descendants of unincluded appear on the tree",
                   handleLostTaxaJSON,
                   true);
-    otCLI.addFlag('s',
+    otCLI.add_flag('s',
                   "Produce a JSON file with stats about the inputs and outputs",
                   handleStatsJSON,
                   true);
-    otCLI.addFlag('i',
+    otCLI.add_flag('i',
                   "Optional list of IDs of tree in the exemplified taxonomy that are incertae sedis",
                   handleIncertaeSedis,
                   true);
@@ -1324,7 +1324,7 @@ int main(int argc, char *argv[]) {
     if (argc < 2) {
         throw OTCError("No trees provided!");
     }
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
         return 1;
     }
     if (trees.size() != 2) {

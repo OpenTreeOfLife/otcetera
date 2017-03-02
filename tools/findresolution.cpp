@@ -99,7 +99,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
     virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
-        otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = false;
+        otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set
@@ -533,22 +533,22 @@ int main(int argc, char *argv[]) {
                 "takes at least 3 newick file paths: a taxonomy,  a full supertree, and some number of input trees.",
                 "synth.tre inp1.tre inp2.tre ...");
     FindResolutionState proc;
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "Resolve the supertree rather than counting number of groups that could be added.",
                   handleResolve,
                   false);
-    otCLI.addFlag('u',
+    otCLI.add_flag('u',
                   "Do not add a resolution if it will cause an unsupported group.",
                   handleAvoidUnsupported,
                   false);
-    otCLI.addFlag('p',
+    otCLI.add_flag('p',
                   "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them. " \
                   "If the -r option is used, these nodes will be protected from resolution.",
                   handleDesignator,
                   true);
-    otCLI.addFlag('x',
+    otCLI.add_flag('x',
                   "Automatically treat the taxonomy as an input in terms of supporting groups",
                   handleCountTaxonomy,
                   false);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 3, true);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 3, true);
 }

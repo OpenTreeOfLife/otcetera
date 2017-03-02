@@ -386,12 +386,12 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 
     virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
-        otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = true;
+        otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = true;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set (rather than the full set of IDs)
         clearAndfillDesIdSets(*taxonomy);
-        otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = false;
+        otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
         return true;
     }
 
@@ -622,7 +622,7 @@ bool handleFixKnuckles(OTCLI & otCLI, const std::string &) {
 bool handlePruneUnrecognized(OTCLI & otCLI, const std::string &) {
     FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
     assert(fusp != nullptr);
-    otCLI.getParsingRules().prune_unrecognized_input_tips = true;
+    otCLI.get_parsing_rules().prune_unrecognized_input_tips = true;
     return true;
 }
 
@@ -638,37 +638,37 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a full taxonomy tree, a full supertree, and some number of input trees",
                 "taxonomy.tre synth.tre inp1.tre inp2.tre");
     FindUnsupportedState proc;
-    otCLI.addFlag('c',
+    otCLI.add_flag('c',
                   "Fix the problems (clean the tree) rather than reporting on them.",
                   handleFix,
                   false);
-    otCLI.addFlag('d',
+    otCLI.add_flag('d',
                   "Print difference between taxonomic content for mis-named nodes (only has an effect if -x is used)",
                   handlePrintDiff,
                   false);
-    otCLI.addFlag('k',
+    otCLI.add_flag('k',
                   "If the -c is used, then this flag requests that unnamed nodes of out-degree=1 be suppressed.",
                   handleFixKnuckles,
                   false);
-    otCLI.addFlag('m',
+    otCLI.add_flag('m',
                   "ARG=a designators file. Each line is a list of (white-space separated) OTT ids used to designate the node that is the MRCA of them.",
                   handleDesignator,
                   true);
-    otCLI.addFlag('p',
+    otCLI.add_flag('p',
                   "prune unrecognized taxa from inputs",
                   handlePruneUnrecognized,
                   false);
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "Refresh support stats after analyzing taxonomy so that final summary is only based on phylo inputs (only has an effect if -x is present)",
                   handleForceRefreshAfterTaxonomy,
                   false);
-    otCLI.addFlag('t',
+    otCLI.add_flag('t',
                   "tips mapped to non-terminal taxa should NOT be counted as support",
                   handleTipsNotSupport,
                   false);
-    otCLI.addFlag('x',
+    otCLI.add_flag('x',
                   "Automatically treat the taxonomy as an input",
                   handleForceTaxonomy,
                   false);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
 }

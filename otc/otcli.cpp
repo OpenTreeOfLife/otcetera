@@ -52,7 +52,7 @@ OTCLI::OTCLI(const char *title,
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
 
-void OTCLI::printHelp(std::ostream & outStream) {
+void OTCLI::print_help(std::ostream & outStream) {
     outStream << this->titleStr << ": " << this->descriptionStr << ".\n";
     outStream << "The most common usage is simply:\n";
     outStream << "    " << this->titleStr << " " << this->usageStr << "\n";
@@ -74,21 +74,21 @@ void OTCLI::printHelp(std::ostream & outStream) {
     }
 }
 
-void OTCLI::turnOnVerboseMode() {
+void OTCLI::turn_on_verbose_mode() {
     this->verbose = true;
     debugging_output_enabled = true;
     defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
 
-void OTCLI::turnOffVerboseMode() {
+void OTCLI::turn_off_verbose_mode() {
     this->verbose = false;
     debugging_output_enabled = false;
     defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
 
-bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
+bool OTCLI::handle_flag(const std::string & flagWithoutDash) {
     bool recursionNeeded = false;
     auto f = flagWithoutDash[0];
     if (clientDefFlagCallbacks.find(f) != clientDefFlagCallbacks.end()) {
@@ -114,14 +114,14 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
         }
     }
     if (f == 'h') {
-        this->printHelp(this->out);
+        this->print_help(this->out);
         this->exitCode = 1;
         return false;
     } else if (f == 'v') {
         if (flagWithoutDash.length() > 1) {
             recursionNeeded = true;
         }
-        turnOnVerboseMode();
+        turn_on_verbose_mode();
     } else if (f == 't') {
         if (flagWithoutDash.length() > 1) {
             recursionNeeded = true;
@@ -148,11 +148,11 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
         return false;
     }
     if (recursionNeeded) {
-        return this->handleFlag(flagWithoutDash.substr(1));
+        return this->handle_flag(flagWithoutDash.substr(1));
     }
     return true;
 }
-bool OTCLI::parseArgs(int argc, char *argv[], std::vector<std::string> & args) {
+bool OTCLI::parse_args(int argc, char *argv[], std::vector<std::string> & args) {
     this->exitCode = 0;
     std::list<std::string> allArgs;
     for (int i = 1; i < argc; ++i) {
@@ -165,7 +165,7 @@ bool OTCLI::parseArgs(int argc, char *argv[], std::vector<std::string> & args) {
         if (slen > 1U && filepath[0] == '-') {
             extraArgs.clear();
             const std::string flagWithoutDash = filepath.substr(1);
-            if (!this->handleFlag(flagWithoutDash)) {
+            if (!this->handle_flag(flagWithoutDash)) {
                 return false;
             }
             if (!extraArgs.empty()) {
@@ -181,7 +181,7 @@ bool OTCLI::parseArgs(int argc, char *argv[], std::vector<std::string> & args) {
     return true;
 }
 
-bool OTCLI::isDotTxtFile(const std::string &fp) {
+bool OTCLI::is_dot_txt_file(const std::string &fp) {
     const size_t fnl = fp.length();
     return (fp.substr(fnl - 4) == std::string(".txt"));
 }

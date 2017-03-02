@@ -16,5 +16,5 @@ int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-assert-invariants",
                 "takes a tree file, parses it and runs a series of checks of invariants of the tree operations",
                 "test.tre");
-    return treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
 }

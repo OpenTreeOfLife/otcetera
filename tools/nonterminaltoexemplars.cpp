@@ -216,7 +216,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     bool process_taxonomy_tree(OTCLI & otCLI) override {
         bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::process_taxonomy_tree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
-        otCLI.getParsingRules().set_ott_idForInternals = false;
+        otCLI.get_parsing_rules().set_ott_idForInternals = false;
         if (!outputNonEmptyTreeOutput.empty()) {
             nonEmptyFileStream.open(outputNonEmptyTreeOutput.c_str());
         }
@@ -323,25 +323,25 @@ int main(int argc, char *argv[]) {
                 helpMsg,
                 "-estep_5 taxonomy.tre inp1.tre inp2.tre");
     NonTerminalsToExemplarsState proc;
-    otCLI.addFlag('e',
+    otCLI.add_flag('e',
                   "ARG should be the name of a directory. A .tre file will be written to this directory for each input tree",
                   handleExportModified,
                   true);
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   " requests that standard output stream, rather than the export directory, be used for all output.",
                   handleStdout,
                   false);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "ARG is and output file that will list the filename for each input tree that was not empty",
                   handleNonemptyTreeOutput,
                   true);
-    otCLI.addFlag('j',
+    otCLI.add_flag('j',
                   "Name of an output JSON file that summarizes the set of IDs used to exemplify each taxon.",
                   handleJSONOutput,
                   true);
-    otCLI.addFlag('t',
+    otCLI.add_flag('t',
                   "Label exemplified taxa with just OTT ID. If omitted, they are labelled with nodeID_ottID",
                   handleUseJustOTTID,
                   false);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, false);
 }

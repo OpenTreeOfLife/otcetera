@@ -180,12 +180,12 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
 }
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().set_ott_ids = get_bool(arg,"-o: ");
+    otCLI.get_parsing_rules().set_ott_ids = get_bool(arg,"-o: ");
     return true;
 }
 
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().prune_unrecognized_input_tips = get_bool(arg,"-p: ");
+    otCLI.get_parsing_rules().prune_unrecognized_input_tips = get_bool(arg,"-p: ");
     return true;
 }
 
@@ -209,19 +209,19 @@ int main(int argc, char *argv[]) {
                 "Files are concatenated and the combined list treated as a single subproblem.\n"
                 "Trees should occur in order of priority, with the taxonomy last.\n",
                 "subproblem.tre");
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   "Require OTT ids.  Defaults to true",
                   handleRequireOttIds,
                   true);
-    otCLI.addFlag('p',
+    otCLI.add_flag('p',
                   "Prune unrecognized tips.  Defaults to false",
                   handlePruneUnrecognizedTips,
                   true);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "Rename the root to this name",
                   handleRootName,
                   true);
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "Regrafting pruned leaves: assume two trees, a solution tree and\n"
                   "a taxonomy.  Determine conflicting clades in the taxonomy based on\n"
                   "which OTT Ids occur in the solution tree.",
@@ -234,14 +234,14 @@ int main(int argc, char *argv[]) {
     }
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)){
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)){
         std::exit(1);
     }
 
     if (trees.empty()) {
         throw OTCError("No trees loaded!");
     }
-    bool set_ott_ids = otCLI.getParsingRules().set_ott_ids;
+    bool set_ott_ids = otCLI.get_parsing_rules().set_ott_ids;
     // Add fake Ott Ids to tips
     if (not set_ott_ids) {
         auto name_to_id = createIdsFromNames(*trees.back());

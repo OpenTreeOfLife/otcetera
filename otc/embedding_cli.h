@@ -53,8 +53,8 @@ class EmbeddingCLI
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
             _get_embedding_for_node(nd); // side effect is introducint a new, empty embedding
         }
-        otCLI.getParsingRules().set_ott_idForInternals = false;
-        otCLI.getParsingRules().id_remapping = &monotypicRemapping;
+        otCLI.get_parsing_rules().set_ott_idForInternals = false;
+        otCLI.get_parsing_rules().id_remapping = &monotypicRemapping;
         return true;
     }
 

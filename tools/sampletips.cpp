@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
                 "This encoding is done by contains a descendant of each child of the node\n" \
                 "    and descendant of one of the node\'s siblings.",
                 "tree-to-sample.tre");
-    otCLI.addFlag('s',
+    otCLI.add_flag('s',
                   "Subproblem sampling. An output tree for every named input with all outgoing arcs sampled.",
                   handleSubproblemSampling,
                   false);
@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
     if (argc < 2) {
         throw OTCError("No trees provided!");
     }
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
         return 1;
     }
     if (trees.size() != 1) {

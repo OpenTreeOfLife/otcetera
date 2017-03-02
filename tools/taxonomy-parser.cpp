@@ -113,7 +113,7 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
     std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
     ParsingRules rules;
     rules.require_ott_ids = false;
-    otc::processTrees(filename,rules,a);//[&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;});
+    otc::process_trees(filename,rules,a);//[&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;});
     const auto& T =  trees[0];
 
     std::unordered_map<long, const Tree_t::node_type*> ottid_to_node;

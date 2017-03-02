@@ -179,26 +179,26 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees, and -e flag to specify an export directory",
                 "taxonomy.tre inp1.tre inp2.tre");
     UncontestedTaxonDecompose proc;
-    otCLI.addFlag('e',
+    otCLI.add_flag('e',
                   "ARG should be the name of a directory. A .tre file will be written to that directory for each subproblem",
                   handleExportSubproblems,
                   true);
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   "If present, the trees will be exported to standard output",
                   handleExportToStdoutSubproblems,
                   false);
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "If present, the tips in input trees which are mapped to contested taxa. The default behavior is to prune these tips",
                   handleRetainTipsMapToContestedTaxaSubproblems,
                   false);
-    otCLI.addFlag('x',
+    otCLI.add_flag('x',
                   "ARG should be a file path. a line listing the name (but not the full path) over every created .tre file will be written to this file.",
                   handleListSubproblemIds,
                   true);
-    otCLI.addFlag('c',
+    otCLI.add_flag('c',
                   "ARG should be a file path. A JSON representation of the trees that contest each taxon will be written to that filepath.",
                   handleContestingLog,
                   true);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
 }
 

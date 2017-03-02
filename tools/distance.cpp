@@ -172,27 +172,27 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a supertree and some number of input trees. Writes one line for each input tree with the statistics requested for the comparison of the supertree to each input tree.",
                 "synth.tre inp1.tre inp2.tre");
     DistanceState proc;
-    otCLI.addFlag('a',
+    otCLI.add_flag('a',
                   "return 0 only if the RF distance is 0",
                   handleAssertIdentical,
                   false);
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "Show RF symmetric distance",
                   handleShowRF,
                   false);
-    otCLI.addFlag('d',
+    otCLI.add_flag('d',
                   "Show number of grouping in each input displayed on full tree",
                   handleShowNumDisplayed,
                   false);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "Show number of grouping in each input NOT displayed on full tree",
                   handleShowShowNumNotDisplayed,
                   false);
-    otCLI.addFlag('i',
+    otCLI.add_flag('i',
                   "Show the number of internal groupings in each input tree",
                   handleShowInternals,
                   false);
     
-    auto rc = taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    auto rc = tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
     return rc;
 }

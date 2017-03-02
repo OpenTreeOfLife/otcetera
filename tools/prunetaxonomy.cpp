@@ -104,9 +104,9 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a full taxonomy tree some number of input trees. Prune subtrees from the taxonomy if they are not represented in the inputs",
                 "taxonomy.tre inp1.tre inp2.tre");
     PruneTaxonomyState proc;
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "Just report stats on how many tips are included in the inputs.",
                   handleReport,
                   false);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, false);
 }
