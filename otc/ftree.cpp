@@ -124,9 +124,9 @@ void FTree<T, U>::updateToReflectResolution(node_type *oldAnc,
     std::set<node_type *> bn;
     for (auto np : movedNodes) {
         if (np->isTip()
-            && np->hasOttId()
-            && contains(ps.includeGroup, np->getOttId())
-            && (!ottIdIsConnected(np->getOttId()))) {
+            && np->has_ott_id()
+            && contains(ps.includeGroup, np->get_ott_id())
+            && (!ottIdIsConnected(np->get_ott_id()))) {
             bn.insert(np);
         }
     }
@@ -192,13 +192,13 @@ const OttIdSet FTree<T, U>::getConnectedOttIds() const {
     OttIdSet r;
     // root can be a tip but not a named node, in the process of stealing
     //  children from one tree in the merging of the forests
-    if (root == nullptr || (root->isTip() && !root->hasOttId())) {
+    if (root == nullptr || (root->isTip() && !root->has_ott_id())) {
         return r;
     }
     for (auto t : iter_leaf_n_const(*root)) {
         assert(isAncestorDesNoIter(root, t));
-        if (t->hasOttId()) {
-            r.insert(t->getOttId());
+        if (t->has_ott_id()) {
+            r.insert(t->get_ott_id());
         }
     }
     return r;
@@ -350,7 +350,7 @@ RootedTreeNode<T> * FTree<T, U>::getMRCA(const OttIdSet &ottIdSet) {
         node_type * aTip = x->second;
         assert(forest.getTreeForNode(aTip) == this);
         if (!isAncestorDesNoIter(root, aTip)) {
-            LOG(ERROR) << "aTip->getOttId() = " << aTip->getOttId();
+            LOG(ERROR) << "aTip->get_ott_id() = " << aTip->get_ott_id();
             for (auto a : iter_anc(*aTip)) {
                 LOG(ERROR) << " anc address =  " << long(a);
             }
@@ -519,8 +519,8 @@ template<typename T, typename U>
 void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const{
     OttIdSet ois;
     if (nd->isTip()) {
-        if (nd->hasOttId()) {
-            ois.insert(nd->getOttId());
+        if (nd->has_ott_id()) {
+            ois.insert(nd->get_ott_id());
         }
     } else {
         for (auto c : iter_child_const(*nd)) {
@@ -579,8 +579,8 @@ void FTree<T, U>::debugInvariantsCheckFT() const {
         }
         OttIdSet noids;
         if (n->isTip()) {
-            if (n->hasOttId()) {
-                const auto o = n->getOttId();
+            if (n->has_ott_id()) {
+                const auto o = n->get_ott_id();
                 assert(ottIdToNodeMap.at(o) == n);
             }
             // Make sure that our ancestors do not exclude us.
@@ -589,7 +589,7 @@ void FTree<T, U>::debugInvariantsCheckFT() const {
                 assert(!exclude.isExcludedFrom(n, a, &ottIdToNodeMap));
             }
         } else {
-            assert(!n->hasOttId());
+            assert(!n->has_ott_id());
         }
         if (n != root) {
             assert(isAncestorDesNoIter(root, n));

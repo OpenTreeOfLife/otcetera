@@ -159,14 +159,14 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     tree->create_root();
     // 1. First handle trees of size 1 and 2
     if (tips.size() == 1) {
-        tree->getRoot()->setOttId(*tips.begin());
+        tree->getRoot()->set_ott_id(*tips.begin());
         return tree;
     } else if (tips.size() == 2) {
         auto Node1a = tree->create_child(tree->getRoot());
         auto Node1b = tree->create_child(tree->getRoot());
         auto it = tips.begin();
-        Node1a->setOttId(*it++);
-        Node1b->setOttId(*it++);
+        Node1a->set_ott_id(*it++);
+        Node1b->set_ott_id(*it++);
         return tree;
     }
     // 2. Initialize the mapping from elements to components
@@ -288,7 +288,7 @@ void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
 
     for(auto nd: iter_leaf_const(taxonomy))
     {
-	auto id = nd->getOttId();
+	auto id = nd->get_ott_id();
 	auto nd2 = summaryOttIdToNode.at(id);
 	nd2->setName( nd->get_name());
     }
@@ -450,7 +450,7 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 	// the exclude set contain the EXCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
 	set<long> ex = exclude.at(nd->getParent());
 	for(auto nd2: get_siblings<Tree_t>(nd)) {
-	    if (not incertae_sedis.count(nd2->getOttId())) {
+	    if (not incertae_sedis.count(nd2->get_ott_id())) {
 		auto& ex_sib = nd2->get_data().desIds;
 		ex.insert(begin(ex_sib),end(ex_sib));
 	    }
@@ -495,12 +495,12 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	    auto result = BUILD(all_leaves_indices, consistent);
 	    if (not result) {
 		consistent.pop_back();
-		if (verbose and nd->hasOttId()) {
-		    LOG(INFO) << "Reject: ott" << nd->getOttId() << "\n";
+		if (verbose and nd->has_ott_id()) {
+		    LOG(INFO) << "Reject: ott" << nd->get_ott_id() << "\n";
 		}
 		return false;
-	    } else if (verbose and nd->hasOttId()) {
-		LOG(INFO) << "Keep: ott" << nd->getOttId() << "\n";
+	    } else if (verbose and nd->has_ott_id()) {
+		LOG(INFO) << "Keep: ott" << nd->get_ott_id() << "\n";
 	    }
 	    return true;
 	};
@@ -564,8 +564,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
     auto tree = BUILD(all_leaves_indices, consistent);
     for(auto nd: iter_pre(*tree)) {
         if (nd->isTip()) {
-            int index = nd->getOttId();
-            nd->setOttId(ids[index]);
+            int index = nd->get_ott_id();
+            nd->set_ott_id(ids[index]);
         }
     }
     add_root_and_tip_names(*tree, *taxonomy);
@@ -582,7 +582,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
         for(const auto& tree: trees) {
             for(auto nd: iter_pre_const(*tree)) {
                 if (nd->isTip()) {
-                    long id = nd->getOttId();
+                    long id = nd->get_ott_id();
                     auto it = names.find(id);
                     if (it == names.end()) {
                         names[id] = nd->get_name();
@@ -592,7 +592,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
         }
         for(const auto& n: names) {
             auto node = retTree->create_child(retTree->getRoot());
-            node->setOttId(n.first);
+            node->set_ott_id(n.first);
             node->setName(n.second);
         }
         clearAndfillDesIdSets(*retTree);
@@ -621,7 +621,7 @@ int main(int argc, char *argv[])
 	variables_map args = parse_cmd_line(argc,argv);
   
 	ParsingRules rules;
-	rules.setOttIds = not (bool)args.count("allow-no-ids");
+	rules.set_ott_ids = not (bool)args.count("allow-no-ids");
 	rules.pruneUnrecognizedInputTips = (bool)args.count("prune-unrecognized");
 
 	bool synthesize_taxonomy = (bool)args.count("synthesize-taxonomy");
@@ -629,7 +629,7 @@ int main(int argc, char *argv[])
 	bool verbose = (bool)args.count("verbose");
 	bool writeStandardized = (bool)args.count("standardize");
 	if (writeStandardized) {
-	    rules.setOttIds = false;
+	    rules.set_ott_ids = false;
 	}
 
 	bool setRootName = (bool)args.count("root-name");
@@ -665,12 +665,12 @@ int main(int argc, char *argv[])
 
 	// 3. Make a fake taxonomy if asked
 	if (synthesize_taxonomy) {
-	    trees.push_back(make_unresolved_tree(trees, rules.setOttIds));
+	    trees.push_back(make_unresolved_tree(trees, rules.set_ott_ids));
 	    LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
 	}
 
 	// 4. Add fake Ott Ids to tips and compute desIds (if asked)
-	if (not rules.setOttIds) {
+	if (not rules.set_ott_ids) {
 	    auto name_to_id = createIdsFromNames(*trees.back());
 	    for(auto& tree: trees) {
 		setIdsFromNamesAndRefresh(*tree, name_to_id);

@@ -199,8 +199,8 @@ template<typename Tree>
 inline std::set<long> getAllOTTIds(const Tree& taxonomy) {
     std::set<long> o;
     for (auto nd : iter_node_const(taxonomy)) {
-        if (nd->hasOttId()) {
-            o.insert(nd->getOttId());
+        if (nd->has_ott_id()) {
+            o.insert(nd->get_ott_id());
         }
     }
     return o;
@@ -224,7 +224,7 @@ class TaxonomyDependentTreeProcessor {
 
         virtual bool processTaxonomyTree(OTCLI & otCLI) {
             ottIds = getAllOTTIds(*taxonomy);
-            if (not taxonomy->getRoot()->hasOttId())
+            if (not taxonomy->getRoot()->has_ott_id())
                 throw OTCError()<<"Taxonomy root does not have an OTT ID!";
             otCLI.getParsingRules().ottIdValidator = &ottIds;
             otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;

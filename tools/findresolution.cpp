@@ -144,7 +144,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     void recordSupportingStatements(OTCLI & otCLI, TreeMappedWithSplits & tree) {
         std::map<const NodeWithSplits *, std::set<long> > restrictedDesIds;
         for (auto nd : iter_leaf_const(tree)) {
-            auto ottId = nd->getOttId();
+            auto ottId = nd->get_ott_id();
             markPathToRoot(*summaryTreeToResolve, ottId, restrictedDesIds);
         }
         identifysupportStatementsByNd(otCLI, tree, restrictedDesIds);
@@ -404,7 +404,7 @@ inline bool SupportingIDSets::causesChildToBeUnsupported(OTCLI & otCLI,
             continue;
         }
         auto snIt = frs.supportStatementsByNd.find(fc);
-        if (snIt == frs.supportStatementsByNd.end() && !c->hasOttId()) {
+        if (snIt == frs.supportStatementsByNd.end() && !c->has_ott_id()) {
             assert(false);
         } else {
             forkingDes[fc] = &(snIt->second);
@@ -428,7 +428,7 @@ inline bool SupportingIDSets::causesChildToBeUnsupported(OTCLI & otCLI,
                 otCLI.err << "child still supported by split from tree " << std::get<2>(ipip) << '\n';
             }
         }
-        if ((toDel.size() == suppIds.supporting.size()) && !fc->hasOttId()) {
+        if ((toDel.size() == suppIds.supporting.size()) && !fc->has_ott_id()) {
             return true;
         }
     }
@@ -476,7 +476,7 @@ inline bool SupportingIDSets::attemptSplitOfSupport(OTCLI & otCLI,
             }
         }
     }
-     if (toDel.size() ==  supporting.size() && !p->hasOttId()) {
+     if (toDel.size() ==  supporting.size() && !p->has_ott_id()) {
         if (otCLI.verbose) {
             otCLI.err << "All " << toDel.size() << " supporting statements moving or deleted \n";
         }

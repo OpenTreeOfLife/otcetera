@@ -75,7 +75,7 @@ inline std::map<long, long> generateIdRemapping(const T & tree) {
     std::map<long, long> r;
     for (const auto & idNdPair : id2ndMap) {
         const auto & inID = idNdPair.first;
-        const auto outID = idNdPair.second->getOttId();
+        const auto outID = idNdPair.second->get_ott_id();
         if (outID != inID) {
             assert(!contains(r, inID));
             r[inID] = outID;
@@ -90,8 +90,8 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
     try {
         NodeWithSplits * newRoot = rawTreePtr->create_root();
         auto r = tree.getRoot();
-        assert(r->hasOttId());
-        newRoot->setOttId(r->getOttId());
+        assert(r->has_ott_id());
+        newRoot->set_ott_id(r->get_ott_id());
         std::map<const NodeWithSplits *, NodeWithSplits *> templateToNew;
         templateToNew[r]= newRoot;
         std::map<long, NodeWithSplits *> & newMap = rawTreePtr->get_data().ottIdToNode;
@@ -107,9 +107,9 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
             auto nn = rawTreePtr->create_child(ntp);
             assert(templateToNew.find(nd) == templateToNew.end());
             templateToNew[nd] = nn;
-            if (nd->hasOttId()) {
-                nn->setOttId(nd->getOttId());
-                newMap[nd->getOttId()] = nn;
+            if (nd->has_ott_id()) {
+                nn->set_ott_id(nd->get_ott_id());
+                newMap[nd->get_ott_id()] = nn;
             } else {
                 assert(false);
                 throw OTCError("asserts false but not enabled");
@@ -132,8 +132,8 @@ void sortChildOrderByLowestDesOttId(T *deepest) {
     std::set<T *> internals;
     for (auto nd : iter_post_n(*deepest)) {
         if (nd->isTip()) {
-            assert(nd->hasOttId());
-            node2Id[nd] = nd->getOttId();
+            assert(nd->has_ott_id());
+            node2Id[nd] = nd->get_ott_id();
         } else {
             long lm = LONG_MAX;
             for (auto c : iter_child_const(*nd)) {
@@ -259,7 +259,7 @@ inline void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string,long> 
                 throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
             }
             const auto id = it->second;
-            nd->setOttId(id);
+            nd->set_ott_id(id);
             tree.get_data().ottIdToNode[id] = nd;
         } else if (nd->isTip()){
             throw OTCError()<<"Tree tip has no label!";
@@ -279,7 +279,7 @@ inline void setIdsFromNames(T& tree, const std::map<std::string,long> & name_to_
                 throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
             }
             const auto id = it->second;
-            nd->setOttId(id);
+            nd->set_ott_id(id);
         } else if (nd->isTip()){
             throw OTCError()<<"Tree tip has no label!";
         }
@@ -299,8 +299,8 @@ inline std::string addOttId(const std::string & s, long id) {
 template<typename T>
 inline void relabelNodesWithOttId(T& tree) {
     for(auto nd: iter_pre(tree)){
-        if (nd->hasOttId()){
-            nd->setName(addOttId(nd->get_name(),nd->getOttId()));
+        if (nd->has_ott_id()){
+            nd->setName(addOttId(nd->get_name(),nd->get_ott_id()));
         }
     }
 }

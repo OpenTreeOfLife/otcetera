@@ -5,13 +5,13 @@ template<typename T, typename U>
 void getInducedInformativeGroupingMaps(const T & tree1,
                                        std::map<std::set<long>, std::list<const typename T::node_type *> > & inducedSplitMaps,
                                        const U & tree2) {
-    const auto inducingLabels = getOttIdSetForLeaves(tree2);
+    const auto inducingLabels = get_ott_idSetForLeaves(tree2);
     auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
     std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
         return haveIntersection(inducingLabels, nd.get_data().desIds);
     };
     for (auto n : iter_pre_filter_n_const(mrca, sf)) {
-        //std::cout << n->getOttId() << '\n';
+        //std::cout << n->get_ott_id() << '\n';
         if (n == mrca) {
             continue;
         }

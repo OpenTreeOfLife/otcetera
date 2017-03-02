@@ -53,7 +53,7 @@ class EmbeddingCLI
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
             _getEmbeddingForNode(nd); // side effect is introducint a new, empty embedding
         }
-        otCLI.getParsingRules().setOttIdForInternals = false;
+        otCLI.getParsingRules().set_ott_idForInternals = false;
         otCLI.getParsingRules().idRemapping = &monotypicRemapping;
         return true;
     }
@@ -86,8 +86,8 @@ class EmbeddingCLI
         // suppress the internal node OTT IDs from the des
         OttIdSet internalIDs;
         for (auto nd : iter_post_internal(*taxonomyAsSource)) {
-            if (nd->hasOttId()) {
-                internalIDs.insert(nd->getOttId());
+            if (nd->has_ott_id()) {
+                internalIDs.insert(nd->get_ott_id());
             }
             auto & d = nd->get_data().desIds;
             for (auto o : internalIDs) {

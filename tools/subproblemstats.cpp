@@ -29,8 +29,8 @@ bool recordSubproblemStats(OTCLI & otCLI, std::unique_ptr<T> tree) {
             continue;
         }
         if (nd->isTip()) {
-            assert(nd->hasOttId());
-            const auto ottId = nd->getOttId();
+            assert(nd->has_ott_id());
+            const auto ottId = nd->get_ott_id();
             pts.leafSet.insert(ottId);
             if (nd->getParent() != root) {
                 pts.leavesInIngroupSet.insert(ottId);

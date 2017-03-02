@@ -60,8 +60,8 @@ void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
         if (nd->isTip()) {
              // TMP, Remove this next assert to save time?
             assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end());
-            assert(nd->hasOttId());
-            auto ottId = nd->getOttId();
+            assert(nd->has_ott_id());
+            auto ottId = nd->get_ott_id();
             taxoDes = scaffoldTree.get_data().getNodeForOttId(ottId);
             assert(taxoDes != nullptr);
             ndPairPtr = _addNodeMapping(taxoDes, nd, treeIndex);
@@ -92,7 +92,7 @@ void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
             NodeWithSplits * taxoAnc = nullptr;
             if (isScaffoldClone) {
                 // since it is a taxonomy, it will have internal node labels
-                auto pottId = par->getOttId();
+                auto pottId = par->get_ott_id();
                 taxoAnc = scaffoldTree.get_data().getNodeForOttId(pottId);
             
             } else {

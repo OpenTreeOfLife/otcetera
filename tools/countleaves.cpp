@@ -15,8 +15,8 @@ static bool listNames = false;
 template<typename T>
 bool listTipOttIds(OTCLI & , T * tree) {
     for (auto nd : iter_leaf_const(*tree)) {
-        assert(nd->hasOttId());
-        std::cout << nd->getOttId() << '\n';
+        assert(nd->has_ott_id());
+        std::cout << nd->get_ott_id() << '\n';
     }
     return true;
 }
@@ -24,7 +24,7 @@ bool listTipOttIds(OTCLI & , T * tree) {
 template<typename T>
 bool listTipNames(OTCLI & , T * tree) {
     for (auto nd : iter_leaf_const(*tree)) {
-        assert(nd->hasOttId());
+        assert(nd->has_ott_id());
         std::cout << nd->get_name() << '\n';
     }
     return true;

@@ -164,7 +164,7 @@ unique_ptr<Tree_t> get_tree(const string& filename)
 Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, long root_ott_id)
 {
     for(auto nd: iter_pre(tree))
-        if (nd->hasOttId() and nd->getOttId() == root_ott_id)
+        if (nd->has_ott_id() and nd->get_ott_id() == root_ott_id)
             return nd;
     
     throw OTCError()<<"Can't find node with id "<<root_ott_id<<" in tree '"<<tree.get_name()<<"'";
@@ -276,10 +276,10 @@ void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
     string sep = "\t|\t";
     for(auto nd: iter_pre_const(tree))
     {
-      tf<<nd->getOttId();
+      tf<<nd->get_ott_id();
       /* */ tf<<sep;
       if (nd->getParent())
-	tf<<nd->getParent()->getOttId();
+	tf<<nd->getParent()->get_ott_id();
       /* */ tf<<sep;
       tf<<remove_ott_suffix(nd->get_name());
       /* */ tf<<sep;

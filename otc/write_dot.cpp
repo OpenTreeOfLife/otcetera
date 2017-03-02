@@ -423,13 +423,13 @@ void writeDOTBandsForForest(std::ostream & out, const T & bandList, NodeToDotNam
 }
 
 void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
-    const auto & o2n = forest.getOttIdToNodeMapping();
+    const auto & o2n = forest.get_ott_idToNodeMapping();
     NodeToDotNames nd2name;
     std::string emptyStr;
     out << "digraph G{\n";
     for (auto & oidNodePair : o2n) {
         auto n = oidNodePair.second;
-        bool writePlainNd = forest.isAttached(n->getOttId());
+        bool writePlainNd = forest.isAttached(n->get_ott_id());
         if (!writePlainNd && (!forest.isInABand(n)) && (!forest.hasNodesExcludedFromIt(n))) {
             writePlainNd = true;
         }

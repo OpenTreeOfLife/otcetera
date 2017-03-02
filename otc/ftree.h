@@ -75,12 +75,12 @@ class InterTreeBand {
     }
     void insertSet(node_type * nd, const node_set & phantom) {
         for (auto p : phantom) {
-            assert(p->hasOttId());
+            assert(p->has_ott_id());
         }
         nd2phantom.at(nd).insert(begin(phantom), end(phantom));
     }
     void insert(node_type * nd, node_type * phantom) {
-        assert(phantom->hasOttId());
+        assert(phantom->has_ott_id());
         nd2phantom[nd].insert(phantom);
     }
     void removeNode(node_type * nd) {
@@ -92,7 +92,7 @@ class InterTreeBand {
     }
     void addNode(node_type * nd, const node_set & nset) {
         for (auto p : nset) {
-            assert(p->hasOttId());
+            assert(p->has_ott_id());
         }
         assert(nd != nullptr);
         const auto s = nd2phantom.size();
@@ -110,7 +110,7 @@ class InterTreeBand {
         const auto & ns = getPhantomNodes(nd);
         OttIdSet r;
         for (auto np : ns) {
-            r.insert(np->getOttId());
+            r.insert(np->get_ott_id());
         }
         return r;
     }

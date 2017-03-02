@@ -24,7 +24,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         assert(!scaffoldNd->isTip());
         auto & thr = _getEmbeddingForNode(scaffoldNd);
 
-        LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->getOttId() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
+        LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->get_ott_id() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
             //thr.debugNodeEmbedding("before thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
             //auto p = scaffoldNd->getParent();
@@ -51,7 +51,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
                     }
                     treeIDToNodeMapJSON[ct->get_name()] = parToChildSetJSON;
                 }
-                std::string ottIdStr = "ott" + std::to_string(scaffoldNd->getOttId());
+                std::string ottIdStr = "ott" + std::to_string(scaffoldNd->get_ott_id());
                 (*documentP)[ottIdStr] = treeIDToNodeMapJSON;
             }
             thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
@@ -81,11 +81,11 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post(*taxonomy)) {
             if (nd->isTip()) {
-                assert(nd->hasOttId());
+                assert(nd->has_ott_id());
                 // this is only needed for monotypic cases in which a tip node
                 //  may have multiple OTT Ids in its desIds set
-                _getEmbeddingForNode(nd).setOttIdForExitEmbeddings(nd,
-                                                                   nd->getOttId(),
+                _getEmbeddingForNode(nd).set_ott_idForExitEmbeddings(nd,
+                                                                   nd->get_ott_id(),
                                                                    scaffoldNdToNodeEmbedding);
             } else {
                 postOrder.push_back(nd);

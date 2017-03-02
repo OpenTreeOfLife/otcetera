@@ -54,8 +54,8 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
             return true;
         }
         for (const auto nd : iter_leaf_const(tree)) {
-            auto ottId = nd->getOttId();
-            if (nd->hasOttId()) {
+            auto ottId = nd->get_ott_id();
+            if (nd->has_ott_id()) {
                 subproblemTipIds.insert(ottId);
             }
             auto synthNode = synthTree->get_data().getNodeForOttId(ottId);

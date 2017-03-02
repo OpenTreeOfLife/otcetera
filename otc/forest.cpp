@@ -80,8 +80,8 @@ void RootedForest<T, U>::_AndUpdateChild(RootedTreeNode<T> *p,
                                                     FTree<T, U> &tree) {
     registerTreeForNode(c, &tree);
     const auto & cd = c->get_data().desIds;
-    if (cd.size() == 1 && !c->hasOttId()) {
-        if (*begin(cd) == c->getOttId()) {
+    if (cd.size() == 1 && !c->has_ott_id()) {
+        if (*begin(cd) == c->get_ott_id()) {
             return;
         }
     }
@@ -507,7 +507,7 @@ void RootedForest<T, U>::debugInvariantsCheck() const {
         assert(o != rootID);
         auto n = o2n.second;
         if (n->isTip()) {
-            assert(n->getOttId() == o);
+            assert(n->get_ott_id() == o);
             auto d = getDeepestAnc(n);
             assert(d != nullptr);
             if (d == n) {
@@ -517,7 +517,7 @@ void RootedForest<T, U>::debugInvariantsCheck() const {
                 ottId2Tree[o] = root2tree.at(d);
             }
         } else {
-            assert(!n->hasOttId());
+            assert(!n->has_ott_id());
             auto d = getDeepestAnc(n);
             assert(d != nullptr);
             assert(!contains(internal2Tree, n));

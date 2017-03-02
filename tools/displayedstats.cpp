@@ -260,8 +260,8 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                 if (p.first == NDSE::FORKING_DISPLAYED and support)
                 {
                     string node = p.second->get_name();
-                    if (p.second->hasOttId())
-                        node = "ott"+std::to_string(p.second->getOttId());
+                    if (p.second->has_ott_id())
+                        node = "ott"+std::to_string(p.second->get_ott_id());
 
                     string study = quote(study_from_tree_name(inpTree.get_name()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
@@ -273,8 +273,8 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                 else if (p.first == NDSE::FORKING_INCOMPATIBLE and conflict)
                 {
                     string node = p.second->get_name();
-                    if (p.second->hasOttId())
-                        node = "ott"+std::to_string(p.second->getOttId());
+                    if (p.second->has_ott_id())
+                        node = "ott"+std::to_string(p.second->get_ott_id());
 
                     string study = quote(study_from_tree_name(inpTree.get_name()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
@@ -377,8 +377,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             for(auto nd: iter_post_const(*summaryTree))
             {
                 string name = nd->get_name();
-                if (nd->hasOttId()) {
-                    name = "ott" + std::to_string(nd->getOttId());
+                if (nd->has_ott_id()) {
+                    name = "ott" + std::to_string(nd->get_ott_id());
                 }
                 const auto sc = support.count(name);
                 const auto cc = conflict.count(name);

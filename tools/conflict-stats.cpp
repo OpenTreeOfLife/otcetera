@@ -102,7 +102,7 @@ inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
     for(auto leaf: iter_leaf(tree)) {
-        summary_node(leaf) = summaryOttIdToNode.at(leaf->getOttId());
+        summary_node(leaf) = summaryOttIdToNode.at(leaf->get_ott_id());
     }
 }
 

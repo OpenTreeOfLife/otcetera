@@ -119,10 +119,10 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
     // first we collect the tips to prune
     set<Tree_t::node_type*> tipsToPrune;
     for (auto nd: iter_leaf(tree)) {
-        if (not nd->hasOttId()) {
+        if (not nd->has_ott_id()) {
             throw OTCError() << "Tip \"" << nd->get_name() << "\" lacks an OTT ID.";
         }
-        const auto ottId = nd->getOttId();
+        const auto ottId = nd->get_ott_id();
         const auto & taxonrecord = taxonomy.record_from_id(ottId);
         const auto & rank = taxonrecord.rank;
         if (rank.length() > 0 && (rank != "no rank"
@@ -155,10 +155,10 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
                 if (nd == root) {
                     throw OTCError() << "The tree was pruned to non-existence!";
                 }
-                if (not nd->hasOttId()) {
+                if (not nd->has_ott_id()) {
                     throw OTCError() << "Node \"" << nd->get_name() << "\" lacks an OTT ID.";
                 }
-                const auto ottId = nd->getOttId();
+                const auto ottId = nd->get_ott_id();
                 prunedInternalSet.insert(ottId);
                 parSet.insert(nd->getParent());
                 nd->detachThisNode();
@@ -175,10 +175,10 @@ void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> p
         nodes.push_back(nd);
     }
     for(auto nd: nodes) {
-        if (not nd->hasOttId()) {
+        if (not nd->has_ott_id()) {
             continue;
         }
-        auto id = nd->getOttId();
+        auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
             if (nd == tree.getRoot()) {
                 if (nd->isOutDegreeOneNode()) {
@@ -206,10 +206,10 @@ void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> pr
         nodes.push_back(nd);
     }
     for(auto nd: nodes) {
-        if (not nd->hasOttId()) {
+        if (not nd->has_ott_id()) {
             continue;
         }
-        auto id = nd->getOttId();
+        auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
             if (nd == tree.getRoot()) {
                 throw OTCError()<<"The root has flags set for pruning!";
@@ -288,8 +288,8 @@ int main(int argc, char* argv[])
         }
         for(auto nd: iter_pre(*tree)) {
             string name;
-            if (nd->hasOttId()) {
-                int id = nd->getOttId();
+            if (nd->has_ott_id()) {
+                int id = nd->get_ott_id();
                 if (taxonomy) {
                     const auto& record = (*taxonomy).record_from_id(id);
                     name = format_with_taxonomy(nd->get_name(), format_tax, record);

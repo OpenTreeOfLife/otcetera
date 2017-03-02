@@ -145,7 +145,7 @@ template<typename T>
 inline long n_internal_with_ott_id(const T& tree) {
     long count = 0;
     for (auto nd: iter_post_const(tree)) {
-        if (not nd->isTip() and nd->hasOttId()) {
+        if (not nd->isTip() and nd->has_ott_id()) {
             count++;
         }
     }
@@ -235,8 +235,8 @@ void fillDesIdSets(T & tree) {
     for (auto node : iter_post(tree)) {
         std::set<long> & desIds = node->get_data().desIds;
         if (node->isTip()) {
-            if (node->hasOttId()) {
-                    desIds.insert(node->getOttId());
+            if (node->has_ott_id()) {
+                    desIds.insert(node->get_ott_id());
             }
         } else {
             for (auto child : iter_child(*node)) {
@@ -254,7 +254,7 @@ void clearAndfillDesIdSets(T & tree) {
         std::set<long> & desIds = node->get_data().desIds;
         desIds.clear();
         if (node->isTip()) {
-            desIds.insert(node->getOttId());
+            desIds.insert(node->get_ott_id());
         } else {
             for (auto child : iter_child(*node)) {
                 std::set<long> & cDesIds = child->get_data().desIds;
@@ -271,10 +271,10 @@ void fillDesIdSetsIncludingInternals(T & tree) {
     for (auto node : iter_post(tree)) {
         std::set<long> & desIds = node->get_data().desIds;
         if (node->isTip()) {
-            desIds.insert(node->getOttId());
+            desIds.insert(node->get_ott_id());
         } else {
-            if (node->hasOttId()) {
-                desIds.insert(node->getOttId());
+            if (node->has_ott_id()) {
+                desIds.insert(node->get_ott_id());
             }
             for (auto child : iter_child(*node)) {
                 std::set<long> & cDesIds = child->get_data().desIds;
@@ -356,7 +356,7 @@ std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T &
 template<typename T>
 inline typename T::node_type * addChildForOttId(typename T::node_type & nd, long ottId, T & tree) {
     auto nn = tree.create_child(&nd);
-    nn->setOttId(ottId);
+    nn->set_ott_id(ottId);
     tree.get_data()->ottIdToNode[ottId] = nn;
     return nn;
 }
@@ -364,7 +364,7 @@ inline typename T::node_type * addChildForOttId(typename T::node_type & nd, long
 template<>
 inline NodeWithSplits * addChildForOttId<TreeMappedWithSplits>(NodeWithSplits & nd, long ottId, TreeMappedWithSplits & tree) {
     auto nn = tree.create_child(&nd);
-    nn->setOttId(ottId);
+    nn->set_ott_id(ottId);
     tree.get_data().ottIdToNode[ottId] = nn;
     return nn;
 }
@@ -393,8 +393,8 @@ template<typename N, typename T, typename M>
 void requireTipsToBeMappedToTerminalTaxa(const RootedTree<N,T> & toExpand, const M& ottIdToNode) {
     for (auto nd : iter_leaf_const(toExpand)) {
         assert(nd->isTip());
-        assert(nd->hasOttId());
-        auto ottId = nd->getOttId();
+        assert(nd->has_ott_id());
+        auto ottId = nd->get_ott_id();
 
         if (not ottIdToNode.count(ottId))
             throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->get_name()<<"' not found in taxonomy!";
@@ -409,8 +409,8 @@ template<typename N, typename T>
 void requireTipsToBeMappedToTerminalTaxa(const RootedTree<N,T> & toExpand, const RootedTree<N,T>& taxonomy) {
     std::map<long,const RootedTreeNode<N>*> ottIdToNode;
     for(auto nd: iter_post_const(taxonomy))
-        if (nd->hasOttId())
-            ottIdToNode[nd->getOttId()] = nd;
+        if (nd->has_ott_id())
+            ottIdToNode[nd->get_ott_id()] = nd;
     
     requireTipsToBeMappedToTerminalTaxa(toExpand, ottIdToNode);
 }
@@ -429,8 +429,8 @@ void requireNonRedundantTree(const T & toExpand) {
         if (nd->isOutDegreeOneNode()) {
             std::string msg;
             msg = "Node with outdegree=1 found";
-            if (nd->hasOttId()) {
-                msg = msg + ":  ott" + std::to_string(nd->getOttId()) + ".";
+            if (nd->has_ott_id()) {
+                msg = msg + ":  ott" + std::to_string(nd->get_ott_id()) + ".";
             }
             throw OTCError(msg);
         }
@@ -444,8 +444,8 @@ std::set<const typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toE
     std::map<typename T::node_type *, std::set<long> > replaceNodes;
     for (auto nd : iter_leaf(toExpand)) {
         assert(nd->isTip());
-        assert(nd->hasOttId());
-        auto ottId = nd->getOttId();
+        assert(nd->has_ott_id());
+        auto ottId = nd->get_ott_id();
         auto taxNd = taxData.getNodeForOttId(ottId);
         if (not taxNd)
         throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->get_name()<<"' not found in taxonomy!";
@@ -630,8 +630,8 @@ template<>
 inline void cullRefsToNodeFromData(RootedTree<RTNodeNoData, RTreeOttIDMapping<RTNodeNoData> > & tree, 
                                    RootedTreeNode<RTNodeNoData> *nd) {
     assert(nd != nullptr);
-    if (nd->hasOttId()) {
-        tree.get_data().ottIdToNode.erase(nd->getOttId());
+    if (nd->has_ott_id()) {
+        tree.get_data().ottIdToNode.erase(nd->get_ott_id());
     }
 }
 
@@ -641,8 +641,8 @@ template<>
 inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, 
                                    RootedTreeNode<RTSplits> *nd)  {
     assert(nd != nullptr);
-    if (nd->hasOttId()) {
-        tree.get_data().ottIdToNode.erase(nd->getOttId());
+    if (nd->has_ott_id()) {
+        tree.get_data().ottIdToNode.erase(nd->get_ott_id());
     }
     const auto & d = nd->get_data().desIds;
     if (d.empty()) {
@@ -659,8 +659,8 @@ inline void cullRefsToNodeFromData(RootedTree<RTSplits, RTreeOttIDMapping<RTSpli
 // does NOT correct anc desIds
 template<typename T, typename U>
 inline void delOttIdOfInternal(RootedTree<T, U> & tree, RootedTreeNode<T> *nd) {
-    if (nd->hasOttId()) {
-        tree.get_data().ottIdToNode.erase(nd->getOttId());
+    if (nd->has_ott_id()) {
+        tree.get_data().ottIdToNode.erase(nd->get_ott_id());
         nd->delOttId();
     }
 }
@@ -670,14 +670,14 @@ template<typename T, typename U>
 inline void changeOttIdOfInternal(RootedTree<T, U> & tree, RootedTreeNode<T> *nd, OttId ottId) {
     delOttIdOfInternal(tree, nd);
     if (ottId > 0) {
-        nd->setOttId(ottId);
+        nd->set_ott_id(ottId);
         tree.get_data().ottIdToNode[ottId] = nd;
     }
 }
 
 template<typename T, typename U>
 inline void collapseNode(RootedTree<T, U> & tree, RootedTreeNode<T> *nd) {
-    if (nd->hasOttId()) {
+    if (nd->has_ott_id()) {
         delOttIdOfInternal(tree, nd);
     }
     collapseInternalIntoPar(nd, tree);
@@ -717,14 +717,14 @@ inline void writeNodeAsNewickLabel(std::ostream & out, const T *nd) {
     if (nd->isTip()) { //TEMP tip just like internals, but at some point we may want the label-less internals to be unlabelled, regardless of OTT ID
         const auto & n = nd->get_name();
         if (n.empty()) {
-            out << "ott" << nd->getOttId();
+            out << "ott" << nd->get_ott_id();
         } else {
             writeEscapedForNewick(out, nd->get_name());
         }
     } else if (!nd->get_name().empty()) {
         writeEscapedForNewick(out, nd->get_name());
-    } else if (nd->hasOttId()) {
-        out << "ott" << nd->getOttId();
+    } else if (nd->has_ott_id()) {
+        out << "ott" << nd->get_ott_id();
     }
 }
 
@@ -931,8 +931,8 @@ inline const typename T::node_type * findMRCAUsingDesIds(const T & tree, const s
 
 template<typename T>
 inline void eraseMappingsToNode(typename T::node_type * nd, T & tree) {
-    if (nd->hasOttId()) {
-        tree.get_data().ottIdToNode.erase(nd->getOttId());
+    if (nd->has_ott_id()) {
+        tree.get_data().ottIdToNode.erase(nd->get_ott_id());
     }
     tree.markAsDetached(nd);
 }
@@ -948,11 +948,11 @@ template<typename N>
 inline void replaceMappingsToNodeWithAlias(typename RootedTree<N,RTreeOttIDMapping<N>>::node_type * nd,
                                            typename RootedTree<N,RTreeOttIDMapping<N>>::node_type * alias,
                                            RootedTree<N,RTreeOttIDMapping<N>>& tree) {
-    if (nd->hasOttId()) {
-        tree.get_data().ottIdToDetachedNode[nd->getOttId()] = nd;
-        tree.get_data().ottIdToNode[nd->getOttId()] = alias;
+    if (nd->has_ott_id()) {
+        tree.get_data().ottIdToDetachedNode[nd->get_ott_id()] = nd;
+        tree.get_data().ottIdToNode[nd->get_ott_id()] = alias;
         auto & iaf = tree.get_data().isAliasFor;
-        iaf[alias].insert(nd->getOttId());
+        iaf[alias].insert(nd->get_ott_id());
         auto na = iaf.find(nd); // if nd was an alias for other nodes, update them too...
         if (na != iaf.end()) {
             for (auto aoi : na->second) {
@@ -980,7 +980,7 @@ inline void suppressMonotypyByStealingGrandchildren(typename T::node_type * nd,
     assert(monotypic_child->getParent() == nd);
     assert(nd->getFirstChild() == monotypic_child);
     assert(monotypic_child->getNextSib() == nullptr);
-    LOG(DEBUG) << "suppressing " << (nd->hasOttId() ? nd->getOttId() : long(nd))
+    LOG(DEBUG) << "suppressing " << (nd->has_ott_id() ? nd->get_ott_id() : long(nd))
                << " by stealing children from " << getDesignator(*monotypic_child) ;
 
     while(monotypic_child->hasChildren())
@@ -1006,7 +1006,7 @@ inline void suppressMonotypyByClaimingGrandparentAsPar(typename T::node_type * m
     assert(child->getNextSib() == nullptr);
     auto gp = monotypic_nd->getParent();
     assert(gp);
-    LOG(DEBUG) << "suppressing " << (monotypic_nd->hasOttId() ? monotypic_nd->getOttId() : long(monotypic_nd))
+    LOG(DEBUG) << "suppressing " << (monotypic_nd->has_ott_id() ? monotypic_nd->get_ott_id() : long(monotypic_nd))
                 << " by claiming grandparent as parent for node " << getDesignator(*child) ;
 
     monotypic_nd->detachThisNode();
@@ -1051,7 +1051,7 @@ template<typename T>
 inline void collapseInternalIntoPar(typename T::node_type * nd,
                                     T & tree) {
     assert(nd);
-    assert(not nd->hasOttId());
+    assert(not nd->has_ott_id());
     assert(nd->hasChildren());
 
     if (nd->getOutDegree() == 1) {
@@ -1076,7 +1076,7 @@ inline void collapseInternalIntoPar(typename T::node_type * nd,
 template<typename T>
 inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDangle(
                     T & tree,
-                    bool resetOttId) {
+                    bool reset_ott_id) {
     std::set<typename T::node_type *> monotypic;
     for (auto nd : iter_node_internal(tree)) {
         if (nd->isOutDegreeOneNode()) {
@@ -1092,8 +1092,8 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveDeepestDan
             if (!contains(toProcess, child)) {
                 suppressMonotypyByStealingGrandchildren<T>(tpn, child, tree);
                 toProcess.erase(toPIt++);
-                if (resetOttId && child->hasOttId()) {
-                    tpn->setOttId(child->getOttId());
+                if (reset_ott_id && child->has_ott_id()) {
+                    tpn->set_ott_id(child->get_ott_id());
                 }
                 removed.insert(child);
             } else {
@@ -1114,7 +1114,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
                     T & tree) {
     std::set<typename T::node_type *> monotypic;
     for (auto nd : iter_node_internal(tree)) {
-        //assert(!nd->hasOttId()); // not a good place for this assert... true in how we use this fund
+        //assert(!nd->has_ott_id()); // not a good place for this assert... true in how we use this fund
         if (nd->isOutDegreeOneNode()) {
             monotypic.insert(nd);
         }
@@ -1178,20 +1178,20 @@ inline bool areLinearlyRelated(const T * nd1, const T *nd2) {
 }
 
 template<typename T>
-inline std::set<long> getOttIdSetForLeaves(const T &tree) {
+inline std::set<long> get_ott_idSetForLeaves(const T &tree) {
     if (!tree.get_data().desIdSetsContainInternals) {
         return tree.getRoot()->get_data().desIds;
     }
     std::set<long> inducingIds;
     for (auto nd : iter_leaf_const(tree)) {
-        inducingIds.insert(nd->getOttId());
+        inducingIds.insert(nd->get_ott_id());
     }
     return inducingIds;
 }
 
 template<typename T, typename U>
 void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > & inducedSplits, const U & tree2) {
-    const auto inducingIds = getOttIdSetForLeaves(tree2);
+    const auto inducingIds = get_ott_idSetForLeaves(tree2);
     auto mrca = findMRCAUsingDesIds(tree1, inducingIds);
     std::function<bool(const typename T::node_type &)> sf = [inducingIds](const typename T::node_type &nd){
         return haveIntersection(inducingIds, nd.get_data().desIds);
@@ -1276,8 +1276,8 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         if (npIt == other2new.end()) {
             nParent = toWrite.createNode(nullptr);
             other2new[otherParent] = nParent;
-            if (otherParent->hasOttId())
-                nParent->setOttId(otherParent->getOttId());
+            if (otherParent->has_ott_id())
+                nParent->set_ott_id(otherParent->get_ott_id());
         } else {
             nParent = npIt->second;
         }
@@ -1286,24 +1286,24 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         if (ncIt == other2new.end()) {
             nChild = toWrite.createNode(nParent);
             other2new[otherChild] = nChild;
-            if (otherChild->hasOttId())
-                nChild->setOttId(otherChild->getOttId());
+            if (otherChild->has_ott_id())
+                nChild->set_ott_id(otherChild->get_ott_id());
         } else {
             nChild = ncIt->second;
             nParent->addChild(nChild);
         }
         auto idIt = nd2id.find(otherChild);
         if (idIt != nd2id.end()) {
-            nChild->setOttId(idIt->second);
+            nChild->set_ott_id(idIt->second);
         }
         idIt = nd2id.find(otherParent);
         if (idIt != nd2id.end()) {
-            nParent->setOttId(idIt->second);
+            nParent->set_ott_id(idIt->second);
         }
         withParents.insert(nChild);
     }
     for (auto nn : withParents) {
-        if ((nn->isTip()) && !nn->hasOttId()) {
+        if ((nn->isTip()) && !nn->has_ott_id()) {
             for (auto o2n : other2new) {
                 if (o2n.second == nn) {
                     LOG(ERROR) << "tip without label in copyTreeStructure";
@@ -1327,7 +1327,7 @@ inline std::size_t pruneTipsWithoutIds(T & tree) {
     std::set<typename T::node_type *> toPrune;
     std::set<typename T::node_type *> parToCheck;
     for (auto nd : iter_node(tree)) {
-        if (nd->isTip() && !nd->hasOttId()) {
+        if (nd->isTip() && !nd->has_ott_id()) {
             toPrune.insert(nd);
             parToCheck.insert(nd->getParent());
         }
@@ -1371,8 +1371,8 @@ std::unordered_map<long, const typename Tree_t::node_type*> get_ottid_to_const_n
 {
   std::unordered_map<long, const typename Tree_t::node_type*> ottid;
   for(auto nd: iter_pre_const(T))
-    if (nd->hasOttId())
-      ottid[nd->getOttId()] = nd;
+    if (nd->has_ott_id())
+      ottid[nd->get_ott_id()] = nd;
 
   return ottid;
 }
@@ -1382,8 +1382,8 @@ std::unordered_map<long, typename Tree_t::node_type*> get_ottid_to_node_map(Tree
 {
     std::unordered_map<long, typename Tree_t::node_type*> ottid;
     for(auto nd: iter_pre(T))
-        if (nd->hasOttId())
-            ottid[nd->getOttId()] = nd;
+        if (nd->has_ott_id())
+            ottid[nd->get_ott_id()] = nd;
 
     return ottid;
 }

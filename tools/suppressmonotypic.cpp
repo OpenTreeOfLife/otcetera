@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-suppress-monotypic",
                  "takes a filepath to a newick file and writes a newick without any nodes that have just one child",
                  {"some.tre"});
-    otCLI.getParsingRules().setOttIdForInternals = false;
+    otCLI.getParsingRules().set_ott_idForInternals = false;
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wdd = suppressMonotypicAndWrite<Tree_t>;
     return treeProcessingMain<Tree_t>(otCLI, argc, argv, wdd, nullptr, 1);
 }

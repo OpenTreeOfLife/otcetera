@@ -13,7 +13,7 @@
 
 namespace otc {
 
-const std::string readStrContentOfUTF8File(const std::string &filepath) {
+const std::string read_str_content_of_utf8_file(const std::string &filepath) {
 #if defined WIDE_STR_VERSION
     const std::wstring utf8content = readWStrContentOfUTF8File(filepath);
     const std::locale empty_locale("");

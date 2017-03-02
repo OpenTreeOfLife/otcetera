@@ -110,7 +110,7 @@ void perform_conflict_analysis(const Tree_t& tree1,
         
     // make summary_node field of induced_tree1 leaves point to leaves of induced_tree2.
     for(auto leaf: iter_leaf(*induced_tree1)) {
-        auto leaf2 = map2.at(leaf->getOttId());
+        auto leaf2 = map2.at(leaf->get_ott_id());
         summary_node(leaf) = leaf2;
     }
         

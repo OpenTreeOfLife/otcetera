@@ -134,7 +134,7 @@ class TreesToServe {
                 const auto & tax_record_flags = nd->get_data().get_flags();
                 auto intersection = flags & tax_record_flags;
                 if (!intersection.any()) {
-                    ott_id_set.insert(nd->getOttId());
+                    ott_id_set.insert(nd->get_ott_id());
                 }
             }
         }
@@ -149,9 +149,9 @@ class TreesToServe {
             ParsingRules parsingRules;
             parsingRules.ottIdValidator = &ott_id_set;
             parsingRules.includeInternalNodesInDesIdSets = true;
-            parsingRules.setOttIdForInternals = true;
+            parsingRules.set_ott_idForInternals = true;
             parsingRules.requireOttIds = true;
-            parsingRules.setOttIds = true;
+            parsingRules.set_ott_ids = true;
             std::ifstream inp;
             if (!openUTF8File(filename, inp)) {
                 throw OTCError("Could not open \"" + filename + "\"");

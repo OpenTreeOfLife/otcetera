@@ -60,12 +60,12 @@ class PathPairing {
     bool pathIsNowTrivial() {
         return currChildOttIdSet.size() == 1;
     }
-    void setOttIdSet(long oid,
+    void set_ott_idSet(long oid,
                      std::map<const U *, NodeEmbedding<T, U> > & m) {
         if (currChildOttIdSet.size() == 1 && *currChildOttIdSet.begin() == oid) {
             return;
         }
-        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << reinterpret_cast<long>(this);
+        LOG(DEBUG) << "set_ott_idSet to " << oid << "  for path " << reinterpret_cast<long>(this);
         dbWriteOttSet("prev currChildOttIdSet = ", currChildOttIdSet);
         OttIdSet n;
         OttIdSet oldIds;
@@ -109,7 +109,7 @@ class PathPairing {
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 
     // descendant Ott Id set. But may change to reflect this remapping to the effective
     // set of IDs that include the tip.
-    const OttIdSet & getOttIdSet() const {
+    const OttIdSet & get_ott_idSet() const {
         return currChildOttIdSet;
     }
     const OttIdSet & getPhyloChildDesID() const {

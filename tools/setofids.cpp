@@ -50,8 +50,8 @@ struct SetOfIdsState {
 
     void fillWithIds(const Tree_t & tree, OttIdSet & ier) {
         for (const auto nd : iter_node_const(tree)) {
-            if (nd->hasOttId() && (includeInternals || nd->isTip())) {
-                ier.insert(nd->getOttId());
+            if (nd->has_ott_id() && (includeInternals || nd->isTip())) {
+                ier.insert(nd->get_ott_id());
             }
         }
     }

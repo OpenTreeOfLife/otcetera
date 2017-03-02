@@ -19,7 +19,7 @@ enum QuotingRequirementsEnum {
     QUOTES_NEEDED
 };
 
-const std::string readStrContentOfUTF8File(const std::string &filepath);
+const std::string read_str_content_of_utf8_file(const std::string &filepath);
 bool openUTF8File(const std::string &filepath, std::ifstream & inp);
 std::list<std::string> readLinesOfFile(const std::string & filepath);
 std::string filepathToFilename(const std::string &filepath);
@@ -78,7 +78,7 @@ std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s,
 template<typename T>
 inline std::string getContestedPreambleFromName(const T & nd, const std::string & treeName) {
     std::ostringstream ss;
-    ss << nd.getOttId() << " \"" << nd.get_name() << "\" contested by \"" << treeName << "\"";
+    ss << nd.get_ott_id() << " \"" << nd.get_name() << "\" contested by \"" << treeName << "\"";
     return ss.str();
 }
 

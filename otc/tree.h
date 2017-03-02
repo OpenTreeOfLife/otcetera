@@ -55,16 +55,16 @@ class RootedTreeNode {
             }
             return n;
         }
-        bool hasOttId() const {
+        bool has_ott_id() const {
             return ottId != LONG_MAX;
         }
-        long getOttId() const {
-            assert(hasOttId());
+        long get_ott_id() const {
+            assert(has_ott_id());
             return ottId;
         }
-        void setOttId(long i) {
+        void set_ott_id(long i) {
             ottId = i;
-            assert(hasOttId());
+            assert(has_ott_id());
         }
         void delOttId() {
             ottId = LONG_MAX;

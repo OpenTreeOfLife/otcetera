@@ -22,9 +22,9 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
             for (auto tn : directlyIncludedNodes) {
                 if (!tn->isTip()) {
                     numNonTerminals++;
-                    ntoids.insert(tn->getOttId());
+                    ntoids.insert(tn->get_ott_id());
                 }
-                oids.insert(tn->getOttId());
+                oids.insert(tn->get_ott_id());
             }
             otCLI.out << numNonTerminals << " non-terminal taxa in OTT that are mapped by at least 1 input.\n";
             otCLI.out << (directlyIncludedNodes.size() - numNonTerminals) << " terminal taxa in OTT that are mapped by at least 1 input\n";
@@ -72,7 +72,7 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
         assert(taxonomy != nullptr);
         std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
         for (auto nd : iter_leaf_const(*treePtr)) {
-            auto ottId = nd->getOttId();
+            auto ottId = nd->get_ott_id();
             auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
             assert(taxoNode != nullptr);
             if (reportStats) {

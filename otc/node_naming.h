@@ -36,7 +36,7 @@ template<typename T>
 void calculateSmallestChild(T& tree) {
     for (auto nd: iter_post(tree)) {
         if (nd->isTip()) {
-            smallest_child(nd) = nd->getOttId();
+            smallest_child(nd) = nd->get_ott_id();
         } else {
             auto sc = smallest_child(nd->getFirstChild());
             for(auto c: iter_child(*nd)) {
@@ -83,7 +83,7 @@ void nameUnamedNodes(T & tree) {
     // Remove unnamed nodes w/ no OTT Id that are monotypic.
     std::vector<typename T::node_type*> remove;
     for (auto nd:iter_pre(tree)) {
-        if (not nd->hasOttId() and nd->get_name().empty() and nd->isOutDegreeOneNode()){
+        if (not nd->has_ott_id() and nd->get_name().empty() and nd->isOutDegreeOneNode()){
             remove.push_back(nd);
         }
     }
@@ -98,8 +98,8 @@ void nameUnamedNodes(T & tree) {
     
     long id = 1;
     for(auto nd:iter_pre(tree)) {
-        if (nd->hasOttId()) {
-            nd->setName("ott"+std::to_string(nd->getOttId()));
+        if (nd->has_ott_id()) {
+            nd->setName("ott"+std::to_string(nd->get_ott_id()));
         } else if (not nd->get_name().size()) {
             assert(not nd->isTip());
             assert(not nd->isOutDegreeOneNode());

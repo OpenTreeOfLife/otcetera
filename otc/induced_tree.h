@@ -83,8 +83,8 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
     {
         auto nd2 = induced_tree->createNode(nullptr);
 
-        if (nd->hasOttId())
-            nd2->setOttId(nd->getOttId());
+        if (nd->has_ott_id())
+            nd2->set_ott_id(nd->get_ott_id());
 
         if (nd->get_name().size())
             nd2->setName(nd->get_name());
@@ -128,7 +128,7 @@ std::vector<const typename Tree_t::node_type*> get_induced_leaves(const Tree_t& 
     {
         for(auto leaf: iter_leaf_const(T2))
         {
-            auto id = leaf->getOttId();
+            auto id = leaf->get_ott_id();
             auto it = nodes1.find(id);
             if (it != nodes1.end())
                 leaves.push_back(it->second);
@@ -138,7 +138,7 @@ std::vector<const typename Tree_t::node_type*> get_induced_leaves(const Tree_t& 
     {
         for(auto leaf: iter_leaf_const(T1))
         {
-            auto id = leaf->getOttId();
+            auto id = leaf->get_ott_id();
             if (nodes2.find(id) != nodes2.end())
                 leaves.push_back(leaf);
         }

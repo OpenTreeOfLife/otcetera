@@ -32,8 +32,8 @@ inline OttIdSet findIncludedTipIds(const T & nd, const Y & container) {
     OttIdSet r;
     for (auto t : iter_leaf_n_const(nd)) {
         if (contains(container, t)) {
-            assert(t->hasOttId());
-            r.insert(t->getOttId());
+            assert(t->has_ott_id());
+            r.insert(t->get_ott_id());
         }
     }
     return r;
@@ -56,7 +56,7 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
     }
     for (auto oid : oids) {
         auto x = tree.createNode(nullptr);
-        x->setOttId(oid);
+        x->set_ott_id(oid);
         if (hasNodeName) {
             std::string n = noden + " ott" + std::to_string(oid);
             x->setName(n);
@@ -142,7 +142,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                     break;
                 }
             }
-            const auto nid = nd->getOttId();
+            const auto nid = nd->get_ott_id();
             
             OttIdSet exemplarIDs;
             if (hasIncludedDes) {
@@ -151,7 +151,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 const RootedTreeNodeNoData * n = findLeftmostInSubtree(nd);
                 includedNodes.insert(n);
                 insertAncestorsToParaphyleticSet(n, includedNodes);
-                exemplarIDs.insert(n->getOttId());
+                exemplarIDs.insert(n->get_ott_id());
             }
             LOG(INFO) << "Exemplifying OTT-ID" << nid << " with:";
             for (auto rid : exemplarIDs) {
@@ -216,7 +216,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     bool processTaxonomyTree(OTCLI & otCLI) override {
         bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::processTaxonomyTree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
-        otCLI.getParsingRules().setOttIdForInternals = false;
+        otCLI.getParsingRules().set_ott_idForInternals = false;
         if (!outputNonEmptyTreeOutput.empty()) {
             nonEmptyFileStream.open(outputNonEmptyTreeOutput.c_str());
         }
@@ -238,7 +238,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         auto nleaves = 0;
         for (auto nd : iter_leaf(*raw)) {
             nleaves += 1;
-            auto ottId = nd->getOttId();
+            auto ottId = nd->get_ott_id();
             auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
             assert(taxoNode != nullptr);
             if (!contains(includedNodes, taxoNode)) {

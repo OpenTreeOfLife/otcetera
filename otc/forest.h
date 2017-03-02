@@ -125,7 +125,7 @@ class RootedForest {
     const std::list<InterTreeBand<T> > & getAllBands() const {
         return allBands;
     }
-    const std::map<OttId, node_type *> & getOttIdToNodeMapping() const {
+    const std::map<OttId, node_type *> & get_ott_idToNodeMapping() const {
         return ottIdToNodeMap;
     }
     const std::map<std::size_t, tree_type> & getTrees() const {
@@ -229,7 +229,7 @@ inline RootedTreeNode<T> * RootedForest<T, U>::createLeaf(RootedTreeNode<T> * p,
     assert(oid != rootID);
     auto n = createNode(p, ftree);
     assert(n->getNextSib() == nullptr);
-    n->setOttId(oid);
+    n->set_ott_id(oid);
     ottIdToNodeMap[oid] = n;
     n->get_data().desIds.insert(oid);
     ottIdSet.insert(oid);

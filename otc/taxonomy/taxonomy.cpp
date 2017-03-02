@@ -177,7 +177,7 @@ Taxonomy::Taxonomy(const string& dir,
     :keep_root(kr),
      cleaning_flags(cf),
      path(dir),
-     version(strip_trailing_whitespace(readStrContentOfUTF8File(dir + "/version.txt"))) {
+     version(strip_trailing_whitespace(read_str_content_of_utf8_file(dir + "/version.txt"))) {
     std::smatch matches;
     if (std::regex_match(version, matches, ott_version_pattern)) {
         assert(matches.size() == 2);
@@ -525,11 +525,11 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
                                            std::function<std::string(const TaxonomyRecord&)>,
                                            RichTaxTree & tree) {
     RTRichTaxNode * this_node = &nd;
-    nd.setOttId(line.id);
+    nd.set_ott_id(line.id);
     auto & data = nd.get_data();
     auto & tree_data = tree.get_data();
-    nd.setOttId(line.id);
-    tree_data.id2node[nd.getOttId()] = this_node;
+    nd.set_ott_id(line.id);
+    tree_data.id2node[nd.get_ott_id()] = this_node;
     data.tax_record = &line;
     auto name = data.get_name();
     auto nit = tree_data.name2node.lower_bound(name);

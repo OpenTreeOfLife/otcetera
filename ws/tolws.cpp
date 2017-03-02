@@ -17,14 +17,14 @@ void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json 
     taxonrepr["name"] = string(taxon_data.get_name());
     taxonrepr["uniqname"] = string(taxon_data.get_uniqname());
     taxonrepr["rank"] = string(taxon_data.get_rank());
-    taxonrepr["ott_id"] = nd_taxon.getOttId();    
+    taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
 }
 
 void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
     noderepr["node_id"] = nd.get_name();
     noderepr["num_tips"] = nd.get_data().num_tips;
-    if (nd.hasOttId()) {
-        auto nd_id = nd.getOttId();
+    if (nd.has_ott_id()) {
+        auto nd_id = nd.get_ott_id();
         const auto * nd_taxon = taxonomy.taxon_from_id(nd_id);
         if (nd_taxon == nullptr) {
             throw OTCError() << "OTT Id " << nd_id << " not found in taxonomy! Please report this bug";
@@ -75,7 +75,7 @@ void add_node_support_info(const TreesToServe & tts,
     const auto & d = nd.get_data();
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
-    if (nd.hasOttId()) {
+    if (nd.has_ott_id()) {
         extra_src = &(taxonomy.get_version());
         extra_node_id = &(nd.get_name());
         usedSrcIds.insert(taxonomy.get_version());
@@ -318,10 +318,10 @@ void mrca_ws_method(const TreesToServe & tts,
     add_basic_node_info(taxonomy, *focal, mrcaj);
     set<string> usedSrcIds;
     add_node_support_info(tts, *focal, mrcaj, usedSrcIds);
-    if (!focal->hasOttId()) {
+    if (!focal->has_ott_id()) {
         auto anc = focal->getParent();
         assert(anc != nullptr);
-        while (!anc->hasOttId()) {
+        while (!anc->has_ott_id()) {
             anc = anc->getParent();
             if (anc == nullptr) {
                 response_str = "No ancestors were taxa. That is odd.\n";
@@ -330,9 +330,9 @@ void mrca_ws_method(const TreesToServe & tts,
             }
         }
         json nt;
-        const RTRichTaxNode * anc_taxon = taxonomy.taxon_from_id(anc->getOttId());
+        const RTRichTaxNode * anc_taxon = taxonomy.taxon_from_id(anc->get_ott_id());
         if (anc_taxon == nullptr) {
-            throw OTCError() << "Ancd OTT Id " << anc->getOttId() << " not found in taxonomy! Please report this bug";
+            throw OTCError() << "Ancd OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
         }
         add_taxon_info(taxonomy, *anc_taxon, nt);
         response["nearest_taxon"] = nt;
@@ -387,10 +387,10 @@ class NodeNamerSupportedByStasher {
             for (auto & p : d.supported_by) {
                 study_id_set.insert(p.first);
             }
-            if (nns != NodeNameStyle::NNS_ID_ONLY && nd->hasOttId()) {
-                const auto * tr = taxonomy.taxon_from_id(nd->getOttId());
+            if (nns != NodeNameStyle::NNS_ID_ONLY && nd->has_ott_id()) {
+                const auto * tr = taxonomy.taxon_from_id(nd->get_ott_id());
                 if (tr == nullptr) {
-                    throw OTCError() << "OTT Id " << nd->getOttId() << " in namer not found in taxonomy! Please report this bug";
+                    throw OTCError() << "OTT Id " << nd->get_ott_id() << " in namer not found in taxonomy! Please report this bug";
                 }
                 string taxon_name = string(tr->get_data().get_uniqname());
                 if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
@@ -590,7 +590,7 @@ void taxon_info_ws_method(const TreesToServe & tts,
     const auto & node_data = taxon_node->get_data();
     json response;
     response["source"] = taxonomy.get_version();
-    response["ott_id"] = taxon_node->getOttId();
+    response["ott_id"] = taxon_node->get_ott_id();
     response["name"] = string(node_data.get_name());
     response["uniqname"] = string(node_data.get_uniqname());
     response["tax_sources"] = node_data.get_sources_json();

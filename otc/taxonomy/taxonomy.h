@@ -312,7 +312,7 @@ inline void populate_node_from_taxonomy_record(Node_t & nd,
                                            const TaxonomyRecord & line,
                                            std::function<std::string(const TaxonomyRecord&)> get_name,
                                            TREE & ) {
-    nd.setOttId(line.id);
+    nd.set_ott_id(line.id);
     nd.setName(get_name(line));    
 }
 
@@ -322,7 +322,7 @@ inline void populate_node_from_taxonomy_record(RootedTreeNode<RTTaxNodeData> & n
                                            const TaxonomyRecord & line,
                                            std::function<std::string(const TaxonomyRecord&)>,
                                            TREE &) {
-    nd.setOttId(line.id);
+    nd.set_ott_id(line.id);
     nd.get_data().taxonomy_line = &line;    
 }
 

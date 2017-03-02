@@ -98,7 +98,7 @@ inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
 void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
     for(auto leaf: iter_leaf(tree)) {
-        summary_node(leaf) = summaryOttIdToNode.at(leaf->getOttId());
+        summary_node(leaf) = summaryOttIdToNode.at(leaf->get_ott_id());
     }
 }
 
@@ -273,15 +273,15 @@ void set_resolves(const Tree_t::node_type* synth_node, const Tree_t::node_type* 
 json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nodes, bool ignore_monotypic) {
     json document;
     document["num_tips"] = countLeaves(summaryTree);
-    document["root_ott_id"] = summaryTree.getRoot()->getOttId();
+    document["root_ott_id"] = summaryTree.getRoot()->get_ott_id();
     
     json nodes;
     for(auto nd: iter_post_const(summaryTree))
     {
         json node;
         string name = nd->get_name();
-//            if (nd->hasOttId())
-//                name = "ott" + std::to_string(nd->getOttId());
+//            if (nd->has_ott_id())
+//                name = "ott" + std::to_string(nd->get_ott_id());
         
         set_support_blob_as_single_element(node, terminal, "terminal", name);
         set_support_blob_as_single_element(node, supported_by, "supported_by", name);

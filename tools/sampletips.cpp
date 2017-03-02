@@ -115,9 +115,9 @@ void emitNewickForNamedInternal(const N * node, std::ostream & outStream, bool i
         emitNewickForSubtreeIndirectRecursion(node, outStream);
         outStream << ";\n";
     } else {
-        if (node->hasOttId()) {
+        if (node->has_ott_id()) {
             if (node->isTip()) {
-                outStream << "ott" << node->getOttId();
+                outStream << "ott" << node->get_ott_id();
             } else {
                 outStream << "ott" << smallest_child(node);
             }
@@ -134,7 +134,7 @@ void writeTreesFromSampledTipsNamedInternalsOneDesPerOutgoing(const T & tree, st
             continue;
         }
         auto anc = findFirstForkingAnc(nd);
-        if (nd->hasOttId() || anc == nullptr) {
+        if (nd->has_ott_id() || anc == nullptr) {
             emitNewickForNamedInternal(nd, outStream, true);
         }
     }

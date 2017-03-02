@@ -118,8 +118,8 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
 
     std::unordered_map<long, const Tree_t::node_type*> ottid_to_node;
     for(auto nd: iter_pre_const(*T))
-        if (nd->hasOttId())
-            ottid_to_node[nd->getOttId()] = nd;
+        if (nd->has_ott_id())
+            ottid_to_node[nd->get_ott_id()] = nd;
 
     vector<const TaxonomyRecord*> records;
     for(const auto& rec: taxonomy)
@@ -155,7 +155,7 @@ vector<long> get_ids_from_tree(const string& filename)
     auto tree = get_tree<Tree_t>(filename);
     for(auto nd: iter_post_const(*tree))
     {
-    auto id = nd->getOttId();
+    auto id = nd->get_ott_id();
     if (id != -1)
         ids.push_back(id);
     }

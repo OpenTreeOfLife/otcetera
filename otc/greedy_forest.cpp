@@ -18,7 +18,7 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
     std::map<const T *, typename U::node_type *> gpf2scaff;
     std::map<long, typename U::node_type *> & dOttIdToNode = destTree.get_data().ottIdToNode;
     LOG(DEBUG) << " adding " << srcPoly;
-    LOG(DEBUG) << " copying structure to resolve " << destPoly->getOttId();
+    LOG(DEBUG) << " copying structure to resolve " << destPoly->get_ott_id();
     gpf2scaff[srcPoly] = destPoly;
     for (auto sn : iter_pre_n_const(srcPoly)) {
         if (sn == srcPoly) {
@@ -27,11 +27,11 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
         auto sp = sn->getParent();
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
-        if (sn->hasOttId() && sn->getOttId() > 0) { // might assign negative number to nodes created in synth...
-        auto nid = sn->getOttId();
+        if (sn->has_ott_id() && sn->get_ott_id() > 0) { // might assign negative number to nodes created in synth...
+        auto nid = sn->get_ott_id();
             //LOG(DEBUG) << " node in src has ID " << nid;
             dn = dOttIdToNode.at(nid);
-            //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->getOttId();
+            //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->get_ott_id();
             assert(dn != destPoly);
             if (contains(sc->detachedScaffoldNodes, dn)) {
                 assert(not dn->getFirstChild());
@@ -49,8 +49,8 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             }
         } else {
             dn = destTree.create_child(dp);
-        if (sn->hasOttId())
-          dn->setOttId(sn->getOttId());
+        if (sn->has_ott_id())
+          dn->set_ott_id(sn->get_ott_id());
         }
         //LOG(DEBUG) << " adding " << sn;
         gpf2scaff[sn] = dn;
@@ -71,7 +71,7 @@ void GreedyBandedForest<T, U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
                                                                     NodeEmbedding<T, U> * embedding,
                                                                     SupertreeContextWithSplits * sc) {
     assert(sc != nullptr);
-    const auto snoid = scaffoldNode.getOttId();
+    const auto snoid = scaffoldNode.get_ott_id();
     LOG(DEBUG) << "finishResolutionOfEmbeddedClade for " << snoid;
     debugInvariantsCheck();
     finalizeTree(sc);
@@ -85,7 +85,7 @@ void GreedyBandedForest<T, U>::finishResolutionOfEmbeddedClade(U & scaffoldNode,
     assert(beforePar == scaffoldNode.getParent());
     // merge multiple exit paths (if needed) and remap all path pairings out of this node...
     embedding->mergeExitEmbeddingsIfMultiple();
-    embedding->setOttIdForExitEmbeddings(&scaffoldNode, snoid, sc->scaffold2NodeEmbedding);
+    embedding->set_ott_idForExitEmbeddings(&scaffoldNode, snoid, sc->scaffold2NodeEmbedding);
 }
 
 template<typename T, typename U>
@@ -524,10 +524,10 @@ bool GreedyBandedForest<T, U>::mergeSingleBandedTree(
     auto p = moveAllChildren(dn, donorTree, rn, recipientTree, band);
     OttIdSet movedIDSet;
     for (auto mel : movedNodeSet) {
-        movedIDSet.insert(mel->getOttId());
+        movedIDSet.insert(mel->get_ott_id());
     }
     for (auto mel : beforePhantomsDN) {
-        movedIDSet.insert(mel->getOttId());
+        movedIDSet.insert(mel->get_ott_id());
     }
     removeDesIdsToNdAndAnc(dn, movedIDSet);
     dbWriteOttSet(" movedIDSet =", movedIDSet);

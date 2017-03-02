@@ -36,9 +36,9 @@ class RTSplits {
 template<typename T>
 inline void verifyOttIdMapping(const T & tree) {
     for (const auto & mp : tree.get_data().ottIdToNode) {
-        if (mp.first != mp.second->getOttId()) {
-            assert(mp.first == mp.second->getOttId());
-            throw OTCError("Cache of OTT ID->node is stale " + std::to_string(mp.first) + " != " + std::to_string(mp.second->getOttId()));
+        if (mp.first != mp.second->get_ott_id()) {
+            assert(mp.first == mp.second->get_ott_id());
+            throw OTCError("Cache of OTT ID->node is stale " + std::to_string(mp.first) + " != " + std::to_string(mp.second->get_ott_id()));
         }
     }
 }

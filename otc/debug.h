@@ -130,12 +130,12 @@ inline bool checkDesIds(const TreeMappedWithSplits & tree) {
         }
         assert(sum == d.size());
         if (tree.get_data().desIdSetsContainInternals) {
-            if (nd->hasOttId()) {
-                d.insert(nd->getOttId());
+            if (nd->has_ott_id()) {
+                d.insert(nd->get_ott_id());
             }
         }
         if (!isSubset(d, nd->get_data().desIds)) {
-            std::cerr << "node " << nd->getOttId() << '\n';
+            std::cerr << "node " << nd->get_ott_id() << '\n';
             writeOttSetDiff(std::cerr, " ", nd->get_data().desIds, " node.desId ", d, " calc.");
             assert(isSubset(d, nd->get_data().desIds));
         }

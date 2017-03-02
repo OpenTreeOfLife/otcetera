@@ -18,13 +18,13 @@ inline void updateAncestralPathOttIdSet(T * nd,
                                         std::map<const T *, NodeEmbedding<T, U> > & m) {
     auto & curr = m.at(nd);
     assert(oldEls.size() > 0);
-    LOG(DEBUG) << "  " << nd->getOttId() << " calling updateAllPathsOttIdSets";
+    LOG(DEBUG) << "  " << nd->get_ott_id() << " calling updateAllPathsOttIdSets";
     if (!curr.updateAllPathsOttIdSets(oldEls, newEls)) {
         return;
     }
     for (auto anc : iter_anc(*nd)) {
         auto & ant = m.at(anc);
-        LOG(DEBUG) << "  " << anc->getOttId() << " calling updateAllPathsOttIdSets";
+        LOG(DEBUG) << "  " << anc->get_ott_id() << " calling updateAllPathsOttIdSets";
         if (!ant.updateAllPathsOttIdSets(oldEls, newEls)) {
             return;
         }
@@ -212,7 +212,7 @@ class NodeEmbedding {
     void addExitEmbedding(std::size_t treeIndex, PathPairPtr pp) {
         edgeBelowEmbeddings[treeIndex].insert(pp);
     }
-    void setOttIdForExitEmbeddings(
+    void set_ott_idForExitEmbeddings(
                         T * newScaffDes,
                         long ottId,
                         std::map<const T *, NodeEmbedding<T, U> > & n2ne);

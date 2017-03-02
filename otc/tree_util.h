@@ -66,7 +66,7 @@ template<typename T>
 inline std::pair<long, long> getMRCAOttIdPair(T nd) {
     assert(nd != nullptr);
     if (nd->isTip()) {
-        return std::pair<long, long>(nd->getOttId(), nd->getOttId());
+        return std::pair<long, long>(nd->get_ott_id(), nd->get_ott_id());
     }
     T f = findLeftmostInSubtree(nd);
     T r = nd->getLastChild();
@@ -75,11 +75,11 @@ inline std::pair<long, long> getMRCAOttIdPair(T nd) {
     }
     assert(f->isTip());
     assert(r->isTip());
-    if (f->hasOttId() && r->hasOttId()) {
-        return std::pair<long, long>(f->getOttId(), r->getOttId());
+    if (f->has_ott_id() && r->has_ott_id()) {
+        return std::pair<long, long>(f->get_ott_id(), r->get_ott_id());
     }
-    long fl = (f->hasOttId() ? f->getOttId() : -1);
-    long rl = (r->hasOttId() ? r->getOttId() : -2);
+    long fl = (f->has_ott_id() ? f->get_ott_id() : -1);
+    long rl = (r->has_ott_id() ? r->get_ott_id() : -2);
     return std::pair<long, long>(fl, rl);
 }
 
@@ -87,9 +87,9 @@ inline std::pair<long, long> getMRCAOttIdPair(T nd) {
 //      or "MRCA(ott#,ott#) for an internal"
 template<typename T>
 inline std::string getDesignator(const T &nd) {
-    if (nd.hasOttId()) {
+    if (nd.has_ott_id()) {
         std::string r = "ott";
-        return r + std::to_string(nd.getOttId());
+        return r + std::to_string(nd.get_ott_id());
     }
     if (nd.isTip()) {
         return std::string("EMPTY_NODE");
@@ -105,7 +105,7 @@ template<typename T>
 inline std::string getMRCADesignator(const T &nd) {
     if (nd.isTip()) {
         std::string r = "ott";
-        return r + std::to_string(nd.getOttId());
+        return r + std::to_string(nd.get_ott_id());
     }
     auto p = getMRCAOttIdPair(&nd);
     std::string pf = std::to_string(p.first);

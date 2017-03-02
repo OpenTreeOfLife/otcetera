@@ -14,11 +14,11 @@ namespace otc {
 struct ParsingRules {
     const std::set<long> * ottIdValidator = nullptr;
     bool includeInternalNodesInDesIdSets = false;
-    bool setOttIdForInternals = true; // TEMP. Do we want to just remove them after processing, rather than adding a conditional to the parsing logic...
+    bool set_ott_idForInternals = true; // TEMP. Do we want to just remove them after processing, rather than adding a conditional to the parsing logic...
     const std::map<long, long> * idRemapping = nullptr;
     bool pruneUnrecognizedInputTips = false;
     bool requireOttIds = true;  // Every label must include an OttId
-    bool setOttIds = true;      // Read and set OttIds for labels that have them.
+    bool set_ott_ids = true;      // Read and set OttIds for labels that have them.
 };
 
 typedef std::shared_ptr<const std::string> ConstStrPtr;

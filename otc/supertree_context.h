@@ -37,9 +37,9 @@ class SupertreeContext {
         bool pruneTipsMappedToContestedTaxa;
         void log(SupertreeCtorEvent e, const U & node) {
             if (e == COLLAPSE_TAXON) {
-                events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
+                events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.get_ott_id())});
             } else if (e == IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON) {
-                events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.getOttId())});
+                events.emplace_back(LogEvent{e, std::string("ott") + std::to_string(node.get_ott_id())});
             }
         }
         SupertreeContext(const std::vector<TreeMappedWithSplits *> & tv,

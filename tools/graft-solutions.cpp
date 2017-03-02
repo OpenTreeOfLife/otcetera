@@ -25,7 +25,7 @@ bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg);
 bool handleRootName(OTCLI &, const std::string & arg);
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().setOttIds = get_bool(arg,"-o: ");
+    otCLI.getParsingRules().set_ott_ids = get_bool(arg,"-o: ");
     return true;
 }
 
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     if (trees.empty()) {
         throw OTCError("No trees loaded!");
     }
-    const bool setOttIds = otCLI.getParsingRules().setOttIds;
+    const bool set_ott_ids = otCLI.getParsingRules().set_ott_ids;
     vector<std::size_t> no_root_label;
     for (std::size_t i = 0U; i < trees.size(); i++) {
         if (trees[i]->getRoot()->get_name().empty()) {
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
         }
         throw e;
     }
-    if (not setOttIds) {
+    if (not set_ott_ids) {
         auto name_to_id = createIdsFromNamesFromTrees(trees);
         for(auto& tree: trees) {
             setIdsFromNames(*tree, name_to_id);
@@ -95,10 +95,10 @@ int main(int argc, char *argv[]) {
     for(const auto& tree: trees) {
         for(auto nd:iter_pre(*tree)){
             if (nd->isTip()) {
-                assert(nd->hasOttId());
-                long id = nd->getOttId();
+                assert(nd->has_ott_id());
+                long id = nd->get_ott_id();
                 if (my_leaf.find(id) != my_leaf.end()) {
-                    if (setOttIds){
+                    if (set_ott_ids){
                         throw OTCError()<<"OTT Id "<<id<<" occurs at multiple tips!";
                     } else {
                         throw OTCError()<<"Label '"<<nd->get_name()<<"' occurs at multiple tips!";
@@ -113,11 +113,11 @@ int main(int argc, char *argv[]) {
     std::unordered_set<long> root_ids;
     for (auto i = 0U; i < trees.size(); i++) {
         auto root = trees[i]->getRoot();
-        long id = root->getOttId();
+        long id = root->get_ott_id();
         if (not root_ids.count(id)) {
             root_ids.insert(id);
         } else {
-            if (setOttIds) {
+            if (set_ott_ids) {
                 throw OTCError()<<"OTT Id "<<id<<" occurs at the root of multiple trees!";
             } else {
                 throw OTCError()<<"Label '"<<root->get_name()<<"' occurs at the root of multiple trees!";
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     // Glue each root into its corresponding tip.
     vector<unique_ptr<Tree_t>> roots;
     for (auto i = 0U; i < trees.size(); i++) {
-        long id = trees[i]->getRoot()->getOttId();
+        long id = trees[i]->getRoot()->get_ott_id();
         if (not my_leaf.count(id)) {
             if (otCLI.verbose) {
                 LOG(INFO)<<"OTT Id "<<id<<" is not a leaf in any subproblem.  Must be a root.\n";

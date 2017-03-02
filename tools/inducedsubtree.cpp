@@ -37,7 +37,7 @@ struct InducedSubtreeState
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
         for(auto leaf: iter_leaf_const(*tree))
-            inducingIds.insert(leaf->getOttId());
+            inducingIds.insert(leaf->get_ott_id());
         return true;
     }
 };
