@@ -324,7 +324,7 @@ void writeDOTExclusion(std::ostream & out,
                        const std::string & ndStyle,
                        const std::string & style) {
     for (auto n : iter_pre_n_const(node)) {
-        const auto & excForThisNode = exclusion.getNodesExcludedFromNode(n);
+        const auto & excForThisNode = exclusion.get_nodes_excluded_from_node(n);
         const ToDotKey ancK{n, connPrefix};
         for (auto en : excForThisNode) {
             const ToDotKey desK{en, prefix};
@@ -364,7 +364,7 @@ void writeDOTForFtree(std::ostream & out,
     const std::string nsty = esty;
     std::string tn = "t";
     tn += std::to_string(treeIndex);
-    auto r = tree.getRoot();
+    auto r = tree.get_root();
     for (auto n : iter_pre_n_const(r)) {
         auto p = n->getParent();
         if (p == nullptr) {
@@ -388,7 +388,7 @@ void writeDOTForFtree(std::ostream & out,
     writeDOTGroupingConstraintSingle(out, inc, itn, tn, nd2name, incStyle, esty);
     */
     const std::string etn = std::string("exc") + tn;
-    const auto & exc = tree.getExclusions();
+    const auto & exc = tree.get_exclusions();
     std::string excStyle = "shape=octagon color=\"";
     excStyle += color;
     excStyle += "\"";
@@ -407,11 +407,11 @@ template<typename T>
 void writeDOTBandsForForest(std::ostream & out, const T & bandList, NodeToDotNames & nd2name) {
     const std::string esty = "style=\"dotted\"";
     for (const auto & b : bandList) {
-        if (b.isSingleTreeBand()) {
+        if (b.is_single_tree_band()) {
             continue;
         }
         const NodeWithSplits * prev = nullptr;
-        for (auto n : b.getBandedNodes()) {
+        for (auto n : b.get_banded_nodes()) {
             if (prev != nullptr) {
                 ToDotKey ancK = findAnyKey(prev, nd2name);
                 ToDotKey desK = findAnyKey(n, nd2name);
@@ -423,14 +423,14 @@ void writeDOTBandsForForest(std::ostream & out, const T & bandList, NodeToDotNam
 }
 
 void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
-    const auto & o2n = forest.get_ott_idToNodeMapping();
+    const auto & o2n = forest.get_ott_id_to_node_mapping();
     NodeToDotNames nd2name;
     std::string emptyStr;
     out << "digraph G{\n";
     for (auto & oidNodePair : o2n) {
         auto n = oidNodePair.second;
-        bool writePlainNd = forest.isAttached(n->get_ott_id());
-        if (!writePlainNd && (!forest.isInABand(n)) && (!forest.hasNodesExcludedFromIt(n))) {
+        bool writePlainNd = forest.is_attached(n->get_ott_id());
+        if (!writePlainNd && (!forest.is_in_a_band(n)) && (!forest.has_nodes_excluded_from_it(n))) {
             writePlainNd = true;
         }
         if (writePlainNd) {
@@ -438,7 +438,7 @@ void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithS
             writeNodeDOT(out, k, nd2name, emptyStr, false, true, false);
         }
     }
-    const auto & trees = forest.getTrees();
+    const auto & trees = forest.get_trees();
     auto i = 0U;
     for (const auto & tiTrPair : trees) {
         auto colorIndex = std::min(LAST_COLOR_IND, i);
@@ -447,7 +447,7 @@ void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithS
         writeDOTForFtree(out, tree, nd2name, color, i);
         ++i;
     }
-    writeDOTBandsForForest(out, forest.getAllBands(), nd2name);
+    writeDOTBandsForForest(out, forest.get_all_bands(), nd2name);
     out << "}\n";
 }
 

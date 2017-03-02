@@ -72,7 +72,7 @@ class TestValidTreeStruct {
         }
         char doIterTest(const std::string expected [], Tree_t &tree) const {
             auto i = 0;
-            for (auto nd: iter_pre_n_const(tree.getRoot())) {
+            for (auto nd: iter_pre_n_const(tree.get_root())) {
                 if (expected[i] != getNewick(nd)) {
                     std::cerr << expected[i] << " != " << getNewick(nd) << '\n';
                     return 'F';

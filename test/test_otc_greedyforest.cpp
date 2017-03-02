@@ -39,7 +39,7 @@ class TestValidTreeStruct {
             std::set<long> ids;
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
-                const OttIdSet & td = tree.getRoot()->get_data().desIds;
+                const OttIdSet & td = tree.get_root()->get_data().desIds;
                 for (auto oid : td) {
                     if (!contains(ids, oid)) {
                         fsd[oid] = fakeScaffold.create_child(r);
@@ -60,7 +60,7 @@ class TestValidTreeStruct {
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
                 const OttIdSet * incGroup = nullptr;
-                for (auto nd : iter_child(*tree.getRoot())) {
+                for (auto nd : iter_child(*tree.get_root())) {
                     if (!nd->isTip()) {
                         if (incGroup != nullptr) {
                             return 'F';
@@ -71,9 +71,9 @@ class TestValidTreeStruct {
                 if (incGroup == nullptr) {
                     return 'F';
                 }
-                const OttIdSet & leafSet = tree.getRoot()->get_data().desIds;
+                const OttIdSet & leaf_set = tree.get_root()->get_data().desIds;
                 std::cerr << groupInd + 1 << '\n';
-                gpf.attempt_to_add_grouping(*incGroup, leafSet, treeInd, groupInd++, nullptr);
+                gpf.attempt_to_add_grouping(*incGroup, leaf_set, treeInd, groupInd++, nullptr);
             }
             NodeEmbeddingWithSplits emptyEmbedding(r);
             gpf.finish_resolution_of_embedded_clade(*r, &emptyEmbedding, &sc);

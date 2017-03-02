@@ -40,7 +40,7 @@ boost::optional<std::string> getSourceNodeName(const std::string& name) {
 
 bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,
                                                 const OttIdSet & complete,
-                                                const OttIdSet & leafSet) {
+                                                const OttIdSet & leaf_set) {
     //TMP this could be more efficient. See areCompatibleDesIdSets
     const OttIdSet inter = set_intersection_as_set(culled, complete);
     if (inter.empty()) {
@@ -49,7 +49,7 @@ bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,
     if (inter == culled) {
         return false;
     }
-    const OttIdSet compCulled = set_intersection_as_set(complete, leafSet);
+    const OttIdSet compCulled = set_intersection_as_set(complete, leaf_set);
     return (inter != compCulled);
 }
 

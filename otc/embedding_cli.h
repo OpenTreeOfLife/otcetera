@@ -19,8 +19,8 @@ namespace otc {
 /// EmbeddingCLI is intended as a base class for tools that need to 
 //      produce an EmbeddedTree with tree 0 serving as the 
 //      "outer" tree and all subsequent trees to be embedded in a taxonomic tree.
-// It provides overrides for the TaxonomyDependentTreeProcessor hooks processTaxonomyTree,
-//  and processSourceTree. It also proveds a cloneTaxonomyAsASourceTree method that allows
+// It provides overrides for the TaxonomyDependentTreeProcessor hooks process_taxonomy_tree,
+//  and process_source_tree. It also proveds a clone_taxonomy_as_a_source_tree method that allows
 //  the taxonomy tree to be embedded inside itself (this feature is used by the uncontested-decompose
 //  so that it can correctly emit the fracments of the input trees (including the taxonomic tree)
 //  when it writes a subproblem).
@@ -43,9 +43,9 @@ class EmbeddingCLI
          debuggingOutput(false) {
     }
 
-    bool processTaxonomyTree(OTCLI & otCLI) override {
+    bool process_taxonomy_tree(OTCLI & otCLI) override {
         debuggingOutput = otCLI.verbose;
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         //check_tree_invariants(*taxonomy);
         suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy, false);
         monotypicRemapping = generateIdRemapping(*taxonomy);
@@ -58,7 +58,7 @@ class EmbeddingCLI
         return true;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> treeup) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> treeup) override {
         assert(treeup != nullptr);
         assert(taxonomy != nullptr);
         // Store the tree pointer with a map to its index, and an alias for fast index->tree.
@@ -75,7 +75,7 @@ class EmbeddingCLI
         return true;
     }
 
-    bool cloneTaxonomyAsASourceTree() {
+    bool clone_taxonomy_as_a_source_tree() {
         assert(taxonomy != nullptr);
         assert(taxonomyAsSource == nullptr);
         std::unique_ptr<TreeMappedWithSplits> tree = cloneTree(*taxonomy);

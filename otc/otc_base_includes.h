@@ -13,8 +13,7 @@
 #include "otc/easylogging++.hpp"
 
 namespace otc {
-extern bool debuggingOutputEnabled;
-extern long ottIDBeingDebugged;
+extern bool debugging_output_enabled;
 // Might want to move to using
 //      https://github.com/lczech/genesis/blob/master/src/tree/bipartitions.hpp
 // at some point for faster operations on sets of indices

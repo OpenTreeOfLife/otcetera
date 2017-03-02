@@ -55,7 +55,7 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
         }
     }
     for (auto oid : oids) {
-        auto x = tree.createNode(nullptr);
+        auto x = tree.create_node(nullptr);
         x->set_ott_id(oid);
         if (hasNodeName) {
             std::string n = noden + " ott" + std::to_string(oid);
@@ -213,8 +213,8 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         return true;
     }
     
-    bool processTaxonomyTree(OTCLI & otCLI) override {
-        bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::processTaxonomyTree(otCLI);
+    bool process_taxonomy_tree(OTCLI & otCLI) override {
+        bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::process_taxonomy_tree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
         otCLI.getParsingRules().set_ott_idForInternals = false;
         if (!outputNonEmptyTreeOutput.empty()) {
@@ -223,7 +223,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         return r;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedEmptyNodes> treeup) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedEmptyNodes> treeup) override {
         assert(treeup != nullptr);
         assert(taxonomy != nullptr);
         // Store the tree pointer with a map to its index, and an alias for fast index->tree.

@@ -255,7 +255,7 @@ int main(int argc, char *argv[]) {
     combine2(trees, otCLI.verbose);
     unique_ptr<Tree_t> tree = std::move(trees[0]);
     if (not rootName.empty()){
-        tree->getRoot()->setName(rootName);
+        tree->get_root()->setName(rootName);
     }
     writeTreeAsNewick(std::cout, *tree);
     std::cout<<"\n";

@@ -95,7 +95,7 @@ inline bool processTrees(const std::string& filename,
         }
         if (parsingRules.pruneUnrecognizedInputTips) {
             pruneTipsWithoutIds(*nt);
-            if (nt->getRoot() == nullptr) {
+            if (nt->get_root() == nullptr) {
                 continue;
             }
         }
@@ -208,7 +208,7 @@ inline std::set<long> getAllOTTIds(const Tree& taxonomy) {
 
 template<>
 inline std::set<long> getAllOTTIds(const TreeMappedWithSplits &taxonomy) {
-    return taxonomy.getRoot()->get_data().desIds;
+    return taxonomy.get_root()->get_data().desIds;
 }
  
 template<typename T>
@@ -222,15 +222,15 @@ class TaxonomyDependentTreeProcessor {
         std::unique_ptr<T> taxonomy;
         std::set<long> ottIds;
 
-        virtual bool processTaxonomyTree(OTCLI & otCLI) {
+        virtual bool process_taxonomy_tree(OTCLI & otCLI) {
             ottIds = getAllOTTIds(*taxonomy);
-            if (not taxonomy->getRoot()->has_ott_id())
+            if (not taxonomy->get_root()->has_ott_id())
                 throw OTCError()<<"Taxonomy root does not have an OTT ID!";
             otCLI.getParsingRules().ottIdValidator = &ottIds;
             otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
             return true;
         }
-        virtual bool processSourceTree(OTCLI & , std::unique_ptr<T> tree) {
+        virtual bool process_source_tree(OTCLI & , std::unique_ptr<T> tree) {
             assert(tree != nullptr);
             assert(taxonomy != nullptr);
             return true;
@@ -252,9 +252,9 @@ inline bool taxDependentProcessNextTree(OTCLI & otCLI, std::unique_ptr<T> tree) 
     assert(tree != nullptr);
     if (tdtp->taxonomy == nullptr) {
         tdtp->taxonomy = std::move(tree);
-        return tdtp->processTaxonomyTree(otCLI);
+        return tdtp->process_taxonomy_tree(otCLI);
     }
-    return tdtp->processSourceTree(otCLI, std::move(tree));
+    return tdtp->process_source_tree(otCLI, std::move(tree));
 }
 
 template<typename T>

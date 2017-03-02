@@ -31,8 +31,8 @@ void reportOnConflicting(std::ostream & out,
                          const OttIdSet & phyloLeafSet);
 
 // takes 2 "includeGroups" from different PhyloStatements.
-//  `culled` has been pruned down to the common leafSet, and the common leafSet is passed in as `leafSet
-bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled, const OttIdSet & complete, const OttIdSet & leafSet);
+//  `culled` has been pruned down to the common leaf_set, and the common leaf_set is passed in as `leaf_set
+bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled, const OttIdSet & complete, const OttIdSet & leaf_set);
 
 template<typename T, typename U>
 void copyStructureToResolvePolytomy(const T * srcPoly,
@@ -41,13 +41,13 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
                                     SupertreeContextWithSplits *);
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
-bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet);
+bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leaf_set);
 
 
 // assumes that nd is the mrca of incGroup and excGroup IDs
 template<typename T>
-inline bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leafSet) {
-    const OttIdSet excGroup = set_difference_as_set(leafSet, incGroup);
+inline bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const OttIdSet & leaf_set) {
+    const OttIdSet excGroup = set_difference_as_set(leaf_set, incGroup);
     return canBeResolvedToDisplayIncExcGroup(nd, incGroup, excGroup);
 }
 
@@ -89,7 +89,7 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
     TreeMappedWithSplits * rawTreePtr = new TreeMappedWithSplits();
     try {
         NodeWithSplits * newRoot = rawTreePtr->create_root();
-        auto r = tree.getRoot();
+        auto r = tree.get_root();
         assert(r->has_ott_id());
         newRoot->set_ott_id(r->get_ott_id());
         std::map<const NodeWithSplits *, NodeWithSplits *> templateToNew;

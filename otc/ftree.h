@@ -14,51 +14,47 @@ template<typename T, typename U> class GreedyBandedForest;
 template<typename T, typename U> class RootedForest;
 template<typename T, typename U> class FTree;
 
-enum ConstraintType {
-    INCLUDES_NODE,
-    EXCLUDES_NODE
-};
 struct PhyloStatementSource {
     PhyloStatementSource(int treeInd, long groupInd)
-        :sourceTreeId(treeInd),
-        cladeId(groupInd) {
+        :source_tree_id(treeInd),
+        clade_id(groupInd) {
     }
-    const int sourceTreeId;
-    const long cladeId; // ID of the node in the tree
+    const int source_tree_id;
+    const long clade_id; // ID of the node in the tree
 };
 
 struct PhyloStatement {
     /*PhyloStatement(const OttIdSet &includes, const OttIdSet & other, bool otherIsExcludes)
-        :includeGroup(includes),
-        excludeGroup(otherIsExcludes ? other : set_difference_as_set(other, includes)),
-        leafSet(otherIsExcludes ? set_union_as_set(other, includes): other) {
+        :include_group(includes),
+        exclude_group(otherIsExcludes ? other : set_difference_as_set(other, includes)),
+        leaf_set(otherIsExcludes ? set_union_as_set(other, includes): other) {
     }*/
     PhyloStatement(const OttIdSet &includes,
                    const OttIdSet &excludes,
                    const OttIdSet &mentioned, 
                    PhyloStatementSource pss)
-        :includeGroup(includes),
-        excludeGroup(excludes),
-        leafSet(mentioned),
+        :include_group(includes),
+        exclude_group(excludes),
+        leaf_set(mentioned),
         provenance(pss) {
-        debugCheck();
+        debug_check();
     }
-    void writeAsNewick(std::ofstream & out) const;
-    bool debugCheck() const;
-    bool isTrivial() const {
-        return includeGroup.size() < 2 || includeGroup.size() == leafSet.size();
+    void write_as_newick(std::ofstream & out) const;
+    bool debug_check() const;
+    bool is_trivial() const {
+        return include_group.size() < 2 || include_group.size() == leaf_set.size();
     }
-    const OttIdSet & includeGroup;
-    const OttIdSet & excludeGroup;
-    const OttIdSet & leafSet; // just the union of the includeGroup and excludeGroup
+    const OttIdSet & include_group;
+    const OttIdSet & exclude_group;
+    const OttIdSet & leaf_set; // just the union of the include_group and exclude_group
     const PhyloStatementSource provenance;
 };
 
 // Bands connect nodes across different FTree instance when the nodes are required
-//  to satisfy a grouping that has been added. The includeGroup of the ps
+//  to satisfy a grouping that has been added. The include_group of the ps
 //  is a set of IDs that will be in the desIds of each member of the band (and
 //  the ancestor nodes of the members).
-//  The nodes in the ps.excludeGroup should be excluded at this node or an ancestor.
+//  The nodes in the ps.exclude_group should be excluded at this node or an ancestor.
 template<typename T>
 class InterTreeBand {
     public:
@@ -68,78 +64,77 @@ class InterTreeBand {
                   const node_set & n1set,
                   const PhyloStatement & ps)
         :statement(ps) {
-        addNode(nd1, n1set);
+        add_node(nd1, n1set);
     }
-    bool isSingleTreeBand() const {
-        return (nd2phantom.size() == 1);
+    bool is_single_tree_band() const {
+        return (node_to_phantom.size() == 1);
     }
-    void insertSet(node_type * nd, const node_set & phantom) {
+    void insert_set(node_type * nd, const node_set & phantom) {
         for (auto p : phantom) {
             assert(p->has_ott_id());
         }
-        nd2phantom.at(nd).insert(begin(phantom), end(phantom));
+        node_to_phantom.at(nd).insert(begin(phantom), end(phantom));
     }
     void insert(node_type * nd, node_type * phantom) {
         assert(phantom->has_ott_id());
-        nd2phantom[nd].insert(phantom);
+        node_to_phantom[nd].insert(phantom);
     }
-    void removeNode(node_type * nd) {
-        nd2phantom.erase(nd);
+    void remove_node(node_type * nd) {
+        node_to_phantom.erase(nd);
     }
-    void removeFromSet(node_type * nd, const node_set & nset) {
-        node_set r = set_difference_as_set(nd2phantom.at(nd), nset);
-        nd2phantom[nd] = r;
+    void remove_from_set(node_type * nd, const node_set & nset) {
+        node_set r = set_difference_as_set(node_to_phantom.at(nd), nset);
+        node_to_phantom[nd] = r;
     }
-    void addNode(node_type * nd, const node_set & nset) {
+    void add_node(node_type * nd, const node_set & nset) {
         for (auto p : nset) {
             assert(p->has_ott_id());
         }
         assert(nd != nullptr);
-        const auto s = nd2phantom.size();
-        nd2phantom[nd] = nset;
-        assert((s + 1)== nd2phantom.size());
+        const auto s = node_to_phantom.size();
+        node_to_phantom[nd] = nset;
+        assert((s + 1)== node_to_phantom.size());
     }
-    bool bandPointHasAny(const node_type * nd, const node_set & ns) const {
-        return !(areDisjoint(nd2phantom.at(nd), ns));
+    bool band_point_has_any(const node_type * nd, const node_set & ns) const {
+        return !(areDisjoint(node_to_phantom.at(nd), ns));
     }
-    const node_set & getPhantomNodes(const node_type * nd) const {
-        auto npIt = nd2phantom.find(nd);
-        return (npIt == nd2phantom.end() ? emptySet : npIt->second);
+    const node_set & get_phantom_nodes(const node_type * nd) const {
+        auto npIt = node_to_phantom.find(nd);
+        return (npIt == node_to_phantom.end() ? empty_set : npIt->second);
     }
-    OttIdSet getPhantomIds(const node_type * nd) const {
-        const auto & ns = getPhantomNodes(nd);
+    OttIdSet get_phantom_ids(const node_type * nd) const {
+        const auto & ns = get_phantom_nodes(nd);
         OttIdSet r;
         for (auto np : ns) {
             r.insert(np->get_ott_id());
         }
         return r;
     }
-    void reassignAttachmentNode(node_type * oldAnc, node_type *newAnc) {
-        assert(!contains(nd2phantom, newAnc));
-        nd2phantom[newAnc] = nd2phantom.at(oldAnc);
-        nd2phantom.erase(oldAnc);
+    void reassign_attachment_node(node_type * oldAnc, node_type *newAnc) {
+        assert(!contains(node_to_phantom, newAnc));
+        node_to_phantom[newAnc] = node_to_phantom.at(oldAnc);
+        node_to_phantom.erase(oldAnc);
     }
-    bool isTheSetOfPhantomNodes(node_type * nd, const node_set & t) const {
-        return nd2phantom.at(nd) == t;
+    bool is_the_set_of_phantom_nodes(node_type * nd, const node_set & t) const {
+        return node_to_phantom.at(nd) == t;
     }
-    bool isABandedNodeInThis(const node_type *q) const {
-        return contains(nd2phantom, q);
+    bool is_a_banded_node_in_this(const node_type *q) const {
+        return contains(node_to_phantom, q);
     }
-    std::set<const node_type *> getBandedNodes() const {
+    std::set<const node_type *> get_banded_nodes() const {
         std::set<const node_type *> r;
-        for (const auto & m : nd2phantom) {
+        for (const auto & m : node_to_phantom) {
             r.insert(m.first);
         }
         return r;
     }
-    void debugInvariantsCheckITB() const;
-    const std::map<const node_type *, node_set> & getRawMap() const {
-        return nd2phantom;
+    const std::map<const node_type *, node_set> & get_raw_map() const {
+        return node_to_phantom;
     }
     private:
-    std::map<const node_type *, node_set> nd2phantom;
+    std::map<const node_type *, node_set> node_to_phantom;
     const PhyloStatement & statement;
-    const node_set emptySet;
+    const node_set empty_set;
 };
 
 template<typename T>
@@ -149,38 +144,37 @@ class ExcludeConstraints {
     using node_pair = std::pair<const node_type *, const node_type *>;
     using cnode_set = std::set<const node_type *>;
     using node2many_map = std::map<const node_type *, cnode_set >;
-    bool addExcludeStatement(const node_type * nd2Exclude, const node_type * forbiddenAttach);
-    bool isExcludedFrom(const node_type * ndToCheck,
+    bool add_exclude_statement(const node_type * nd2Exclude, const node_type * forbiddenAttach);
+    bool is_excluded_from(const node_type * ndToCheck,
                         const node_type * potentialAttachment,
-                        const std::map<long, node_type*> * ottIdToNodeMap) const;
-    void debugInvariantsCheckEC() const;
-    bool hasNodesExcludedFromIt(const node_type *n) const {
-        return contains(byNdWithConstraints, n);
+                        const std::map<long, node_type*> * ott_id_to_node_map) const;
+    bool has_nodes_excluded_from_it(const node_type *n) const {
+        return contains(by_node_with_constraints, n);
     }
-    const cnode_set & getNodesExcludedFromNode(const node_type * nd) const {
-        auto bc = byNdWithConstraints.find(nd);
-        if (bc == byNdWithConstraints.end()) {
-            return emptySet;
+    const cnode_set & get_nodes_excluded_from_node(const node_type * nd) const {
+        auto bc = by_node_with_constraints.find(nd);
+        if (bc == by_node_with_constraints.end()) {
+            return empty_set;
         }
         return bc->second;
     }
-    cnode_set stealExclusions(node_type *nd) {
-        auto bc = byNdWithConstraints.find(nd);
-        if (bc == byNdWithConstraints.end()) {
+    cnode_set steal_exclusions(node_type *nd) {
+        auto bc = by_node_with_constraints.find(nd);
+        if (bc == by_node_with_constraints.end()) {
             return cnode_set{};
         }
         cnode_set r = bc->second;
         for (auto n : r) {
-            byExcludedNd[n].erase(nd);
+            by_exclude_node[n].erase(nd);
         }
         return r;
     }
     private:
-    void purgeExcludeRaw(const node_type * nd2Exclude, const node_type * forbiddenAttach);
-    void ingestExcludeRaw(const node_type * nd2Exclude, const node_type * forbiddenAttach);
-    node2many_map byExcludedNd;
-    node2many_map byNdWithConstraints;
-    const cnode_set emptySet;
+    void purge_exclude_raw(const node_type * nd2Exclude, const node_type * forbiddenAttach);
+    void ingest_exclude_raw(const node_type * nd2Exclude, const node_type * forbiddenAttach);
+    node2many_map by_exclude_node;
+    node2many_map by_node_with_constraints;
+    const cnode_set empty_set;
 };
 
 template<typename T>
@@ -189,52 +183,52 @@ class InterTreeBandBookkeeping {
     using node_type = RootedTreeNode<T>;
     using band_type = InterTreeBand<T>;
     using band_set = std::set<band_type *>;
-    OttIdSet getPhantomIds(const node_type * nd) const {
+    OttIdSet get_phantom_ids(const node_type * nd) const {
         OttIdSet r;
-        const band_set & bs =  getBandsForNode(nd);
+        const band_set & bs =  get_bands_for_node(nd);
         for (const auto & b : bs) {
-            const OttIdSet bo = b->getPhantomIds(nd);
+            const OttIdSet bo = b->get_phantom_ids(nd);
             r.insert(begin(bo), end(bo));
         }
         return r;
     }
-    void reassignAttachmentNode(band_type * b, node_type * oldAnc, node_type * newAnc, const PhyloStatement & ps);
-    const band_set & getBandsForNode(const node_type *n) const {
-        const auto nit = node2Band.find(n);
-        if (nit == node2Band.end()) {
-            return emptySet;
+    void reassign_attachment_node(band_type * b, node_type * oldAnc, node_type * newAnc, const PhyloStatement & ps);
+    const band_set & get_bands_for_node(const node_type *n) const {
+        const auto nit = node_to_band.find(n);
+        if (nit == node_to_band.end()) {
+            return empty_set;
         }
         return nit->second;
     }
-    band_set stealBands(const node_type *n) {
-        const auto nit = node2Band.find(n);
-        if (nit == node2Band.end()) {
-            return emptySet;
+    band_set steal_bands(const node_type *n) {
+        const auto nit = node_to_band.find(n);
+        if (nit == node_to_band.end()) {
+            return empty_set;
         }
         band_set bs = nit->second;
-        node2Band.erase(n);
+        node_to_band.erase(n);
         for (auto bandPtr : bs) {
-            band2Node.erase(bandPtr);
+            band_to_node.erase(bandPtr);
         }
         return bs;
     }
-    bool isInABand(const node_type *n) const {
-        return contains(node2Band, n);
+    bool is_in_a_band(const node_type *n) const {
+        return contains(node_to_band, n);
     }
-    void _addRefToBand(band_type * band, node_type * nd) {
+    void _add_ref_to_band(band_type * band, node_type * nd) {
         assert(nd != nullptr);
         assert(band != nullptr);
-        band2Node[band] = nd;
-        node2Band[nd].insert(band);
-        if (!contains(band->getRawMap(), nd)) {
+        band_to_node[band] = nd;
+        node_to_band[nd].insert(band);
+        if (!contains(band->get_raw_map(), nd)) {
             const std::set<node_type *> emptyNodeSet;
-            band->addNode(nd, emptyNodeSet);
+            band->add_node(nd, emptyNodeSet);
         }
     }
     private:
-    std::map<const band_type *, node_type *> band2Node;
-    std::map<const node_type *, band_set > node2Band;
-    const band_set emptySet;
+    std::map<const band_type *, node_type *> band_to_node;
+    std::map<const node_type *, band_set > node_to_band;
+    const band_set empty_set;
 };
 
 template<typename T, typename U>
@@ -247,93 +241,93 @@ class FTree {
     FTree(std::size_t treeID,
           RootedForest<T, U> & theForest,
           std::map<long, node_type *> & ottIdToNodeRef)
-        :treeId(treeID),
+        :tree_id(treeID),
          root(nullptr),
          forest(theForest),
-         ottIdToNodeMap(ottIdToNodeRef) {
+         ott_id_to_node_map(ottIdToNodeRef) {
     }
     // const methods:
-    bool isInABand(const node_type *n) const {
-        return bands.isInABand(n);
+    bool is_in_a_band(const node_type *n) const {
+        return bands.is_in_a_band(n);
     }
-    bool hasNodesExcludedFromIt(const node_type *n) const {
-        return exclude.hasNodesExcludedFromIt(n);
+    bool has_nodes_excluded_from_it(const node_type *n) const {
+        return exclude.has_nodes_excluded_from_it(n);
     }
-    const node_type * getRoot() const {
+    const node_type * get_root() const {
         return root;
     }
-    bool ottIdIsExcludedFromRoot(long oid) const {
-        return isExcludedFromRoot(ottIdToNodeMap.at(oid));
+    bool ott_id_is_excluded_from_root(long oid) const {
+        return is_excluded_from_root(ott_id_to_node_map.at(oid));
     }
-    bool isExcludedFromRoot(const node_type *n) const {
-        return exclude.isExcludedFrom(n, root, &ottIdToNodeMap);
+    bool is_excluded_from_root(const node_type *n) const {
+        return exclude.is_excluded_from(n, root, &ott_id_to_node_map);
     }
-    bool isExcludedFrom(const node_type * ndToCheck, const node_type * potentialAttachment) const {
-        return exclude.isExcludedFrom(ndToCheck, potentialAttachment, &ottIdToNodeMap);
+    bool is_excluded_from(const node_type * ndToCheck, const node_type * potentialAttachment) const {
+        return exclude.is_excluded_from(ndToCheck, potentialAttachment, &ott_id_to_node_map);
     }
     
     // OTT Ids of nodes on the graph only....
-    const OttIdSet getConnectedOttIds() const;
+    const OttIdSet get_connected_ott_ids() const;
     // includes OTT Ids of nodes in includesConstraints
-    const OttIdSet & getIncludedOttIds() {
-        return getRoot()->get_data().desIds;
+    const OttIdSet & get_included_ott_ids() {
+        return get_root()->get_data().desIds;
     }
-    bool ottIdIsConnected(long ottId) const {
-        return contains(getConnectedOttIds(), ottId);
+    bool ott_id_is_connected(long ottId) const {
+        return contains(get_connected_ott_ids(), ottId);
     }
-    const ExcludeConstraints<T> & getExclusions() const {
+    const ExcludeConstraints<T> & get_exclusions() const {
         return exclude;
     }
-    const std::set<InterTreeBand<T> *> & getBandsForNode(const node_type *n) const {
-        return bands.getBandsForNode(n);
+    const std::set<InterTreeBand<T> *> & get_bands_for_node(const node_type *n) const {
+        return bands.get_bands_for_node(n);
     }
     // non-const
-    node_type * getRoot() {
+    node_type * get_root() {
         return root;
     }
-    void _setRoot(node_type *r) {
+    void _set_root(node_type *r) {
         root = r;
     }
-    void mirrorPhyloStatement(const PhyloStatement & ps);
+    void mirror_phylo_statement(const PhyloStatement & ps);
 #if defined(DO_DEBUG_CHECKS)
-    void debugInvariantsCheckFT() const;
-    void debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTreeNode<T> *nd) const;
+    void debug_invariants_check_ft() const;
+    void debug_verify_des_ids_assuming_des(const OttIdSet &s, const RootedTreeNode<T> *nd) const;
 #else
-    void debugInvariantsCheckFT() const{
+    void debug_invariants_check_ft() const{
     }
-    void debugVerifyDesIdsAssumingDes(const OttIdSet &, const RootedTreeNode<T> *) const {
+    void debug_verify_des_ids_assuming_des(const OttIdSet &, const RootedTreeNode<T> *) const {
     }
 #endif
-    std::set<RootedTreeNode<T> *> ottIdSetToNodeSet(const OttIdSet &ottIdSet) const;
-    bool anyExcludedAtNode(const node_type *, const OttIdSet &) const ;
-    void createDeeperRoot();
+    std::set<RootedTreeNode<T> *> ott_id_set_to_node_set(const OttIdSet &ott_id_set) const;
+    bool any_excluded_at_node(const node_type *, const OttIdSet &) const ;
+    void create_deeper_root();
     // puts a node between nd and its parent and returns the new node
-    node_type * createDeeperNode(node_type *nd);
-    void stealExclusionStatements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
-    OttIdSet stealInclusionStatements(node_type * newPar, 
+    node_type * create_deeper_node(node_type *nd);
+    void steal_exclusion_statements(node_type * newPar,  node_type * srcNode, FTree<T, U>  & donorTree);
+    OttIdSet steal_inclusion_statements(node_type * newPar, 
                                       node_type * srcNode,
                                       FTree<T, U>  & donorTree,
                                       InterTreeBand<T> * bandToSkip);
-    void registerExclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
-    void registerInclusionStatementForTransferringNode(node_type * srcNode, FTree<T, U>  & donorTree);
+    void register_exclusion_statement_for_transferring_node(node_type * srcNode, FTree<T, U>  & donorTree);
+    void register_inclusion_statement_for_transferring_node(node_type * srcNode, FTree<T, U>  & donorTree);
     private:
-    void addExcludeStatement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
-    void addIncludeGroupDisjointPhyloStatement(const PhyloStatement & ps) {
-        addPhyloStatementAsChildOfRoot(ps);
+    void add_exclude_statement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
+    void add_include_group_disjoint_phylo_statement(const PhyloStatement & ps) {
+        add_phylo_statement_as_child_of_root(ps);
     }
-    RootedTreeNode<T> * addLeafNoDesUpdate(RootedTreeNode<T> * par, long ottId);
-    void addPhyloStatementAsChildOfRoot(const PhyloStatement &);
+    RootedTreeNode<T> * add_leaf_no_des_update(RootedTreeNode<T> * par, long ottId);
+    void add_phylo_statement_as_child_of_root(const PhyloStatement &);
     // this is greedy, we should be building separate FTree instances in many cases....
-    OttIdSet addPhyloStatementAtNode(const PhyloStatement & ps, 
+    OttIdSet add_phylo_statement_at_node(const PhyloStatement & ps, 
                                      node_type * includeGroupMRCA,
                                      const OttIdSet & attachedElsewhere,
                                      InterTreeBand<T> * itbp);
-    bool anyPhantomNodesAtNode(const node_type *, const OttIdSet &) const ;
-    bool anyIncludedAtNode(const node_type *, const OttIdSet &) const ;
-    node_type * getMRCA(const OttIdSet &id);
-    bool insertIntoBandNoDesUpdate(InterTreeBand<T> * itbp, RootedTreeNode<T> * connectedNode, long phantomID);
-    RootedTreeNode<T> * resolveToCreateCladeOfIncluded(RootedTreeNode<T> * par, const PhyloStatement & ps);
-    void updateToReflectResolution(node_type *oldAnc,
+    bool add_phantom_nodes_at_node(const node_type *, const OttIdSet &) const ;
+    bool any_included_at_node(const node_type *, const OttIdSet &) const ;
+    node_type * get_mrca(const OttIdSet &id);
+    bool insert_into_band_no_des_update(InterTreeBand<T> * itbp, RootedTreeNode<T> * connectedNode, long phantomID);
+    RootedTreeNode<T> * resolve_to_create_clade_of_included(RootedTreeNode<T> * par, const PhyloStatement & ps);
+    void update_to_reflect_resolution(node_type *oldAnc,
                                    node_type * newAnc,
                                    const std::set<node_type *> & movedTips,
                                    const PhyloStatement & ps);
@@ -343,7 +337,7 @@ class FTree {
     FTree(const FTree &) = delete;
     FTree & operator=(const FTree &) = delete;
     // data members
-    const std::size_t treeId; // key for this tree in forest - used for debugging
+    const std::size_t tree_id; // key for this tree in forest - used for debugging
     node_type * root;
     //OttIdSet connectedIds;
     // from excludedNode to the nodes that it is excluded from...
@@ -351,24 +345,24 @@ class FTree {
     InterTreeBandBookkeeping<T> bands;
     //std::map<node_type *, std::list<PhyloStatementSource> > supportedBy; // only for non-roots
     RootedForest<T, U> & forest;
-    std::map<long, node_type *> & ottIdToNodeMap;
+    std::map<long, node_type *> & ott_id_to_node_map;
 };
 
 template<typename T, typename U>
-inline std::set<RootedTreeNode<T> *> FTree<T, U>::ottIdSetToNodeSet(const OttIdSet &ottIdSet) const {
+inline std::set<RootedTreeNode<T> *> FTree<T, U>::ott_id_set_to_node_set(const OttIdSet &ott_id_set) const {
     std::set<RootedTreeNode<T> *> ns;
-    for (auto oid :ottIdSet) {
-        ns.insert(ottIdToNodeMap.at(oid));
+    for (auto oid :ott_id_set) {
+        ns.insert(ott_id_to_node_map.at(oid));
     }
     return ns;
 }
 
 template<typename T, typename U>
-inline void FTree<T, U>::addExcludeStatement(long ottId,
+inline void FTree<T, U>::add_exclude_statement(long ottId,
                                             RootedTreeNode<T> * excludedFrom,
                                             const PhyloStatementSource &) {
-    auto eNode = ottIdToNodeMap.at(ottId);
-    exclude.addExcludeStatement(eNode, excludedFrom);
+    auto eNode = ott_id_to_node_map.at(ottId);
+    exclude.add_exclude_statement(eNode, excludedFrom);
 }
 
 } // namespace otc

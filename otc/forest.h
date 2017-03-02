@@ -55,7 +55,7 @@ An FTree's constraint statement should not include any of the connected nodes fo
 As with NodeWithSplits, the node's data has a desIds that lists the Ids of the nodes.
      However, to store the constraints, the FTree may also contain a constrainedDesIds
      for any of the nodes that are connected to that FTree.
-Groupings make the phylogenetic statements that a group of nodes (the "includeGroup" of the
+Groupings make the phylogenetic statements that a group of nodes (the "include_group" of the
     grouping statement) share at least
 
 
@@ -65,16 +65,16 @@ postcond #0: The number of attached nodes will never decrease
 postcond #1: The taxon IDs will all have an Node object that represents them (registerd in
     the RootedForest's OttIdToNode map). However, note that these nodes are not necessarily
     attached.
-postconditions about the includeGroup 
-postcond #3: At least 1 member of the includeGroup will be attached.
-postcond #4: For each FTree that contains member of the includeGroup, there will exist
-    a node, the FTreeCA, that is a common ancestor of all members of the includeGroup which
+postconditions about the include_group 
+postcond #3: At least 1 member of the include_group will be attached.
+postcond #4: For each FTree that contains member of the include_group, there will exist
+    a node, the FTreeCA, that is a common ancestor of all members of the include_group which
     are connected to that tree. This FTreeCA node will not be the ancestor of any member of
-    the excludeGroup. If any of the nodes in the includeGroup are not connected to this FTree,
+    the exclude_group. If any of the nodes in the include_group are not connected to this FTree,
     their taxon ID will be recorded in the constrainedDesIds statement of the FTreeCA node.
     They will also be mentioned in an INCLUDES_NODE constraint for the FTreeCA node, if they
     are not already mentioned in and INCLUDES_NODE constraint for one of the descendants of
-    the FTreeCA node. And every member of excludeGroup will be mentioned in an EXCLUDES_NODE
+    the FTreeCA node. And every member of exclude_group will be mentioned in an EXCLUDES_NODE
     constraint for the FTreeCA node or one its ancestors.
 
 XXX BOGUS IGNORE THIS one: postcond #X: If an FTreeCA node was new node created by the addition of the PhyloStatement,
@@ -85,23 +85,23 @@ XXX BOGUS IGNORE THIS one: postcond #X: If an FTreeCA node was new node created 
     support the branch from the FTreeCA to its parent. Later we'll post-process to remove
     unsupported nodes, and the support statements will be transferred one step closer to the root.
     These out-degree=1 
-postconditions about the excludeGroup
-postcondition #5: If there is no intersection between the includeGroup of a PhyloStatement and the 
+postconditions about the exclude_group
+postcondition #5: If there is no intersection between the include_group of a PhyloStatement and the 
     forest, then the PhyloStatement will be added as a new FTree with one internal node that corresponds
-    to the includeGroupMRCA and the root that is the a parent of all member of the excludeGroup. 
+    to the includeGroupMRCA and the root that is the a parent of all member of the exclude_group. 
     Otherwise, if a member of the excludedGroup was detached before addition of the PhyloStatement,
     then it will still be detached after the statement is added.
 
 */
 
 /**
-A PhlyoStatement is a rooted bipartition: a bipartition of the leafSet with one of the subsets
-    designated as the "includeGroup". 
-The statement claims that all members of the includeGroup share at least  one common ancestor
-    (their MRCA) which is not an ancestor of any member of the excluded group (the "excludeGroup" 
+A PhlyoStatement is a rooted bipartition: a bipartition of the leaf_set with one of the subsets
+    designated as the "include_group". 
+The statement claims that all members of the include_group share at least  one common ancestor
+    (their MRCA) which is not an ancestor of any member of the excluded group (the "exclude_group" 
     of the statement). Apart from the exclusion from that node, the statement doesn't say 
-    anything about members of the excludeGroup. In particular, there may be unmentioned taxa. 
-    The members of the excludeGroup are *not* necessarily more closely related to each other than
+    anything about members of the exclude_group. In particular, there may be unmentioned taxa. 
+    The members of the exclude_group are *not* necessarily more closely related to each other than
     they are to the unmentioned taxa. 
 Indeed the unmentioned taxa could be placed anywhere on a tree without contradicting the PhyloStatement.
 */
@@ -122,117 +122,117 @@ class RootedForest {
     bool empty() const {
         return trees.empty();
     }
-    const std::list<InterTreeBand<T> > & getAllBands() const {
-        return allBands;
+    const std::list<InterTreeBand<T> > & get_all_bands() const {
+        return all_bands;
     }
-    const std::map<OttId, node_type *> & get_ott_idToNodeMapping() const {
-        return ottIdToNodeMap;
+    const std::map<OttId, node_type *> & get_ott_id_to_node_mapping() const {
+        return ott_id_to_node_map;
     }
-    const std::map<std::size_t, tree_type> & getTrees() const {
+    const std::map<std::size_t, tree_type> & get_trees() const {
         return trees;
     }
-    bool isAttached(long ottId) const;
-    bool isInABand(const node_type * ) const;
-    bool hasNodesExcludedFromIt(const node_type * ) const;
-    bool nodeIsAttached(RootedTreeNode<T> & n) const;
-    std::pair<bool, bool> checkWithPreviouslyAddedStatement(const PhyloStatement &ps) const;
+    bool is_attached(long ottId) const;
+    bool is_in_a_band(const node_type * ) const;
+    bool has_nodes_excluded_from_it(const node_type * ) const;
+    bool node_is_attached(RootedTreeNode<T> & n) const;
+    std::pair<bool, bool> check_with_previously_added_statement(const PhyloStatement &ps) const;
     //modifiers
-    bool addPhyloStatement(const PhyloStatement &);
+    bool add_phylo_statement(const PhyloStatement &);
     InterTreeBand<T> * _createNewBand(FTree<T, U> & ftree,
                                      RootedTreeNode<T> &nd,
                                      const PhyloStatement &ps);
-    node_type * createNode(node_type * par, FTree<T, U> * ftree);
-    node_type * createLeaf(node_type * par, const OttId & oid, FTree<T, U> * ftree);
-    void registerTreeForNode(node_type * nd, FTree<T, U> * ftree) {
-        nd2Tree[nd] = ftree;
+    node_type * create_node(node_type * par, FTree<T, U> * ftree);
+    node_type * create_leaf(node_type * par, const OttId & oid, FTree<T, U> * ftree);
+    void register_tree_for_node(node_type * nd, FTree<T, U> * ftree) {
+        node_to_tree[nd] = ftree;
     }
-    void registerLeaf(long ottId);
-    void writeForestDOTToFN(const std::string &fn) const;
+    void register_leaf(long ottId);
+    void write_forest_dot_to_fn(const std::string &fn) const;
 #if defined(DO_DEBUG_CHECKS)
-    void debugInvariantsCheck() const;
+    void debug_invariants_check() const;
 #else
-    void debugInvariantsCheck() const {
+    void debug_invariants_check() const {
     }
 #endif
 
-    void dumpAcceptedPhyloStatements(const char *fn);
-    const tree_type * getTreeForNode(const node_type * nd) const {
-        return nd2Tree.at(const_cast<node_type *>(nd));
+    void dump_accepted_phylo_statements(const char *fn);
+    const tree_type * get_tree_for_node(const node_type * nd) const {
+        return node_to_tree.at(const_cast<node_type *>(nd));
     }
-    void addAndUpdateChild(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree) {
+    void add_and_update_child(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree) {
         p->addChild(c);
-        _AndUpdateChild(p, c, tree);
+        _and_update_child(p, c, tree);
     }
-    void _AndUpdateChild(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree);
-    std::map<const tree_type *, const node_type *> getTreeToNodeMapForBand(const InterTreeBand<T> &) const;
+    void _and_update_child(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree);
+    std::map<const tree_type *, const node_type *> get_tree_to_node_map_for_band(const InterTreeBand<T> &) const;
     private:
-    std::list<OverlapFTreePair<T, U> > getSortedOverlappingTrees(const OttIdSet &inc);
-    node_type * addDetachedLeaf(const OttId & ottId);
-    tree_type & addDisjointTree(const PhyloStatement &);
-    bool addIngroupOverlappingPhyloStatementToGraph(const std::list<OverlapFTreePair<T, U> > &, const PhyloStatement &);
-    void addIngroupDisjointPhyloStatementToGraph(const PhyloStatement &);
-    bool addPhyloStatementToGraph(const PhyloStatement &ps);
-    bool checkCanAddIngroupOverlappingPhyloStatementToGraph(
+    std::list<OverlapFTreePair<T, U> > get_sorted_overlapping_trees(const OttIdSet &inc);
+    node_type * add_detached_leaf(const OttId & ottId);
+    tree_type & add_disjoint_tree(const PhyloStatement &);
+    bool add_ingroup_overlapping_phylo_statement_to_graph(const std::list<OverlapFTreePair<T, U> > &, const PhyloStatement &);
+    void add_ingroup_disjoint_phylo_statement_to_graph(const PhyloStatement &);
+    bool add_phylo_statement_to_graph(const PhyloStatement &ps);
+    bool check_can_add_ingroup_overlapping_phylo_statement_to_graph(
             const std::list<OverlapFTreePair<T, U> > & byIncCardinality,
             const PhyloStatement &ps,
             std::list<node_type * > & nonTrivMRCAs,
             OttIdSet & attachedElsewhere,
             std::vector<bool> & shouldResolveVec,
             std::vector<bool> & shouldCreateDeeperVec) const;
-    tree_type & createNewTree();
+    tree_type & create_new_tree();
     protected:
-    void attachAllKnownTipsAsNewTree();
-    void attachAllDetachedTips();
-    RootedTree<T, U> nodeSrc; // not part of the forest, just the memory manager for the nodes
+    void attach_all_known_tips_as_new_tree();
+    void attach_all_detached_tips();
+    RootedTree<T, U> node_src; // not part of the forest, just the memory manager for the nodes
     std::map<std::size_t,  tree_type> trees;
-    std::size_t nextTreeId;
-    OttIdSet ottIdSet;
-    std::map<OttId, node_type *> & ottIdToNodeMap; // alias to this data field in nodeSrc for convenience
-    std::map<node_type *, tree_type*> nd2Tree; 
-    std::list<InterTreeBand<T> > allBands;
-    // addedSplitsByLeafSet
+    std::size_t next_tree_id;
+    OttIdSet ott_id_set;
+    std::map<OttId, node_type *> & ott_id_to_node_map; // alias to this data field in node_src for convenience
+    std::map<node_type *, tree_type*> node_to_tree; 
+    std::list<InterTreeBand<T> > all_bands;
+    // added_splits_by_leaf_set
     // TMP, store every PhlyoStatement that we have accepted. This may become too memory inefficient
     // If we can do this, we can reject a new split based on conflict with another split that was
     //  accepted (which is less cryptic than just saying that we can't add it.) Some splits can't be
     //  added because of conflict with "emergent" properties of the forest. So checking
-    //  addedSplitsByLeafSet is not sufficient to know if we can keep a split
+    //  added_splits_by_leaf_set is not sufficient to know if we can keep a split
     typedef std::set<OttIdSet> SetOfOTTIdSets;
-    std::map<OttIdSet, SetOfOTTIdSets> addedSplitsByLeafSet;
-    std::vector<PhyloStatement> novelAcceptedPSInOrder;// TMP debugging
+    std::map<OttIdSet, SetOfOTTIdSets> added_splits_by_leaf_set;
+    std::vector<PhyloStatement> novel_accepted_phylo_statements_in_order;// TMP debugging
     const long rootID;
 };
 
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T, U>::addDetachedLeaf(const OttId & ottId) {
-    return createLeaf(nullptr, ottId, nullptr);
+inline RootedTreeNode<T> * RootedForest<T, U>::add_detached_leaf(const OttId & ottId) {
+    return create_leaf(nullptr, ottId, nullptr);
 }
 
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T, U>::createNode(RootedTreeNode<T> * p, FTree<T, U> *ftree) {
-    auto r = nodeSrc.getRoot();
+inline RootedTreeNode<T> * RootedForest<T, U>::create_node(RootedTreeNode<T> * p, FTree<T, U> *ftree) {
+    auto r = node_src.get_root();
     if (r == nullptr) {
-        auto c = nodeSrc.create_root();
+        auto c = node_src.create_root();
         if (p != nullptr) {
             p->addChild(c);
         }
-        registerTreeForNode(c, ftree);
+        register_tree_for_node(c, ftree);
         return c;
     }
-    auto n = nodeSrc.createNode(p);
-    registerTreeForNode(n, ftree);
+    auto n = node_src.create_node(p);
+    register_tree_for_node(n, ftree);
     return n;
 }
 
 // does NOT update anc desIds!
 template<typename T, typename U>
-inline RootedTreeNode<T> * RootedForest<T, U>::createLeaf(RootedTreeNode<T> * p, const OttId & oid, FTree<T, U> *ftree) {
+inline RootedTreeNode<T> * RootedForest<T, U>::create_leaf(RootedTreeNode<T> * p, const OttId & oid, FTree<T, U> *ftree) {
     assert(oid != rootID);
-    auto n = createNode(p, ftree);
+    auto n = create_node(p, ftree);
     assert(n->getNextSib() == nullptr);
     n->set_ott_id(oid);
-    ottIdToNodeMap[oid] = n;
+    ott_id_to_node_map[oid] = n;
     n->get_data().desIds.insert(oid);
-    ottIdSet.insert(oid);
+    ott_id_set.insert(oid);
     return n;
 }
 

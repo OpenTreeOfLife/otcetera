@@ -384,8 +384,8 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         aPrioriProblemNodes[mrca] = designators;
     }
 
-    virtual bool processTaxonomyTree(OTCLI & otCLI) override {
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+    virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
@@ -405,7 +405,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             }
         }
     }
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
         if (toCheck == nullptr) {

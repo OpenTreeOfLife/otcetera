@@ -848,7 +848,7 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
     //    share the same set of non-excluded taxa. Thus we have an owning store and lots
     //    of pointers to them.
     auto & owningList = taxonomy.get_data().ownedIdSets;
-    auto taxonomy_root_ptr = taxonomy.getRoot();
+    auto taxonomy_root_ptr = taxonomy.get_root();
     owningList.push_back(OttIdSet());
     taxonomy_root_ptr->get_data().nonexcluded_ids = &(*owningList.rbegin());
     taxonomy_root_ptr->get_data().tax_level = 0;

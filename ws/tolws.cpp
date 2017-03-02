@@ -181,7 +181,7 @@ void about_ws_method(const TreesToServe &tts,
         response["sources"] = sta->sources;
     }
     json root;
-    auto root_node = tree_ptr->getRoot();
+    auto root_node = tree_ptr->get_root();
     add_basic_node_info(taxonomy, *root_node, root);
     response["root"] = root;
     response_str = response.dump(1);

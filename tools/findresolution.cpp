@@ -16,7 +16,7 @@ U * resolveNode(T & tree, U & parent, const OttIdSet & newInc) {
     assert(!childrenToMove.empty());
     U * phPar = &parent;
    assert(phPar != nullptr);
-    U * insertedNodePtr = tree.createNode(phPar);
+    U * insertedNodePtr = tree.create_node(phPar);
     for (auto phChild : childrenToMove) {
         phChild->detachThisNode();
         insertedNodePtr->addChild(phChild);
@@ -97,8 +97,8 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         return numErrors == 0;
     }
 
-    virtual bool processTaxonomyTree(OTCLI & otCLI) override {
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+    virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
@@ -107,7 +107,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         return true;
     }
     
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         if (summaryTreeToResolve == nullptr) {
             requireNonRedundantTree(*tree);
@@ -169,7 +169,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     //      the input leaf set and desIds of the node
     // `nd` is a node in the summary tree being evaluated
     // `nm` is the induced set of OttIds for this nd (the intersection
-    //      between nd.desId and tree.leafSet)
+    //      between nd.desId and tree.leaf_set)
     // `tree` is the input tree
     bool checkNodeForSupport(OTCLI & ,
                              const NodeWithSplits * nd,
@@ -233,7 +233,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
 
     void attemptResolutionFromSourceTree(OTCLI & otCLI, TreeMappedWithSplits & tree) {
-        const OttIdSet & treeLeafSet = tree.getRoot()->get_data().desIds;
+        const OttIdSet & treeLeafSet = tree.get_root()->get_data().desIds;
         std::set<const NodeWithSplits *> nodesFromInp;
         for (auto nd : iter_pre_internal_const(tree)) {
             if (nd->getParent() != nullptr) {

@@ -20,12 +20,12 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         return true;
     }
 
-    bool processTaxonomyTree(OTCLI & otCLI) override {
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+    bool process_taxonomy_tree(OTCLI & otCLI) override {
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         return true;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         assert(tree != nullptr);
         expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
@@ -59,7 +59,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 sourceClades.insert(std::move(nd->get_data().desIds));
             }
         }
-        auto numLeaves = tree.getRoot()->get_data().desIds.size();
+        auto numLeaves = tree.get_root()->get_data().desIds.size();
         recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves, otCLI.currentFilename);
         return true;
     }

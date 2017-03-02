@@ -137,7 +137,7 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
             prunedTipSet.insert(ottId);
         }
     }
-    const auto root = tree.getRoot();
+    const auto root = tree.get_root();
     // now delete the tips and put their parents in a queue to check (to see if they've become tips)
     set<Tree_t::node_type*> toCheckNext;
     for (auto nd: tipsToPrune) {
@@ -180,11 +180,11 @@ void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> p
         }
         auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
-            if (nd == tree.getRoot()) {
+            if (nd == tree.get_root()) {
                 if (nd->isOutDegreeOneNode()) {
                     auto newroot = nd->getFirstChild();
                     newroot->detachThisNode();
-                    tree._setRoot(newroot);
+                    tree._set_root(newroot);
                 } else {
                     throw OTCError()<<"The root has flags set for pruning, but is not monotypic!";
                 }
@@ -211,7 +211,7 @@ void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> pr
         }
         auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
-            if (nd == tree.getRoot()) {
+            if (nd == tree.get_root()) {
                 throw OTCError()<<"The root has flags set for pruning!";
             }
             nd->detachThisNode();

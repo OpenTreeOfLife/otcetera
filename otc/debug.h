@@ -31,8 +31,8 @@ bool check_all_node_pointers(const T & tree) {
             return false;
         }
     }
-    if (tree.getRoot()->getParent() != nullptr) {
-        assert(tree.getRoot()->getParent() == nullptr);
+    if (tree.get_root()->getParent() != nullptr) {
+        assert(tree.get_root()->getParent() == nullptr);
         return false;
     }
     return true;

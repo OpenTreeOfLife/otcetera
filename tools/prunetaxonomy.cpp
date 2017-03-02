@@ -68,7 +68,7 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
         return true;
     }
 
-    bool processSourceTree(OTCLI & , const std::unique_ptr<TreeMappedEmptyNodes> treePtr) override {
+    bool process_source_tree(OTCLI & , const std::unique_ptr<TreeMappedEmptyNodes> treePtr) override {
         assert(taxonomy != nullptr);
         std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
         for (auto nd : iter_leaf_const(*treePtr)) {

@@ -27,7 +27,7 @@ void getInducedInformativeGroupingMaps(const T & tree1,
 template<typename T>
 inline void getInformativeGroupingMaps(const T & tree2,
                                       std::map<std::set<long>, const typename T::node_type *> & tree2Splits) {
-    auto t2r = tree2.getRoot();
+    auto t2r = tree2.get_root();
     for (auto n : iter_pre_internal_const(tree2)) {
         if (n == t2r) {
             continue;
@@ -93,7 +93,7 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 
 struct ConflictReporterProc : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
     virtual ~ConflictReporterProc(){}
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) {
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
         tree->setName(otCLI.currentFilename);

@@ -184,7 +184,7 @@ unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long r
     auto root = find_node_by_ott_id(*tree, root_ott_id);
     root->detachThisNode();
     unique_ptr<Tree_t> tree2 (new Tree_t);
-    tree2->_setRoot(root);
+    tree2->_set_root(root);
     return tree2;
 }
 
@@ -203,7 +203,7 @@ unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
     auto root = find_node_by_ott_id(*tree, root_ott_id);
     root->detachThisNode();
     unique_ptr<Tree_t> tree2 (new Tree_t);
-    tree2->_setRoot(root);
+    tree2->_set_root(root);
     return tree2;
 }
 

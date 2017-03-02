@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     const bool set_ott_ids = otCLI.getParsingRules().set_ott_ids;
     vector<std::size_t> no_root_label;
     for (std::size_t i = 0U; i < trees.size(); i++) {
-        if (trees[i]->getRoot()->get_name().empty()) {
+        if (trees[i]->get_root()->get_name().empty()) {
             no_root_label.push_back(i);
         }
     }
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     // Each root id should occur only once as a root.
     std::unordered_set<long> root_ids;
     for (auto i = 0U; i < trees.size(); i++) {
-        auto root = trees[i]->getRoot();
+        auto root = trees[i]->get_root();
         long id = root->get_ott_id();
         if (not root_ids.count(id)) {
             root_ids.insert(id);
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     // Glue each root into its corresponding tip.
     vector<unique_ptr<Tree_t>> roots;
     for (auto i = 0U; i < trees.size(); i++) {
-        long id = trees[i]->getRoot()->get_ott_id();
+        long id = trees[i]->get_root()->get_ott_id();
         if (not my_leaf.count(id)) {
             if (otCLI.verbose) {
                 LOG(INFO)<<"OTT Id "<<id<<" is not a leaf in any subproblem.  Must be a root.\n";
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
         }
     }
     if (roots.size() == 1 and not rootName.empty()) {
-        roots[0]->getRoot()->setName(rootName);
+        roots[0]->get_root()->setName(rootName);
     }
     for(const auto& tree: roots) {
         writeTreeAsNewick(std::cout, *tree);

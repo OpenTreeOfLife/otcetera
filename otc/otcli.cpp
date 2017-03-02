@@ -22,8 +22,7 @@ using std::string;
 using std::vector;
 
 namespace otc {
-bool debuggingOutputEnabled = false;
-long ottIDBeingDebugged = -1;
+bool debugging_output_enabled = false;
 OTCLI::OTCLI(const char *title,
           const char *descrip,
           const char *usage,
@@ -77,14 +76,14 @@ void OTCLI::printHelp(std::ostream & outStream) {
 
 void OTCLI::turnOnVerboseMode() {
     this->verbose = true;
-    debuggingOutputEnabled = true;
+    debugging_output_enabled = true;
     defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
 
 void OTCLI::turnOffVerboseMode() {
     this->verbose = false;
-    debuggingOutputEnabled = false;
+    debugging_output_enabled = false;
     defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
     el::Loggers::reconfigureLogger("default", defaultConf);
 }
@@ -135,7 +134,7 @@ bool OTCLI::handleFlag(const std::string & flagWithoutDash) {
             recursionNeeded = true;
         }
         this->verbose = false;
-        debuggingOutputEnabled = false;
+        debugging_output_enabled = false;
         defaultConf.set(el::Level::Global, el::ConfigurationType::Enabled, "false");
         el::Loggers::reconfigureLogger("default", defaultConf);
     } else if (f == 'f') {

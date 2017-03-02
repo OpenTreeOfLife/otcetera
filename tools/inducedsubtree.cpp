@@ -33,7 +33,7 @@ struct InducedSubtreeState
     }
 
     // accumulate the set of leaves to include in inducingIds
-    virtual bool processSourceTree(OTCLI &, std::unique_ptr<Tree_t> tree) override {
+    virtual bool process_source_tree(OTCLI &, std::unique_ptr<Tree_t> tree) override {
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
         for(auto leaf: iter_leaf_const(*tree))

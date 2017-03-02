@@ -159,11 +159,11 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     tree->create_root();
     // 1. First handle trees of size 1 and 2
     if (tips.size() == 1) {
-        tree->getRoot()->set_ott_id(*tips.begin());
+        tree->get_root()->set_ott_id(*tips.begin());
         return tree;
     } else if (tips.size() == 2) {
-        auto Node1a = tree->create_child(tree->getRoot());
-        auto Node1b = tree->create_child(tree->getRoot());
+        auto Node1a = tree->create_child(tree->get_root());
+        auto Node1b = tree->create_child(tree->get_root());
         auto it = tips.begin();
         Node1a->set_ott_id(*it++);
         Node1b->set_ott_id(*it++);
@@ -241,7 +241,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         if (not subtree) {
             return {};
         }
-        addSubtree(tree->getRoot(), *subtree);
+        addSubtree(tree->get_root(), *subtree);
     }
     return tree;
 }
@@ -281,7 +281,7 @@ Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd)
 void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
 {
     // name root
-    summary.getRoot()->setName(taxonomy.getRoot()->get_name());
+    summary.get_root()->setName(taxonomy.get_root()->get_name());
 
     // name tips
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
@@ -439,13 +439,13 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
     map<typename Tree_t::node_type const*, set<long>> exclude;
 
     // Set exclude set for root node to the empty set.
-    exclude[tree.getRoot()]; 	    
+    exclude[tree.get_root()]; 	    
 
     for(auto nd: iter_pre_const(tree)) {
 
 	if (nd->isTip()) continue;
 
-	if (nd == tree.getRoot()) continue;
+	if (nd == tree.get_root()) continue;
 	
 	// the exclude set contain the EXCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
 	set<long> ex = exclude.at(nd->getParent());
@@ -464,7 +464,7 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<long>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
-    auto all_leaves = taxonomy->getRoot()->get_data().desIds;
+    auto all_leaves = taxonomy->get_root()->get_data().desIds;
     // index -> id
     vector<long> ids;
     // id -> index
@@ -512,7 +512,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
     {
 	const auto& tree = trees[i];
 
-        auto root = tree->getRoot();
+        auto root = tree->get_root();
         const auto leafTaxa = root->get_data().desIds;
         const auto leafTaxaIndices = remap(leafTaxa);
 
@@ -591,7 +591,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
             }
         }
         for(const auto& n: names) {
-            auto node = retTree->create_child(retTree->getRoot());
+            auto node = retTree->create_child(retTree->get_root());
             node->set_ott_id(n.first);
             node->setName(n.second);
         }
@@ -606,7 +606,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
             }
         }
         for(const auto& n: names) {
-            auto node = retTree->create_child(retTree->getRoot());
+            auto node = retTree->create_child(retTree->get_root());
             node->setName(n);
         }
     }
@@ -702,7 +702,7 @@ int main(int argc, char *argv[])
 	// 8. Set the root name (if asked)
 	// FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
 	if (setRootName) {
-	    tree->getRoot()->setName(args["root-name"].as<string>());
+	    tree->get_root()->setName(args["root-name"].as<string>());
 	}
 
 	// 9. Write out the summary tree.

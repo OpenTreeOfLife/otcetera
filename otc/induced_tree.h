@@ -81,7 +81,7 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
     std::unordered_map<const typename Tree_t::node_type*, typename Tree_t::node_type*> to_induced_tree;
     for(auto nd: nodes)
     {
-        auto nd2 = induced_tree->createNode(nullptr);
+        auto nd2 = induced_tree->create_node(nullptr);
 
         if (nd->has_ott_id())
             nd2->set_ott_id(nd->get_ott_id());
@@ -112,7 +112,7 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
     }
 
     // 4. Set the root of the induced tree to node corresponding to the MRCA
-    induced_tree->_setRoot( to_induced_tree.at(MRCA) );
+    induced_tree->_set_root( to_induced_tree.at(MRCA) );
     
     return induced_tree;
 }

@@ -36,7 +36,7 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
         return numErrors == 0;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         if (synthTree == nullptr) {
             synthTree = std::move(tree);

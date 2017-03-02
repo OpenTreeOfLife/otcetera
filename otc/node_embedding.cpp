@@ -184,7 +184,7 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
         }
     }
     assert(phPar != nullptr);
-    U * insertedNodePtr = treePtr->createNode(phPar);
+    U * insertedNodePtr = treePtr->create_node(phPar);
     for (auto p2p : phyloNode2PhyloPar) {
         U * phChild = p2p.first;
         phChild->detachThisNode();
@@ -284,7 +284,7 @@ NodeEmbedding<T, U>::getAllIncomingPathPairs(const std::map<const T *, NodeEmbed
 
 template<typename T, typename U>
 bool PathPairing<T, U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
-    if (false && debuggingOutputEnabled) {
+    if (false && debugging_output_enabled) {
         LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << reinterpret_cast<long>(this) << " in ";
         dbWriteOttSet("currChildOttIdSet", currChildOttIdSet);
         dbWriteOttSet("oldEls", oldEls);
@@ -300,7 +300,7 @@ bool PathPairing<T, U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const
         }
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
-    if (false && debuggingOutputEnabled) {
+    if (false && debugging_output_enabled) {
         LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << reinterpret_cast<long>(this);
         dbWriteOttSet("updateOttIdSetNoTraversal exit ", currChildOttIdSet);
     }
@@ -644,7 +644,7 @@ std::string NodeEmbedding<T, U>::exportSubproblemAndResolve(
                 debugPrintNd2Par("lnd2par", lnd2par);
                 assert(false);
             }
-            sortChildOrderByLowestDesOttId(toWrite.getRoot());
+            sortChildOrderByLowestDesOttId(toWrite.get_root());
             writeTreeAsNewick(*treeExpStream, toWrite);
             *treeExpStream << "\n";
         }
@@ -703,17 +703,10 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
                 trivialQ.push(toQ);
             } else {
                 const auto & d = mpoIt->first;
-                gpf.debugInvariantsCheck();
-                if (scaffOTTId == ottIDBeingDebugged) {
-                    appendIncludeLeafSetAsNewick("phyloStatementAttempt", d, relevantIds);
-                }
+                gpf.debug_invariants_check();
                 LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex << " out of " << mapToProvideOrder.size() << " (some of which may be skipped as trivial)";
                 gpf.attempt_to_add_grouping(d, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex, &sc);
-                gpf.debugInvariantsCheck();
-                if (scaffOTTId == ottIDBeingDebugged) {
-                    gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
-                    gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, INFORMATIVE_SPLIT, treeIndex, bogusGroupIndex -1));
-                }
+                gpf.debug_invariants_check();
                 considered.insert(ppptr);
             }
             bogusGroupIndex++;
@@ -722,15 +715,8 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
             const q_t triv = trivialQ.front();
             const OttIdSet * inc = triv.first;
             const auto ppptr = triv.second;
-            if (scaffOTTId == ottIDBeingDebugged) {
-                appendIncludeLeafSetAsNewick("phyloStatementAttempt", *inc, relevantIds);
-            }
             gpf.add_leaf(*inc, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex++, &sc);
-            if (scaffOTTId == ottIDBeingDebugged) {
-                gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
-                gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeIndex, bogusGroupIndex -1));
-            }
-            gpf.debugInvariantsCheck();
+            gpf.debug_invariants_check();
             considered.insert(ppptr);
             trivialQ.pop();
         }
@@ -746,19 +732,12 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
     auto childExitPaths = getAllChildExitPaths(scaffoldNode, sc.scaffold2NodeEmbedding);
     for (auto pathPtr : childExitPaths) {
         if (!contains(considered, pathPtr)) {
-            if (scaffOTTId == ottIDBeingDebugged) {
-                appendIncludeLeafSetAsNewick("phyloStatementAttempt", pathPtr->get_ott_idSet(), pathPtr->get_ott_idSet());
-            }
             gpf.attempt_to_add_grouping(pathPtr->get_ott_idSet(),
                                     EMPTY_SET,
                                     static_cast<int>(bogusTreeIndex),
                                     bogusGroupIndex++,
                                     &sc);
-            if (scaffOTTId == ottIDBeingDebugged) {
-                gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
-                gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, NONEMBEDDED_SPLIT, bogusTreeIndex, bogusGroupIndex -1));
-            }
-            gpf.debugInvariantsCheck();
+            gpf.debug_invariants_check();
             considered.insert(pathPtr); // @TMP not needed
         }
     }
@@ -767,17 +746,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
             assert(snc != nullptr);
         }
     }
-    if (scaffOTTId == ottIDBeingDebugged) {
-        std::string fn = forestDOTfile;
-        fn += "BeforeFinalize.dot";
-        gpf.writeForestDOTToFN(fn);
-    }
     gpf.finish_resolution_of_embedded_clade(scaffoldNode, this, &sc);
-    if (scaffOTTId == ottIDBeingDebugged) {
-        std::string fn = forestDOTfile;
-        fn += "AfterFinalize.dot";
-        gpf.writeForestDOTToFN(fn);
-    }
 }
 
 template<typename T, typename U>

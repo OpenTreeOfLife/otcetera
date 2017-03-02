@@ -19,7 +19,7 @@ class TreeEdge {
         void setParent(Node_t * p) {
             this->parent = p;
         }
-        void writeAsNewick(std::ostream &out, bool nhx) const;
+        void write_as_newick(std::ostream &out, bool nhx) const;
         TreeEdge<T>(Node_t * par, Node_t  * des)
             :parent(par),
             child(des) {

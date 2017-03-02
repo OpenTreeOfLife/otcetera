@@ -287,7 +287,7 @@ void fillDesIdSetsIncludingInternals(T & tree) {
 // fills in the depth data member for each node.
 template <typename T>
 void computeDepth(T& tree) {
-    tree.getRoot()->get_data().depth = 1;
+    tree.get_root()->get_data().depth = 1;
     for (auto nd: iter_pre(tree)) {
         if (nd->getParent()) {
             nd->get_data().depth = nd->getParent()->get_data().depth + 1;
@@ -342,8 +342,8 @@ typename T::node_type * findMRCAFromIDSet(T & tree, const std::set<long> & idSet
 
 template<typename T>
 std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T & taxonomy) {
-    const auto & taxOttIds = taxonomy.getRoot()->get_data().desIds;
-    const auto & toCheckOttIds = toCheck.getRoot()->get_data().desIds;
+    const auto & taxOttIds = taxonomy.get_root()->get_data().desIds;
+    const auto & toCheckOttIds = toCheck.get_root()->get_data().desIds;
     const auto extras = set_sym_difference_as_set(toCheckOttIds, taxOttIds);
     if (!extras.empty()) {
         err << "OTT Ids found in an input tree,  but not in the taxonomy:\n";
@@ -450,8 +450,8 @@ std::set<const typename T::node_type *> expandOTTInternalsWhichAreLeaves(T & toE
         if (not taxNd)
         throw OTCError()<<"OTT Id "<<ottId<<" / Label '"<<nd->get_name()<<"' not found in taxonomy!";
         if (!taxNd->isTip()) {
-            const auto & leafSet = getDesOttIds(*taxNd);
-            replaceNodes[nd] = leafSet;
+            const auto & leaf_set = getDesOttIds(*taxNd);
+            replaceNodes[nd] = leaf_set;
         }
     }
     std::set<const typename T::node_type *> expanded;
@@ -795,7 +795,7 @@ inline void writeNewickGeneric(std::ostream & out,
 
 template<typename T>
 inline void dbWriteNewick(const T *nd) {
-    if (!debuggingOutputEnabled) {
+    if (!debugging_output_enabled) {
         return;
     }
     writeNewick(std::cerr, nd);
@@ -876,7 +876,7 @@ inline void writeNewickFiltered(std::ostream & out, const T *nd, std::function<b
 
 template<typename T>
 inline void writeTreeAsNewick(std::ostream & out, const T &tree) {
-    writeNewick<typename T::node_type>(out, tree.getRoot());
+    writeNewick<typename T::node_type>(out, tree.get_root());
     out << ';';
 }
 
@@ -1029,7 +1029,7 @@ inline void delMonotypicNode(typename T::node_type* nd, T& tree) {
         nd->detachThisNode();
     }
     else
-        tree._setRoot(child);
+        tree._set_root(child);
 
     delete nd;
  }
@@ -1180,7 +1180,7 @@ inline bool areLinearlyRelated(const T * nd1, const T *nd2) {
 template<typename T>
 inline std::set<long> get_ott_idSetForLeaves(const T &tree) {
     if (!tree.get_data().desIdSetsContainInternals) {
-        return tree.getRoot()->get_data().desIds;
+        return tree.get_root()->get_data().desIds;
     }
     std::set<long> inducingIds;
     for (auto nd : iter_leaf_const(tree)) {
@@ -1211,7 +1211,7 @@ void getInducedInformativeGroupings(const T & tree1, std::set<std::set<long> > &
 template<typename T>
 void getInformativeGroupings(const T & tree2,
                              std::set<std::set<long> > & tree2Splits) {
-    auto t2r = tree2.getRoot();
+    auto t2r = tree2.get_root();
     for (auto n : iter_pre_internal_const(tree2)) {
         if (n == t2r) {
             continue;
@@ -1274,7 +1274,7 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         RootedTreeNode<T> * nParent;
         auto npIt = other2new.find(otherParent);
         if (npIt == other2new.end()) {
-            nParent = toWrite.createNode(nullptr);
+            nParent = toWrite.create_node(nullptr);
             other2new[otherParent] = nParent;
             if (otherParent->has_ott_id())
                 nParent->set_ott_id(otherParent->get_ott_id());
@@ -1284,7 +1284,7 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
         RootedTreeNode<T> * nChild;
         auto ncIt = other2new.find(otherChild);
         if (ncIt == other2new.end()) {
-            nChild = toWrite.createNode(nParent);
+            nChild = toWrite.create_node(nParent);
             other2new[otherChild] = nChild;
             if (otherChild->has_ott_id())
                 nChild->set_ott_id(otherChild->get_ott_id());
@@ -1315,7 +1315,7 @@ inline void copyTreeStructure(const std::map<U *, U *> & nd2par,
     assert(other2new.size() == 1 + withParents.size()); // only the root should be parentless
     for (auto o2n : other2new) {
         if (!contains(withParents, o2n.second)) {
-            toWrite._setRoot(o2n.second);
+            toWrite._set_root(o2n.second);
             return;
         }
     }
@@ -1341,7 +1341,7 @@ inline std::size_t pruneTipsWithoutIds(T & tree) {
         std::set<typename T::node_type *> nextParToCheck;
         for (auto nd : parToCheck) {
             if (nd == nullptr) {
-                tree._setRoot(nullptr);
+                tree._set_root(nullptr);
                 continue;
             }
             if (nd->isTip()) {
@@ -1351,7 +1351,7 @@ inline std::size_t pruneTipsWithoutIds(T & tree) {
         }
         nextParToCheck.swap(parToCheck);
     }
-    if (tree.getRoot() != nullptr) {
+    if (tree.get_root() != nullptr) {
         suppressMonotypicTaxaPreserveShallowDangle(tree);
     }
     return r;

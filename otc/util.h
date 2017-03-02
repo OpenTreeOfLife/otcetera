@@ -136,7 +136,7 @@ inline void writeOttSet(std::ostream & out,
 }
 inline void dbWriteOttSet(const char * label,
                           const std::set<long> &fir) {
-    if (!debuggingOutputEnabled) {
+    if (!debugging_output_enabled) {
         return;
     }
     std::cerr << label;

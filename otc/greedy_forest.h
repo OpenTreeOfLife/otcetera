@@ -27,15 +27,15 @@ class GreedyBandedForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     GreedyBandedForest(const GreedyBandedForest &) = delete;
     GreedyBandedForest & operator=(const GreedyBandedForest &) = delete;
     bool attempt_to_add_grouping(const OttIdSet & incGroup,
-                              const OttIdSet & leafSet,
+                              const OttIdSet & leaf_set,
                               int treeIndex,
                               long groupIndex,
                               SupertreeContextWithSplits *sc);
-    bool add_leaf(const OttIdSet & incGroup, const OttIdSet & leafSet, int treeIndex, long groupIndex, SupertreeContextWithSplits *sc);
+    bool add_leaf(const OttIdSet & incGroup, const OttIdSet & leaf_set, int treeIndex, long groupIndex, SupertreeContextWithSplits *sc);
     void finish_resolution_of_embedded_clade(U & scaffoldNode, NodeEmbedding<T, U> * , SupertreeContextWithSplits * sc);
     private:
     bool create_and_add_phylo_statement(const OttIdSet & incGroup,
-                           const OttIdSet & leafSet,
+                           const OttIdSet & leaf_set,
                            int treeIndex,
                            long groupIndex);
     void finalize_tree(SupertreeContextWithSplits *sc);

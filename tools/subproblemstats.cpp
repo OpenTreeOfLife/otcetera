@@ -2,7 +2,7 @@
 using namespace otc;
 typedef RootedTree<RTNodeNoData, RTreeNoData> Tree_t;
 struct PerTreeStats {
-    OttIdSet leafSet; // full leaf set
+    OttIdSet leaf_set; // full leaf set
     OttIdSet leavesInIngroupSet; // leaves whose parents are not the root
     std::size_t numInformativeGroups;
 };
@@ -23,7 +23,7 @@ bool recordSubproblemStats(OTCLI & otCLI, std::unique_ptr<T> tree) {
     auto & pss = gSubproblemStatsState->name2Stats[otCLI.currentFilename];
     pss.pts.push_back(PerTreeStats());
     auto & pts = *(pss.pts.rbegin());
-    auto root = tree->getRoot();
+    auto root = tree->get_root();
     for (auto nd : iter_node_const(*tree)) {
         if (nd == root) {
             continue;
@@ -31,7 +31,7 @@ bool recordSubproblemStats(OTCLI & otCLI, std::unique_ptr<T> tree) {
         if (nd->isTip()) {
             assert(nd->has_ott_id());
             const auto ottId = nd->get_ott_id();
-            pts.leafSet.insert(ottId);
+            pts.leaf_set.insert(ottId);
             if (nd->getParent() != root) {
                 pts.leavesInIngroupSet.insert(ottId);
             }
@@ -57,7 +57,7 @@ int summarize(OTCLI & otCLI) {
         const auto & name = ntsP.first;
         const auto & pss = ntsP.second;
         std::size_t i = 0;
-        OttIdSet leafSet;
+        OttIdSet leaf_set;
         OttIdSet leavesInIngroupSet;
         std::size_t numInformativeGroups = 0;
         OttIdSet allButTaxLeafSet;
@@ -65,17 +65,17 @@ int summarize(OTCLI & otCLI) {
         std::size_t allButTaxNumInformativeGroups = 0;
 
         for (const auto & pts : pss.pts) {
-            allButTaxLeafSet = leafSet;
+            allButTaxLeafSet = leaf_set;
             allButTaxLeavesInIngroupSet = leavesInIngroupSet;
             allButTaxNumInformativeGroups = numInformativeGroups;
             otCLI.out << name ;
             otCLI.out << '\t' << pts.numInformativeGroups;
-            otCLI.out << '\t' << pts.leafSet.size();
+            otCLI.out << '\t' << pts.leaf_set.size();
             otCLI.out << '\t' << pts.leavesInIngroupSet.size();
             otCLI.out << '\t'; // number of trees
             otCLI.out << '\t' << i++;
             otCLI.out << '\n';
-            leafSet.insert(begin(pts.leafSet), end(pts.leafSet));
+            leaf_set.insert(begin(pts.leaf_set), end(pts.leaf_set));
             leavesInIngroupSet.insert(begin(pts.leavesInIngroupSet), end(pts.leavesInIngroupSet));
             numInformativeGroups += pts.numInformativeGroups;
         }
@@ -88,7 +88,7 @@ int summarize(OTCLI & otCLI) {
         otCLI.out << '\n';
         otCLI.out << name ;
         otCLI.out << '\t' << numInformativeGroups;
-        otCLI.out << '\t' << leafSet.size();
+        otCLI.out << '\t' << leaf_set.size();
         otCLI.out << '\t' << leavesInIngroupSet.size();
         otCLI.out << '\t' << pss.pts.size();
         otCLI.out << '\t' << "Total";

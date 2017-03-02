@@ -32,7 +32,7 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
         numTreesInThisTreefile(0U) {
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         numComparisons += 1;
         std::string nameToPrint = otCLI.currentFilename;
         if (nameToPrint == prevTreeFilename) {

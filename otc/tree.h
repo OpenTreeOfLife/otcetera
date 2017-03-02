@@ -220,17 +220,17 @@ class RootedTreeNode {
             n->parent = parent;
         }
     public:
-        void writeAsNewick(std::ostream &out,
+        void write_as_newick(std::ostream &out,
                            bool useLeafNames,
                            const std::map<node_type *, namestring_t> *nd2name=nullptr) const {
             auto child = getFirstChild();
             if (child) {
                 out << "(";
-                child->writeAsNewick(out,useLeafNames,nd2name);
+                child->write_as_newick(out,useLeafNames,nd2name);
                 child = child->getNextSib();
                 for(;child;child = child->getNextSib()) {
                     out << ",";
-                    child->writeAsNewick(out,useLeafNames,nd2name);
+                    child->write_as_newick(out,useLeafNames,nd2name);
                 }
                 out << ")";
             }
@@ -275,20 +275,20 @@ class RootedTree {
             clear();
         }
         std::vector<const node_type *> getPreorderTraversal() const;
-        void writeAsNewick(std::ostream &out,
+        void write_as_newick(std::ostream &out,
                            bool useLeafNames,
                            const std::map<node_type *, namestring_t> *nd2name=nullptr) const {
             if (root) {
-                root->writeAsNewick(out, useLeafNames, nd2name);
+                root->write_as_newick(out, useLeafNames, nd2name);
             }
         }
-        const node_type * getRoot() const {
+        const node_type * get_root() const {
             return root;
         }
-        node_type * getRoot() {
+        node_type * get_root() {
             return root;
         }
-        void _setRoot(node_type * r) {
+        void _set_root(node_type * r) {
             root = r;
         }
         node_type * create_root() {
@@ -303,7 +303,7 @@ class RootedTree {
             par->addChild(c);
             return c;
         }
-        node_type * createNode(node_type *par) {
+        node_type * create_node(node_type *par) {
             auto c = this->allocNewNode(par);
             if (par != nullptr) {
                 par->addChild(c);
@@ -403,7 +403,7 @@ class RTreeNoData{};
 template<typename Tree>
 void addSubtree(typename Tree::node_type* par, Tree& T2)
 {
-    auto c = T2.getRoot();
+    auto c = T2.get_root();
     T2.pruneAndDangle(c);
     par->addChild(c);
 }
@@ -414,13 +414,13 @@ void replaceWithSubtree(typename Tree::node_type* n, Tree& T2)
     // Get the parent of the tip we are replacing
     auto p = n->getParent();
     // Remove the data from T2 and attach it to this parent
-    auto c = T2.getRoot();
+    auto c = T2.get_root();
     T2.pruneAndDangle(c);
     p->addChild(c);
     // Remove the old child from under p
     p->removeChild(n);
     // Make the old child the root of T2, which will handle deleting it
-    T2._setRoot(n);
+    T2._set_root(n);
 }
 
 } // namespace otc

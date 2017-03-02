@@ -57,7 +57,7 @@ inline NDSE operator|(NDSE f, NDSB s) {
 std::pair<NDSE, const NodeWithSplits *>
 classifyInpNode(const TreeMappedWithSplits & summaryTree,
                      const NodeWithSplits * nd,
-                     const OttIdSet & leafSet,
+                     const OttIdSet & leaf_set,
                      const NodeWithSplits * startSummaryNd,
                      bool isTaxoComp=false);
 
@@ -71,13 +71,13 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
 std::pair<NDSE, const NodeWithSplits *>
 classifyInpNode(const TreeMappedWithSplits & summaryTree,
                      const NodeWithSplits * nd,
-                     const OttIdSet & leafSet,
+                     const OttIdSet & leaf_set,
                      const NodeWithSplits * startSummaryNd,
                      bool isTaxoComp) {
     using CN = std::pair<NDSE, const NodeWithSplits *>;
     const auto & ndi = nd->get_data().desIds;
     assert(nd);
-    if (ndi.size() == leafSet.size()) {
+    if (ndi.size() == leaf_set.size()) {
         if (nd->getParent() == nullptr) {
             if (nd->isOutDegreeOneNode()) {
                 if (ndi.size() == 1) {
@@ -153,13 +153,13 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
             const auto & sumdi = rn->get_data().desIds;
             const auto extra = set_difference_as_set(sumdi, ndi);
             if (isSubset(ndi, sumdi)) {
-                if (areDisjoint(extra, leafSet)) {
+                if (areDisjoint(extra, leaf_set)) {
                     if (nd->isOutDegreeOneNode()) {
                         return CN{NDSE::REDUNDANT_DISPLAYED, rn};
                     }
                     return CN{NDSE::FORKING_DISPLAYED, rn};
                 }
-                const auto exc = set_difference_as_set(leafSet, ndi);
+                const auto exc = set_difference_as_set(leaf_set, ndi);
                 if (canBeResolvedToDisplayIncExcGroup(rn, ndi, exc)) {
                     if (nd->isOutDegreeOneNode()) {
                         return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
@@ -168,7 +168,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
                 }
                 break; // incompatible
             }
-            if (!areDisjoint(extra, leafSet)) {
+            if (!areDisjoint(extra, leaf_set)) {
                 break; // incompatible
             }
             rn = rn->getParent();
@@ -208,13 +208,13 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                                        std::unordered_multimap<string,string> * conflict,
                                        bool isTaxoComp) {
     std::map<NDSE, std::size_t> r;
-    if (inpTree.getRoot() == nullptr) {
+    if (inpTree.get_root() == nullptr) {
         return r;
     }
     std::map<const NodeWithSplits *, NDSE> localNd2C;
     std::map<const NodeWithSplits *, NDSE> & nd2t{node2Classification == nullptr ? localNd2C : *node2Classification};
     std::map<const NodeWithSplits *, const NodeWithSplits *> nd2summaryTree;
-    const auto & treeLeafSet = inpTree.getRoot()->get_data().desIds;
+    const auto & treeLeafSet = inpTree.get_root()->get_data().desIds;
     for (auto nd : iter_post_const(inpTree)) {
         NDSE t = NDSE::END_VALUE;
         if (nd->isTip()) {
@@ -448,8 +448,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         numTrees += 1;
     }
 
-    virtual bool processTaxonomyTree(OTCLI & otCLI) override {
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+    virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
         otCLI.getParsingRules().requireOttIds = false;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
@@ -459,7 +459,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         return true;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         if (summaryTree == nullptr) {
             summaryTree = std::move(tree);

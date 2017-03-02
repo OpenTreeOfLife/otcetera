@@ -115,7 +115,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             }
             documentP = &document;
         }
-        cloneTaxonomyAsASourceTree();
+        clone_taxonomy_as_a_source_tree();
         exportSubproblems(otCLI, documentP);
         subproblemIdStream = nullptr;
         if (documentP != nullptr) {
