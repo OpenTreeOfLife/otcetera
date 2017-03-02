@@ -57,15 +57,15 @@ class PathPairing {
                      // that is probably the best way to do this (const was
                      // probably to retrictive). But more careful consideration may be needed
     OttIdSet currChildOttIdSet;
-    bool pathIsNowTrivial() {
+    bool path_is_now_trivial() {
         return currChildOttIdSet.size() == 1;
     }
-    void set_ott_idSet(long oid,
+    void set_ott_id_set(long oid,
                      std::map<const U *, NodeEmbedding<T, U> > & m) {
         if (currChildOttIdSet.size() == 1 && *currChildOttIdSet.begin() == oid) {
             return;
         }
-        LOG(DEBUG) << "set_ott_idSet to " << oid << "  for path " << reinterpret_cast<long>(this);
+        LOG(DEBUG) << "set_ott_id_set to " << oid << "  for path " << reinterpret_cast<long>(this);
         dbWriteOttSet("prev currChildOttIdSet = ", currChildOttIdSet);
         OttIdSet n;
         OttIdSet oldIds;
@@ -74,16 +74,16 @@ class PathPairing {
             oldIds.erase(oid);
         }
         n.insert(oid);
-        updateDesIdsForSelfAndAnc(oldIds, n, m);
+        update_des_ids_for_self_and_anc(oldIds, n, m);
     }
-    void updateDesIdsForSelfAndAnc(const OttIdSet & oldIds,
+    void update_des_ids_for_self_and_anc(const OttIdSet & oldIds,
                                    const OttIdSet & newIds,
                                    std::map<const U *, NodeEmbedding<T, U> > & m) {
         update_ancestral_path_ott_id_set(scaffoldDes, oldIds, newIds, m);
         currChildOttIdSet = newIds;
-        dbWriteOttSet(" updateDesIdsForSelfAndAnc onExit currChildOttIdSet = ", currChildOttIdSet);
+        dbWriteOttSet(" update_des_ids_for_self_and_anc onExit currChildOttIdSet = ", currChildOttIdSet);
     }
-    bool updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
+    bool update_ott_id_set_no_traversal(const OttIdSet & oldEls, const OttIdSet & newEls);
     PathPairing(const NodePairing<T, U> & parent,
                 const NodePairing<T, U> & child)
         :scaffoldDes(child.scaffoldNode),
@@ -109,10 +109,10 @@ class PathPairing {
     // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 
     // descendant Ott Id set. But may change to reflect this remapping to the effective
     // set of IDs that include the tip.
-    const OttIdSet & get_ott_idSet() const {
+    const OttIdSet & get_ott_id_set() const {
         return currChildOttIdSet;
     }
-    const OttIdSet & getPhyloChildDesID() const {
+    const OttIdSet & get_phylo_child_des_id() const {
         return phyloChild->get_data().desIds;
     }
 };

@@ -14,14 +14,14 @@ namespace otc {
 ////////////////////////////////////////////////////////////////////////////////
 // no ops for no data
 template <typename N, typename T>
-inline void newickCloseNodeHook(RootedTree<N,T> & ,
+inline void newick_close_node_hook(RootedTree<N,T> & ,
                                 RootedTreeNode<N> & ,
                                 const NewickTokenizer::Token & ,
                                 const ParsingRules & )
 { }
 
 template <typename N, typename T>
-inline void newickParseNodeInfo(RootedTree<N, T> & ,
+inline void newick_parse_node_info(RootedTree<N, T> & ,
                                 RootedTreeNode<N> & node,
                                 const NewickTokenizer::Token * labelToken,
                                 const NewickTokenizer::Token * , // used for comment
@@ -49,19 +49,19 @@ inline void newickParseNodeInfo(RootedTree<N, T> & ,
 }
 
 template<typename N, typename T>
-inline void postParseHook(RootedTree<N,T> & , const ParsingRules & ) {
+inline void post_parse_hook(RootedTree<N,T> & , const ParsingRules & ) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
 
 template <typename T, typename U>
-void set_ott_idAndAddToMap(RootedTree<T, U> & tree,
+void set_ott_id_and_add_to_map(RootedTree<T, U> & tree,
                          RootedTreeNode<T> & node,
                          const NewickTokenizer::Token * labelToken,
                          const ParsingRules &);
 
 template <typename T, typename U>
-inline void set_ott_idAndAddToMap(RootedTree<T, U> & tree,
+inline void set_ott_id_and_add_to_map(RootedTree<T, U> & tree,
                          RootedTreeNode<T> & node,
                          const NewickTokenizer::Token * labelToken,
                          const ParsingRules & parsingRules) {
@@ -106,19 +106,19 @@ inline void set_ott_idAndAddToMap(RootedTree<T, U> & tree,
 }
 
 template<typename N>
-inline void newickParseNodeInfo(RootedTree<N, RTreeOttIDMapping<N> > & tree,
+inline void newick_parse_node_info(RootedTree<N, RTreeOttIDMapping<N> > & tree,
                                 RootedTreeNode<N> & node,
                                 const NewickTokenizer::Token * labelToken,
                                 const NewickTokenizer::Token * , // used for comment
                                 const NewickTokenizer::Token * ,
                                 const ParsingRules & parsingRules) {
-    set_ott_idAndAddToMap(tree, node, labelToken, parsingRules);
+    set_ott_id_and_add_to_map(tree, node, labelToken, parsingRules);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
 template<>
-inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
+inline void newick_close_node_hook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
                                 RootedTreeNode<RTSplits> & node,
                                 const NewickTokenizer::Token & token,
                                 const ParsingRules & parsingRules) {
@@ -131,7 +131,7 @@ inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
 }
 
 template<>
-inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
+inline void post_parse_hook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
     if (not parsingRules.set_ott_ids) return;
     if (parsingRules.include_internal_nodes_in_des_id_sets) {
         fillDesIdSetsIncludingInternals(tree);

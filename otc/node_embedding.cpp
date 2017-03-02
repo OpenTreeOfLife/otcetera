@@ -81,7 +81,7 @@ bool NodeEmbedding<T, U>::debug_node_embeddings(const char * tag,
         if (parentsOfExits.empty()) {
             // no loops, the tree is just polytomy for this subproblem
             for (auto pathPtr : childExitForThisTree) {
-                const auto & rids = pathPtr->get_ott_idSet();
+                const auto & rids = pathPtr->get_ott_id_set();
                 assert(rids.size() == 1);
                 assert(*rids.begin() != LONG_MAX);
             }
@@ -97,7 +97,7 @@ bool NodeEmbedding<T, U>::debug_node_embeddings(const char * tag,
                 } else {
                     assert(contains(lnd2par, pp->phyloParent));
                 }
-                const auto & rids = pp->get_ott_idSet();
+                const auto & rids = pp->get_ott_id_set();
                 assert(rids.size() == 1);
                 assert(rids.size() == 1);
                 assert(*rids.begin() != LONG_MAX);
@@ -117,7 +117,7 @@ void NodeEmbedding<T, U>::set_ott_id_for_exit_embeddings(
         for (auto eout : treeInd2eout.second) {
             LOG(DEBUG) << "for tree " << treeInd2eout.first << " set_ott_id(" << ottId<< ')';
             eout->scaffoldDes = newScaffDes;
-            eout->set_ott_idSet(ottId, n2ne);
+            eout->set_ott_id_set(ottId, n2ne);
         }
     }
 }
@@ -283,9 +283,9 @@ NodeEmbedding<T, U>::get_all_incoming_path_pairs(const std::map<const T *, NodeE
 }
 
 template<typename T, typename U>
-bool PathPairing<T, U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
+bool PathPairing<T, U>::update_ott_id_set_no_traversal(const OttIdSet & oldEls, const OttIdSet & newEls) {
     if (false && debugging_output_enabled) {
-        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << reinterpret_cast<long>(this) << " in ";
+        LOG(DEBUG) << "  update_ott_id_set_no_traversal for " << reinterpret_cast<long>(this) << " in ";
         dbWriteOttSet("currChildOttIdSet", currChildOttIdSet);
         dbWriteOttSet("oldEls", oldEls);
         dbWriteOttSet("newEls", newEls);
@@ -301,15 +301,15 @@ bool PathPairing<T, U>::updateOttIdSetNoTraversal(const OttIdSet & oldEls, const
     }
     currChildOttIdSet.insert(begin(newEls), end(newEls));
     if (false && debugging_output_enabled) {
-        LOG(DEBUG) << "  updateOttIdSetNoTraversal for " << reinterpret_cast<long>(this);
-        dbWriteOttSet("updateOttIdSetNoTraversal exit ", currChildOttIdSet);
+        LOG(DEBUG) << "  update_ott_id_set_no_traversal for " << reinterpret_cast<long>(this);
+        dbWriteOttSet("update_ott_id_set_no_traversal exit ", currChildOttIdSet);
     }
     return true;
 }
 
 template<typename T, typename U>
 inline const OttIdSet & NodeEmbedding<T, U>::get_relevant_des_ids_from_path(const PathPairing<T, U> & path) {
-    return path.get_ott_idSet();
+    return path.get_ott_id_set();
 }
 template<typename T, typename U>
 OttIdSet NodeEmbedding<T, U>::get_relevant_des_ids_from_path_pair_set(const PathPairSet & pps) {
@@ -550,7 +550,7 @@ std::string NodeEmbedding<T, U>::export_subproblem_and_resolve(
                 if (contains(sc.prunedSubtrees[treeIndex], pathPtr->phyloChild)) {
                     continue;
                 }
-                auto rids = pathPtr->get_ott_idSet();
+                auto rids = pathPtr->get_ott_id_set();
                 if (rids.size() != 1) {
                     LOG(DEBUG) << "crashing while exporting OTT ID " << scaffoldNode.get_ott_id() << " for tree " << treePtr->get_name();
                     dbWriteOttSet(" rids = ", rids);
@@ -623,7 +623,7 @@ std::string NodeEmbedding<T, U>::export_subproblem_and_resolve(
                         lnd2par[pp->phyloChild] = pp->phyloParent;
                     }
                 }
-                auto rids = pp->get_ott_idSet();
+                auto rids = pp->get_ott_id_set();
                 assert(rids.size() == 1);
                 long ottId = *rids.begin();
                 assert(ottId != LONG_MAX);
@@ -690,15 +690,15 @@ void NodeEmbedding<T, U>::resolve_given_uncontested_monophyly(T & scaffoldNode,
         // for repeatability, we'll try to add groupings in reverse order of desIds sets (deeper first)
         std::map<OttIdSet, PathPairing<T, U> *> mapToProvideOrder;
         for (auto pp : pps) {
-            mapToProvideOrder[pp->get_ott_idSet()] = pp;
+            mapToProvideOrder[pp->get_ott_id_set()] = pp;
         }
         long bogusGroupIndex = 0; // should get this from the node!
         typedef std::pair<const OttIdSet *, PathPairing<T, U> *>  q_t;
         std::queue<q_t> trivialQ;
         for (auto mpoIt = mapToProvideOrder.rbegin(); mpoIt != mapToProvideOrder.rend(); ++mpoIt) {
             auto ppptr = mpoIt->second;
-            if (ppptr->pathIsNowTrivial()) {
-                dbWriteOttSet("pathIsNowTrivial", mpoIt->first);
+            if (ppptr->path_is_now_trivial()) {
+                dbWriteOttSet("path_is_now_trivial", mpoIt->first);
                 const q_t toQ{&(mpoIt->first), ppptr};
                 trivialQ.push(toQ);
             } else {
@@ -732,7 +732,7 @@ void NodeEmbedding<T, U>::resolve_given_uncontested_monophyly(T & scaffoldNode,
     auto childExitPaths = get_all_child_exit_paths(scaffoldNode, sc.scaffold2NodeEmbedding);
     for (auto pathPtr : childExitPaths) {
         if (!contains(considered, pathPtr)) {
-            gpf.attempt_to_add_grouping(pathPtr->get_ott_idSet(),
+            gpf.attempt_to_add_grouping(pathPtr->get_ott_id_set(),
                                     EMPTY_SET,
                                     static_cast<int>(bogusTreeIndex),
                                     bogusGroupIndex++,
@@ -882,7 +882,7 @@ void NodeEmbedding<T, U>::collapse_group(T & scaffoldNode, SupertreeContext<T, U
                     innerOTTId.insert(lp->phyloChild->get_ott_id());
                     OttIdSet n = scaffoldNode.get_data().desIds; // expand the internal name to it taxonomic content
                     n.erase(lp->phyloChild->get_ott_id());
-                    lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sn2ne);
+                    lp->update_des_ids_for_self_and_anc(innerOTTId, n, sn2ne);
                     indsOfTreesMappedToInternal.insert(treeIndex);
                     pathsAblated.insert(lp);
                     registerAsPruned(treeIndex, lp->phyloChild, sc);

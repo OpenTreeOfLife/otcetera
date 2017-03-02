@@ -295,7 +295,7 @@ inline bool update_all_mapped_paths_ott_id_sets(T & mPathSets, const OttIdSet & 
     bool r = false;
     for (auto mpIt : mPathSets) {
         for (auto p : mpIt.second) {
-            r = r || p->updateOttIdSetNoTraversal(oldEls, newEls);
+            r = r || p->update_ott_id_set_no_traversal(oldEls, newEls);
         }
     }
     return r;
