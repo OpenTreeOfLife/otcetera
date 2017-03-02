@@ -520,7 +520,7 @@ void process_source_info_vec(const std::vector<std::string> & vs,
 
 // default behavior is to set ID and Name from line
 template <>
-inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
+inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
                                            const TaxonomyRecord & line,
                                            std::function<std::string(const TaxonomyRecord&)>,
                                            RichTaxTree & tree) {
@@ -564,7 +564,7 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
 
 
 
-void RichTaxonomy::readSynonyms() {
+void RichTaxonomy::read_synonyms() {
     RTRichTaxTreeData & tree_data = this->tree->get_data();
     string filename = path + "/synonyms.tsv";
     ifstream synonyms_file(filename);
@@ -617,8 +617,8 @@ void RichTaxonomy::readSynonyms() {
 RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, long kr)
     :Taxonomy(dir, cf, kr) {
     auto nodeNamer = [](const auto&){return string();};
-    this->tree = getTree<RichTaxTree>(nodeNamer);
-    this->readSynonyms();
+    this->tree = get_tree<RichTaxTree>(nodeNamer);
+    this->read_synonyms();
     // Could call:
     // index.clear(); 
     // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move
@@ -744,7 +744,7 @@ string extract_string(const json & j, string opt_name) {
     throw OTCError() << "Expecting a \"" << opt_name << "\" property that refers to an string.";
 }
 
-void RichTaxonomy::addTaxonomicAdditionString(const std::string &s) {
+void RichTaxonomy::add_taxonomic_addition_string(const std::string &s) {
     json j;
     try {
         j = json::parse(s);

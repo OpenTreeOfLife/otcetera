@@ -88,7 +88,7 @@ inline std::map<long, long> generateIdRemapping(const T & tree) {
 inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplits &tree) {
     TreeMappedWithSplits * rawTreePtr = new TreeMappedWithSplits();
     try {
-        NodeWithSplits * newRoot = rawTreePtr->createRoot();
+        NodeWithSplits * newRoot = rawTreePtr->create_root();
         auto r = tree.getRoot();
         assert(r->hasOttId());
         newRoot->setOttId(r->getOttId());
@@ -104,7 +104,7 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
             auto t2nIt = templateToNew.find(p);
             assert(t2nIt != templateToNew.end());
             auto ntp = t2nIt->second;
-            auto nn = rawTreePtr->createChild(ntp);
+            auto nn = rawTreePtr->create_child(ntp);
             assert(templateToNew.find(nd) == templateToNew.end());
             templateToNew[nd] = nn;
             if (nd->hasOttId()) {

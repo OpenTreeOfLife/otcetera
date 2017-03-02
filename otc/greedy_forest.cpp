@@ -48,7 +48,7 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
                 dp->addChild(dn);
             }
         } else {
-            dn = destTree.createChild(dp);
+            dn = destTree.create_child(dp);
         if (sn->hasOttId())
           dn->setOttId(sn->getOttId());
         }

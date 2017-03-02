@@ -211,7 +211,7 @@ template<typename T, typename U>
 inline RootedTreeNode<T> * RootedForest<T, U>::createNode(RootedTreeNode<T> * p, FTree<T, U> *ftree) {
     auto r = nodeSrc.getRoot();
     if (r == nullptr) {
-        auto c = nodeSrc.createRoot();
+        auto c = nodeSrc.create_root();
         if (p != nullptr) {
             p->addChild(c);
         }

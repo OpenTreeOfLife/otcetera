@@ -355,7 +355,7 @@ std::size_t checkForUnknownTaxa(std::ostream & err, const T & toCheck, const T &
 
 template<typename T>
 inline typename T::node_type * addChildForOttId(typename T::node_type & nd, long ottId, T & tree) {
-    auto nn = tree.createChild(&nd);
+    auto nn = tree.create_child(&nd);
     nn->setOttId(ottId);
     tree.get_data()->ottIdToNode[ottId] = nn;
     return nn;
@@ -363,7 +363,7 @@ inline typename T::node_type * addChildForOttId(typename T::node_type & nd, long
 
 template<>
 inline NodeWithSplits * addChildForOttId<TreeMappedWithSplits>(NodeWithSplits & nd, long ottId, TreeMappedWithSplits & tree) {
-    auto nn = tree.createChild(&nd);
+    auto nn = tree.create_child(&nd);
     nn->setOttId(ottId);
     tree.get_data().ottIdToNode[ottId] = nn;
     return nn;

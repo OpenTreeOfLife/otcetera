@@ -155,7 +155,7 @@ class Taxonomy: public std::vector<TaxonomyRecord> {
     std::string version;
     std::string version_number;
     public:
-    template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const TaxonomyRecord&)>) const;
+    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
 
     const std::string & get_version() const {
         return version;
@@ -284,11 +284,11 @@ struct RichTaxonomy : public Taxonomy {
         }
         return i2n_it->second;
     }
-    void addTaxonomicAdditionString(const std::string &s);
+    void add_taxonomic_addition_string(const std::string &s);
     private:
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
-    void readSynonyms();
+    void read_synonyms();
     RichTaxonomy(const RichTaxonomy &) = delete;
 };
 
@@ -300,7 +300,7 @@ class RTTaxNodeData {
 };
 
 template <typename Node_t, typename TREE>
-void populateNodeFromTaxonomyRecord(Node_t & nd,
+void populate_node_from_taxonomy_record(Node_t & nd,
                                     const TaxonomyRecord & line,
                                     std::function<std::string(const TaxonomyRecord&)> get_name,
                                     TREE & tree);
@@ -308,7 +308,7 @@ void populateNodeFromTaxonomyRecord(Node_t & nd,
 
 // default behavior is to set ID and Name from line
 template <typename Node_t, typename TREE>
-inline void populateNodeFromTaxonomyRecord(Node_t & nd,
+inline void populate_node_from_taxonomy_record(Node_t & nd,
                                            const TaxonomyRecord & line,
                                            std::function<std::string(const TaxonomyRecord&)> get_name,
                                            TREE & ) {
@@ -318,7 +318,7 @@ inline void populateNodeFromTaxonomyRecord(Node_t & nd,
 
 // default behavior is to set ID and Name from line
 template <typename TREE>
-inline void populateNodeFromTaxonomyRecord(RootedTreeNode<RTTaxNodeData> & nd,
+inline void populate_node_from_taxonomy_record(RootedTreeNode<RTTaxNodeData> & nd,
                                            const TaxonomyRecord & line,
                                            std::function<std::string(const TaxonomyRecord&)>,
                                            TREE &) {
@@ -328,7 +328,7 @@ inline void populateNodeFromTaxonomyRecord(RootedTreeNode<RTTaxNodeData> & nd,
 
 
 template <typename Tree_t>
-std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const TaxonomyRecord&)> get_name) const {
+std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const TaxonomyRecord&)> get_name) const {
     const auto& taxonomy = *this;
     std::unique_ptr<Tree_t> tree(new Tree_t);
     vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
@@ -337,12 +337,12 @@ std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const Taxono
         // Make the tree
         typename Tree_t::node_type* nd = nullptr;
         if (i==0) {
-            nd = tree->createRoot();
+            nd = tree->create_root();
         } else {
             auto parent_nd = node_ptr[line.parent_index];
-            nd = tree->createChild(parent_nd);
+            nd = tree->create_child(parent_nd);
         }
-        populateNodeFromTaxonomyRecord(*nd, line, get_name, *tree);
+        populate_node_from_taxonomy_record(*nd, line, get_name, *tree);
         node_ptr[i] = nd;
     }
     return tree;

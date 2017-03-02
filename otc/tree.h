@@ -291,14 +291,14 @@ class RootedTree {
         void _setRoot(node_type * r) {
             root = r;
         }
-        node_type * createRoot() {
+        node_type * create_root() {
             if (root != nullptr) {
                 clear();
             }
             this->root = this->allocNewNode(nullptr);
             return this->root;
         }
-        node_type * createChild(node_type *par) {
+        node_type * create_child(node_type *par) {
             auto c = this->allocNewNode(par);
             par->addChild(c);
             return c;

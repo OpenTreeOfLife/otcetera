@@ -26,13 +26,13 @@ inline std::unique_ptr<T> readNextNewick(std::istream &inp, FilePosStruct & pos,
     std::stack<typename T::node_type *> nodeStack;
     T * rawTreePtr = new T();
     std::unique_ptr<T> treePtr(rawTreePtr);
-    typename T::node_type * currNode = rawTreePtr->createRoot();
+    typename T::node_type * currNode = rawTreePtr->create_root();
     // If we read a label or colon, we might consume multiple tokens;
     for (; tokenIt != tokenizer.end(); ) {
         const NewickTokenizer::Token topOfLoopToken = *tokenIt;
         if (topOfLoopToken.state == NewickTokenizer::NWK_OPEN) {
             nodeStack.push(currNode);
-            currNode = rawTreePtr->createChild(currNode);
+            currNode = rawTreePtr->create_child(currNode);
             ++tokenIt;
         } else if (topOfLoopToken.state == NewickTokenizer::NWK_CLOSE) {
             assert(!nodeStack.empty()); // NewickTokenizer should thrown an exception if unbalanced

@@ -140,7 +140,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
                    and not ott_to_sol.count(nd2->getParent()->getOttId())) {
                 nd2 = nd2->getParent();
                 assert(nd1->getParent());
-                auto x = solution.createChild(nd1->getParent());
+                auto x = solution.create_child(nd1->getParent());
                 nd1->detachThisNode();
                 x->addChild(nd1);
                 nd1 = x;

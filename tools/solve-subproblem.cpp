@@ -156,14 +156,14 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
     std::unique_ptr<Tree_t> tree(new Tree_t());
-    tree->createRoot();
+    tree->create_root();
     // 1. First handle trees of size 1 and 2
     if (tips.size() == 1) {
         tree->getRoot()->setOttId(*tips.begin());
         return tree;
     } else if (tips.size() == 2) {
-        auto Node1a = tree->createChild(tree->getRoot());
-        auto Node1b = tree->createChild(tree->getRoot());
+        auto Node1a = tree->create_child(tree->getRoot());
+        auto Node1b = tree->create_child(tree->getRoot());
         auto it = tips.begin();
         Node1a->setOttId(*it++);
         Node1b->setOttId(*it++);
@@ -265,14 +265,14 @@ Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd)
     if (nd->getParent())
     {
 	auto p = nd->getParent();
-	auto monotypic = tree.createChild(p);
+	auto monotypic = tree.create_child(p);
 	nd->detachThisNode();
 	monotypic->addChild(nd);
 	return monotypic;
     }
     else
     {
-	auto monotypic = tree.createRoot();
+	auto monotypic = tree.create_root();
 	monotypic->addChild(nd);
 	return monotypic;
     }
@@ -576,7 +576,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 /// Create an unresolved taxonomy out of all the input trees.
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids) {
     std::unique_ptr<Tree_t> retTree(new Tree_t());
-    retTree->createRoot();
+    retTree->create_root();
     if (use_ids) {
         map<long,string> names;
         for(const auto& tree: trees) {
@@ -591,7 +591,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
             }
         }
         for(const auto& n: names) {
-            auto node = retTree->createChild(retTree->getRoot());
+            auto node = retTree->create_child(retTree->getRoot());
             node->setOttId(n.first);
             node->setName(n.second);
         }
@@ -606,7 +606,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
             }
         }
         for(const auto& n: names) {
-            auto node = retTree->createChild(retTree->getRoot());
+            auto node = retTree->create_child(retTree->getRoot());
             node->setName(n);
         }
     }
