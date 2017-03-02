@@ -35,7 +35,7 @@ template<typename T>
 bool ExcludeConstraints<T>::isExcludedFrom(const node_type * ndToCheck,
                                            const node_type * potentialAttachment,
                                            const std::map<long, node_type*> * o2n) const {
-    const auto & ndi = ndToCheck->getData().desIds;
+    const auto & ndi = ndToCheck->get_data().desIds;
     if (ndi.size() == 1) {
         auto nit = byExcludedNd.find(ndToCheck);
         if (nit == byExcludedNd.end()) {
@@ -218,7 +218,7 @@ bool FTree<T, U>::anyExcludedAtNode(const node_type * nd, const OttIdSet &ottIdS
 
 template<typename T, typename U>
 bool FTree<T, U>::anyIncludedAtNode(const node_type * nd, const OttIdSet &ottIdSet) const {
-    if (!areDisjoint(nd->getData().desIds, ottIdSet)) {
+    if (!areDisjoint(nd->get_data().desIds, ottIdSet)) {
         return true;
     }
     auto c = anyPhantomNodesAtNode(nd, ottIdSet);
@@ -252,7 +252,7 @@ RootedTreeNode<T> * FTree<T, U>::resolveToCreateCladeOfIncluded(RootedTreeNode<T
                                                                const PhyloStatement & ps) {
     const OttIdSet & oids = ps.includeGroup;
     dbWriteOttSet("  ottIdIsConnected oids = ", oids);
-    dbWriteOttSet("                                 nd->getData().desIds = ", par->getData().desIds);
+    dbWriteOttSet("                                 nd->get_data().desIds = ", par->get_data().desIds);
     std::set<RootedTreeNode<T> *> cToMove;
     std::list<RootedTreeNode<T> *> orderedToMove;
     for (auto oid : oids) {
@@ -306,14 +306,14 @@ T * rootToTipSearchByDesIds(T * nd, const OttIdSet &oids) {
     assert(nd);
     T * curr = nd;
     for (;;) {
-        const auto & di = curr->getData().desIds;
+        const auto & di = curr->get_data().desIds;
         assert(isSubset(oids, di));
         if (curr->isTip()) {
             return curr;
         }
         T * nextNd = nullptr;
         for (auto c : iter_child(*curr)) {
-            const auto & chdi = c->getData().desIds;
+            const auto & chdi = c->get_data().desIds;
             if (!areDisjoint(oids, chdi)) {
                 if (nextNd == nullptr) {
                     nextNd = &(*c);
@@ -341,7 +341,7 @@ RootedTreeNode<T> * FTree<T, U>::getMRCA(const OttIdSet &ottIdSet) {
     dbWriteOttSet(" getMRCA ingroup", ottIdSet);
     dbWriteOttSet(" getMRCA connected ", con);
     dbWriteOttSet(" getMRCA connected ingroup", rel);
-    const auto & relCheck = root->getData().desIds;
+    const auto & relCheck = root->get_data().desIds;
     dbWriteOttSet(" getMRCA relCheck", relCheck);
     assert(isSubset(rel, relCheck));
     for (auto nextOttId : rel) {
@@ -363,7 +363,7 @@ RootedTreeNode<T> * FTree<T, U>::getMRCA(const OttIdSet &ottIdSet) {
         }
         return searchAncForMRCAOfDesIds(aTip, rel);
     }
-    const auto referredTo = set_intersection_as_set(ottIdSet, root->getData().desIds);
+    const auto referredTo = set_intersection_as_set(ottIdSet, root->get_data().desIds);
     assert(!referredTo.empty());
     return rootToTipSearchByDesIds(root, referredTo);
 }
@@ -441,7 +441,7 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
     for (auto i : ps.excludeGroup) {
         if (!forest.isAttached(i)) { // greedy
             addLeafNoDesUpdate(root, i);
-            root->getData().desIds.insert(i);
+            root->get_data().desIds.insert(i);
         } else {
             addExcludeStatement(i, parOfIncGroup, ps.provenance);
         }
@@ -450,8 +450,8 @@ void FTree<T, U>::addPhyloStatementAsChildOfRoot(const PhyloStatement &ps) {
         assert(!forest.isAttached(i));
         addLeafNoDesUpdate(parOfIncGroup, i);
     }
-    root->getData().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
-    parOfIncGroup->getData().desIds = ps.includeGroup;
+    root->get_data().desIds.insert(begin(ps.includeGroup), end(ps.includeGroup));
+    parOfIncGroup->get_data().desIds = ps.includeGroup;
     forest.debugInvariantsCheck();
     LOG(DEBUG) << "Leaving addPhyloStatementAsChildOfRoot";
 }
@@ -477,7 +477,7 @@ OttIdSet FTree<T, U>::addPhyloStatementAtNode(const PhyloStatement & ps,
     LOG(DEBUG) << "includeGroupA = " << (long)(includeGroupA)  << " " << std::hex << (long)(includeGroupA) << std::dec;
     LOG(DEBUG) << "itbp = " << (long)(itbp) << " " << std::hex << (long)(itbp) << std::dec;
     LOG(DEBUG) << "FTree = " << (long)(this) << " " << std::hex << (long)(this) << std::dec;
-    dbWriteOttSet("    includeGroupA->getData().desIds", includeGroupA->getData().desIds);
+    dbWriteOttSet("    includeGroupA->get_data().desIds", includeGroupA->get_data().desIds);
     assert(forest.getTreeForNode(includeGroupA) == this);
     OttIdSet r;
     if (itbp != nullptr) {
@@ -497,11 +497,11 @@ OttIdSet FTree<T, U>::addPhyloStatementAtNode(const PhyloStatement & ps,
             }
         } else {
             LOG(DEBUG) << " connected " << oid;
-            assert(contains(includeGroupA->getData().desIds, oid));
+            assert(contains(includeGroupA->get_data().desIds, oid));
         }
     }
     addDesIdsToNdAndAnc(includeGroupA, ps.includeGroup);
-    dbWriteOttSet("    later includeGroupA->getData().desIds", includeGroupA->getData().desIds);
+    dbWriteOttSet("    later includeGroupA->get_data().desIds", includeGroupA->get_data().desIds);
     for (auto oid : ps.excludeGroup) {
         if (!ottIdIsConnected(oid)) {
             addExcludeStatement(oid, includeGroupA, ps.provenance);
@@ -524,7 +524,7 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
         }
     } else {
         for (auto c : iter_child_const(*nd)) {
-            const auto & coids = c->getData().desIds;
+            const auto & coids = c->get_data().desIds;
             assert(coids.find(LONG_MAX) == coids.end());
             ois.insert(begin(coids), end(coids));
         }
@@ -549,7 +549,7 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
                 LOG(DEBUG) << m << " is from a descendant ottIdIsConnected returns " << ottIdIsConnected(m);
                 for (auto c : iter_child_const(*nd)) {
                     LOG(DEBUG) << "child " << getDesignator(*c);
-                    dbWriteOttSet("   a child desIds", c->getData().desIds);
+                    dbWriteOttSet("   a child desIds", c->get_data().desIds);
                 }
             }
         }
@@ -594,7 +594,7 @@ void FTree<T, U>::debugInvariantsCheckFT() const {
         if (n != root) {
             assert(isAncestorDesNoIter(root, n));
         }
-        debugVerifyDesIdsAssumingDes(n->getData().desIds, n);
+        debugVerifyDesIdsAssumingDes(n->get_data().desIds, n);
     }
 }
 #endif

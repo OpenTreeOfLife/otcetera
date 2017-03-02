@@ -35,11 +35,11 @@ class TestValidTreeStruct {
             EmbeddedTree et;
             Tree_t fakeScaffold;
             auto r = fakeScaffold.createRoot();
-            auto & fsd = fakeScaffold.getData().ottIdToNode;
+            auto & fsd = fakeScaffold.get_data().ottIdToNode;
             std::set<long> ids;
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
-                const OttIdSet & td = tree.getRoot()->getData().desIds;
+                const OttIdSet & td = tree.getRoot()->get_data().desIds;
                 for (auto oid : td) {
                     if (!contains(ids, oid)) {
                         fsd[oid] = fakeScaffold.createChild(r);
@@ -65,13 +65,13 @@ class TestValidTreeStruct {
                         if (incGroup != nullptr) {
                             return 'F';
                         }
-                        incGroup = &(nd->getData().desIds);
+                        incGroup = &(nd->get_data().desIds);
                     }
                 }
                 if (incGroup == nullptr) {
                     return 'F';
                 }
-                const OttIdSet & leafSet = tree.getRoot()->getData().desIds;
+                const OttIdSet & leafSet = tree.getRoot()->get_data().desIds;
                 std::cerr << groupInd + 1 << '\n';
                 gpf.attemptToAddGrouping(*incGroup, leafSet, treeInd, groupInd++, nullptr);
             }

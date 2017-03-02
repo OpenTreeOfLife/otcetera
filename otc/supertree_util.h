@@ -53,17 +53,17 @@ inline bool canBeResolvedToDisplay(const T *nd, const OttIdSet & incGroup, const
 
 template<typename T>
 void addDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
-    nd->getData().desIds.insert(begin(oid), end(oid));
+    nd->get_data().desIds.insert(begin(oid), end(oid));
     for (auto anc : iter_anc(*nd)) {
-        anc->getData().desIds.insert(begin(oid), end(oid));
+        anc->get_data().desIds.insert(begin(oid), end(oid));
     }
 }
 
 template<typename T>
 void removeDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
-    nd->getData().desIds = set_difference_as_set(nd->getData().desIds, oid);
+    nd->get_data().desIds = set_difference_as_set(nd->get_data().desIds, oid);
     for (auto anc : iter_anc(*nd)) {
-        anc->getData().desIds = set_difference_as_set(anc->getData().desIds, oid);
+        anc->get_data().desIds = set_difference_as_set(anc->get_data().desIds, oid);
     }
 }
 
@@ -71,7 +71,7 @@ void removeDesIdsToNdAndAnc(T * nd, const OttIdSet & oid) {
 //  from the alias to the original OTT ID.
 template<typename T>
 inline std::map<long, long> generateIdRemapping(const T & tree) {
-    const auto & id2ndMap = tree.getData().ottIdToNode;
+    const auto & id2ndMap = tree.get_data().ottIdToNode;
     std::map<long, long> r;
     for (const auto & idNdPair : id2ndMap) {
         const auto & inID = idNdPair.first;
@@ -94,8 +94,8 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
         newRoot->setOttId(r->getOttId());
         std::map<const NodeWithSplits *, NodeWithSplits *> templateToNew;
         templateToNew[r]= newRoot;
-        std::map<long, NodeWithSplits *> & newMap = rawTreePtr->getData().ottIdToNode;
-        rawTreePtr->getData().desIdSetsContainInternals = tree.getData().desIdSetsContainInternals;
+        std::map<long, NodeWithSplits *> & newMap = rawTreePtr->get_data().ottIdToNode;
+        rawTreePtr->get_data().desIdSetsContainInternals = tree.get_data().desIdSetsContainInternals;
         for (auto nd : iter_pre_const(tree)) {
             auto p = nd->getParent();
             if (p == nullptr) {
@@ -114,7 +114,7 @@ inline std::unique_ptr<TreeMappedWithSplits> cloneTree(const TreeMappedWithSplit
                 assert(false);
                 throw OTCError("asserts false but not enabled");
             }
-            nn->getData().desIds = nd->getData().desIds;
+            nn->get_data().desIds = nd->get_data().desIds;
         }
     } catch (...) {
         delete rawTreePtr;
@@ -170,7 +170,7 @@ void sortChildOrderByLowestDesOttId(T *deepest) {
 template<typename T>
 inline bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup) {
     for (auto c : iter_child_const(*nd)) {
-        if (haveIntersection(incGroup, c->getData().desIds) && haveIntersection(excGroup, c->getData().desIds)) {
+        if (haveIntersection(incGroup, c->get_data().desIds) && haveIntersection(excGroup, c->get_data().desIds)) {
             return false;
         }
     }
@@ -182,7 +182,7 @@ inline bool canBeResolvedToDisplayIncExcGroup(const T *nd, const OttIdSet & incG
 template<typename T>
 inline bool canBeResolvedToDisplayOnlyIncGroup(const T *nd, const OttIdSet & incGroup) {
     for (auto c : iter_child_const(*nd)) {
-        const auto & cdi = c->getData().desIds;
+        const auto & cdi = c->get_data().desIds;
         if (haveIntersection(incGroup, cdi) && (!isSubset(cdi, incGroup))) {
             return false;
         }
@@ -232,8 +232,8 @@ inline std::map<std::string, long> createIdsFromNamesFromTrees(const T& treeColl
 template<typename T>
 inline void fillIdMapFromNames(const T & tree, std::map<std::string, long> & name_to_id, long & nextId, bool allowRep) {
     for(auto nd: iter_post_const(tree)) {
-        if (nd->getName().size()) {
-            const std::string name = nd->getName();
+        if (nd->get_name().size()) {
+            const std::string name = nd->get_name();
             auto it = name_to_id.find(name);
             if (it != name_to_id.end()) {
                 if (not allowRep) {
@@ -252,15 +252,15 @@ inline void fillIdMapFromNames(const T & tree, std::map<std::string, long> & nam
 template<typename T>
 inline void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string,long> & name_to_id) {
     for(auto nd: iter_post(tree)){
-        if (nd->getName().size()) {
-            const auto name = nd->getName();
+        if (nd->get_name().size()) {
+            const auto name = nd->get_name();
             const auto it = name_to_id.find(name);
             if (it == name_to_id.end()) {
                 throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
             }
             const auto id = it->second;
             nd->setOttId(id);
-            tree.getData().ottIdToNode[id] = nd;
+            tree.get_data().ottIdToNode[id] = nd;
         } else if (nd->isTip()){
             throw OTCError()<<"Tree tip has no label!";
         }
@@ -272,8 +272,8 @@ inline void setIdsFromNamesAndRefresh(T& tree, const std::map<std::string,long> 
 template<typename T>
 inline void setIdsFromNames(T& tree, const std::map<std::string,long> & name_to_id) {
     for(auto nd: iter_post(tree)){
-        if (nd->getName().size()) {
-            const auto name = nd->getName();
+        if (nd->get_name().size()) {
+            const auto name = nd->get_name();
             const auto it = name_to_id.find(name);
             if (it == name_to_id.end()) {
                 throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
@@ -300,7 +300,7 @@ template<typename T>
 inline void relabelNodesWithOttId(T& tree) {
     for(auto nd: iter_pre(tree)){
         if (nd->hasOttId()){
-            nd->setName(addOttId(nd->getName(),nd->getOttId()));
+            nd->setName(addOttId(nd->get_name(),nd->getOttId()));
         }
     }
 }
@@ -355,12 +355,12 @@ std::size_t countChildren(const N * nd) {
 
 template<typename N>
 inline int mark(const N* node) {
-    return node->getData().mark;
+    return node->get_data().mark;
 }
 
 template<typename N>
 inline int& mark(N* node) {
-    return node->getData().mark;
+    return node->get_data().mark;
 }
 
 template<typename N>

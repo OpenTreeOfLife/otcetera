@@ -99,11 +99,11 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     NodeWithSplits * _changeName(const std::pair<const NodeWithSplits *, OttId> & nn, std::size_t &x) const {
         auto nd = const_cast<NodeWithSplits *>(nn.first);
         auto ottId = nn.second;
-        if (contains(toCheck->getData().ottIdToNode, ottId)) {
+        if (contains(toCheck->get_data().ottIdToNode, ottId)) {
             return nd;
         }
         changeOttIdOfInternal(*toCheck, nd, ottId);
-        const auto & newName = taxonomy->getData().ottIdToNode.at(ottId)->getName();
+        const auto & newName = taxonomy->get_data().ottIdToNode.at(ottId)->get_name();
         nd->setName(newName);
         x += 1;
         return nullptr;
@@ -184,17 +184,17 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 // not in taxoSummary, or having real (non-name-only) support
                 if ((!isTaxoSummary) || (t & SEEN_IN_AN_INPUT_BOTH)) {
                     if (isTaxoSummary) {
-                        const OttIdSet & di = nd->getData().desIds;
+                        const OttIdSet & di = nd->get_data().desIds;
                         if (nd->hasOttId()) {
                             const auto ottId = nd->getOttId();
-                            const auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
-                            if (taxoNode->getData().desIds != di) {
+                            const auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
+                            if (taxoNode->get_data().desIds != di) {
                                 auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
                                 assert(matchingTaxonNode != nullptr);
                                 r.misnamedSupported[nd] = matchingTaxonNode;
                                 if (printDiff) {
-                                    *out << taxoNode->getName() << " incorrectly identified:\n";
-                                    writeOttSetDiff(*out, "    ", di, "summary", taxoNode->getData().desIds, "taxonomy");
+                                    *out << taxoNode->get_name() << " incorrectly identified:\n";
+                                    writeOttSetDiff(*out, "    ", di, "summary", taxoNode->get_data().desIds, "taxonomy");
                                 }
                                 if (fixInsteadOfReport) {
                                     if (outDegree == 1) {
@@ -235,11 +235,11 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 r.shouldBeUnnamed.insert(nd);
                 if (printDiff) {
                     OttId ottId = nd->getOttId();
-                    const auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
-                    *out << taxoNode->getName() << " incorrectly identified:\n";
+                    const auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
+                    *out << taxoNode->get_name() << " incorrectly identified:\n";
                     writeOttSetDiff(*out, "    ",
-                                    nd->getData().desIds, "summary",
-                                    taxoNode->getData().desIds, "taxonomy");
+                                    nd->get_data().desIds, "summary",
+                                    taxoNode->get_data().desIds, "taxonomy");
                 }
 
                 if (fixInsteadOfReport) {
@@ -427,7 +427,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     }
 
     bool analyzeTreeForSupport(OTCLI & otCLI, TreeMappedWithSplits & tree, bool needExpansion) {
-        supportTreeNames.push_back(tree.getName());
+        supportTreeNames.push_back(tree.get_name());
         std::set<const NodeWithSplits *> expanded;
         if (needExpansion) {
             expanded = expandOTTInternalsWhichAreLeaves(tree, *taxonomy);
@@ -479,14 +479,14 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             if (!nd->hasOttId()) {
                 return;
             }
-            nmp = &(nd->getData().desIds); //
+            nmp = &(nd->get_data().desIds); //
         } else {
             auto firstBranchingAnc = findFirstForkingAnc<const NodeWithSplits>(nd);
             if (firstBranchingAnc == nullptr) {
                 return;
             }
-            nmp = &(nd->getData().desIds); //
-            const auto & anm = firstBranchingAnc->getData().desIds; //
+            nmp = &(nd->get_data().desIds); //
+            const auto & anm = firstBranchingAnc->get_data().desIds; //
             if (anm == *nmp) {
                 return;
             }

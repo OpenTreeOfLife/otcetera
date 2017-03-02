@@ -173,7 +173,7 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
     //      tolerate the const cast, which is in very poor form...
     // @TMP @TODO
     TreeMappedWithSplits * treePtr = const_cast<TreeMappedWithSplits *>(cTreePtr);
-    LOG(INFO) << "Resolving treeIndex = " << treeIndex << " name = " << treePtr->getName() << " for OTT " << scaffoldNode.getOttId() << '\n';
+    LOG(INFO) << "Resolving treeIndex = " << treeIndex << " name = " << treePtr->get_name() << " for OTT " << scaffoldNode.getOttId() << '\n';
     const std::map<U *, U *> phyloNode2PhyloPar = getExitPhyloNd2Par(treeIndex);
     // resolve the phylo tree
     U * phPar = nullptr;
@@ -190,8 +190,8 @@ void NodeEmbedding<T, U>::resolveParentInFavorOfThisNode(
         U * phChild = p2p.first;
         phChild->detachThisNode();
         insertedNodePtr->addChild(phChild);
-        const OttIdSet & cd = phChild->getData().desIds;
-        insertedNodePtr->getData().desIds.insert(cd.begin(), cd.end());
+        const OttIdSet & cd = phChild->get_data().desIds;
+        insertedNodePtr->get_data().desIds.insert(cd.begin(), cd.end());
     }
     T * scaffoldAncestor = nullptr;
     for (auto epp : exitSetForThisTree) {
@@ -507,7 +507,7 @@ std::string NodeEmbedding<T, U>::exportSubproblemAndResolve(
             continue;
         }
         const auto firstLaIt = laIt;
-        LOG(INFO) << "     exporting ott" << scaffOTTId << "  treeIndex = " << treeIndex << " name = " << treePtr->getName();
+        LOG(INFO) << "     exporting ott" << scaffOTTId << "  treeIndex = " << treeIndex << " name = " << treePtr->get_name();
         const OttIdSet relevantIds = getRelevantDesIds(sn2ne, treeIndex);
         totalLeafSet.insert(begin(relevantIds), end(relevantIds));
         auto lnd2par = getLoopedPhyloNd2Par(treeIndex);
@@ -553,7 +553,7 @@ std::string NodeEmbedding<T, U>::exportSubproblemAndResolve(
                 }
                 auto rids = pathPtr->getOttIdSet();
                 if (rids.size() != 1) {
-                    LOG(DEBUG) << "crashing while exporting OTT ID " << scaffoldNode.getOttId() << " for tree " << treePtr->getName();
+                    LOG(DEBUG) << "crashing while exporting OTT ID " << scaffoldNode.getOttId() << " for tree " << treePtr->get_name();
                     dbWriteOttSet(" rids = ", rids);
                     assert(false);
                 }
@@ -649,7 +649,7 @@ std::string NodeEmbedding<T, U>::exportSubproblemAndResolve(
             writeTreeAsNewick(*treeExpStream, toWrite);
             *treeExpStream << "\n";
         }
-        *provExpStream << treePtr->getName() << "\n";
+        *provExpStream << treePtr->get_name() << "\n";
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.getOttId()};
     gpf.attemptToAddGrouping(totalLeafSet, EMPTY_SET, 0, 1, &sc);
@@ -912,7 +912,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
                     sc.log(IGNORE_TIP_MAPPED_TO_NONMONOPHYLETIC_TAXON, *lp->phyloChild);
                     OttIdSet innerOTTId;
                     innerOTTId.insert(lp->phyloChild->getOttId());
-                    OttIdSet n = scaffoldNode.getData().desIds; // expand the internal name to it taxonomic content
+                    OttIdSet n = scaffoldNode.get_data().desIds; // expand the internal name to it taxonomic content
                     n.erase(lp->phyloChild->getOttId());
                     lp->updateDesIdsForSelfAndAnc(innerOTTId, n, sn2ne);
                     indsOfTreesMappedToInternal.insert(treeIndex);
@@ -1127,22 +1127,22 @@ void reportOnConflicting(std::ostream & out,
         assert(false);
         throw OTCError("asserts are disabled, but one is not true");
     }
-    const auto scaffoldDes = set_intersection_as_set(scaffold->getData().desIds, phyloLeafSet);
+    const auto scaffoldDes = set_intersection_as_set(scaffold->get_data().desIds, phyloLeafSet);
     auto epIt = begin(exitPaths);
     const PathPairing<T, U> * ep = *epIt;
     const U * phyloPar = ep->phyloParent;
     const U * deepestPhylo = nullptr;
     std::map<OttIdSet, const U *> desIdSet2NdConflicting;
-    if (isProperSubset(scaffoldDes, phyloPar->getData().desIds)) {
+    if (isProperSubset(scaffoldDes, phyloPar->get_data().desIds)) {
         deepestPhylo = phyloPar;
     } else {
-        desIdSet2NdConflicting[phyloPar->getData().desIds] = phyloPar;
+        desIdSet2NdConflicting[phyloPar->get_data().desIds] = phyloPar;
         for (auto anc : iter_anc_const(*phyloPar)) {
-            if (isProperSubset(scaffoldDes, anc->getData().desIds)) {
+            if (isProperSubset(scaffoldDes, anc->get_data().desIds)) {
                 deepestPhylo = anc;
                 break;
             }
-            desIdSet2NdConflicting[anc->getData().desIds] = anc;
+            desIdSet2NdConflicting[anc->get_data().desIds] = anc;
         }
         assert(deepestPhylo != nullptr);
     }
@@ -1153,7 +1153,7 @@ void reportOnConflicting(std::ostream & out,
             if (anc == deepestPhylo) {
                 break;
             }
-            desIdSet2NdConflicting[anc->getData().desIds] = anc;
+            desIdSet2NdConflicting[anc->get_data().desIds] = anc;
         }
     }
     if (desIdSet2NdConflicting.empty()) {

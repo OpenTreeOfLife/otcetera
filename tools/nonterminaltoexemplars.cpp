@@ -47,7 +47,7 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
     bool hasNodeName = false;
     std::string noden;
     if (transferNodeNameToExemplars) {
-        std::string onn = nd->getName();
+        std::string onn = nd->get_name();
         auto opts = getSourceNodeName(onn);
         if (opts) {
             noden = *opts;
@@ -201,7 +201,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
             return false;
         }
         for (auto treePtr : treePtrByIndex) {
-            auto pp = exportDir + treePtr->getName();
+            auto pp = exportDir + treePtr->get_name();
             if (!writeTreeOrDie(otCLI, pp, *treePtr, useStdOut)) {
                 return false;
             }
@@ -239,7 +239,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         for (auto nd : iter_leaf(*raw)) {
             nleaves += 1;
             auto ottId = nd->getOttId();
-            auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
+            auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
             assert(taxoNode != nullptr);
             if (!contains(includedNodes, taxoNode)) {
                 includedNodes.insert(taxoNode);
@@ -247,7 +247,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
             }
             if (!taxoNode->isTip()) {
                 if (storeLogInfo) {
-                    exemplifedTaxonToTreeNamesForJSONLog[ottId].push_back(raw->getName());
+                    exemplifedTaxonToTreeNamesForJSONLog[ottId].push_back(raw->get_name());
                 }
                 TreeNdPair tnp{raw, nd};
                 nonTermToMappedPhylo[taxoNode].push_back(tnp);

@@ -91,7 +91,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
             nodes.push_back(anc);
             if (ott_to_sol.count(anc->getOttId()) > 0) {
                 if (verbose){
-                    LOG(INFO) << "Monotypic ancestor '" << anc->getName() << "' in solution tree!";
+                    LOG(INFO) << "Monotypic ancestor '" << anc->get_name() << "' in solution tree!";
                 }
                 nd1 = ott_to_sol.at(anc->getOttId());
             }
@@ -101,14 +101,14 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
             if (not ott_to_sol.count(nd->getOttId())) {
                 nd1 = bisect_branch_with_new_child(nd1);
                 nd1->setOttId(nd->getOttId());
-                nd1->setName(nd->getName());
+                nd1->setName(nd->get_name());
                 ott_to_sol[nd1->getOttId()] = nd1;
             }
             assert(ott_to_sol.count(nd->getOttId()));
         } else {
             while(nodes.size()) {
                 if (verbose) {
-                    LOG(INFO)<<"Removing Id = '"<<nodes.back()->getName()<<"' ("<<nodes.back()->getOttId()<<")"
+                    LOG(INFO)<<"Removing Id = '"<<nodes.back()->get_name()<<"' ("<<nodes.back()->getOttId()<<")"
                              <<"  children = "<<nodes.back()->getOutDegree()
                              <<"  ancestral children = "<<count_children_in_set(nodes.back(),ancestral);
                 }
@@ -145,7 +145,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
                 x->addChild(nd1);
                 nd1 = x;
                 nd1->setOttId(nd2->getOttId());
-                nd1->setName(nd2->getName());
+                nd1->setName(nd2->get_name());
                 ott_to_sol[nd1->getOttId()] = nd1;
             }
         }
@@ -159,7 +159,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
         if (ancestral.count(nd2)) {
             auto id = nd2->getOttId();
             auto nd1 = ott_to_sol.at(id);
-            nd1->setName(nd2->getName());
+            nd1->setName(nd2->get_name());
         } else {
             auto p2 = nd2->getParent();
             if (ancestral.count(p2)) {

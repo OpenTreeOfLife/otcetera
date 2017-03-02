@@ -95,8 +95,8 @@ long n_nodes(const Tree_t& T) {
 
 void show_nodes(const Tree_t& T) {
     for(auto nd: iter_post_const(T))
-	if (nd->getName().size())
-	    std::cout<<nd->getName()<<"\n";
+	if (nd->get_name().size())
+	    std::cout<<nd->get_name()<<"\n";
 }
 
 long n_leaves(const Tree_t& T) {
@@ -111,14 +111,14 @@ long n_leaves(const Tree_t& T) {
 
 void show_leaf_nodes(const Tree_t& T) {
     for(auto nd: iter_leaf_const(T))
-	if (nd->getName().size())
-	    std::cout<<nd->getName()<<"\n";
+	if (nd->get_name().size())
+	    std::cout<<nd->get_name()<<"\n";
 }
 
 void show_internal_nodes(const Tree_t& T) {
     for(auto nd: iter_post_const(T))
-	if (nd->getName().size() and not nd->isTip())
-	    std::cout<<nd->getName()<<"\n";
+	if (nd->get_name().size() and not nd->isTip())
+	    std::cout<<nd->get_name()<<"\n";
 }
 
 void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
@@ -146,7 +146,7 @@ void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
             nd2Indent[nd] = 0;
         }
         out << std::string(nd2Indent[nd], ' ');
-        out << nd->getName() << " : " << nd2numLeaves[nd] << '\n';
+        out << nd->get_name() << " : " << nd2numLeaves[nd] << '\n';
     }   
     
 }
@@ -167,16 +167,16 @@ Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, long root_ott_id)
         if (nd->hasOttId() and nd->getOttId() == root_ott_id)
             return nd;
     
-    throw OTCError()<<"Can't find node with id "<<root_ott_id<<" in tree '"<<tree.getName()<<"'";
+    throw OTCError()<<"Can't find node with id "<<root_ott_id<<" in tree '"<<tree.get_name()<<"'";
 }
 
 Tree_t::node_type* find_node_by_name(Tree_t& tree, const string& name)
 {
     for(auto nd: iter_pre(tree))
-        if (nd->getName().size() and nd->getName() == name)
+        if (nd->get_name().size() and nd->get_name() == name)
             return nd;
     
-    throw OTCError()<<"Can't find node with name '"<<name<<"' in tree '"<<tree.getName()<<"'";
+    throw OTCError()<<"Can't find node with name '"<<name<<"' in tree '"<<tree.get_name()<<"'";
 }
 
 unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long root_ott_id)
@@ -215,7 +215,7 @@ void show_high_degree_nodes(const Tree_t& tree, int n)
     {
         auto outdegree = nd->getOutDegree();
         if (outdegree > 1)
-            nodes.insert({outdegree,nd->getName()});
+            nodes.insert({outdegree,nd->get_name()});
     }
 
     for(const auto& x: boost::adaptors::reverse(nodes))
@@ -261,7 +261,7 @@ void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
     create_file(new_dir / name, "");
 
   // Write the about.json file.
-  create_file(new_dir/"about.json",string("{\"inputs\":[\"") + tree.getName() + "\"]}");
+  create_file(new_dir/"about.json",string("{\"inputs\":[\"") + tree.get_name() + "\"]}");
 
   // Write the synonyms.tsv file.
   create_file(new_dir/"synonyms.tsv","name\t|\tuid\t|\ttype\t|\tuniqname\t|\t\n");
@@ -281,12 +281,12 @@ void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
       if (nd->getParent())
 	tf<<nd->getParent()->getOttId();
       /* */ tf<<sep;
-      tf<<remove_ott_suffix(nd->getName());
+      tf<<remove_ott_suffix(nd->get_name());
       /* */ tf<<sep;
       tf<<"no rank";
       /* */ tf<<sep;
       tf<<"tree:0";
-      //      tf<<"tree:"<<tree.getName();
+      //      tf<<"tree:"<<tree.get_name();
       /* */ tf<<sep;
       /* */ tf<<sep;
       /* */ tf<<sep;
@@ -344,12 +344,12 @@ int main(int argc, char* argv[])
             long n = args["children-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             for(auto c = nd->getFirstChild(); c; c = c->getNextSib())
-                std::cout<<c->getName()<<"\n";
+                std::cout<<c->get_name()<<"\n";
         } else if (args.count("parent-of")) {
             long n = args["parent-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
             if (nd->getParent())
-                std::cout<<nd->getParent()->getName()<<"\n";
+                std::cout<<nd->getParent()->get_name()<<"\n";
             else
                 std::cout<<"No parent: that node is the root.\n";
         } else if (args.count("count-nodes")) {

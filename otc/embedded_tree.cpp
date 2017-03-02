@@ -62,16 +62,16 @@ void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
             assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end());
             assert(nd->hasOttId());
             auto ottId = nd->getOttId();
-            taxoDes = scaffoldTree.getData().getNodeForOttId(ottId);
+            taxoDes = scaffoldTree.get_data().getNodeForOttId(ottId);
             assert(taxoDes != nullptr);
             ndPairPtr = _addNodeMapping(taxoDes, nd, treeIndex);
             if (!isScaffoldClone) {
                 for (auto former : tipPairings) {
                     if (areLinearlyRelated(taxoDes, former->scaffoldNode)) {
                         std::string m = "Repeated or nested OTT ID in tip mapping of an input tree: \"";
-                        m += nd->getName();
+                        m += nd->get_name();
                         m += "\" and \"";
-                        m += former->phyloNode->getName();
+                        m += former->phyloNode->get_name();
                         m += "\" found.";
                         throw OTCError(m);
                     }
@@ -93,10 +93,10 @@ void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
             if (isScaffoldClone) {
                 // since it is a taxonomy, it will have internal node labels
                 auto pottId = par->getOttId();
-                taxoAnc = scaffoldTree.getData().getNodeForOttId(pottId);
+                taxoAnc = scaffoldTree.get_data().getNodeForOttId(pottId);
             
             } else {
-                const auto & parDesIds = par->getData().desIds;
+                const auto & parDesIds = par->get_data().desIds;
                 taxoAnc = searchAncForMRCAOfDesIds(taxoDes, parDesIds);
             }
             assert(taxoAnc != nullptr);

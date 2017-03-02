@@ -78,14 +78,14 @@ enum TaxonomicRank {
     RANK_NO_RANK_TERMINAL
 };
 
-extern const std::map<TaxonomicRank, std::string> rankEnumToName;
-extern const std::string emptyStringForMissingRank;
+extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
+extern const std::string empty_string;
 extern const std::set<std::string> indexed_source_prefixes;
 
 inline const std::string & to_string(const TaxonomicRank &r) {
-    auto i = rankEnumToName.find(r);
-    if (i == rankEnumToName.end()) {
-        return emptyStringForMissingRank;
+    auto i = rank_enum_to_name.find(r);
+    if (i == rank_enum_to_name.end()) {
+        return empty_string;
     }
     return i->second;
 }
@@ -109,7 +109,6 @@ inline nlohmann::json sources_vec_as_json(const std::vector<std::string> & vs) {
         j.push_back(src_entry);
     }
     return j;
-
 }
 
 struct TaxonomyRecord {
@@ -208,19 +207,19 @@ class RTRichTaxNodeData {
     //nlohmann::json sources;
     const TaxonomyRecord * tax_record;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
-    boost::string_ref getName() const {
+    boost::string_ref get_name() const {
         return tax_record->name;
     }
-    boost::string_ref getUniqname() const {
+    boost::string_ref get_uniqname() const {
         return tax_record->uniqname;
     }
-    boost::string_ref getRank() const {
+    boost::string_ref get_rank() const {
         return tax_record->rank;
     }
-    const std::bitset<32> getFlags() const {
+    const std::bitset<32> get_flags() const {
         return tax_record->flags;
     }
-    nlohmann::json getSourcesJSON() const {
+    nlohmann::json get_sources_json() const {
         auto vs = tax_record->sourceinfoAsVec();
         return sources_vec_as_json(vs);
     }
@@ -240,7 +239,7 @@ class TaxonomicJuniorSynonym {
     const std::string name;
     const std::string source_string;
     const RTRichTaxNode * primary;
-    const std::string & getName() const {
+    const std::string & get_name() const {
         return name;
     }
     // deleting copy ctor because we are using string_refs, so it is important
@@ -272,16 +271,16 @@ struct RichTaxonomy : public Taxonomy {
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
     RichTaxonomy(RichTaxonomy &&) = default;
-    const RTRichTaxNode * taxonFromId(OttId ott_id) const {
+    const RTRichTaxNode * taxon_from_id(OttId ott_id) const {
         //Returns node * or nullptr if not found.
-        const auto & td = tree->getData();
+        const auto & td = tree->get_data();
         auto i2n_it = td.id2node.find(ott_id);
         if (i2n_it == td.id2node.end()) {
             auto fit = forwards.find(ott_id);
             if (fit == forwards.end()) {
                 return nullptr;
             }
-            return taxonFromId(fit->second);
+            return taxon_from_id(fit->second);
         }
         return i2n_it->second;
     }
@@ -303,7 +302,7 @@ class RTTaxNodeData {
 template <typename Node_t, typename TREE>
 void populateNodeFromTaxonomyRecord(Node_t & nd,
                                     const TaxonomyRecord & line,
-                                    std::function<std::string(const TaxonomyRecord&)> getName,
+                                    std::function<std::string(const TaxonomyRecord&)> get_name,
                                     TREE & tree);
 
 
@@ -311,10 +310,10 @@ void populateNodeFromTaxonomyRecord(Node_t & nd,
 template <typename Node_t, typename TREE>
 inline void populateNodeFromTaxonomyRecord(Node_t & nd,
                                            const TaxonomyRecord & line,
-                                           std::function<std::string(const TaxonomyRecord&)> getName,
+                                           std::function<std::string(const TaxonomyRecord&)> get_name,
                                            TREE & ) {
     nd.setOttId(line.id);
-    nd.setName(getName(line));    
+    nd.setName(get_name(line));    
 }
 
 // default behavior is to set ID and Name from line
@@ -324,12 +323,12 @@ inline void populateNodeFromTaxonomyRecord(RootedTreeNode<RTTaxNodeData> & nd,
                                            std::function<std::string(const TaxonomyRecord&)>,
                                            TREE &) {
     nd.setOttId(line.id);
-    nd.getData().taxonomy_line = &line;    
+    nd.get_data().taxonomy_line = &line;    
 }
 
 
 template <typename Tree_t>
-std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const TaxonomyRecord&)> getName) const {
+std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const TaxonomyRecord&)> get_name) const {
     const auto& taxonomy = *this;
     std::unique_ptr<Tree_t> tree(new Tree_t);
     vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
@@ -343,7 +342,7 @@ std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const Taxono
             auto parent_nd = node_ptr[line.parent_index];
             nd = tree->createChild(parent_nd);
         }
-        populateNodeFromTaxonomyRecord(*nd, line, getName, *tree);
+        populateNodeFromTaxonomyRecord(*nd, line, get_name, *tree);
         node_ptr[i] = nd;
     }
     return tree;

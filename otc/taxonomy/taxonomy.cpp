@@ -424,7 +424,7 @@ const map<string, TaxonomicRank> rankNameToEnum =
         {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
     };
 
-const map<TaxonomicRank, string> rankEnumToName = 
+const map<TaxonomicRank, string> rank_enum_to_name = 
     {   {RANK_DOMAIN, "domain"},
         {RANK_SUPERKINGDOM, "superkingdom"},
         {RANK_KINGDOM, "kingdom"},
@@ -469,7 +469,7 @@ const map<TaxonomicRank, string> rankEnumToName =
         {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
         {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT
     };
-const std::string emptyStringForMissingRank;
+const std::string empty_string;
 
 const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
 
@@ -526,12 +526,12 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
                                            RichTaxTree & tree) {
     RTRichTaxNode * this_node = &nd;
     nd.setOttId(line.id);
-    auto & data = nd.getData();
-    auto & tree_data = tree.getData();
+    auto & data = nd.get_data();
+    auto & tree_data = tree.get_data();
     nd.setOttId(line.id);
     tree_data.id2node[nd.getOttId()] = this_node;
     data.tax_record = &line;
-    auto name = data.getName();
+    auto name = data.get_name();
     auto nit = tree_data.name2node.lower_bound(name);
     typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
     if (nit->first != name) {
@@ -543,12 +543,12 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
         }
         tree_data.homonym2node[name].push_back(this_node);
     }
-    auto uname = data.getUniqname();
+    auto uname = data.get_uniqname();
     if (uname != name) {
         auto r2 = tree_data.name2node.insert(name_map_pair(uname, this_node));
         assert(r2.second); // should be uniq.
     }
-    auto flags = data.getFlags();
+    auto flags = data.get_flags();
     // If the flag combination is new, store the JSON representation
     if (tree_data.flags2json.count(flags) == 0) {
         vector<string> vf = flags_to_string_vec(flags);
@@ -565,7 +565,7 @@ inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
 
 
 void RichTaxonomy::readSynonyms() {
-    RTRichTaxTreeData & tree_data = this->tree->getData();
+    RTRichTaxTreeData & tree_data = this->tree->get_data();
     string filename = path + "/synonyms.tsv";
     ifstream synonyms_file(filename);
         if (not synonyms_file) {
@@ -610,7 +610,7 @@ void RichTaxonomy::readSynonyms() {
         auto vs = comma_separated_as_vec(sourceinfo);
         process_source_info_vec(vs, tree_data, tjs, primary);
         RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
-        mp->getData().junior_synonyms.push_back(&tjs);
+        mp->get_data().junior_synonyms.push_back(&tjs);
     }
 }
 

@@ -22,7 +22,7 @@ typedef TreeMappedWithSplits Tree_t;
 
 int depth(const Tree_t::node_type* nd)
 {
-    return nd->getData().depth;
+    return nd->get_data().depth;
 }
 
 /// Create a SORTED vector from a set
@@ -281,7 +281,7 @@ Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd)
 void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
 {
     // name root
-    summary.getRoot()->setName(taxonomy.getRoot()->getName());
+    summary.getRoot()->setName(taxonomy.getRoot()->get_name());
 
     // name tips
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
@@ -290,7 +290,7 @@ void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
     {
 	auto id = nd->getOttId();
 	auto nd2 = summaryOttIdToNode.at(id);
-	nd2->setName( nd->getName());
+	nd2->setName( nd->get_name());
     }
 }
 
@@ -298,7 +298,7 @@ Tree_t::node_type* find_mrca_of_desids(const set<long>& ids, const std::unordere
 {
     int first = *ids.begin();
     auto node = summaryOttIdToNode.at(first);
-    while( not is_subset(ids, node->getData().desIds) )
+    while( not is_subset(ids, node->get_data().desIds) )
 	node = node->getParent();
     return node;
 }
@@ -347,9 +347,9 @@ const Tree_t::node_type* select_canonical_ottid(const vector<const Tree_t::node_
 void register_ottid_equivalences(const Tree_t::node_type* canonical, const vector<const Tree_t::node_type*>& names)
 {
     // First pass - actually we should write on a JSON file.
-    std::cerr<<canonical->getName()<<" (canonical): equivalent to ";
+    std::cerr<<canonical->get_name()<<" (canonical): equivalent to ";
     for(auto name: names)
-	std::cerr<<name->getName()<<" ";
+	std::cerr<<name->get_name()<<" ";
     std::cerr<<"\n";
 }
 
@@ -368,7 +368,7 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
     map<Tree_t::node_type*, vector<const Tree_t::node_type*>> name_groups;
     for(auto n2: taxa)
     {
-	auto mrca = find_mrca_of_desids(n2->getData().desIds, summaryOttIdToNode);
+	auto mrca = find_mrca_of_desids(n2->get_data().desIds, summaryOttIdToNode);
 
 	if (not name_groups.count(mrca))
 	    name_groups[mrca] = {};
@@ -387,12 +387,12 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
 	while (auto max = find_unique_maximum(names))
 	{
 	    if (names.size() == 1)
-		summary_node->setName(max->getName());
+		summary_node->setName(max->get_name());
 	    else
 	    {
 		auto p = add_monotypic_parent(summary, summary_node);
-		p->setName(max->getName());
-		p->getData().desIds = p->getFirstChild()->getData().desIds;
+		p->setName(max->get_name());
+		p->get_data().desIds = p->getFirstChild()->get_data().desIds;
 	    }
 	    names.erase(std::remove(names.begin(), names.end(), max), names.end());
 	}
@@ -402,7 +402,7 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
 	{
 	    // Select a specific ottid as the canonical name for this summary node
 	    auto canonical = select_canonical_ottid(names);
-	    summary_node->setName(canonical->getName());
+	    summary_node->setName(canonical->get_name());
 
 	    // Write out the equivalence of the remaining ottids to the canonical ottid
 	    names.erase(std::remove(names.begin(), names.end(), canonical), names.end());
@@ -451,7 +451,7 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 	set<long> ex = exclude.at(nd->getParent());
 	for(auto nd2: get_siblings<Tree_t>(nd)) {
 	    if (not incertae_sedis.count(nd2->getOttId())) {
-		auto& ex_sib = nd2->getData().desIds;
+		auto& ex_sib = nd2->get_data().desIds;
 		ex.insert(begin(ex_sib),end(ex_sib));
 	    }
 	}
@@ -464,7 +464,7 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<long>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
-    auto all_leaves = taxonomy->getRoot()->getData().desIds;
+    auto all_leaves = taxonomy->getRoot()->get_data().desIds;
     // index -> id
     vector<long> ids;
     // id -> index
@@ -513,7 +513,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	const auto& tree = trees[i];
 
         auto root = tree->getRoot();
-        const auto leafTaxa = root->getData().desIds;
+        const auto leafTaxa = root->get_data().desIds;
         const auto leafTaxaIndices = remap(leafTaxa);
 
 #ifndef NDEBUG
@@ -530,7 +530,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	    for(auto nd: iter_post_const(*tree)) {
 		if (not nd->isTip() and nd != root) {
 		    // construct split
-		    const auto descendants = remap(nd->getData().desIds);
+		    const auto descendants = remap(nd->get_data().desIds);
 		    const auto nondescendants = remap(exclude[nd]);
 
 		    if (add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants) ))
@@ -542,7 +542,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	{
 	    for(auto nd: iter_post_const(*tree)) {
 		if (not nd->isTip() and nd != root) {
-		    const auto descendants = remap(nd->getData().desIds);
+		    const auto descendants = remap(nd->get_data().desIds);
 
 		    if (add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices}))
 			taxa.push_back(nd);
@@ -552,7 +552,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	else {
 	    for(auto nd: iter_post_const(*tree)) {
 		if (not nd->isTip() and nd != root) {
-		    const auto descendants = remap(nd->getData().desIds);
+		    const auto descendants = remap(nd->get_data().desIds);
 
 		    add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
 		}
@@ -585,7 +585,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
                     long id = nd->getOttId();
                     auto it = names.find(id);
                     if (it == names.end()) {
-                        names[id] = nd->getName();
+                        names[id] = nd->get_name();
                     }
                 }
             }
@@ -601,7 +601,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
         for(const auto& tree: trees) {
             for(auto nd: iter_pre_const(*tree)) {
                 if (nd->isTip()) {
-                    names.insert(nd->getName());
+                    names.insert(nd->get_name());
                 }
             }
         }

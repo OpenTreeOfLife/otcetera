@@ -331,7 +331,7 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
         const RTRichTaxNode * taxon_node = nullptr;
         const auto & taxonomy = tts.getTaxonomy();
         const auto & taxonomy_tree = taxonomy.getTaxTree();
-        const auto & taxonomy_tree_data = taxonomy_tree.getData();
+        const auto & taxonomy_tree_data = taxonomy_tree.get_data();
         if (status_code == OK) {
             supplied_ott_id = extract_from_request(parsedargs, "ott_id", ott_id, rbody, status_code);
         }
@@ -399,7 +399,7 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
             }
         }
         if (status_code == OK && supplied_ott_id) {
-            taxon_node = taxonomy.taxonFromId(ott_id);
+            taxon_node = taxonomy.taxon_from_id(ott_id);
             if (taxon_node == nullptr) {
                 rbody = "Unrecognized OTT ID: ";
                 rbody += to_string(ott_id);

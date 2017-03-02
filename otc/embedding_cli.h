@@ -89,7 +89,7 @@ class EmbeddingCLI
             if (nd->hasOttId()) {
                 internalIDs.insert(nd->getOttId());
             }
-            auto & d = nd->getData().desIds;
+            auto & d = nd->get_data().desIds;
             for (auto o : internalIDs) {
                 d.erase(o);
             }

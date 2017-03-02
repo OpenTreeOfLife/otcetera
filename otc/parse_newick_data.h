@@ -90,7 +90,7 @@ inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
                 }
             }
             node.setOttId(ottID);
-            U & treeData = tree.getData();
+            U & treeData = tree.get_data();
             if (contains(treeData.ottIdToNode, ottID)) {
                 throw OTCParsingError("Expecting an OTT Id to only occur one time in a tree.",
                                       labelToken->content(),
@@ -138,7 +138,7 @@ inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & t
     } else {
         fillDesIdSets(tree);
     }
-    for (auto p : tree.getData().ottIdToNode) {
+    for (auto p : tree.get_data().ottIdToNode) {
         assert(p.first == p.second->getOttId());
     }
 }

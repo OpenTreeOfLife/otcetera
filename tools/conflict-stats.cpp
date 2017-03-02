@@ -92,11 +92,11 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
 
 inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
-    return node->getData().summary_node;
+    return node->get_data().summary_node;
 }
 
 inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
-    return node->getData().summary_node;
+    return node->get_data().summary_node;
 }
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
@@ -107,7 +107,7 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 }
 
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
-    string name = node->getName();
+    string name = node->get_name();
     if (name.empty())
 	throw OTCError()<<"Cannot get name for unnamed node!";
 
@@ -131,13 +131,13 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 
     for (auto nd: remove)
     {
-        if (nd->getName().size())
+        if (nd->get_name().size())
         {
             auto child = nd->getFirstChild();
             assert(not child->isOutDegreeOneNode());
-            assert(child->getName().size());
-            assert(to_child.count(nd->getName()) == 0);
-            to_child[nd->getName()] = child->getName();
+            assert(child->get_name().size());
+            assert(to_child.count(nd->get_name()) == 0);
+            to_child[nd->get_name()] = child->get_name();
         }
         delMonotypicNode(nd,tree);
     }
@@ -175,7 +175,7 @@ void mapNextTree1(const Tree_t& summaryTree,
 		  const Tree_t & tree,
 		  stats& s) //isTaxoComp is third param
 {
-    string source_name = source_from_tree_name(tree.getName());
+    string source_name = source_from_tree_name(tree.get_name());
 
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
     {
@@ -212,7 +212,7 @@ void mapNextTree2(const Tree_t& summaryTree,
 		  const Tree_t & tree,
 		  stats& s) //isTaxoComp is third param
 {
-    string source_name = source_from_tree_name(summaryTree.getName());
+    string source_name = source_from_tree_name(summaryTree.get_name());
 
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
     {
@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
 
 	    computeSummaryLeaves(*tree, summaryOttIdToNode);
 
-	    string source_name = source_from_tree_name(tree->getName());
+	    string source_name = source_from_tree_name(tree->get_name());
 
 	    if (all)
 		mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, global, sw);

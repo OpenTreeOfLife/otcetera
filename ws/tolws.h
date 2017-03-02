@@ -21,24 +21,24 @@ typedef std::vector<src_node_id> vec_src_node_ids;
 
 template<typename T>
 void setTravesalEntryExit(T & tree) {
-    auto & td = tree.getData();
+    auto & td = tree.get_data();
     auto & m = td.name2node;
     long ind = 0;
     for (auto nd : iter_pre(tree)) {
-        m[nd->getName()] = nd;
-        nd->getData().trav_enter = ind++;
+        m[nd->get_name()] = nd;
+        nd->get_data().trav_enter = ind++;
     }
     for (auto pnd : iter_post(tree)) {
         auto fc = pnd->getLastChild();
-        auto & d = pnd->getData();
+        auto & d = pnd->get_data();
         if (fc == nullptr) {
             d.trav_exit = d.trav_enter;
             d.num_tips = 1;
         } else {
-            d.trav_exit = fc->getData().trav_exit;
+            d.trav_exit = fc->get_data().trav_exit;
             d.num_tips = 0;
             for (auto c : iter_child_const(*pnd)) {
-                d.num_tips += c->getData().num_tips;
+                d.num_tips += c->get_data().num_tips;
             }
         }
     }
@@ -131,7 +131,7 @@ class TreesToServe {
         void fillOttIdSet(const std::bitset<32> & flags, OttIdSet & ott_id_set) {
             ott_id_set.clear();
             for (const auto nd : iter_node_const(*taxonomy_tree)) {
-                const auto & tax_record_flags = nd->getData().getFlags();
+                const auto & tax_record_flags = nd->get_data().get_flags();
                 auto intersection = flags & tax_record_flags;
                 if (!intersection.any()) {
                     ott_id_set.insert(nd->getOttId());

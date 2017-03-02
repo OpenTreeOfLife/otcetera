@@ -120,7 +120,7 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
     set<Tree_t::node_type*> tipsToPrune;
     for (auto nd: iter_leaf(tree)) {
         if (not nd->hasOttId()) {
-            throw OTCError() << "Tip \"" << nd->getName() << "\" lacks an OTT ID.";
+            throw OTCError() << "Tip \"" << nd->get_name() << "\" lacks an OTT ID.";
         }
         const auto ottId = nd->getOttId();
         const auto & taxonrecord = taxonomy.record_from_id(ottId);
@@ -156,7 +156,7 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
                     throw OTCError() << "The tree was pruned to non-existence!";
                 }
                 if (not nd->hasOttId()) {
-                    throw OTCError() << "Node \"" << nd->getName() << "\" lacks an OTT ID.";
+                    throw OTCError() << "Node \"" << nd->get_name() << "\" lacks an OTT ID.";
                 }
                 const auto ottId = nd->getOttId();
                 prunedInternalSet.insert(ottId);
@@ -292,12 +292,12 @@ int main(int argc, char* argv[])
                 int id = nd->getOttId();
                 if (taxonomy) {
                     const auto& record = (*taxonomy).record_from_id(id);
-                    name = format_with_taxonomy(nd->getName(), format_tax, record);
+                    name = format_with_taxonomy(nd->get_name(), format_tax, record);
                 } else {
-                    name = format_without_taxonomy(nd->getName(), format_tax);
+                    name = format_without_taxonomy(nd->get_name(), format_tax);
                 }
             } else {
-                name = format_without_taxonomy(nd->getName(), format_unknown);
+                name = format_without_taxonomy(nd->get_name(), format_unknown);
             }
             nd->setName(std::move(name));
         }
@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
             std::regex match (match_replace.substr(1, loc2 - 1));
             string replace = match_replace.substr(loc2 + 1, loc3 - loc2 - 1);
             for(auto nd: iter_pre(*tree)) {
-                string name = nd->getName();
+                string name = nd->get_name();
                 name = std::regex_replace(name,match,replace);
                 nd->setName(name);
             }

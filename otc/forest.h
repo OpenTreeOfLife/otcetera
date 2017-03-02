@@ -231,7 +231,7 @@ inline RootedTreeNode<T> * RootedForest<T, U>::createLeaf(RootedTreeNode<T> * p,
     assert(n->getNextSib() == nullptr);
     n->setOttId(oid);
     ottIdToNodeMap[oid] = n;
-    n->getData().desIds.insert(oid);
+    n->get_data().desIds.insert(oid);
     ottIdSet.insert(oid);
     return n;
 }

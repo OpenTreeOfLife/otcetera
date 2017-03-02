@@ -23,8 +23,8 @@ void updateAncestralPathOttIdSet(T * nd,
             OTT Id,
         2. internal nodes in phylo tree are mapped to the least inclusive node
             in the scaffold tree that has all of the descendant OTT Ids from
-            the phylo tree. (so the phyloNode->getData().desIds will be a subset
-            of scaffoldNode->getData().desIds)
+            the phylo tree. (so the phyloNode->get_data().desIds will be a subset
+            of scaffoldNode->get_data().desIds)
 */
 template<typename T, typename U>
 class NodePairing {
@@ -90,7 +90,7 @@ class PathPairing {
         scaffoldAnc(parent.scaffoldNode),
         phyloChild(child.phyloNode),
         phyloParent(parent.phyloNode),
-        currChildOttIdSet(child.phyloNode->getData().desIds) {
+        currChildOttIdSet(child.phyloNode->get_data().desIds) {
         assert(phyloChild->getParent() == phyloParent);
         assert(scaffoldAnc == scaffoldDes || isAncestorDesNoIter(scaffoldAnc, scaffoldDes));
     }
@@ -101,7 +101,7 @@ class PathPairing {
         scaffoldAnc(scafPar),
         phyloChild(child.phyloNode),
         phyloParent(phyPar),
-        currChildOttIdSet(child.phyloNode->getData().desIds) {
+        currChildOttIdSet(child.phyloNode->get_data().desIds) {
         assert(phyloChild->getParent() == phyloParent);
         assert(scaffoldAnc == scaffoldDes || isAncestorDesNoIter(scaffoldAnc, scaffoldDes));
     }
@@ -113,7 +113,7 @@ class PathPairing {
         return currChildOttIdSet;
     }
     const OttIdSet & getPhyloChildDesID() const {
-        return phyloChild->getData().desIds;
+        return phyloChild->get_data().desIds;
     }
 };
 

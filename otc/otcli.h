@@ -208,7 +208,7 @@ inline std::set<long> getAllOTTIds(const Tree& taxonomy) {
 
 template<>
 inline std::set<long> getAllOTTIds(const TreeMappedWithSplits &taxonomy) {
-    return taxonomy.getRoot()->getData().desIds;
+    return taxonomy.getRoot()->get_data().desIds;
 }
  
 template<typename T>

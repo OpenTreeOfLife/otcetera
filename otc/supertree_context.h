@@ -47,7 +47,7 @@ class SupertreeContext {
                          TreeMappedWithSplits & scaffTree)
             :numTrees(tv.size()),
             scaffold2NodeEmbedding(scaffoldNdToNodeEmbedding),
-            scaffoldOttId2Node(scaffTree.getData().ottIdToNode),
+            scaffoldOttId2Node(scaffTree.get_data().ottIdToNode),
             scaffoldTree(scaffTree),
             pruneTipsMappedToContestedTaxa(true) {
             treesByIndex.reserve(numTrees); 

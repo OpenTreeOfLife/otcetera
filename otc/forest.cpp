@@ -24,7 +24,7 @@ RootedForest<T, U>::createNewTree() {
 template<typename T, typename U>
 RootedForest<T, U>::RootedForest(long rootOttId)
     :nextTreeId(0U),
-    ottIdToNodeMap(nodeSrc.getData().ottIdToNode),
+    ottIdToNodeMap(nodeSrc.get_data().ottIdToNode),
     rootID(rootOttId) {
 }
 
@@ -79,13 +79,13 @@ void RootedForest<T, U>::_AndUpdateChild(RootedTreeNode<T> *p,
                                                     RootedTreeNode<T> *c,
                                                     FTree<T, U> &tree) {
     registerTreeForNode(c, &tree);
-    const auto & cd = c->getData().desIds;
+    const auto & cd = c->get_data().desIds;
     if (cd.size() == 1 && !c->hasOttId()) {
         if (*begin(cd) == c->getOttId()) {
             return;
         }
     }
-    p->getData().desIds.insert(begin(cd), end(cd));
+    p->get_data().desIds.insert(begin(cd), end(cd));
 }
 
 template<typename T, typename U>
@@ -331,12 +331,12 @@ bool RootedForest<T, U>::checkCanAddIngroupOverlappingPhyloStatementToGraph(
             forceDeeperRoot = true;
             assert(getTreeForNode(includeGroupA) == f);
         } else {
-            excInc = set_intersection_as_set(includeGroupA->getData().desIds, ps.excludeGroup);
+            excInc = set_intersection_as_set(includeGroupA->get_data().desIds, ps.excludeGroup);
             if (debuggingOutputEnabled) {
                 LOG(DEBUG) << "     addPhyloStatementToGraph search for an ancestor of ..."; 
                 dbWriteOttSet(" addPhyloStatementToGraph search for an ancestor of:  ", incGroupIntersection);
                 dbWriteOttSet(" wanted to avoid =  ", ps.excludeGroup);
-                dbWriteOttSet(" found a node with desIds:  ", includeGroupA->getData().desIds);
+                dbWriteOttSet(" found a node with desIds:  ", includeGroupA->get_data().desIds);
                 dbWriteOttSet(" which includes the excludegroup members:  ", excInc);
             }
             if (!canBeResolvedToDisplayIncExcGroup(includeGroupA, ps.includeGroup, excInc)) {
@@ -406,7 +406,7 @@ bool RootedForest<T, U>::addIngroupOverlappingPhyloStatementToGraph(const std::l
         if (!connectedHere.empty()) {
             attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
         }
-        dbWriteOttSet(" includeGroupA...desIds ", includeGroupA->getData().desIds);
+        dbWriteOttSet(" includeGroupA...desIds ", includeGroupA->get_data().desIds);
         LOG(DEBUG) << "   back from addPhyloStatementAtNode for loop round " << i;
         debugInvariantsCheck();
     }

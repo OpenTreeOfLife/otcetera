@@ -12,20 +12,20 @@ const int OK = restbed::OK;
 extern TreesToServe tts;
 
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
-    const auto & taxon_data = nd_taxon.getData();
-    taxonrepr["tax_sources"] = taxon_data.getSourcesJSON();
-    taxonrepr["name"] = string(taxon_data.getName());
-    taxonrepr["uniqname"] = string(taxon_data.getUniqname());
-    taxonrepr["rank"] = string(taxon_data.getRank());
+    const auto & taxon_data = nd_taxon.get_data();
+    taxonrepr["tax_sources"] = taxon_data.get_sources_json();
+    taxonrepr["name"] = string(taxon_data.get_name());
+    taxonrepr["uniqname"] = string(taxon_data.get_uniqname());
+    taxonrepr["rank"] = string(taxon_data.get_rank());
     taxonrepr["ott_id"] = nd_taxon.getOttId();    
 }
 
 void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
-    noderepr["node_id"] = nd.getName();
-    noderepr["num_tips"] = nd.getData().num_tips;
+    noderepr["node_id"] = nd.get_name();
+    noderepr["num_tips"] = nd.get_data().num_tips;
     if (nd.hasOttId()) {
         auto nd_id = nd.getOttId();
-        const auto * nd_taxon = taxonomy.taxonFromId(nd_id);
+        const auto * nd_taxon = taxonomy.taxon_from_id(nd_id);
         if (nd_taxon == nullptr) {
             throw OTCError() << "OTT Id " << nd_id << " not found in taxonomy! Please report this bug";
         }
@@ -72,12 +72,12 @@ void add_node_support_info(const TreesToServe & tts,
                            json & noderepr,
                            set<string> & usedSrcIds) {
     const auto & taxonomy = tts.getTaxonomy();
-    const auto & d = nd.getData();
+    const auto & d = nd.get_data();
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
     if (nd.hasOttId()) {
         extra_src = &(taxonomy.get_version());
-        extra_node_id = &(nd.getName());
+        extra_node_id = &(nd.get_name());
         usedSrcIds.insert(taxonomy.get_version());
     }
     if (extra_src != nullptr || !d.supported_by.empty()) {
@@ -104,17 +104,17 @@ void add_node_support_info(const TreesToServe & tts,
 
 const SumTreeNode_t * find_mrca(const SumTreeNode_t *f,
                                 const SumTreeNode_t *s) {
-    const auto * fdata = &(f->getData());
-    const auto sec_ind = s->getData().trav_enter;
-    //cerr << "f->name = " << f->getName() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
+    const auto * fdata = &(f->get_data());
+    const auto sec_ind = s->get_data().trav_enter;
+    //cerr << "f->name = " << f->get_name() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
         f = f->getParent();
         if (f == nullptr) {
             assert(false); 
             return nullptr;
         }
-        fdata = &(f->getData());
-        //cerr << "f->name = " << f->getName() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
+        fdata = &(f->get_data());
+        //cerr << "f->name = " << f->get_name() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     }
     return f;
 }
@@ -126,7 +126,7 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           const string & node_id,
                                           bool & was_broken) {
     was_broken = false;
-    const auto & tree_data = tree.getData();
+    const auto & tree_data = tree.get_data();
     auto n2nit = tree_data.name2node.find(node_id);
     if (n2nit != tree_data.name2node.end()) {
         return n2nit->second;
@@ -330,7 +330,7 @@ void mrca_ws_method(const TreesToServe & tts,
             }
         }
         json nt;
-        const RTRichTaxNode * anc_taxon = taxonomy.taxonFromId(anc->getOttId());
+        const RTRichTaxNode * anc_taxon = taxonomy.taxon_from_id(anc->getOttId());
         if (anc_taxon == nullptr) {
             throw OTCError() << "Ancd OTT Id " << anc->getOttId() << " not found in taxonomy! Please report this bug";
         }
@@ -362,7 +362,7 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
         status_code = 400;
         return nullptr;
     }
-    if (focal->getData().num_tips > tip_limit
+    if (focal->get_data().num_tips > tip_limit
         && height_limit < 0) {
         response_str = "The requested subtree is too large to be returned via the API. Download the entire tree.\n";
         status_code = 400;
@@ -382,17 +382,17 @@ class NodeNamerSupportedByStasher {
         }
 
         string operator()(const SumTreeNode_t *nd) const {
-            const string & id_str = nd->getName(); // in this tree the "name" is really the "ott###" string
-            const SumTreeNodeData & d = nd->getData();
+            const string & id_str = nd->get_name(); // in this tree the "name" is really the "ott###" string
+            const SumTreeNodeData & d = nd->get_data();
             for (auto & p : d.supported_by) {
                 study_id_set.insert(p.first);
             }
             if (nns != NodeNameStyle::NNS_ID_ONLY && nd->hasOttId()) {
-                const auto * tr = taxonomy.taxonFromId(nd->getOttId());
+                const auto * tr = taxonomy.taxon_from_id(nd->getOttId());
                 if (tr == nullptr) {
                     throw OTCError() << "OTT Id " << nd->getOttId() << " in namer not found in taxonomy! Please report this bug";
                 }
-                string taxon_name = string(tr->getData().getUniqname());
+                string taxon_name = string(tr->get_data().get_uniqname());
                 if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
                     string ret;
                     ret.reserve(taxon_name.length() + 1 + id_str.length());
@@ -586,18 +586,18 @@ void taxon_info_ws_method(const TreesToServe & tts,
     const auto & taxonomy = tts.getTaxonomy();
     assert(taxon_node != nullptr);
     const auto & taxonomy_tree = taxonomy.getTaxTree();
-    const auto & taxonomy_tree_data = taxonomy_tree.getData();
-    const auto & node_data = taxon_node->getData();
+    const auto & taxonomy_tree_data = taxonomy_tree.get_data();
+    const auto & node_data = taxon_node->get_data();
     json response;
     response["source"] = taxonomy.get_version();
     response["ott_id"] = taxon_node->getOttId();
-    response["name"] = string(node_data.getName());
-    response["uniqname"] = string(node_data.getUniqname());
-    response["tax_sources"] = node_data.getSourcesJSON();
-    response["flags"] = flags_to_string_vec(node_data.getFlags());
+    response["name"] = string(node_data.get_name());
+    response["uniqname"] = string(node_data.get_uniqname());
+    response["tax_sources"] = node_data.get_sources_json();
+    response["flags"] = flags_to_string_vec(node_data.get_flags());
     json syn_list;
     for (auto tjs : node_data.junior_synonyms) {
-        syn_list.push_back(tjs->getName());
+        syn_list.push_back(tjs->get_name());
     }
     response["synonyms"] = syn_list;
     //add_lineage(a, focal, taxonomy, usedSrcIds);

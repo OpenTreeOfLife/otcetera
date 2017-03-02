@@ -43,13 +43,13 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
                         const auto & childSet = parChildSetPair.second;
                         json childSetAsJSONList = json::array();
                         for (auto childP : childSet) {
-                            childSetAsJSONList.push_back(childP->getName());
+                            childSetAsJSONList.push_back(childP->get_name());
                         }
-                        pcsObj["parent"] = parNode->getName();
+                        pcsObj["parent"] = parNode->get_name();
                         pcsObj["children_from_taxon"] = childSetAsJSONList;
                         parToChildSetJSON.push_back(pcsObj);
                     }
-                    treeIDToNodeMapJSON[ct->getName()] = parToChildSetJSON;
+                    treeIDToNodeMapJSON[ct->get_name()] = parToChildSetJSON;
                 }
                 std::string ottIdStr = "ott" + std::to_string(scaffoldNd->getOttId());
                 (*documentP)[ottIdStr] = treeIDToNodeMapJSON;

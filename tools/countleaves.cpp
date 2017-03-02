@@ -25,7 +25,7 @@ template<typename T>
 bool listTipNames(OTCLI & , T * tree) {
     for (auto nd : iter_leaf_const(*tree)) {
         assert(nd->hasOttId());
-        std::cout << nd->getName() << '\n';
+        std::cout << nd->get_name() << '\n';
     }
     return true;
 }

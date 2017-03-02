@@ -123,21 +123,21 @@ inline bool checkDesIds(const TreeMappedWithSplits & tree) {
         std::set<long> d;
         auto sum = 0U;
         for (auto c : iter_child_const(*nd)) {
-            const auto & cd = c->getData().desIds;
+            const auto & cd = c->get_data().desIds;
             sum += cd.size();
             assert(cd.size() > 0);
             d.insert(cd.begin(), cd.end());
         }
         assert(sum == d.size());
-        if (tree.getData().desIdSetsContainInternals) {
+        if (tree.get_data().desIdSetsContainInternals) {
             if (nd->hasOttId()) {
                 d.insert(nd->getOttId());
             }
         }
-        if (!isSubset(d, nd->getData().desIds)) {
+        if (!isSubset(d, nd->get_data().desIds)) {
             std::cerr << "node " << nd->getOttId() << '\n';
-            writeOttSetDiff(std::cerr, " ", nd->getData().desIds, " node.desId ", d, " calc.");
-            assert(isSubset(d, nd->getData().desIds));
+            writeOttSetDiff(std::cerr, " ", nd->get_data().desIds, " node.desId ", d, " calc.");
+            assert(isSubset(d, nd->get_data().desIds));
         }
     }
     return true;

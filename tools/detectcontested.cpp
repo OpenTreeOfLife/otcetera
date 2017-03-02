@@ -15,7 +15,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     bool summarize(OTCLI &otCLI) override {
         assert (taxonomy != nullptr);
         for (auto nd : contestedNodes) {
-            otCLI.out << nd->getName() << '\n';
+            otCLI.out << nd->get_name() << '\n';
         }
         return true;
     }
@@ -56,10 +56,10 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         std::set<std::set<long> > sourceClades;
         for (auto nd : iter_post_internal(tree)) {
             if (nd->getParent() != nullptr && !nd->isTip()) {
-                sourceClades.insert(std::move(nd->getData().desIds));
+                sourceClades.insert(std::move(nd->get_data().desIds));
             }
         }
-        auto numLeaves = tree.getRoot()->getData().desIds.size();
+        auto numLeaves = tree.getRoot()->get_data().desIds.size();
         recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves, otCLI.currentFilename);
         return true;
     }

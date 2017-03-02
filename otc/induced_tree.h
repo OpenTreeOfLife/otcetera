@@ -8,15 +8,15 @@
 
 template <typename N>
 inline int depth(const N* node) {
-    assert(node->getData().depth > 0);
-    return node->getData().depth;
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
 }
 
 
 template <typename N>
 inline int& depth(N* node) {
-    assert(node->getData().depth > 0);
-    return node->getData().depth;
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
 }
 
 template <typename node_t>
@@ -86,8 +86,8 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
         if (nd->hasOttId())
             nd2->setOttId(nd->getOttId());
 
-        if (nd->getName().size())
-            nd2->setName(nd->getName());
+        if (nd->get_name().size())
+            nd2->setName(nd->get_name());
 
         to_induced_tree[nd] = nd2;
     }
@@ -155,7 +155,7 @@ std::unique_ptr<Tree_t> get_induced_tree(const Tree_t& T1, const std::unordered_
     auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
 
     auto induced_tree = get_induced_tree<Tree_t>(induced_leaves);
-    induced_tree->setName(T1.getName());
+    induced_tree->setName(T1.get_name());
 
     return induced_tree;
 }

@@ -41,7 +41,7 @@ std::string generateCleanedName(const std::string & name) {
 template<typename T>
 bool cleanNamesAndWrite(OTCLI & otCLI, std::unique_ptr<T> tree) {
     for (auto nd : iter_node(*tree)) {
-        const auto name = nd->getName();
+        const auto name = nd->get_name();
         if (hasProblematicCharacter(name)) {
             nd->setName(generateCleanedName(name));
         }

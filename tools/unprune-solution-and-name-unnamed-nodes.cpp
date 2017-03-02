@@ -129,7 +129,7 @@ void writeLostTaxa(ostream & out,
         const auto & ottId = ltmEl.first;
         const auto & ltl = ltmEl.second; 
         json lostTaxonLocation;
-        lostTaxonLocation["mrca"] = ltl.mrca->getName();
+        lostTaxonLocation["mrca"] = ltl.mrca->get_name();
         const auto attachmentPoints = ltl.attachNode2AttachedVec;
         json apjson;
         for (auto attachPoint: attachmentPoints) {
@@ -137,9 +137,9 @@ void writeLostTaxa(ostream & out,
             const auto & childVec = attachPoint.second;
             json childVecJSON = json::array();
             for (auto c : childVec) {
-                childVecJSON.push_back(c->getName());
+                childVecJSON.push_back(c->get_name());
             }
-            apjson[parent->getName()] = childVecJSON;
+            apjson[parent->get_name()] = childVecJSON;
         }
         lostTaxonLocation["attachment_points"] = apjson;
         lostTaxa["ott" + std::to_string(ottId)] = lostTaxonLocation;
@@ -165,9 +165,9 @@ void addToDesIdsForAnc(long ottId, Node_t *firstNd, Node_t *ancAndLast, const ma
     LOG(DEBUG) << "Adding " << ottId << " to desIds for all taxa from " << firstNd->getOttId() << " to " << ancAndLast->getOttId();
     assert(firstNd);
     while (true) {
-        firstNd->getData().desIds.insert(ottId);
+        firstNd->get_data().desIds.insert(ottId);
         //LOG(DEBUG) << "addToDesIdsForAnc hit " << firstNd->getOttId();
-        //LOG(DEBUG) << "adding " << ottId << " to node " << firstNd->getName(); dbWriteOttSet(" its desIds", firstNd->getData().desIds);
+        //LOG(DEBUG) << "adding " << ottId << " to node " << firstNd->get_name(); dbWriteOttSet(" its desIds", firstNd->get_data().desIds);
         if (firstNd == ancAndLast) {
             return;
         }
@@ -185,8 +185,8 @@ vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
     set<N *> seen;
     vector<N *> r;
     N * curr = root;
-    assert(!curr->getData().desIds.empty());
-    assert(curr->getData().reprInSolnBy == nullptr);
+    assert(!curr->get_data().desIds.empty());
+    assert(curr->get_data().reprInSolnBy == nullptr);
     stack<N *> toDealWith;
     while (true) {
         LOG(DEBUG) << "higherTaxPreOrderBelowBoundaries visiting " << curr->getOttId();
@@ -203,7 +203,7 @@ vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
                 LOG(DEBUG) << "higherTaxPreOrderBelowBoundaries adding " << curr->getOttId();
                 r.push_back(curr);
                 for (auto c : iter_child(*curr)) {
-                    auto & cd = c->getData();
+                    auto & cd = c->get_data();
                     if (!cd.desIds.empty() && cd.reprInSolnBy == nullptr) {
                         toDealWith.push(c);
                     }
@@ -219,11 +219,11 @@ N * introduceMonotypicParent(N * taxon, N * solnChild) {
     assert(solnChild);
     N * nn = new N(nullptr);
     solnChild->replaceThisNode(nn);
-    nn->setName(taxon->getName());
+    nn->setName(taxon->get_name());
     nn->setOttId(taxon->getOttId());
-    taxon->getData().reprInSolnBy = nn;
+    taxon->get_data().reprInSolnBy = nn;
     nn->addChild(solnChild);
-    nn->getData().desIds = solnChild->getData().desIds;
+    nn->get_data().desIds = solnChild->get_data().desIds;
     return nn;
 }
 
@@ -242,7 +242,7 @@ void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v) {
     assert(solnNode);
     const auto children = all_children(taxon);
     for (auto child : children) {
-        auto & cd = child->getData();
+        auto & cd = child->get_data();
         if (cd.desIds.empty() && cd.reprInSolnBy == nullptr) {
             //LOG(DEBUG) << "moveUnsampledChildren moving " << child->getOttId();
             child->detachThisNode();
@@ -266,9 +266,9 @@ void registerAttachmentPoints(const N * taxon,
     set<N *> visited;
     stack<N *> toDealWith;
     LOG(DEBUG) << "registerAttachmentPoints for " << taxon->getOttId();
-    const auto & taxDes = taxon->getData().desIds;
+    const auto & taxDes = taxon->get_data().desIds;
     assert(taxDes.size() > 1);
-    assert(isProperSubset(taxDes, mrca->getData().desIds));
+    assert(isProperSubset(taxDes, mrca->get_data().desIds));
     N * currSolnNd = mrca;
     // the root of the solution, must have all of the constituent taxa
     while (true) {
@@ -281,10 +281,10 @@ void registerAttachmentPoints(const N * taxon,
             assert (visited.count(currSolnNd) == 0);
         } else {
             visited.insert(currSolnNd);
-            const auto & solDes = currSolnNd->getData().desIds;
+            const auto & solDes = currSolnNd->get_data().desIds;
             assert(solDes != taxDes); // we should not call this if a des of mrca = taxon
             for (auto c : iter_child(*currSolnNd)) {
-                const auto & cdesId = c->getData().desIds;
+                const auto & cdesId = c->get_data().desIds;
                 if (!areDisjoint(cdesId, taxDes)) {
                     if (isProperSubset(cdesId, taxDes)) {
                         ltl.addAttachmentPoint(currSolnNd, c);
@@ -385,9 +385,9 @@ void addChildrenOfNonMonophyleticTaxon(N * taxon,
 template <typename N>
 N * special_bisect_with_new_child(N * taxNode, N * currSolnNd, bool moveUnsamp) {
     N * nt = bisect_branch_with_new_child(currSolnNd);
-    nt->setName(taxNode->getName());
+    nt->setName(taxNode->get_name());
     nt->setOttId(taxNode->getOttId());
-    nt->getData().desIds = currSolnNd->getData().desIds;
+    nt->get_data().desIds = currSolnNd->get_data().desIds;
     if (moveUnsamp) {
         moveUnsampledChildren(taxNode, nt);
     }
@@ -399,13 +399,13 @@ N * special_bisect_with_new_child(N * taxNode, N * currSolnNd, bool moveUnsamp) 
 // Used for starting from an ancestor of the taxa in taxon_node and moving one
 //    step closer to the MRCA of those taxa
 Node_t * find_single_child_with_all_marked_taxa(Node_t * currSolnNd, const Node_t * taxon_node) {
-    dbWriteOttSet(" find_single_child_with_all_marked_taxa taxon desIds", taxon_node->getData().desIds);
-    dbWriteOttSet(" find_single_child_with_all_marked_taxa currSolnNd desIds", currSolnNd->getData().desIds);
-    const auto & taxon_data = taxon_node->getData();
+    dbWriteOttSet(" find_single_child_with_all_marked_taxa taxon desIds", taxon_node->get_data().desIds);
+    dbWriteOttSet(" find_single_child_with_all_marked_taxa currSolnNd desIds", currSolnNd->get_data().desIds);
+    const auto & taxon_data = taxon_node->get_data();
     const auto & taxon_des = taxon_data.desIds;
     Node_t * nextSolnNd = nullptr;
     for (auto c : iter_child(*currSolnNd)) {
-        const auto & cdesId = c->getData().desIds;
+        const auto & cdesId = c->get_data().desIds;
         if (!areDisjoint(cdesId, taxon_des)) {
             //LOG(DEBUG) << "not disjoint nextSolnNd=" << (long) nextSolnNd;
             if (nextSolnNd == nullptr) {
@@ -430,8 +430,8 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
     LostTaxonMap & ltm = unprune_stats.lost_taxa;
     assert(higherTaxonNd);
     assert(rootSolnNd);
-    LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->getName();
-    const auto & taxData = higherTaxonNd->getData();
+    LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->get_name();
+    const auto & taxData = higherTaxonNd->get_data();
     const auto & taxDes = taxData.desIds;
     dbWriteOttSet(" higherTaxonNd desIds", taxDes);
     assert(taxDes.size() > 0);
@@ -440,7 +440,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
     N * currSolnNd = rootSolnNd;
     N * tipmostMRCA = nullptr;
     // the root of the solution, must have all of the constituent taxa
-    assert(isSubset(taxDes, rootSolnNd->getData().desIds));
+    assert(isSubset(taxDes, rootSolnNd->get_data().desIds));
     // here we walk tipward to find the MRCA of the taxa in taxDes
     while (true) {
         N * nextSolnNd = find_single_child_with_all_marked_taxa(currSolnNd, higherTaxonNd);
@@ -453,7 +453,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
         addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm, recordInLTM);
     }
     assert(currSolnNd != nullptr);
-    const auto & solDes = currSolnNd->getData().desIds;
+    const auto & solDes = currSolnNd->get_data().desIds;
     assert(isSubset(taxDes, solDes));
     auto extra = set_difference_as_set(solDes, taxDes);
     bool hasExcludedExtras = false;
@@ -520,7 +520,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
             if (currSolnNd->hasOttId()) {
                 unprune_stats.synonym_map[currSolnNd->getOttId()].insert(higherTaxonNd->getOttId());
             } else {
-                currSolnNd->setName(higherTaxonNd->getName());
+                currSolnNd->setName(higherTaxonNd->get_name());
                 currSolnNd->setOttId(higherTaxonNd->getOttId());
             }
         }
@@ -543,14 +543,14 @@ void registerCoveringOfIncSed(OttId effectiveTipOttId,
     //LOG(DEBUG) << "registerCoveringOfIncSed for " << effectiveTipOttId;
     const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
     auto anc = ott2tax.at(effectiveTipOttId).second;
-    effTipTaxonNd->getData().desIds.insert(effectiveTipOttId);
+    effTipTaxonNd->get_data().desIds.insert(effectiveTipOttId);
     auto effTipSolnNd = ott2soln.at(effectiveTipOttId);
     if (inc_sed_internals.find(effTipTaxonNd) != inc_sed_internals.end()) {
         curr_slice_inc_sed_map[effTipTaxonNd].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
     }
     while (anc &&  inc_sed_internals.find(anc) != inc_sed_internals.end()) {
         //LOG(DEBUG) << "registerCoveringOfIncSed added " << effectiveTipOttId << " to " << anc->getOttId();
-        anc->getData().desIds.insert(effectiveTipOttId);
+        anc->get_data().desIds.insert(effectiveTipOttId);
         curr_slice_inc_sed_map[anc].insert(TaxSolnNdPair(effTipTaxonNd, effTipSolnNd));
         anc = ott2tax.at(anc->getOttId()).second;
     }
@@ -558,7 +558,7 @@ void registerCoveringOfIncSed(OttId effectiveTipOttId,
 
 // Moves unsampled taxa from the taxanomy (by finding them in `ott2tax`) to a slice of the
 //  solution tree that is rooted at `rootSolnNd`.
-// Uses the `rootSolnNd->getData().desIds` to denote the set of leaves of this slice of the
+// Uses the `rootSolnNd->get_data().desIds` to denote the set of leaves of this slice of the
 //  tree. On exit this will be the ID of this clade and the IDs of any uncoalesced incertae sedis 
 //    taxa that are in this slice.
 // If the taxon conflicts with the solution, then the unsampled taxa are attached at the
@@ -573,21 +573,21 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     assert(rootSolnNd);
     assert(rootSolnNd->hasOttId());
     const auto ottId = rootSolnNd->getOttId();
-    LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->getName();
+    LOG(DEBUG) << "unpruneTaxaForSubtree for " << rootSolnNd->get_name();
     assert(ott2soln.at(ottId) == rootSolnNd);
     N * rootTaxonNd = ott2tax.at(ottId).first;
     assert(rootTaxonNd != nullptr);
     assert(!rootTaxonNd->isTip());
-    const OttIdSet * rootNonExclude = rootTaxonNd->getData().nonexcluded_ids;
+    const OttIdSet * rootNonExclude = rootTaxonNd->get_data().nonexcluded_ids;
     assert(rootNonExclude != nullptr);
     // this will have the IDs for all of the include taxa for this slice of the tree
     // note that some may be "higher" taxa.
-    auto & solnDesIds = rootSolnNd->getData().desIds;
+    auto & solnDesIds = rootSolnNd->get_data().desIds;
     assert(!solnDesIds.empty());
     // desIds fields of the solution tree are filled in by the caller before this function.
     //  here we fill in those fields for the taxonomy nodes.
     //Here we add the sampled IDs to desId fields ofthe relevant taxa. This is potentially
-    //  confusing because getData().desIds will hold only the IDs of taxa that are present in the soln
+    //  confusing because get_data().desIds will hold only the IDs of taxa that are present in the soln
     //  tree (even when we are talking about the taxonomy node's desIds)
     // While we are walking through the "leaf" Ids for this tree slice, we'll also
     //  collect the leaf sets
@@ -645,10 +645,10 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             if (is_inc_sed && !is_tip_inc_sed) {
                 inc_sed_that_are_proper_children.insert(effTipTaxonNd);
             }
-            if (effTipTaxonNd->getData().reprInSolnBy != nullptr) {
-                assert(effTipTaxonNd->getData().reprInSolnBy->hasOttId());
-                queuedForFlagging.push_back(carriedIDRealId(effectiveTipOttId, effTipTaxonNd->getData().reprInSolnBy->getOttId()));
-                LOG(DEBUG) << "checking effective tip " << effectiveTipOttId << " threaded through " << effTipTaxonNd->getData().reprInSolnBy->getOttId();
+            if (effTipTaxonNd->get_data().reprInSolnBy != nullptr) {
+                assert(effTipTaxonNd->get_data().reprInSolnBy->hasOttId());
+                queuedForFlagging.push_back(carriedIDRealId(effectiveTipOttId, effTipTaxonNd->get_data().reprInSolnBy->getOttId()));
+                LOG(DEBUG) << "checking effective tip " << effectiveTipOttId << " threaded through " << effTipTaxonNd->get_data().reprInSolnBy->getOttId();
             } else {
                 queuedForFlagging.push_back(carriedIDRealId(effectiveTipOttId, effectiveTipOttId));
             }
@@ -662,7 +662,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     for (auto cr_pair : queuedForFlagging) {
         auto realTipOttId = cr_pair.second;
         auto effTipTaxonNd = ott2tax.at(realTipOttId).first;
-        effTipTaxonNd->getData().desIds.clear();
+        effTipTaxonNd->get_data().desIds.clear();
     }
     for (auto cr_pair : queuedForFlagging) {
         auto carriedTipId = cr_pair.first;
@@ -700,7 +700,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
         LOG(DEBUG) << "inc. sed. " << inc_sed_taxon->getOttId() << " in this slice with " << included_leaf_pair_set.size() << " of " << gsit->second.size() << " sampled tips";
         if (full_soln_set.size() == included_leaf_pair_set.size()) {
             // all of the sampled member of this incertae sedis taxon are sampled in this slice...
-            int tax_level = inc_sed_taxon->getData().tax_level;
+            int tax_level = inc_sed_taxon->get_data().tax_level;
             inc_sed_to_deal_with_by_level[tax_level].push_back(inc_sed_taxon);
         } else {
             // on exit we need to deal up date outgoing edges...
@@ -720,9 +720,9 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 numExpanded += 1;
                 auto cvec = all_children(taxonForLeaf);
                 for (auto c : cvec) {
-                    if (c->getData().reprInSolnBy == nullptr) {
+                    if (c->get_data().reprInSolnBy == nullptr) {
                         taxonForLeaf->removeChild(c);
-                        c->getData().reprInSolnBy = l;
+                        c->get_data().reprInSolnBy = l;
                         l->addChild(c);
                     }
                 }
@@ -754,7 +754,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, unprune_stats, recordInLTM, ott2tax);
         }
         LOG(DEBUG) << "reprInSolnBy marked for " << higherTaxonNd->getOttId();
-        higherTaxonNd->getData().reprInSolnBy = rootSolnNd;
+        higherTaxonNd->get_data().reprInSolnBy = rootSolnNd;
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
         for (auto is_taxon_ptr : is_it->second) {
@@ -766,23 +766,23 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, unprune_stats, false, ott2tax);
             }
             LOG(DEBUG) << "reprInSolnBy marked for " << is_taxon_ptr->getOttId();
-            is_taxon_ptr->getData().reprInSolnBy = rootSolnNd;
+            is_taxon_ptr->get_data().reprInSolnBy = rootSolnNd;
         }
     }
     // for the sake of a low memory footprint, here we 
     //  clear out the desIds fields for this slice of the tree.
     for (auto n : taxaLeaves) {
-        n->getData().reprInSolnBy = rootSolnNd;
-        n->getData().desIds.clear();
+        n->get_data().reprInSolnBy = rootSolnNd;
+        n->get_data().desIds.clear();
     }
     for (auto n : postOrderInTaxNd) {
-        n->getData().desIds.clear();
+        n->get_data().desIds.clear();
     }
     set<N *> visited;
     for (auto n : solnLeaves) {
         auto c = n;
         while (visited.count(c) == 0 && c != rootSolnNd) {
-            c->getData().desIds.clear();
+            c->get_data().desIds.clear();
             if (c != n) {
                 visited.insert(c);
             }
@@ -791,10 +791,10 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     }
     for (auto scism_it: curr_slice_inc_sed_map) {
         auto & inc_sed_taxon = scism_it.first;
-        inc_sed_taxon->getData().desIds.clear();
+        inc_sed_taxon->get_data().desIds.clear();
     }
-    rootSolnNd->getData().desIds.clear();
-    rootSolnNd->getData().desIds.insert(ottId);
+    rootSolnNd->get_data().desIds.clear();
+    rootSolnNd->get_data().desIds.insert(ottId);
     // here we need to update the altered inc_sed taxon maps...
     // All the ones finished in this slice can be deleted from maps...
     for (auto is_taxon_ptr : inc_sed_that_are_proper_children) {
@@ -822,14 +822,14 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             // for the deeper parts of the tree the tips in this slice need to be annotated
             //    to reflect the fact that they have already been included in a taxonomic node
             Node_t * spike_nd = tsp.first;
-            rootSolnNd->getData().desIds.insert(spike_nd->getOttId());
+            rootSolnNd->get_data().desIds.insert(spike_nd->getOttId());
             //flagIncSedAs
             while (true) {
                 if (inc_sed_mapping_deeper.count(spike_nd) > 0) {
                     break;
                 }
                 LOG(DEBUG) << "reprInSolnBy marked for " << spike_nd->getOttId();
-                spike_nd->getData().reprInSolnBy = rootTaxonNd;
+                spike_nd->get_data().reprInSolnBy = rootTaxonNd;
                 spike_nd = spike_nd->getParent();
                 assert(spike_nd != nullptr);
             }
@@ -847,23 +847,23 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
     // Assuming that incertae sedis taxa are fairly rare, there will be lots of nodes that 
     //    share the same set of non-excluded taxa. Thus we have an owning store and lots
     //    of pointers to them.
-    auto & owningList = taxonomy.getData().ownedIdSets;
+    auto & owningList = taxonomy.get_data().ownedIdSets;
     auto taxonomy_root_ptr = taxonomy.getRoot();
     owningList.push_back(OttIdSet());
-    taxonomy_root_ptr->getData().nonexcluded_ids = &(*owningList.rbegin());
-    taxonomy_root_ptr->getData().tax_level = 0;
+    taxonomy_root_ptr->get_data().nonexcluded_ids = &(*owningList.rbegin());
+    taxonomy_root_ptr->get_data().tax_level = 0;
     for (auto nd: iter_pre(taxonomy)) {
         if (nd->isTip()) {
             continue;
         }
-        auto & ndd = nd->getData();
+        auto & ndd = nd->get_data();
         auto * curr_nonexc = ndd.nonexcluded_ids;
         assert(curr_nonexc != nullptr);
         set<Node_t *> inc_sed_children;
         set<Node_t *> normal_children;
         int child_level = 1 + ndd.tax_level;
         for (auto c : iter_child(*nd)) {
-            c->getData().tax_level = child_level;
+            c->get_data().tax_level = child_level;
             if (incertae_sedis_ids.count(c->getOttId())) {
                 inc_sed_children.insert(c);
             } else {
@@ -873,28 +873,28 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
         if (inc_sed_children.empty()) {
             // all children can share same nonexcluded set as curr nd;
             for (auto c: normal_children) {
-                c->getData().nonexcluded_ids = curr_nonexc;
+                c->get_data().nonexcluded_ids = curr_nonexc;
             }
         } else {
             if (inc_sed_children.size() == 1) {
                 // if there is only one, the incertae sedis child
                 //     actually just has the same non-excluded as parent
                 auto inc_sed_child = *inc_sed_children.begin();
-                auto & inc_sed_child_data = inc_sed_child->getData();
+                auto & inc_sed_child_data = inc_sed_child->get_data();
                 inc_sed_child_data.nonexcluded_ids = curr_nonexc;
             } else {
                 // each incertae sedis child will have its own non-excluded set
                 for (auto isc: inc_sed_children) {
                     owningList.push_back(*curr_nonexc);
-                    isc->getData().nonexcluded_ids = &(*owningList.rbegin());
+                    isc->get_data().nonexcluded_ids = &(*owningList.rbegin());
                 }
                 for (auto isc: inc_sed_children) {
-                    const auto & isc_di = isc->getData().desIds;
+                    const auto & isc_di = isc->get_data().desIds;
                     for (auto oisc: inc_sed_children) {
                         if (oisc == isc) {
                             continue;
                         }
-                        oisc->getData().nonexcluded_ids->insert(isc_di.begin(), isc_di.end());
+                        oisc->get_data().nonexcluded_ids->insert(isc_di.begin(), isc_di.end());
                     }
                 }
             }
@@ -903,11 +903,11 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
                 owningList.push_back(*curr_nonexc);
                 auto normal_child_non_exc = &(*owningList.rbegin());
                 for (auto isc: inc_sed_children) {
-                    auto isc_di = isc->getData().desIds;
+                    auto isc_di = isc->get_data().desIds;
                     normal_child_non_exc->insert(isc_di.begin(), isc_di.end());
                 }
                 for (auto c: normal_children) {
-                    c->getData().nonexcluded_ids = normal_child_non_exc;
+                    c->get_data().nonexcluded_ids = normal_child_non_exc;
                 }
             }
         }
@@ -928,18 +928,18 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, childParPair> & ott_to_tax,
         LOG(DEBUG) << "Filling desIds for incertae sedis " << ist_id;
         auto taxon = ott_to_tax.at(ist_id).first;
         for (auto nd: iter_post_n(*taxon)) {
-            auto & di_ref = nd->getData().desIds;
+            auto & di_ref = nd->get_data().desIds;
             // empty check is just an optimization to avoid recalculating the results for a node.
             if (di_ref.empty()) {
                 di_ref.insert(nd->getOttId());
                 unprune_stats.inc_sed_internals.insert(nd);
                 for (auto c : iter_child(*nd)) {
-                    const auto & cdi_ref = c->getData().desIds;
+                    const auto & cdi_ref = c->get_data().desIds;
                     di_ref.insert(cdi_ref.begin(), cdi_ref.end());
                 }
             }
         }
-        dbWriteOttSet("the desIds set is ", taxon->getData().desIds);
+        dbWriteOttSet("the desIds set is ", taxon->get_data().desIds);
     }
 }
 
@@ -974,20 +974,20 @@ void findIncertaeSedisInSolution(Tree_t & taxonomy,
     auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto snd: iter_leaf(solution)) {
         if (!snd->hasOttId()) {
-            throw OTCError() << "Tip "<< snd->getName() << " in solution lacks an OTT ID";
+            throw OTCError() << "Tip "<< snd->get_name() << " in solution lacks an OTT ID";
         }
         auto ott_id = snd->getOttId();
         auto taxon_node = ott_to_tax.at(ott_id).first;
         if (ott_id == 5144555) {
-            dbWriteOttSet("target desIds", taxon_node->getData().desIds);
+            dbWriteOttSet("target desIds", taxon_node->get_data().desIds);
         }
-        if (taxon_node->getData().desIds.empty()) {
+        if (taxon_node->get_data().desIds.empty()) {
             continue;    
         }
         unprune_stats.inc_sed_soln_tips.insert(snd);
         auto anc = taxon_node->getParent();
         to_tips_map[taxon_node].insert(snd);
-        while (anc && !(anc->getData().desIds.empty())) {
+        while (anc && !(anc->get_data().desIds.empty())) {
             to_tips_map[anc].insert(snd);
             anc = anc->getParent();
         }
@@ -1087,8 +1087,8 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
         if (sampled.size() < 2) {
             continue;
         }
-        const auto nonexc = inc_sed_taxon->getData().nonexcluded_ids;
-        const auto taxon_des = inc_sed_taxon->getData().desIds;
+        const auto nonexc = inc_sed_taxon->get_data().nonexcluded_ids;
+        const auto taxon_des = inc_sed_taxon->get_data().desIds;
         assert(nonexc != nullptr);
         auto soln_mrca = find_mrca_without_desids(sampled);
         for (auto t : iter_leaf_n(*soln_mrca)) {
@@ -1096,7 +1096,7 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
             if (sampled.count(t) == 0 && 0 == nonexc->count(t->getOttId())) {
                 LOG(DEBUG) << "Inc. sed. " << inc_sed_taxon->getOttId() << " is not monophyletic.";
                 unprune_stats.non_monophyletic_inc_sed[inc_sed_taxon] = soln_mrca;
-                unprune_stats.non_monophyletic_inc_sed_to_desIds[inc_sed_taxon->getOttId()] = inc_sed_taxon->getData().desIds;
+                unprune_stats.non_monophyletic_inc_sed_to_desIds[inc_sed_taxon->getOttId()] = inc_sed_taxon->get_data().desIds;
                 break;
             }
         }
@@ -1123,7 +1123,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
         if (nd->isTip()) {
             unprune_stats.startNumSolnLeaves += 1;
             if (!nd->hasOttId()) {
-                throw OTCError() << "Tip "<< nd->getName() << " in solution lacks an OTT ID";
+                throw OTCError() << "Tip "<< nd->get_name() << " in solution lacks an OTT ID";
             }
             if (not ott_to_tax.count(nd->getOttId())) {
                 throw OTCError() << "OttId "<< nd->getOttId() << " not in taxonomy!";
@@ -1139,7 +1139,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
         if (nd->hasOttId()){
             auto ott_id = nd->getOttId();
             ott_to_sol[ott_id] = nd;
-            auto & nd_di = nd->getData().desIds;
+            auto & nd_di = nd->get_data().desIds;
             auto taxon_node = ott_to_tax.at(ott_id).first;
             if (nd->isTip()) {
                 nd_di.insert(ott_id);
@@ -1158,7 +1158,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
                 nd_di.insert(nd->getOttId());
             }
             if (p) {
-                auto & pd = p->getData();
+                auto & pd = p->get_data();
                 pd.desIds.insert(nd_di.begin(), nd_di.end());
             }
         } else {
@@ -1166,8 +1166,8 @@ void unprunePreppedInputs(Tree_t & taxonomy,
                 unprune_stats.numUnnamedInternalsInSoln += 1;
             }
             if (p) {
-                const auto & d = nd->getData().desIds;
-                p->getData().desIds.insert(d.begin(), d.end());
+                const auto & d = nd->get_data().desIds;
+                p->get_data().desIds.insert(d.begin(), d.end());
             }
         }
     }
@@ -1224,7 +1224,7 @@ void unpruneTaxa(T & taxonomy,
     //    but the taxonomic nodes that were incertae sedis have been recorded in 
     //    unprune_stats.inc_sed_taxon_to_sampled_tips and the nonexcluded_ids sets
     for (auto nd: iter_post(taxonomy)) {
-        nd->getData().desIds.clear();
+        nd->get_data().desIds.clear();
     }
     for (auto el : unprune_stats.inc_sed_taxon_to_sampled_tips) {
         LOG(DEBUG) << " unprune_stats.inc_sed_taxon_to_sampled_tips key " << el.first->getOttId() << " has " << el.second.size() << " sampled tips";

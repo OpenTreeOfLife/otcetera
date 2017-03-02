@@ -165,7 +165,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
 
         // read the node annotations and add them to the tree.
         auto node_obj = extract_obj(annotations_obj, "nodes");
-        auto & sum_tree_data = tree.getData();
+        auto & sum_tree_data = tree.get_data();
         const auto & n2n = sum_tree_data.name2node;
         for (json::const_iterator nit = node_obj.begin(); nit != node_obj.end(); ++nit) {
             string k = nit.key();
@@ -175,7 +175,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
             }
             const SumTreeNode_t * stn = stnit->second;
             SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(stn);
-            SumTreeNodeData & mstnd = mstn->getData();
+            SumTreeNodeData & mstnd = mstn->get_data();
             const auto & supportj = nit.value();
             for (json::const_iterator sbit = supportj.begin(); sbit != supportj.end(); ++sbit) {
                 const auto & sbk = sbit.key();

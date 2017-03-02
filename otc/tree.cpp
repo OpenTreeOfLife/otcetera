@@ -12,8 +12,8 @@ class TreeEdge {
         const Node_t * getChild() const {
             return child;
         }
-        T & getData() const {
-            return child->getData();
+        T & get_data() const {
+            return child->get_data();
         }
     private:
         void setParent(Node_t * p) {

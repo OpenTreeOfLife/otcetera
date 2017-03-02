@@ -24,12 +24,12 @@ void nameUnamedNodes(const T & tree);
 
 template<typename N>
 inline OttId smallest_child(const N * node) {
-    return node->getData().smallest_child;
+    return node->get_data().smallest_child;
 }
 
 template<typename N>
 inline OttId& smallest_child(N * node) {
-    return node->getData().smallest_child;
+    return node->get_data().smallest_child;
 }
 
 template<typename T>
@@ -76,14 +76,14 @@ void nameUnamedNodes(T & tree) {
     
     std::unordered_set<std::string> names;
     for(auto nd:iter_pre(tree)) {
-        if (nd->getName().size()) {
-            names.insert(nd->getName());
+        if (nd->get_name().size()) {
+            names.insert(nd->get_name());
         }
     }
     // Remove unnamed nodes w/ no OTT Id that are monotypic.
     std::vector<typename T::node_type*> remove;
     for (auto nd:iter_pre(tree)) {
-        if (not nd->hasOttId() and nd->getName().empty() and nd->isOutDegreeOneNode()){
+        if (not nd->hasOttId() and nd->get_name().empty() and nd->isOutDegreeOneNode()){
             remove.push_back(nd);
         }
     }
@@ -100,7 +100,7 @@ void nameUnamedNodes(T & tree) {
     for(auto nd:iter_pre(tree)) {
         if (nd->hasOttId()) {
             nd->setName("ott"+std::to_string(nd->getOttId()));
-        } else if (not nd->getName().size()) {
+        } else if (not nd->get_name().size()) {
             assert(not nd->isTip());
             assert(not nd->isOutDegreeOneNode());
 

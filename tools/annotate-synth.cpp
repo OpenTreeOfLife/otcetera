@@ -88,11 +88,11 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
 
 inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
-    return node->getData().summary_node;
+    return node->get_data().summary_node;
 }
 
 inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
-    return node->getData().summary_node;
+    return node->get_data().summary_node;
 }
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
@@ -104,7 +104,7 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 
 
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
-    string name = node->getName();
+    string name = node->get_name();
     auto source = getSourceNodeName(name);
     if (source)
         return *source;
@@ -187,7 +187,7 @@ void set_support_blob_as_single_element(json& j, const map<string,Map<string,str
 void add_element(map<string, Map<string, string>>& m, map<string, set<pair<string,string>>>& s,
                  const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source)
 {
-    string synth = synth_node->getName();
+    string synth = synth_node->get_name();
     string node = getSourceNodeNameIfAvailable(input_node);
 
     pair<string,string> x{source, node};
@@ -212,13 +212,13 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 
     for (auto nd: remove)
     {
-        if (nd->getName().size())
+        if (nd->get_name().size())
         {
             auto child = nd->getFirstChild();
             assert(not child->isOutDegreeOneNode());
-            assert(child->getName().size());
-            assert(to_child.count(nd->getName()) == 0);
-            to_child[nd->getName()] = child->getName();
+            assert(child->get_name().size());
+            assert(to_child.count(nd->get_name()) == 0);
+            to_child[nd->get_name()] = child->get_name();
         }
         delMonotypicNode(nd,tree);
     }
@@ -279,7 +279,7 @@ json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nod
     for(auto nd: iter_post_const(summaryTree))
     {
         json node;
-        string name = nd->getName();
+        string name = nd->get_name();
 //            if (nd->hasOttId())
 //                name = "ott" + std::to_string(nd->getOttId());
         
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]) {
 	    computeDepth(*tree);
 
 	    computeSummaryLeaves(*tree, summaryOttIdToNode);
-	    string source_name = source_from_tree_name(tree->getName());
+	    string source_name = source_from_tree_name(tree->get_name());
 	    mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, source_name);
 
 	    sources.push_back(source_name);

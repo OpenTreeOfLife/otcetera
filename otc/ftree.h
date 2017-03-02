@@ -276,7 +276,7 @@ class FTree {
     const OttIdSet getConnectedOttIds() const;
     // includes OTT Ids of nodes in includesConstraints
     const OttIdSet & getIncludedOttIds() {
-        return getRoot()->getData().desIds;
+        return getRoot()->get_data().desIds;
     }
     bool ottIdIsConnected(long ottId) const {
         return contains(getConnectedOttIds(), ottId);

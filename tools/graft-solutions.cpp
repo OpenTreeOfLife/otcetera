@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     const bool setOttIds = otCLI.getParsingRules().setOttIds;
     vector<std::size_t> no_root_label;
     for (std::size_t i = 0U; i < trees.size(); i++) {
-        if (trees[i]->getRoot()->getName().empty()) {
+        if (trees[i]->getRoot()->get_name().empty()) {
             no_root_label.push_back(i);
         }
     }
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
                     if (setOttIds){
                         throw OTCError()<<"OTT Id "<<id<<" occurs at multiple tips!";
                     } else {
-                        throw OTCError()<<"Label '"<<nd->getName()<<"' occurs at multiple tips!";
+                        throw OTCError()<<"Label '"<<nd->get_name()<<"' occurs at multiple tips!";
                     }
                 }
                 my_leaf[id] = nd;
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
             if (setOttIds) {
                 throw OTCError()<<"OTT Id "<<id<<" occurs at the root of multiple trees!";
             } else {
-                throw OTCError()<<"Label '"<<root->getName()<<"' occurs at the root of multiple trees!";
+                throw OTCError()<<"Label '"<<root->get_name()<<"' occurs at the root of multiple trees!";
             }
         }
     }

@@ -35,7 +35,7 @@ class RTSplits {
 
 template<typename T>
 inline void verifyOttIdMapping(const T & tree) {
-    for (const auto & mp : tree.getData().ottIdToNode) {
+    for (const auto & mp : tree.get_data().ottIdToNode) {
         if (mp.first != mp.second->getOttId()) {
             assert(mp.first == mp.second->getOttId());
             throw OTCError("Cache of OTT ID->node is stale " + std::to_string(mp.first) + " != " + std::to_string(mp.second->getOttId()));
@@ -45,7 +45,7 @@ inline void verifyOttIdMapping(const T & tree) {
 
 template<typename T>
 inline std::vector<typename T::node_type *> getNodesAliasedBy(typename T::node_type *nd, const T & tree) {
-    const auto & iaf = tree.getData().isAliasFor;
+    const auto & iaf = tree.get_data().isAliasFor;
     const auto aIt = iaf.find(nd);
     if (aIt == iaf.end()) {
         std::vector<typename T::node_type *> empty;
@@ -53,7 +53,7 @@ inline std::vector<typename T::node_type *> getNodesAliasedBy(typename T::node_t
     }
     std::vector<typename T::node_type *> r;
     r.reserve(aIt->second.size());
-    const auto & o2d = tree.getData().ottIdToDetachedNode;
+    const auto & o2d = tree.get_data().ottIdToDetachedNode;
     for (auto oi : aIt->second) {
         typename T::node_type * detached = o2d.find(oi)->second;
         r.push_back(detached);

@@ -70,7 +70,7 @@ class RootedTreeNode {
             ottId = LONG_MAX;
         }
         // non-empty only for internals that are labelled with names that are NOT taxLabels
-        const namestring_t & getName() const {
+        const namestring_t & get_name() const {
             return name;
         }
         void setName(const namestring_t &n) {
@@ -79,10 +79,10 @@ class RootedTreeNode {
         void setName(namestring_t && n) {
             name = std::move(n);
         }
-        const T & getData() const {
+        const T & get_data() const {
             return data;
         }
-        T & getData() {
+        T & get_data() {
             return data;
         }
         RootedTreeNode<T>(RootedTreeNode<T> *par)
@@ -234,7 +234,7 @@ class RootedTreeNode {
                 }
                 out << ")";
             }
-            out << getName();
+            out << get_name();
         }
         void addSelfAndDesToPreorder(std::vector<const node_type *> &p) const;
     private:
@@ -316,10 +316,10 @@ class RootedTree {
             leftSib->addSib(s);
             return s;
         }
-        U & getData() {
+        U & get_data() {
             return this->data;
         }
-        const U & getData() const {
+        const U & get_data() const {
             return this->data;
         }
         void pruneAndDangle(node_type * nd) {
@@ -351,7 +351,7 @@ class RootedTree {
         void setName(const std::string &n) {
             name.assign(n);
         }
-        const std::string & getName() const {
+        const std::string & get_name() const {
             return name;
         }
         node_type * allocNewNode(node_type *p) {

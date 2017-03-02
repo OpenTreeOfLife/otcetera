@@ -73,7 +73,7 @@ struct PruneTaxonomyState : public TaxonomyDependentTreeProcessor<TreeMappedEmpt
         std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
         for (auto nd : iter_leaf_const(*treePtr)) {
             auto ottId = nd->getOttId();
-            auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
+            auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
             assert(taxoNode != nullptr);
             if (reportStats) {
                 directlyIncludedNodes.insert(taxoNode);

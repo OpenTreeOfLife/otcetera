@@ -75,7 +75,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
                      const NodeWithSplits * startSummaryNd,
                      bool isTaxoComp) {
     using CN = std::pair<NDSE, const NodeWithSplits *>;
-    const auto & ndi = nd->getData().desIds;
+    const auto & ndi = nd->get_data().desIds;
     assert(nd);
     if (ndi.size() == leafSet.size()) {
         if (nd->getParent() == nullptr) {
@@ -106,7 +106,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
     assert(ndi.size() > 1);
     if (startSummaryNd == nullptr) {
         const OttId firstID = *ndi.rbegin();
-        startSummaryNd = summaryTree.getData().getNodeForOttId(firstID);
+        startSummaryNd = summaryTree.get_data().getNodeForOttId(firstID);
         if (startSummaryNd == nullptr) {
             std::string m = "OTT id not found ";
             m += std::to_string(firstID);
@@ -120,7 +120,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
     const NodeWithSplits * rn = startSummaryNd;
     if (isTaxoComp) { // we are comparing against the taxonomy, so we know that the leafset is all other tips...
         for (;;) {
-            const auto & sumdi = rn->getData().desIds;
+            const auto & sumdi = rn->get_data().desIds;
             if (isSubset(ndi, sumdi)) {
                 if (sumdi.size() == ndi.size()) {
                     if (nd->isOutDegreeOneNode()) {
@@ -150,7 +150,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
         }
     } else {
         for (;;) {
-            const auto & sumdi = rn->getData().desIds;
+            const auto & sumdi = rn->get_data().desIds;
             const auto extra = set_difference_as_set(sumdi, ndi);
             if (isSubset(ndi, sumdi)) {
                 if (areDisjoint(extra, leafSet)) {
@@ -214,7 +214,7 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
     std::map<const NodeWithSplits *, NDSE> localNd2C;
     std::map<const NodeWithSplits *, NDSE> & nd2t{node2Classification == nullptr ? localNd2C : *node2Classification};
     std::map<const NodeWithSplits *, const NodeWithSplits *> nd2summaryTree;
-    const auto & treeLeafSet = inpTree.getRoot()->getData().desIds;
+    const auto & treeLeafSet = inpTree.getRoot()->get_data().desIds;
     for (auto nd : iter_post_const(inpTree)) {
         NDSE t = NDSE::END_VALUE;
         if (nd->isTip()) {
@@ -259,26 +259,26 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
                 nd2summaryTree[nd] = p.second;
                 if (p.first == NDSE::FORKING_DISPLAYED and support)
                 {
-                    string node = p.second->getName();
+                    string node = p.second->get_name();
                     if (p.second->hasOttId())
                         node = "ott"+std::to_string(p.second->getOttId());
 
-                    string study = quote(study_from_tree_name(inpTree.getName()));
-                    string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
-                    string node_in_study = quote(*getSourceNodeName(nd->getName()));
+                    string study = quote(study_from_tree_name(inpTree.get_name()));
+                    string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
+                    string node_in_study = quote(*getSourceNodeName(nd->get_name()));
                     std::ostringstream study_tree_node;;
                     study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
                     support->insert({node, study_tree_node.str()});
                 }
                 else if (p.first == NDSE::FORKING_INCOMPATIBLE and conflict)
                 {
-                    string node = p.second->getName();
+                    string node = p.second->get_name();
                     if (p.second->hasOttId())
                         node = "ott"+std::to_string(p.second->getOttId());
 
-                    string study = quote(study_from_tree_name(inpTree.getName()));
-                    string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.getName()));
-                    string node_in_study = quote(*getSourceNodeName(nd->getName()));
+                    string study = quote(study_from_tree_name(inpTree.get_name()));
+                    string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
+                    string node_in_study = quote(*getSourceNodeName(nd->get_name()));
                     std::ostringstream study_tree_node;;
                     study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
                     conflict->insert({node, study_tree_node.str()});
@@ -376,7 +376,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             std::cout<<"  \"nodes\": {\n";
             for(auto nd: iter_post_const(*summaryTree))
             {
-                string name = nd->getName();
+                string name = nd->get_name();
                 if (nd->hasOttId()) {
                     name = "ott" + std::to_string(nd->getOttId());
                 }
@@ -441,7 +441,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
     void statsForNextTree(OTCLI & otCLI, const TreeMappedWithSplits & tree, bool isTaxoComp) {
         auto c = doStatCalc(*summaryTree, tree, nullptr, showJSON?(&support):nullptr, showJSON?(&conflict):nullptr, isTaxoComp);
-        if (not showJSON) writeNextRow(otCLI.out, c, tree.getName());
+        if (not showJSON) writeNextRow(otCLI.out, c, tree.get_name());
         for (const auto & p : c) {
             totals[p.first] += p.second;
         }

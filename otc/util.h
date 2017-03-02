@@ -78,13 +78,13 @@ std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s,
 template<typename T>
 inline std::string getContestedPreambleFromName(const T & nd, const std::string & treeName) {
     std::ostringstream ss;
-    ss << nd.getOttId() << " \"" << nd.getName() << "\" contested by \"" << treeName << "\"";
+    ss << nd.getOttId() << " \"" << nd.get_name() << "\" contested by \"" << treeName << "\"";
     return ss.str();
 }
 
 template<typename T, typename U>
 inline std::string getContestedPreamble(const T & nd, const U & tree) {
-    return getContestedPreambleFromName(nd, tree.getName());
+    return getContestedPreambleFromName(nd, tree.get_name());
 }
 
 #if defined WIDE_STR_VERSION

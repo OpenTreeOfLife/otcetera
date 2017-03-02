@@ -8,14 +8,14 @@ void getInducedInformativeGroupingMaps(const T & tree1,
     const auto inducingLabels = getOttIdSetForLeaves(tree2);
     auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
     std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
-        return haveIntersection(inducingLabels, nd.getData().desIds);
+        return haveIntersection(inducingLabels, nd.get_data().desIds);
     };
     for (auto n : iter_pre_filter_n_const(mrca, sf)) {
         //std::cout << n->getOttId() << '\n';
         if (n == mrca) {
             continue;
         }
-        auto inducedDesIds = n->getData().desIds;
+        auto inducedDesIds = n->get_data().desIds;
         const auto x = intersectionOfSets(inducingLabels, inducedDesIds);
         if (x.size() > 1) {
             inducedSplitMaps[std::move(x)].push_back(n);
@@ -32,7 +32,7 @@ inline void getInformativeGroupingMaps(const T & tree2,
         if (n == t2r) {
             continue;
         }
-        const std::set<long> & x = n->getData().desIds;
+        const std::set<long> & x = n->get_data().desIds;
         if (x.size() > 1) {
             tree2Splits[x] = n;
         }

@@ -58,14 +58,14 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
             if (nd->hasOttId()) {
                 subproblemTipIds.insert(ottId);
             }
-            auto synthNode = synthTree->getData().getNodeForOttId(ottId);
+            auto synthNode = synthTree->get_data().getNodeForOttId(ottId);
             if (synthNode != nullptr) {
                 if (!contains(includedNodes, synthNode)) {
                     includedNodes.insert(synthNode);
                     insertAncestorsToParaphyleticSet(synthNode, includedNodes);
                 }
             } else {
-                auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
+                auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
                 assert(taxoNode != nullptr);
                 assert(!taxoNode->isTip());
                 otCLI.err << "Warning ott" << ottId << " was is an internal node that was a tip in the subproblem, but is not found in the tree being pruned.\n";

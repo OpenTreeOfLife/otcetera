@@ -6,48 +6,42 @@
 #include <vector>
 
 template <typename node_t>
-int n_include_tips(const node_t* node)
-{
-    return node->getData().n_include_tips;
+int n_include_tips(const node_t* node) {
+    return node->get_data().n_include_tips;
 }
 
 template <typename node_t>
-int n_tips(const node_t* node)
-{
-    return node->getData().n_tips;
+int n_tips(const node_t* node) {
+    return node->get_data().n_tips;
 }
 
 template <typename node_t>
-int& n_include_tips(node_t* node)
-{
-    return node->getData().n_include_tips;
+int& n_include_tips(node_t* node) {
+    return node->get_data().n_include_tips;
 }
 
 template <typename node_t>
-int& n_tips(node_t* node)
-{
-    return node->getData().n_tips;
+int& n_tips(node_t* node) {
+    return node->get_data().n_tips;
 }
 
 // Compute number of tips at this node or below it
 template <typename Tree_t>
-void compute_tips(Tree_t& tree)
-{
+void compute_tips(Tree_t& tree) {
     // Iterate over nodes, leaves first
     for(auto nd: iter_post(tree)) {
         if (nd->isTip()) {
-            nd->getData().n_tips = 1;
+            nd->get_data().n_tips = 1;
         }
         auto p = nd->getParent();
         if (p) {
-            p->getData().n_tips += nd->getData().n_tips;
+            p->get_data().n_tips += nd->get_data().n_tips;
         }
     }
 }
 
 template <typename N>
-std::vector<N*> leaf_nodes_below(N* node)
-{
+std::vector<N*> leaf_nodes_below(N* node) {
     std::vector<N*> nodes;
     for(auto nd: iter_leaf_n_const(*node)) {
         nodes.push_back(nd);
@@ -56,8 +50,7 @@ std::vector<N*> leaf_nodes_below(N* node)
 }
 
 template <typename N>
-std::vector<N*> map_to_summary(const std::vector<const N*>& nodes)
-{
+std::vector<N*> map_to_summary(const std::vector<const N*>& nodes) {
     std::vector<N*> nodes2(nodes.size(),nullptr);
     for(int i=0;i<(int)nodes2.size();i++) {
         nodes2[i] = summary_node(nodes[i]);
@@ -66,8 +59,7 @@ std::vector<N*> map_to_summary(const std::vector<const N*>& nodes)
 }
 
 template <typename N>
-auto find_induced_nodes(const std::vector<N*>& leaves)
-{
+auto find_induced_nodes(const std::vector<N*>& leaves) {
     std::unordered_set<N*> nodes;
     N* MRCA = nullptr;
     for(auto leaf: leaves) {
@@ -141,7 +133,7 @@ void perform_conflict_analysis(const Tree_t& tree1,
             continue;
         }
         // If this node contains all tips under it, then it doesn't correspond to a split.
-        if (nd->getData().n_tips == (int)L) {
+        if (nd->get_data().n_tips == (int)L) {
             continue;
         }
         // If this node is a tip, the mark the corresponding nodes
@@ -199,10 +191,10 @@ void perform_conflict_analysis(const Tree_t& tree1,
         // Supported_by or partial_path_of
         if (not conflicts_or_resolved_by) {
             assert(MRCA->getParent());
-            if (MRCA->getParent()->getData().n_tips > MRCA->getData().n_tips) {
+            if (MRCA->getParent()->get_data().n_tips > MRCA->get_data().n_tips) {
                 log_supported_by(MRCA, nd);
             } else {
-                for(auto nd2 = MRCA; nd2 and nd2->getData().n_tips == MRCA->getData().n_tips; nd2 = nd2->getParent()) {
+                for(auto nd2 = MRCA; nd2 and nd2->get_data().n_tips == MRCA->get_data().n_tips; nd2 = nd2->getParent()) {
                     log_partial_path_of(nd2, nd);
                 }
             }
