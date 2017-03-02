@@ -112,7 +112,7 @@ inline nlohmann::json sources_vec_as_json(const std::vector<std::string> & vs) {
 
 }
 
-struct taxonomy_record {
+struct TaxonomyRecord {
     std::string line;
     long id = 0;
     long parent_id = 0;
@@ -124,11 +124,11 @@ struct taxonomy_record {
     std::bitset<32> flags;
     int depth = 0;
     int out_degree = 0;
-    taxonomy_record& operator=(taxonomy_record&& tr) = default;
-    taxonomy_record& operator=(const taxonomy_record& tr) = delete;
-    taxonomy_record(taxonomy_record&& tr) = default;
-    taxonomy_record(taxonomy_record& tr) = delete;
-    explicit taxonomy_record(const std::string& line);
+    TaxonomyRecord& operator=(TaxonomyRecord&& tr) = default;
+    TaxonomyRecord& operator=(const TaxonomyRecord& tr) = delete;
+    TaxonomyRecord(TaxonomyRecord&& tr) = default;
+    TaxonomyRecord(TaxonomyRecord& tr) = delete;
+    explicit TaxonomyRecord(const std::string& line);
     std::vector<std::string> sourceinfoAsVec() const {
         std::string si = std::string(sourceinfo);
         return comma_separated_as_vec(si);
@@ -145,7 +145,7 @@ inline std::vector<int> get_index_vec(std::size_t sz) {
 }
 
 
-class Taxonomy: public std::vector<taxonomy_record> {
+class Taxonomy: public std::vector<TaxonomyRecord> {
     protected:
     std::unordered_map<long, int> index;
     std::unordered_map<long, long> forwards;
@@ -156,7 +156,7 @@ class Taxonomy: public std::vector<taxonomy_record> {
     std::string version;
     std::string version_number;
     public:
-    template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const taxonomy_record&)>) const;
+    template <typename Tree_t> std::unique_ptr<Tree_t> getTree(std::function<std::string(const TaxonomyRecord&)>) const;
 
     const std::string & get_version() const {
         return version;
@@ -166,15 +166,15 @@ class Taxonomy: public std::vector<taxonomy_record> {
         return version_number;
     }
 
-    taxonomy_record& record_from_id(long id);
+    TaxonomyRecord& record_from_id(long id);
     
-    const taxonomy_record& record_from_id(long id) const;
+    const TaxonomyRecord& record_from_id(long id) const;
     
-    taxonomy_record& record_from_unforwarded_id(long id) {
+    TaxonomyRecord& record_from_unforwarded_id(long id) {
         return at(index.at(id));
     }
     
-    const taxonomy_record& record_from_unforwarded_id(long id) const {
+    const TaxonomyRecord& record_from_unforwarded_id(long id) const {
         return at(index.at(id));
     }
 
@@ -206,7 +206,7 @@ class RTRichTaxNodeData {
     public:
     //TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
     //nlohmann::json sources;
-    const taxonomy_record * tax_record;
+    const TaxonomyRecord * tax_record;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
     boost::string_ref getName() const {
         return tax_record->name;
@@ -297,21 +297,21 @@ struct RichTaxonomy : public Taxonomy {
 
 class RTTaxNodeData {
     public:
-    const taxonomy_record * taxonomy_line = nullptr;
+    const TaxonomyRecord * taxonomy_line = nullptr;
 };
 
 template <typename Node_t, typename TREE>
 void populateNodeFromTaxonomyRecord(Node_t & nd,
-                                    const taxonomy_record & line,
-                                    std::function<std::string(const taxonomy_record&)> getName,
+                                    const TaxonomyRecord & line,
+                                    std::function<std::string(const TaxonomyRecord&)> getName,
                                     TREE & tree);
 
 
 // default behavior is to set ID and Name from line
 template <typename Node_t, typename TREE>
 inline void populateNodeFromTaxonomyRecord(Node_t & nd,
-                                           const taxonomy_record & line,
-                                           std::function<std::string(const taxonomy_record&)> getName,
+                                           const TaxonomyRecord & line,
+                                           std::function<std::string(const TaxonomyRecord&)> getName,
                                            TREE & ) {
     nd.setOttId(line.id);
     nd.setName(getName(line));    
@@ -320,8 +320,8 @@ inline void populateNodeFromTaxonomyRecord(Node_t & nd,
 // default behavior is to set ID and Name from line
 template <typename TREE>
 inline void populateNodeFromTaxonomyRecord(RootedTreeNode<RTTaxNodeData> & nd,
-                                           const taxonomy_record & line,
-                                           std::function<std::string(const taxonomy_record&)>,
+                                           const TaxonomyRecord & line,
+                                           std::function<std::string(const TaxonomyRecord&)>,
                                            TREE &) {
     nd.setOttId(line.id);
     nd.getData().taxonomy_line = &line;    
@@ -329,7 +329,7 @@ inline void populateNodeFromTaxonomyRecord(RootedTreeNode<RTTaxNodeData> & nd,
 
 
 template <typename Tree_t>
-std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const taxonomy_record&)> getName) const {
+std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const TaxonomyRecord&)> getName) const {
     const auto& taxonomy = *this;
     std::unique_ptr<Tree_t> tree(new Tree_t);
     vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
@@ -349,7 +349,7 @@ std::unique_ptr<Tree_t> Taxonomy::getTree(std::function<std::string(const taxono
     return tree;
 }
 // formatting options.
-std::string format_with_taxonomy(const std::string& orig, const std::string& format, const taxonomy_record& rec);
+std::string format_with_taxonomy(const std::string& orig, const std::string& format, const TaxonomyRecord& rec);
 std::string format_without_taxonomy(const std::string& orig, const std::string& format);
 char format_needs_taxonomy(const std::string& format);
 

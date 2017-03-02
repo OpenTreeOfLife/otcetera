@@ -50,7 +50,7 @@ namespace otc
 
 std::set<std::string> rank_strings;
 
-taxonomy_record::taxonomy_record(const string& line_)
+TaxonomyRecord::TaxonomyRecord(const string& line_)
     :line(line_) {
     // parse the line
     // also see boost::make_split_iterator
@@ -75,7 +75,7 @@ taxonomy_record::taxonomy_record(const string& line_)
     rank_strings.insert(string(rank));
 }
 
-const taxonomy_record& Taxonomy::record_from_id(long id) const {
+const TaxonomyRecord& Taxonomy::record_from_id(long id) const {
     auto loc = index.find(id);
     if (loc == index.end()) {
         auto loc2 = forwards.find(id);
@@ -90,7 +90,7 @@ const taxonomy_record& Taxonomy::record_from_id(long id) const {
     return (*this)[loc->second];
 }
 
-taxonomy_record& Taxonomy::record_from_id(long id) {
+TaxonomyRecord& Taxonomy::record_from_id(long id) {
     auto loc = index.find(id);
     if (loc == index.end()) {
         auto loc2 = forwards.find(id);
@@ -521,8 +521,8 @@ void process_source_info_vec(const std::vector<std::string> & vs,
 // default behavior is to set ID and Name from line
 template <>
 inline void populateNodeFromTaxonomyRecord(RTRichTaxNode & nd,
-                                           const taxonomy_record & line,
-                                           std::function<std::string(const taxonomy_record&)>,
+                                           const TaxonomyRecord & line,
+                                           std::function<std::string(const TaxonomyRecord&)>,
                                            RichTaxTree & tree) {
     RTRichTaxNode * this_node = &nd;
     nd.setOttId(line.id);
@@ -624,7 +624,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, long kr)
     // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move
 }
 
-string format_with_taxonomy(const string& orig, const string& format, const taxonomy_record& rec) {
+string format_with_taxonomy(const string& orig, const string& format, const TaxonomyRecord& rec) {
     string result;
     int pos = 0;
     do {

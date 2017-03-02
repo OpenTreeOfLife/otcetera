@@ -578,9 +578,9 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
 
 void taxon_info_ws_method(const TreesToServe & tts,
                           const RTRichTaxNode * taxon_node,
-                          bool include_lineage,
-                          bool include_children,
-                          bool include_terminal_descendants,
+                          bool , //include_lineage,
+                          bool , //include_children,
+                          bool , //include_terminal_descendants,
                           string & response_str,
                           int & status_code) {
     const auto & taxonomy = tts.getTaxonomy();
@@ -603,6 +603,7 @@ void taxon_info_ws_method(const TreesToServe & tts,
     //add_lineage(a, focal, taxonomy, usedSrcIds);
     //response["arguson"] = a;
     response_str = response.dump(1);
+    status_code = OK;
 }
 
 } //namespace otc

@@ -121,7 +121,7 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
         if (nd->hasOttId())
             ottid_to_node[nd->getOttId()] = nd;
 
-    vector<const taxonomy_record*> records;
+    vector<const TaxonomyRecord*> records;
     for(const auto& rec: taxonomy)
         records.push_back(&rec);
     
@@ -131,7 +131,7 @@ void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
             std::cout<<"depth="<<rec->depth<<"   id="<<rec->id<<"   uniqname='"<<rec->uniqname<<"'\n";
 }
 
-void show_rec(const taxonomy_record& rec)
+void show_rec(const TaxonomyRecord& rec)
 {
     std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"    flags = "<<flags_to_string(rec.flags)<<"\n";
 }
