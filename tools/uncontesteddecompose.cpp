@@ -26,7 +26,6 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 
         LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->get_ott_id() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
-            //thr.debugNodeEmbedding("before thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
             //auto p = scaffoldNd->getParent();
             LOG(INFO) << "    Contested";
             if (documentP != nullptr) {
@@ -54,8 +53,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
                 std::string ottIdStr = "ott" + std::to_string(scaffoldNd->get_ott_id());
                 (*documentP)[ottIdStr] = treeIDToNodeMapJSON;
             }
-            thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
-            //_getEmbeddingForNode(p).debugNodeEmbedding("after thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
+            thr.collapseGroup(*scaffoldNd, sc);
         } else {
             //thr.debugNodeEmbedding(" focal node before export", false, scaffoldNdToNodeEmbedding);
             //if (scaffoldNd->getParent()) {

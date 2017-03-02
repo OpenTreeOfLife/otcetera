@@ -335,7 +335,7 @@ RootedTreeNode<T> * FTree<T, U>::getMRCA(const OttIdSet &ottIdSet) {
         assert(false);
         throw OTCError("empty MRCA");
     }
-    checkAllNodePointersIter(*root);
+    check_all_node_pointers_iter(*root);
     const auto con = getConnectedOttIds();
     const auto rel = set_intersection_as_set(ottIdSet, con);
     dbWriteOttSet(" getMRCA ingroup", ottIdSet);
@@ -558,7 +558,7 @@ void FTree<T, U>::debugVerifyDesIdsAssumingDes(const OttIdSet &s, const RootedTr
 }
 template<typename T, typename U>
 void FTree<T, U>::debugInvariantsCheckFT() const {
-    checkAllNodePointersIter(*root);
+    check_all_node_pointers_iter(*root);
     for (auto n : iter_post_n_const(*root)) {
          auto & b = bands.getBandsForNode(n);
          if (!b.empty()) {

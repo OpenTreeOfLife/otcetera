@@ -8,7 +8,7 @@ typedef otc::RootedTree<RTSplits, RootedTreeForNodeType> Tree_t;
 
 bool processNextTree(OTCLI & otCLI, std::unique_ptr<Tree_t> tree);
 bool processNextTree(OTCLI & , std::unique_ptr<Tree_t> tree) {
-    checkTreeInvariants(*tree);
+    check_tree_invariants(*tree);
     return true;
 }
 

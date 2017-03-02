@@ -186,7 +186,6 @@ class NodeEmbedding {
                                     SupertreeContextWithSplits & sc);
     void collapseGroup(T & scaffoldNode, SupertreeContext<T, U> & sc);
     void pruneCollapsedNode(T & scaffoldNode, SupertreeContextWithSplits & sc);
-    void constructPhyloGraphAndCollapseIfNecessary(T & scaffoldNode, SupertreeContextWithSplits  & sc);
     
     bool reportIfContested(std::ostream & out,
                            const T * nd,

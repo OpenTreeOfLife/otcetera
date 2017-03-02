@@ -46,10 +46,10 @@ class EmbeddingCLI
     bool processTaxonomyTree(OTCLI & otCLI) override {
         debuggingOutput = otCLI.verbose;
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
-        //checkTreeInvariants(*taxonomy);
+        //check_tree_invariants(*taxonomy);
         suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy, false);
         monotypicRemapping = generateIdRemapping(*taxonomy);
-        //checkTreeInvariants(*taxonomy);
+        //check_tree_invariants(*taxonomy);
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
             _getEmbeddingForNode(nd); // side effect is introducint a new, empty embedding
         }

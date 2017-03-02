@@ -9,7 +9,6 @@
 #include "otc/tree_operations.h"
 #include "otc/error.h"
 namespace otc {
-constexpr bool COLLAPSE_IF_CONFLICT = true;
 
 template<typename T, typename U>
 bool NodeEmbedding<T, U>::debugNodeEmbedding(const char * tag, 
@@ -652,13 +651,13 @@ std::string NodeEmbedding<T, U>::exportSubproblemAndResolve(
         *provExpStream << treePtr->get_name() << "\n";
     }
     GreedyBandedForest<T, U> gpf{scaffoldNode.get_ott_id()};
-    gpf.attemptToAddGrouping(totalLeafSet, EMPTY_SET, 0, 1, &sc);
+    gpf.attempt_to_add_grouping(totalLeafSet, EMPTY_SET, 0, 1, &sc);
     for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
         for (auto snc : iter_child(scaffoldNode)) {
             assert(snc != nullptr);
         }
     }
-    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, &sc);
+    gpf.finish_resolution_of_embedded_clade(scaffoldNode, this, &sc);
     if (exportStream == nullptr) {
         provFileStream.close();
         treeFileStream.close();
@@ -709,7 +708,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
                     appendIncludeLeafSetAsNewick("phyloStatementAttempt", d, relevantIds);
                 }
                 LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex << " out of " << mapToProvideOrder.size() << " (some of which may be skipped as trivial)";
-                gpf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex, &sc);
+                gpf.attempt_to_add_grouping(d, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex, &sc);
                 gpf.debugInvariantsCheck();
                 if (scaffOTTId == ottIDBeingDebugged) {
                     gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
@@ -726,7 +725,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
             if (scaffOTTId == ottIDBeingDebugged) {
                 appendIncludeLeafSetAsNewick("phyloStatementAttempt", *inc, relevantIds);
             }
-            gpf.addLeaf(*inc, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex++, &sc);
+            gpf.add_leaf(*inc, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex++, &sc);
             if (scaffOTTId == ottIDBeingDebugged) {
                 gpf.dumpAcceptedPhyloStatements("acceptedPhyloStatementOut.tre");
                 gpf.writeForestDOTToFN(getForestDOTFilename(forestDOTfile, TRIVIAL_SPLIT, treeIndex, bogusGroupIndex -1));
@@ -750,7 +749,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
             if (scaffOTTId == ottIDBeingDebugged) {
                 appendIncludeLeafSetAsNewick("phyloStatementAttempt", pathPtr->get_ott_idSet(), pathPtr->get_ott_idSet());
             }
-            gpf.attemptToAddGrouping(pathPtr->get_ott_idSet(),
+            gpf.attempt_to_add_grouping(pathPtr->get_ott_idSet(),
                                     EMPTY_SET,
                                     static_cast<int>(bogusTreeIndex),
                                     bogusGroupIndex++,
@@ -773,7 +772,7 @@ void NodeEmbedding<T, U>::resolveGivenUncontestedMonophyly(T & scaffoldNode,
         fn += "BeforeFinalize.dot";
         gpf.writeForestDOTToFN(fn);
     }
-    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, &sc);
+    gpf.finish_resolution_of_embedded_clade(scaffoldNode, this, &sc);
     if (scaffOTTId == ottIDBeingDebugged) {
         std::string fn = forestDOTfile;
         fn += "AfterFinalize.dot";
@@ -993,7 +992,7 @@ void NodeEmbedding<T, U>::collapseGroup(T & scaffoldNode, SupertreeContext<T, U>
 
 template<typename T, typename U>
 void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextWithSplits & sc) {
-    checkAllNodePointersIter(scaffoldNode);
+    check_all_node_pointers_iter(scaffoldNode);
      LOG(DEBUG) << "collapsed paths from ott" << scaffoldNode.get_ott_id() << ", adding child to parent";
     // NOTE: it is important that we add the children of scaffoldNode the left of its location
     //  in the tree so that the postorder traversal will not iterate over them.
@@ -1025,51 +1024,6 @@ void NodeEmbedding<T, U>::pruneCollapsedNode(T & scaffoldNode, SupertreeContextW
     scaffoldNode.detachThisNode();
     sc.scaffoldTree.markAsDetached(&scaffoldNode);
     sc.detachedScaffoldNodes.insert(&scaffoldNode);
-}
-
-template<typename T, typename U>
-void NodeEmbedding<T, U>::constructPhyloGraphAndCollapseIfNecessary(T & scaffoldNode, SupertreeContextWithSplits & sc) {
-    assert(&scaffoldNode == embeddedNode);
-    LOG(DEBUG) << "constructPhyloGraphAndCollapseIfNecessary for " << scaffoldNode.get_ott_id();
-    LOG(DEBUG) << "TEMP collapsing if conflict..." ;
-    if (COLLAPSE_IF_CONFLICT) {
-        //debugNodeEmbedding("before collapse", true, sc.scaffold2NodeEmbedding);
-        collapseGroup(scaffoldNode, sc);
-        //debugNodeEmbedding("after collapse", true, sc.scaffold2NodeEmbedding);
-        return;
-    }
-    GreedyBandedForest<T, U> gpf{scaffoldNode.get_ott_id()};
-    gpf.setPossibleMonophyletic(scaffoldNode);
-    for (std::size_t treeIndex = 0 ; treeIndex < sc.numTrees; ++treeIndex) {
-        const auto laIt = loopEmbeddings.find(treeIndex);
-        const auto ebaIt = edgeBelowEmbeddings.find(treeIndex);
-        if (laIt == loopEmbeddings.end() && ebaIt == edgeBelowEmbeddings.end()) {
-            continue;
-        }
-        LOG(INFO) << "      treeIndex = " << treeIndex;
-        /* order the groupings */
-        std::map<OttIdSet, PathPairing<T, U> *> mapToProvideOrder;
-        for (auto pp : laIt->second) {
-            mapToProvideOrder[pp->get_ott_idSet()] = pp;
-        }
-        for (auto pp : ebaIt->second) {
-            mapToProvideOrder[pp->get_ott_idSet()] = pp;
-        }
-        const OttIdSet relevantIds = getRelevantDesIds(sc.scaffold2NodeEmbedding, treeIndex);
-        /* try to add groups bail out when we know that the possible group is not monophyletic */
-        long bogusGroupIndex = 200000; // should get this from the node!
-        for (auto mpoIt : mapToProvideOrder) {
-            const auto & d = mpoIt.first;
-            LOG(INFO) << "        bogusGroupIndex = " << bogusGroupIndex;
-            gpf.attemptToAddGrouping(d, relevantIds, static_cast<int>(treeIndex), bogusGroupIndex++, &sc);
-            if (!gpf.possibleMonophyleticGroupStillViable()) {
-                collapseGroup(scaffoldNode, sc);
-                return;
-            }
-            gpf.debugInvariantsCheck();
-        }
-    }
-    gpf.finishResolutionOfEmbeddedClade(scaffoldNode, this, &sc);
 }
 
 template<typename T, typename U>

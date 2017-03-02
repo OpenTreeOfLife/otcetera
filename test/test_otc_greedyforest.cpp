@@ -73,10 +73,10 @@ class TestValidTreeStruct {
                 }
                 const OttIdSet & leafSet = tree.getRoot()->get_data().desIds;
                 std::cerr << groupInd + 1 << '\n';
-                gpf.attemptToAddGrouping(*incGroup, leafSet, treeInd, groupInd++, nullptr);
+                gpf.attempt_to_add_grouping(*incGroup, leafSet, treeInd, groupInd++, nullptr);
             }
             NodeEmbeddingWithSplits emptyEmbedding(r);
-            gpf.finishResolutionOfEmbeddedClade(*r, &emptyEmbedding, &sc);
+            gpf.finish_resolution_of_embedded_clade(*r, &emptyEmbedding, &sc);
             return '.';
         }
 };

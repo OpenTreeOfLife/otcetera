@@ -1123,7 +1123,7 @@ inline std::set<typename T::node_type *> suppressMonotypicTaxaPreserveShallowDan
     auto toProcess = monotypic;
     while (!toProcess.empty()) {
         for (auto toPIt = toProcess.begin(); toPIt != toProcess.end();) {
-            checkTreeInvariants(tree);
+            check_tree_invariants(tree);
             auto tpn = *toPIt;
             auto par = tpn->getParent();
             if (!contains(toProcess, par)) {

@@ -8,7 +8,7 @@
 namespace otc {
 
 template<typename T>
-bool checkNodePointers(const T & nd) {
+bool check_node_pointers(const T & nd) {
     bool good = true;
     auto c = nd.getFirstChild();
     while (c != nullptr) {
@@ -24,10 +24,10 @@ bool checkNodePointers(const T & nd) {
 }
 
 template<typename T>
-bool checkAllNodePointers(const T & tree) {
+bool check_all_node_pointers(const T & tree) {
     auto ns = tree.getAllAttachedNodes();
     for (auto nd : ns) {
-        if (!checkNodePointers(*nd)) {
+        if (!check_node_pointers(*nd)) {
             return false;
         }
     }
@@ -39,9 +39,9 @@ bool checkAllNodePointers(const T & tree) {
 }
 
 template<typename T>
-bool checkAllNodePointersIter(const T & node) {
+bool check_all_node_pointers_iter(const T & node) {
    for (auto nd : iter_pre_n_const(&node)) {
-        if (!checkNodePointers(*nd)) {
+        if (!check_node_pointers(*nd)) {
             return false;
         }
     }
@@ -49,7 +49,7 @@ bool checkAllNodePointersIter(const T & node) {
 }
 
 template<typename T>
-bool checkPreorder(const T & tree) {
+bool check_preorder(const T & tree) {
     auto ns = tree.getSetOfAllAttachedNodes();
     std::set<const typename T::node_type *> visited;
     for (auto nd : iter_pre_const(tree)) {
@@ -70,7 +70,7 @@ bool checkPreorder(const T & tree) {
 }
 
 template<typename T>
-bool checkPostorder(const T & tree) {
+bool check_postorder(const T & tree) {
     auto ns = tree.getSetOfAllAttachedNodes();
     std::set<const typename T::node_type *> visited;
     for (auto nd : iter_post_const(tree)) {
@@ -91,7 +91,7 @@ bool checkPostorder(const T & tree) {
 }
 
 template<typename T>
-bool checkChildIter(const T & tree) {
+bool check_child_iter(const T & tree) {
     auto ns = tree.getAllAttachedNodes();
     for (auto nd : ns) {
         auto nc = nd->getOutDegree();
@@ -106,15 +106,15 @@ bool checkChildIter(const T & tree) {
 }
 
 template<typename T>
-bool checkDesIds(const T & tree);
+bool check_des_ids(const T & tree);
 
 template<typename T>
-inline bool checkDesIds(const T & ) {
+inline bool check_des_ids(const T & ) {
     return true;
 }
 
 template<>
-inline bool checkDesIds(const TreeMappedWithSplits & tree) {
+inline bool check_des_ids(const TreeMappedWithSplits & tree) {
     auto ns = tree.getSetOfAllAttachedNodes();
     for (auto nd : ns) {
         if (nd->isTip()) {
@@ -145,20 +145,20 @@ inline bool checkDesIds(const TreeMappedWithSplits & tree) {
 
 
 template<typename T>
-bool checkTreeInvariants(const T & tree) {
-    if (!checkAllNodePointers(tree)) {
+bool check_tree_invariants(const T & tree) {
+    if (!check_all_node_pointers(tree)) {
         return false;
     }
-    if (!checkPreorder(tree)) {
+    if (!check_preorder(tree)) {
         return false;
     }
-    if (!checkPostorder(tree)) {
+    if (!check_postorder(tree)) {
         return false;
     }
-    if (!checkChildIter(tree)) {
+    if (!check_child_iter(tree)) {
         return false;
     }
-    if (!checkDesIds(tree)) {
+    if (!check_des_ids(tree)) {
         return false;
     }
     return true;

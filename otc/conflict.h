@@ -91,8 +91,7 @@ void perform_conflict_analysis(const Tree_t& tree1,
                                node_logger_t<Tree_t> log_partial_path_of,
                                node_logger_t<Tree_t> log_conflicts_with,
                                node_logger_t<Tree_t> log_resolved_by,
-                               node_logger_t<Tree_t> log_terminal)
-{
+                               node_logger_t<Tree_t> log_terminal) {
     // Handle non-leaf correspondence?
     auto induced_tree1 = get_induced_tree<Tree_t>(tree1, ottid_to_node1, tree2, ottid_to_node2);
     auto induced_tree2 = get_induced_tree<Tree_t>(tree2, ottid_to_node2, tree1, ottid_to_node1);
