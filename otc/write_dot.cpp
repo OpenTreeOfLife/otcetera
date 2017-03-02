@@ -401,7 +401,7 @@ ToDotKey findAnyKey(const NodeWithSplits *nd, const NodeToDotNames & nd2name) {
             return kv.first;
         }
     }
-    UNREACHABLE;
+    OTC_UNREACHABLE;
 }
 template<typename T>
 void writeDOTBandsForForest(std::ostream & out, const T & bandList, NodeToDotNames & nd2name) {

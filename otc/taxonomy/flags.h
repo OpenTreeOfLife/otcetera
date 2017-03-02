@@ -3,6 +3,7 @@
 
 #include <bitset>
 #include <string>
+#include <vector>
 
 namespace otc
 {
@@ -13,7 +14,8 @@ namespace otc
     tax_flags flags_from_string(const std::string&);
     std::string flag_to_string(int);
     std::string flags_to_string(const tax_flags);
-    tax_flags cleaning_flags_from_config_file(const std::string& filename);
+    std::vector<std::string> flags_to_string_vec(const tax_flags flags);
+    std::bitset<32> cleaning_flags_from_config_file(const std::string& filename);
 }
 
 #endif

@@ -76,6 +76,7 @@ AC_CONFIG_FILES([					\
 	otc/Makefile					\
 	test/Makefile \
 	tools/Makefile \
-	otceterav0.0.pc \
+    ws/Makefile \
+    otceterav0.0.pc \
 	])
 AC_OUTPUT

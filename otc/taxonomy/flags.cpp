@@ -147,10 +147,17 @@ namespace otc
 
     std::string flags_to_string(const tax_flags flags)
     {
+        vector<string> f = flags_to_string_vec(flags);
+        return boost::algorithm::join(f, ", ");
+    }
+
+    std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags) {
         vector<string> f;
-        for(int i=0;i<32;i++)
-            if (flags.test(i))
+        for(int i=0;i<32;i++) {
+            if (flags.test(i)) {
                 f.push_back(string_for_flag(i));
-        return boost::algorithm::join(f, ",");
+            }
+        }
+        return f;
     }
 }

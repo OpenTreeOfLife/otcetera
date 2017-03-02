@@ -768,6 +768,31 @@ inline void writeNewick(std::ostream & out, const T *nd) {
         }
     }
 }
+
+template<typename T, typename Y>
+inline void writeNewickGeneric(std::ostream & out,
+                               T nd,
+                               Y & nodeNamer,
+                               long height_limit) {
+    assert(nd != nullptr);
+    if (!(nd->isTip()) && height_limit != 0) {
+        out << '(';
+        bool first = true;
+        const long nhl = height_limit - 1;
+        for (auto c : iter_child_const(*nd)) {
+            if (first) {
+                first = false;
+            } else {
+                out << ',';
+            }
+            writeNewickGeneric<T, Y>(out, c, nodeNamer, nhl);
+        }
+        out << ')';
+    }
+    writeEscapedForNewick(out, nodeNamer(nd));
+}
+
+
 template<typename T>
 inline void dbWriteNewick(const T *nd) {
     if (!debuggingOutputEnabled) {

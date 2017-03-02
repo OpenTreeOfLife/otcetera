@@ -128,7 +128,7 @@ void NodeEmbedding<T, U>::mergeExitEmbeddingsIfMultiple() {
     std::map<std::size_t, std::set<PathPairPtr> > toCull;
     for (auto treeInd2eout : edgeBelowEmbeddings) {
         if (treeInd2eout.second.size() > 1) {
-            UNREACHABLE; // now resolving earlier...
+            OTC_UNREACHABLE; // now resolving earlier...
             // If an input tree has a polytomy with members of a taxon as well as its "outgroup" taxa,
             //  then the polytomy does not contest the monophyly.
             //  this function will be called after resolution of the polytomy. 
@@ -325,7 +325,7 @@ OttIdSet NodeEmbedding<T, U>::getRelevantDesIdsFromPathPairSet(const PathPairSet
 template<typename T, typename U>
 void NodeEmbedding<T, U>::collapseSourceEdge(const T * , //phyloParent,
                                                  PathPairing<T, U> * ) { //path
-    NOT_IMPLEMENTED; // until we check for "high ranks preserve contested monophyly optimization"
+    assert("not implemented"[0] == 'f');; // until we check for "high ranks preserve contested monophyly optimization"
 }
 
 template<typename T, typename U>
@@ -333,7 +333,7 @@ void NodeEmbedding<T, U>::collapseSourceEdgesToForceOneEntry(T & ,
                                                              PathPairSet & pps,
                                                              std::size_t treeIndex,
                                                              SupertreeContextWithSplits & sc) {
-    NOT_IMPLEMENTED; // until we check for "high ranks preserve contested monophyly optimization"
+    assert("not implemented"[0] == 'f');; // until we check for "high ranks preserve contested monophyly optimization"
     if (pps.size() < 2) {
         return;
     }
