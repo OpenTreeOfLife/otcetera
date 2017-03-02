@@ -74,7 +74,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{treePtrByIndex, scaffoldNdToNodeEmbedding, *tax};
         if (userRequestsRetentionOfTipsMappedToContestedTaxa) {
-            sc.pruneTipsMappedToContestedTaxa = false;
+            sc.prune_tips_mapped_to_contested_taxa = false;
         }
         std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post(*taxonomy)) {

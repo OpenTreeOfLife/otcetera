@@ -48,7 +48,7 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
     std::string noden;
     if (transferNodeNameToExemplars) {
         std::string onn = nd->get_name();
-        auto opts = getSourceNodeName(onn);
+        auto opts = get_source_node_name(onn);
         if (opts) {
             noden = *opts;
             hasNodeName = true;

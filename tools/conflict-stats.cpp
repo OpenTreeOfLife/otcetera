@@ -111,7 +111,7 @@ string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
     if (name.empty())
 	throw OTCError()<<"Cannot get name for unnamed node!";
 
-    auto source = getSourceNodeName(name);
+    auto source = get_source_node_name(name);
     if (source)
         return *source;
     else

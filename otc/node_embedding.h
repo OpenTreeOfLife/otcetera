@@ -37,14 +37,14 @@ inline void update_ancestral_path_ott_id_set(T * nd,
         involved in the mapping.
     The relevant pairings are:
         1. all node pairings for embeddedNode,
-        2. all paths that are loops for embeddedNode (embeddedNode is the scaffoldDes
-            and the scaffoldAnc for the PathPair), and
+        2. all paths that are loops for embeddedNode (embeddedNode is the scaffold_des
+            and the scaffold_anc for the PathPair), and
         3. all paths the leave this node. ie. those that paths that:
-            A. have a scaffoldDes that is embeddedNode or one of its descendants, AND
-            B. have scaffoldAnc set to an ancestor of embeddedNode
+            A. have a scaffold_des that is embeddedNode or one of its descendants, AND
+            B. have scaffold_anc set to an ancestor of embeddedNode
     Note that if you want all of the paths that intersect with embeddedNode, you have
         to check the edgeBelowEmbeddings field of all of embeddedNode's children. This
-        is because any PathPairing that has embeddedNode as the scaffoldAnc will not
+        is because any PathPairing that has embeddedNode as the scaffold_anc will not
         be found in the edgeBelowEmbeddings for embeddedNode. And if it is not a loop
         node for embeddedNode, the path will not be in loopEmbeddings either. These
         paths are trivial wrt resolving the tree for embeddedNode, but they do 
@@ -91,7 +91,7 @@ class NodeEmbedding {
             return r;
         }
         for (const auto & np : neIt->second) {
-            r.insert(np->phyloNode);
+            r.insert(np->phylo_node);
         }
         return r;
     }
@@ -163,29 +163,29 @@ class NodeEmbedding {
                                NodeEmbedding<T, U> > & eForNd,
                                std::size_t treeIndex);
 
-    void collapse_source_edge(const T * phyloParent,
+    void collapse_source_edge(const T * phylo_parent,
                             PathPairing<T, U> * path);
     void collapse_source_edge_to_force_one_entry(T & ,
                                             PathPairSet & pps,
                                             std::size_t treeIndex,
                                             SupertreeContextWithSplits &);
-    void resolve_given_contested_monophyly(T & scaffoldNode,
+    void resolve_given_contested_monophyly(T & scaffold_node,
                                         SupertreeContextWithSplits & sc);
     std::set<PathPairPtr> get_all_child_exit_paths(
-                            const T & scaffoldNode,
+                            const T & scaffold_node,
                             const std::map<const T *, NodeEmbedding<T, U> > & sc) const;
     std::set<PathPairPtr> get_all_child_exit_paths_for_tree(
-                            const T & scaffoldNode,
+                            const T & scaffold_node,
                             std::size_t treeIndex,
                             const std::map<const T *, NodeEmbedding<T, U> > & sn2ne) const;
-    void resolve_given_uncontested_monophyly(T & scaffoldNode,
+    void resolve_given_uncontested_monophyly(T & scaffold_node,
                                           SupertreeContextWithSplits & sc);
-    std::string export_subproblem_and_resolve(T & scaffoldNode,
+    std::string export_subproblem_and_resolve(T & scaffold_node,
                                     const std::string & exportDir,
                                     std::ostream * exportStream, // nonnull to override exportdir
                                     SupertreeContextWithSplits & sc);
-    void collapse_group(T & scaffoldNode, SupertreeContext<T, U> & sc);
-    void prune_collapsed_node(T & scaffoldNode, SupertreeContextWithSplits & sc);
+    void collapse_group(T & scaffold_node, SupertreeContext<T, U> & sc);
+    void prune_collapsed_node(T & scaffold_node, SupertreeContextWithSplits & sc);
     
     bool report_if_contested(std::ostream & out,
                            const T * nd,
@@ -217,14 +217,14 @@ class NodeEmbedding {
                         std::map<const T *, NodeEmbedding<T, U> > & n2ne);
     void merge_exit_embeddings_if_multiple();
     void resolve_parent_in_favor_of_this_node(
-                        T & scaffoldNode,
+                        T & scaffold_node,
                         std::size_t treeIndex,
                         SupertreeContextWithSplits & sc);
     const TreeToPathPairs & get_exit_embeddings() const {
         return edgeBelowEmbeddings;
     }
     std::map<U *, U *> get_un_embedded_phylo_node_to_par(std::size_t treeInd) const;
-    void debugPrint(T & scaffoldNode, std::size_t treeIndex, const std::map<const T *, NodeEmbedding<T, U> > & sc) const;
+    void debugPrint(T & scaffold_node, std::size_t treeIndex, const std::map<const T *, NodeEmbedding<T, U> > & sc) const;
 
     private:
     std::map<U *, U*> get_looped_phylo_node_to_par(std::size_t treeInd) const;
@@ -234,7 +234,7 @@ class NodeEmbedding {
         auto pit = edgeBelowEmbeddings.find(treeInd);
         if (pit != edgeBelowEmbeddings.end()) {
             for (auto i : pit->second) {
-                if (i->phyloParent == n || i->phyloChild == n) {
+                if (i->phylo_parent == n || i->phylo_child == n) {
                     r.insert(i);
                 }
             }
@@ -242,7 +242,7 @@ class NodeEmbedding {
         pit = loopEmbeddings.find(treeInd);
         if (pit != loopEmbeddings.end()) {
             for (auto i : pit->second) {
-                if (i->phyloParent == n || i->phyloChild == n) {
+                if (i->phylo_parent == n || i->phylo_child == n) {
                     r.insert(i);
                 }
             }
@@ -254,7 +254,7 @@ class NodeEmbedding {
         assert(contains(pps, toDel));
         pps.erase(toDel);
     }
-    void prune_suppressed(std::size_t treeIndex, U * phyloPar, U * phyloChild);
+    void prune_suppressed(std::size_t treeIndex, U * phyloPar, U * phylo_child);
 };
 
 template<typename T, typename U>
@@ -262,7 +262,7 @@ inline bool NodeEmbedding<T, U>::does_tree_constest_monophyly(const std::set<Pat
     if (edgesBelowForTree.size() > 1) {
         const T * firstSrcPar = nullptr;
         for (auto pp : edgesBelowForTree) {
-            auto sp = pp->phyloParent;
+            auto sp = pp->phylo_parent;
             if (sp != firstSrcPar) {
                 if (firstSrcPar == nullptr) {
                     firstSrcPar = sp;
@@ -282,8 +282,8 @@ inline std::map<const T *, std::set<const T *> > NodeEmbedding<T, U>::how_tree_c
     std::map<const T *, std::set<const T *> > retMap;
     if (edgesBelowForTree.size() > 1) {
         for (auto pp : edgesBelowForTree) {
-            auto sp = pp->phyloParent;
-            auto sc = pp->phyloChild;
+            auto sp = pp->phylo_parent;
+            auto sc = pp->phylo_child;
             retMap[sp].insert(sc);
         }
     }
@@ -312,10 +312,10 @@ inline std::map<U *, U*> get_node_to_par_for_key(const V & treeInd,
         return nd2par;
     }
     for (const auto & pp : m.at(treeInd)) {
-        LOG(DEBUG) << " considering the edge from the child "  << reinterpret_cast<long>(pp->phyloChild) << ": "; dbWriteNewick(pp->phyloChild);
-        LOG(DEBUG) << "             to its parent "  << reinterpret_cast<long>(pp->phyloParent) << ": "; dbWriteNewick(pp->phyloParent);
-        assert(!contains(nd2par, pp->phyloChild));
-        nd2par[pp->phyloChild] = pp->phyloParent;
+        LOG(DEBUG) << " considering the edge from the child "  << reinterpret_cast<long>(pp->phylo_child) << ": "; dbWriteNewick(pp->phylo_child);
+        LOG(DEBUG) << "             to its parent "  << reinterpret_cast<long>(pp->phylo_parent) << ": "; dbWriteNewick(pp->phylo_parent);
+        assert(!contains(nd2par, pp->phylo_child));
+        nd2par[pp->phylo_child] = pp->phylo_parent;
     }
     return nd2par;
 }

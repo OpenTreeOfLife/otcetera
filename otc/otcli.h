@@ -262,13 +262,13 @@ int tax_dependent_tree_processing_main(OTCLI & otCLI,
                                    int argc,
                                    char *argv[],
                                    TaxonomyDependentTreeProcessor<T> & proc,
-                                   unsigned int numTrees,
+                                   unsigned int num_trees,
                                    bool include_internal_nodes_in_des_id_sets) {
     assert(otCLI.blob == nullptr);
     otCLI.blob = static_cast<void *>(&proc);
     otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = include_internal_nodes_in_des_id_sets;
     std::function<bool (OTCLI &, std::unique_ptr<T>)> pcb = tax_dependent_process_next_tree<T>;
-    auto rc = tree_processing_main<T>(otCLI, argc, argv, pcb, nullptr, numTrees);
+    auto rc = tree_processing_main<T>(otCLI, argc, argv, pcb, nullptr, num_trees);
     if (rc == 0) {
         return (proc.summarize(otCLI) ? 0 : 1);
     }

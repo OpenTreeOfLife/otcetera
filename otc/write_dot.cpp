@@ -220,10 +220,10 @@ void writePathPairingToDOT(std::ostream & out,
     const std::string sname ="__" + std::to_string(reinterpret_cast<long>(&pp));
     const NamePair pv{pname, emptyStr};
     const NamePair sv{sname, emptyStr};
-    const auto * pn = pp.phyloParent;
-    const auto * pd = pp.phyloChild;
-    const auto * sd = pp.scaffoldDes;
-    const auto * sn = pp.scaffoldAnc;
+    const auto * pn = pp.phylo_parent;
+    const auto * pd = pp.phylo_child;
+    const auto * sd = pp.scaffold_des;
+    const auto * sn = pp.scaffold_anc;
     const ToDotKey pk{pd, "_phpath"};
     writeOneSideOfPathPairingToDOT(out, pn, pd, sn, sd, pk, pv, nd2name, n, style, prefix);
     style = bstyle;

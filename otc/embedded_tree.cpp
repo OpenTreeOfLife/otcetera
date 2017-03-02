@@ -26,8 +26,8 @@ PathPairingWithSplits * EmbeddedTree::_add_path_mapping(
     pathPairings.emplace_back(*parentPairing, *childPairing);
     auto pathPairPtr = &(*pathPairings.rbegin());
     // register a pointer to the path at each traversed...
-    auto currTaxo = pathPairPtr->scaffoldDes;
-    auto ancTaxo = pathPairPtr->scaffoldAnc;
+    auto currTaxo = pathPairPtr->scaffold_des;
+    auto ancTaxo = pathPairPtr->scaffold_anc;
     auto & ne = _get_embedding_for_node(currTaxo);
     if (currTaxo != ancTaxo) {
         while (currTaxo != ancTaxo) {
@@ -43,7 +43,7 @@ PathPairingWithSplits * EmbeddedTree::_add_path_mapping(
     return pathPairPtr;
 }
 
-void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
+void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffold_tree,
                                       TreeMappedWithSplits & tree,
                                       std::size_t treeIndex,
                                       bool isScaffoldClone) {
@@ -62,16 +62,16 @@ void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
             assert(currTreeNodePairings.find(nd) == currTreeNodePairings.end());
             assert(nd->has_ott_id());
             auto ottId = nd->get_ott_id();
-            taxoDes = scaffoldTree.get_data().getNodeForOttId(ottId);
+            taxoDes = scaffold_tree.get_data().getNodeForOttId(ottId);
             assert(taxoDes != nullptr);
             ndPairPtr = _add_node_mapping(taxoDes, nd, treeIndex);
             if (!isScaffoldClone) {
                 for (auto former : tipPairings) {
-                    if (areLinearlyRelated(taxoDes, former->scaffoldNode)) {
+                    if (areLinearlyRelated(taxoDes, former->scaffold_node)) {
                         std::string m = "Repeated or nested OTT ID in tip mapping of an input tree: \"";
                         m += nd->get_name();
                         m += "\" and \"";
-                        m += former->phyloNode->get_name();
+                        m += former->phylo_node->get_name();
                         m += "\" found.";
                         throw OTCError(m);
                     }
@@ -83,7 +83,7 @@ void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
             auto reuseNodePairingIt = currTreeNodePairings.find(nd);
             assert(reuseNodePairingIt != currTreeNodePairings.end());
             ndPairPtr = reuseNodePairingIt->second;
-            taxoDes = ndPairPtr->scaffoldNode;
+            taxoDes = ndPairPtr->scaffold_node;
             assert(taxoDes != nullptr);
         }
         NodePairingWithSplits * parPairPtr = nullptr;
@@ -93,7 +93,7 @@ void EmbeddedTree::embedTree(TreeMappedWithSplits & scaffoldTree,
             if (isScaffoldClone) {
                 // since it is a taxonomy, it will have internal node labels
                 auto pottId = par->get_ott_id();
-                taxoAnc = scaffoldTree.get_data().getNodeForOttId(pottId);
+                taxoAnc = scaffold_tree.get_data().getNodeForOttId(pottId);
             
             } else {
                 const auto & parDesIds = par->get_data().desIds;

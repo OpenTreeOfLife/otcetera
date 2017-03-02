@@ -105,7 +105,7 @@ void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summ
 
 string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
     string name = node->get_name();
-    auto source = getSourceNodeName(name);
+    auto source = get_source_node_name(name);
     if (source)
         return *source;
     else

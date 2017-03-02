@@ -56,25 +56,25 @@ bool GreedyBandedForest<T, U>::create_and_add_phylo_statement(
 // 3. update all of the outgoing paths so that they map
 //      to this taxon
 template<typename T, typename U>
-void GreedyBandedForest<T, U>::finish_resolution_of_embedded_clade(U & scaffoldNode,
+void GreedyBandedForest<T, U>::finish_resolution_of_embedded_clade(U & scaffold_node,
                                                                     NodeEmbedding<T, U> * embedding,
                                                                     SupertreeContextWithSplits * sc) {
     assert(sc != nullptr);
-    const auto snoid = scaffoldNode.get_ott_id();
+    const auto snoid = scaffold_node.get_ott_id();
     LOG(DEBUG) << "finish_resolution_of_embedded_clade for " << snoid;
     debug_invariants_check();
     finalize_tree(sc);
     debug_invariants_check();
     assert(trees.size() == 1);
     auto & resolvedTree = begin(trees)->second;
-    const auto beforePar = scaffoldNode.getParent();
-    check_all_node_pointers_iter(scaffoldNode);
-    copyStructureToResolvePolytomy(resolvedTree.get_root(), sc->scaffoldTree, &scaffoldNode, sc);
-    check_all_node_pointers_iter(scaffoldNode);
-    assert(beforePar == scaffoldNode.getParent());
+    const auto beforePar = scaffold_node.getParent();
+    check_all_node_pointers_iter(scaffold_node);
+    copyStructureToResolvePolytomy(resolvedTree.get_root(), sc->scaffold_tree, &scaffold_node, sc);
+    check_all_node_pointers_iter(scaffold_node);
+    assert(beforePar == scaffold_node.getParent());
     // merge multiple exit paths (if needed) and remap all path pairings out of this node...
     embedding->merge_exit_embeddings_if_multiple();
-    embedding->set_ott_id_for_exit_embeddings(&scaffoldNode, snoid, sc->scaffold2NodeEmbedding);
+    embedding->set_ott_id_for_exit_embeddings(&scaffold_node, snoid, sc->scaffold_to_node_embedding);
 }
 
 template<typename T, typename U>
@@ -132,16 +132,16 @@ void copyStructureToResolvePolytomy(const T * srcPoly,
             dn = dOttIdToNode.at(nid);
             //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->get_ott_id();
             assert(dn != destPoly);
-            if (contains(sc->detachedScaffoldNodes, dn)) {
+            if (contains(sc->detached_scaffold_nodes, dn)) {
                 assert(not dn->getFirstChild());
                 assert(not dn->getNextSib());
-                sc->detachedScaffoldNodes.erase(dn);
-                sc->scaffoldTree.markAsAttached(dn);
+                sc->detached_scaffold_nodes.erase(dn);
+                sc->scaffold_tree.markAsAttached(dn);
             }
             if (dn->getParent() != dp) {
                 if (dn->getParent() != nullptr) {
                     dn->detachThisNode();
-                    sc->scaffoldTree.markAsDetached(dn);
+                    sc->scaffold_tree.markAsDetached(dn);
                 }
                 assert(dn->getNextSib() == nullptr);
                 dp->addChild(dn);

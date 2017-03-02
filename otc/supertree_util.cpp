@@ -25,7 +25,7 @@ std::string source_from_tree_name(const std::string& name) {
     return string_between_chars(name, ' ', '.');
 }
 
-boost::optional<std::string> getSourceNodeName(const std::string& name) {
+boost::optional<std::string> get_source_node_name(const std::string& name) {
     static std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
     std::smatch matches;
     if (std::regex_match(name,matches,e))

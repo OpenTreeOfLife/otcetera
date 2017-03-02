@@ -265,7 +265,7 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
 
                     string study = quote(study_from_tree_name(inpTree.get_name()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
-                    string node_in_study = quote(*getSourceNodeName(nd->get_name()));
+                    string node_in_study = quote(*get_source_node_name(nd->get_name()));
                     std::ostringstream study_tree_node;;
                     study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
                     support->insert({node, study_tree_node.str()});
@@ -278,7 +278,7 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
 
                     string study = quote(study_from_tree_name(inpTree.get_name()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
-                    string node_in_study = quote(*getSourceNodeName(nd->get_name()));
+                    string node_in_study = quote(*get_source_node_name(nd->get_name()));
                     std::ostringstream study_tree_node;;
                     study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
                     conflict->insert({node, study_tree_node.str()});
@@ -359,7 +359,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     int numErrors = 0;
     bool treatTaxonomyAsLastTree = false;
     bool headerEmitted = false;
-    int numTrees = 0;
+    int num_trees = 0;
     virtual ~DisplayedStatsState(){}
 
     bool summarize(OTCLI &otCLI) override {
@@ -368,7 +368,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         }
         if (not showJSON)
         {
-            const std::string label = std::string("Total of ") + std::to_string(numTrees) + std::string(" trees");
+            const std::string label = std::string("Total of ") + std::to_string(num_trees) + std::string(" trees");
             writeNextRow(otCLI.out, totals, label);
         }
         else
@@ -445,7 +445,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         for (const auto & p : c) {
             totals[p.first] += p.second;
         }
-        numTrees += 1;
+        num_trees += 1;
     }
 
     virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
