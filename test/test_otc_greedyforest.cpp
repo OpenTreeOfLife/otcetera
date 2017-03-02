@@ -52,7 +52,7 @@ class TestValidTreeStruct {
             ftv.push_back(&fakePhylo);
 
             SupertreeContextWithSplits sc{ftv,
-                                          et._getScaffoldNdToNodeEmbedding(),
+                                          et._get_scaffold_nd_to_node_embedding(),
                                           fakeScaffold};
             GreedyBandedForest<NodeWithSplits, NodeWithSplits> gpf{-1};
             int treeInd = 0;

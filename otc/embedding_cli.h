@@ -51,7 +51,7 @@ class EmbeddingCLI
         monotypicRemapping = generateIdRemapping(*taxonomy);
         //check_tree_invariants(*taxonomy);
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
-            _getEmbeddingForNode(nd); // side effect is introducint a new, empty embedding
+            _get_embedding_for_node(nd); // side effect is introducint a new, empty embedding
         }
         otCLI.getParsingRules().set_ott_idForInternals = false;
         otCLI.getParsingRules().idRemapping = &monotypicRemapping;
@@ -70,7 +70,7 @@ class EmbeddingCLI
         // Store the tree's filename
         raw->setName(otCLI.currentFilename);
         suppressMonotypicTaxaPreserveShallowDangle(*raw);
-        embedNewTree(*taxonomy, *raw, treeIndex);
+        embed_new_tree(*taxonomy, *raw, treeIndex);
         otCLI.err << "# pathPairings = " << pathPairings.size() << '\n';
         return true;
     }
@@ -96,7 +96,7 @@ class EmbeddingCLI
         }
         // Store the tree's filename
         taxonomyAsSource->setName("TAXONOMY");
-        embedScaffoldClone(*taxonomy, *taxonomyAsSource, treeIndex);
+        embed_scaffold_clone(*taxonomy, *taxonomyAsSource, treeIndex);
         return true;
     }
 };

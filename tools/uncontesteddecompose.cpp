@@ -22,7 +22,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
 
     void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc, json * documentP) {
         assert(!scaffoldNd->isTip());
-        auto & thr = _getEmbeddingForNode(scaffoldNd);
+        auto & thr = _get_embedding_for_node(scaffoldNd);
 
         LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->get_ott_id() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
         if (thr.isContested()) {
@@ -57,12 +57,12 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         } else {
             //thr.debugNodeEmbedding(" focal node before export", false, scaffoldNdToNodeEmbedding);
             //if (scaffoldNd->getParent()) {
-            //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
+            //    _get_embedding_for_node(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
             //}
             LOG(INFO) << "    Uncontested";
             auto fn = thr.exportSubproblemAndResolve(*scaffoldNd, exportDir, exportStream, sc);
             //if (scaffoldNd->getParent()) {
-            //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
+            //    _get_embedding_for_node(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
             //}
             if ((subproblemIdStream != nullptr) && (!fn.empty())) {
                 *subproblemIdStream << fn << '\n';
@@ -82,13 +82,13 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
                 assert(nd->has_ott_id());
                 // this is only needed for monotypic cases in which a tip node
                 //  may have multiple OTT Ids in its desIds set
-                _getEmbeddingForNode(nd).set_ott_idForExitEmbeddings(nd,
+                _get_embedding_for_node(nd).set_ott_idForExitEmbeddings(nd,
                                                                    nd->get_ott_id(),
                                                                    scaffoldNdToNodeEmbedding);
             } else {
                 postOrder.push_back(nd);
             }
-            //_getEmbeddingForNode(nd).debugNodeEmbedding(" getting postorder", true, scaffoldNdToNodeEmbedding);
+            //_get_embedding_for_node(nd).debugNodeEmbedding(" getting postorder", true, scaffoldNdToNodeEmbedding);
         }
         for (auto nd : postOrder) {
             assert(!nd->isTip());
