@@ -55,14 +55,14 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             }
             thr.collapseGroup(*scaffoldNd, sc);
         } else {
-            //thr.debugNodeEmbedding(" focal node before export", false, scaffoldNdToNodeEmbedding);
+            //thr.debug_node_embeddings(" focal node before export", false, scaffoldNdToNodeEmbedding);
             //if (scaffoldNd->getParent()) {
-            //    _get_embedding_for_node(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
+            //    _get_embedding_for_node(scaffoldNd->getParent()).debug_node_embeddings(" parent before export", true, scaffoldNdToNodeEmbedding);
             //}
             LOG(INFO) << "    Uncontested";
             auto fn = thr.exportSubproblemAndResolve(*scaffoldNd, exportDir, exportStream, sc);
             //if (scaffoldNd->getParent()) {
-            //    _get_embedding_for_node(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
+            //    _get_embedding_for_node(scaffoldNd->getParent()).debug_node_embeddings("after export", true, scaffoldNdToNodeEmbedding);
             //}
             if ((subproblemIdStream != nullptr) && (!fn.empty())) {
                 *subproblemIdStream << fn << '\n';
@@ -88,7 +88,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             } else {
                 postOrder.push_back(nd);
             }
-            //_get_embedding_for_node(nd).debugNodeEmbedding(" getting postorder", true, scaffoldNdToNodeEmbedding);
+            //_get_embedding_for_node(nd).debug_node_embeddings(" getting postorder", true, scaffoldNdToNodeEmbedding);
         }
         for (auto nd : postOrder) {
             assert(!nd->isTip());

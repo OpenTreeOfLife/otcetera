@@ -147,10 +147,10 @@ class TreesToServe {
 
             assert(taxonomy_ptr != nullptr);
             ParsingRules parsingRules;
-            parsingRules.ottIdValidator = &ott_id_set;
-            parsingRules.includeInternalNodesInDesIdSets = true;
+            parsingRules.ott_id_validator = &ott_id_set;
+            parsingRules.include_internal_nodes_in_des_id_sets = true;
             parsingRules.set_ott_idForInternals = true;
-            parsingRules.requireOttIds = true;
+            parsingRules.require_ott_ids = true;
             parsingRules.set_ott_ids = true;
             std::ifstream inp;
             if (!openUTF8File(filename, inp)) {
@@ -159,7 +159,7 @@ class TreesToServe {
             LOG(INFO) << "reading \"" << filename << "\"...";
             ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
             FilePosStruct pos(filenamePtr);
-            std::unique_ptr<SummaryTree_t> nt = readNextNewick<SummaryTree_t>(inp, pos, parsingRules);
+            std::unique_ptr<SummaryTree_t> nt = read_next_newick<SummaryTree_t>(inp, pos, parsingRules);
             setTravesalEntryExit(*nt);
             tree_list.push_back(move(nt));
             annotation_list.push_back(SummaryTreeAnnotation());

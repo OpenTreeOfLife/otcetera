@@ -185,7 +185,7 @@ bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
 }
 
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = get_bool(arg,"-p: ");
+    otCLI.getParsingRules().prune_unrecognized_input_tips = get_bool(arg,"-p: ");
     return true;
 }
 

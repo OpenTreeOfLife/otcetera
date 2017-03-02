@@ -15,7 +15,7 @@ NodePairingWithSplits * EmbeddedTree::_add_node_mapping(
     assert(nd != nullptr);
     nodePairings.emplace_back(NodePairingWithSplits(taxo, nd));
     auto ndPairPtr = &(*nodePairings.rbegin());
-    _get_embedding_for_node(taxo).addNodeEmbedding(treeIndex, ndPairPtr);
+    _get_embedding_for_node(taxo).add_node_embeddings(treeIndex, ndPairPtr);
     return ndPairPtr;
 }
 
@@ -31,14 +31,14 @@ PathPairingWithSplits * EmbeddedTree::_add_path_mapping(
     auto & ne = _get_embedding_for_node(currTaxo);
     if (currTaxo != ancTaxo) {
         while (currTaxo != ancTaxo) {
-             _get_embedding_for_node(currTaxo).addExitEmbedding(treeIndex, pathPairPtr);
+             _get_embedding_for_node(currTaxo).add_exit_embeddings(treeIndex, pathPairPtr);
             currTaxo = currTaxo->getParent();
             if (currTaxo == nullptr) {
                 break;
             }
         }
     } else {
-        ne.addLoopEmbedding(treeIndex, pathPairPtr);
+        ne.add_loop_embeddings(treeIndex, pathPairPtr);
     }
     return pathPairPtr;
 }

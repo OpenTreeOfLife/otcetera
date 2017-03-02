@@ -89,11 +89,11 @@ inline bool processTrees(const std::string& filename,
     FilePosStruct pos(filenamePtr);
     unsigned treeNumInThisFile = 1;
     for (;;) {
-        std::unique_ptr<T> nt = readNextNewick<T>(inp, pos, parsingRules);
+        std::unique_ptr<T> nt = read_next_newick<T>(inp, pos, parsingRules);
         if (nt == nullptr) {
             break;
         }
-        if (parsingRules.pruneUnrecognizedInputTips) {
+        if (parsingRules.prune_unrecognized_input_tips) {
             pruneTipsWithoutIds(*nt);
             if (nt->get_root() == nullptr) {
                 continue;
@@ -139,7 +139,7 @@ template<typename Tree_t>
 std::unique_ptr<Tree_t> get_tree(const std::string& filename)
 {
     ParsingRules rules;
-    rules.requireOttIds = false;
+    rules.require_ott_ids = false;
     return get_tree<Tree_t>(filename, rules);
 }
 
@@ -226,8 +226,8 @@ class TaxonomyDependentTreeProcessor {
             ottIds = getAllOTTIds(*taxonomy);
             if (not taxonomy->get_root()->has_ott_id())
                 throw OTCError()<<"Taxonomy root does not have an OTT ID!";
-            otCLI.getParsingRules().ottIdValidator = &ottIds;
-            otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+            otCLI.getParsingRules().ott_id_validator = &ottIds;
+            otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = false;
             return true;
         }
         virtual bool process_source_tree(OTCLI & , std::unique_ptr<T> tree) {
@@ -263,10 +263,10 @@ int taxDependentTreeProcessingMain(OTCLI & otCLI,
                                    char *argv[],
                                    TaxonomyDependentTreeProcessor<T> & proc,
                                    unsigned int numTrees,
-                                   bool includeInternalNodesInDesIdSets) {
+                                   bool include_internal_nodes_in_des_id_sets) {
     assert(otCLI.blob == nullptr);
     otCLI.blob = static_cast<void *>(&proc);
-    otCLI.getParsingRules().includeInternalNodesInDesIdSets = includeInternalNodesInDesIdSets;
+    otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = include_internal_nodes_in_des_id_sets;
     std::function<bool (OTCLI &, std::unique_ptr<T>)> pcb = taxDependentProcessNextTree<T>;
     auto rc = treeProcessingMain<T>(otCLI, argc, argv, pcb, nullptr, numTrees);
     if (rc == 0) {

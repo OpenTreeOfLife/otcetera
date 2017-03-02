@@ -29,7 +29,7 @@ class TestValidTreeStruct {
             FilePosStruct pos(filenamePtr);
             for (;;) {
                 ParsingRules pr;
-                auto nt = readNextNewick<Tree_t>(inp, pos, pr);
+                auto nt = read_next_newick<Tree_t>(inp, pos, pr);
                 if (filename == "3genus-synth.tre") {
                     const std::string expected[] = {
                         "(((A1_ott1,(A2_ott2,A3_ott3))A_ott4,B1_ott5),B2_ott6,B3_ott7,((C1_ott9,C2_ott10),C3_ott11)C_ott12)life_ott14;\n",

@@ -54,7 +54,7 @@ class EmbeddingCLI
             _get_embedding_for_node(nd); // side effect is introducint a new, empty embedding
         }
         otCLI.getParsingRules().set_ott_idForInternals = false;
-        otCLI.getParsingRules().idRemapping = &monotypicRemapping;
+        otCLI.getParsingRules().id_remapping = &monotypicRemapping;
         return true;
     }
 

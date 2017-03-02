@@ -386,12 +386,12 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 
     virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
-        otCLI.getParsingRules().includeInternalNodesInDesIdSets = true;
+        otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = true;
         // now we get a little cute and reprocess the taxonomy desIds so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set (rather than the full set of IDs)
         clearAndfillDesIdSets(*taxonomy);
-        otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+        otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = false;
         return true;
     }
 
@@ -622,7 +622,7 @@ bool handleFixKnuckles(OTCLI & otCLI, const std::string &) {
 bool handlePruneUnrecognized(OTCLI & otCLI, const std::string &) {
     FindUnsupportedState * fusp = static_cast<FindUnsupportedState *>(otCLI.blob);
     assert(fusp != nullptr);
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = true;
+    otCLI.getParsingRules().prune_unrecognized_input_tips = true;
     return true;
 }
 

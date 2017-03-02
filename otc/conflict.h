@@ -64,7 +64,7 @@ auto find_induced_nodes(const std::vector<N*>& leaves) {
     N* MRCA = nullptr;
     for(auto leaf: leaves) {
         nodes.insert(leaf);
-        MRCA = trace_find_MRCA(MRCA, leaf, nodes);
+        MRCA = trace_find_mrca(MRCA, leaf, nodes);
     }
     std::vector<N*> vnodes;
     for(auto nd: nodes) {

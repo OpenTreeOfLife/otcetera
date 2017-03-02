@@ -26,7 +26,7 @@ class TestValidTreeStruct {
             std::list<std::unique_ptr<TreeMappedWithSplits> > tv;
             for (;;) {
                 ParsingRules pr;
-                auto nt = readNextNewick<Tree_t>(inp, pos, pr);
+                auto nt = read_next_newick<Tree_t>(inp, pos, pr);
                 if (nt == nullptr) {
                     break;
                 }

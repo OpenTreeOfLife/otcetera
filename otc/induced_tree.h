@@ -29,7 +29,7 @@ node_t* trace_to_parent(node_t* node, std::unordered_set<node_t*>& nodes) {
 
 /// Walk up the tree from node1 and node2 until we find the common ancestor, putting nodes into set `nodes`.
 template <typename N>
-N* trace_find_MRCA(N* node1, N* node2, std::unordered_set<N*>& nodes)
+N* trace_find_mrca(N* node1, N* node2, std::unordered_set<N*>& nodes)
 {
     assert(node1 or node2);
     if (not node1) {
@@ -72,7 +72,7 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
     for(auto leaf: leaves)
     {
         nodes.insert(leaf);
-        MRCA = trace_find_MRCA(MRCA, leaf, nodes);
+        MRCA = trace_find_mrca(MRCA, leaf, nodes);
     }
 
     std::unique_ptr<Tree_t> induced_tree(new Tree_t());

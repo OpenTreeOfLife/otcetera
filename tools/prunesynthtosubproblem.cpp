@@ -40,7 +40,7 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
         assert(taxonomy != nullptr);
         if (synthTree == nullptr) {
             synthTree = std::move(tree);
-            otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+            otCLI.getParsingRules().include_internal_nodes_in_des_id_sets = false;
             return true;
         }
         return processSubproblemTree(otCLI, *tree);
@@ -84,7 +84,7 @@ bool handleReverseToDir(OTCLI & otCLI, const std::string &nextArg) {
     assert(!nextArg.empty());
     proc->outDir = nextArg;
     proc->pruneInpTreesNotSynth = true;
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = true;
+    otCLI.getParsingRules().prune_unrecognized_input_tips = true;
     return true;
 }
 

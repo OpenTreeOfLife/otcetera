@@ -20,7 +20,7 @@ class TestValidTreeStruct {
             FilePosStruct pos(filenamePtr);
             for (;;) {
                 ParsingRules pr;
-                auto nt = readNextNewick<Tree_t>(inp, pos, pr);
+                auto nt = read_next_newick<Tree_t>(inp, pos, pr);
                 return (nt != nullptr ? '.': 'F');
             }
         }

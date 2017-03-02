@@ -34,12 +34,12 @@ inline void newickParseNodeInfo(RootedTree<N, T> & ,
         if ((!parsingRules.set_ott_idForInternals) && node.isInternal()) {
             return;
         }
-        long ottID = ottIDFromName(labelToken->content());
+        long ottID = ott_id_from_name(labelToken->content());
         if (ottID >= 0) {
-            if (parsingRules.idRemapping != nullptr) {
-                auto rIt = parsingRules.idRemapping->find(ottID);
-                if (rIt != parsingRules.idRemapping->end()) {
-                    LOG(DEBUG) << "idRemapping from OTT" << ottID << " to OTT" << rIt->second;
+            if (parsingRules.id_remapping != nullptr) {
+                auto rIt = parsingRules.id_remapping->find(ottID);
+                if (rIt != parsingRules.id_remapping->end()) {
+                    LOG(DEBUG) << "id_remapping from OTT" << ottID << " to OTT" << rIt->second;
                     ottID = rIt->second;
                 }
             }
@@ -69,23 +69,23 @@ inline void set_ott_idAndAddToMap(RootedTree<T, U> & tree,
         node.setName(labelToken->content());
         if (not parsingRules.set_ott_ids) return;
         if (not parsingRules.set_ott_idForInternals and node.isInternal()) return;
-        long ottID = ottIDFromName(labelToken->content());
+        long ottID = ott_id_from_name(labelToken->content());
         if (ottID >= 0) {
-            if (parsingRules.ottIdValidator != nullptr) {
-                if (!contains(*parsingRules.ottIdValidator, ottID)) {
-                    if (!parsingRules.pruneUnrecognizedInputTips) {
+            if (parsingRules.ott_id_validator != nullptr) {
+                if (!contains(*parsingRules.ott_id_validator, ottID)) {
+                    if (!parsingRules.prune_unrecognized_input_tips) {
                         std::string m = "Unrecognized OTT Id ";
                         m += std::to_string(ottID);
-                        throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->getStartPos());
+                        throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->get_start_pos());
                     } else {
                         return;
                     }
                 }
             }
-            if (parsingRules.idRemapping != nullptr) {
-                auto rIt = parsingRules.idRemapping->find(ottID);
-                if (rIt != parsingRules.idRemapping->end()) {
-                    LOG(DEBUG) << "idRemapping from OTT" << ottID << " to OTT" << rIt->second;
+            if (parsingRules.id_remapping != nullptr) {
+                auto rIt = parsingRules.id_remapping->find(ottID);
+                if (rIt != parsingRules.id_remapping->end()) {
+                    LOG(DEBUG) << "id_remapping from OTT" << ottID << " to OTT" << rIt->second;
                     ottID = rIt->second;
                 }
             }
@@ -94,13 +94,13 @@ inline void set_ott_idAndAddToMap(RootedTree<T, U> & tree,
             if (contains(treeData.ottIdToNode, ottID)) {
                 throw OTCParsingError("Expecting an OTT Id to only occur one time in a tree.",
                                       labelToken->content(),
-                                      labelToken->getStartPos());
+                                      labelToken->get_start_pos());
             }
             treeData.ottIdToNode[ottID] = &node;
-        } else if (parsingRules.requireOttIds and not parsingRules.pruneUnrecognizedInputTips) {
+        } else if (parsingRules.require_ott_ids and not parsingRules.prune_unrecognized_input_tips) {
             throw OTCParsingError("Expecting a name for a taxon to end with an ott##### where the numbers are the OTT Id.",
                                   labelToken->content(),
-                                  labelToken->getStartPos());
+                                  labelToken->get_start_pos());
         }
     }
 }
@@ -125,15 +125,15 @@ inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits>
     if (not parsingRules.set_ott_ids) return;
     if (node.isTip()
         && !node.has_ott_id()
-        && (!parsingRules.pruneUnrecognizedInputTips)) {
-        throw OTCParsingContentError("Expecting each tip to have an ID.", token.getStartPos());
+        && (!parsingRules.prune_unrecognized_input_tips)) {
+        throw OTCParsingContentError("Expecting each tip to have an ID.", token.get_start_pos());
     }
 }
 
 template<>
 inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
     if (not parsingRules.set_ott_ids) return;
-    if (parsingRules.includeInternalNodesInDesIdSets) {
+    if (parsingRules.include_internal_nodes_in_des_id_sets) {
         fillDesIdSetsIncludingInternals(tree);
     } else {
         fillDesIdSets(tree);

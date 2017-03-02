@@ -12,12 +12,12 @@
 namespace otc {
 
 struct ParsingRules {
-    const std::set<long> * ottIdValidator = nullptr;
-    bool includeInternalNodesInDesIdSets = false;
+    const std::set<long> * ott_id_validator = nullptr;
+    bool include_internal_nodes_in_des_id_sets = false;
     bool set_ott_idForInternals = true; // TEMP. Do we want to just remove them after processing, rather than adding a conditional to the parsing logic...
-    const std::map<long, long> * idRemapping = nullptr;
-    bool pruneUnrecognizedInputTips = false;
-    bool requireOttIds = true;  // Every label must include an OttId
+    const std::map<long, long> * id_remapping = nullptr;
+    bool prune_unrecognized_input_tips = false;
+    bool require_ott_ids = true;  // Every label must include an OttId
     bool set_ott_ids = true;      // Read and set OttIds for labels that have them.
 };
 
@@ -33,7 +33,7 @@ struct FilePosStruct {
         filepath(fp) {
     }
 
-    void setLocationInFile(const FilePosStruct & other) {
+    void set_location_in_file(const FilePosStruct & other) {
         pos = other.pos;
         lineNumber = other.lineNumber;
         colNumber = other.colNumber;
@@ -142,20 +142,20 @@ class NewickTokenizer {
                 NWK_SEMICOLON
             };
         NewickTokenizer(std::istream &inp, const FilePosStruct & initialPos)
-            :inputStream(inp),
+            :input_stream(inp),
             initPos(initialPos) {
         }
         class iterator;
         class Token {
             public:
                 const std::string & content() const {
-                    return this->tokenContent;
+                    return this->token_content;
                 }
-                const std::vector<std::string> & commentVec() const {
+                const std::vector<std::string> & comment_vec() const {
                     return this->comments;
                 }
-                const FilePosStruct & getStartPos() const {
-                    return this->startPos;
+                const FilePosStruct & get_start_pos() const {
+                    return this->start_pos;
                 }
             private:
                 Token(const std::string &content,
@@ -163,17 +163,17 @@ class NewickTokenizer {
                       const FilePosStruct & endPosition,
                       const std::vector<std::string> &embeddedComments,
                       newick_token_state_t tokenState)
-                    :tokenContent(content),
-                    startPos(startPosition),
-                    endPos(endPosition),
+                    :token_content(content),
+                    start_pos(startPosition),
+                    end_pos(endPosition),
                     comments(embeddedComments),
                     state(tokenState) {
                     //LOG(TRACE) << "created token for \"" << content << "\"";
                 }
             public:
-                const std::string tokenContent;
-                const FilePosStruct startPos;
-                const FilePosStruct endPos;
+                const std::string token_content;
+                const FilePosStruct start_pos;
+                const FilePosStruct end_pos;
                 const std::vector<std::string> comments;
                 const newick_token_state_t state;
 
@@ -183,165 +183,165 @@ class NewickTokenizer {
         class iterator : std::forward_iterator_tag {
             public:
                 bool operator==(const iterator & other) const {
-                    //LOG(TRACE) << "Equality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd;
-                    if (other.atEnd) {
-                        return this->atEnd;
+                    //LOG(TRACE) << "Equality test at_end = " << this->at_end << " other.at_end = " << other.at_end;
+                    if (other.at_end) {
+                        return this->at_end;
                     }
-                    if (this->atEnd) {
+                    if (this->at_end) {
                         return false;
                     }
-                    return (this->currentPos == other.currentPos) && (&(this->inputStream) == &(other.inputStream));
+                    return (this->current_pos == other.current_pos) && (&(this->input_stream) == &(other.input_stream));
                 }
                 bool operator!=(const iterator & other) const {
-                    //LOG(TRACE) << "Inequality test atEnd = " << this->atEnd << " other.atEnd = " << other.atEnd << '\n';
+                    //LOG(TRACE) << "Inequality test at_end = " << this->at_end << " other.at_end = " << other.at_end << '\n';
                     return !(*this == other);
                 }
                 Token operator*() const {
                     //LOG(TRACE) << "* operator";
-                    return Token(currWord, *prevPos, *currentPos, comments, currTokenState);
+                    return Token(current_word, *prev_pos, *current_pos, comments, current_token_state);
                 }
                 iterator & operator++() {
                     //LOG(TRACE) << "increment";
-                    if (this->atEnd) {
+                    if (this->at_end) {
                         throw std::out_of_range("Incremented a dead NewickTokenizer::iterator");
                     }
-                    if (this->currTokenState == NWK_SEMICOLON) {
-                        this->atEnd = true;
-                        this->resetToken();
+                    if (this->current_token_state == NWK_SEMICOLON) {
+                        this->at_end = true;
+                        this->reset_token();
                     } else {
-                        this->resetToken();
-                        this->consumeNextToken();
+                        this->reset_token();
+                        this->consume_next_token();
                     }
                     return *this;
                 }
-                const FilePosStruct & getCurrPos() const {
-                    return *this->currentPos;
+                const FilePosStruct & get_curr_pos() const {
+                    return *this->current_pos;
                 }
             private:
-                void consumeNextToken();
-                bool advanceToNextNonWhitespace(char &);
-                void finishReadingComment();
-                void finishReadingUnquoted(bool continuingLabel);
-                void finishReadingQuotedStr();
-                void onLabelExit(char nextChar, bool enteringFromWhitespace);
+                void consume_next_token();
+                bool advance_to_next_non_whitespace(char &);
+                void finish_reading_comment();
+                void finish_reading_unquoted(bool continuingLabel);
+                void finish_reading_quoted_str();
+                void on_label_exit(char nextChar, bool enteringFromWhitespace);
                 char peek() {
                     if (!pushed.empty()) {
                         return pushed.top();
                     }
-                    char c = static_cast<char>(this->inputStream.rdbuf()->sgetc());
+                    char c = static_cast<char>(this->input_stream.rdbuf()->sgetc());
                     pushed.push(c);
                     return c;
                 }
                 void push(char c) {
                     this->pushed.push(c);
                     if (c == '\n') {
-                        this->currentPos->colNumber = lastLineInd;
-                        this->currentPos->lineNumber -= 1;
+                        this->current_pos->colNumber = last_line_ind;
+                        this->current_pos->lineNumber -= 1;
                     } else {
-                        this->currentPos->colNumber -= 1;
+                        this->current_pos->colNumber -= 1;
                     }
-                    this->currentPos->pos -= 1;
+                    this->current_pos->pos -= 1;
                 }
-                void throwSCCErr(char c) const __attribute__ ((noreturn));
+                void throw_scc_err(char c) const __attribute__ ((noreturn));
                 //deals with \r\n as \n Hence "LogicalChar"
-                bool advanceReaderOneLogicalChar(char & c) {
+                bool advance_reader_one_logical_char(char & c) {
                     if (!pushed.empty()) {
                         c = pushed.top();
                         pushed.pop();
                     } else {
-                        if (this->atEnd) {
+                        if (this->at_end) {
                             c = EOF;
                             return false;
                         }
-                        c = static_cast<char>((this->inputStream.rdbuf())->sbumpc());
+                        c = static_cast<char>((this->input_stream.rdbuf())->sbumpc());
                     }
                     if (c == EOF) {
-                        this->atEnd = true;
+                        this->at_end = true;
                     } else {
-                        this->currentPos->pos += 1;
+                        this->current_pos->pos += 1;
                         if (13 == c || 10 == c) {
                             if (13 == c ) { // deal with \r\n as a newline
-                                if (this->inputStream.rdbuf()->sgetc() == 10) {//peeks at the next char
-                                    (inputStream.rdbuf())->sbumpc();
-                                    this->currentPos->pos += 1;
+                                if (this->input_stream.rdbuf()->sgetc() == 10) {//peeks at the next char
+                                    (input_stream.rdbuf())->sbumpc();
+                                    this->current_pos->pos += 1;
                                 }
                             }
                             c = '\n';
-                            this->lastLineInd = this->currentPos->colNumber;
-                            this->currentPos->colNumber = 0;
-                            this->currentPos->lineNumber += 1;
+                            this->last_line_ind = this->current_pos->colNumber;
+                            this->current_pos->colNumber = 0;
+                            this->current_pos->lineNumber += 1;
                         } else {
-                            this->currentPos->colNumber += 1;
+                            this->current_pos->colNumber += 1;
                         }
                     }
-                    return !this->atEnd;
+                    return !this->at_end;
                 }
-                void resetToken() {
-                    this->currWord.clear();
-                    this->prevTokenState = this->currTokenState;
-                    std::swap(currentPos, prevPos);
-                    currentPos->pos = prevPos->pos;
-                    currentPos->lineNumber = prevPos->lineNumber;
-                    currentPos->colNumber = prevPos->colNumber;
+                void reset_token() {
+                    this->current_word.clear();
+                    this->previous_token_state = this->current_token_state;
+                    std::swap(current_pos, prev_pos);
+                    current_pos->pos = prev_pos->pos;
+                    current_pos->lineNumber = prev_pos->lineNumber;
+                    current_pos->colNumber = prev_pos->colNumber;
                     comments.clear();
                 }
                 iterator(std::istream &inp, const FilePosStruct & initialPos)
-                    :inputStream(inp),
-                    inpFilepath(initialPos.filepath),
-                    atEnd(!inp.good()),
-                    firstPosSlot(initialPos),
-                    secondPosSlot(initialPos.filepath),
-                    currTokenState(NWK_NOT_IN_TREE),
-                    prevTokenState(NWK_NOT_IN_TREE),
-                    numUnclosedParens(0) {
-                    currentPos = &firstPosSlot;
-                    prevPos = &secondPosSlot;
+                    :input_stream(inp),
+                    input_filepath(initialPos.filepath),
+                    at_end(!inp.good()),
+                    first_pos_slot(initialPos),
+                    second_pos_slot(initialPos.filepath),
+                    current_token_state(NWK_NOT_IN_TREE),
+                    previous_token_state(NWK_NOT_IN_TREE),
+                    num_unclosed_parens(0) {
+                    current_pos = &first_pos_slot;
+                    prev_pos = &second_pos_slot;
                     //LOG(TRACE) << "create live";
                     ++(*this);
                 }
                 iterator(std::istream &inp) // USE in end() ONLY!
-                    :inputStream(inp),
-                    inpFilepath(nullptr),
-                    atEnd(true),
-                    firstPosSlot(nullptr),
-                    secondPosSlot(nullptr),
-                    currTokenState(NWK_NOT_IN_TREE),
-                    prevTokenState(NWK_NOT_IN_TREE),
-                    numUnclosedParens(0) {
+                    :input_stream(inp),
+                    input_filepath(nullptr),
+                    at_end(true),
+                    first_pos_slot(nullptr),
+                    second_pos_slot(nullptr),
+                    current_token_state(NWK_NOT_IN_TREE),
+                    previous_token_state(NWK_NOT_IN_TREE),
+                    num_unclosed_parens(0) {
                     //LOG(TRACE) << "create dead";
 
                 }
-                std::istream & inputStream;
-                ConstStrPtr inpFilepath;
-                bool atEnd;
-                FilePosStruct firstPosSlot;
-                FilePosStruct secondPosSlot;
-                FilePosStruct * currentPos; // alias
-                FilePosStruct * prevPos;    // alias
-                std::string currWord;
-                newick_token_state_t currTokenState;
-                newick_token_state_t prevTokenState;
-                long numUnclosedParens;
+                std::istream & input_stream;
+                ConstStrPtr input_filepath;
+                bool at_end;
+                FilePosStruct first_pos_slot;
+                FilePosStruct second_pos_slot;
+                FilePosStruct * current_pos; // alias
+                FilePosStruct * prev_pos;    // alias
+                std::string current_word;
+                newick_token_state_t current_token_state;
+                newick_token_state_t previous_token_state;
+                long num_unclosed_parens;
                 std::stack<char> pushed;
                 std::vector<std::string> comments;
-                std::size_t lastLineInd;
+                std::size_t last_line_ind;
                 friend class NewickTokenizer;
         };
         iterator begin() {
-            iterator b(this->inputStream, initPos);
+            iterator b(this->input_stream, initPos);
             return b;
         }
         iterator end() {
             //LOG(TRACE) << "NewickTokenizer.end()";
-            return iterator(this->inputStream);
+            return iterator(this->input_stream);
         }
     private:
-        std::istream & inputStream;
+        std::istream & input_stream;
         FilePosStruct initPos;
 };
 
 /// Get OTT Id from a string of the form (ott######) or (.......[ \t_]ott#####).
-inline long ottIDFromName(const std::string & n) {
+inline long ott_id_from_name(const std::string & n) {
     if (n.empty()) {
         return -1;
     }
@@ -371,7 +371,7 @@ inline long ottIDFromName(const std::string & n) {
 }
 
 /// Get the OTT Id from a string ###### consisting of digits only, with no whitespace or other characters.
-inline long stringToOttID(const std::string & n) {
+inline long string_to_ott_id(const std::string & n) {
     if (n.empty()) {
         return -1;
     }

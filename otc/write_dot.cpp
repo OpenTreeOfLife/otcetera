@@ -245,7 +245,7 @@ void writeDOTEmbeddingForNode(std::ostream & out,
                               const char * prefix,
                               std::size_t treeIndex
                               ) {
-    auto & exits = thr.getExitEmbeddings();
+    auto & exits = thr.get_exit_embeddings();
     const auto eait = exits.find(treeIndex);
     if (eait != exits.end()) {
         for (const auto & pp : eait->second) {
