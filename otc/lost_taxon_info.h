@@ -48,8 +48,8 @@ class LostTaxonDetails {
     const OttIdSet & get_intruding_taxa() const {
         return intruding_taxa;
     }
-    OttIdSet & get_intruding_taxa() {
-        return intruding_taxa;
+    void set_intruding_taxa(const OttIdSet & ois) {
+        intruding_taxa = ois;
     }
     private:
     long ott_id = 0L;
@@ -83,6 +83,14 @@ inline void writeLostTaxa(std::ostream & out,
             apjson[parent->get_name()] = childVecJSON;
         }
         lostTaxonLocation["attachment_points"] = apjson;
+        const auto & intruding_taxa = ltl.get_intruding_taxa();
+        if (!intruding_taxa.empty()) {
+            json itj;
+            for (auto i : intruding_taxa) {
+                itj.push_back(i);
+            }
+            lostTaxonLocation["intruding_taxa"] = itj;
+        }
         lostTaxa["ott" + std::to_string(ottId)] = lostTaxonLocation;
     }
     json synTaxa;
@@ -145,102 +153,6 @@ inline void register_attachment_points(const N * taxon,
     }
 }
 
-
-// to move to util.h
-template<typename X, typename Y>
-inline std::set<Y> get_values_for_found_keys(const std::map<X, Y> & container, const std::set<X> & keys) {
-    std::set<Y> ret;
-    for (auto i : keys) {
-        auto x = container.find(i);
-        if (x != container.end()) {
-            ret.insert(x->second);
-        }
-    }
-    return ret;
-}
-
-// to move to tree_util.h
-template <typename N>
-N * find_mrca_via_traversing(const std::set<N *> & tip_node_set, std::set<N*> * induced_nodes = nullptr);
-
-
-// A slow method for finding the MRCA of all of the nodes pointed to by `tip_node_set`
-//  If `induced_nodes` is provided, then on exit it will hold all of the nodes traversed
-//    by walking from the tips to the returned ancestor.
-// \returns nullptr if tip_node_set is empty
-// Assumes that all nodes in tip_node_set are connected (in the same tree)
-// Makes use of no info in the `data` field of the nodes
-template <typename N>
-inline N * find_mrca_via_traversing(const std::set<N *> & tip_node_set,
-                                    std::set<N*> * induced_nodes) {
-    if (tip_node_set.size() < 2)  {
-        if (tip_node_set.empty()) {
-            return nullptr;
-        }
-        N * r = *tip_node_set.begin();
-        if (induced_nodes) {
-            induced_nodes->insert(r);
-        }
-        return r;
-    }
-    // We walk rootward from each tip nodes until we intersect with a part
-    //    of the tree we've visited (based on the node's presence in `seen_nodes`)
-    auto nit = tip_node_set.begin();
-    N * curr = *nit++;
-    std::deque<N *> root_to_mrca;
-    std::set<N *> local_induced_nodes;
-    std::set<N *> * seen_nodes = (induced_nodes == nullptr ? &local_induced_nodes : induced_nodes);
-    std::set<N *> dequed_nodes; // fast search for nodes in the deque
-    // start by filling in the path from the first leaf to the root
-    while (curr != nullptr) {
-        root_to_mrca.push_front(curr);
-        seen_nodes->insert(curr);
-        dequed_nodes.insert(curr);
-        curr = curr->get_parent();
-    }
-    // root_to_mrca has the root at the first pos and the leaf at the end
-    // Now we walk through the other tips. Every time we hit a seen node, we 
-    //    can stop retraversing.
-    // If the seen node is in the deque, and it is not the last node in the deque
-    //    then we've just walked from a tip that connects deeper, so we
-    //    pop the shallower nodes off the end of the root_to_mrca deque.
-    for (; nit != tip_node_set.end(); ++nit) {
-        curr = *nit;
-        while (curr != nullptr) {
-            if (seen_nodes->count(curr) != 0) {
-                if (dequed_nodes.count(curr) != 0) {
-                    while (root_to_mrca.back() != curr) {
-                        auto td = root_to_mrca.back();                
-                        root_to_mrca.pop_back();
-                        dequed_nodes.erase(td);
-                        if (root_to_mrca.size() == 1) {
-                            return root_to_mrca.back();
-                        }
-                    }
-                }
-                break;
-            } else {
-                seen_nodes->insert(curr);
-            }
-            curr = curr->get_parent();
-        }
-    }
-    N * mrca = root_to_mrca.back();
-    if (induced_nodes != nullptr) {
-        // Now we need to remove any ancestors of the mrca from induced_nodes
-        N * p = mrca->get_parent();
-        while (p != nullptr) {
-            if (induced_nodes->count(p) > 0) {
-                induced_nodes->erase(p);
-            } else {
-                break;
-            }
-            p = p->get_parent();
-        }
-    }
-    return mrca;
-}
-
 /// In our current impl. of the unpruner, the broken incertae sedis taxa
 //    are hard to register in a lost taxon map during the unpruning.
 //  `ott_id` is the ID of the "lost" taxon
@@ -256,9 +168,12 @@ inline void fix_lost_taxon_map(OttId ott_id,
                                const std::map<OttId, N *> & ott_to_node,
                                std::map<OttId, LostTaxonDetails<N> > & lost_taxa_map) {
     auto tips = get_values_for_found_keys(ott_to_node, des_ids_for_taxon);
-    std::set<N *> visited;
+    std::set<N *> visited; // will hold pointers to all nodes in the induced tree
     const N * mrca = find_mrca_via_traversing(tips, &visited);
-    std::set<const N *> no_interloper;
+    // will hold pointers to all of the nodes in the summary tree that are
+    //    in the induced tree and only have children that are also in the induced
+    //    tree 
+    std::set<const N *> no_interloper; 
     for (auto n: visited) {
         if (tips.count(n) == 0) {
             bool has_interloper = false;
@@ -273,26 +188,44 @@ inline void fix_lost_taxon_map(OttId ott_id,
             }
         }
     }
-    std::set<const N *> at_set;
+    // Walking back from each tip, we compile a set of nodes that have children
+    //    in and out of the taxon. These will be the MRCA or nodes not in no_interloper
+    std::set<const N *> attachment_set;
     for (auto n : tips) {
         if (n == mrca) {
-            at_set.insert(mrca);
+            attachment_set.insert(mrca);
             continue;
         }
         auto p = n->get_parent();
         while (p != mrca && no_interloper.count(p) > 0) {
             p = p->get_parent();
         }
-        at_set.insert(p);
+        attachment_set.insert(p);
     }
-    LostTaxonDetails<N> ltl(ott_id, mrca);
-    lost_taxa_map[ott_id] = ltl;
-    auto & attachment = lost_taxa_map[ott_id].get_attach_node_to_attached_vec();
+    // compile a list of OTT IDs of intruding taxa, by getting the OTT Ids from
+    // each attachment child that is not wholly assigned to this taxon
+    // this traversal can include too many IDs we'll fix that below...
+    OttIdSet intruding_taxa_plus;
+    for (auto nd : attachment_set) {
+        for (auto c : iter_child_const(*nd)) {
+            if (no_interloper.count(c) == 0) {
+                accumulate_closest_ott_id_for_subtree(c, intruding_taxa_plus);
+            }
+        }
+    }
+    const auto intruding_taxa = set_difference_as_set(intruding_taxa_plus, des_ids_for_taxon);
+    // now we overwrite the existing entry with a clean LostTaxonDetails object, and fill it.
+    lost_taxa_map[ott_id] = LostTaxonDetails<N>(ott_id, mrca);
+    LostTaxonDetails<N> & ltl = lost_taxa_map[ott_id];
+    ltl.set_intruding_taxa(intruding_taxa);
+    // Fill in the attachments vector with all of the children that are tips of this taxon
+    //    or "no_interloper" elements
+    auto & attachment = ltl.get_attach_node_to_attached_vec();
     attachment.clear();
-    for (auto n: at_set) {
+    for (auto n: attachment_set) {
         auto & att_vec = attachment[n];
         for (auto c : iter_child(*n)) {
-            if (tips.count(const_cast<N *>(c)) >0 || no_interloper.count(c) > 0) {
+            if (tips.count(const_cast<N *>(c)) > 0 || no_interloper.count(c) > 0) {
                 att_vec.insert(c);
             }
         }

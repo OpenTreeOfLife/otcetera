@@ -4,7 +4,7 @@
 //  without requiring iteration (contrast w/tree_operations.h)
 // Depends on: tree.h 
 // Depended on by: tree_iter.h tree_operation.h 
-
+#include <deque>
 #include "otc/otc_base_includes.h"
 #include "otc/tree.h"
 
@@ -18,6 +18,9 @@ template<typename T>
 T find_leftmost_in_subtree(T nd);
 template<typename T>
 T find_rightmost_in_subtree(T nd);
+template <typename N>
+N * find_mrca_via_traversing(const std::set<N *> & tip_node_set, std::set<N*> * induced_nodes = nullptr);
+
 
 // alias for nd.is_internal_node
 template<typename T>
@@ -127,6 +130,85 @@ void emit_conflict_details(std::ostream & out, const T & ndRef, const std::set<l
         out << o << ' ';
     }
     out << "\n";
+}
+
+
+
+// A slow method for finding the MRCA of all of the nodes pointed to by `tip_node_set`
+//  If `induced_nodes` is provided, then on exit it will hold all of the nodes traversed
+//    by walking from the tips to the returned ancestor.
+// \returns nullptr if tip_node_set is empty
+// Assumes that all nodes in tip_node_set are connected (in the same tree)
+// Makes use of no info in the `data` field of the nodes
+template <typename N>
+inline N * find_mrca_via_traversing(const std::set<N *> & tip_node_set,
+                                    std::set<N*> * induced_nodes) {
+    if (tip_node_set.size() < 2)  {
+        if (tip_node_set.empty()) {
+            return nullptr;
+        }
+        N * r = *tip_node_set.begin();
+        if (induced_nodes) {
+            induced_nodes->insert(r);
+        }
+        return r;
+    }
+    // We walk rootward from each tip nodes until we intersect with a part
+    //    of the tree we've visited (based on the node's presence in `seen_nodes`)
+    auto nit = tip_node_set.begin();
+    N * curr = *nit++;
+    std::deque<N *> root_to_mrca;
+    std::set<N *> local_induced_nodes;
+    std::set<N *> * seen_nodes = (induced_nodes == nullptr ? &local_induced_nodes : induced_nodes);
+    std::set<N *> dequed_nodes; // fast search for nodes in the deque
+    // start by filling in the path from the first leaf to the root
+    while (curr != nullptr) {
+        root_to_mrca.push_front(curr);
+        seen_nodes->insert(curr);
+        dequed_nodes.insert(curr);
+        curr = curr->get_parent();
+    }
+    // root_to_mrca has the root at the first pos and the leaf at the end
+    // Now we walk through the other tips. Every time we hit a seen node, we 
+    //    can stop retraversing.
+    // If the seen node is in the deque, and it is not the last node in the deque
+    //    then we've just walked from a tip that connects deeper, so we
+    //    pop the shallower nodes off the end of the root_to_mrca deque.
+    for (; nit != tip_node_set.end(); ++nit) {
+        curr = *nit;
+        while (curr != nullptr) {
+            if (seen_nodes->count(curr) != 0) {
+                if (dequed_nodes.count(curr) != 0) {
+                    while (root_to_mrca.back() != curr) {
+                        auto td = root_to_mrca.back();                
+                        root_to_mrca.pop_back();
+                        dequed_nodes.erase(td);
+                        if (root_to_mrca.size() == 1) {
+                            return root_to_mrca.back();
+                        }
+                    }
+                }
+                break;
+            } else {
+                seen_nodes->insert(curr);
+            }
+            curr = curr->get_parent();
+        }
+    }
+    N * mrca = root_to_mrca.back();
+    if (induced_nodes != nullptr) {
+        // Now we need to remove any ancestors of the mrca from induced_nodes
+        N * p = mrca->get_parent();
+        while (p != nullptr) {
+            if (induced_nodes->count(p) > 0) {
+                induced_nodes->erase(p);
+            } else {
+                break;
+            }
+            p = p->get_parent();
+        }
+    }
+    return mrca;
 }
 
 } // namespace otc

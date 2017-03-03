@@ -1396,10 +1396,6 @@ N* get_root(N* node) {
     return node;
 }
 
-
- 
-}// namespace otc
-
 template <typename node_t>
 void destroy_children(node_t* node) {
     std::vector<node_t*> nodes;
@@ -1417,6 +1413,23 @@ void destroy_children(node_t* node) {
     assert(node->is_tip());
 }
 
+// Walks the subtree rooted at `nd`. for each branch of the subtree, the rootward-most
+//    OTT ID is added to `ott_id_set`
+// This is useful for getting a complete list of taxa within a subtree without adding every
+//    leaf label.
+// If `nd` has an OTT ID, then only that ID will be added to ott_id_set.
+template <typename N>
+inline void accumulate_closest_ott_id_for_subtree(const N * nd, OttIdSet & ott_id_set) {
+    if (nd->has_ott_id()) {
+        ott_id_set.insert(nd->get_ott_id());
+        return;
+    }
+    for (auto c : iter_child_const(*nd)) {
+        accumulate_closest_ott_id_for_subtree(c, ott_id_set);
+    }
+}
 
+
+ 
+}// namespace otc
 #endif
-

@@ -57,7 +57,7 @@ std::set<T> set_union_as_set(const std::set<T> & small, const std::set<T> & big)
 template<typename T>
 std::set<T> set_sym_difference_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T>
-std::set<T> set_difference_as_set(const std::set<T> & small, const std::set<T> & big);
+std::set<T> set_difference_as_set(const std::set<T> & first, const std::set<T> & second);
 template<typename T, typename U>
 bool contains(const T & container, const U & key);
 template<typename T>
@@ -506,6 +506,19 @@ inline std::ostream& write_separated_collection(std::ostream& o, const std::vect
         o << sep << *it;
     }
     return o;
+}
+
+// returns the set of values for and key that is in `keys` and container 
+template<typename X, typename Y>
+inline std::set<Y> get_values_for_found_keys(const std::map<X, Y> & container, const std::set<X> & keys) {
+    std::set<Y> ret;
+    for (auto i : keys) {
+        auto x = container.find(i);
+        if (x != container.end()) {
+            ret.insert(x->second);
+        }
+    }
+    return ret;
 }
 
 
