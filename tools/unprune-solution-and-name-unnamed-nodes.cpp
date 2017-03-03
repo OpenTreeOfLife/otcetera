@@ -1,3 +1,4 @@
+#include "otc/lost_taxon_info.h"
 #include <algorithm>
 #include <unordered_set>
 #include <iterator>
@@ -19,8 +20,11 @@ static std::string statsJSONFilename;
 static std::string incertaeSedisFilename;
 
 
+
 struct RTNodePartialDesSet;
 using Node_t = RootedTreeNode<RTNodePartialDesSet>;
+
+typedef std::map<OttId, LostTaxonDetails<Node_t> > LostTaxonMap;
 
 struct RTNodePartialDesSet {
     std::set<long> des_ids;
@@ -28,43 +32,16 @@ struct RTNodePartialDesSet {
     OttId smallest_child  = 0;
     int tax_level = -1;
     // set for descendants of incertae sedis taxa to indicate which clade hold the taxon
-    Node_t * reprInSolnBy = nullptr; 
+    Node_t * repr_in_solution_by = nullptr; 
 };
 
 struct RTTreeIncertaeSedisHolder {
-    std::list<OttIdSet> ownedIdSets; // used for memory management.
+    std::list<OttIdSet> owned_id_sets; // used for memory management.
 };
 
 using Tree_t = RootedTree<RTNodePartialDesSet, RTTreeIncertaeSedisHolder>;
 
 
-// Stores pointers for a taxon X which not in the solution.
-//   points to the MRCA, and all of the attachment points for 
-//   subtrees that are part of this taxon.
-// An attachment point is:
-//      1. an ancestor of at least one member of the taxon X,
-//      2. an ancestor of at least one taxon that is not contained in the taxon X.
-//      3. has at least one child (an attached node) that consists entirely
-//          of member of taxon X
-class LostTaxonDetails {
-    using node_vec = std::set<Tree_t::node_type *>;
-    using attach2node_vec = std::map<Tree_t::node_type *, node_vec>;
-    public:
-    LostTaxonDetails(long oid=0, Tree_t::node_type *mrcaNd=nullptr)
-        :ottId(oid),
-        mrca(mrcaNd) {
-    }
-    void addAttachmentPoint(Tree_t::node_type *attach, Tree_t::node_type *child) {
-        attachNode2AttachedVec[attach].insert(child);
-    }
-    public: //@TMP should be private.
-    long ottId = 0L;
-    Tree_t::node_type * mrca = nullptr;
-    // for each attachment point, we store which subtrees for this taxon attach there.
-    attach2node_vec attachNode2AttachedVec;
-    OttIdSet intrudingTaxa;
-};
-typedef std::map<OttId, LostTaxonDetails> LostTaxonMap;
 typedef std::pair<Node_t *, Node_t *> childParPair;
 
 struct UnpruneStats {
@@ -121,44 +98,6 @@ using std::unique_ptr;
 using std::vector;
 
 
-void writeLostTaxa(ostream & out,
-                   const LostTaxonMap & ltm, 
-                   const map<OttId, OttIdSet> & synmap) {
-    json lostTaxa;
-    for (auto ltmEl : ltm) {
-        const auto & ottId = ltmEl.first;
-        const auto & ltl = ltmEl.second; 
-        json lostTaxonLocation;
-        lostTaxonLocation["mrca"] = ltl.mrca->get_name();
-        const auto attachmentPoints = ltl.attachNode2AttachedVec;
-        json apjson;
-        for (auto attachPoint: attachmentPoints) {
-            const auto & parent = attachPoint.first;
-            const auto & childVec = attachPoint.second;
-            json childVecJSON = json::array();
-            for (auto c : childVec) {
-                childVecJSON.push_back(c->get_name());
-            }
-            apjson[parent->get_name()] = childVecJSON;
-        }
-        lostTaxonLocation["attachment_points"] = apjson;
-        lostTaxa["ott" + std::to_string(ottId)] = lostTaxonLocation;
-    }
-    json synTaxa;
-    for (auto synEl : synmap) {
-        const auto & ottId = synEl.first;
-        const auto & synset = synEl.second;
-        json synj;
-        for (auto jsEl : synset) {
-            synj.push_back("ott" + std::to_string(jsEl));
-        }
-        synTaxa["ott" + std::to_string(ottId)] = synj;
-    }
-    json document;
-    document["non_monophyletic_taxa"] = lostTaxa;
-    document["taxa_matching_multiple_ott_ids"] = synTaxa;
-    out << document.dump(1) << std::endl;
-}
 
 // adds ottId to the des_ids field of every node from firstNd down to ancAndLast (inclusive)
 void addToDesIdsForAnc(long ottId, Node_t *firstNd, Node_t *ancAndLast, const map<long, childParPair> & ott2tax) {
@@ -186,7 +125,7 @@ vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
     vector<N *> r;
     N * curr = root;
     assert(!curr->get_data().des_ids.empty());
-    assert(curr->get_data().reprInSolnBy == nullptr);
+    assert(curr->get_data().repr_in_solution_by == nullptr);
     stack<N *> toDealWith;
     while (true) {
         LOG(DEBUG) << "higherTaxPreOrderBelowBoundaries visiting " << curr->get_ott_id();
@@ -204,7 +143,7 @@ vector<N *> higherTaxPreOrderBelowBoundaries(N * root,
                 r.push_back(curr);
                 for (auto c : iter_child(*curr)) {
                     auto & cd = c->get_data();
-                    if (!cd.des_ids.empty() && cd.reprInSolnBy == nullptr) {
+                    if (!cd.des_ids.empty() && cd.repr_in_solution_by == nullptr) {
                         toDealWith.push(c);
                     }
                 }
@@ -221,7 +160,7 @@ N * introduceMonotypicParent(N * taxon, N * solnChild) {
     solnChild->replace_this_node(nn);
     nn->set_name(taxon->get_name());
     nn->set_ott_id(taxon->get_ott_id());
-    taxon->get_data().reprInSolnBy = nn;
+    taxon->get_data().repr_in_solution_by = nn;
     nn->add_child(solnChild);
     nn->get_data().des_ids = solnChild->get_data().des_ids;
     return nn;
@@ -243,7 +182,7 @@ void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v) {
     const auto children = all_children(taxon);
     for (auto child : children) {
         auto & cd = child->get_data();
-        if (cd.des_ids.empty() && cd.reprInSolnBy == nullptr) {
+        if (cd.des_ids.empty() && cd.repr_in_solution_by == nullptr) {
             //LOG(DEBUG) << "moveUnsampledChildren moving " << child->get_ott_id();
             child->detach_this_node();
             solnNode->add_child(child);
@@ -254,106 +193,6 @@ void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v) {
     }
 }
 
-// Walk tipward from the @mrca until we find subtrees whose
-// leaves are purely descendants of @taxon.  Record these
-// subtrees as the attachment points in @ltl.
-template <typename N>
-void registerAttachmentPoints(const N * taxon,
-                              N * mrca,
-                              LostTaxonDetails & ltl) {
-    assert(taxon);
-    assert(mrca);
-    set<N *> visited;
-    stack<N *> toDealWith;
-    LOG(DEBUG) << "registerAttachmentPoints for " << taxon->get_ott_id();
-    const auto & taxDes = taxon->get_data().des_ids;
-    assert(taxDes.size() > 1);
-    assert(is_proper_subset(taxDes, mrca->get_data().des_ids));
-    N * currSolnNd = mrca;
-    // the root of the solution, must have all of the constituent taxa
-    while (true) {
-        if (visited.count(currSolnNd) > 0) {
-            if (toDealWith.empty()) {
-                return ;
-            }
-            currSolnNd = toDealWith.top();
-            toDealWith.pop();
-            assert (visited.count(currSolnNd) == 0);
-        } else {
-            visited.insert(currSolnNd);
-            const auto & solDes = currSolnNd->get_data().des_ids;
-            assert(solDes != taxDes); // we should not call this if a des of mrca = taxon
-            for (auto c : iter_child(*currSolnNd)) {
-                const auto & cdesId = c->get_data().des_ids;
-                if (!are_disjoint(cdesId, taxDes)) {
-                    if (is_proper_subset(cdesId, taxDes)) {
-                        ltl.addAttachmentPoint(currSolnNd, c);
-                    } else {
-                        toDealWith.push(c);
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-void fixLostTaxonMap(OttId ott_id,
-                     const OttIdSet & tip_ids, //@TODO bad name! see note below
-                     const map<long, Node_t*> & ott_to_sol,
-                     UnpruneStats & unprune_stats) {
-    LOG(DEBUG) << "fixLostTaxonMap for " << ott_id;
-    db_write_ott_id_set("  tip_ids", tip_ids);
-    std::set<Node_t *> tips;
-    for (auto i : tip_ids) {
-        auto x = ott_to_sol.find(i);
-        // "tip_ids" currently is all des_ids of the incertae sedis taxon  - includes higher taxa which may not be in soln.
-        if (x != ott_to_sol.end()) {
-            tips.insert(x->second);
-        }
-    }
-    std::set<Node_t *> visited;
-    Node_t * mrca = find_mrca_without_desids(tips, &visited);
-    std::set<Node_t *> no_interloper;
-    for (auto n: visited) {
-        if (tips.count(n) == 0) {
-            bool has_interloper = false;
-            for (auto c : iter_child(*n)) {
-                if (visited.count(c) == 0) {
-                    has_interloper = true;
-                    break;
-                }
-            }
-            if (!has_interloper) {
-                no_interloper.insert(n);
-            }
-        }
-    }
-    set<Node_t *> at_set;
-    for (auto n : tips) {
-        if (n == mrca) {
-            at_set.insert(mrca);
-            continue;
-        }
-        auto p = n->get_parent();
-        while (p != mrca && no_interloper.count(p) > 0) {
-            p = p->get_parent();
-        }
-        at_set.insert(p);
-    }
-    LostTaxonDetails ltl(ott_id, mrca);
-    unprune_stats.lost_taxa[ott_id] = ltl;
-    auto & attachment = unprune_stats.lost_taxa[ott_id].attachNode2AttachedVec;
-    attachment.clear();
-    for (auto n: at_set) {
-        auto & att_vec = attachment[n];
-        for (auto c : iter_child(*n)) {
-            if (tips.count(c) >0 || no_interloper.count(c) > 0) {
-                att_vec.insert(c);
-            }
-        }
-    }
-}
 
 template <typename N>
 void addChildrenOfNonMonophyleticTaxon(N * taxon,
@@ -364,19 +203,19 @@ void addChildrenOfNonMonophyleticTaxon(N * taxon,
     assert(mrca);
     assert(taxon->has_ott_id());
     const auto ottId = taxon->get_ott_id();
-    LostTaxonDetails * ltl = nullptr;
+    LostTaxonDetails<N> * ltl = nullptr;
     if (registerInLTM) {
         if (ltm.count(ottId) > 0) {
             LOG(DEBUG) << " LTM for " << ottId << " again. this can happen if it is incertae sedis.";
         }
-        ltm[ottId] = LostTaxonDetails(ottId, mrca);
+        ltm[ottId] = LostTaxonDetails<N>(ottId, mrca);
         ltl = &(ltm[ottId]);
-        registerAttachmentPoints(taxon, mrca, *ltl);
+        register_attachment_points(taxon, mrca, *ltl);
     }
     std::set<N *> v;
     moveUnsampledChildren(taxon, mrca, &v);
     if (registerInLTM && !v.empty()) {
-        auto & s = ltl->attachNode2AttachedVec[mrca];
+        auto & s = ltl->get_attached_vec(mrca);
         s.insert(v.begin(), v.end());
     }
 }
@@ -645,10 +484,10 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             if (is_inc_sed && !is_tip_inc_sed) {
                 inc_sed_that_are_proper_children.insert(effTipTaxonNd);
             }
-            if (effTipTaxonNd->get_data().reprInSolnBy != nullptr) {
-                assert(effTipTaxonNd->get_data().reprInSolnBy->has_ott_id());
-                queuedForFlagging.push_back(carriedIDRealId(effectiveTipOttId, effTipTaxonNd->get_data().reprInSolnBy->get_ott_id()));
-                LOG(DEBUG) << "checking effective tip " << effectiveTipOttId << " threaded through " << effTipTaxonNd->get_data().reprInSolnBy->get_ott_id();
+            if (effTipTaxonNd->get_data().repr_in_solution_by != nullptr) {
+                assert(effTipTaxonNd->get_data().repr_in_solution_by->has_ott_id());
+                queuedForFlagging.push_back(carriedIDRealId(effectiveTipOttId, effTipTaxonNd->get_data().repr_in_solution_by->get_ott_id()));
+                LOG(DEBUG) << "checking effective tip " << effectiveTipOttId << " threaded through " << effTipTaxonNd->get_data().repr_in_solution_by->get_ott_id();
             } else {
                 queuedForFlagging.push_back(carriedIDRealId(effectiveTipOttId, effectiveTipOttId));
             }
@@ -720,9 +559,9 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 numExpanded += 1;
                 auto cvec = all_children(taxonForLeaf);
                 for (auto c : cvec) {
-                    if (c->get_data().reprInSolnBy == nullptr) {
+                    if (c->get_data().repr_in_solution_by == nullptr) {
                         taxonForLeaf->remove_child(c);
-                        c->get_data().reprInSolnBy = l;
+                        c->get_data().repr_in_solution_by = l;
                         l->add_child(c);
                     }
                 }
@@ -753,8 +592,8 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             bool recordInLTM = inc_sed_that_are_proper_children.find(higherTaxonNd) == inc_sed_that_are_proper_children.end();
             numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, unprune_stats, recordInLTM, ott2tax);
         }
-        LOG(DEBUG) << "reprInSolnBy marked for " << higherTaxonNd->get_ott_id();
-        higherTaxonNd->get_data().reprInSolnBy = rootSolnNd;
+        LOG(DEBUG) << "repr_in_solution_by marked for " << higherTaxonNd->get_ott_id();
+        higherTaxonNd->get_data().repr_in_solution_by = rootSolnNd;
     }
     for (auto is_it = inc_sed_to_deal_with_by_level.rbegin(); is_it != inc_sed_to_deal_with_by_level.rend(); ++is_it) {
         for (auto is_taxon_ptr : is_it->second) {
@@ -765,14 +604,14 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             } else {
                 numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, unprune_stats, false, ott2tax);
             }
-            LOG(DEBUG) << "reprInSolnBy marked for " << is_taxon_ptr->get_ott_id();
-            is_taxon_ptr->get_data().reprInSolnBy = rootSolnNd;
+            LOG(DEBUG) << "repr_in_solution_by marked for " << is_taxon_ptr->get_ott_id();
+            is_taxon_ptr->get_data().repr_in_solution_by = rootSolnNd;
         }
     }
     // for the sake of a low memory footprint, here we 
     //  clear out the des_ids fields for this slice of the tree.
     for (auto n : taxaLeaves) {
-        n->get_data().reprInSolnBy = rootSolnNd;
+        n->get_data().repr_in_solution_by = rootSolnNd;
         n->get_data().des_ids.clear();
     }
     for (auto n : postOrderInTaxNd) {
@@ -828,8 +667,8 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 if (inc_sed_mapping_deeper.count(spike_nd) > 0) {
                     break;
                 }
-                LOG(DEBUG) << "reprInSolnBy marked for " << spike_nd->get_ott_id();
-                spike_nd->get_data().reprInSolnBy = rootTaxonNd;
+                LOG(DEBUG) << "repr_in_solution_by marked for " << spike_nd->get_ott_id();
+                spike_nd->get_data().repr_in_solution_by = rootTaxonNd;
                 spike_nd = spike_nd->get_parent();
                 assert(spike_nd != nullptr);
             }
@@ -847,7 +686,7 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
     // Assuming that incertae sedis taxa are fairly rare, there will be lots of nodes that 
     //    share the same set of non-excluded taxa. Thus we have an owning store and lots
     //    of pointers to them.
-    auto & owningList = taxonomy.get_data().ownedIdSets;
+    auto & owningList = taxonomy.get_data().owned_id_sets;
     auto taxonomy_root_ptr = taxonomy.get_root();
     owningList.push_back(OttIdSet());
     taxonomy_root_ptr->get_data().nonexcluded_ids = &(*owningList.rbegin());
@@ -1184,7 +1023,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
     for (auto pit : id_to_fix_map) {
         OttId broken_ott_id = pit.first;
         const auto & tip_ids = pit.second;
-        fixLostTaxonMap(pit.first, pit.second, ott_to_sol, unprune_stats);
+        fix_lost_taxon_map(pit.first, pit.second, ott_to_sol, unprune_stats.lost_taxa);
     }
 }
 
