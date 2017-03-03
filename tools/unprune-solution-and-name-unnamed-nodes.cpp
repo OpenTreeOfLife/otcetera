@@ -196,31 +196,6 @@ void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v) {
 
 
 template <typename N>
-void addChildrenOfNonMonophyleticTaxon(N * taxon,
-                                       N * mrca,
-                                       LostTaxonMap & ltm,
-                                       bool registerInLTM) {
-    assert(taxon);
-    assert(mrca);
-    assert(taxon->has_ott_id());
-    const auto ottId = taxon->get_ott_id();
-    LostTaxInfo * ltl = nullptr;
-    if (registerInLTM) {
-        ltm.emplace(piecewise_construct,
-                    forward_as_tuple(ottId),
-                    forward_as_tuple(ottId, mrca, taxon));
-        ltl = &(ltm.at(ottId));
-    }
-    std::set<N *> v;
-    moveUnsampledChildren(taxon, mrca, &v);
-    if (registerInLTM && !v.empty()) {
-        auto & s = ltl->get_attached_set(mrca);
-        s.insert(v.begin(), v.end());
-    }
-}
-
-
-template <typename N>
 N * special_bisect_with_new_child(N * taxNode, N * currSolnNd, bool moveUnsamp) {
     N * nt = bisect_branch_with_new_child(currSolnNd);
     nt->set_name(taxNode->get_name());
@@ -264,8 +239,8 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
                                   set<N *> & nodesAddedForTaxa,
                                   UnpruneStats & unprune_stats,
                                   bool recordInLTM,
-                                  const map<long, childParPair> & ott2tax) {
-    LostTaxonMap & ltm = unprune_stats.lost_taxa;
+                                  const map<long, childParPair> & ott2tax,
+                                  map<N *, set<N*> > & non_mono_to_register) {
     assert(higherTaxonNd);
     assert(rootSolnNd);
     LOG(DEBUG) << "higherTaxonNd->name = " << higherTaxonNd->get_name();
@@ -288,7 +263,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
         currSolnNd = nextSolnNd;
     }
     if (unprune_stats.non_monophyletic_inc_sed.count(higherTaxonNd) > 0) {
-        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm, false);
+        moveUnsampledChildren(higherTaxonNd, currSolnNd);
     }
     assert(currSolnNd != nullptr);
     const auto & solDes = currSolnNd->get_data().des_ids;
@@ -305,7 +280,15 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
         // the MRCA of this taxon in the solution contains nodes that are in the taxon's exclude
         //    set. So this taxon in broken in this solution.
         LOG(DEBUG) << "taxon " << higherTaxonNd->get_ott_id() << " is not monophyletic. Adding other children...";
-        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm, recordInLTM);
+        std::set<N *> v;
+        moveUnsampledChildren(higherTaxonNd, currSolnNd, &v);
+        if (recordInLTM) {
+            for (auto c : v) {
+                c->get_data().des_ids.clear();
+                c->get_data().des_ids.insert(c->get_ott_id());
+            }
+            non_mono_to_register[higherTaxonNd] = v;
+        }
         return 0U;
     }
     // This solution node has the same descendant set of this taxon.
@@ -582,6 +565,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
     //  will add them below the attachment node (so postorder will assure that they 
     //  are correctly added in the tip->root orientation).
     set<N *> nodesAddedForTaxa;
+    map<N *, set<N *> > non_mono_to_register;
     for (auto higherTaxonNd : postOrderInTaxNd) {
         LOG(DEBUG) << "dealing with " << higherTaxonNd->get_ott_id();
         if (higherTaxonNd == rootTaxonNd) {
@@ -589,7 +573,7 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
             numMerged += 1 ;
         } else {
             bool recordInLTM = inc_sed_that_are_proper_children.find(higherTaxonNd) == inc_sed_that_are_proper_children.end();
-            numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, unprune_stats, recordInLTM, ott2tax);
+            numMerged += incorporateHigherTaxonNode(higherTaxonNd, rootSolnNd, nodesAddedForTaxa, unprune_stats, recordInLTM, ott2tax, non_mono_to_register);
         }
         LOG(DEBUG) << "repr_in_solution_by marked for " << higherTaxonNd->get_ott_id();
         higherTaxonNd->get_data().repr_in_solution_by = rootSolnNd;
@@ -601,11 +585,28 @@ void unpruneTaxaForSubtree(N *rootSolnNd,
                 moveUnsampledChildren(is_taxon_ptr, rootSolnNd);
                 numMerged += 1 ;
             } else {
-                numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, unprune_stats, false, ott2tax);
+                numMerged += incorporateHigherTaxonNode(is_taxon_ptr, rootSolnNd, nodesAddedForTaxa, unprune_stats, false, ott2tax, non_mono_to_register);
             }
             LOG(DEBUG) << "repr_in_solution_by marked for " << is_taxon_ptr->get_ott_id();
             is_taxon_ptr->get_data().repr_in_solution_by = rootSolnNd;
         }
+    }
+    for (auto nmel : non_mono_to_register) {
+        auto nm = nmel.first;
+        const auto & moved_nodes = nmel.second;
+        for (auto mtn : moved_nodes) {
+            ott2soln[mtn->get_ott_id()] = mtn;
+        }
+        const auto moved_ids = nodes_to_ott_id_set(moved_nodes);
+        auto & taxon_des = nm->get_data().des_ids;
+        const auto * ni = nm->get_data().nonexcluded_ids;
+        assert(ni != nullptr);
+        nm->get_data().des_ids.insert(moved_ids.begin(), moved_ids.end());
+        assert(nm->has_ott_id());
+        auto nm_ott_id = nm->get_ott_id();
+        unprune_stats.lost_taxa.emplace(piecewise_construct,
+                                        forward_as_tuple(nm_ott_id),
+                                        forward_as_tuple(nm_ott_id, taxon_des, *ni, ott2soln));
     }
     // for the sake of a low memory footprint, here we 
     //  clear out the des_ids fields for this slice of the tree.

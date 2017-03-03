@@ -521,6 +521,18 @@ inline std::set<Y> get_values_for_found_keys(const std::map<X, Y> & container, c
     return ret;
 }
 
+// for any container of node pointers, return the set of ott_ids
+template <typename C>
+inline OttIdSet nodes_to_ott_id_set(const C & container) {
+    OttIdSet s;
+    for (auto el : container) {
+        if (el->has_ott_id()) {
+            s.insert(el->get_ott_id());
+        }
+    }
+    return s;
+}
+
 
 } //namespace otc
 #endif

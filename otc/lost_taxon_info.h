@@ -47,12 +47,6 @@ class LostTaxonDetails {
     LostTaxonDetails& operator=(LostTaxonDetails&& tr) = default;
     LostTaxonDetails(LostTaxonDetails&& tr) = default;
     
-    // Ctor when you have found the MRCA. Note that taxon_nd is from
-    // the taxonomy tree - it is not connected to the mrca_nd
-    LostTaxonDetails(OttId oid,
-                     const N * mrca_nd,
-                     const N * taxon_nd);
-    // constructor when you have not found the MRCA
     LostTaxonDetails(OttId oid,
                      const OttIdSet & des_ids_for_taxon,
                      const OttIdSet & non_excluded_ids_for_taxon,
@@ -87,7 +81,7 @@ class LostTaxonDetails {
     // for each attachment point, we store which subtrees for this taxon attach there.
     attachment_to_node_set attach_node_to_attached_set;
     OttIdSet intruding_taxa;
-    OttIdSet allowed_intruding_taxa; // insertae sedis taxa that can invade without breaking.
+    OttIdSet allowed_intruding_taxa; // incertae sedis taxa that can invade without breaking.
 };
 
 
@@ -118,9 +112,17 @@ inline void write_lost_taxa(std::ostream & out,
         if (!intruding_taxa.empty()) {
             json itj;
             for (auto i : intruding_taxa) {
-                itj.push_back(i);
+                itj.push_back("ott" + std::to_string(i));
             }
             lostTaxonLocation["intruding_taxa"] = itj;
+        }
+        const auto & allowed_intruding_taxa = ltl.get_allowed_intruding_taxa();
+        if (!allowed_intruding_taxa.empty()) {
+            json itj;
+            for (auto i : allowed_intruding_taxa) {
+                itj.push_back("ott" + std::to_string(i));
+            }
+            lostTaxonLocation["nonexcluded_intruding_taxa"] = itj;
         }
         lostTaxa["ott" + std::to_string(ottId)] = lostTaxonLocation;
     }
@@ -138,61 +140,6 @@ inline void write_lost_taxa(std::ostream & out,
     document["non_monophyletic_taxa"] = lostTaxa;
     document["taxa_matching_multiple_ott_ids"] = synTaxa;
     out << document.dump(1) << std::endl;
-}
-
-
-// This uses the des_ids as filled by the unprune code.
-// Walk tipward from the @mrca until we find subtrees whose
-// leaves are purely descendants of @taxon.  Record these
-// subtrees as the attachment points.
-template <typename N>
-inline LostTaxonDetails<N>::LostTaxonDetails(OttId oid,
-                                                  const N * mrca_nd,
-                                                  const N * taxon_nd)
-    :ott_id(oid),
-    mrca(mrca_nd) {
-    assert(mrca != nullptr);
-    assert(taxon_nd != nullptr);
-    const auto tax_des_ids = taxon_nd->get_data().des_ids;
-    assert(mrca);
-    std::set<const N *> visited;
-    std::stack<const N *> to_deal_with;
-    assert(tax_des_ids.size() > 1);
-    assert(is_proper_subset(tax_des_ids, mrca->get_data().des_ids));
-    const N * currSolnNd = mrca;
-    OttIdSet intruding_taxa_uncl;
-    // the root of the solution, must have all of the constituent taxa
-    while (true) {
-        if (visited.count(currSolnNd) > 0) {
-            if (to_deal_with.empty()) {
-                return ;
-            }
-            currSolnNd = to_deal_with.top();
-            to_deal_with.pop();
-            assert (visited.count(currSolnNd) == 0);
-        } else {
-            visited.insert(currSolnNd);
-            const auto & solDes = currSolnNd->get_data().des_ids;
-            assert(solDes != tax_des_ids);
-            for (auto c : iter_child(*currSolnNd)) {
-                const auto & cdesId = c->get_data().des_ids;
-                if (!are_disjoint(cdesId, tax_des_ids)) {
-                    if (is_proper_subset(cdesId, tax_des_ids)) {
-                        this->add_child_to_attachment_point(currSolnNd, c);
-                    } else {
-                        to_deal_with.push(c);
-                    }
-                } else {
-                    accumulate_closest_ott_id_for_subtree(c, intruding_taxa_uncl);
-                }
-            }
-        }
-    }
-    auto ni = taxon_nd->get_data().nonexcluded_ids;
-    assert(ni != nullptr);
-    const auto & non_excluded_ids_for_taxon = *ni;
-    this->intruding_taxa = set_difference_as_set(intruding_taxa_uncl, non_excluded_ids_for_taxon);
-    this->allowed_intruding_taxa = set_intersection_as_set(intruding_taxa_uncl, non_excluded_ids_for_taxon);
 }
 
 /// In our current impl. of the unpruner, the broken incertae sedis taxa
@@ -215,7 +162,7 @@ inline LostTaxonDetails<N>::LostTaxonDetails(OttId oid,
       mrca(nullptr) {
     auto tips = get_values_for_found_keys(ott_to_node, des_ids_for_taxon);
     std::set<N *> visited; // will hold pointers to all nodes in the induced tree
-    const N * mrca = find_mrca_via_traversing(tips, &visited);
+    this->mrca = find_mrca_via_traversing(tips, &visited);
     // will hold pointers to all of the nodes in the summary tree that are
     //    in the induced tree and only have children that are also in the induced
     //    tree 

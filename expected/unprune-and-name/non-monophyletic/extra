@@ -10,6 +10,9 @@
      "ott1"
     ]
    },
+   "intruding_taxa": [
+    "ott12"
+   ],
    "mrca": "mrcaott1ott2"
   }
  },
