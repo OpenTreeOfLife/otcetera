@@ -88,8 +88,8 @@ using node_t = Tree_t::node_type;
 
 Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
-void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
-string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
+void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
+string get_source_node_name_if_available(const Tree_t::node_type* node);
 
 inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
     return node->get_data().summary_node;
@@ -100,13 +100,13 @@ inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
 }
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
-void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
+void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
     for(auto leaf: iter_leaf(tree)) {
         summary_node(leaf) = summaryOttIdToNode.at(leaf->get_ott_id());
     }
 }
 
-string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
+string get_source_node_name_if_available(const Tree_t::node_type* node) {
     string name = node->get_name();
     if (name.empty())
 	throw OTCError()<<"Cannot get name for unnamed node!";
@@ -118,7 +118,7 @@ string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
         return name;
 }
 
-map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
+map<string,string> suppress_and_record_monotypic(Tree_t& tree)
 {
     map<string,string> to_child;
 
@@ -165,7 +165,7 @@ void add_element(set<pair<string, string>>& s,
     // We only care about non-monotypic nodes.
     if (input_node->is_outdegree_one_node()) return;
     
-    string node = getSourceNodeNameIfAvailable(input_node);
+    string node = get_source_node_name_if_available(input_node);
 
     s.insert({source, node});
 }
@@ -301,7 +301,7 @@ int main(int argc, char *argv[]) {
         auto summaryTree = get_tree<Tree_t>(synthfilename);
 	auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
 	auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
-	auto monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
+	auto monotypic_nodes = suppress_and_record_monotypic(*summaryTree);
 	compute_depth(*summaryTree);
 	stats global;
 
@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
 	    auto tree = get_tree<Tree_t>(filename);
 	    compute_depth(*tree);
 
-	    computeSummaryLeaves(*tree, summaryOttIdToNode);
+	    compute_summary_leaves(*tree, summaryOttIdToNode);
 
 	    string source_name = source_from_tree_name(tree->get_name());
 

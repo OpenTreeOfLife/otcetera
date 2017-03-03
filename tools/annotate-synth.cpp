@@ -78,8 +78,8 @@ using node_t = Tree_t::node_type;
 
 Tree_t::node_type* summary_node(const Tree_t::node_type* node);
 Tree_t::node_type*& summary_node(Tree_t::node_type* node);
-void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
-string getSourceNodeNameIfAvailable(const Tree_t::node_type* node);
+void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
+string get_source_node_name_if_available(const Tree_t::node_type* node);
 
 inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
     return node->get_data().summary_node;
@@ -90,14 +90,14 @@ inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
 }
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
-void computeSummaryLeaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
+void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
     for(auto leaf: iter_leaf(tree)) {
         summary_node(leaf) = summaryOttIdToNode.at(leaf->get_ott_id());
     }
 }
 
 
-string getSourceNodeNameIfAvailable(const Tree_t::node_type* node) {
+string get_source_node_name_if_available(const Tree_t::node_type* node) {
     string name = node->get_name();
     auto source = get_source_node_name(name);
     return (source ? *source : name);
@@ -167,7 +167,7 @@ void set_support_blob_as_single_element(json& j, const map<string,Map<string,str
 void add_element(map<string, Map<string, string>>& m, map<string, set<pair<string,string>>>& s,
                  const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source) {
     string synth = synth_node->get_name();
-    string node = getSourceNodeNameIfAvailable(input_node);
+    string node = get_source_node_name_if_available(input_node);
     pair<string,string> x{source, node};
     if (not s[synth].count(x)) {
         s[synth].insert(x);
@@ -175,7 +175,7 @@ void add_element(map<string, Map<string, string>>& m, map<string, set<pair<strin
     }
 }
 
-map<string,string> suppressAndRecordMonotypic(Tree_t& tree) {
+map<string,string> suppress_and_record_monotypic(Tree_t& tree) {
     map<string,string> to_child;
     std::vector<Tree_t::node_type*> remove;
     for (auto nd:iter_post(tree)) {
@@ -309,25 +309,22 @@ int main(int argc, char *argv[]) {
         string synthfilename = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
         bool ignore_monotypic = args.count("ignore-monotypic");
-            
         // 1. Load and process summary tree.
             auto summaryTree = get_tree<Tree_t>(synthfilename);
         auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
         auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
-        auto monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
+        auto monotypic_nodes = suppress_and_record_monotypic(*summaryTree);
         compute_depth(*summaryTree);
-
         // 2. Load and process input trees.
         json sources;
         for(const auto& filename: inputs) {
             auto tree = get_tree<Tree_t>(filename);
             compute_depth(*tree);
-            computeSummaryLeaves(*tree, summaryOttIdToNode);
+            compute_summary_leaves(*tree, summaryOttIdToNode);
             string source_name = source_from_tree_name(tree->get_name());
             mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, source_name);
             sources.push_back(source_name);
         }
-
         // 3. Generate json document and print it.
         auto document = gen_json(*summaryTree, monotypic_nodes, ignore_monotypic);
         document["sources"] = sources;
