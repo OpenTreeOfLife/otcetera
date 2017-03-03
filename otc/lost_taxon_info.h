@@ -145,23 +145,119 @@ inline void register_attachment_points(const N * taxon,
     }
 }
 
-template<typename N>
-inline void fix_lost_taxon_map(OttId ott_id,
-                               const OttIdSet & tip_ids, //@TODO bad name! see note below
-                               const std::map<OttId, N *> & ott_to_node,
-                               std::map<OttId, LostTaxonDetails<N> > & lost_taxa_map) {
-    LOG(DEBUG) << "fix_lost_taxon_map for " << ott_id;
-    db_write_ott_id_set("  tip_ids", tip_ids);
-    std::set<const N *> tips;
-    for (auto i : tip_ids) {
-        auto x = ott_to_node.find(i);
-        // "tip_ids" currently is all des_ids of the incertae sedis taxon  - includes higher taxa which may not be in soln.
-        if (x != ott_to_node.end()) {
-            tips.insert(x->second);
+
+// to move to util.h
+template<typename X, typename Y>
+inline std::set<Y> get_values_for_found_keys(const std::map<X, Y> & container, const std::set<X> & keys) {
+    std::set<Y> ret;
+    for (auto i : keys) {
+        auto x = container.find(i);
+        if (x != container.end()) {
+            ret.insert(x->second);
         }
     }
-    std::set<const N *> visited;
-    const N * mrca = find_mrca_without_desids(tips, &visited);
+    return ret;
+}
+
+// to move to tree_util.h
+template <typename N>
+N * find_mrca_via_traversing(const std::set<N *> & tip_node_set, std::set<N*> * induced_nodes = nullptr);
+
+
+// A slow method for finding the MRCA of all of the nodes pointed to by `tip_node_set`
+//  If `induced_nodes` is provided, then on exit it will hold all of the nodes traversed
+//    by walking from the tips to the returned ancestor.
+// \returns nullptr if tip_node_set is empty
+// Assumes that all nodes in tip_node_set are connected (in the same tree)
+// Makes use of no info in the `data` field of the nodes
+template <typename N>
+inline N * find_mrca_via_traversing(const std::set<N *> & tip_node_set,
+                                    std::set<N*> * induced_nodes) {
+    if (tip_node_set.size() < 2)  {
+        if (tip_node_set.empty()) {
+            return nullptr;
+        }
+        N * r = *tip_node_set.begin();
+        if (induced_nodes) {
+            induced_nodes->insert(r);
+        }
+        return r;
+    }
+    // We walk rootward from each tip nodes until we intersect with a part
+    //    of the tree we've visited (based on the node's presence in `seen_nodes`)
+    auto nit = tip_node_set.begin();
+    N * curr = *nit++;
+    std::deque<N *> root_to_mrca;
+    std::set<N *> local_induced_nodes;
+    std::set<N *> * seen_nodes = (induced_nodes == nullptr ? &local_induced_nodes : induced_nodes);
+    std::set<N *> dequed_nodes; // fast search for nodes in the deque
+    // start by filling in the path from the first leaf to the root
+    while (curr != nullptr) {
+        root_to_mrca.push_front(curr);
+        seen_nodes->insert(curr);
+        dequed_nodes.insert(curr);
+        curr = curr->get_parent();
+    }
+    // root_to_mrca has the root at the first pos and the leaf at the end
+    // Now we walk through the other tips. Every time we hit a seen node, we 
+    //    can stop retraversing.
+    // If the seen node is in the deque, and it is not the last node in the deque
+    //    then we've just walked from a tip that connects deeper, so we
+    //    pop the shallower nodes off the end of the root_to_mrca deque.
+    for (; nit != tip_node_set.end(); ++nit) {
+        curr = *nit;
+        while (curr != nullptr) {
+            if (seen_nodes->count(curr) != 0) {
+                if (dequed_nodes.count(curr) != 0) {
+                    while (root_to_mrca.back() != curr) {
+                        auto td = root_to_mrca.back();                
+                        root_to_mrca.pop_back();
+                        dequed_nodes.erase(td);
+                        if (root_to_mrca.size() == 1) {
+                            return root_to_mrca.back();
+                        }
+                    }
+                }
+                break;
+            } else {
+                seen_nodes->insert(curr);
+            }
+            curr = curr->get_parent();
+        }
+    }
+    N * mrca = root_to_mrca.back();
+    if (induced_nodes != nullptr) {
+        // Now we need to remove any ancestors of the mrca from induced_nodes
+        N * p = mrca->get_parent();
+        while (p != nullptr) {
+            if (induced_nodes->count(p) > 0) {
+                induced_nodes->erase(p);
+            } else {
+                break;
+            }
+            p = p->get_parent();
+        }
+    }
+    return mrca;
+}
+
+/// In our current impl. of the unpruner, the broken incertae sedis taxa
+//    are hard to register in a lost taxon map during the unpruning.
+//  `ott_id` is the ID of the "lost" taxon
+//  `des_ids_for_taxon` should hold the IDs of all of its descendants.
+//  `ott_to_node` is an ID to node map used to navigate the tree that breaks taxon
+//  `lost_taxa_map` is the mapping to be modified. Overrides any entry in that 
+//    map for `ott_id`
+//  Note is OK for `des_ids_for_taxon` to include higher taxa IDs which are not
+//    found in ott_to_node
+template<typename N>
+inline void fix_lost_taxon_map(OttId ott_id,
+                               const OttIdSet & des_ids_for_taxon,
+                               const std::map<OttId, N *> & ott_to_node,
+                               std::map<OttId, LostTaxonDetails<N> > & lost_taxa_map) {
+    auto tips = get_values_for_found_keys(ott_to_node, des_ids_for_taxon);
+    std::set<N *> visited;
+    const N * mrca = find_mrca_via_traversing(tips, &visited);
     std::set<const N *> no_interloper;
     for (auto n: visited) {
         if (tips.count(n) == 0) {
@@ -196,7 +292,7 @@ inline void fix_lost_taxon_map(OttId ott_id,
     for (auto n: at_set) {
         auto & att_vec = attachment[n];
         for (auto c : iter_child(*n)) {
-            if (tips.count(c) >0 || no_interloper.count(c) > 0) {
+            if (tips.count(const_cast<N *>(c)) >0 || no_interloper.count(c) > 0) {
                 att_vec.insert(c);
             }
         }

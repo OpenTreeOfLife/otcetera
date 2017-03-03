@@ -77,8 +77,6 @@ template<typename T>
 void unpruneTaxa(T & taxonomy, T & solution, UnpruneStats & unprune_stats);
 void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 template <typename N>
-N * find_mrca_without_desids(const std::set<N *> & tip_node_set, std::set<N*> * induced_nodes = nullptr);
-template <typename N>
 void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v = nullptr);
 
 // impl.
@@ -837,78 +835,7 @@ void findIncertaeSedisInSolution(Tree_t & taxonomy,
     }
 }
 
-template <typename N>
-N * find_mrca_without_desids(const set<N *> & tip_node_set, set<N*> * induced_nodes) {
-    if (tip_node_set.size() < 2)  {
-        if (tip_node_set.empty()) {
-            return nullptr;
-        }
-        N * r = *tip_node_set.begin();
-        if (induced_nodes) {
-            induced_nodes->insert(r);
-        }
-        return r;
-    }
-    auto nit = tip_node_set.begin();
-    N * curr = *nit++;
-    deque<N *> root_to_mrca;
-    set<N *> local_induced_nodes;
-    set<N *> * seen_nodes = (induced_nodes == nullptr ? &local_induced_nodes : induced_nodes);
-    set<N *> dequed_nodes;
-    while (curr != nullptr) {
-        // if (curr->has_ott_id())
-        //     LOG(DEBUG) << "mrca pushing " << curr->get_ott_id();
-        // else
-        //     LOG(DEBUG) << "mrca pushing address " << curr;
-        root_to_mrca.push_front(curr);
-        seen_nodes->insert(curr);
-        dequed_nodes.insert(curr);
-        curr = curr->get_parent();
-    }
-    for (; nit != tip_node_set.end(); ++nit) {
-        curr = *nit;
-        // if (curr->has_ott_id())
-        //     LOG(DEBUG) << "mrca checking " << curr->get_ott_id();
-        // else
-        //     LOG(DEBUG) << "mrca checking address " << curr;
-        while (curr != nullptr) {
-            if (seen_nodes->count(curr) != 0) {
-                if (dequed_nodes.count(curr) != 0) {
-                    while (root_to_mrca.back() != curr) {
-                        auto td = root_to_mrca.back();
-                        // if (td->has_ott_id())
-                        //     LOG(DEBUG) << "mrca popping " << td->get_ott_id();
-                        // else
-                        //     LOG(DEBUG) << "mrca popping address " << td;
-                        
-                        root_to_mrca.pop_back();
-                        dequed_nodes.erase(td);
-                        if (root_to_mrca.size() == 1) {
-                            return root_to_mrca.back();
-                        }
-                    }
-                }
-                break;
-            } else {
-                seen_nodes->insert(curr);
-            }
-            curr = curr->get_parent();
-        }
-    }
-    N * r = root_to_mrca.back();
-    if (induced_nodes != nullptr) {
-        N * p = r->get_parent();
-        while (p != nullptr) {
-            if (induced_nodes->count(p) > 0) {
-                induced_nodes->erase(p);
-            } else {
-                break;
-            }
-            p = p->get_parent();
-        }
-    }
-    return r;
-}
+
 
 // Taxa that are descendants of an incertae sedis taxon, will demand some special handling..
 // so we find out which ones are not found in the solution before calling unprunePreppedInputs
@@ -929,7 +856,7 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
         const auto nonexc = inc_sed_taxon->get_data().nonexcluded_ids;
         const auto taxon_des = inc_sed_taxon->get_data().des_ids;
         assert(nonexc != nullptr);
-        auto soln_mrca = find_mrca_without_desids(sampled);
+        auto soln_mrca = find_mrca_via_traversing(sampled);
         for (auto t : iter_leaf_n(*soln_mrca)) {
             LOG(DEBUG) << " visiting leaf " << t->get_ott_id() << " to see if it breaks " << inc_sed_taxon->get_ott_id();
             if (sampled.count(t) == 0 && 0 == nonexc->count(t->get_ott_id())) {
@@ -1022,7 +949,6 @@ void unprunePreppedInputs(Tree_t & taxonomy,
     const auto & id_to_fix_map = unprune_stats.non_monophyletic_inc_sed_to_desIds;
     for (auto pit : id_to_fix_map) {
         OttId broken_ott_id = pit.first;
-        const auto & tip_ids = pit.second;
         fix_lost_taxon_map(pit.first, pit.second, ott_to_sol, unprune_stats.lost_taxa);
     }
 }
