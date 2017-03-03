@@ -1,4 +1,3 @@
-#include "otc/lost_taxon_info.h"
 #include <algorithm>
 #include <unordered_set>
 #include <iterator>
@@ -6,7 +5,9 @@
 #include <stack>
 #include <tuple>
 #include <deque>
+#include <utility>
 #include "json.hpp"
+#include "otc/lost_taxon_info.h"
 #include "otc/otcli.h"
 #include "otc/node_naming.h"
 #include "otc/tree_iter.h"
@@ -18,13 +19,16 @@ using namespace otc;
 static std::string lostTaxaJSONFilename;
 static std::string statsJSONFilename;
 static std::string incertaeSedisFilename;
+using std::forward_as_tuple;
+using std::piecewise_construct;
 
 
 
 struct RTNodePartialDesSet;
 using Node_t = RootedTreeNode<RTNodePartialDesSet>;
 
-typedef std::map<OttId, LostTaxonDetails<Node_t> > LostTaxonMap;
+typedef LostTaxonDetails<Node_t> LostTaxInfo;
+typedef std::map<OttId, LostTaxInfo > LostTaxonMap;
 
 struct RTNodePartialDesSet {
     std::set<long> des_ids;
@@ -75,7 +79,6 @@ struct UnpruneStats {
 
 template<typename T>
 void unpruneTaxa(T & taxonomy, T & solution, UnpruneStats & unprune_stats);
-void writeLostTaxa(std::ostream & out, const LostTaxonMap & ltm);
 template <typename N>
 void moveUnsampledChildren(N * taxon, N * solnNode, std::set<N*> *v = nullptr);
 
@@ -201,19 +204,17 @@ void addChildrenOfNonMonophyleticTaxon(N * taxon,
     assert(mrca);
     assert(taxon->has_ott_id());
     const auto ottId = taxon->get_ott_id();
-    LostTaxonDetails<N> * ltl = nullptr;
+    LostTaxInfo * ltl = nullptr;
     if (registerInLTM) {
-        if (ltm.count(ottId) > 0) {
-            LOG(DEBUG) << " LTM for " << ottId << " again. this can happen if it is incertae sedis.";
-        }
-        ltm[ottId] = LostTaxonDetails<N>(ottId, mrca);
-        ltl = &(ltm[ottId]);
-        register_attachment_points(taxon, mrca, *ltl);
+        ltm.emplace(piecewise_construct,
+                    forward_as_tuple(ottId),
+                    forward_as_tuple(ottId, mrca, taxon));
+        ltl = &(ltm.at(ottId));
     }
     std::set<N *> v;
     moveUnsampledChildren(taxon, mrca, &v);
     if (registerInLTM && !v.empty()) {
-        auto & s = ltl->get_attached_vec(mrca);
+        auto & s = ltl->get_attached_set(mrca);
         s.insert(v.begin(), v.end());
     }
 }
@@ -287,7 +288,7 @@ size_t incorporateHigherTaxonNode(N* higherTaxonNd,
         currSolnNd = nextSolnNd;
     }
     if (unprune_stats.non_monophyletic_inc_sed.count(higherTaxonNd) > 0) {
-        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm, recordInLTM);
+        addChildrenOfNonMonophyleticTaxon(higherTaxonNd, currSolnNd, ltm, false);
     }
     assert(currSolnNd != nullptr);
     const auto & solDes = currSolnNd->get_data().des_ids;
@@ -947,9 +948,18 @@ void unprunePreppedInputs(Tree_t & taxonomy,
         ott_to_sol[n->get_ott_id()] = n;
     }
     const auto & id_to_fix_map = unprune_stats.non_monophyletic_inc_sed_to_desIds;
+    auto & lost_taxa = unprune_stats.lost_taxa;
     for (auto pit : id_to_fix_map) {
         OttId broken_ott_id = pit.first;
-        fix_lost_taxon_map(pit.first, pit.second, ott_to_sol, unprune_stats.lost_taxa);
+        auto taxon_node = ott_to_tax.at(broken_ott_id).first;
+        auto nonexcluded_ids = taxon_node->get_data().nonexcluded_ids;
+        assert(nonexcluded_ids != nullptr);
+        lost_taxa.emplace(piecewise_construct,
+                          forward_as_tuple(broken_ott_id),
+                          forward_as_tuple(broken_ott_id,
+                                           pit.second,
+                                           *nonexcluded_ids,
+                                           ott_to_sol));
     }
 }
 
@@ -975,15 +985,9 @@ void unpruneTaxa(T & taxonomy,
     //    where x is child of one of the ancestors of the node y.
     fillNonexcludeIDFields(taxonomy, incertae_sedis_ids);
     // record tips in the sample that are incertae sedis descendants
-    findIncertaeSedisInSolution(taxonomy,
-                                solution,
-                                ott_to_tax,
-                                unprune_stats);
+    findIncertaeSedisInSolution(taxonomy, solution, ott_to_tax, unprune_stats);
     // note which ones can't be in the solution
-    findBrokenIncertaeSedisDescendants(taxonomy,
-                                       solution,
-                                       ott_to_tax,
-                                       unprune_stats);
+    findBrokenIncertaeSedisDescendants(taxonomy, solution, ott_to_tax, unprune_stats);
     // Note that at this point the des_ids field of the taxonomy will be used for tracing
     //    parts of the solution. It will no longer be used as a flag for incertae sedis
     //    but the taxonomic nodes that were incertae sedis have been recorded in 
@@ -1141,9 +1145,8 @@ int main(int argc, char *argv[]) {
     write_tree_as_newick(std::cout, solution);
     std::cout << std::endl;
     if (!lostTaxaJSONFilename.empty()) {
-        writeLostTaxa(lostTaxaJSONStream,
-                      unprune_stats.lost_taxa,
-                      unprune_stats.synonym_map);
+        const LostTaxonMap & ltm = unprune_stats.lost_taxa;
+        write_lost_taxa(lostTaxaJSONStream, ltm, unprune_stats.synonym_map);
         lostTaxaJSONStream.close();
     }
     if (statsStreamPtr) {
