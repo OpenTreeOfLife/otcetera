@@ -26,31 +26,14 @@ void index_nodes_by_name(T & tree) {
     long ind = 0;
     for (auto nd : iter_pre(tree)) {
         m[nd->get_name()] = nd;
-        nd->get_data().trav_enter = ind++;
-    }
-    for (auto pnd : iter_post(tree)) {
-        auto fc = pnd->get_last_child();
-        auto & d = pnd->get_data();
-        if (fc == nullptr) {
-            d.trav_exit = d.trav_enter;
-            d.num_tips = 1;
-        } else {
-            d.trav_exit = fc->get_data().trav_exit;
-            d.num_tips = 0;
-            for (auto c : iter_child_const(*pnd)) {
-                d.num_tips += c->get_data().num_tips;
-            }
-        }
     }
 }
 
 template<typename T>
 void set_traversal_entry_exit(T & tree) {
     auto & td = tree.get_data();
-    auto & m = td.name_to_node;
     long ind = 0;
     for (auto nd : iter_pre(tree)) {
-        m[nd->get_name()] = nd;
         nd->get_data().trav_enter = ind++;
     }
     for (auto pnd : iter_post(tree)) {
@@ -185,6 +168,7 @@ class TreesToServe {
             ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
             FilePosStruct pos(filenamePtr);
             std::unique_ptr<SummaryTree_t> nt = read_next_newick<SummaryTree_t>(inp, pos, parsingRules);
+            index_nodes_by_name(*nt);
             set_traversal_entry_exit(*nt);
             tree_list.push_back(move(nt));
             annotation_list.push_back(SummaryTreeAnnotation());
