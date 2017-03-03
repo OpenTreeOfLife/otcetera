@@ -256,7 +256,7 @@ class RTRichTaxTreeData {
     std::unordered_map<unsigned long, const RTRichTaxNode *> if_id_map;
     std::unordered_map<unsigned long, const RTRichTaxNode *> irmng_id_map;
     std::unordered_map<std::bitset<32>, nlohmann::json> flags2json;
-    std::map<boost::string_ref, const RTRichTaxNode *> name2node; // null if homonym, then check homonym2node
+    std::map<boost::string_ref, const RTRichTaxNode *> name_to_node; // null if homonym, then check homonym2node
 
     std::unordered_map<OttId, const RTRichTaxNode *> id2node;
     std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym2node;

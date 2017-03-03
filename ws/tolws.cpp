@@ -127,8 +127,8 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           bool & was_broken) {
     was_broken = false;
     const auto & tree_data = tree.get_data();
-    auto n2nit = tree_data.name2node.find(node_id);
-    if (n2nit != tree_data.name2node.end()) {
+    auto n2nit = tree_data.name_to_node.find(node_id);
+    if (n2nit != tree_data.name_to_node.end()) {
         return n2nit->second;
     }
     std::smatch matches;

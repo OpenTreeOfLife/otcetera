@@ -532,10 +532,10 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
     tree_data.id2node[nd.get_ott_id()] = this_node;
     data.tax_record = &line;
     auto name = data.get_name();
-    auto nit = tree_data.name2node.lower_bound(name);
+    auto nit = tree_data.name_to_node.lower_bound(name);
     typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
     if (nit->first != name) {
-        nit = tree_data.name2node.insert(nit, name_map_pair(name, this_node));
+        nit = tree_data.name_to_node.insert(nit, name_map_pair(name, this_node));
     } else {
         if (nit->second != nullptr) {
             tree_data.homonym2node[name].push_back(nit->second);
@@ -545,7 +545,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
     }
     auto uname = data.get_uniqname();
     if (uname != name) {
-        auto r2 = tree_data.name2node.insert(name_map_pair(uname, this_node));
+        auto r2 = tree_data.name_to_node.insert(name_map_pair(uname, this_node));
         assert(r2.second); // should be uniq.
     }
     auto flags = data.get_flags();
@@ -594,11 +594,11 @@ void RichTaxonomy::read_synonyms() {
         
         this->synonyms.emplace_back(name, primary, sourceinfo);
         TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
-        auto nit = tree_data.name2node.lower_bound(name);
+        auto nit = tree_data.name_to_node.lower_bound(name);
         boost::string_ref name_ref = tjs.name;
         typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
         if (nit->first != name_ref) {
-            nit = tree_data.name2node.insert(nit, name_map_pair(name_ref, primary));
+            nit = tree_data.name_to_node.insert(nit, name_map_pair(name_ref, primary));
         } else {
             if (nit->second != nullptr) {
                 tree_data.homonym2node[name_ref].push_back(nit->second);
