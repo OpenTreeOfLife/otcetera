@@ -7,7 +7,7 @@ bool writeNumPolytomies(OTCLI & otCLI, std::unique_ptr<T> tree);
 
 template<typename T>
 inline bool writeNumPolytomies(OTCLI & otCLI, std::unique_ptr<T> tree) {
-    otCLI.out << countPolytomies(*tree) << std::endl;
+    otCLI.out << count_polytomies(*tree) << std::endl;
     return true;
 }
 

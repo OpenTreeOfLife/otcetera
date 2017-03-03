@@ -28,11 +28,11 @@ bool recordSubproblemStats(OTCLI & otCLI, std::unique_ptr<T> tree) {
         if (nd == root) {
             continue;
         }
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             assert(nd->has_ott_id());
             const auto ottId = nd->get_ott_id();
             pts.leaf_set.insert(ottId);
-            if (nd->getParent() != root) {
+            if (nd->get_parent() != root) {
                 pts.leavesInIngroupSet.insert(ottId);
             }
         } else {

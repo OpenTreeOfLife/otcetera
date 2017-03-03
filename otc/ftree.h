@@ -52,7 +52,7 @@ struct PhyloStatement {
 
 // Bands connect nodes across different FTree instance when the nodes are required
 //  to satisfy a grouping that has been added. The include_group of the ps
-//  is a set of IDs that will be in the desIds of each member of the band (and
+//  is a set of IDs that will be in the des_ids of each member of the band (and
 //  the ancestor nodes of the members).
 //  The nodes in the ps.exclude_group should be excluded at this node or an ancestor.
 template<typename T>
@@ -96,7 +96,7 @@ class InterTreeBand {
         assert((s + 1)== node_to_phantom.size());
     }
     bool band_point_has_any(const node_type * nd, const node_set & ns) const {
-        return !(areDisjoint(node_to_phantom.at(nd), ns));
+        return !(are_disjoint(node_to_phantom.at(nd), ns));
     }
     const node_set & get_phantom_nodes(const node_type * nd) const {
         auto npIt = node_to_phantom.find(nd);
@@ -270,7 +270,7 @@ class FTree {
     const OttIdSet get_connected_ott_ids() const;
     // includes OTT Ids of nodes in includesConstraints
     const OttIdSet & get_included_ott_ids() {
-        return get_root()->get_data().desIds;
+        return get_root()->get_data().des_ids;
     }
     bool ott_id_is_connected(long ottId) const {
         return contains(get_connected_ott_ids(), ottId);

@@ -313,7 +313,7 @@ inline void populate_node_from_taxonomy_record(Node_t & nd,
                                            std::function<std::string(const TaxonomyRecord&)> get_name,
                                            TREE & ) {
     nd.set_ott_id(line.id);
-    nd.setName(get_name(line));    
+    nd.set_name(get_name(line));    
 }
 
 // default behavior is to set ID and Name from line

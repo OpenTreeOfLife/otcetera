@@ -11,9 +11,9 @@ class TestValidTreeStruct {
             :filename(fn) {
         }
         char runTest(const TestHarness &h) const {
-            auto fp = h.getFilePath(filename);
+            auto fp = h.get_filepath(filename);
             std::ifstream inp;
-            if (!openUTF8File(fp, inp)) {
+            if (!open_utf8_file(fp, inp)) {
                 return 'U';
             }
             ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
@@ -47,6 +47,6 @@ int main(int argc, char *argv[]) {
         const TestFn tf{fn, tcb};
         tests.push_back(tf);
     }
-    return th.runTests(tests);
+    return th.run_tests(tests);
 }
 

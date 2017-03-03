@@ -19,7 +19,7 @@ bool writeTreeOrDie(OTCLI & otCLI, const std::string & fp, const T & tree, bool 
     } else {
         *outPtr << fp << '\n';
     }
-    writeTreeAsNewick(*outPtr, tree);
+    write_tree_as_newick(*outPtr, tree);
     *outPtr << "\n";
     if (!useStdOut) {
         outp.close();
@@ -59,11 +59,11 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
         x->set_ott_id(oid);
         if (hasNodeName) {
             std::string n = noden + " ott" + std::to_string(oid);
-            x->setName(n);
+            x->set_name(n);
         }
-        nd->addSibOnLeft(x);
+        nd->add_sib_on_left(x);
     }
-    nd->detachThisNode();
+    nd->detach_this_node();
 }
 
 void writeJSONLogForExemplifications(const std::string & outfilename,
@@ -134,7 +134,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 continue;
             }
             const ListTreeNdPair & treeNdPairList{mappedPhyloListIt->second};
-            assert(!nd->isTip());
+            assert(!nd->is_tip());
             bool hasIncludedDes = false;
             for (auto c : iter_child(*nd)) {
                 if (contains(includedNodes, c)) {
@@ -148,9 +148,9 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
             if (hasIncludedDes) {
                 exemplarIDs = findIncludedTipIds(*nd, includedNodes);
             } else {
-                const RootedTreeNodeNoData * n = findLeftmostInSubtree(nd);
+                const RootedTreeNodeNoData * n = find_leftmost_in_subtree(nd);
                 includedNodes.insert(n);
-                insertAncestorsToParaphyleticSet(n, includedNodes);
+                insert_ancestors_to_paraphyletic_set(n, includedNodes);
                 exemplarIDs.insert(n->get_ott_id());
             }
             LOG(INFO) << "Exemplifying OTT-ID" << nid << " with:";
@@ -173,12 +173,12 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         std::set<RootedTreeNodeNoData *> toPrune;
         for (auto nd : iter_node(*taxonomy)) {
             const RootedTreeNodeNoData *  c = const_cast<const RootedTreeNodeNoData *>(nd);
-            if ((!contains(includedNodes, c)) && contains(includedNodes, c->getParent())) {
+            if ((!contains(includedNodes, c)) && contains(includedNodes, c->get_parent())) {
                 toPrune.insert(nd);
             }
         }
         for (auto nd : toPrune) {
-            pruneAndDelete(*taxonomy, nd);
+            prune_and_delete(*taxonomy, nd);
         }
     }
 
@@ -233,19 +233,19 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         inputTreesToIndex[std::move(treeup)] = treeIndex;
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
-        raw->setName(otCLI.currentFilename);
+        raw->set_name(otCLI.currentFilename);
         std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
         auto nleaves = 0;
         for (auto nd : iter_leaf(*raw)) {
             nleaves += 1;
             auto ottId = nd->get_ott_id();
-            auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
+            auto taxoNode = taxonomy->get_data().get_node_by_ott_id(ottId);
             assert(taxoNode != nullptr);
             if (!contains(includedNodes, taxoNode)) {
                 includedNodes.insert(taxoNode);
-                insertAncestorsToParaphyleticSet(taxoNode, includedNodes);
+                insert_ancestors_to_paraphyletic_set(taxoNode, includedNodes);
             }
-            if (!taxoNode->isTip()) {
+            if (!taxoNode->is_tip()) {
                 if (storeLogInfo) {
                     exemplifedTaxonToTreeNamesForJSONLog[ottId].push_back(raw->get_name());
                 }

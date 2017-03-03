@@ -43,10 +43,10 @@ bool cleanNamesAndWrite(OTCLI & otCLI, std::unique_ptr<T> tree) {
     for (auto nd : iter_node(*tree)) {
         const auto name = nd->get_name();
         if (hasProblematicCharacter(name)) {
-            nd->setName(generateCleanedName(name));
+            nd->set_name(generateCleanedName(name));
         }
     }
-    writeTreeAsNewick(std::cout, *tree);
+    write_tree_as_newick(std::cout, *tree);
     return true;
 }
 

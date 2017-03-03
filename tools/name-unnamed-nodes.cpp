@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         name_unnamed_nodes(*tree);
     }
     for(const auto& tree: trees) {
-        writeTreeAsNewick(std::cout, *tree);
+        write_tree_as_newick(std::cout, *tree);
         std::cout<<"\n";
     }
     return 0;

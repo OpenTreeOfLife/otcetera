@@ -34,32 +34,32 @@ struct SubtreePrunerState {
             numErrors = 1;
             return;
         }
-        const Node_t * mrca = findMRCAFromIDSet(*toPrune, designators, -1);
+        const Node_t * mrca = find_mrca_from_id_set(*toPrune, designators, -1);
         if (mrca == nullptr) {
             otCLI.err << "MRCA could not be found\n";
             numErrors = 1;
             return;
         }
-        const Node_t * toEmit = ((emitParent || emitSiblings) ? mrca->getParent() : mrca);
+        const Node_t * toEmit = ((emitParent || emitSiblings) ? mrca->get_parent() : mrca);
         if (toEmit == nullptr) {
             otCLI.err << "MRCA had no parent\n";
             numErrors = 1;
             return;
         }
-        if (emitChildren && toEmit->isTip()) {
+        if (emitChildren && toEmit->is_tip()) {
             otCLI.err << "MRCA has no children\n";
             numErrors = 1;
             return;
         }
         if ((!emitSiblings) && (!emitChildren)) {
-            writeNewick<Node_t>(otCLI.out, toEmit);
+            write_newick<Node_t>(otCLI.out, toEmit);
             otCLI.out << ";\n";
         } else {
             for (auto c : iter_child_const(*toEmit)) {
                 if (emitSiblings && c == mrca) {
                     continue;
                 }
-                writeNewick<Node_t>(otCLI.out, c);
+                write_newick<Node_t>(otCLI.out, c);
                 otCLI.out << ";\n";
             }
         }
@@ -92,7 +92,7 @@ bool handleNodeFlag(OTCLI & otCLI, const std::string &nextArg) {
         otCLI.err << "Expecting only 1 flag listing designators.\n";
         return false;
     }
-    fusp->designators = parseDelimSeparatedIDs(nextArg, ',');
+    fusp->designators = parse_delim_separated_ids(nextArg, ',');
     return true;
 }
 

@@ -47,7 +47,7 @@ class SupertreeContext {
                          TreeMappedWithSplits & scaffTree)
             :num_trees(tv.size()),
             scaffold_to_node_embedding(scaffoldNdToNodeEmbedding),
-            scaffold_ott_id_to_node(scaffTree.get_data().ottIdToNode),
+            scaffold_ott_id_to_node(scaffTree.get_data().ott_id_to_node),
             scaffold_tree(scaffTree),
             prune_tips_mapped_to_contested_taxa(true) {
             trees_by_index.reserve(num_trees); 

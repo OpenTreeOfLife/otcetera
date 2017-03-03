@@ -99,12 +99,12 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     NodeWithSplits * _changeName(const std::pair<const NodeWithSplits *, OttId> & nn, std::size_t &x) const {
         auto nd = const_cast<NodeWithSplits *>(nn.first);
         auto ottId = nn.second;
-        if (contains(toCheck->get_data().ottIdToNode, ottId)) {
+        if (contains(toCheck->get_data().ott_id_to_node, ottId)) {
             return nd;
         }
-        changeOttIdOfInternal(*toCheck, nd, ottId);
-        const auto & newName = taxonomy->get_data().ottIdToNode.at(ottId)->get_name();
-        nd->setName(newName);
+        change_ott_id_of_internal(*toCheck, nd, ottId);
+        const auto & newName = taxonomy->get_data().ott_id_to_node.at(ottId)->get_name();
+        nd->set_name(newName);
         x += 1;
         return nullptr;
     }
@@ -128,15 +128,15 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         for (auto nn : toDelNameQ) {
             auto nd = const_cast<NodeWithSplits *>(nn);
             if (!contains(toCollapse, nd)) {
-                delOttIdOfInternal(*toCheck, nd);
-                nd->setName(std::string());
+                del_ott_id_of_internal(*toCheck, nd);
+                nd->set_name(std::string());
                 ++numNamesDeleted;
             }
         }
         toDelNameQ.clear();
         for (auto nn : toCollapse) {
             auto nd = const_cast<NodeWithSplits *>(nn);
-            collapseNode(*toCheck, nd);
+            collapse_node(*toCheck, nd);
             ++numNodesCollapsed;
         }
         toCollapse.clear();
@@ -144,8 +144,8 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 
     void extendSupportedToRedundantNodes(const TreeMappedWithSplits & tree) {
         for (auto nd : iter_post_internal_const(tree)) {
-            if (nd->isOutDegreeOneNode()) {
-                auto c = nd->getFirstChild();
+            if (nd->is_outdegree_one_node()) {
+                auto c = nd->get_first_child();
                 if (contains(supportedNodes, c)) {
                     supportedNodes[nd] = REDUNDANT_ND | supportedNodes[c];
                     if (recordSupportingTreeIdentity) {
@@ -178,23 +178,23 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         for (; nIt != eIt; ++nIt) {
             auto nd = *nIt;
             const auto snIt = supportedNodes.find(nd);
-            const auto outDegree = nd->getOutDegree();
+            const auto outDegree = nd->get_out_degree();
             if (snIt != supportedNodes.end()) {
                 const auto t = snIt->second;
                 // not in taxoSummary, or having real (non-name-only) support
                 if ((!isTaxoSummary) || (t & SEEN_IN_AN_INPUT_BOTH)) {
                     if (isTaxoSummary) {
-                        const OttIdSet & di = nd->get_data().desIds;
+                        const OttIdSet & di = nd->get_data().des_ids;
                         if (nd->has_ott_id()) {
                             const auto ottId = nd->get_ott_id();
-                            const auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
-                            if (taxoNode->get_data().desIds != di) {
-                                auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
+                            const auto taxoNode = taxonomy->get_data().get_node_by_ott_id(ottId);
+                            if (taxoNode->get_data().des_ids != di) {
+                                auto matchingTaxonNode = find_node_with_matching_des_ids(*taxonomy, di);
                                 assert(matchingTaxonNode != nullptr);
                                 r.misnamedSupported[nd] = matchingTaxonNode;
                                 if (printDiff) {
                                     *out << taxoNode->get_name() << " incorrectly identified:\n";
-                                    writeOttSetDiff(*out, "    ", di, "summary", taxoNode->get_data().desIds, "taxonomy");
+                                    write_ott_id_set_diff(*out, "    ", di, "summary", taxoNode->get_data().des_ids, "taxonomy");
                                 }
                                 if (fixInsteadOfReport) {
                                     if (outDegree == 1) {
@@ -208,7 +208,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                                 r.numSupportedInternals += 1;
                             }
                         } else {
-                            auto matchingTaxonNode = findNodeWithMatchingDesIdSet(*taxonomy, di);
+                            auto matchingTaxonNode = find_node_with_matching_des_ids(*taxonomy, di);
                             assert(matchingTaxonNode != nullptr);
                             r.supportedShouldHaveName[nd] = matchingTaxonNode;
                             r.supportCounts[t] += 1;
@@ -235,11 +235,11 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 r.shouldBeUnnamed.insert(nd);
                 if (printDiff) {
                     OttId ottId = nd->get_ott_id();
-                    const auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
+                    const auto taxoNode = taxonomy->get_data().get_node_by_ott_id(ottId);
                     *out << taxoNode->get_name() << " incorrectly identified:\n";
-                    writeOttSetDiff(*out, "    ",
-                                    nd->get_data().desIds, "summary",
-                                    taxoNode->get_data().desIds, "taxonomy");
+                    write_ott_id_set_diff(*out, "    ",
+                                    nd->get_data().des_ids, "summary",
+                                    taxoNode->get_data().des_ids, "taxonomy");
                 }
 
                 if (fixInsteadOfReport) {
@@ -249,7 +249,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 }
             }
             if (outDegree == 1) {
-                if (nd->includesOnlyOneLeaf()) {
+                if (nd->includes_only_one_leaf()) {
                     r.numUnsupportedKnuckles += 1;
                 } else {
                     r.numUnsupportedElbows += 1;
@@ -267,11 +267,11 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                             *out << "Novel unsupported node ";
                         } else {
                             *out << "Confirmation of unsupported node (designators =";
-                            writeOttSet(*out, "", gaIt->second, " ");
+                            write_ott_id_set(*out, "", gaIt->second, " ");
                             *out << ") ";
                         }
                     }
-                    describeUnnamedNode(*nd, *out, 0, false);
+                    describe_unnamed_node(*nd, *out, 0, false);
                 }
                 r.numUnsupportedForking += 1;
                 if (fixInsteadOfReport && (!isTaxoSummary)) {
@@ -289,7 +289,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         auto & out = otCLI.out;
         const auto ss = describeUnnamedUnsupported(otCLI.out, *toCheck);
         if (fixInsteadOfReport) {
-            writeTreeAsNewick(otCLI.out, *toCheck);
+            write_tree_as_newick(otCLI.out, *toCheck);
             otCLI.out << '\n';
             otCLI.err << numNamesAdded << " nodes assigned names.\n";
             otCLI.err << numNamesChanged << " nodes changed names.\n";
@@ -300,7 +300,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         for (auto gaIt : aPrioriProblemNodes) {
             if (supportedNodes.find(gaIt.first) != supportedNodes.end()) {
                 out << "Claim of unsupported apparently refuted for designators: ";
-                writeOttSet(out, "", gaIt.second, " ");
+                write_ott_id_set(out, "", gaIt.second, " ");
                 out << ". See standard error stream for details.\n";
             }
         }
@@ -329,7 +329,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
             out << ss.supportedShouldHaveName.size() << " unamed internal nodes which should have been named.\n";
             for (auto msp : ss.supportedShouldHaveName) {
                 out << "    ";
-                describeUnnamedNode(*msp.first, out, 0, false, false);
+                describe_unnamed_node(*msp.first, out, 0, false, false);
                 out << " should have been named ott"<< msp.second->get_ott_id() << ".\n";
             }
             out << ss.shouldBeUnnamed.size() << " named internal nodes which correspond to no taxon.\n";
@@ -373,24 +373,24 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         if (toCheck == nullptr) {
             throw OTCError("Designator files (if used) must be passed in after the tree to check");
         }
-        std::list<std::set<long> > dl = parseDesignatorsFile(fp);
+        std::list<std::set<long> > dl = parse_designators_file(fp);
         for (auto d : dl) {
             markSuspectNode(d);
         }
     }
 
     void markSuspectNode(const std::set<long> & designators) {
-        const NodeWithSplits * mrca = findMRCAFromIDSet(*toCheck, designators, -1);
+        const NodeWithSplits * mrca = find_mrca_from_id_set(*toCheck, designators, -1);
         aPrioriProblemNodes[mrca] = designators;
     }
 
     virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = true;
-        // now we get a little cute and reprocess the taxonomy desIds so that they 
+        // now we get a little cute and reprocess the taxonomy des_ids so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set (rather than the full set of IDs)
-        clearAndfillDesIdSets(*taxonomy);
+        clear_and_fill_des_ids(*taxonomy);
         otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
         return true;
     }
@@ -400,7 +400,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         if (considerNamedSupported) {
             for (auto nd : iter_pre_internal_const(*toCheck)) {
                 if (nd->has_ott_id()) {
-                    supportedNodes[nd] = (nd->isOutDegreeOneNode() ? (REDUNDANT_ND + NAMED_NODE) : NAMED_NODE);
+                    supportedNodes[nd] = (nd->is_outdegree_one_node() ? (REDUNDANT_ND + NAMED_NODE) : NAMED_NODE);
                 }
             }
         }
@@ -430,7 +430,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         supportTreeNames.push_back(tree.get_name());
         std::set<const NodeWithSplits *> expanded;
         if (needExpansion) {
-            expanded = expandOTTInternalsWhichAreLeaves(tree, *taxonomy);
+            expanded = expand_ott_internals_which_are_leaves(tree, *taxonomy);
         }
         return processExpandedTree(otCLI, tree, expanded);
     }
@@ -445,7 +445,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         } else {
             for (auto nd : iter_leaf_const(tree)) {
                 auto ottId = nd->get_ott_id();
-                markPathToRoot(*toCheck, ottId, restrictedDesIds);
+                mark_path_to_root(*toCheck, ottId, restrictedDesIds);
             }
             identifySupportedNodes(otCLI, tree, restrictedDesIds, expandedTips);
         }
@@ -470,28 +470,28 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     void checkNodeForSupportTaxo(const NodeWithSplits *nd,
                                  const TreeMappedWithSplits & tree,
                                  const std::set<const NodeWithSplits *> & expandedTips) {
-        auto par = nd->getParent();
+        auto par = nd->get_parent();
         if (par == nullptr) {
             return;
         }
         const OttIdSet * nmp = nullptr;
-        if (nd->isOutDegreeOneNode()) {
+        if (nd->is_outdegree_one_node()) {
             if (!nd->has_ott_id()) {
                 return;
             }
-            nmp = &(nd->get_data().desIds); //
+            nmp = &(nd->get_data().des_ids); //
         } else {
-            auto firstBranchingAnc = findFirstForkingAnc<const NodeWithSplits>(nd);
+            auto firstBranchingAnc = find_first_forking_anc<const NodeWithSplits>(nd);
             if (firstBranchingAnc == nullptr) {
                 return;
             }
-            nmp = &(nd->get_data().desIds); //
-            const auto & anm = firstBranchingAnc->get_data().desIds; //
+            nmp = &(nd->get_data().des_ids); //
+            const auto & anm = firstBranchingAnc->get_data().des_ids; //
             if (anm == *nmp) {
                 return;
             }
         }
-        auto srcNode = findNodeWithMatchingDesIdSet(tree, *nmp);
+        auto srcNode = find_node_with_matching_des_ids(tree, *nmp);
         if (srcNode != nullptr) {
             recordInputTreeSupportForNode(nd, srcNode, tree, expandedTips);
         }
@@ -503,11 +503,11 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                              const TreeMappedWithSplits & tree,
                              const std::map<const NodeWithSplits *, OttIdSet > & inducedNdToEffDesId,
                              const std::set<const NodeWithSplits *> & expandedTips) {
-        auto par = nd->getParent();
+        auto par = nd->get_parent();
         if (par == nullptr) {
             return;
         }
-        auto firstBranchingAnc = findFirstForkingAnc<const NodeWithSplits>(nd);
+        auto firstBranchingAnc = find_first_forking_anc<const NodeWithSplits>(nd);
         if (firstBranchingAnc == nullptr) {
             return;
         }
@@ -515,22 +515,22 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         assert(ancIt != inducedNdToEffDesId.end());
         const auto & anm = ancIt->second;
         const NodeWithSplits * firstNdPtr; // just used to match call
-        if (!multipleChildrenInMap(*nd, inducedNdToEffDesId, &firstNdPtr)) {
+        if (!multiple_children_in_map(*nd, inducedNdToEffDesId, &firstNdPtr)) {
             return;
         }
         if (anm == nm) {
             return;
         }
-        auto srcNode = findNodeWithMatchingDesIdSet(tree, nm);
+        auto srcNode = find_node_with_matching_des_ids(tree, nm);
         if (srcNode != nullptr) {
             if (aPrioriProblemNodes.find(nd) != aPrioriProblemNodes.end()) {
                 auto apIt = aPrioriProblemNodes.find(nd);
                 otCLI.out << "ERROR!: a priori unsupported node found. Designators were ";
-                writeOttSet(otCLI.out, "", apIt->second, " ");
+                write_ott_id_set(otCLI.out, "", apIt->second, " ");
                 otCLI.out << ". A node was found, which (when pruned to the leaf set of an input tree) contained:\n";
-                writeOttSet(otCLI.out, "    ", nm, " ");
+                write_ott_id_set(otCLI.out, "    ", nm, " ");
                 otCLI.out << "\nThe subtree from the source was: ";
-                writePrunedSubtreeNewickForMarkedNodes(otCLI.out, *srcNode, inducedNdToEffDesId);
+                write_pruned_subtree_newick_for_marked_nodes(otCLI.out, *srcNode, inducedNdToEffDesId);
                 numErrors += 1;
             }
             recordInputTreeSupportForNode(nd, srcNode, tree, expandedTips);
@@ -538,7 +538,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     }
 
     bool treeHasClade(const TreeMappedWithSplits & tree, const OttIdSet & oids) {
-        return nullptr != findNodeWithMatchingDesIdSet(tree, oids);
+        return nullptr != find_node_with_matching_des_ids(tree, oids);
     }
 
     void recordInputTreeSupportForNode(const NodeWithSplits * treeToCheckNode,

@@ -52,7 +52,7 @@ An FTree's constraint statement should not include any of the connected nodes fo
     tree. The statements can refer to "attached" nodes which are connected to a other
     FTrees, but the topological constraints on connected nodes that are relevant to an
     FTree should be encoded in the position of the node on the tree.
-As with NodeWithSplits, the node's data has a desIds that lists the Ids of the nodes.
+As with NodeWithSplits, the node's data has a des_ids that lists the Ids of the nodes.
      However, to store the constraints, the FTree may also contain a constrainedDesIds
      for any of the nodes that are connected to that FTree.
 Groupings make the phylogenetic statements that a group of nodes (the "include_group" of the
@@ -160,7 +160,7 @@ class RootedForest {
         return node_to_tree.at(const_cast<node_type *>(nd));
     }
     void add_and_update_child(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree) {
-        p->addChild(c);
+        p->add_child(c);
         _and_update_child(p, c, tree);
     }
     void _and_update_child(RootedTreeNode<T> *p, RootedTreeNode<T> *c, FTree<T, U> &tree);
@@ -213,7 +213,7 @@ inline RootedTreeNode<T> * RootedForest<T, U>::create_node(RootedTreeNode<T> * p
     if (r == nullptr) {
         auto c = node_src.create_root();
         if (p != nullptr) {
-            p->addChild(c);
+            p->add_child(c);
         }
         register_tree_for_node(c, ftree);
         return c;
@@ -223,15 +223,15 @@ inline RootedTreeNode<T> * RootedForest<T, U>::create_node(RootedTreeNode<T> * p
     return n;
 }
 
-// does NOT update anc desIds!
+// does NOT update anc des_ids!
 template<typename T, typename U>
 inline RootedTreeNode<T> * RootedForest<T, U>::create_leaf(RootedTreeNode<T> * p, const OttId & oid, FTree<T, U> *ftree) {
     assert(oid != rootID);
     auto n = create_node(p, ftree);
-    assert(n->getNextSib() == nullptr);
+    assert(n->get_next_sib() == nullptr);
     n->set_ott_id(oid);
     ott_id_to_node_map[oid] = n;
-    n->get_data().desIds.insert(oid);
+    n->get_data().des_ids.insert(oid);
     ott_id_set.insert(oid);
     return n;
 }

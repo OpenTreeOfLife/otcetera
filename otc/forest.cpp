@@ -24,7 +24,7 @@ RootedForest<T, U>::create_new_tree() {
 template<typename T, typename U>
 RootedForest<T, U>::RootedForest(long rootOttId)
     :next_tree_id(0U),
-    ott_id_to_node_map(node_src.get_data().ottIdToNode),
+    ott_id_to_node_map(node_src.get_data().ott_id_to_node),
     rootID(rootOttId) {
 }
 
@@ -49,12 +49,12 @@ bool RootedForest<T, U>::is_attached(long ottId) const {
     }
     node_type * n = f->second;
     assert(n != nullptr);
-    return (n->getParent() != nullptr);
+    return (n->get_parent() != nullptr);
 }
 
 template<typename T, typename U>
 bool RootedForest<T, U>::node_is_attached(RootedTreeNode<T> & n) const {
-    return (n.getParent() != nullptr);
+    return (n.get_parent() != nullptr);
 }
 
 template<typename T, typename U>
@@ -79,13 +79,13 @@ void RootedForest<T, U>::_and_update_child(RootedTreeNode<T> *p,
                                                     RootedTreeNode<T> *c,
                                                     FTree<T, U> &tree) {
     register_tree_for_node(c, &tree);
-    const auto & cd = c->get_data().desIds;
+    const auto & cd = c->get_data().des_ids;
     if (cd.size() == 1 && !c->has_ott_id()) {
         if (*begin(cd) == c->get_ott_id()) {
             return;
         }
     }
-    p->get_data().desIds.insert(begin(cd), end(cd));
+    p->get_data().des_ids.insert(begin(cd), end(cd));
 }
 
 template<typename T, typename U>
@@ -130,8 +130,8 @@ void RootedForest<T, U>::attach_all_detached_tips() {
 template<typename T, typename U>
 bool RootedForest<T, U>::add_phylo_statement(const PhyloStatement &ps) {
     if (debugging_output_enabled) {
-        dbWriteOttSet(" RootedForest::add_phylo_statement\nincGroup ", ps.include_group);
-        dbWriteOttSet(" leaf_set", ps.leaf_set);
+        db_write_ott_id_set(" RootedForest::add_phylo_statement\nincGroup ", ps.include_group);
+        db_write_ott_id_set(" leaf_set", ps.leaf_set);
     }
     ps.debug_check();
     assert(ps.include_group.size() > 1);
@@ -172,7 +172,7 @@ void RootedForest<T, U>::dump_accepted_phylo_statements(const char *fn) {
     phyloStatementOut.close();
 }
 
-void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const OttIdSet & ls) {
+void append_include_leaf_set_as_newick(const char *fn, const OttIdSet & inc, const OttIdSet & ls) {
     PhyloStatementSource pss(-1, -1);
     const OttIdSet exc = set_difference_as_set(ls, inc);
     std::ofstream phyloStatementOut;
@@ -186,8 +186,8 @@ void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const Ot
 template<typename T, typename U>
 std::pair<bool, bool> RootedForest<T, U>::check_with_previously_added_statement(const PhyloStatement &ps) const {
     if (false && debugging_output_enabled) {
-        dbWriteOttSet(" RootedForest::conflictsWithPreviouslyAddedStatement incGroup ", ps.include_group);
-        dbWriteOttSet(" leaf_set", ps.leaf_set);
+        db_write_ott_id_set(" RootedForest::conflictsWithPreviouslyAddedStatement incGroup ", ps.include_group);
+        db_write_ott_id_set(" leaf_set", ps.leaf_set);
     }
     for (const auto sIt : added_splits_by_leaf_set) {
         const auto & prevAddedLeafSet = sIt.first;
@@ -247,7 +247,7 @@ void RootedForest<T, U>::add_ingroup_disjoint_phylo_statement_to_graph(const Phy
         // none of the ingroup or outgroup are attached.
         // create a new FTree...
         // this can happen if the outgroup are mentioned in exclude statements (so the 
-        //  areDisjoint returns false). But sense will add all of the leaves in the 
+        //  are_disjoint returns false). But sense will add all of the leaves in the 
         //  include_group and exclude_group to this new tree, we don't need any new constraints
         //  so we can exit
         LOG(DEBUG) << "No exclude overlap either, using add_disjoint_tree";
@@ -303,9 +303,9 @@ bool RootedForest<T, U>::check_can_add_ingroup_overlapping_phylo_statement_to_gr
         includeGroupA = f->get_mrca(incGroupIntersection);
         assert(includeGroupA != nullptr);
         assert(get_tree_for_node(includeGroupA) == f);
-        if (includeGroupA->isTip()) {
+        if (includeGroupA->is_tip()) {
             // this can happen if the overlap is one taxon.
-            includeGroupA = includeGroupA->getParent();
+            includeGroupA = includeGroupA->get_parent();
             assert(includeGroupA != nullptr);
             assert(get_tree_for_node(includeGroupA) == f);
         }
@@ -318,7 +318,7 @@ bool RootedForest<T, U>::check_can_add_ingroup_overlapping_phylo_statement_to_gr
             if (f->add_phantom_nodes_at_node(includeGroupA, ps.include_group)) {
                 return false;
             }
-            includeGroupA = includeGroupA->getParent();
+            includeGroupA = includeGroupA->get_parent();
             if (includeGroupA == nullptr) {
                 break;
             }
@@ -331,13 +331,13 @@ bool RootedForest<T, U>::check_can_add_ingroup_overlapping_phylo_statement_to_gr
             forceDeeperRoot = true;
             assert(get_tree_for_node(includeGroupA) == f);
         } else {
-            excInc = set_intersection_as_set(includeGroupA->get_data().desIds, ps.exclude_group);
+            excInc = set_intersection_as_set(includeGroupA->get_data().des_ids, ps.exclude_group);
             if (debugging_output_enabled) {
                 LOG(DEBUG) << "     add_phylo_statement_to_graph search for an ancestor of ..."; 
-                dbWriteOttSet(" add_phylo_statement_to_graph search for an ancestor of:  ", incGroupIntersection);
-                dbWriteOttSet(" wanted to avoid =  ", ps.exclude_group);
-                dbWriteOttSet(" found a node with desIds:  ", includeGroupA->get_data().desIds);
-                dbWriteOttSet(" which includes the excludegroup members:  ", excInc);
+                db_write_ott_id_set(" add_phylo_statement_to_graph search for an ancestor of:  ", incGroupIntersection);
+                db_write_ott_id_set(" wanted to avoid =  ", ps.exclude_group);
+                db_write_ott_id_set(" found a node with des_ids:  ", includeGroupA->get_data().des_ids);
+                db_write_ott_id_set(" which includes the excludegroup members:  ", excInc);
             }
             if (!can_be_resolved_to_display_inc_exc_group(includeGroupA, ps.include_group, excInc)) {
                 return false; // the MRCA of the include_group had interdigitated members of the exclude_group
@@ -406,7 +406,7 @@ bool RootedForest<T, U>::add_ingroup_overlapping_phylo_statement_to_graph(const 
         if (!connectedHere.empty()) {
             attachedElsewhere.insert(begin(connectedHere), end(connectedHere));
         }
-        dbWriteOttSet(" includeGroupA...desIds ", includeGroupA->get_data().desIds);
+        db_write_ott_id_set(" includeGroupA...des_ids ", includeGroupA->get_data().des_ids);
         LOG(DEBUG) << "   back from add_phylo_statement_at_node for loop round " << i;
         debug_invariants_check();
     }
@@ -417,8 +417,8 @@ bool RootedForest<T, U>::add_ingroup_overlapping_phylo_statement_to_graph(const 
 template<typename T, typename U>
 bool RootedForest<T, U>::add_phylo_statement_to_graph(const PhyloStatement &ps) {
     if (debugging_output_enabled) {
-        dbWriteOttSet(" RootedForest::add_phylo_statement_to_graph incGroup ", ps.include_group);
-        dbWriteOttSet(" leaf_set", ps.leaf_set);
+        db_write_ott_id_set(" RootedForest::add_phylo_statement_to_graph incGroup ", ps.include_group);
+        db_write_ott_id_set(" leaf_set", ps.leaf_set);
     }
     if (ps.is_trivial()) {
         novel_accepted_phylo_statements_in_order.push_back(ps); //TMP DEBUGGING
@@ -429,7 +429,7 @@ bool RootedForest<T, U>::add_phylo_statement_to_graph(const PhyloStatement &ps) 
         debug_invariants_check();
         return true;
     }
-    if (areDisjoint(ps.leaf_set, ott_id_set)) {
+    if (are_disjoint(ps.leaf_set, ott_id_set)) {
         novel_accepted_phylo_statements_in_order.push_back(ps); //TMP DEBUGGING
         add_disjoint_tree(ps);
         debug_invariants_check();
@@ -485,7 +485,7 @@ template<typename T, typename U>
 void RootedForest<T, U>::write_forest_dot_to_fn(const std::string &fn) const {
     LOG(DEBUG) << "     creating DOT file for forest: " << fn;
     std::ofstream outf(fn);
-    writeDOTForest(outf, *this);
+    write_dot_forest(outf, *this);
 }
 
 #if defined(DO_DEBUG_CHECKS)
@@ -506,9 +506,9 @@ void RootedForest<T, U>::debug_invariants_check() const {
         auto o = o2n.first;
         assert(o != rootID);
         auto n = o2n.second;
-        if (n->isTip()) {
+        if (n->is_tip()) {
             assert(n->get_ott_id() == o);
-            auto d = getDeepestAnc(n);
+            auto d = get_deepest_anc(n);
             assert(d != nullptr);
             if (d == n) {
                 assert(!contains(detached, n));
@@ -518,7 +518,7 @@ void RootedForest<T, U>::debug_invariants_check() const {
             }
         } else {
             assert(!n->has_ott_id());
-            auto d = getDeepestAnc(n);
+            auto d = get_deepest_anc(n);
             assert(d != nullptr);
             assert(!contains(internal2Tree, n));
             if (d == n) {
@@ -526,7 +526,7 @@ void RootedForest<T, U>::debug_invariants_check() const {
             }
             internal2Tree[n] = root2tree.at(d);
         }
-        if (n->getParent() != nullptr) {
+        if (n->get_parent() != nullptr) {
             assert(nullptr != get_tree_for_node(n));
         }
     }

@@ -43,7 +43,7 @@ inline std::unique_ptr<T> read_next_newick(std::istream &inp, FilePosStruct & po
         } else if (topOfLoopToken.state == NewickTokenizer::NWK_COMMA) {
             assert(!nodeStack.empty()); // NewickTokenizer should thrown an exception if unbalanced
             newick_close_node_hook(*rawTreePtr, *currNode, topOfLoopToken, parsingRules);
-            currNode = rawTreePtr->createSib(currNode);
+            currNode = rawTreePtr->create_sib(currNode);
             ++tokenIt;
         } else if (topOfLoopToken.state == NewickTokenizer::NWK_LABEL) {
             ++tokenIt;

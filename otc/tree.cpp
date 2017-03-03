@@ -6,7 +6,7 @@ template<typename T>
 class TreeEdge {
     public:
         typedef class TreeNode<T> Node_t;
-        const Node_t * getParent() const {
+        const Node_t * get_parent() const {
             return parent;
         }
         const Node_t * getChild() const {

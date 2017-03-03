@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     // Each tip id should occur only once as a tip.
     for(const auto& tree: trees) {
         for(auto nd:iter_pre(*tree)){
-            if (nd->isTip()) {
+            if (nd->is_tip()) {
                 assert(nd->has_ott_id());
                 long id = nd->get_ott_id();
                 if (my_leaf.find(id) != my_leaf.end()) {
@@ -136,14 +136,14 @@ int main(int argc, char *argv[]) {
             std::swap(roots.back(), trees[i]);
         } else {
             auto nd = my_leaf[id];
-            replaceWithSubtree<Tree_t>(nd, *trees[i]);
+            replace_with_subtree<Tree_t>(nd, *trees[i]);
         }
     }
     if (roots.size() == 1 and not rootName.empty()) {
-        roots[0]->get_root()->setName(rootName);
+        roots[0]->get_root()->set_name(rootName);
     }
     for(const auto& tree: roots) {
-        writeTreeAsNewick(std::cout, *tree);
+        write_tree_as_newick(std::cout, *tree);
         std::cout<<"\n";
     }
     return (roots.size() != 1 ? 1 : 0);

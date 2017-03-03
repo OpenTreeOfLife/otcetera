@@ -124,7 +124,7 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
 
     std::vector<Tree_t::node_type*> remove;
     for (auto nd:iter_post(tree)) {
-        if (nd->isOutDegreeOneNode()) {
+        if (nd->is_outdegree_one_node()) {
             remove.push_back(nd);
         }
     }
@@ -133,13 +133,13 @@ map<string,string> suppressAndRecordMonotypic(Tree_t& tree)
     {
         if (nd->get_name().size())
         {
-            auto child = nd->getFirstChild();
-            assert(not child->isOutDegreeOneNode());
+            auto child = nd->get_first_child();
+            assert(not child->is_outdegree_one_node());
             assert(child->get_name().size());
             assert(to_child.count(nd->get_name()) == 0);
             to_child[nd->get_name()] = child->get_name();
         }
-        delMonotypicNode(nd,tree);
+        del_monotypic_node(nd,tree);
     }
     return to_child;
 }
@@ -163,7 +163,7 @@ void add_element(set<pair<string, string>>& s,
 		 const string& source)
 {
     // We only care about non-monotypic nodes.
-    if (input_node->isOutDegreeOneNode()) return;
+    if (input_node->is_outdegree_one_node()) return;
     
     string node = getSourceNodeNameIfAvailable(input_node);
 
@@ -302,7 +302,7 @@ int main(int argc, char *argv[]) {
 	auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
 	auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
 	auto monotypic_nodes = suppressAndRecordMonotypic(*summaryTree);
-	computeDepth(*summaryTree);
+	compute_depth(*summaryTree);
 	stats global;
 
 	// 2. Load and process input trees.
@@ -310,7 +310,7 @@ int main(int argc, char *argv[]) {
 	    show_header(std::cout);
         for(const auto& filename: inputs) {
 	    auto tree = get_tree<Tree_t>(filename);
-	    computeDepth(*tree);
+	    compute_depth(*tree);
 
 	    computeSummaryLeaves(*tree, summaryOttIdToNode);
 

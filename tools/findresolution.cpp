@@ -9,7 +9,7 @@ template <typename T, typename U>
 U * resolveNode(T & tree, U & parent, const OttIdSet & newInc) {
     std::set<U *> childrenToMove;
     for (auto nd : iter_child(parent)) {
-        if (!areDisjoint(nd->get_data().desIds, newInc)) {
+        if (!are_disjoint(nd->get_data().des_ids, newInc)) {
             childrenToMove.insert(nd);
         }
     }
@@ -18,12 +18,12 @@ U * resolveNode(T & tree, U & parent, const OttIdSet & newInc) {
    assert(phPar != nullptr);
     U * insertedNodePtr = tree.create_node(phPar);
     for (auto phChild : childrenToMove) {
-        phChild->detachThisNode();
-        insertedNodePtr->addChild(phChild);
-        const OttIdSet & cd = phChild->get_data().desIds;
-        insertedNodePtr->get_data().desIds.insert(cd.begin(), cd.end());
+        phChild->detach_this_node();
+        insertedNodePtr->add_child(phChild);
+        const OttIdSet & cd = phChild->get_data().des_ids;
+        insertedNodePtr->get_data().des_ids.insert(cd.begin(), cd.end());
     }
-    assert(phPar->getOutDegree() > 1);
+    assert(phPar->get_out_degree() > 1);
     return insertedNodePtr;
 }
 
@@ -88,7 +88,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             if (numIncludable == 0) {
                 return false;
             }
-            writeTreeAsNewick(otCLI.out, *summaryTreeToResolve);
+            write_tree_as_newick(otCLI.out, *summaryTreeToResolve);
             otCLI.out << '\n';
             return true;
         }
@@ -100,25 +100,25 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     virtual bool process_taxonomy_tree(OTCLI & otCLI) override {
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
-        // now we get a little cute and reprocess the taxonomy desIds so that they 
+        // now we get a little cute and reprocess the taxonomy des_ids so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set
-        clearAndfillDesIdSets(*taxonomy);
+        clear_and_fill_des_ids(*taxonomy);
         return true;
     }
     
     bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         if (summaryTreeToResolve == nullptr) {
-            requireNonRedundantTree(*tree);
+            require_nonredundant_tree(*tree);
             summaryTreeToResolve = std::move(tree);
             if (!protectedFilename.empty()) {
                 parseAndProcessMRCADesignatorsFile(protectedFilename);
             }
             return true;
         }
-        requireTipsToBeMappedToTerminalTaxa(*tree, *taxonomy);
-        clearAndfillDesIdSets(*tree);
+        require_tips_to_be_mapped_to_terminal_taxa(*tree, *taxonomy);
+        clear_and_fill_des_ids(*tree);
         if (avoidAddingUnsupportedGroups) {
             allInps.emplace_back(std::move(tree));
         } else {
@@ -145,7 +145,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         std::map<const NodeWithSplits *, std::set<long> > restrictedDesIds;
         for (auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->get_ott_id();
-            markPathToRoot(*summaryTreeToResolve, ottId, restrictedDesIds);
+            mark_path_to_root(*summaryTreeToResolve, ottId, restrictedDesIds);
         }
         identifysupportStatementsByNd(otCLI, tree, restrictedDesIds);
     }
@@ -166,7 +166,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     //      storage in RecordSupportStatement in the docs
     // inducedNdToEffDesId is map of node in S' traversed when
     //      tracing the input tree to the intersection between
-    //      the input leaf set and desIds of the node
+    //      the input leaf set and des_ids of the node
     // `nd` is a node in the summary tree being evaluated
     // `nm` is the induced set of OttIds for this nd (the intersection
     //      between nd.desId and tree.leaf_set)
@@ -176,7 +176,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                              const OttIdSet & nm,
                              const TreeMappedWithSplits & tree,
                              const std::map<const NodeWithSplits *, OttIdSet > & inducedNdToEffDesId) {
-        auto par = nd->getParent();
+        auto par = nd->get_parent();
         if (par == nullptr) {
             return false;
         }
@@ -184,7 +184,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
         // If no node in the input tree displays this induced desId set
         //  then the tree does not support `nd`
-        auto srcNode = findNodeWithMatchingDesIdSet(tree, nm);
+        auto srcNode = find_node_with_matching_des_ids(tree, nm);
         if (srcNode == nullptr) {
             return false;
         }
@@ -194,7 +194,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         // then this is not a MRCA. (collapsing the edge to nd would still
         //  display srcNode via the edge to the single child).
         const NodeWithSplits * firstNdPtr; // just used to match call
-        if (!multipleChildrenInMap(*nd, inducedNdToEffDesId, &firstNdPtr)) {
+        if (!multiple_children_in_map(*nd, inducedNdToEffDesId, &firstNdPtr)) {
             return false;
         }
 
@@ -202,7 +202,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         //  intersection with the leaf set of the input, then the node
         //  is not supported. (collapsing the edge to nd would still
         //  display srcNode).
-        auto firstBranchingAnc = findFirstForkingAnc<const NodeWithSplits>(nd);
+        auto firstBranchingAnc = find_first_forking_anc<const NodeWithSplits>(nd);
         assert (firstBranchingAnc == par);
         auto ancIt = inducedNdToEffDesId.find(firstBranchingAnc);
         assert(ancIt != inducedNdToEffDesId.end());
@@ -212,8 +212,8 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         }
 
         //srcNode supports nd
-        const OttIdSet * sip = &(srcNode->get_data().desIds);
-        auto sna = findFirstForkingAnc<const NodeWithSplits>(srcNode);
+        const OttIdSet * sip = &(srcNode->get_data().des_ids);
+        auto sna = find_first_forking_anc<const NodeWithSplits>(srcNode);
         assert(sna != nullptr);
         const auto * tls = getStableLeafSetPtr(tree);
         supportStatementsByNd[nd].addSupport(sip, tls, tree.get_name().c_str());
@@ -225,7 +225,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         const auto  tp = &tree;
         const auto tpI = tree2LeafSet.find(tp);
         if (tpI == tree2LeafSet.end()) {
-            tree2LeafSet[tp] = keys(tree.get_data().ottIdToNode);
+            tree2LeafSet[tp] = keys(tree.get_data().ott_id_to_node);
             return &(tree2LeafSet[tp]);
         }
         return &(tpI->second);
@@ -233,27 +233,27 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
 
     void attemptResolutionFromSourceTree(OTCLI & otCLI, TreeMappedWithSplits & tree) {
-        const OttIdSet & treeLeafSet = tree.get_root()->get_data().desIds;
+        const OttIdSet & treeLeafSet = tree.get_root()->get_data().des_ids;
         std::set<const NodeWithSplits *> nodesFromInp;
         for (auto nd : iter_pre_internal_const(tree)) {
-            if (nd->getParent() != nullptr) {
+            if (nd->get_parent() != nullptr) {
                 nodesFromInp.insert(nd);
             }
         }
         while (!nodesFromInp.empty()) {
             std::map<NodeWithSplits *, std::list<const NodeWithSplits *> > summaryTreeToResolveNodeToResolves;
             for (const auto nd : nodesFromInp) {
-                const OttIdSet & incGroup = nd->get_data().desIds;
-                auto r = findMRCAUsingDesIds(*summaryTreeToResolve, incGroup);
+                const OttIdSet & incGroup = nd->get_data().des_ids;
+                auto r = find_mrca_using_des_ids(*summaryTreeToResolve, incGroup);
                 if (contains(protectedPolytomy, r)) {
                     continue; // skip protected
                 }
                 NodeWithSplits * mrca = const_cast<NodeWithSplits *>(r);
-                if (!mrca->isPolytomy()) {
+                if (!mrca->is_polytomy()) {
                     continue;
                 }
                 assert(mrca);
-                OttIdSet md = mrca->get_data().desIds;
+                OttIdSet md = mrca->get_data().des_ids;
                 const OttIdSet rmd = set_intersection_as_set(md, treeLeafSet);
                 // If the polytomy does not have any members of nd's 
                 //  exclude group, then nd cannot resolve it and support
@@ -267,7 +267,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                         summaryTreeToResolveNodeToResolves[mrca].push_back(nd);
                     } else {
                         numIncludable += 1;
-                        otCLI.out << otCLI.currentFilename << " node " << getDesignator(*nd) << " could be added.\n";
+                        otCLI.out << otCLI.currentFilename << " node " << get_designator(*nd) << " could be added.\n";
                     }
                 }
             }
@@ -297,33 +297,33 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                            NodeWithSplits * ndToResolve,
                            const TreeMappedWithSplits & inpTree,
                            const NodeWithSplits * ndToAdd) {
-        const OttIdSet & incGroup = ndToAdd->get_data().desIds;
+        const OttIdSet & incGroup = ndToAdd->get_data().des_ids;
         if (otCLI.verbose) {
             otCLI.err << "processAddableNode ndToResolve = ";
-            describeUnnamedNode(*ndToResolve, otCLI.err, 0, false, true);
+            describe_unnamed_node(*ndToResolve, otCLI.err, 0, false, true);
         }
         OttId BUGGY = 913397;
-        const bool DEBUGGINGTHISNODE = contains(ndToResolve->get_data().desIds, BUGGY);
+        const bool DEBUGGINGTHISNODE = contains(ndToResolve->get_data().des_ids, BUGGY);
         if (DEBUGGINGTHISNODE) {
             ++BUGEXPORTINDEX;
         }
         if (DEBUGGINGTHISNODE) {
             std::string fn = std::string("trace-newick-pre-") + std::to_string(BUGEXPORTINDEX) + std::string(".tre");
             std::ofstream ofn(fn.c_str());
-            writeNewick(ofn, ndToResolve);
+            write_newick(ofn, ndToResolve);
             ofn << ";\n";
         }
         NodeWithSplits * added = resolveNode(toResolve, *ndToResolve, incGroup);
         if (DEBUGGINGTHISNODE) {
             std::string fn = std::string("trace-newick-resolved-") + std::to_string(BUGEXPORTINDEX) + std::string(".tre");
             std::ofstream ofn(fn.c_str());
-            writeNewick(ofn, ndToResolve);
+            write_newick(ofn, ndToResolve);
             ofn << ";\n";
         }
         if (otCLI.verbose) {
             otCLI.err << "  from = " << inpTree.get_name() << "\n";
             otCLI.err << "                   added = ";
-            describeUnnamedNode(*added, otCLI.err, 0, false, true);
+            describe_unnamed_node(*added, otCLI.err, 0, false, true);
         }
         if (avoidAddingUnsupportedGroups
             && causedUnsupported(otCLI,
@@ -335,11 +335,11 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             if (otCLI.verbose) {
                 otCLI.err << "                 Rejected.\n";
             }
-            collapseNode(toResolve, added);
+            collapse_node(toResolve, added);
             if (DEBUGGINGTHISNODE) {
                 std::string fn = std::string("trace-newick-collapsed-") + std::to_string(BUGEXPORTINDEX) + std::string(".tre");
                 std::ofstream ofn(fn.c_str());
-                writeNewick(ofn, ndToResolve);
+                write_newick(ofn, ndToResolve);
                 ofn << ";\n";
             }
         } else {
@@ -363,7 +363,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                            NodeWithSplits * added) {
         assert(par != nullptr);
         assert(added != nullptr);
-        assert(par == added->getParent());
+        assert(par == added->get_parent());
         if (!contains(supportStatementsByNd, par)) {
             return false;
         }
@@ -378,14 +378,14 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
     void parseAndProcessMRCADesignatorsFile(const std::string &fp) {
         assert(summaryTreeToResolve != nullptr);
-        std::list<std::set<long> > dl = parseDesignatorsFile(fp);
+        std::list<std::set<long> > dl = parse_designators_file(fp);
         for (auto d : dl) {
             markProtectedNode(d);
         }
     }
 
     void markProtectedNode(const std::set<long> & designators) {
-        const NodeWithSplits * mrca = findMRCAFromIDSet(*summaryTreeToResolve, designators, -1);
+        const NodeWithSplits * mrca = find_mrca_from_id_set(*summaryTreeToResolve, designators, -1);
         protectedPolytomy[mrca] = designators;
     }
 };
@@ -394,13 +394,13 @@ inline bool SupportingIDSets::causesChildToBeUnsupported(OTCLI & otCLI,
                                                          const NodeWithSplits *added,
                                                          FindResolutionState & frs) {
     std::map<const NodeWithSplits *, SupportingIDSets *> forkingDes;
-    LOG(DEBUG) << added->getOutDegree() << " children of added. ";
+    LOG(DEBUG) << added->get_out_degree() << " children of added. ";
     for (auto c : iter_child_const(*added)) {
-        if (c->isTip()) {
+        if (c->is_tip()) {
             continue;
         }
-        auto fc = findFirstForkingSelfOrDes(c);
-        if (fc->isTip()) {
+        auto fc = find_first_forking_self_or_des(c);
+        if (fc->is_tip()) {
             continue;
         }
         auto snIt = frs.supportStatementsByNd.find(fc);
@@ -411,7 +411,7 @@ inline bool SupportingIDSets::causesChildToBeUnsupported(OTCLI & otCLI,
         }
     }
     LOG(DEBUG) << forkingDes.size() << " supporting statements of children to check.";
-    const OttIdSet & incAdded = added->get_data().desIds;
+    const OttIdSet & incAdded = added->get_data().des_ids;
     std::map<const NodeWithSplits *, listLIncLSTreeNameIt > toDelMap;
     for (auto fdIt : forkingDes) {
         const NodeWithSplits * fc = fdIt.first;
@@ -450,9 +450,9 @@ inline bool SupportingIDSets::attemptSplitOfSupport(OTCLI & otCLI,
     //  1. stay in SupportingIDSets, or
     //  2. be removed
     assert(added != nullptr);
-    auto p = added->getParent(); // p is the node that is the key for `this` SupportingIDSets
+    auto p = added->get_parent(); // p is the node that is the key for `this` SupportingIDSets
     assert(p != nullptr);
-    const OttIdSet & nddi = added->get_data().desIds;
+    const OttIdSet & nddi = added->get_data().des_ids;
     listLIncLSTreeNameIt toDel;
     auto sIt = begin(supporting);
     for (; sIt != end(supporting); ++sIt) {
@@ -460,12 +460,12 @@ inline bool SupportingIDSets::attemptSplitOfSupport(OTCLI & otCLI,
         //const leafSetContainer & leafSetInp = *(sIt->second);
         //if (otCLI.verbose) {
         //    otCLI.err << "suppInc ";
-        //    writeOttSet(otCLI.err, "  ", suppInc, " ");
+        //    write_ott_id_set(otCLI.err, "  ", suppInc, " ");
         //    otCLI.err << "\nleafSetInp";
-        //    writeOttSet(otCLI.err, "  ", leafSetInp, " ");
+        //    write_ott_id_set(otCLI.err, "  ", leafSetInp, " ");
         //    otCLI.err << '\n';
         //}
-        if (isSubset(suppInc, nddi)) {
+        if (is_subset(suppInc, nddi)) {
             if (otCLI.verbose) {
                 otCLI.err << "toDel\n";
             }

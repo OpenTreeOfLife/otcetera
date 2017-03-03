@@ -53,17 +53,17 @@ inline bool can_be_resolved_to_display(const T *nd, const OttIdSet & incGroup, c
 
 template<typename T>
 void add_des_ids_to_node_and_anc(T * nd, const OttIdSet & oid) {
-    nd->get_data().desIds.insert(begin(oid), end(oid));
+    nd->get_data().des_ids.insert(begin(oid), end(oid));
     for (auto anc : iter_anc(*nd)) {
-        anc->get_data().desIds.insert(begin(oid), end(oid));
+        anc->get_data().des_ids.insert(begin(oid), end(oid));
     }
 }
 
 template<typename T>
 void remove_des_ids_from_node_and_anc(T * nd, const OttIdSet & oid) {
-    nd->get_data().desIds = set_difference_as_set(nd->get_data().desIds, oid);
+    nd->get_data().des_ids = set_difference_as_set(nd->get_data().des_ids, oid);
     for (auto anc : iter_anc(*nd)) {
-        anc->get_data().desIds = set_difference_as_set(anc->get_data().desIds, oid);
+        anc->get_data().des_ids = set_difference_as_set(anc->get_data().des_ids, oid);
     }
 }
 
@@ -71,7 +71,7 @@ void remove_des_ids_from_node_and_anc(T * nd, const OttIdSet & oid) {
 //  from the alias to the original OTT ID.
 template<typename T>
 inline std::map<long, long> generate_id_remapping(const T & tree) {
-    const auto & id2ndMap = tree.get_data().ottIdToNode;
+    const auto & id2ndMap = tree.get_data().ott_id_to_node;
     std::map<long, long> r;
     for (const auto & idNdPair : id2ndMap) {
         const auto & inID = idNdPair.first;
@@ -94,10 +94,10 @@ inline std::unique_ptr<TreeMappedWithSplits> clone_tree(const TreeMappedWithSpli
         newRoot->set_ott_id(r->get_ott_id());
         std::map<const NodeWithSplits *, NodeWithSplits *> templateToNew;
         templateToNew[r]= newRoot;
-        std::map<long, NodeWithSplits *> & newMap = rawTreePtr->get_data().ottIdToNode;
-        rawTreePtr->get_data().desIdSetsContainInternals = tree.get_data().desIdSetsContainInternals;
+        std::map<long, NodeWithSplits *> & newMap = rawTreePtr->get_data().ott_id_to_node;
+        rawTreePtr->get_data().des_id_sets_contain_internals = tree.get_data().des_id_sets_contain_internals;
         for (auto nd : iter_pre_const(tree)) {
-            auto p = nd->getParent();
+            auto p = nd->get_parent();
             if (p == nullptr) {
                 continue;
             }
@@ -114,7 +114,7 @@ inline std::unique_ptr<TreeMappedWithSplits> clone_tree(const TreeMappedWithSpli
                 assert(false);
                 throw OTCError("asserts false but not enabled");
             }
-            nn->get_data().desIds = nd->get_data().desIds;
+            nn->get_data().des_ids = nd->get_data().des_ids;
         }
     } catch (...) {
         delete rawTreePtr;
@@ -131,7 +131,7 @@ void sort_children_by_lowest_des_ott_id(T *deepest) {
     std::map<T *, long> node2Id;
     std::set<T *> internals;
     for (auto nd : iter_post_n(*deepest)) {
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             assert(nd->has_ott_id());
             node2Id[nd] = nd->get_ott_id();
         } else {
@@ -155,13 +155,13 @@ void sort_children_by_lowest_des_ott_id(T *deepest) {
         assert(!id2child.empty());
 
         // Remove all the children - they are remembered in the map
-        while(nd->hasChildren())
-            nd->getFirstChild()->detachThisNode();
+        while(nd->has_children())
+            nd->get_first_child()->detach_this_node();
 
         // Add the children back in sorted order
         for(const auto& x: id2child)
-            nd->addChild(x.second);
-        assert(node2Id.at(nd->getFirstChild()) == node2Id.at(nd));
+            nd->add_child(x.second);
+        assert(node2Id.at(nd->get_first_child()) == node2Id.at(nd));
     }
 }
 
@@ -170,7 +170,7 @@ void sort_children_by_lowest_des_ott_id(T *deepest) {
 template<typename T>
 inline bool can_be_resolved_to_display_inc_exc_group(const T *nd, const OttIdSet & incGroup, const OttIdSet & excGroup) {
     for (auto c : iter_child_const(*nd)) {
-        if (haveIntersection(incGroup, c->get_data().desIds) && haveIntersection(excGroup, c->get_data().desIds)) {
+        if (have_intersection(incGroup, c->get_data().des_ids) && have_intersection(excGroup, c->get_data().des_ids)) {
             return false;
         }
     }
@@ -182,8 +182,8 @@ inline bool can_be_resolved_to_display_inc_exc_group(const T *nd, const OttIdSet
 template<typename T>
 inline bool can_be_resolved_to_display_only_inc_exc_group(const T *nd, const OttIdSet & incGroup) {
     for (auto c : iter_child_const(*nd)) {
-        const auto & cdi = c->get_data().desIds;
-        if (haveIntersection(incGroup, cdi) && (!isSubset(cdi, incGroup))) {
+        const auto & cdi = c->get_data().des_ids;
+        if (have_intersection(incGroup, cdi) && (!is_subset(cdi, incGroup))) {
             return false;
         }
     }
@@ -242,7 +242,7 @@ inline void fill_id_map_from_names(const T & tree, std::map<std::string, long> &
             } else {
                 name_to_id[name] = nextId++;
             }
-        } else if (nd->isTip()) {
+        } else if (nd->is_tip()) {
             throw OTCError()<<"tip has no label!";
         }
     }
@@ -260,12 +260,12 @@ inline void set_ids_from_names_and_refresh(T& tree, const std::map<std::string,l
             }
             const auto id = it->second;
             nd->set_ott_id(id);
-            tree.get_data().ottIdToNode[id] = nd;
-        } else if (nd->isTip()){
+            tree.get_data().ott_id_to_node[id] = nd;
+        } else if (nd->is_tip()){
             throw OTCError()<<"Tree tip has no label!";
         }
     }
-    clearAndfillDesIdSets(tree);
+    clear_and_fill_des_ids(tree);
 }
 
 /// Set ids on the tree based on the name
@@ -280,7 +280,7 @@ inline void set_ids_from_names(T& tree, const std::map<std::string,long> & name_
             }
             const auto id = it->second;
             nd->set_ott_id(id);
-        } else if (nd->isTip()){
+        } else if (nd->is_tip()){
             throw OTCError()<<"Tree tip has no label!";
         }
     }
@@ -300,7 +300,7 @@ template<typename T>
 inline void relabel_nodes_with_ott_id(T& tree) {
     for(auto nd: iter_pre(tree)){
         if (nd->has_ott_id()){
-            nd->setName(add_ott_id(nd->get_name(),nd->get_ott_id()));
+            nd->set_name(add_ott_id(nd->get_name(),nd->get_ott_id()));
         }
     }
 }
@@ -326,7 +326,7 @@ template<typename T>
 inline std::size_t count_leaves(const T& tree) {
     std::size_t count = 0U;
     for(auto nd: iter_post_const(tree)) {
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             count++;
         }
     }
@@ -337,7 +337,7 @@ template<typename N>
 inline std::size_t count_leaves_subtree(const N * tree) {
     std::size_t count = 0U;
     for(auto nd: iter_post_n_const(tree)) {
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             count++;
         }
     }

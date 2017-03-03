@@ -35,10 +35,10 @@ inline OttId& smallest_child(N * node) {
 template<typename T>
 void calculate_smallest_child(T& tree) {
     for (auto nd: iter_post(tree)) {
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             smallest_child(nd) = nd->get_ott_id();
         } else {
-            auto sc = smallest_child(nd->getFirstChild());
+            auto sc = smallest_child(nd->get_first_child());
             for(auto c: iter_child(*nd)) {
                 sc = std::min(sc, smallest_child(c));
             }
@@ -52,9 +52,9 @@ void sort_by_smallest_child(T& tree) {
     const std::vector<typename T::node_type*> nodes = all_nodes(tree);
     for (auto nd: nodes) {
         std::vector<typename T::node_type*> children;
-        while (nd->hasChildren()) {
-            auto x = nd->getFirstChild();
-            x->detachThisNode();
+        while (nd->has_children()) {
+            auto x = nd->get_first_child();
+            x->detach_this_node();
             children.push_back(x);
         }
         std::sort(begin(children),
@@ -64,7 +64,7 @@ void sort_by_smallest_child(T& tree) {
         while (not children.empty()) {
             auto x = children.back();
             children.pop_back();
-            nd->addChildAtFront(x);
+            nd->add_child_at_front(x);
         }
     }
 }
@@ -83,34 +83,34 @@ void name_unnamed_nodes(T & tree) {
     // Remove unnamed nodes w/ no OTT Id that are monotypic.
     std::vector<typename T::node_type*> remove;
     for (auto nd:iter_pre(tree)) {
-        if (not nd->has_ott_id() and nd->get_name().empty() and nd->isOutDegreeOneNode()){
+        if (not nd->has_ott_id() and nd->get_name().empty() and nd->is_outdegree_one_node()){
             remove.push_back(nd);
         }
     }
     for (auto nd: remove) {
-        //auto parent = nd->getParent();
-        auto child = nd->getFirstChild();
-        child->detachThisNode();
-        nd->addSibOnRight(child);
-        nd->detachThisNode();
+        //auto parent = nd->get_parent();
+        auto child = nd->get_first_child();
+        child->detach_this_node();
+        nd->add_sib_on_right(child);
+        nd->detach_this_node();
         delete nd;
     }
     
     long id = 1;
     for(auto nd:iter_pre(tree)) {
         if (nd->has_ott_id()) {
-            nd->setName("ott"+std::to_string(nd->get_ott_id()));
+            nd->set_name("ott"+std::to_string(nd->get_ott_id()));
         } else if (not nd->get_name().size()) {
-            assert(not nd->isTip());
-            assert(not nd->isOutDegreeOneNode());
+            assert(not nd->is_tip());
+            assert(not nd->is_outdegree_one_node());
 
-            auto id1 = smallest_child(nd->getFirstChild());
-            auto id2 = smallest_child(nd->getFirstChild()->getNextSib());
+            auto id1 = smallest_child(nd->get_first_child());
+            auto id2 = smallest_child(nd->get_first_child()->get_next_sib());
             auto name = make_mrca_name(id1,id2);
             if (names.count(name)) {
                 throw OTCError()<<"Synthesized name '"<<name<<"' already exists in the tree!";
             }
-            nd->setName(name);
+            nd->set_name(name);
             names.insert(name);
         }
         id++;

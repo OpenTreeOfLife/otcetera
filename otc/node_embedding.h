@@ -312,8 +312,8 @@ inline std::map<U *, U*> get_node_to_par_for_key(const V & treeInd,
         return nd2par;
     }
     for (const auto & pp : m.at(treeInd)) {
-        LOG(DEBUG) << " considering the edge from the child "  << reinterpret_cast<long>(pp->phylo_child) << ": "; dbWriteNewick(pp->phylo_child);
-        LOG(DEBUG) << "             to its parent "  << reinterpret_cast<long>(pp->phylo_parent) << ": "; dbWriteNewick(pp->phylo_parent);
+        LOG(DEBUG) << " considering the edge from the child "  << reinterpret_cast<long>(pp->phylo_child) << ": "; db_write_newick(pp->phylo_child);
+        LOG(DEBUG) << "             to its parent "  << reinterpret_cast<long>(pp->phylo_parent) << ": "; db_write_newick(pp->phylo_parent);
         assert(!contains(nd2par, pp->phylo_child));
         nd2par[pp->phylo_child] = pp->phylo_parent;
     }

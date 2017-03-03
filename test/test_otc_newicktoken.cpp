@@ -21,17 +21,17 @@ char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn);
 
 char genericTokenTest(const TestHarness &th, const std::string &fn, const std::vector<std::string> & expected){
     std::ifstream inp;
-    if (!th.openTestFile(fn, inp)) {
+    if (!th.open_test_file(fn, inp)) {
         return 'U';
     }
     std::vector<std::string> obtained;
-    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(th.getFilePath(fn)));
+    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(th.get_filepath(fn)));
     FilePosStruct pos(filenamePtr);
     NewickTokenizer tokenizer(inp, pos);
     for (const auto & token : tokenizer) {
         obtained.push_back(token.content());
     }
-    if (testVecElementEquality(expected, obtained)) {
+    if (test_vec_element_equality(expected, obtained)) {
         return '.';
     }
     return 'F';
@@ -39,10 +39,10 @@ char genericTokenTest(const TestHarness &th, const std::string &fn, const std::v
 
 char genericOTCParsingErrorTest(const TestHarness &th, const std::string &fn) {
     std::ifstream inp;
-    if (!th.openTestFile(fn, inp)) {
+    if (!th.open_test_file(fn, inp)) {
         return 'U';
     }
-    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(th.getFilePath(fn)));
+    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(th.get_filepath(fn)));
     FilePosStruct pos(filenamePtr);
     NewickTokenizer tokenizer(inp, pos);
     try {
@@ -197,6 +197,6 @@ int main(int argc, char *argv[]) {
                    , TestFn("testEmptyBranchLength", testEmptyBranchLength)
                    
                   };
-    return th.runTests(tests);
+    return th.run_tests(tests);
 }
 

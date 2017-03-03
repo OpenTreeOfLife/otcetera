@@ -111,9 +111,9 @@ variables_map parse_cmd_line(int argc,char* argv[])
 }
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s) {
-    writeSeparatedCollection(o, s.in, " ") <<" | ";
+    write_separated_collection(o, s.in, " ") <<" | ";
     if (s.out.size() < 100) {
-        writeSeparatedCollection(o, s.out, " ");
+        write_separated_collection(o, s.out, " ");
     } else {
         auto it = s.out.begin();
         for(int i=0;i<100;i++) {
@@ -241,7 +241,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         if (not subtree) {
             return {};
         }
-        addSubtree(tree->get_root(), *subtree);
+        add_subtree(tree->get_root(), *subtree);
     }
     return tree;
 }
@@ -262,18 +262,18 @@ bool is_subset(const std::set<T>& set_two, const std::set<T>& set_one)
 
 Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd)
 {
-    if (nd->getParent())
+    if (nd->get_parent())
     {
-	auto p = nd->getParent();
+	auto p = nd->get_parent();
 	auto monotypic = tree.create_child(p);
-	nd->detachThisNode();
-	monotypic->addChild(nd);
+	nd->detach_this_node();
+	monotypic->add_child(nd);
 	return monotypic;
     }
     else
     {
 	auto monotypic = tree.create_root();
-	monotypic->addChild(nd);
+	monotypic->add_child(nd);
 	return monotypic;
     }
 }
@@ -281,7 +281,7 @@ Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd)
 void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
 {
     // name root
-    summary.get_root()->setName(taxonomy.get_root()->get_name());
+    summary.get_root()->set_name(taxonomy.get_root()->get_name());
 
     // name tips
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
@@ -290,7 +290,7 @@ void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
     {
 	auto id = nd->get_ott_id();
 	auto nd2 = summaryOttIdToNode.at(id);
-	nd2->setName( nd->get_name());
+	nd2->set_name( nd->get_name());
     }
 }
 
@@ -298,8 +298,8 @@ Tree_t::node_type* find_mrca_of_desids(const set<long>& ids, const std::unordere
 {
     int first = *ids.begin();
     auto node = summaryOttIdToNode.at(first);
-    while( not is_subset(ids, node->get_data().desIds) )
-	node = node->getParent();
+    while( not is_subset(ids, node->get_data().des_ids) )
+	node = node->get_parent();
     return node;
 }
 
@@ -311,7 +311,7 @@ bool is_ancestor_of(const Tree_t::node_type* n1, const Tree_t::node_type* n2)
     if (depth(n2) > depth(n1))
     {
 	while (depth(n2) != depth(n1))
-	    n2 = n2->getParent();
+	    n2 = n2->get_parent();
 	return (n2 == n1);
     }
     else
@@ -361,14 +361,14 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
 {
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
 
-    // 1. Set the desIds for the summary
-    clearAndfillDesIdSets(summary);
+    // 1. Set the des_ids for the summary
+    clear_and_fill_des_ids(summary);
 
     // 2. Associate each summary node with all the taxon nodes with that map to it.
     map<Tree_t::node_type*, vector<const Tree_t::node_type*>> name_groups;
     for(auto n2: taxa)
     {
-	auto mrca = find_mrca_of_desids(n2->get_data().desIds, summaryOttIdToNode);
+	auto mrca = find_mrca_of_desids(n2->get_data().des_ids, summaryOttIdToNode);
 
 	if (not name_groups.count(mrca))
 	    name_groups[mrca] = {};
@@ -387,12 +387,12 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
 	while (auto max = find_unique_maximum(names))
 	{
 	    if (names.size() == 1)
-		summary_node->setName(max->get_name());
+		summary_node->set_name(max->get_name());
 	    else
 	    {
 		auto p = add_monotypic_parent(summary, summary_node);
-		p->setName(max->get_name());
-		p->get_data().desIds = p->getFirstChild()->get_data().desIds;
+		p->set_name(max->get_name());
+		p->get_data().des_ids = p->get_first_child()->get_data().des_ids;
 	    }
 	    names.erase(std::remove(names.begin(), names.end(), max), names.end());
 	}
@@ -402,7 +402,7 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
 	{
 	    // Select a specific ottid as the canonical name for this summary node
 	    auto canonical = select_canonical_ottid(names);
-	    summary_node->setName(canonical->get_name());
+	    summary_node->set_name(canonical->get_name());
 
 	    // Write out the equivalence of the remaining ottids to the canonical ottid
 	    names.erase(std::remove(names.begin(), names.end(), canonical), names.end());
@@ -425,7 +425,7 @@ template <typename Tree_t>
 vector<typename Tree_t::node_type const*> get_siblings(typename Tree_t::node_type const* nd)
 {
     vector<typename Tree_t::node_type const*> sibs;
-    for(auto sib = nd->getFirstSib(); sib; sib = sib->getNextSib()) {
+    for(auto sib = nd->get_first_sib(); sib; sib = sib->get_next_sib()) {
 	if (sib != nd) {
 	    sibs.push_back(sib);
 	}
@@ -443,15 +443,15 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 
     for(auto nd: iter_pre_const(tree)) {
 
-	if (nd->isTip()) continue;
+	if (nd->is_tip()) continue;
 
 	if (nd == tree.get_root()) continue;
 	
 	// the exclude set contain the EXCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
-	set<long> ex = exclude.at(nd->getParent());
+	set<long> ex = exclude.at(nd->get_parent());
 	for(auto nd2: get_siblings<Tree_t>(nd)) {
 	    if (not incertae_sedis.count(nd2->get_ott_id())) {
-		auto& ex_sib = nd2->get_data().desIds;
+		auto& ex_sib = nd2->get_data().des_ids;
 		ex.insert(begin(ex_sib),end(ex_sib));
 	    }
 	}
@@ -464,7 +464,7 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<long>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
-    auto all_leaves = taxonomy->get_root()->get_data().desIds;
+    auto all_leaves = taxonomy->get_root()->get_data().des_ids;
     // index -> id
     vector<long> ids;
     // id -> index
@@ -513,7 +513,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	const auto& tree = trees[i];
 
         auto root = tree->get_root();
-        const auto leafTaxa = root->get_data().desIds;
+        const auto leafTaxa = root->get_data().des_ids;
         const auto leafTaxaIndices = remap(leafTaxa);
 
 #ifndef NDEBUG
@@ -528,9 +528,9 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	    auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
 
 	    for(auto nd: iter_post_const(*tree)) {
-		if (not nd->isTip() and nd != root) {
+		if (not nd->is_tip() and nd != root) {
 		    // construct split
-		    const auto descendants = remap(nd->get_data().desIds);
+		    const auto descendants = remap(nd->get_data().des_ids);
 		    const auto nondescendants = remap(exclude[nd]);
 
 		    if (add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants) ))
@@ -541,8 +541,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	else if (i == trees.size()-1)
 	{
 	    for(auto nd: iter_post_const(*tree)) {
-		if (not nd->isTip() and nd != root) {
-		    const auto descendants = remap(nd->get_data().desIds);
+		if (not nd->is_tip() and nd != root) {
+		    const auto descendants = remap(nd->get_data().des_ids);
 
 		    if (add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices}))
 			taxa.push_back(nd);
@@ -551,8 +551,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
 	}
 	else {
 	    for(auto nd: iter_post_const(*tree)) {
-		if (not nd->isTip() and nd != root) {
-		    const auto descendants = remap(nd->get_data().desIds);
+		if (not nd->is_tip() and nd != root) {
+		    const auto descendants = remap(nd->get_data().des_ids);
 
 		    add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
 		}
@@ -563,7 +563,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<lo
     // 2. Construct final tree and add names
     auto tree = BUILD(all_leaves_indices, consistent);
     for(auto nd: iter_pre(*tree)) {
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             int index = nd->get_ott_id();
             nd->set_ott_id(ids[index]);
         }
@@ -581,7 +581,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
         map<long,string> names;
         for(const auto& tree: trees) {
             for(auto nd: iter_pre_const(*tree)) {
-                if (nd->isTip()) {
+                if (nd->is_tip()) {
                     long id = nd->get_ott_id();
                     auto it = names.find(id);
                     if (it == names.end()) {
@@ -593,21 +593,21 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
         for(const auto& n: names) {
             auto node = retTree->create_child(retTree->get_root());
             node->set_ott_id(n.first);
-            node->setName(n.second);
+            node->set_name(n.second);
         }
-        clearAndfillDesIdSets(*retTree);
+        clear_and_fill_des_ids(*retTree);
     } else {
         set<string> names;
         for(const auto& tree: trees) {
             for(auto nd: iter_pre_const(*tree)) {
-                if (nd->isTip()) {
+                if (nd->is_tip()) {
                     names.insert(nd->get_name());
                 }
             }
         }
         for(const auto& n: names) {
             auto node = retTree->create_child(retTree->get_root());
-            node->setName(n);
+            node->set_name(n);
         }
     }
     return retTree;
@@ -669,7 +669,7 @@ int main(int argc, char *argv[])
 	    LOG(DEBUG)<<"taxonomy = "<<newick(*trees.back())<<"\n";
 	}
 
-	// 4. Add fake Ott Ids to tips and compute desIds (if asked)
+	// 4. Add fake Ott Ids to tips and compute des_ids (if asked)
 	if (not rules.set_ott_ids) {
 	    auto name_to_id = create_ids_from_names(*trees.back());
 	    for(auto& tree: trees) {
@@ -689,24 +689,24 @@ int main(int argc, char *argv[])
 	// 6. Check if trees are mapping to non-terminal taxa, and either fix the situation or die.
 	for (int i = 0; i <trees.size() - 1; i++) {
 	    if (cladeTips) {
-		expandOTTInternalsWhichAreLeaves(*trees[i], *trees.back());
+		expand_ott_internals_which_are_leaves(*trees[i], *trees.back());
 	    } else {
-		requireTipsToBeMappedToTerminalTaxa(*trees[i], *trees.back());
+		require_tips_to_be_mapped_to_terminal_taxa(*trees[i], *trees.back());
 	    }
 	}
 
         // 7. Perform the synthesis
-	computeDepth(*trees.back());
+	compute_depth(*trees.back());
 	auto tree = combine(trees, incertae_sedis, verbose);
 
 	// 8. Set the root name (if asked)
 	// FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
 	if (setRootName) {
-	    tree->get_root()->setName(args["root-name"].as<string>());
+	    tree->get_root()->set_name(args["root-name"].as<string>());
 	}
 
 	// 9. Write out the summary tree.
-	writeTreeAsNewick(std::cout, *tree);
+	write_tree_as_newick(std::cout, *tree);
 	std::cout<<"\n";
 
 	return 0;

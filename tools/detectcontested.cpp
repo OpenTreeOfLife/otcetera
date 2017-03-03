@@ -28,7 +28,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         assert(tree != nullptr);
-        expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
+        expand_ott_internals_which_are_leaves(*tree, *taxonomy);
         return processExpandedTree(otCLI, *tree);
     }
 
@@ -36,7 +36,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         std::map<const NodeWithSplits *, std::set<long> > prunedDesId;
         for (auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->get_ott_id();
-            markPathToRoot(*taxonomy, ottId, prunedDesId);
+            mark_path_to_root(*taxonomy, ottId, prunedDesId);
         }
         std::map<std::set<long>, std::list<const NodeWithSplits *> > taxCladesToTaxNdList;
         for (auto & nodeSetPair : prunedDesId) {
@@ -55,11 +55,11 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         }
         std::set<std::set<long> > sourceClades;
         for (auto nd : iter_post_internal(tree)) {
-            if (nd->getParent() != nullptr && !nd->isTip()) {
-                sourceClades.insert(std::move(nd->get_data().desIds));
+            if (nd->get_parent() != nullptr && !nd->is_tip()) {
+                sourceClades.insert(std::move(nd->get_data().des_ids));
             }
         }
-        auto numLeaves = tree.get_root()->get_data().desIds.size();
+        auto numLeaves = tree.get_root()->get_data().des_ids.size();
         recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves, otCLI.currentFilename);
         return true;
     }
@@ -88,10 +88,10 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 continue;
             }
             for (const auto & sc : sourceClades) {
-                if (!areCompatibleDesIdSets(taxNodesDesSets, sc)) {
+                if (!are_compatible_des_id_sets(taxNodesDesSets, sc)) {
                     for (auto nd : ndlist) {
                         contestedSet.insert(nd);
-                        std::cerr << getContestedPreambleFromName(*nd, treeName) << '\n';
+                        std::cerr << get_contested_preamble_from_name(*nd, treeName) << '\n';
                     }
                     break;
                 }

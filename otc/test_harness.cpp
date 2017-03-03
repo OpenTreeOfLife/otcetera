@@ -17,7 +17,7 @@ TestHarness::TestHarness(int argc, char *argv[])
     }
 }
 
-int TestHarness::runTests(const TestsVec & tests) {
+int TestHarness::run_tests(const TestsVec & tests) {
     if (this->initFailed) {
         std::cerr << "ERROR: " << tests.size() << " unavaible due to incorrect initializaion of the TestHarness.\n";
         return static_cast<int>(tests.size());

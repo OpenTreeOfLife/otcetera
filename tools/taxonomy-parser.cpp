@@ -286,7 +286,7 @@ int main(int argc, char* argv[]) {
             return 0;
         } else if (args.count("write-tree")) {
             auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};
-            writeTreeAsNewick(cout, *taxonomy.get_tree<Tree_t>(nodeNamer));
+            write_tree_as_newick(cout, *taxonomy.get_tree<Tree_t>(nodeNamer));
             std::cout << std::endl;
         }
         if (args.count("write-taxonomy")) {

@@ -108,7 +108,7 @@ const SumTreeNode_t * find_mrca(const SumTreeNode_t *f,
     const auto sec_ind = s->get_data().trav_enter;
     //cerr << "f->name = " << f->get_name() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
-        f = f->getParent();
+        f = f->get_parent();
         if (f == nullptr) {
             assert(false); 
             return nullptr;
@@ -207,7 +207,7 @@ void tax_about_ws_method(const TreesToServe &tts,
 
 inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonomy & taxonomy, set<string> & usedSrcIds) {
     json lineage_arr;
-    const SumTreeNode_t * anc = focal->getParent();
+    const SumTreeNode_t * anc = focal->get_parent();
     if (!anc) {
         vector<string> c;
         j["lineage"] = c;
@@ -218,7 +218,7 @@ inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonom
         add_basic_node_info(taxonomy, *anc, ancj);
         add_node_support_info(tts, *anc, ancj, usedSrcIds);
         lineage_arr.push_back(ancj);
-        anc = anc->getParent();
+        anc = anc->get_parent();
     }
     j["lineage"] = lineage_arr;
 }
@@ -319,10 +319,10 @@ void mrca_ws_method(const TreesToServe & tts,
     set<string> usedSrcIds;
     add_node_support_info(tts, *focal, mrcaj, usedSrcIds);
     if (!focal->has_ott_id()) {
-        auto anc = focal->getParent();
+        auto anc = focal->get_parent();
         assert(anc != nullptr);
         while (!anc->has_ott_id()) {
-            anc = anc->getParent();
+            anc = anc->get_parent();
             if (anc == nullptr) {
                 response_str = "No ancestors were taxa. That is odd.\n";
                 status_code = 500;
@@ -414,7 +414,7 @@ inline void writeVisitedNewick(std::ostream & out,
                                T nd,
                                Y & nodeNamer) {
     assert(nd != nullptr);
-    if (!(nd->isTip())) {
+    if (!(nd->is_tip())) {
         bool first = true;
         for (auto c : iter_child_const(*nd)) {
             if (visited.count(c)) {
@@ -431,7 +431,7 @@ inline void writeVisitedNewick(std::ostream & out,
             out << ')';
         }
     }
-    writeEscapedForNewick(out, nodeNamer(nd));
+    write_escaped_for_newick(out, nodeNamer(nd));
 }
 
 
@@ -480,7 +480,7 @@ void induced_subtree_ws_method(const TreesToServe & tts,
         auto cnd = tni;
         while (visited.count(cnd) == 0) {
             visited.insert(cnd);
-            cnd = cnd->getParent(); 
+            cnd = cnd->get_parent(); 
         } 
     }
     const auto & taxonomy = tts.getTaxonomy();
@@ -516,7 +516,7 @@ void newick_subtree_ws_method(const TreesToServe & tts,
     json response;
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
-    writeNewickGeneric<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, height_limit);
+    write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, height_limit);
     response["newick"] = out.str();
     json ss_arr;
     for (auto study_it_ptr : nnsbs.study_id_set) {
@@ -536,7 +536,7 @@ inline void write_arguson(json & j,
                           long height_limit,
                           set<string> & usedSrcIds) {
     assert(nd != nullptr);
-    if (!(nd->isTip()) && height_limit != 0) {
+    if (!(nd->is_tip()) && height_limit != 0) {
         json c_array;
         const long nhl = height_limit - 1;
         for (auto c : iter_child_const(*nd)) {

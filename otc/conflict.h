@@ -30,10 +30,10 @@ template <typename Tree_t>
 void compute_tips(Tree_t& tree) {
     // Iterate over nodes, leaves first
     for(auto nd: iter_post(tree)) {
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             nd->get_data().n_tips = 1;
         }
-        auto p = nd->getParent();
+        auto p = nd->get_parent();
         if (p) {
             p->get_data().n_tips += nd->get_data().n_tips;
         }
@@ -96,10 +96,10 @@ void perform_conflict_analysis(const Tree_t& tree1,
     auto induced_tree1 = get_induced_tree<Tree_t>(tree1, ottid_to_node1, tree2, ottid_to_node2);
     auto induced_tree2 = get_induced_tree<Tree_t>(tree2, ottid_to_node2, tree1, ottid_to_node1);
 
-    computeDepth(*induced_tree1);
+    compute_depth(*induced_tree1);
     compute_tips(*induced_tree1);
 
-    computeDepth(*induced_tree2);
+    compute_depth(*induced_tree2);
     compute_tips(*induced_tree2);
 
     std::vector<typename Tree_t::node_type*> conflicts;
@@ -122,13 +122,13 @@ void perform_conflict_analysis(const Tree_t& tree1,
     }
 
     for(auto nd: tree_nodes) {
-        if (not nd->getParent()) {
+        if (not nd->get_parent()) {
             continue;
         }
         // Ignore knuckles in input trees.
         // (Note that in general, if we've pruned this tree down to match the shared taxon set
         //  then this could produce knuckles that were not originally there.)
-        if (nd->isOutDegreeOneNode()) {
+        if (nd->is_outdegree_one_node()) {
             continue;
         }
         // If this node contains all tips under it, then it doesn't correspond to a split.
@@ -136,11 +136,11 @@ void perform_conflict_analysis(const Tree_t& tree1,
             continue;
         }
         // If this node is a tip, the mark the corresponding nodes
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             auto nd2 = summary_node(nd);
             log_terminal(nd2, nd);
-            nd2 = nd2->getParent();
-            for(; nd2 and nd2->isOutDegreeOneNode(); nd2 = nd2->getParent()) {
+            nd2 = nd2->get_parent();
+            for(; nd2 and nd2->is_outdegree_one_node(); nd2 = nd2->get_parent()) {
                 log_terminal(nd2, nd);
             }
             continue;
@@ -173,10 +173,10 @@ void perform_conflict_analysis(const Tree_t& tree1,
         if (nodes.size() > 1) {
             for(std::size_t i=0;i<nodes.size()-1;i++) {
                 auto nd = nodes[i];
-                if (nd->isTip()) {
+                if (nd->is_tip()) {
                     n_include_tips(nd) = n_tips(nd);
                 }
-                auto p = nd->getParent();
+                auto p = nd->get_parent();
                 assert(p);
                 assert(nd != MRCA);
                 n_include_tips(p) += n_include_tips(nd);
@@ -189,11 +189,11 @@ void perform_conflict_analysis(const Tree_t& tree1,
 
         // Supported_by or partial_path_of
         if (not conflicts_or_resolved_by) {
-            assert(MRCA->getParent());
-            if (MRCA->getParent()->get_data().n_tips > MRCA->get_data().n_tips) {
+            assert(MRCA->get_parent());
+            if (MRCA->get_parent()->get_data().n_tips > MRCA->get_data().n_tips) {
                 log_supported_by(MRCA, nd);
             } else {
-                for(auto nd2 = MRCA; nd2 and nd2->get_data().n_tips == MRCA->get_data().n_tips; nd2 = nd2->getParent()) {
+                for(auto nd2 = MRCA; nd2 and nd2->get_data().n_tips == MRCA->get_data().n_tips; nd2 = nd2->get_parent()) {
                     log_partial_path_of(nd2, nd);
                 }
             }

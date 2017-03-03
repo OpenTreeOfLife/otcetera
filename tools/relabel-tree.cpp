@@ -144,14 +144,14 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
         if (nd == root) {
             throw OTCError() << "Please do not call this program with a dot tree.";
         }
-        toCheckNext.insert(nd->getParent());
-        nd->detachThisNode();
+        toCheckNext.insert(nd->get_parent());
+        nd->detach_this_node();
     }
     auto & prunedInternalSet = globalCauseToPrunedMap[string("empty-after-higher-taxon-tip-prune")];
     while (!toCheckNext.empty()) {
         set<Tree_t::node_type*> parSet;
         for (auto nd: toCheckNext) {
-            if (!nd->hasChildren()) {
+            if (!nd->has_children()) {
                 if (nd == root) {
                     throw OTCError() << "The tree was pruned to non-existence!";
                 }
@@ -160,8 +160,8 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
                 }
                 const auto ottId = nd->get_ott_id();
                 prunedInternalSet.insert(ottId);
-                parSet.insert(nd->getParent());
-                nd->detachThisNode();
+                parSet.insert(nd->get_parent());
+                nd->detach_this_node();
             }
         }
         toCheckNext.swap(parSet);
@@ -181,20 +181,20 @@ void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> p
         auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
             if (nd == tree.get_root()) {
-                if (nd->isOutDegreeOneNode()) {
-                    auto newroot = nd->getFirstChild();
-                    newroot->detachThisNode();
+                if (nd->is_outdegree_one_node()) {
+                    auto newroot = nd->get_first_child();
+                    newroot->detach_this_node();
                     tree._set_root(newroot);
                 } else {
                     throw OTCError()<<"The root has flags set for pruning, but is not monotypic!";
                 }
             }
-            while (nd->hasChildren()) {
-                auto c = nd->getFirstChild();
-                c->detachThisNode();
-                nd->addSibOnLeft(c);
+            while (nd->has_children()) {
+                auto c = nd->get_first_child();
+                c->detach_this_node();
+                nd->add_sib_on_left(c);
             }
-            nd->detachThisNode();
+            nd->detach_this_node();
         }
     }
 }
@@ -214,7 +214,7 @@ void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> pr
             if (nd == tree.get_root()) {
                 throw OTCError()<<"The root has flags set for pruning!";
             }
-            nd->detachThisNode();
+            nd->detach_this_node();
         }
     }
 }
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
             filterTreeByFlags(*tree, *taxonomy, flags);
         }
         if (args.count("del-monotypic")) {
-            suppressMonotypicFast(*tree);
+            suppress_monotypic_fast(*tree);
         }
         if (do_prune_higher) {
             pruneHigherTaxonTips(*tree, *taxonomy);
@@ -299,7 +299,7 @@ int main(int argc, char* argv[])
             } else {
                 name = format_without_taxonomy(nd->get_name(), format_unknown);
             }
-            nd->setName(std::move(name));
+            nd->set_name(std::move(name));
         }
         if (args.count("replace")) {
             string match_replace = args["replace"].as<string>();
@@ -320,10 +320,10 @@ int main(int argc, char* argv[])
             for(auto nd: iter_pre(*tree)) {
                 string name = nd->get_name();
                 name = std::regex_replace(name,match,replace);
-                nd->setName(name);
+                nd->set_name(name);
             }
         }
-        writeTreeAsNewick(cout, *tree);
+        write_tree_as_newick(cout, *tree);
         std::cout<<std::endl;
         if (json_log && !globalCauseToPrunedMap.empty()) {
             writeLog(*json_log, globalCauseToPrunedMap);

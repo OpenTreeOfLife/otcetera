@@ -142,7 +142,7 @@ bool OTCLI::handle_flag(const std::string & flagWithoutDash) {
             this->err << "Expecting an argument value after the  -f flag.\n";
             return false;
         }
-        extraArgs = readLinesOfFile(flagWithoutDash.substr(1));
+        extraArgs = read_lines_of_file(flagWithoutDash.substr(1));
     } else {
         std::cerr  << "Unrecognized flag: -" + flagWithoutDash << '\n';
         return false;

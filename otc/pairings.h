@@ -23,8 +23,8 @@ void update_ancestral_path_ott_id_set(T * nd,
             OTT Id,
         2. internal nodes in phylo tree are mapped to the least inclusive node
             in the scaffold tree that has all of the descendant OTT Ids from
-            the phylo tree. (so the phylo_node->get_data().desIds will be a subset
-            of scaffold_node->get_data().desIds)
+            the phylo tree. (so the phylo_node->get_data().des_ids will be a subset
+            of scaffold_node->get_data().des_ids)
 */
 template<typename T, typename U>
 class NodePairing {
@@ -66,7 +66,7 @@ class PathPairing {
             return;
         }
         LOG(DEBUG) << "set_ott_id_set to " << oid << "  for path " << reinterpret_cast<long>(this);
-        dbWriteOttSet("prev curr_child_ott_id_set = ", curr_child_ott_id_set);
+        db_write_ott_id_set("prev curr_child_ott_id_set = ", curr_child_ott_id_set);
         OttIdSet n;
         OttIdSet oldIds;
         std::swap(oldIds, curr_child_ott_id_set);
@@ -81,7 +81,7 @@ class PathPairing {
                                    std::map<const U *, NodeEmbedding<T, U> > & m) {
         update_ancestral_path_ott_id_set(scaffold_des, oldIds, newIds, m);
         curr_child_ott_id_set = newIds;
-        dbWriteOttSet(" update_des_ids_for_self_and_anc onExit curr_child_ott_id_set = ", curr_child_ott_id_set);
+        db_write_ott_id_set(" update_des_ids_for_self_and_anc onExit curr_child_ott_id_set = ", curr_child_ott_id_set);
     }
     bool update_ott_id_set_no_traversal(const OttIdSet & oldEls, const OttIdSet & newEls);
     PathPairing(const NodePairing<T, U> & parent,
@@ -90,9 +90,9 @@ class PathPairing {
         scaffold_anc(parent.scaffold_node),
         phylo_child(child.phylo_node),
         phylo_parent(parent.phylo_node),
-        curr_child_ott_id_set(child.phylo_node->get_data().desIds) {
-        assert(phylo_child->getParent() == phylo_parent);
-        assert(scaffold_anc == scaffold_des || isAncestorDesNoIter(scaffold_anc, scaffold_des));
+        curr_child_ott_id_set(child.phylo_node->get_data().des_ids) {
+        assert(phylo_child->get_parent() == phylo_parent);
+        assert(scaffold_anc == scaffold_des || is_ancestor_des_no_iter(scaffold_anc, scaffold_des));
     }
     PathPairing(T * scafPar,
                 U * phyPar,
@@ -101,9 +101,9 @@ class PathPairing {
         scaffold_anc(scafPar),
         phylo_child(child.phylo_node),
         phylo_parent(phyPar),
-        curr_child_ott_id_set(child.phylo_node->get_data().desIds) {
-        assert(phylo_child->getParent() == phylo_parent);
-        assert(scaffold_anc == scaffold_des || isAncestorDesNoIter(scaffold_anc, scaffold_des));
+        curr_child_ott_id_set(child.phylo_node->get_data().des_ids) {
+        assert(phylo_child->get_parent() == phylo_parent);
+        assert(scaffold_anc == scaffold_des || is_ancestor_des_no_iter(scaffold_anc, scaffold_des));
     }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
     // taxon. The curr_child_ott_id_set starts out identical to the phylogenetic node's 
@@ -113,7 +113,7 @@ class PathPairing {
         return curr_child_ott_id_set;
     }
     const OttIdSet & get_phylo_child_des_id() const {
-        return phylo_child->get_data().desIds;
+        return phylo_child->get_data().des_ids;
     }
 };
 

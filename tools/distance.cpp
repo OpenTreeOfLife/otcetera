@@ -46,14 +46,14 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
         assert(taxonomy != nullptr);
         std::set<std::set<long> > inducedSplits;
         std::set<std::set<long> > tree2Splits;
-        inducedCladeSets(*taxonomy, *tree, inducedSplits, tree2Splits, true);
+        induced_clade_sets(*taxonomy, *tree, inducedSplits, tree2Splits, true);
         unsigned long rf = 0;
         unsigned long numNotDisplayed = 0;
         const unsigned long numInternals = tree2Splits.size();
         unsigned long numDisplayed = 0;
         totalNumInternals += numInternals;
         if (showRF) {
-            rf = sizeOfSymmetricDifference(tree2Splits, inducedSplits);
+            rf = size_of_symmetric_difference(tree2Splits, inducedSplits);
             totalRF += rf;
         }
         if (showNumDisplayed || showNumNotDisplayed) {

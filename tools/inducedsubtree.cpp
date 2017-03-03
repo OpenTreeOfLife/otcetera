@@ -25,9 +25,9 @@ struct InducedSubtreeState
         vector<const Tree_t::node_type*> leaves;
         for(auto id: inducingIds)
             leaves.push_back(tax_node_map.at(id));
-        computeDepth(*taxonomy);
+        compute_depth(*taxonomy);
         auto induced_tree = get_induced_tree<Tree_t>(leaves);
-        writeTreeAsNewick(otCLI.out, *induced_tree);
+        write_tree_as_newick(otCLI.out, *induced_tree);
         otCLI.out << std::endl;
         return true;
     }

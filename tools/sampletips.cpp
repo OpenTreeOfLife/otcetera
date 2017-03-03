@@ -61,10 +61,10 @@ void writeTreesFromSampledTipsToEncodeStructureDecoratedTree(const T & tree, std
 template<typename T>
 void writeTreesFromSampledTipsOnePerInternalAllChildrenOneSib(const T & tree, std::ostream & outStream) {
     for (auto nd: iter_post_const(tree)){
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             continue;
         }
-        auto anc = findFirstForkingAnc(nd);
+        auto anc = find_first_forking_anc(nd);
         if (anc == nullptr) {
             // write a trivial statement for the root, just to make sure that all of the tips show up in one
             // tree. Without this leaves attached to the root are omitted.
@@ -77,7 +77,7 @@ void writeTreesFromSampledTipsOnePerInternalAllChildrenOneSib(const T & tree, st
         outStream << ',';
         bool found_sib = false;
         for (auto possible_sib: iter_child_const(*anc)) {
-            if ((possible_sib != nd) and (!isAncestorDesNoIter(possible_sib, nd))) {
+            if ((possible_sib != nd) and (!is_ancestor_des_no_iter(possible_sib, nd))) {
                 outStream << "ott" << smallest_child(possible_sib);
                 found_sib = true;
                 break;
@@ -116,7 +116,7 @@ void emitNewickForNamedInternal(const N * node, std::ostream & outStream, bool i
         outStream << ";\n";
     } else {
         if (node->has_ott_id()) {
-            if (node->isTip()) {
+            if (node->is_tip()) {
                 outStream << "ott" << node->get_ott_id();
             } else {
                 outStream << "ott" << smallest_child(node);
@@ -130,10 +130,10 @@ void emitNewickForNamedInternal(const N * node, std::ostream & outStream, bool i
 template<typename T>
 void writeTreesFromSampledTipsNamedInternalsOneDesPerOutgoing(const T & tree, std::ostream & outStream) {
     for (auto nd: iter_post_const(tree)){
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             continue;
         }
-        auto anc = findFirstForkingAnc(nd);
+        auto anc = find_first_forking_anc(nd);
         if (nd->has_ott_id() || anc == nullptr) {
             emitNewickForNamedInternal(nd, outStream, true);
         }

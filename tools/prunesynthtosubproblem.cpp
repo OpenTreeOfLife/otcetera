@@ -23,14 +23,14 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
         std::set<NodeWithSplits *> toPrune;
         for (auto nd : iter_node(*synthTree)) {
             const NodeWithSplits *  c = const_cast<const NodeWithSplits *>(nd);
-            if ((!contains(includedNodes, c)) && contains(includedNodes, c->getParent())) {
+            if ((!contains(includedNodes, c)) && contains(includedNodes, c->get_parent())) {
                 toPrune.insert(nd);
             }
         }
         for (auto nd : toPrune) {
-            pruneAndDelete(*synthTree, nd);
+            prune_and_delete(*synthTree, nd);
         }
-        writeTreeAsNewick(otCLI.out, *synthTree);
+        write_tree_as_newick(otCLI.out, *synthTree);
         otCLI.out << '\n';
 
         return numErrors == 0;
@@ -50,7 +50,7 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
         if (pruneInpTreesNotSynth) {
             std::string path = outDir + std::string("/") + otCLI.currentFilename;
             std::ofstream outstream(path.c_str());
-            writeTreeAsNewick(outstream, tree);
+            write_tree_as_newick(outstream, tree);
             return true;
         }
         for (const auto nd : iter_leaf_const(tree)) {
@@ -58,16 +58,16 @@ struct PruneSynthToSubproblem : public TaxonomyDependentTreeProcessor<TreeMapped
             if (nd->has_ott_id()) {
                 subproblemTipIds.insert(ottId);
             }
-            auto synthNode = synthTree->get_data().getNodeForOttId(ottId);
+            auto synthNode = synthTree->get_data().get_node_by_ott_id(ottId);
             if (synthNode != nullptr) {
                 if (!contains(includedNodes, synthNode)) {
                     includedNodes.insert(synthNode);
-                    insertAncestorsToParaphyleticSet(synthNode, includedNodes);
+                    insert_ancestors_to_paraphyletic_set(synthNode, includedNodes);
                 }
             } else {
-                auto taxoNode = taxonomy->get_data().getNodeForOttId(ottId);
+                auto taxoNode = taxonomy->get_data().get_node_by_ott_id(ottId);
                 assert(taxoNode != nullptr);
-                assert(!taxoNode->isTip());
+                assert(!taxoNode->is_tip());
                 otCLI.err << "Warning ott" << ottId << " was is an internal node that was a tip in the subproblem, but is not found in the tree being pruned.\n";
             }
         }

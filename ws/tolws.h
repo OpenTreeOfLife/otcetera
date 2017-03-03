@@ -29,7 +29,7 @@ void setTravesalEntryExit(T & tree) {
         nd->get_data().trav_enter = ind++;
     }
     for (auto pnd : iter_post(tree)) {
-        auto fc = pnd->getLastChild();
+        auto fc = pnd->get_last_child();
         auto & d = pnd->get_data();
         if (fc == nullptr) {
             d.trav_exit = d.trav_enter;
@@ -153,7 +153,7 @@ class TreesToServe {
             parsingRules.require_ott_ids = true;
             parsingRules.set_ott_ids = true;
             std::ifstream inp;
-            if (!openUTF8File(filename, inp)) {
+            if (!open_utf8_file(filename, inp)) {
                 throw OTCError("Could not open \"" + filename + "\"");
             }
             LOG(INFO) << "reading \"" << filename << "\"...";

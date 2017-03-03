@@ -75,71 +75,71 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
                      const NodeWithSplits * startSummaryNd,
                      bool isTaxoComp) {
     using CN = std::pair<NDSE, const NodeWithSplits *>;
-    const auto & ndi = nd->get_data().desIds;
+    const auto & ndi = nd->get_data().des_ids;
     assert(nd);
     if (ndi.size() == leaf_set.size()) {
-        if (nd->getParent() == nullptr) {
-            if (nd->isOutDegreeOneNode()) {
+        if (nd->get_parent() == nullptr) {
+            if (nd->is_outdegree_one_node()) {
                 if (ndi.size() == 1) {
                     return CN{NDSE::ROOT_REDUNDANT_LINE_TREE, nullptr};
                 }
                 return CN{NDSE::ROOT_REDUNDANT_ROOT_ANC, nullptr};
             }
-            if (nd->isTip()) {
+            if (nd->is_tip()) {
                 return CN{NDSE::DOT_TREE, nullptr};
             }
             return CN{NDSE::ROOT_NODE, nullptr};
         } else {
-            if (nd->isOutDegreeOneNode()) {
+            if (nd->is_outdegree_one_node()) {
                 if (ndi.size() == 1) {
                     return CN{NDSE::REDUNDANT_LINE_TREE, nullptr};
                 }
                 return CN{NDSE::REDUNDANT_ROOT_ANC, nullptr};
             }
-            if (nd->isTip()) {
+            if (nd->is_tip()) {
                 return CN{NDSE::LEAF_NODE, nullptr};
             }
             return CN{NDSE::FIRST_FORK, nullptr};
         }
     }
-    assert(nd->getParent() != nullptr);
+    assert(nd->get_parent() != nullptr);
     assert(ndi.size() > 1);
     if (startSummaryNd == nullptr) {
         const OttId firstID = *ndi.rbegin();
-        startSummaryNd = summaryTree.get_data().getNodeForOttId(firstID);
+        startSummaryNd = summaryTree.get_data().get_node_by_ott_id(firstID);
         if (startSummaryNd == nullptr) {
             std::string m = "OTT id not found ";
             m += std::to_string(firstID);
             throw OTCError(m);
         }
     }
-    if (nd->isTip()) {
+    if (nd->is_tip()) {
         return std::pair<NDSE, const NodeWithSplits *>{NDSE::LEAF_NODE, startSummaryNd};
     }
     
     const NodeWithSplits * rn = startSummaryNd;
     if (isTaxoComp) { // we are comparing against the taxonomy, so we know that the leafset is all other tips...
         for (;;) {
-            const auto & sumdi = rn->get_data().desIds;
-            if (isSubset(ndi, sumdi)) {
+            const auto & sumdi = rn->get_data().des_ids;
+            if (is_subset(ndi, sumdi)) {
                 if (sumdi.size() == ndi.size()) {
-                    if (nd->isOutDegreeOneNode()) {
+                    if (nd->is_outdegree_one_node()) {
                         return CN{NDSE::REDUNDANT_DISPLAYED, rn};
                     }
                     return CN{NDSE::FORKING_DISPLAYED, rn};
                 }
                 if (can_be_resolved_to_display_only_inc_exc_group(rn, ndi)) {
-                    if (nd->isOutDegreeOneNode()) {
+                    if (nd->is_outdegree_one_node()) {
                         return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
                     }
                     return CN{NDSE::FORKING_COULD_RESOLVE, rn};
                 }
                 break; // incompatible
             }
-            if (!isSubset(sumdi, ndi)) {
+            if (!is_subset(sumdi, ndi)) {
                 break; // incompatible
             }
-            rn = rn->getParent();
+            rn = rn->get_parent();
             if (rn == nullptr) {
                 const auto z = set_difference_as_set(ndi, sumdi);
                 auto x = *z.begin();
@@ -150,28 +150,28 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
         }
     } else {
         for (;;) {
-            const auto & sumdi = rn->get_data().desIds;
+            const auto & sumdi = rn->get_data().des_ids;
             const auto extra = set_difference_as_set(sumdi, ndi);
-            if (isSubset(ndi, sumdi)) {
-                if (areDisjoint(extra, leaf_set)) {
-                    if (nd->isOutDegreeOneNode()) {
+            if (is_subset(ndi, sumdi)) {
+                if (are_disjoint(extra, leaf_set)) {
+                    if (nd->is_outdegree_one_node()) {
                         return CN{NDSE::REDUNDANT_DISPLAYED, rn};
                     }
                     return CN{NDSE::FORKING_DISPLAYED, rn};
                 }
                 const auto exc = set_difference_as_set(leaf_set, ndi);
                 if (can_be_resolved_to_display_inc_exc_group(rn, ndi, exc)) {
-                    if (nd->isOutDegreeOneNode()) {
+                    if (nd->is_outdegree_one_node()) {
                         return CN{NDSE::REDUNDANT_COULD_RESOLVE, rn};
                     }
                     return CN{NDSE::FORKING_COULD_RESOLVE, rn};
                 }
                 break; // incompatible
             }
-            if (!areDisjoint(extra, leaf_set)) {
+            if (!are_disjoint(extra, leaf_set)) {
                 break; // incompatible
             }
-            rn = rn->getParent();
+            rn = rn->get_parent();
             if (rn == nullptr) {
                 const auto z = set_difference_as_set(ndi, sumdi);
                 auto x = *z.begin();
@@ -181,7 +181,7 @@ classifyInpNode(const TreeMappedWithSplits & summaryTree,
             }
         }
     }
-    if (nd->isOutDegreeOneNode()) {
+    if (nd->is_outdegree_one_node()) {
         return CN{NDSE::REDUNDANT_INCOMPATIBLE, rn};
     }
     return CN{NDSE::FORKING_INCOMPATIBLE, rn};
@@ -214,25 +214,25 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
     std::map<const NodeWithSplits *, NDSE> localNd2C;
     std::map<const NodeWithSplits *, NDSE> & nd2t{node2Classification == nullptr ? localNd2C : *node2Classification};
     std::map<const NodeWithSplits *, const NodeWithSplits *> nd2summaryTree;
-    const auto & treeLeafSet = inpTree.get_root()->get_data().desIds;
+    const auto & treeLeafSet = inpTree.get_root()->get_data().des_ids;
     for (auto nd : iter_post_const(inpTree)) {
         NDSE t = NDSE::END_VALUE;
-        if (nd->isTip()) {
-            if (nd->getParent() != nullptr) {
+        if (nd->is_tip()) {
+            if (nd->get_parent() != nullptr) {
                 t = NDSE::LEAF_NODE;
             } else {
                 t = NDSE::DOT_TREE;
             }
-        } else if (nd->getParent() == nullptr) {
-            if (nd->isTip()) {
+        } else if (nd->get_parent() == nullptr) {
+            if (nd->is_tip()) {
                 t = NDSE::DOT_TREE;
-            } else if (nd->isOutDegreeOneNode()) {
+            } else if (nd->is_outdegree_one_node()) {
                 t = NDSE::ROOT_REDUNDANT_ROOT_ANC;
             } else {
                 t = NDSE::ROOT_NODE;
             }
-        } else if (nd->isOutDegreeOneNode()) {
-            auto child = nd->getFirstChild();
+        } else if (nd->is_outdegree_one_node()) {
+            auto child = nd->get_first_child();
             const NDSE ct = nd2t[child];
             auto ns = nd2summaryTree.find(child);
             if (ns != nd2summaryTree.end()) {
@@ -452,10 +452,10 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
         otCLI.get_parsing_rules().require_ott_ids = false;
-        // now we get a little cute and reprocess the taxonomy desIds so that they 
+        // now we get a little cute and reprocess the taxonomy des_ids so that they 
         // exclude internals. So that when we expand source trees, we expand just
         // to the taxonomy's leaf set
-        clearAndfillDesIdSets(*taxonomy);
+        clear_and_fill_des_ids(*taxonomy);
         return true;
     }
 
@@ -465,8 +465,8 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
             summaryTree = std::move(tree);
             return true;
         }
-        requireTipsToBeMappedToTerminalTaxa(*tree, *taxonomy);
-        clearAndfillDesIdSets(*tree);
+        require_tips_to_be_mapped_to_terminal_taxa(*tree, *taxonomy);
+        clear_and_fill_des_ids(*tree);
         statsForNextTree(otCLI, *tree, false);
         return true;
     }

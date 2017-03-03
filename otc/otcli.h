@@ -80,7 +80,7 @@ inline bool process_trees(const std::string& filename,
                          std::function<bool (std::unique_ptr<T>)> treePtr)
 {
     std::ifstream inp;
-    if (!openUTF8File(filename, inp)) {
+    if (!open_utf8_file(filename, inp)) {
         throw OTCError("Could not open \"" + filename + "\"");
     }
     LOG(INFO) << "reading \"" << filename << "\"...";
@@ -94,15 +94,15 @@ inline bool process_trees(const std::string& filename,
             break;
         }
         if (parsingRules.prune_unrecognized_input_tips) {
-            pruneTipsWithoutIds(*nt);
+            prune_tips_without_ids(*nt);
             if (nt->get_root() == nullptr) {
                 continue;
             }
         }
         std::string treeName = std::string("tree ") + std::to_string(treeNumInThisFile++);
         treeName.append(" from ");
-        treeName.append(filepathToFilename(filename));
-        nt->setName(treeName);
+        treeName.append(filepath_to_filename(filename));
+        nt->set_name(treeName);
         const auto cbr = treePtr(std::move(nt));
         if (not cbr) {
             return false;
@@ -176,7 +176,7 @@ inline int tree_processing_main(OTCLI & otCLI,
                 {return treePtr(otCLI,std::move(t));};
             
             for (const auto & filename : filenameVec) {
-                otCLI.currentFilename = filepathToFilename(filename);
+                otCLI.currentFilename = filepath_to_filename(filename);
                 const auto cbr = process_trees(filename, otCLI.get_parsing_rules(), treePtr1);
                 if (not cbr) {
                     otCLI.exitCode = 2;
@@ -208,7 +208,7 @@ inline std::set<long> get_all_ott_ids(const Tree& taxonomy) {
 
 template<>
 inline std::set<long> get_all_ott_ids(const TreeMappedWithSplits &taxonomy) {
-    return taxonomy.get_root()->get_data().desIds;
+    return taxonomy.get_root()->get_data().des_ids;
 }
  
 template<typename T>

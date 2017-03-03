@@ -20,9 +20,9 @@ enum QuotingRequirementsEnum {
 };
 
 const std::string read_str_content_of_utf8_file(const std::string &filepath);
-bool openUTF8File(const std::string &filepath, std::ifstream & inp);
-std::list<std::string> readLinesOfFile(const std::string & filepath);
-std::string filepathToFilename(const std::string &filepath);
+bool open_utf8_file(const std::string &filepath, std::ifstream & inp);
+std::list<std::string> read_lines_of_file(const std::string & filepath);
+std::string filepath_to_filename(const std::string &filepath);
 
 bool char_ptr_to_long(const char *c, long *n);
 std::size_t find_first_graph_index(const std::string & s);
@@ -34,22 +34,22 @@ std::string strip_surrounding_whitespace(const std::string &n);
 //  elements. With the delimiter, consecutive delimiters will lead to an empty string
 std::list<std::string> split_string(const std::string &s);
 std::list<std::string> split_string(const std::string &s, const char delimiter);
-std::list<std::set<long> > parseDesignatorsFile(const std::string &fp);
-std::set<long> parseListOfOttIds(const std::string &fp);
+std::list<std::set<long> > parse_designators_file(const std::string &fp);
+std::set<long> parse_list_of_ott_ids(const std::string &fp);
 
-QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s);
-std::string addNewickQuotes(const std::string &s);
-std::string blanksToUnderscores(const std::string &s);
-void writeEscapedForNewick(std::ostream & out, const std::string & n);
-void writeOttSet(std::ostream & out, const char *indent, const std::set<long> &fir, const char * sep);
-void dbWriteOttSet(const char * label, const std::set<long> &fir);
-void writeOttSetDiff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
+QuotingRequirementsEnum determine_newick_quoting_requirements(const std::string & s);
+std::string add_newick_quotes(const std::string &s);
+std::string blanks_to_underscores(const std::string &s);
+void write_escaped_for_newick(std::ostream & out, const std::string & n);
+void write_ott_id_set(std::ostream & out, const char *indent, const std::set<long> &fir, const char * sep);
+void db_write_ott_id_set(const char * label, const std::set<long> &fir);
+void write_ott_id_set_diff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
 template<typename T>
 std::set<T> container_as_set(const std::vector<T> &);
 template<typename T>
-bool isSubset(const T & small, const T & big);
+bool is_subset(const T & small, const T & big);
 template<typename T, typename U>
-bool haveIntersection(const T & first, const U & second);
+bool have_intersection(const T & first, const U & second);
 template<typename T>
 std::set<T> set_intersection_as_set(const std::set<T> & small, const std::set<T> & big);
 template<typename T>
@@ -64,34 +64,34 @@ template<typename T>
 inline bool vcontains(const std::vector<T> & container, const T & key);
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
-std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimiter);
+std::set<long> parse_delim_separated_ids(const std::string &str, const char delimiter);
 
-void appendIncludeLeafSetAsNewick(const char *fn, const OttIdSet & inc, const OttIdSet & ls);
+void append_include_leaf_set_as_newick(const char *fn, const OttIdSet & inc, const OttIdSet & ls);
 template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep);
+std::ostream& write_separated_collection(std::ostream& o, const std::set<T>& s, const char * sep);
 template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep);
+std::ostream& write_separated_collection(std::ostream& o, const std::list<T>& s, const char * sep);
 template <typename T>
-std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep);
+std::ostream& write_separated_collection(std::ostream& o, const std::vector<T>& s, const char * sep);
 
 
 template<typename T>
-inline std::string getContestedPreambleFromName(const T & nd, const std::string & treeName) {
+inline std::string get_contested_preamble_from_name(const T & nd, const std::string & treeName) {
     std::ostringstream ss;
     ss << nd.get_ott_id() << " \"" << nd.get_name() << "\" contested by \"" << treeName << "\"";
     return ss.str();
 }
 
 template<typename T, typename U>
-inline std::string getContestedPreamble(const T & nd, const U & tree) {
-    return getContestedPreambleFromName(nd, tree.get_name());
+inline std::string get_contested_preamble(const T & nd, const U & tree) {
+    return get_contested_preamble_from_name(nd, tree.get_name());
 }
 
 #if defined WIDE_STR_VERSION
-const std::wstring readWStrContentOfUTF8File(const std::string &filepath);
+const std::wstring read_wstr_content_of_utf8_file(const std::string &filepath);
 bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp);
 
-inline const std::wstring readWStrContentOfUTF8File(const std::string &filepath) {
+inline const std::wstring read_wstr_content_of_utf8_file(const std::string &filepath) {
     std::wifstream inp;
     if (!openUTF8WideFile(filepath, inp)) {
         throw OTCError("Could not open \"" + filepath + "\"");
@@ -123,7 +123,7 @@ inline std::set<T> keys(const std::map<T, U> & container) {
     return k;
 }
 
-inline void writeOttSet(std::ostream & out,
+inline void write_ott_id_set(std::ostream & out,
                         const char *indent,
                         const std::set<long> &fir,
                         const char * sep) {
@@ -134,16 +134,16 @@ inline void writeOttSet(std::ostream & out,
         out << indent << "ott" << *rIt;
     }
 }
-inline void dbWriteOttSet(const char * label,
+inline void db_write_ott_id_set(const char * label,
                           const std::set<long> &fir) {
     if (!debugging_output_enabled) {
         return;
     }
     std::cerr << label;
-    writeOttSet(std::cerr, " ", fir, " ");
+    write_ott_id_set(std::cerr, " ", fir, " ");
     std::cerr << std::endl;
 }
-inline void writeOttSetDiff(std::ostream & out,
+inline void write_ott_id_set_diff(std::ostream & out,
                             const char *indent,
                             const std::set<long> &fir,
                             const char *firN,
@@ -162,7 +162,7 @@ inline void writeOttSetDiff(std::ostream & out,
 }
 
 template<typename T>
-inline bool isProperSubset(const T & small, const T & big) {
+inline bool is_proper_subset(const T & small, const T & big) {
     if (big.size() <= small.size()) {
         return false;
     }
@@ -175,7 +175,7 @@ inline bool isProperSubset(const T & small, const T & big) {
 }
 
 template<typename T>
-inline bool isSubset(const T & small, const T & big) {
+inline bool is_subset(const T & small, const T & big) {
     if (big.size() < small.size()) {
         return false;
     }
@@ -189,7 +189,7 @@ inline bool isSubset(const T & small, const T & big) {
 
 // http://stackoverflow.com/posts/1964252/revisions
 template<class Set1, class Set2>
-inline bool areDisjoint(const Set1 & set1, const Set2 & set2) {
+inline bool are_disjoint(const Set1 & set1, const Set2 & set2) {
     if (set1.empty() || set2.empty()) {
         return true;
     }
@@ -215,7 +215,7 @@ inline bool areDisjoint(const Set1 & set1, const Set2 & set2) {
 
 // http://stackoverflow.com/posts/1964252/revisions
 template<typename T, typename U>
-inline bool dsAreDisjoint(const std::map<T, U> & first,
+inline bool ds_are_disjoint(const std::map<T, U> & first,
                           const std::set<T> & second) {
     if (first.empty() || second.empty()) {
         return true;
@@ -246,7 +246,7 @@ inline bool dsAreDisjoint(const std::map<T, U> & first,
 // returns true if set1 is a subset of set2 (where the args are the iterators and
 // end iterators for each set)
 template<typename T>
-inline bool finishSubSetCompat(T & it1, const T & it1End, T & it2, const T &it2End) {
+inline bool finish_subset_compat(T & it1, const T & it1End, T & it2, const T &it2End) {
     while (it1 != it1End && it2 != it2End) {
         if (*it1 == *it2) {
             ++it1;
@@ -262,7 +262,7 @@ inline bool finishSubSetCompat(T & it1, const T & it1End, T & it2, const T &it2E
 
 // adapted http://stackoverflow.com/posts/1964252/revisions
 template<typename T>
-inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
+inline bool are_compatible_des_id_sets(const T & set1, const T & set2) {
     if (set1.size() < 2 || set2.size() < 2) {
         return true;
     }
@@ -287,23 +287,23 @@ inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
                     // otherwise, they are only compatible if the
                     //  smaller set is a subset of the other.
                     if (set1.size() < set2.size()) {
-                        return finishSubSetCompat(it1, it1End, it2, it2End);
+                        return finish_subset_compat(it1, it1End, it2, it2End);
                     } else {
-                        return finishSubSetCompat(it2, it2End, it1, it1End);
+                        return finish_subset_compat(it2, it2End, it1, it1End);
                     }
                 } else {
                     // did not match first el of set2, so only compat if set1 is in set2
                     if (set2.size() < set1.size()) {
                         return false;
                     }
-                    return finishSubSetCompat(it1, it1End, it2, it2End);
+                    return finish_subset_compat(it1, it1End, it2, it2End);
                 }
             } else if (it2 == set2.begin()) {
                 // did not match first el of set1, so only compat if set2 is in set1
                 if (set1.size() < set2.size()) {
                     return false;
                 }
-                return finishSubSetCompat(it2, it2End, it1, it1End);
+                return finish_subset_compat(it2, it2End, it1, it1End);
             } else {
                 // first intersection is not the first element of either,
                 //   so one can't be a subset of the other...
@@ -321,14 +321,14 @@ inline bool areCompatibleDesIdSets(const T & set1, const T & set2) {
 
 
 template<typename T>
-inline bool haveIntersection(const T & first, const T & second) {
-    return !areDisjoint<T>(first, second);
+inline bool have_intersection(const T & first, const T & second) {
+    return !are_disjoint<T>(first, second);
 }
 
 template<typename T, typename U>
-inline bool dsHaveIntersection(const std::map<T, U> & first,
+inline bool ds_have_intersection(const std::map<T, U> & first,
                                const std::set<T> & second) {
-    return !dsAreDisjoint<T>(first, second);
+    return !ds_are_disjoint<T>(first, second);
 }
 
 template<typename T>
@@ -411,7 +411,7 @@ inline std::string strip_surrounding_whitespace(const std::string &n) {
 }
 
 
-inline QuotingRequirementsEnum determineNewickQuotingRequirements(const std::string & s) {
+inline QuotingRequirementsEnum determine_newick_quoting_requirements(const std::string & s) {
     QuotingRequirementsEnum nrq = NO_QUOTES_NEEDED;
     for (const auto & c : s) {
         if (!isgraph(c)) {
@@ -428,7 +428,7 @@ inline QuotingRequirementsEnum determineNewickQuotingRequirements(const std::str
     return nrq;
 }
 
-inline std::string addNewickQuotes(const std::string &s) {
+inline std::string add_newick_quotes(const std::string &s) {
     std::string withQuotes;
     unsigned len = static_cast<unsigned>(s.length());
     withQuotes.reserve(len + 4);
@@ -443,26 +443,26 @@ inline std::string addNewickQuotes(const std::string &s) {
     return withQuotes;
 }
 
-inline std::string blanksToUnderscores(const std::string &s) {
+inline std::string blanks_to_underscores(const std::string &s) {
     std::string r{s};
     std::replace(begin(r), end(r), ' ', '_');
     return r;
 }
 
-inline void writeEscapedForNewick(std::ostream & out, const std::string & n) {
-    const QuotingRequirementsEnum r = determineNewickQuotingRequirements(n);
+inline void write_escaped_for_newick(std::ostream & out, const std::string & n) {
+    const QuotingRequirementsEnum r = determine_newick_quoting_requirements(n);
     if (r == NO_QUOTES_NEEDED) {
         out << n;
     } else if (r == UNDERSCORE_INSTEAD_OF_QUOTES) {
-        out << blanksToUnderscores(n);
+        out << blanks_to_underscores(n);
     } else {
-        out << addNewickQuotes(n);
+        out << add_newick_quotes(n);
     }
 }
 
 
 template<typename T>
-inline T intersectionOfSets(const T & first, const T &sec) {
+inline T intersection_of_sets(const T & first, const T &sec) {
     T intersection;
     std::set_intersection(first.begin(), first.end(),
                           sec.begin(), sec.end(),
@@ -470,7 +470,7 @@ inline T intersectionOfSets(const T & first, const T &sec) {
     return intersection;
 }
 template<typename T>
-inline std::size_t sizeOfSymmetricDifference(const T & first, const T &sec) {
+inline std::size_t size_of_symmetric_difference(const T & first, const T &sec) {
     T diff;
     std::set_symmetric_difference(first.begin(), first.end(),
                                   sec.begin(), sec.end(),
@@ -479,7 +479,7 @@ inline std::size_t sizeOfSymmetricDifference(const T & first, const T &sec) {
 }
 
 template <typename T>
-inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>& s, const char * sep) {
+inline std::ostream& write_separated_collection(std::ostream& o, const std::set<T>& s, const char * sep) {
     auto it = s.begin();
     o << *it++;
     for(; it != s.end(); it++) {
@@ -489,7 +489,7 @@ inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::set<T>
 }
 
 template <typename T>
-inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T>& s, const char * sep) {
+inline std::ostream& write_separated_collection(std::ostream& o, const std::list<T>& s, const char * sep) {
     auto it = s.begin();
     o << *it++;
     for(; it != s.end(); it++) {
@@ -499,7 +499,7 @@ inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::list<T
 }
 
 template <typename T>
-inline std::ostream& writeSeparatedCollection(std::ostream& o, const std::vector<T>& s, const char * sep) {
+inline std::ostream& write_separated_collection(std::ostream& o, const std::vector<T>& s, const char * sep) {
     auto it = s.begin();
     o << *it++;
     for(; it != s.end(); it++) {

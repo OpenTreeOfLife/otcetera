@@ -9,7 +9,7 @@ template<typename T>
 inline bool writeDegreeDistribution(OTCLI & otCLI, std::unique_ptr<T> tree) {
     std::map<unsigned long, unsigned long> degreeDistribution;
     for (auto nd : iter_pre_const(*tree)) {
-        auto od = nd->getOutDegree();
+        auto od = nd->get_out_degree();
         degreeDistribution[od] += 1;
     }
     otCLI.out << "Out-degree\tCount\n";

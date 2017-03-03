@@ -117,7 +117,7 @@ void show_leaf_nodes(const Tree_t& T) {
 
 void show_internal_nodes(const Tree_t& T) {
     for(auto nd: iter_post_const(T))
-	if (nd->get_name().size() and not nd->isTip())
+	if (nd->get_name().size() and not nd->is_tip())
 	    std::cout<<nd->get_name()<<"\n";
 }
 
@@ -126,9 +126,9 @@ void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
     std::map<const Tree_t::node_type*, long> nd2Indent;
     long count = 0;
     for(auto nd: iter_post_const(tree)){
-        auto p = nd->getParent();
+        auto p = nd->get_parent();
         if (p) {
-            if (nd->isTip()) {
+            if (nd->is_tip()) {
                 nd2numLeaves[p] += 1;
             } else {
                 nd2numLeaves[p] += nd2numLeaves[nd];
@@ -136,10 +136,10 @@ void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
         }
     }
     for(auto nd: iter_pre_const(tree)){
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             continue;
         }
-        auto p = nd->getParent();
+        auto p = nd->get_parent();
         if (p) {
             nd2Indent[nd] = 2 + nd2Indent[p];
         } else {
@@ -182,7 +182,7 @@ Tree_t::node_type* find_node_by_name(Tree_t& tree, const string& name)
 unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long root_ott_id)
 {
     auto root = find_node_by_ott_id(*tree, root_ott_id);
-    root->detachThisNode();
+    root->detach_this_node();
     unique_ptr<Tree_t> tree2 (new Tree_t);
     tree2->_set_root(root);
     return tree2;
@@ -193,15 +193,15 @@ unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
                               const std::vector<long> & tips) {
     for (auto t_ott_id : tips) {
         auto tn = find_node_by_ott_id(*tree, t_ott_id);
-        if (tn && !tn->isTip()) {
+        if (tn && !tn->is_tip()) {
             const auto children = all_children(tn);
             for (auto c : children) {
-                c->detachThisNode();
+                c->detach_this_node();
             }
         }
     }
     auto root = find_node_by_ott_id(*tree, root_ott_id);
-    root->detachThisNode();
+    root->detach_this_node();
     unique_ptr<Tree_t> tree2 (new Tree_t);
     tree2->_set_root(root);
     return tree2;
@@ -213,7 +213,7 @@ void show_high_degree_nodes(const Tree_t& tree, int n)
     std::multimap<long,std::string> nodes;
     for(auto nd: iter_pre_const(tree))
     {
-        auto outdegree = nd->getOutDegree();
+        auto outdegree = nd->get_out_degree();
         if (outdegree > 1)
             nodes.insert({outdegree,nd->get_name()});
     }
@@ -278,8 +278,8 @@ void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
     {
       tf<<nd->get_ott_id();
       /* */ tf<<sep;
-      if (nd->getParent())
-	tf<<nd->getParent()->get_ott_id();
+      if (nd->get_parent())
+	tf<<nd->get_parent()->get_ott_id();
       /* */ tf<<sep;
       tf<<remove_ott_suffix(nd->get_name());
       /* */ tf<<sep;
@@ -339,17 +339,17 @@ int main(int argc, char* argv[])
         } else if (args.count("degree-of")) {
             long n = args["degree-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
-            std::cout<<nd->getOutDegree()<<"\n";
+            std::cout<<nd->get_out_degree()<<"\n";
         } else if (args.count("children-of")) {
             long n = args["children-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
-            for(auto c = nd->getFirstChild(); c; c = c->getNextSib())
+            for(auto c = nd->get_first_child(); c; c = c->get_next_sib())
                 std::cout<<c->get_name()<<"\n";
         } else if (args.count("parent-of")) {
             long n = args["parent-of"].as<long>();
             auto nd = find_node_by_ott_id(*tree, n);
-            if (nd->getParent())
-                std::cout<<nd->getParent()->get_name()<<"\n";
+            if (nd->get_parent())
+                std::cout<<nd->get_parent()->get_name()<<"\n";
             else
                 std::cout<<"No parent: that node is the root.\n";
         } else if (args.count("count-nodes")) {
@@ -368,7 +368,7 @@ int main(int argc, char* argv[])
             string dirname = args["write-taxonomy"].as<string>();
             writeTreeAsTaxonomy(dirname, *tree);
         } else {
-            writeTreeAsNewick(std::cout, *tree);
+            write_tree_as_newick(std::cout, *tree);
             std::cout << std::endl;
         }
     }

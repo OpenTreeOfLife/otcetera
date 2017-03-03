@@ -16,9 +16,9 @@ class TestValidTreeStruct {
             :filename(fn) {
         }
         char runTest(const TestHarness &h) const {
-            auto fp = h.getFilePath(filename);
+            auto fp = h.get_filepath(filename);
             std::ifstream inp;
-            if (!openUTF8File(fp, inp)) {
+            if (!open_utf8_file(fp, inp)) {
                 return 'U';
             }
             ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
@@ -35,11 +35,11 @@ class TestValidTreeStruct {
             EmbeddedTree et;
             Tree_t fakeScaffold;
             auto r = fakeScaffold.create_root();
-            auto & fsd = fakeScaffold.get_data().ottIdToNode;
+            auto & fsd = fakeScaffold.get_data().ott_id_to_node;
             std::set<long> ids;
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
-                const OttIdSet & td = tree.get_root()->get_data().desIds;
+                const OttIdSet & td = tree.get_root()->get_data().des_ids;
                 for (auto oid : td) {
                     if (!contains(ids, oid)) {
                         fsd[oid] = fakeScaffold.create_child(r);
@@ -61,17 +61,17 @@ class TestValidTreeStruct {
                 const Tree_t & tree = *tp;
                 const OttIdSet * incGroup = nullptr;
                 for (auto nd : iter_child(*tree.get_root())) {
-                    if (!nd->isTip()) {
+                    if (!nd->is_tip()) {
                         if (incGroup != nullptr) {
                             return 'F';
                         }
-                        incGroup = &(nd->get_data().desIds);
+                        incGroup = &(nd->get_data().des_ids);
                     }
                 }
                 if (incGroup == nullptr) {
                     return 'F';
                 }
-                const OttIdSet & leaf_set = tree.get_root()->get_data().desIds;
+                const OttIdSet & leaf_set = tree.get_root()->get_data().des_ids;
                 std::cerr << groupInd + 1 << '\n';
                 gpf.attempt_to_add_grouping(*incGroup, leaf_set, treeInd, groupInd++, nullptr);
             }
@@ -103,6 +103,6 @@ int main(int argc, char *argv[]) {
         const TestFn tf{fn, tcb};
         tests.push_back(tf);
     }
-    return th.runTests(tests);
+    return th.run_tests(tests);
 }
 

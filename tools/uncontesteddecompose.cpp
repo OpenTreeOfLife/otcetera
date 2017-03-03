@@ -21,12 +21,12 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
     }
 
     void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc, json * documentP) {
-        assert(!scaffoldNd->isTip());
+        assert(!scaffoldNd->is_tip());
         auto & thr = _get_embedding_for_node(scaffoldNd);
 
-        LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->get_ott_id() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.get_num_loop_trees() << " numLoops = " << thr.get_total_num_loops();
+        LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->get_ott_id() << " outdegree = " << scaffoldNd->get_out_degree() << " numLoopTrees = " << thr.get_num_loop_trees() << " numLoops = " << thr.get_total_num_loops();
         if (thr.is_contested()) {
-            //auto p = scaffoldNd->getParent();
+            //auto p = scaffoldNd->get_parent();
             LOG(INFO) << "    Contested";
             if (documentP != nullptr) {
                 auto treeIndToContestingNodeMap = thr.get_how_tree_contests_monophyly_maps();
@@ -56,13 +56,13 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             thr.collapse_group(*scaffoldNd, sc);
         } else {
             //thr.debug_node_embeddings(" focal node before export", false, scaffoldNdToNodeEmbedding);
-            //if (scaffoldNd->getParent()) {
-            //    _get_embedding_for_node(scaffoldNd->getParent()).debug_node_embeddings(" parent before export", true, scaffoldNdToNodeEmbedding);
+            //if (scaffoldNd->get_parent()) {
+            //    _get_embedding_for_node(scaffoldNd->get_parent()).debug_node_embeddings(" parent before export", true, scaffoldNdToNodeEmbedding);
             //}
             LOG(INFO) << "    Uncontested";
             auto fn = thr.export_subproblem_and_resolve(*scaffoldNd, exportDir, exportStream, sc);
-            //if (scaffoldNd->getParent()) {
-            //    _get_embedding_for_node(scaffoldNd->getParent()).debug_node_embeddings("after export", true, scaffoldNdToNodeEmbedding);
+            //if (scaffoldNd->get_parent()) {
+            //    _get_embedding_for_node(scaffoldNd->get_parent()).debug_node_embeddings("after export", true, scaffoldNdToNodeEmbedding);
             //}
             if ((subproblemIdStream != nullptr) && (!fn.empty())) {
                 *subproblemIdStream << fn << '\n';
@@ -78,10 +78,10 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         }
         std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post(*taxonomy)) {
-            if (nd->isTip()) {
+            if (nd->is_tip()) {
                 assert(nd->has_ott_id());
                 // this is only needed for monotypic cases in which a tip node
-                //  may have multiple OTT Ids in its desIds set
+                //  may have multiple OTT Ids in its des_ids set
                 _get_embedding_for_node(nd).set_ott_id_for_exit_embeddings(nd,
                                                                    nd->get_ott_id(),
                                                                    scaffoldNdToNodeEmbedding);
@@ -91,7 +91,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             //_get_embedding_for_node(nd).debug_node_embeddings(" getting postorder", true, scaffoldNdToNodeEmbedding);
         }
         for (auto nd : postOrder) {
-            assert(!nd->isTip());
+            assert(!nd->is_tip());
             exportOrCollapse(nd, sc, documentP);
         }
     }

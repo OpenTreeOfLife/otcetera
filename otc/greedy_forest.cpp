@@ -67,11 +67,11 @@ void GreedyBandedForest<T, U>::finish_resolution_of_embedded_clade(U & scaffold_
     debug_invariants_check();
     assert(trees.size() == 1);
     auto & resolvedTree = begin(trees)->second;
-    const auto beforePar = scaffold_node.getParent();
+    const auto beforePar = scaffold_node.get_parent();
     check_all_node_pointers_iter(scaffold_node);
     copy_structure_to_resolve_polytomy(resolvedTree.get_root(), sc->scaffold_tree, &scaffold_node, sc);
     check_all_node_pointers_iter(scaffold_node);
-    assert(beforePar == scaffold_node.getParent());
+    assert(beforePar == scaffold_node.get_parent());
     // merge multiple exit paths (if needed) and remap all path pairings out of this node...
     embedding->merge_exit_embeddings_if_multiple();
     embedding->set_ott_id_for_exit_embeddings(&scaffold_node, snoid, sc->scaffold_to_node_embedding);
@@ -83,14 +83,14 @@ void GreedyBandedForest<T, U>::finalize_tree(SupertreeContextWithSplits *sc) {
     debug_invariants_check();
     auto roots = get_roots();
     for (auto r : roots) {
-        LOG(DEBUG) << " tree-in-forest = "; dbWriteNewick(r);
+        LOG(DEBUG) << " tree-in-forest = "; db_write_newick(r);
     }
     if (trees.size() > 1) {
         LOG(WARNING) << "finalize_tree is not well thought out. merging of multiple trees is questionable.";
         const char * dbfn = "real-forest-in-finalize_tree.dot";
         LOG(WARNING) << "  should be writing DOT to " << dbfn;
         //std::ofstream outf(dbfn);
-        //writeDOTForest(outf, *this);
+        //write_dot_forest(outf, *this);
         //outf.close();
         merge_forest(sc);
         LOG(WARNING) << "finished questionable merge_forest.";
@@ -103,8 +103,8 @@ void GreedyBandedForest<T, U>::finalize_tree(SupertreeContextWithSplits *sc) {
     roots = get_roots();
     assert(roots.size() == 1);
     auto onlyRoot = *roots.begin();
-    onlyRoot->get_data().desIds = ott_id_set;
-    LOG(DEBUG)<< " finalized-tree-from-forest = "; dbWriteNewick(onlyRoot);
+    onlyRoot->get_data().des_ids = ott_id_set;
+    LOG(DEBUG)<< " finalized-tree-from-forest = "; db_write_newick(onlyRoot);
 }
 
 
@@ -115,7 +115,7 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
                                     SupertreeContextWithSplits * sc) {
     assert(sc != nullptr);
     std::map<const T *, typename U::node_type *> gpf2scaff;
-    std::map<long, typename U::node_type *> & dOttIdToNode = destTree.get_data().ottIdToNode;
+    std::map<long, typename U::node_type *> & dOttIdToNode = destTree.get_data().ott_id_to_node;
     LOG(DEBUG) << " adding " << srcPoly;
     LOG(DEBUG) << " copying structure to resolve " << destPoly->get_ott_id();
     gpf2scaff[srcPoly] = destPoly;
@@ -123,7 +123,7 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
         if (sn == srcPoly) {
             continue;
         }
-        auto sp = sn->getParent();
+        auto sp = sn->get_parent();
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
         if (sn->has_ott_id() && sn->get_ott_id() > 0) { // might assign negative number to nodes created in synth...
@@ -133,18 +133,18 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
             //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->get_ott_id();
             assert(dn != destPoly);
             if (contains(sc->detached_scaffold_nodes, dn)) {
-                assert(not dn->getFirstChild());
-                assert(not dn->getNextSib());
+                assert(not dn->get_first_child());
+                assert(not dn->get_next_sib());
                 sc->detached_scaffold_nodes.erase(dn);
-                sc->scaffold_tree.markAsAttached(dn);
+                sc->scaffold_tree.mark_as_attached(dn);
             }
-            if (dn->getParent() != dp) {
-                if (dn->getParent() != nullptr) {
-                    dn->detachThisNode();
-                    sc->scaffold_tree.markAsDetached(dn);
+            if (dn->get_parent() != dp) {
+                if (dn->get_parent() != nullptr) {
+                    dn->detach_this_node();
+                    sc->scaffold_tree.mark_as_detached(dn);
                 }
-                assert(dn->getNextSib() == nullptr);
-                dp->addChild(dn);
+                assert(dn->get_next_sib() == nullptr);
+                dp->add_child(dn);
             }
         } else {
             dn = destTree.create_child(dp);
@@ -289,13 +289,13 @@ void GreedyBandedForest<T, U>::merge_trees_to_first_post_band_handling(Supertree
     auto trIt = begin(trees);
     auto & firstTree = trIt->second;
     auto firstTreeRoot = firstTree.get_root();
-    OttIdSet idsIncluded = firstTreeRoot->get_data().desIds;
+    OttIdSet idsIncluded = firstTreeRoot->get_data().des_ids;
     for (++trIt; trIt != end(trees);) {
         debug_invariants_check();
         auto & currTree = trIt->second;
         auto currTreeRoot = currTree.get_root();
-        assert(currTreeRoot->getParent() == nullptr);
-        assert(!currTreeRoot->isTip());
+        assert(currTreeRoot->get_parent() == nullptr);
+        assert(!currTreeRoot->is_tip());
         auto p = move_all_children(currTreeRoot, currTree, firstTreeRoot, firstTree, nullptr);
         firstTreeRoot = p.first;
         currTreeRoot = currTree.get_root();
@@ -326,7 +326,7 @@ bool GreedyBandedForest<T, U>::merge_single_banded_tree(
     debug_invariants_check();
     const auto t2n = get_tree_to_node_map_for_band(*band);
     auto dn = const_cast<NodeWithSplits *>(t2n.at(&donorTree));
-    auto dp = dn->getParent();
+    auto dp = dn->get_parent();
     auto rn = const_cast<NodeWithSplits *>(t2n.at(&recipientTree));
     const auto & beforePhantomsRN = band->get_phantom_nodes(rn);
     const auto & beforePhantomsDN = band->get_phantom_nodes(dn);
@@ -342,7 +342,7 @@ bool GreedyBandedForest<T, U>::merge_single_banded_tree(
         movedIDSet.insert(mel->get_ott_id());
     }
     remove_des_ids_from_node_and_anc(dn, movedIDSet);
-    dbWriteOttSet(" movedIDSet =", movedIDSet);
+    db_write_ott_id_set(" movedIDSet =", movedIDSet);
     rn = p.first;
     band->remove_node(dn);
     band->remove_from_set(rn, movedNodeSet);
@@ -358,7 +358,7 @@ bool GreedyBandedForest<T, U>::merge_single_banded_tree(
             donorTree._set_root(nullptr);
             r = false;
         } else {
-            dn->detachThisNode();
+            dn->detach_this_node();
         }
     } else {
         r = zip_paths_from_barren_node(donorTree,
@@ -406,7 +406,7 @@ std::pair<NodeWithSplits *, NodeWithSplits*> GreedyBandedForest<T, U>::move_all_
         transfer_subtree_in_forest(currChild, donorTree, attachmentPoint, recipientTree, &donorTree, bandBeingMerged);
         LOG(DEBUG) << "Back from transfer_subtree_in_forest";
     }
-    assert(not donorParent->getFirstChild());
+    assert(not donorParent->get_first_child());
     return std::pair<NodeWithSplits *, NodeWithSplits*>{recipientNode, attachmentPoint};
 }
 
@@ -423,12 +423,12 @@ GreedyBandedForest<T, U>::find_grandparent_that_is_root_or_band_sharing(
             FTree<RTSplits, MappedWithSplitsData> &recipientTree) {
     assert(nd != nullptr);
     std::pair<NodeWithSplits *, NodeWithSplits *> r{nullptr, nullptr};
-    auto anc = nd->getParent();
-    if (anc == nullptr || anc->getParent() == nullptr) {
+    auto anc = nd->get_parent();
+    if (anc == nullptr || anc->get_parent() == nullptr) {
         return r;
     }
     for (auto a : iter_anc(*nd)) {
-        if (a->getParent() == nullptr) {
+        if (a->get_parent() == nullptr) {
             r.first = a;
             r.second = recipientTree.get_root();
             return r;
@@ -456,47 +456,47 @@ void GreedyBandedForest<T, U>::transfer_subtree_in_forest(
                 FTree<RTSplits, MappedWithSplitsData> *donorTree,
                 InterTreeBand<RTSplits> * bandBeingMerged) {
     assert(des != nullptr);
-    auto oldPar = des->getParent();
-    //LOG(DEBUG) << "top transfer_subtree_in_forest pre des == " << getDesignator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
+    auto oldPar = des->get_parent();
+    //LOG(DEBUG) << "top transfer_subtree_in_forest pre des == " << get_designator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
     //LOG(DEBUG) << "                            newPar " << (long) newPar << " " << std::hex << (long) newPar << std::dec;
     //LOG(DEBUG) << "                            oldPar " << (long) oldPar << " " << std::hex << (long) oldPar << std::dec;
     //LOG(DEBUG) << "    newick of newPar before actions of transfer_subtree_in_forest";
-    //dbWriteNewick(newPar);
+    //db_write_newick(newPar);
     //LOG(DEBUG) << "    newick of oldPar before actions of transfer_subtree_in_forest";
-    //dbWriteNewick(oldPar);
-    //dbWriteOttSet("    on entry des->desIds", des->get_data().desIds);
-    //dbWriteOttSet("    on entry newPar->desIds", newPar->get_data().desIds);
-    //dbWriteOttSet("    on entry oldPar->desIds", oldPar->get_data().desIds);
+    //db_write_newick(oldPar);
+    //db_write_ott_id_set("    on entry des->des_ids", des->get_data().des_ids);
+    //db_write_ott_id_set("    on entry newPar->des_ids", newPar->get_data().des_ids);
+    //db_write_ott_id_set("    on entry oldPar->des_ids", oldPar->get_data().des_ids);
     if (bandBeingMerged == nullptr) {
         debug_invariants_check();
     }
     assert(des != nullptr);
     assert(newPar != nullptr);
     if (donorTree == nullptr) {
-        if (isAncestorDesNoIter(possDonor.get_root(), des)) {
+        if (is_ancestor_des_no_iter(possDonor.get_root(), des)) {
             donorTree = &possDonor;
         } else {
-            assert(isAncestorDesNoIter(recipientTree.get_root(), des));
+            assert(is_ancestor_des_no_iter(recipientTree.get_root(), des));
             donorTree = &recipientTree;
         }
     }
     assert(!recipientTree.is_excluded_from(des, newPar));
     assert(get_tree_for_node(des) == donorTree);
-    des->detachThisNode();
+    des->detach_this_node();
     if (bandBeingMerged == nullptr) {
-        dbWriteOttSet(" des pre add_and_update_child", des->get_data().desIds);
-        dbWriteOttSet(" newPar pre add_and_update_child", newPar->get_data().desIds);
+        db_write_ott_id_set(" des pre add_and_update_child", des->get_data().des_ids);
+        db_write_ott_id_set(" newPar pre add_and_update_child", newPar->get_data().des_ids);
     }
     add_and_update_child(newPar, des, recipientTree);
     if (bandBeingMerged == nullptr) {
-        dbWriteOttSet(" des pre loop", des->get_data().desIds);
-        dbWriteOttSet(" newPar pre loop", newPar->get_data().desIds);
+        db_write_ott_id_set(" des pre loop", des->get_data().des_ids);
+        db_write_ott_id_set(" newPar pre loop", newPar->get_data().des_ids);
     }
     if (oldPar != nullptr) {
-        remove_des_ids_from_node_and_anc(oldPar, des->get_data().desIds);
+        remove_des_ids_from_node_and_anc(oldPar, des->get_data().des_ids);
     }
     if (bandBeingMerged == nullptr) {
-        dbWriteOttSet(" oldPar post remove_des_ids_from_node_and_anc", oldPar->get_data().desIds);
+        db_write_ott_id_set(" oldPar post remove_des_ids_from_node_and_anc", oldPar->get_data().des_ids);
     }
     if (donorTree != &recipientTree) {
         recipientTree.steal_exclusion_statements(newPar, oldPar, *donorTree);
@@ -504,19 +504,19 @@ void GreedyBandedForest<T, U>::transfer_subtree_in_forest(
         if (oldPar != nullptr) {
             remove_des_ids_from_node_and_anc(oldPar, oids);
         }
-        newPar->get_data().desIds.insert(begin(oids), end(oids));
+        newPar->get_data().des_ids.insert(begin(oids), end(oids));
         for (auto nd : iter_pre_n(des)) {
             register_tree_for_node(nd, &recipientTree);
             recipientTree.register_exclusion_statement_for_transferring_node(nd, *donorTree);
             recipientTree.register_inclusion_statement_for_transferring_node(nd, *donorTree);
         }
     }
-    if (newPar->getParent()) {
-        add_des_ids_to_node_and_anc(newPar->getParent(), newPar->get_data().desIds);
+    if (newPar->get_parent()) {
+        add_des_ids_to_node_and_anc(newPar->get_parent(), newPar->get_data().des_ids);
     }
     if (bandBeingMerged == nullptr) {
         LOG(DEBUG) << "after actions of transfer_subtree_in_forest";
-        dbWriteNewick(newPar);
+        db_write_newick(newPar);
         LOG(DEBUG) << "transfer_subtree_in_forest post";
         debug_invariants_check();
         LOG(DEBUG) << "transfer_subtree_in_forest exiting";
@@ -536,12 +536,12 @@ bool GreedyBandedForest<T, U>::zip_paths_from_barren_node(
     auto currAttachPoint = recipientDes;
     bool hitDeepest = false;
     while (currDoomedChild != donorAnc) {
-        auto nextDoomedChild = currDoomedChild->getParent();
+        auto nextDoomedChild = currDoomedChild->get_parent();
         if (hitDeepest || currAttachPoint == recipientAnc) {
             hitDeepest = true;
             currAttachPoint = recipientTree.create_deeper_node(currAttachPoint);
         } else {
-            currAttachPoint = currAttachPoint->getParent();
+            currAttachPoint = currAttachPoint->get_parent();
             assert(currAttachPoint != nullptr);
         }
         currAttachPoint = move_all_sibs(currDoomedChild, donorTree, currAttachPoint, recipientTree, sc);
@@ -554,17 +554,17 @@ bool GreedyBandedForest<T, U>::zip_paths_from_barren_node(
         hitDeepest = true;
         currAttachPoint = recipientTree.create_deeper_node(currAttachPoint);
     } else {
-        currAttachPoint = currAttachPoint->getParent();
+        currAttachPoint = currAttachPoint->get_parent();
         assert(currAttachPoint != nullptr);
     }
-    auto dp = donorAnc->getParent();
+    auto dp = donorAnc->get_parent();
     OttIdSet dpoids;
     for (auto dac : iter_anc(*donorAnc)) {
-        auto & dacdi = dac->get_data().desIds;
+        auto & dacdi = dac->get_data().des_ids;
         dpoids.insert(begin(dacdi), end(dacdi));
     }
     move_all_children(donorAnc, donorTree, currAttachPoint, recipientTree, nullptr);
-    dbWriteOttSet("   donorAnc = ", dpoids);
+    db_write_ott_id_set("   donorAnc = ", dpoids);
     remove_des_ids_from_node_and_anc(donorAnc, dpoids);
     if (dp == nullptr) {
         donorTree._set_root(nullptr);
@@ -581,16 +581,16 @@ NodeWithSplits * GreedyBandedForest<T, U>::move_all_sibs(
             NodeWithSplits * attachPoint,
             FTree<RTSplits, MappedWithSplitsData> &recipientTree,
             SupertreeContextWithSplits *) {
-    auto dp = donorC->getParent();
+    auto dp = donorC->get_parent();
     assert(dp != nullptr);
     OttIdSet dpoids;
     for (auto c :iter_child(*dp)) {
-        dpoids.insert(begin(c->get_data().desIds), end(c->get_data().desIds));
+        dpoids.insert(begin(c->get_data().des_ids), end(c->get_data().des_ids));
     }
-    donorC->detachThisNode();
+    donorC->detach_this_node();
     auto p = move_all_children(dp, donorTree, attachPoint, recipientTree, nullptr);
-    assert(not dp->getFirstChild());
-    dbWriteOttSet("   dpoids =", dpoids);
+    assert(not dp->get_first_child());
+    db_write_ott_id_set("   dpoids =", dpoids);
     remove_des_ids_from_node_and_anc(dp, dpoids);
     register_tree_for_node(donorC, nullptr);
     if (dp == nullptr) {

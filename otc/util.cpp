@@ -15,7 +15,7 @@ namespace otc {
 
 const std::string read_str_content_of_utf8_file(const std::string &filepath) {
 #if defined WIDE_STR_VERSION
-    const std::wstring utf8content = readWStrContentOfUTF8File(filepath);
+    const std::wstring utf8content = read_wstr_content_of_utf8_file(filepath);
     const std::locale empty_locale("");
     typedef std::codecvt<wchar_t, char, std::mbstate_t> converter_type;
     const converter_type & converter = std::use_facet<converter_type>(empty_locale);
@@ -47,7 +47,7 @@ const std::string read_str_content_of_utf8_file(const std::string &filepath) {
 #endif
 }
 
-bool openUTF8File(const std::string &filepath, std::ifstream & inp) {
+bool open_utf8_file(const std::string &filepath, std::ifstream & inp) {
     inp.open(filepath);
     return inp.good();
 }
@@ -64,9 +64,9 @@ bool openUTF8WideFile(const std::string &filepath, std::wifstream & inp) {
 }
 #endif
 
-std::list<std::string> readLinesOfFile(const std::string & filepath) {
+std::list<std::string> read_lines_of_file(const std::string & filepath) {
     std::ifstream inp;
-    if (!openUTF8File(filepath, inp)) {
+    if (!open_utf8_file(filepath, inp)) {
         throw OTCError("Could not open file \"" + filepath + "\"");
     }
     std::list<std::string> lines;
@@ -142,7 +142,7 @@ std::list<std::string> split_string(const std::string &s, const char delimiter)
     return r;
 }
 
-std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimiter) {
+std::set<long> parse_delim_separated_ids(const std::string &str, const char delimiter) {
     std::set<long> ottIds;
     std::list<std::string> idList = split_string(str, delimiter);
     for (const auto & id : idList) {
@@ -154,9 +154,9 @@ std::set<long> parseDelimSeparatedIDs(const std::string &str, const char delimit
     return ottIds;
 }
 
-std::set<long> parseListOfOttIds(const std::string &fp) {
+std::set<long> parse_list_of_ott_ids(const std::string &fp) {
     std::ifstream inpf;
-    if (!openUTF8File(fp, inpf)) {
+    if (!open_utf8_file(fp, inpf)) {
         throw OTCError("Could not open list of OTT ids file \"" + fp + "\"");
     }
     std::string line;
@@ -179,9 +179,9 @@ std::set<long> parseListOfOttIds(const std::string &fp) {
     return ottIds;
 }
 
-std::list<std::set<long> > parseDesignatorsFile(const std::string &fp) {
+std::list<std::set<long> > parse_designators_file(const std::string &fp) {
     std::ifstream inpf;
-    if (!openUTF8File(fp, inpf)) {
+    if (!open_utf8_file(fp, inpf)) {
         throw OTCError("Could not open designators file \"" + fp + "\"");
     }
     std::string line;
@@ -217,7 +217,7 @@ std::list<std::set<long> > parseDesignatorsFile(const std::string &fp) {
     return allDesignators;
 }
 
-std::string filepathToFilename(const std::string &filepath) {
+std::string filepath_to_filename(const std::string &filepath) {
     auto p = filepath.find_last_of('/');
     if (p == std::string::npos) {
         return filepath;

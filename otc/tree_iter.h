@@ -11,23 +11,23 @@
 namespace otc {
 
 template<typename T>
-bool isAncestorDesNoIter(const T *a, const T *d) {
-    auto p = d->getParent();
+inline bool is_ancestor_des_no_iter(const T *a, const T *d) {
+    auto p = d->get_parent();
     while (p) {
         if (p == a) {
             return true;
         }
-        p = p->getParent();
+        p = p->get_parent();
     }
     return false;
 }
 
 template<typename T>
-inline T * getDeepestAnc(T *nd) {
-    auto p = nd->getParent();
+inline T * get_deepest_anc(T *nd) {
+    auto p = nd->get_parent();
     while (p != nullptr) {
         nd = p;
-        p = nd->getParent();
+        p = nd->get_parent();
     }
     return nd;
 }
@@ -36,75 +36,75 @@ template<typename T>
 using NdFilterFn = std::function<bool(const T &)>;
 
 /// visits ancestors before descendants
-/// if filterFn is supplied, then only the nodes associated with a true
+/// if filter_fn is supplied, then only the nodes associated with a true
 ///     response will be returned (but the descendants of a "false" node
 ///     will still be visited.
 template<typename T, bool isConst>
 class preorder_iterator : std::forward_iterator_tag {
     private:
-        const NdFilterFn<T> subtreeFilterFn;
-        const NdFilterFn<T> filterFn;
+        const NdFilterFn<T> subtree_filter_fn;
+        const NdFilterFn<T> filter_fn;
         typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
         node_pointer curr;
-        bool movingDown;
-        node_pointer const exitNode;
+        bool moving_down;
+        node_pointer const exit_node;
         void _advance() {
-            if (subtreeFilterFn == nullptr) {
+            if (subtree_filter_fn == nullptr) {
                 _unfiltered_advance();
             } else {
                 _filtered_advance();
             }
-            if (curr == exitNode) {
+            if (curr == exit_node) {
                 curr = nullptr;
             }
-            if (exitNode == nullptr) {
+            if (exit_node == nullptr) {
                 return;
             }
         }
         void _unfiltered_advance() {
             do {
                 assert(curr != nullptr);
-                if (movingDown) {
-                    while (movingDown) {
-                        if (curr->getNextSib()) {
-                            curr = curr->getNextSib();
-                            movingDown = false;
+                if (moving_down) {
+                    while (moving_down) {
+                        if (curr->get_next_sib()) {
+                            curr = curr->get_next_sib();
+                            moving_down = false;
                         } else {
-                            curr = curr->getParent();
-                            if (curr == nullptr || curr == exitNode) {
+                            curr = curr->get_parent();
+                            if (curr == nullptr || curr == exit_node) {
                                 return;
                             }
                         }
                     }
-                } else if (curr->isTip()) {
-                    if (curr->getNextSib()) {
-                        curr = curr->getNextSib();
+                } else if (curr->is_tip()) {
+                    if (curr->get_next_sib()) {
+                        curr = curr->get_next_sib();
                     } else {
-                        movingDown = true;
+                        moving_down = true;
                         _unfiltered_advance();
-                        if (curr == nullptr  || curr == exitNode) {
+                        if (curr == nullptr  || curr == exit_node) {
                             return;
                         }
                     }
                 } else {
-                    curr = curr->getFirstChild();
+                    curr = curr->get_first_child();
                 }
-            } while (filterFn != nullptr && !filterFn(*curr));
+            } while (filter_fn != nullptr && !filter_fn(*curr));
         }
 
         void _filtered_advance_down() {
             assert(curr != nullptr);
-            while (movingDown) {
+            while (moving_down) {
                 assert(curr != nullptr);
-                if (curr->getNextSib()) {
-                    curr = curr->getNextSib();
+                if (curr->get_next_sib()) {
+                    curr = curr->get_next_sib();
                     assert(curr != nullptr);
-                    if (subtreeFilterFn == nullptr || subtreeFilterFn(*curr)) {
-                        movingDown = false;
+                    if (subtree_filter_fn == nullptr || subtree_filter_fn(*curr)) {
+                        moving_down = false;
                     }
                 } else {
-                    curr = curr->getParent();
-                    if (curr == nullptr || curr == exitNode) {
+                    curr = curr->get_parent();
+                    if (curr == nullptr || curr == exit_node) {
                         return;
                     }
                 }
@@ -113,62 +113,62 @@ class preorder_iterator : std::forward_iterator_tag {
         void _filtered_advance() {
             assert(curr != nullptr);
             do {
-                if (movingDown) {
+                if (moving_down) {
                     _filtered_advance_down();
                 } else {
                     _filtered_advance_up_or_over();
                 }
-            } while(curr != nullptr && curr != exitNode && (filterFn != nullptr && !filterFn(*curr)));
+            } while(curr != nullptr && curr != exit_node && (filter_fn != nullptr && !filter_fn(*curr)));
         }
         void _filtered_advance_up_or_over() {
-            if (curr->isTip()) {
-                if (curr->getNextSib() == nullptr) {
-                    movingDown = true;
+            if (curr->is_tip()) {
+                if (curr->get_next_sib() == nullptr) {
+                    moving_down = true;
                     _filtered_advance_down();
                     return;
                 }
-                curr = curr->getNextSib();
+                curr = curr->get_next_sib();
             } else {
-                curr = curr->getFirstChild();
+                curr = curr->get_first_child();
             }
-            if (subtreeFilterFn == nullptr || subtreeFilterFn(*curr)) {
+            if (subtree_filter_fn == nullptr || subtree_filter_fn(*curr)) {
                 return;
             }
-            while (curr->getNextSib()) {
-                curr = curr->getNextSib();
-                if (subtreeFilterFn == nullptr || subtreeFilterFn(*curr)) {
+            while (curr->get_next_sib()) {
+                curr = curr->get_next_sib();
+                if (subtree_filter_fn == nullptr || subtree_filter_fn(*curr)) {
                     return;
                 }
             }
-            movingDown = true;
+            moving_down = true;
             _filtered_advance_down();
             return;
         }
     public:
         preorder_iterator(node_pointer c, node_pointer exit_node)
-            :subtreeFilterFn(nullptr),
-            filterFn{nullptr},
+            :subtree_filter_fn(nullptr),
+            filter_fn{nullptr},
             curr(c),
-            movingDown(false),
-            exitNode(exit_node) {
+            moving_down(false),
+            exit_node(exit_node) {
         }
         preorder_iterator(node_pointer c, node_pointer exit_node, NdFilterFn<T> f)
-            :subtreeFilterFn(nullptr),
-            filterFn{f},
+            :subtree_filter_fn(nullptr),
+            filter_fn{f},
             curr(c),
-            movingDown(false),
-            exitNode(exit_node)  {
-            if (c != nullptr && filterFn && !filterFn(*curr)) {
+            moving_down(false),
+            exit_node(exit_node)  {
+            if (c != nullptr && filter_fn && !filter_fn(*curr)) {
                 _advance();
             }
         }
         preorder_iterator(node_pointer c, node_pointer exit_node, NdFilterFn<T> f, NdFilterFn<T> s)
-            :subtreeFilterFn(s),
-            filterFn{f},
+            :subtree_filter_fn(s),
+            filter_fn{f},
             curr(c),
-            movingDown(false),
-            exitNode(exit_node)  {
-            if (c != nullptr && filterFn && !filterFn(*curr)) {
+            moving_down(false),
+            exit_node(exit_node)  {
+            if (c != nullptr && filter_fn && !filter_fn(*curr)) {
                 _advance();
             }
         }
@@ -194,29 +194,29 @@ class preorder_iterator : std::forward_iterator_tag {
 template<typename T, bool isConst>
 class child_iterator : std::forward_iterator_tag {
     private:
-        NdFilterFn<T> filterFn;
+        NdFilterFn<T> filter_fn;
         typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
         node_pointer curr;
 
         void _advance() {
             assert(curr != nullptr);
-            curr = curr->getNextSib();
+            curr = curr->get_next_sib();
         }
     public:
         child_iterator(node_pointer c)
-            :filterFn{nullptr},
+            :filter_fn{nullptr},
             curr(nullptr) {
             if (c != nullptr) {
-                curr = c->getFirstChild();
+                curr = c->get_first_child();
             }
         }
         child_iterator(node_pointer c, NdFilterFn<T> f)
-            :filterFn{f},
+            :filter_fn{f},
             curr(nullptr) {
             if (c != nullptr) {
-                curr = c->getFirstChild();
+                curr = c->get_first_child();
             }
-            if (c != nullptr && filterFn && !filterFn(*c)) {
+            if (c != nullptr && filter_fn && !filter_fn(*c)) {
                 _advance();
             }
         }
@@ -243,7 +243,7 @@ class child_iterator : std::forward_iterator_tag {
 template<typename T, bool isConst>
 class postorder_iterator : std::forward_iterator_tag {
     private:
-        const NdFilterFn<T> filterFn;
+        const NdFilterFn<T> filter_fn;
         typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
         node_pointer curr;
         node_pointer lastNode;
@@ -253,9 +253,9 @@ class postorder_iterator : std::forward_iterator_tag {
                 curr = nullptr;
             } else {
                 for (;;) {
-                    auto n = curr->getNextSib();
-                    curr = (n == nullptr ? curr->getParent() : findLeftmostInSubtree<node_pointer>(n));
-                    if (filterFn == nullptr || filterFn(*curr)) {
+                    auto n = curr->get_next_sib();
+                    curr = (n == nullptr ? curr->get_parent() : find_leftmost_in_subtree<node_pointer>(n));
+                    if (filter_fn == nullptr || filter_fn(*curr)) {
                         break;
                     }
                     if (curr == lastNode) {
@@ -267,13 +267,13 @@ class postorder_iterator : std::forward_iterator_tag {
         }
     public:
         postorder_iterator(node_pointer c, NdFilterFn<T> f)
-            :filterFn{f},
+            :filter_fn{f},
             curr(nullptr),
             lastNode(c) {
             if (lastNode != nullptr) {
-                curr = findLeftmostInSubtree<node_pointer>(lastNode);
+                curr = find_leftmost_in_subtree<node_pointer>(lastNode);
             }
-            if (curr != nullptr && filterFn && !filterFn(*curr)) {
+            if (curr != nullptr && filter_fn && !filter_fn(*curr)) {
                 _advance();
             }
         }
@@ -303,7 +303,7 @@ class anc_iterator : std::forward_iterator_tag {
         
         void _advance() {
             assert(curr != nullptr);
-            curr = curr->getParent();
+            curr = curr->get_parent();
         }
     public:
         anc_iterator(node_pointer c)
@@ -353,25 +353,25 @@ class PreorderIter {
     public:
     typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
     explicit PreorderIter(node_pointer t,
-                          node_pointer exitPointer,
-                          std::function<bool(const T &)> ndFilter,
-                          std::function<bool(const T &)> subtreeFilter)
+                          node_pointer exit_pointer,
+                          std::function<bool(const T &)> nd_filter,
+                          std::function<bool(const T &)> subtree_filter)
         :nd(t),
-        exitNode(exitPointer),
-        nodeFilter(ndFilter),
-        cladeFilter(subtreeFilter) {
+        exit_node(exit_pointer),
+        node_filter(nd_filter),
+        clade_filter(subtree_filter) {
     }
     preorder_iterator<T, isConst> begin() const {
-        return std::move(preorder_iterator<T, isConst>{nd, exitNode, nodeFilter, cladeFilter});
+        return std::move(preorder_iterator<T, isConst>{nd, exit_node, node_filter, clade_filter});
     }
     preorder_iterator<T, isConst> end() const {
         return std::move(preorder_iterator<T, isConst>{nullptr, nullptr});
     }
     private:
         node_pointer nd;
-        node_pointer const exitNode;
-        std::function<bool(const T &)> nodeFilter;
-        std::function<bool(const T &)> cladeFilter;
+        node_pointer const exit_node;
+        std::function<bool(const T &)> node_filter;
+        std::function<bool(const T &)> clade_filter;
 };
 
 template<typename T, bool isConst>
@@ -382,7 +382,7 @@ class LeafIter {
         :node(t){
     }
     postorder_iterator<T, isConst> begin() const {
-        return std::move(postorder_iterator<T, isConst>{node, isLeaf<T>});
+        return std::move(postorder_iterator<T, isConst>{node, is_leaf<T>});
     }
     postorder_iterator<T, isConst> end() const {
         return std::move(postorder_iterator<T, isConst>{nullptr, nullptr});
@@ -414,17 +414,17 @@ class PostorderIter {
     typedef typename std::conditional<isConst, const T *, T *>::type node_pointer;
     explicit PostorderIter(node_pointer n, std::function<bool(const T &)> f)
         :node(n), 
-        nodeFilter(f) {
+        node_filter(f) {
     }
     postorder_iterator<T, isConst> begin() const {
-        return std::move(postorder_iterator<T, isConst>{node, nodeFilter});
+        return std::move(postorder_iterator<T, isConst>{node, node_filter});
     }
     postorder_iterator<T, isConst> end() const {
         return std::move(postorder_iterator<T, isConst>{nullptr, nullptr});
     }
     private:
         node_pointer node;
-        std::function<bool(const T &)> nodeFilter;
+        std::function<bool(const T &)> node_filter;
 };
 
 // used to express iteration over all nodes where order does not matter
@@ -453,13 +453,13 @@ inline PostorderIter<T, true> iter_post_n_const(const T & node) {
 
 template<typename T>
 inline PostorderIter<typename T::node_type, false> iter_post_internal(T & tree) {
-    PostorderIter<typename T::node_type, false> i{tree.get_root(), isInternalNode<typename T::node_type>};
+    PostorderIter<typename T::node_type, false> i{tree.get_root(), is_internal_node<typename T::node_type>};
     return std::move(i);
 }
 
 template<typename T>
 inline PostorderIter<typename T::node_type, true> iter_post_internal_const(const T & tree) {
-    return std::move(PostorderIter<typename T::node_type, true>(tree.get_root(), isInternalNode<typename T::node_type>));
+    return std::move(PostorderIter<typename T::node_type, true>(tree.get_root(), is_internal_node<typename T::node_type>));
 }
 
 template<typename T>
@@ -474,22 +474,22 @@ inline NodeIter<typename T::node_type, true> iter_node_const(const T & tree) {
 
 template<typename T>
 inline NodeIter<typename T::node_type, false> iter_node_internal(T & tree) {
-    return std::move(NodeIter<typename T::node_type, false>(tree.get_root(), isInternalNode<typename T::node_type>));
+    return std::move(NodeIter<typename T::node_type, false>(tree.get_root(), is_internal_node<typename T::node_type>));
 }
 
 template<typename T>
 inline NodeIter<typename T::node_type, true> iter_node_internal_const(const T & tree) {
-    return std::move(NodeIter<typename T::node_type, true>(tree.get_root(), isInternalNode<typename T::node_type>));
+    return std::move(NodeIter<typename T::node_type, true>(tree.get_root(), is_internal_node<typename T::node_type>));
 }
 
 template<typename T>
 inline PreorderIter<typename T::node_type, false> iter_pre_internal(T & tree) {
-    return std::move(PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, isInternalNode<typename T::node_type>, nullptr));
+    return std::move(PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr));
 }
 
 template<typename T>
 inline PreorderIter<typename T::node_type, true> iter_pre_internal_const(const T & tree) {
-    return std::move(PreorderIter<typename T::node_type, true>(tree.get_root(), nullptr, isInternalNode<typename T::node_type>, nullptr));
+    return std::move(PreorderIter<typename T::node_type, true>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr));
 }
 
 template<typename T>
