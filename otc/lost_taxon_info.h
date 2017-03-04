@@ -10,6 +10,7 @@
 #include "otc/util.h"
 
 namespace otc {
+
 ///////////////////////////////////////////////////////////////////////////////
 // LostTaxonDetails holds the information about one of the broken taxa.
 // 
