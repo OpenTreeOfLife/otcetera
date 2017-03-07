@@ -58,7 +58,7 @@ struct UnpruneStats {
     size_t out_degree_many1 = 0U;
     size_t num_leaves_in_taxonomy = 0U;
     size_t num_forking_in_taxonomy = 0U;
-    std::set<Node_t *> inc_sed_soln_tips; 
+    std::set<Node_t *> supertree_tips_des_from_inc_sed; 
     std::set<Node_t *> inc_sed_internals;
     // maps inc_sed taxa nodes to tips in supertree that are descendants of that taxon.
     std::map<Node_t *, std::set<Node_t *> > inc_sed_taxon_to_sampled_tips;
@@ -98,7 +98,8 @@ using std::vector;
 
 
 
-// adds ott_id to the des_ids field of every node from first_node down to anc_and_last_node (inclusive)
+// adds ott_id to the des_ids field of every node from first_node down to
+// its ancestor anc_and_last_node (inclusive).
 void add_to_des_ids_for_anc(long ott_id,
                             Node_t *first_node,
                             Node_t *anc_and_last_node,
@@ -441,21 +442,34 @@ void register_covering_of_incertae_sedis(OttId effective_tip_id,
     }
 }
 
-typedef pair<OttId, OttId> CarriedIDRealId;
 
-set<Node_t *>  detect_leaf_taxa_for_slice(Node_t * root_taxon,
+typedef pair<set<Node_t *>, set<Node_t *> > node_set_pair_t;
+/// \returns pointers to the taxon nodes and supertree nodes that correspond to the taxon OTT Ids
+//    contained in `supertree_des_ids`. 
+// Also requires that unprune_stats.inc_sed_taxon_to_sampled_tips and
+//    unprune_stats.supertree_tips_des_from_inc_sed
+//    be filled in before calling.
+// `root_taxon` should point to the taxon node for the root of this slice of the tree
+//    the nonexcluded_ids field of that node is used to figure out which taxa in the
+//    the leaf set are "intruding" incertae sedis taxa from more rootward in the taxonomy
+// `ott_id` is merely used in reporting the slice ID in errors.
+// `ott_to_tax` and `ott_to_supertree` enable the look up of taxonomy and supertree nodes by ID.
+// Populates curr_slice_inc_sed_map, inc_sed_that_are_proper_children
+node_set_pair_t detect_leaves_for_slice(Node_t * root_taxon,
        OttId ott_id,
        const OttIdSet & supertree_des_ids,
        const map<long, childParPair> & ott_to_tax,
        const map<long, Node_t *> & ott_to_supertree,
        std::map<Node_t *, std::set<TaxSolnNdPair> > & curr_slice_inc_sed_map,
        set<Node_t *> & inc_sed_that_are_proper_children,
-       list<CarriedIDRealId > & queued_for_flagging,
        UnpruneStats & unprune_stats
        ) {
+    typedef pair<OttId, OttId> CarriedIDRealId;
     set<Node_t *> taxa_leaves;
+    set<Node_t *> solnLeaves;
     const OttIdSet * root_non_exclude = root_taxon->get_data().nonexcluded_ids;
     assert(root_non_exclude != nullptr);
+    list<CarriedIDRealId > queued_for_flagging;
     const auto & inc_sed_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto effective_tip_id : supertree_des_ids) {
         auto effective_tip_taxon_node = ott_to_tax.at(effective_tip_id).first;
@@ -465,7 +479,7 @@ set<Node_t *>  detect_leaf_taxa_for_slice(Node_t * root_taxon,
         bool is_tip_inc_sed = false;
         if (!is_inc_sed && effective_tip_taxon_node->is_tip()) {
             auto corres_soln_tip = ott_to_supertree.at(effective_tip_id);
-            if (unprune_stats.inc_sed_soln_tips.count(corres_soln_tip) > 0) {
+            if (unprune_stats.supertree_tips_des_from_inc_sed.count(corres_soln_tip) > 0) {
                 is_inc_sed = true;
                 is_tip_inc_sed = true;
             }
@@ -508,7 +522,25 @@ set<Node_t *>  detect_leaf_taxa_for_slice(Node_t * root_taxon,
             }
         }    
     }
-    return taxa_leaves;
+    bool root_taxon_is_inc_sed = inc_sed_map.find(root_taxon) != inc_sed_map.end();
+    if (root_taxon_is_inc_sed) {
+        inc_sed_that_are_proper_children.insert(root_taxon);
+    }
+    // now we flag all of the des_ids for the proper descendants
+    for (auto cr_pair : queued_for_flagging) {
+        auto realTipOttId = cr_pair.second;
+        auto effective_tip_taxon_node = ott_to_tax.at(realTipOttId).first;
+        effective_tip_taxon_node->get_data().des_ids.clear();
+    }
+    for (auto cr_pair : queued_for_flagging) {
+        auto carriedTipId = cr_pair.first;
+        auto threadedThroughOttId = cr_pair.second;
+        Node_t * effective_tip_taxon_node = ott_to_tax.at(carriedTipId).first;
+        add_to_des_ids_for_anc(carriedTipId, effective_tip_taxon_node, root_taxon, ott_to_tax);
+        solnLeaves.insert(ott_to_supertree.at(threadedThroughOttId));
+        taxa_leaves.insert(effective_tip_taxon_node);
+    }
+    return node_set_pair_t(taxa_leaves, solnLeaves);
 }
 
 // Imagine cutting the tree at every node that has an OTT ID, and assigning a copy of the cut
@@ -555,36 +587,17 @@ void unprune_slice(N *root_supertree_node,
     //  collect the leaf sets
     const auto & inc_sed_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
-    set<N *> solnLeaves;
     std::map<Node_t *, std::set<TaxSolnNdPair> > curr_slice_inc_sed_map;
     set<Node_t *> inc_sed_that_are_proper_children;
-    list<CarriedIDRealId > queued_for_flagging;
-    set<N *> taxa_leaves = detect_leaf_taxa_for_slice(root_taxon, ott_id,
-                                                      supertree_des_ids,
-                                                      ott_to_tax,
-                                                      ott_to_supertree,
-                                                      curr_slice_inc_sed_map,
-                                                      inc_sed_that_are_proper_children,
-                                                      queued_for_flagging,
-                                                      unprune_stats);
-    bool root_taxon_is_inc_sed = inc_sed_map.find(root_taxon) != inc_sed_map.end();
-    if (root_taxon_is_inc_sed) {
-        inc_sed_that_are_proper_children.insert(root_taxon);
-    }
-    // now we flag all of the des_ids for the proper
-    for (auto cr_pair : queued_for_flagging) {
-        auto realTipOttId = cr_pair.second;
-        auto effective_tip_taxon_node = ott_to_tax.at(realTipOttId).first;
-        effective_tip_taxon_node->get_data().des_ids.clear();
-    }
-    for (auto cr_pair : queued_for_flagging) {
-        auto carriedTipId = cr_pair.first;
-        auto threadedThroughOttId = cr_pair.second;
-        Node_t * effective_tip_taxon_node = ott_to_tax.at(carriedTipId).first;
-        add_to_des_ids_for_anc(carriedTipId, effective_tip_taxon_node, root_taxon, ott_to_tax);
-        solnLeaves.insert(ott_to_supertree.at(threadedThroughOttId));
-        taxa_leaves.insert(effective_tip_taxon_node);
-    }   
+    const auto leaf_sets_pair = detect_leaves_for_slice(root_taxon, ott_id,
+                                                        supertree_des_ids,
+                                                        ott_to_tax,
+                                                        ott_to_supertree,
+                                                        curr_slice_inc_sed_map,
+                                                        inc_sed_that_are_proper_children,
+                                                        unprune_stats);
+    const set<Node_t *> & taxa_leaves = leaf_sets_pair.first;
+    const set<Node_t *> & supertree_leaves = leaf_sets_pair.second;
     // need to process inc. sed. splits in reverse order by level, to mimic the postorder sweep
     map<int, list<Node_t *> > inc_sed_to_deal_with_by_level;
     set<Node_t *> inc_sed_mapping_deeper;
@@ -614,7 +627,7 @@ void unprune_slice(N *root_supertree_node,
     size_t numExpanded = 0;
     // If a tip of the supertree is a higher taxon, then we should
     //  graft on the other tips here...
-    for (auto l : solnLeaves) {
+    for (auto l : supertree_leaves) {
         if (l->is_tip()) {
             assert(l->has_ott_id());
             auto leafOttId = l->get_ott_id();
@@ -695,7 +708,7 @@ void unprune_slice(N *root_supertree_node,
         n->get_data().des_ids.clear();
     }
     set<N *> visited;
-    for (auto n : solnLeaves) {
+    for (auto n : supertree_leaves) {
         auto c = n;
         while (visited.count(c) == 0 && c != root_supertree_node) {
             c->get_data().des_ids.clear();
@@ -872,9 +885,10 @@ void indexNodesByOttId(Tree_t & taxonomy,
     }
 }
 
-// uses non-empty desId in tax nodes to figure out which descendants of any incertae sedis
+// Fills in `unprune_stats.supertree_tips_des_from_inc_sed` and `unprune_stats.inc_sed_taxon_to_sampled_tips`
+// Uses non-empty des_ids in tax nodes to figure out which descendants of any incertae sedis
 //    taxon are sampled in the supertree
-void findIncertaeSedisInSolution(Tree_t & taxonomy,
+void find_incertae_sedis_in_supertree(Tree_t & taxonomy,
                                  Tree_t & supertree,
                                  const map<long, childParPair> & ott_to_tax,
                                  UnpruneStats & unprune_stats) {
@@ -888,7 +902,7 @@ void findIncertaeSedisInSolution(Tree_t & taxonomy,
         if (taxon_node->get_data().des_ids.empty()) {
             continue;    
         }
-        unprune_stats.inc_sed_soln_tips.insert(snd);
+        unprune_stats.supertree_tips_des_from_inc_sed.insert(snd);
         auto anc = taxon_node->get_parent();
         to_tips_map[taxon_node].insert(snd);
         while (anc && !(anc->get_data().des_ids.empty())) {
@@ -1042,7 +1056,7 @@ void unpruneTaxa(T & taxonomy,
     //    where x is child of one of the ancestors of the node y.
     fillNonexcludeIDFields(taxonomy, incertae_sedis_ids);
     // record tips in the sample that are incertae sedis descendants
-    findIncertaeSedisInSolution(taxonomy, supertree, ott_to_tax, unprune_stats);
+    find_incertae_sedis_in_supertree(taxonomy, supertree, ott_to_tax, unprune_stats);
     // note which ones can't be in the supertree
     findBrokenIncertaeSedisDescendants(taxonomy, supertree, ott_to_tax, unprune_stats);
     // Note that at this point the des_ids field of the taxonomy will be used for tracing
