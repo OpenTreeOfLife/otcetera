@@ -918,10 +918,14 @@ void fillDesIdsForIncertaeSedisOnly(const map<long, childParPair> & ott_to_tax,
     }
 }
 
-
-void indexNodesByOttId(Tree_t & taxonomy,
-                       map<long, childParPair> & ott_to_tax,
-                       UnpruneStats & unprune_stats) {
+// Returns a map from each OTT ID to a pair of pointers (the taxon, its parent)
+// Because some taxonomy nodes are transferred to the supertree, the parent may change.
+// This data structure preserves the taxonomy structure
+// Fills in the `monotypic_ott_ids`, `num_leaves_in_taxonomy` and `num_forking_in_taxonomy`
+//    fields in `unprune_stats`
+map<OttId, childParPair> index_nodes_by_id(Tree_t & taxonomy,
+                                           UnpruneStats & unprune_stats) {
+    map<long, childParPair> ott_to_tax;
     OttIdSet & moi = unprune_stats.monotypic_ott_ids;
     for (auto nd: iter_post(taxonomy)){
         if (nd->has_ott_id()) {
@@ -938,6 +942,7 @@ void indexNodesByOttId(Tree_t & taxonomy,
             throw OTCError() << "There is a node in taxonomy without an OTT ID.\n";
         }
     }
+    return ott_to_tax;
 }
 
 // Fills in `unprune_stats.supertree_tips_des_from_inc_sed` and `unprune_stats.inc_sed_taxon_to_sampled_tips`
@@ -1099,8 +1104,7 @@ void unpruneTaxa(T & taxonomy,
     const OttIdSet & incertae_sedis_ids = unprune_stats.incertae_sedis_ids;
     unprune_stats.out_degree_many1 = n_internal_out_degree_many(taxonomy);
     // 1. First, index taxonomy by OttId.
-    map<long, childParPair> ott_to_tax;
-    indexNodesByOttId(taxonomy, ott_to_tax, unprune_stats);
+    const auto ott_to_tax = index_nodes_by_id(taxonomy, unprune_stats);
     // filling the nonexcluded IDs (next step) needs the des_ids filled for the parts of 
     //    the taxonomy that descend from an incertae sedis taxon.
     // Note that we'll use empty des_ids of a taxonomy node as a flag that that taxon is 
