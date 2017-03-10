@@ -20,14 +20,14 @@
 \tableofcontents
 
 \section{Command line interface}
-This tool takes 2 mandatory argument:
+This tool takes 2 mandatory arguments:
 \begin{enumerate}
     \item a filepath to a Newick representation of the grafted supertree
     \item a filepath to a Newick representation of the ``cleaned'' taxonomy (the taxonomy
     without flagged taxa).
 \end{enumerate}
 Options include:
-    \item[]{\tt-i$<$filepath$>$} to specify the input filepath for file with to OTT IDs of
+    \item[]{\tt-i$<$filepath$>$} to specify the input filepath for file with OTT IDs of
     the \incsed taxa listed (one per line). The IDs of such taxa 
     in the exemplified taxonomy is sufficient.
     \item[]{\tt-j$<$filepath$>$} to specify an output filepath for the broken taxon JSON.
@@ -52,9 +52,9 @@ otc-unprune-solution-and-name-unnamed-nodes \
 \begin{itemize}
     \item $G$ will denote the input supertree
     \item $U$  denotes the final output tree.
-    \item $\mathcal{C}$ denotes the set of higher taxa in the taxononmic tree
+    \item $\mathcal{C}$ denotes the set of higher taxa in the taxonomic tree
         that are compatible with $G$.
-    \item for any nonmonotypic taxon $Y$:
+    \item for any nonmonotypic, sampled taxon $Y$:
     \begin{itemize}
         \item $M_G(Y)$ denotes the node in input supertree that is the MRCA of
             the any taxon that is sampled in the supertree and is in the
@@ -74,7 +74,7 @@ otc-unprune-solution-and-name-unnamed-nodes \
 \end{itemize}
 
 \subsection{Labeling nodes -- taxa as tripartitions of the leaf set}
-For naming of node $X$, the tool uses the idea that each higher taxon in OTT, $Y$, can
+For naming node $X$, the tool uses the idea that each higher taxon, $Y$, in OTT can
     be described as a tripartition of the leaf set of OTT into:
 \begin{enumerate}
     \item $Y_I$ an include set of taxa that must be descendants of the node $X$ (if they sampled in the tree)
@@ -82,7 +82,7 @@ For naming of node $X$, the tool uses the idea that each higher taxon in OTT, $Y
     \item $Y_N$ a non-excluded set which can fall within or outside of the group $X$; these taxa
     correspond to \incsed taxa that are children of one of the ancestors of $Y$.
 \end{enumerate}
-A taxonomic tripartition will be denoted $\tripartition{Y}$.
+%A taxonomic tripartition will be denoted $\tripartition{Y}$.
 
 The OTT ID $Y$ applies to node $X$ of tree $T$ if:
 \begin{itemize}
@@ -153,7 +153,7 @@ Any taxon that is in the subtree rooted at a \incsed taxon is
 
 \section{Algorithm}
 \subsection{Summary}
-Essentially, considers each taxon in the taxonomy to see if it can be added to the grafted tree.
+Essentially, we consider each taxon in the taxonomy to see if it can be added to the grafted tree.
 If the taxon is compatible with the tree it will either:
 \begin{itemize}
     \item result in an existing node in the supertree being labeled with the OTT ID, or
@@ -179,28 +179,28 @@ If the taxonomy tree has $J$ internal nodes, then we can think of the process as
 a transformation of the trees:
 \[M_G(Y) = M_0(Y) \rightarrow M_1(Y) \rightarrow M_2(Y) \rightarrow \ldots M_{J-1}(Y) \rightarrow M_J(Y) = M_U(Y).\]
 
-We process the higher taxa in postorder (moving from neat the tips toward root) fashion dealing with one higher taxon at each step.
+We process the higher taxa in postorder fashion (moving from near the tips toward root) dealing with one higher taxon at each step.
 At step $j$ we deal with taxon $Y_j$.
 
 A higher taxon can be classified based on how many of its children are
-sampled in the grafted tree (where ``sampled'' means either occuring as a tip label in the tree or having a descendant that was a tip label in the tree).
+sampled in the input supertree (where ``sampled'' means either occuring as a tip label in the tree or having a descendant that was a tip label in the tree).
 
 \subsubsection{unsampled taxa}
 If taxon $Y_j$ has 0 of children that were sampled, then $Y_j\in \mathcal{C}$.
-    In this case, $Y_j$ can simply be added to the supertree as a child of the supertree node that maps to $\parent{Y_j}$.
-    Let $\parent{Y_j} = Y_k$.
-    Note that the postorder traversal guarantees that $k > j$.
-    Because $Y_j$ and all of its children will be grafted on the supertree at step $k$ as
-    an entire subtree, $Y_j$ will not be represented on the supertree before step $k$.
-    But at step $k$, the supertree will display $Y_j$.
-    None of the subsequently handled taxa (for any index $l> k$) will 
-    graft taxa inside of $M_l(Y_j)$, so every subsequent tree including the
-    final tree will still display $Y_j$.
+In this case, $Y_j$ can simply be added to the supertree as a child of the supertree node that maps to $\parent{Y_j}$.
+Let $\parent{Y_j} = Y_k$.
+Note that the postorder traversal guarantees that $k > j$.
+Because $Y_j$ and all of its children will be grafted on the supertree at step $k$ as
+an entire subtree, $Y_j$ will not be represented on the supertree before step $k$.
+But at step $k$, the supertree will display $Y_j$.
+None of the subsequently handled taxa (for any index $l> k$) will 
+graft taxa inside of $M_l(Y_j)$, so every subsequent tree including the
+final tree will still display $Y_j$.
 
 \subsubsection{multiply-sampled taxa}
 For brevity, let $W_j = M_{j-1}(Y_j)$.
 This node is the MRCA of the sampled subtaxa of $Y_j$ in the previous step.
-If multiple children $Y_j$ were sampled in the input tree, then this guarantees that MRCA is an internal, forking node.
+If multiple children of $Y_j$ were sampled in the input tree, then this guarantees that MRCA is an internal, forking node.
 
 \noindent{\bf The incompatible case}\\
 If $W_j$ is an ancestor of any taxon that is in the exclude group of $Y_j$, then $Y_j\notin\mathcal{C}$.
@@ -210,13 +210,13 @@ This placement of additional taxa will not cause any subsequently handled taxa t
 We can see this because adding the unsampled taxa increases the size of the include group
     of $M_{k}(Y_j)$ and all of its ancestors for this step and all later steps (in other words
     for $k \geq j$).
-Every taxon for $k>j$ will either be an ancestor of $Y_j$ or in a separate subtree; ie not a descendant of $Y_j$.
+Every taxon for $k>j$ will either be an ancestor of $Y_j$ or in a separate subtree; {\em i.e.~} not a descendant of $Y_j$.
 If the subsequent taxon $Y_k$ is an ancestor of $Y_j$, then adding more children of $Y_j$ will not cause $Y_k$ to be incompatible.
 The fact that $W_j$ was the MRCA of some children of $Y_j$ guarantees that that $M_{k-1}(Y_k)$
     would have to be $M_{k-1}(Y_j)$ or one of its ancestors.
 Adding more children does not change which node will be the ancestory of $Y_k$ when that taxon is handled.
 
-If $Y_k$ is in a disjusnct subtree of the taxonomy from $Y_l$, then its compatibility 
+If $Y_k$ is in a disjunct subtree of the taxonomy from $Y_l$, then its compatibility 
 status will also be unaffected by adding the previously unsampled descendants of
 $Y_j$ to $W_j$.
 
@@ -240,8 +240,9 @@ compatability of $Y_k$.
 If $W_j$ is not an ancestor of any taxon that is in the exclude group of $Y_j$, then $Y_j\in\mathcal{C}$.
 Adding all of the unsampled children of $Y_l$ as children of $W_j$ would succeed in displaying
     the taxon $Y_j$ on the tree.
+
 Importantly though, this step could invalidate an existing taxon, $Y_m$ where $m < j$ and $W_j = M_{j-1}(Y_m)$.
-If $Y_j$ has 1 sampled non-\incsed child, then all of the other sampled children must correspond to \incsed taxa.
+This can happen if $Y_j$ has one sampled non-\incsed child, then all of the other sampled children must correspond to \incsed taxa.
 In this case, $W_j$ will already be labelled with an OTT ID (the ID of its non-\incsed child).
 Adding more unsampled children to $W_j$ could either invalidate the current label of
     $W_j$ (if those children were not \incsed taxa) or cause the supertree
@@ -325,7 +326,7 @@ The \texttt{register\_incertae\_sedis\_info} function uses the \incsed ID list
     and the \texttt{des\_ids} field of the taxonomy to:
 \begin{itemize}
   \item Note which IDs are in the nonexcluded IDs field for each higher taxon.
-    Note that if non of a taxon's children are \incsed, then each of its
+    Note that if none of a taxon's children are \incsed, then each of its
     children will have the same set of nonexcluded IDs as the taxon itself.
     Thus, we use a pointer for \texttt{nonexcluded\_ids} so that all of the 
     nodes that have the same set of IDs can simply alias the same \texttt{set}.
@@ -350,7 +351,7 @@ Imagine cutting the supertree at every node that has an OTT ID, and
    and to rootward tree (as a tip).
 The implementation does not detach the nodes to make these cuts, but
     it does process the supertree in what are referred to as ``slices''
-    that correspond to the trees that would be produces by this cutting.
+    that correspond to the trees that would be produced by this cutting.
 
 The supertree is processed in postorder, and whenever an internal node with an OTT ID is
     encountered, that node is treated as the root of a slice by calling \texttt{unprune\_slice}.
@@ -383,7 +384,7 @@ Next we process the taxonomic nodes of this induced tree in postorder.
     \texttt{preorder\_below\_boundaries} gives the traversal of taxonomy 
     nodes without creating a separate tree data structure for the induced tree.
 
-The possibility of having \incsed that are broken and occurring in more than
+The possibility of having \incsed taxa that are broken and occurring in more than
     one slice complicates this whole procedure.
 So a fair amount of bookkeeping is done in \texttt{unprune\_slice} to 
     know which taxonomy ``tips'' are from \incsed taxa and whether or 
@@ -406,7 +407,7 @@ This is necessary to prevent grafting on the \incsed taxon onto the tree so that
 
 The tipward elements of multi-slice \incsed taxa present another challenge.
 The are excluded in the process of finding the induced taxonomic tree.
-They must be the case because they are not descendants of the root taxon.
+They must be excluded in that step because they are not descendants of the root taxon.
 Instead we mark the \texttt{des\_ids} fields of these rootward until
     we run the ancestral taxa stop being \incsed-flagged.
 Separate data structures are needed to keep track of which \incsed are sampled
