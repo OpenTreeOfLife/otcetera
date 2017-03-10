@@ -64,8 +64,7 @@ struct UnpruneStats {
     // maps inc_sed taxa nodes to tips in supertree that are descendants of that taxon.
     std::map<Node_t *, std::set<Node_t *> > inc_sed_taxon_to_sampled_tips;
     // maps inc_sed taxon that is not monophyletic to MRCA in supertree.
-    std::map<Node_t *, Node_t *> non_monophyletic_inc_sed;
-    std::map<OttId, OttIdSet> non_monophyletic_inc_sed_to_desIds;
+    std::map<OttId, OttIdSet> nonmonophyletic_inc_sed_to_des_ids;
     std::map<OttId, OttIdSet> synonym_map;
     LostTaxonMap lost_taxa;
     OttIdSet monotypic_ott_ids;
@@ -77,7 +76,7 @@ struct UnpruneStats {
 
 
 template<typename T>
-void unpruneTaxa(T & taxonomy, T & supertree, UnpruneStats & unprune_stats);
+void do_unprune_and_name(T & taxonomy, T & supertree, UnpruneStats & unprune_stats);
 template <typename N>
 void move_unsampled_tax_children(N * taxon, N * supertree_node, std::set<N*> *v = nullptr);
 
@@ -334,11 +333,12 @@ size_t incorporate_higher_taxon(N* taxon,
     assert(root_supertree_node);
     const auto & taxData = taxon->get_data();
     const auto & taxDes = taxData.des_ids;
+    const auto taxon_ott_id = taxon->get_ott_id();
     assert(taxDes.size() > 0);
     assert(taxData.nonexcluded_ids != nullptr);
     const auto & nonexcluded_ids = *taxData.nonexcluded_ids;
     N * curr_supertree_node = walk_tipward_to_find_taxon_mrca(taxon, root_supertree_node);
-    if (unprune_stats.non_monophyletic_inc_sed.count(taxon) > 0) {
+    if (unprune_stats.nonmonophyletic_inc_sed_to_des_ids.count(taxon_ott_id) > 0) {
         move_unsampled_tax_children(taxon, curr_supertree_node);
     }
     const auto & solDes = curr_supertree_node->get_data().des_ids;
@@ -647,13 +647,6 @@ void record_broken_taxa(const map<Node_t *, node_set_t > & non_mono_to_register,
     }    
 }
 
-// Imagine cutting the tree at every node that has an OTT ID, and assigning a copy of the cut
-//    nodes to both the tipward slice (as root) and rootward slice (as a tip). These are the "slices"
-//    of the supertree used in this algorithm. However, note that we do not actually cut the 
-//    tree, we simply process the slices using the presence of ott IDs as signs of the boundarieis
-//    of the slice.
-
-
 // This function coordinates the calls to incorporate_higher_taxon for a slice that is rooted at root_supertree_node
 //     and clean up associated with finishing this slice of the tree.
 // It is important that this is called in a postorder traversal of the supertree.
@@ -821,7 +814,7 @@ void unprune_slice(N *root_supertree_node,
     unprune_stats.num_supertree_leaves_expanded += numExpanded;
 }
 
-void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_ids) {
+void fill_nonexcluded_id_fields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_ids) {
     // Assuming that incertae sedis taxa are fairly rare, there will be lots of nodes that 
     //    share the same set of non-excluded taxa. Thus we have an owning store and lots
     //    of pointers to them.
@@ -892,12 +885,14 @@ void fillNonexcludeIDFields(Tree_t & taxonomy, const OttIdSet & incertae_sedis_i
     }
 }
 
-void fillDesIdsForIncertaeSedisOnly(const map<long, childParPair> & ott_to_tax,
-                                    const OttIdSet & incertae_sedis_ids, 
-                                    UnpruneStats & unprune_stats) {
-    // As a part of implementing the incertae sedis logic, we also fill the des_ids of the taxonomy.
-    // This info is used to create the "non-excluded" sets, but it is expensive to do on the whole 
-    //    taxonomy, so we just do it for subtrees rooted at an incertae sedis taxon...
+// As a part of implementing the incertae sedis logic, we also fill the des_ids
+//    of the taxonomy.
+// This info is used to create the "non-excluded" sets, but it is expensive to do
+//    on the whole taxonomy, so we just do it for subtrees rooted at an 
+//    incertae sedis taxon.
+void fill_des_ids_for_incertae_sedis_only(const map<long, childParPair> & ott_to_tax,
+                                          const OttIdSet & incertae_sedis_ids, 
+                                          UnpruneStats & unprune_stats) {
     for (auto ist_id: incertae_sedis_ids) {
         if (ott_to_tax.count(ist_id) == 0) {
             throw OTCError() << "Incertae sedis ID (" << ist_id << ") not in taxonomy.";
@@ -945,7 +940,8 @@ map<OttId, childParPair> index_nodes_by_id(Tree_t & taxonomy,
     return ott_to_tax;
 }
 
-// Fills in `unprune_stats.supertree_tips_des_from_inc_sed` and `unprune_stats.inc_sed_taxon_to_sampled_tips`
+// Fills in `unprune_stats.supertree_tips_des_from_inc_sed`
+//    and `unprune_stats.inc_sed_taxon_to_sampled_tips`
 // Uses non-empty des_ids in tax nodes to figure out which descendants of any incertae sedis
 //    taxon are sampled in the supertree
 void find_incertae_sedis_in_supertree(Tree_t & taxonomy,
@@ -975,9 +971,9 @@ void find_incertae_sedis_in_supertree(Tree_t & taxonomy,
 
 
 // Taxa that are descendants of an incertae sedis taxon, will demand some special handling..
-// so we find out which ones are not found in the supertree before calling unprunePreppedInputs
+// so we find out which ones are not found in the supertree before calling unprune_by_postorder_traversal
 // results are stored in unprune_stats. This relies on having been filled...
-void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
+void find_broken_incertae_sedis_des(Tree_t & taxonomy,
                                         Tree_t & supertree,
                                         const map<long, childParPair> & ott_to_tax,
                                         UnpruneStats & unprune_stats) {
@@ -994,16 +990,15 @@ void findBrokenIncertaeSedisDescendants(Tree_t & taxonomy,
         auto soln_mrca = find_mrca_via_traversing(sampled);
         for (auto t : iter_leaf_n(*soln_mrca)) {
             if (sampled.count(t) == 0 && 0 == nonexc->count(t->get_ott_id())) {
-                unprune_stats.non_monophyletic_inc_sed[inc_sed_taxon] = soln_mrca;
-                unprune_stats.non_monophyletic_inc_sed_to_desIds[inc_sed_taxon->get_ott_id()] = inc_sed_taxon->get_data().des_ids;
+                unprune_stats.nonmonophyletic_inc_sed_to_des_ids[inc_sed_taxon->get_ott_id()] = inc_sed_taxon->get_data().des_ids;
                 break;
             }
         }
     }
 }
 
-// last step in unpruneTaxa
-void unprunePreppedInputs(Tree_t & taxonomy,
+// last step in do_unprune_and_name
+void unprune_by_postorder_traversal(Tree_t & taxonomy,
                           Tree_t & supertree,
                           const OttIdSet & incertae_sedis_ids,
                           const map<long, childParPair> & ott_to_tax,
@@ -1018,6 +1013,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
     //    nodes.
     auto & inc_sed_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto nd: snVec){
+        // record some bookkeeping info about the input supertree
         if (nd->is_tip()) {
             unprune_stats.start_num_leaves_in_supertree += 1;
             if (!nd->has_ott_id()) {
@@ -1078,7 +1074,7 @@ void unprunePreppedInputs(Tree_t & taxonomy,
     for (auto n : iter_leaf(supertree)) {
         ott_to_sol[n->get_ott_id()] = n;
     }
-    const auto & id_to_fix_map = unprune_stats.non_monophyletic_inc_sed_to_desIds;
+    const auto & id_to_fix_map = unprune_stats.nonmonophyletic_inc_sed_to_des_ids;
     auto & lost_taxa = unprune_stats.lost_taxa;
     for (auto pit : id_to_fix_map) {
         OttId broken_ott_id = pit.first;
@@ -1094,13 +1090,11 @@ void unprunePreppedInputs(Tree_t & taxonomy,
     }
 }
 
-// Note that this function will steal some nodes from `taxonomy`
-//  so, on output that will no longer be a valid tree. This should
-//  be fine if both taxonomy and supertree go out of scope together.
+
 template<typename T>
-void unpruneTaxa(T & taxonomy,
-                 T & supertree,
-                 UnpruneStats & unprune_stats) {
+const map<OttId, childParPair> register_incertae_sedis_info(T & taxonomy,
+                                  T & supertree,
+                                  UnpruneStats & unprune_stats) {
     const OttIdSet & incertae_sedis_ids = unprune_stats.incertae_sedis_ids;
     unprune_stats.out_degree_many1 = n_internal_out_degree_many(taxonomy);
     // 1. First, index taxonomy by OttId.
@@ -1109,15 +1103,15 @@ void unpruneTaxa(T & taxonomy,
     //    the taxonomy that descend from an incertae sedis taxon.
     // Note that we'll use empty des_ids of a taxonomy node as a flag that that taxon is 
     //    not a descendant of an incertae sedis taxon.
-    fillDesIdsForIncertaeSedisOnly(ott_to_tax, incertae_sedis_ids, unprune_stats);
+    fill_des_ids_for_incertae_sedis_only(ott_to_tax, incertae_sedis_ids, unprune_stats);
     // Now we fill in the unique non-excluded Ids. A non-excluded ID for an internal
     //    node y is the ID of a taxon that is a descendant of some incertae sedis taxon x
     //    where x is child of one of the ancestors of the node y.
-    fillNonexcludeIDFields(taxonomy, incertae_sedis_ids);
+    fill_nonexcluded_id_fields(taxonomy, incertae_sedis_ids);
     // record tips in the sample that are incertae sedis descendants
     find_incertae_sedis_in_supertree(taxonomy, supertree, ott_to_tax, unprune_stats);
     // note which ones can't be in the supertree
-    findBrokenIncertaeSedisDescendants(taxonomy, supertree, ott_to_tax, unprune_stats);
+    find_broken_incertae_sedis_des(taxonomy, supertree, ott_to_tax, unprune_stats);
     // Note that at this point the des_ids field of the taxonomy will be used for tracing
     //    parts of the supertree. It will no longer be used as a flag for incertae sedis
     //    but the taxonomic nodes that were incertae sedis have been recorded in 
@@ -1125,11 +1119,22 @@ void unpruneTaxa(T & taxonomy,
     for (auto nd: iter_post(taxonomy)) {
         nd->get_data().des_ids.clear();
     }
-    // Unprune, collecting stats
-    unprunePreppedInputs(taxonomy, supertree, incertae_sedis_ids, ott_to_tax, unprune_stats);
+    return ott_to_tax;
 }
 
-void reportStats(const UnpruneStats & unprune_stats, ostream * statsStreamPtr) {
+// Note that this function will steal some nodes from `taxonomy`
+//  so, on output that will no longer be a valid tree. This should
+//  be fine if both taxonomy and supertree go out of scope together.
+template<typename T>
+void do_unprune_and_name(T & taxonomy,
+                         T & supertree,
+                         UnpruneStats & unprune_stats) {
+    const auto ott_to_tax = register_incertae_sedis_info(taxonomy, supertree, unprune_stats);
+    const OttIdSet & incertae_sedis_ids = unprune_stats.incertae_sedis_ids;
+    unprune_by_postorder_traversal(taxonomy, supertree, incertae_sedis_ids, ott_to_tax, unprune_stats);
+}
+
+void report_stats(const UnpruneStats & unprune_stats, ostream * statsStreamPtr) {
     const OttIdSet & monotypicOttIds = unprune_stats.monotypic_ott_ids;
     const LostTaxonMap & ltm = unprune_stats.lost_taxa;
     auto numTaxaMonotypicInternals = monotypicOttIds.size();
@@ -1191,7 +1196,7 @@ bool handleIncertaeSedis(OTCLI&, const string & arg) {
 }
 
 int main(int argc, char *argv[]) {
-    OTCLI otCLI("otc-unprune-solution-and-name-unnamed-nodes",
+    OTCLI ot_cli("otc-unprune-solution-and-name-unnamed-nodes",
                 "Takes a phylogenetic estimate (the first tree file) and a taxonomy (the second tree file).\n"
                 "  1. Grafts taxa which were present in the taxonomy, but not included in the solution, onto the.\n"
                 "     solution,\n"
@@ -1203,15 +1208,15 @@ int main(int argc, char *argv[]) {
                 "identifier, then that taxon is the same definition as the taxon with that identifier in the\n"
                 "taxonomic tree. In other words, it does not verify the validity of the internal node names that do exist.\n",
                 "-jout/lost-taxa.json solution.tre taxonomy.tre");
-    otCLI.add_flag('j',
+    ot_cli.add_flag('j',
                   "Produce a JSON file that notes where the descendants of unincluded appear on the tree",
                   handleLostTaxaJSON,
                   true);
-    otCLI.add_flag('s',
+    ot_cli.add_flag('s',
                   "Produce a JSON file with stats about the inputs and outputs",
                   handleStatsJSON,
                   true);
-    otCLI.add_flag('i',
+    ot_cli.add_flag('i',
                   "Optional list of IDs of tree in the exemplified taxonomy that are incertae sedis",
                   handleIncertaeSedis,
                   true);
@@ -1220,30 +1225,30 @@ int main(int argc, char *argv[]) {
     if (argc < 2) {
         throw OTCError("No trees provided!");
     }
-    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+    if (tree_processing_main<Tree_t>(ot_cli, argc, argv, get, nullptr, 1)) {
         return 1;
     }
     if (trees.size() != 2) {
         std::cerr << "Supplied " << trees.size() << " trees for regrafting, should be 2 trees!";
         return 2;
     }
-    std::ofstream lostTaxaJSONStream;
+    std::ofstream lost_taxa_json_stream;
     if (!lostTaxaJSONFilename.empty()) {
-        lostTaxaJSONStream.open(lostTaxaJSONFilename);
-        if (!lostTaxaJSONStream.good()) {
+        lost_taxa_json_stream.open(lostTaxaJSONFilename);
+        if (!lost_taxa_json_stream.good()) {
             std::cerr << "Could not open the path \"" << lostTaxaJSONFilename << "\" to write the JSON file\n";
             return 1;
         }
     }
-    std::ofstream statsJSONStream;
+    std::ofstream stats_json_stream;
     std::ofstream * statsStreamPtr = nullptr;
     if (!statsJSONFilename.empty()) {
-        statsJSONStream.open(statsJSONFilename);
-        if (!statsJSONStream.good()) {
+        stats_json_stream.open(statsJSONFilename);
+        if (!stats_json_stream.good()) {
             std::cerr << "Could not open the path \"" << statsJSONFilename << "\" to write the JSON file\n";
             return 1;
         }
-        statsStreamPtr = & statsJSONStream;
+        statsStreamPtr = & stats_json_stream;
     }
     OttIdSet incertae_sedis_ids;
     if (!incertaeSedisFilename.empty()) {
@@ -1266,18 +1271,18 @@ int main(int argc, char *argv[]) {
     auto & supertree = *(trees.at(0));
     auto & taxonomy = *(trees.at(1));
     UnpruneStats unprune_stats(incertae_sedis_ids);
-    unpruneTaxa(taxonomy, supertree, unprune_stats);
-    reportStats(unprune_stats, statsStreamPtr);
+    do_unprune_and_name(taxonomy, supertree, unprune_stats);
+    report_stats(unprune_stats, statsStreamPtr);
     name_unnamed_nodes(supertree);
     write_tree_as_newick(std::cout, supertree);
     std::cout << std::endl;
     if (!lostTaxaJSONFilename.empty()) {
         const LostTaxonMap & ltm = unprune_stats.lost_taxa;
-        write_lost_taxa(lostTaxaJSONStream, ltm, unprune_stats.synonym_map);
-        lostTaxaJSONStream.close();
+        write_lost_taxa(lost_taxa_json_stream, ltm, unprune_stats.synonym_map);
+        lost_taxa_json_stream.close();
     }
     if (statsStreamPtr) {
-        statsJSONStream.close();
+        stats_json_stream.close();
     }
     return 0;
 }
