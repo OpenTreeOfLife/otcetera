@@ -117,7 +117,7 @@ class TreesToServe {
         std::list<std::string> stored_strings_list;
         const RichTaxTree * taxonomy_tree = nullptr;
     public:
-        const std::string * getStoredString(const std::string & k) {
+        const std::string * get_stored_string(const std::string & k) {
             const std::string * v = stored_strings[k];
             if (v == nullptr) {
                 stored_strings_list.push_back(k);
@@ -127,16 +127,16 @@ class TreesToServe {
             return v;
         }
 
-        void setTaxonomy(const RichTaxonomy &taxonomy) {
+        void set_taxonomy(const RichTaxonomy &taxonomy) {
             assert(taxonomy_ptr == nullptr);
             taxonomy_ptr = &taxonomy;
             taxonomy_tree = &(taxonomy.getTaxTree());
         }
-        const RichTaxonomy & getTaxonomy() const {
+        const RichTaxonomy & get_taxonomy() const {
             assert(taxonomy_ptr != nullptr);
             return *taxonomy_ptr;
         }
-        void fillOttIdSet(const std::bitset<32> & flags, OttIdSet & ott_id_set) {
+        void fill_ott_id_set(const std::bitset<32> & flags, OttIdSet & ott_id_set) {
             ott_id_set.clear();
             for (const auto nd : iter_node_const(*taxonomy_tree)) {
                 const auto & tax_record_flags = nd->get_data().get_flags();
@@ -146,12 +146,12 @@ class TreesToServe {
                 }
             }
         }
-        std::pair<SummaryTree_t &, SummaryTreeAnnotation &> getNewTreeAndAnnotations(const std::string & configfilename,
+        std::pair<SummaryTree_t &, SummaryTreeAnnotation &> get_new_tree_and_annotations(const std::string & configfilename,
                                                                                      const std::string & filename) {
             
             OttIdSet ott_id_set;
             auto cleaning_flags = cleaning_flags_from_config_file(configfilename);
-            fillOttIdSet(cleaning_flags, ott_id_set);
+            fill_ott_id_set(cleaning_flags, ott_id_set);
 
             assert(taxonomy_ptr != nullptr);
             ParsingRules parsingRules;
@@ -174,31 +174,31 @@ class TreesToServe {
             annotation_list.push_back(SummaryTreeAnnotation());
             return {*(tree_list.back()), annotation_list.back()};
         }
-        void registerLastTreeAndAnnotations() {
+        void register_last_tree_and_annotations() {
             const SummaryTreeAnnotation & sta = annotation_list.back();
             const SummaryTree_t & tree = *(tree_list.back());
             default_synth_id = sta.synth_id; // @ TODO need a better system for deciding the default synth ID.
             id_to_tree[sta.synth_id] = &tree;
             id_to_annotations[sta.synth_id] = &sta;
         }
-        void freeLastTreeAndAnnotations() {
+        void free_last_tree_and_annotations() {
             tree_list.back()->clear();
             tree_list.pop_back();
             annotation_list.pop_back();
         }
 
-        const SummaryTreeAnnotation * getAnnotations(std::string synth_id) const {
+        const SummaryTreeAnnotation * get_annotations(std::string synth_id) const {
             const auto & key = synth_id.empty() ? default_synth_id : synth_id;
             auto mit = id_to_annotations.find(key);
             return mit == id_to_annotations.end() ? nullptr : mit->second;
         }
 
-        const SummaryTree_t * getSummaryTree(std::string synth_id) const {
+        const SummaryTree_t * get_summary_tree(std::string synth_id) const {
             const auto & key = synth_id.empty() ? default_synth_id : synth_id;
             auto mit = id_to_tree.find(key);
             return mit == id_to_tree.end() ? nullptr : mit->second;
         }
-        std::size_t getNumTrees() const {
+        std::size_t get_num_trees() const {
             return id_to_tree.size();
         }
 };

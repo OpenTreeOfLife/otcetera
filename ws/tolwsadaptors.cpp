@@ -56,8 +56,8 @@ void about_method_handler( const shared_ptr< Session > session ) {
             extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
         }
         if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
-            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
             if (sta == nullptr || treeptr == nullptr) {
                rbody = "Did not recognize the synth_id.\n";
                status_code = 400;
@@ -138,8 +138,8 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
             extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
         }
         if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
-            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
             if (sta == nullptr || treeptr == nullptr) {
                rbody = "Did not recognize the synth_id.\n";
                status_code = 400;
@@ -171,8 +171,8 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
         vector<string> node_id_vec;
         get_synth_and_node_id_vec(parsedargs, synth_id, node_id_vec, rbody, status_code);
         if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
-            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
             if (sta == nullptr || treeptr == nullptr) {
                rbody = "Did not recognize the synth_id.\n";
                status_code = 400;
@@ -223,8 +223,8 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
             extract_from_request(parsedargs, "height_limit", height_limit, rbody, status_code);
         }
         if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
-            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
             if (sta == nullptr || treeptr == nullptr) {
                rbody = "Did not recognize the synth_id.\n";
                status_code = 400;
@@ -265,8 +265,8 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
         NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
         get_label_format(parsedargs, nns, rbody, status_code);
         if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.getAnnotations(synth_id);
-            const SummaryTree_t * treeptr = tts.getSummaryTree(synth_id);
+            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
             if (sta == nullptr || treeptr == nullptr) {
                rbody = "Did not recognize the synth_id.\n";
                status_code = 400;
@@ -329,7 +329,7 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
         bool supplied_ott_id = false;
         bool supplied_source_id = false;
         const RTRichTaxNode * taxon_node = nullptr;
-        const auto & taxonomy = tts.getTaxonomy();
+        const auto & taxonomy = tts.get_taxonomy();
         const auto & taxonomy_tree = taxonomy.getTaxTree();
         const auto & taxonomy_tree_data = taxonomy_tree.get_data();
         if (status_code == OK) {
@@ -437,12 +437,27 @@ void sigterm_handler( const int signal_number ) {
     }
 }
 
+static string pidfile;
+
 void ready_handler( Service& ) {
 #ifdef _WIN32
-    LOG(INFO) << "Service is ready PID is "<< _getpid();
+    auto pid = _getpid();
 #else
-    LOG(INFO) << "Service is ready PID is "<< getpid();
+    auto pid = getpid();
 #endif
+    LOG(INFO) << "Service is ready. PID is " << pid;
+    if (!pidfile.empty()) {
+        ofstream pstream(pidfile);
+        if (pstream.good()) {
+            pstream << pid << '\n';
+            pstream.close();
+            LOG(INFO) << "PID written to " << pidfile;
+        } else {
+            LOG(WARNING) << "PID file " << pidfile << " could not be opened!";    
+        }
+    } else {
+        LOG(INFO) << "No PID file was requested.";
+    }
 }
 
 int run_server(const po::variables_map & args) {
@@ -456,6 +471,9 @@ int run_server(const po::variables_map & args) {
     if (args.count("port")) {
         port_number = args["port"].as<int>();
     }
+    if (args.count("pidfile")) {
+        pidfile = args["pidfile"].as<string>();
+    }
     if (!args.count("tree-dir")) {
         cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
         return 1;
@@ -466,14 +484,14 @@ int run_server(const po::variables_map & args) {
     RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
     time_t post_tax_time;
     time(&post_tax_time);
-    tts.setTaxonomy(taxonomy);
+    tts.set_taxonomy(taxonomy);
     if (!read_trees(topdir, tts)) {
         return 2;
     }
     time_t post_trees_time;
     time(&post_trees_time);
     //
-    if (tts.getNumTrees() == 0) {
+    if (tts.get_num_trees() == 0) {
         cerr << "No tree to serve. Exiting...\n";
         return 3;
     }
@@ -550,6 +568,7 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
     output.add_options()
         ("tree-dir,D",value<string>(),"Filepath to directory that will hold synthetic tree output")
         ("port,P",value<long>(),"Port to bind to.")
+        ("pidfile,p",value<string>(),"filepath for PID")
         ("num-threads,t",value<long>(),"number of threads")
         ;
 
