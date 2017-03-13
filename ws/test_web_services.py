@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import subprocess
+import time
 
 NUM_TESTS = 0
 FAILED_TESTS = []
@@ -91,13 +92,58 @@ def run_tests_for_invocation(descrip, data_dir, expected_par, executable_par):
     else:
         assert False # no inputs needed
 
+PIDFILE_NAME = "pidfile.txt"
+RUNNING_SERVER = None
+
+def launch_server(ws_build_dir, data_dir):
+    global RUNNING_SERVER
+    exe_path = os.path.join(ws_build_dir, 'otc-tol-ws')
+    pidfile_path = os.path.join(ws_build_dir, PIDFILE_NAME)
+    taxonomy_path = os.path.join(data_dir, "ex-tax-1")
+    summary_tree_path = os.path.join(data_dir, "ex-synth-par")
+    server_std_out = os.path.join(ws_build_dir, "test-server-stdouterr.txt")
+    invocation = [exe_path, taxonomy_path, "-D" + summary_tree_path, "-p" + pidfile_path]
+    print(invocation)
+    with open(server_std_out, 'w') as sstdoe:
+        RUNNING_SERVER = subprocess.Popen(invocation,
+                                          stdout=sstdoe,
+                                          stderr=subprocess.STDOUT)
+        wc = 0
+        while (RUNNING_SERVER.poll() is None) and (not os.path.exists(pidfile_path)):
+            time.sleep(0.1)
+            if wc > 100:
+                raise RuntimeError("Assuming that the server has hung after waiting for pidfile")
+            wc += 1
+    return True
+
+def kill_server(ws_build_dir):
+    pidfile_path = os.path.join(ws_build_dir, PIDFILE_NAME)
+    if RUNNING_SERVER.poll() is None:
+        RUNNING_SERVER.terminate()
+        if RUNNING_SERVER.poll() is None:
+            RUNNING_SERVER.kill()
+        wc = 0
+        while RUNNING_SERVER.poll() is None:
+            time.sleep(0.1)
+            wc += 1
+            if wc > 100:
+                break
+    if RUNNING_SERVER.poll() is None:
+        sys.stderr.write("Could not kill server! Kill it then remove the pidfile.txt\n")
+    else:
+        os.remove(pidfile_path)
+        sys.stderr.write("Server no longer running and pidfile removed.\n")
+
+def run_tests(dirs_to_run):
+    pass #c = raw_input("enter something to kill this  ")
+
 if __name__ == '__main__':
     import codecs
     import json
     import sys
     import os
     SCRIPT_DIR = os.path.split(sys.argv[0])[0]
-    dat_dir, expected_dir, ws_build_dir = [os.path.abspath(i) for i in sys.argv[1:4]]
+    data_dir, expected_dir, ws_build_dir = [os.path.abspath(i) for i in sys.argv[1:4]]
     if len(sys.argv) > 4:
         test_sub_dir_to_run = sys.argv[4]
         e_dir_list = [test_sub_dir_to_run]
@@ -105,19 +151,25 @@ if __name__ == '__main__':
         e_dir_list = os.listdir(expected_dir)
         e_dir_list.sort()
 
+    to_run = []
     for e_subdir_name in e_dir_list:
         e_path = os.path.join(expected_dir, e_subdir_name)
         if not os.path.isdir(e_path):
+            sys.stderr.write("Skipping test {} due to missing dir\n".format(e_path))
             continue
-        t_path = os.path.join(ws_build_dir)
-    exe_path = os.path.join(ws_build_dir, 'otc-tol-ws')
-    pidfile_path = os.path.join(ws_build_dir, 'pidfile.txt')
+        to_run.append(e_path)
+    
+    pidfile_path = os.path.join(ws_build_dir, PIDFILE_NAME)
     if os.path.exists(pidfile_path):
         sys.exit("{} is in the way!\n".format(pidfile_path))
-    
-    passed = NUM_TESTS - len(FAILED_TESTS)
-    sys.stderr.write('Passed {p:d}/{t:d} tests.'.format(p=passed, t=NUM_TESTS))
-    if FAILED_TESTS:
-        sys.exit(' Failed:\n    {}\n'.format('\n    '.join(FAILED_TESTS)))
-    sys.stderr.write('SUCCESS\n')
+    if launch_server(ws_build_dir, data_dir):
+        try:
+            run_tests(to_run)
+        finally:
+            kill_server(ws_build_dir)
+        passed = NUM_TESTS - len(FAILED_TESTS)
+        sys.stderr.write('Passed {p:d}/{t:d} tests.'.format(p=passed, t=NUM_TESTS))
+        if FAILED_TESTS:
+            sys.exit(' Failed:\n    {}\n'.format('\n    '.join(FAILED_TESTS)))
+        sys.stderr.write('SUCCESS\n')
 
