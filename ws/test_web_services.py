@@ -84,6 +84,7 @@ class WebServiceTestJob(object):
         self.requests_method = _verb_name_to_req_method[v]
         self.service_prefix = service_prefix
         self.url = service_prefix + self.url_fragment
+        self.expected = test_description.get('expected_response_payload')
         self.status_str = None
         self.passed = False
         self.failed = False
@@ -95,6 +96,13 @@ class WebServiceTestJob(object):
     def run_ws_test(self):
         try:
             response = self.requests_method(self.url)
+            response.raise_for_status()
+            if self.expected is not None:
+                j = response.json()
+                if j != self.expected:
+                    self.failed = True
+                    self.status_str = "Wrong response: {}".format(json.dumps(j))
+                    return
             self.passed = True
             self.status_str = "Completed"
         except Exception as x:
@@ -109,56 +117,6 @@ class WebServiceTestJob(object):
         """:return self.status_str"""
         return self.status_str
 #########################################################################################
-
-def debug(m):
-    sys.stderr.write('DEBUG: {}\n'.format(m))
-
-def error(m):
-    sys.stderr.write('ERROR: {}\n'.format(m))
-
-def test_invoc(tag, invocation, result_dir):
-    global NUM_TESTS, FAILED_TESTS
-    obt_outf = os.path.join(result_dir, 'obtained-output')
-    obt_errf = os.path.join(result_dir, 'obtained-error')
-    obt_exitf = os.path.join(result_dir, 'obtained-exit')
-    obt_extraf = os.path.join(result_dir, 'obtained-extra')
-    NUM_TESTS += 1
-    with codecs.open(obt_outf, 'w', encoding='utf-8') as ob_o:
-        with codecs.open(obt_errf, 'w', encoding='utf-8') as ob_e:
-            invoc = '"{}"'.format('" "'.join(invocation))
-            debug('Running:\n    ' + invoc + ' >"' + obt_outf + '" 2>"' + obt_errf + '" ; echo $? >"' + obt_exitf + '"')
-            p = subprocess.Popen(invocation, cwd=result_dir, stdout=ob_o, stderr=ob_e)
-            exit_code = p.wait()
-            with codecs.open(obt_exitf, 'w', encoding='utf-8') as ob_ex:
-                ob_ex.write('{e:d}\n'.format(e=exit_code))
-    exp_outf = os.path.join(result_dir, 'output')
-    exp_extraf = os.path.join(result_dir, 'extra')
-    if os.path.exists(exp_outf):
-        expected_output = codecs.open(exp_outf, 'r', encoding='utf-8').read()
-        obtained_output = codecs.open(obt_outf, 'r', encoding='utf-8').read()
-        if obtained_output != expected_output:
-            FAILED_TESTS.append(tag)
-            error('OUTPUT differed for {}:\n'.format(tag))
-            subprocess.call(['diff', exp_outf, obt_outf])
-    if os.path.exists(exp_extraf):
-        expected_output = codecs.open(exp_extraf, 'r', encoding='utf-8').read()
-        obtained_output = codecs.open(obt_extraf, 'r', encoding='utf-8').read()
-        if obtained_output != expected_output:
-            FAILED_TESTS.append(tag)
-            error('EXTRA file output differed for {}:\n'.format(tag))
-            subprocess.call(['diff', exp_extraf, obt_extraf])
-            
-    exp_exitf = os.path.join(result_dir, 'exit')
-    if os.path.exists(exp_exitf):
-        expected_exit = int(codecs.open(exp_exitf, 'r', encoding='utf-8').read())
-    else:
-        expected_exit = 0
-    if expected_exit != exit_code:
-        m = 'EXIT CODE differed for {t}: Expected {e:d} Obtained {o:d}\n'
-        error(m.format(t=tag, e=expected_exit, o=exit_code))
-        if tag not in FAILED_TESTS:
-            FAILED_TESTS.append(tag)
-
 
 PIDFILE_NAME = "pidfile.txt"
 RUNNING_SERVER = None
@@ -190,7 +148,8 @@ def launch_server(exe_dir, taxonomy_dir, synth_par, server_threads=4):
     return (RUNNING_SERVER.poll() is None) and (os.path.exists(pidfile_path))
 
 def kill_server(exe_dir):
-    #c = raw_input("type any key to kill the server... ")
+    if os.environ.get("PROMPT_BEFORE_KILLING_SERVER"):
+        c = raw_input("type any key to kill the server... ")
     pidfile_path = os.path.join(exe_dir, PIDFILE_NAME)
     if RUNNING_SERVER.poll() is None:
         RUNNING_SERVER.terminate()
@@ -252,6 +211,7 @@ def run_tests(dirs_to_run, test_threads):
         running_jobs = srj
         time.sleep(0.1)
     return num_passed, num_failed, num_errors
+
 if __name__ == '__main__':
     import argparse
     import codecs
