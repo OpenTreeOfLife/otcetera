@@ -10,5 +10,9 @@ otc_tol_ws_SOURCES = tolws.cpp tolwsadaptors.cpp tolwsbooting.cpp
 otc_tol_ws_CPPFLAGS = $(AM_CPPFLAGS)
 
 check:
-	python $(abs_top_srcdir)/ws/test_web_services.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expectedws $(abs_builddir)
+	python $(abs_top_srcdir)/ws/test_web_services.py \
+        --taxonomy-dir $(abs_top_srcdir)/data/ex-tax-1 \
+        --synthesis-parent $(abs_top_srcdir)/data/ex-synth-par \
+        --tests-parent $(abs_top_srcdir)/expectedws \
+        --exe-dir $(abs_builddir)
 

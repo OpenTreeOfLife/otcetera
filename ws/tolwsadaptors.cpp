@@ -466,7 +466,7 @@ int run_server(const po::variables_map & args) {
     int num_threads = 4;
     int port_number = 1984;
     if (args.count("num-threads")) {
-        port_number = args["num-threads"].as<int>();
+        num_threads = args["num-threads"].as<int>();
     }
     if (args.count("port")) {
         port_number = args["port"].as<int>();
@@ -537,7 +537,7 @@ int run_server(const po::variables_map & args) {
     service.publish( r_taxon_info );
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
-    LOG(INFO) << "starting service with " << num_threads << " on port " << port_number << "...";
+    LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";
     time_t service_prep_time;
     time(&service_prep_time);
     LOG(INFO) << "Taxonomy reading took " << difftime(post_tax_time, start_time) << " seconds.";
@@ -567,9 +567,9 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
     options_description output("Server options");
     output.add_options()
         ("tree-dir,D",value<string>(),"Filepath to directory that will hold synthetic tree output")
-        ("port,P",value<long>(),"Port to bind to.")
+        ("port,P",value<int>(),"Port to bind to.")
         ("pidfile,p",value<string>(),"filepath for PID")
-        ("num-threads,t",value<long>(),"number of threads")
+        ("num-threads,n",value<int>(),"number of threads")
         ;
 
     options_description visible;
