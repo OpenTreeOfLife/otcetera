@@ -8,8 +8,11 @@
 #include "otc/supertree_util.h"
 #include "otc/tree_iter.h"
 #include <fstream>
+#include <boost/filesystem.hpp>
 
 using namespace otc;
+namespace fs = boost::filesystem;
+
 using std::vector;
 using std::unique_ptr;
 using std::set;
@@ -654,7 +657,7 @@ int main(int argc, char *argv[])
 	    auto filename = args["incertae-sedis"].as<string>();
 	    std::ifstream file(filename);
 	    if (not file)
-		throw OTCError()<<"Cannot open incertae sedis file '"<<filename<<"'";
+		throw OTCError()<<"Cannot open incertae sedis file '"<<fs::absolute(filename)<<"'";
 	    while (file)
 	    {
 		long i;
