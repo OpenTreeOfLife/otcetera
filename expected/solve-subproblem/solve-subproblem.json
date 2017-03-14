@@ -15,8 +15,8 @@
       "expected": "place-is"
   },
   {
-      "invocation" : ["otc-solve-subproblem", "-I../../../data/is-naming/is.txt", "<INFILELIST>"],
-      "infile_list": ["is-naming/tree1.tre", "is-naming/tax.tre"],
+      "invocation" : ["otc-solve-subproblem", "-I../../../data/is-naming/is1.txt", "<INFILELIST>"],
+      "infile_list": ["is-naming/tree1.tre", "is-naming/tax1.tre"],
       "expected": "is-naming1"
   }
 ]
