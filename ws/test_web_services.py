@@ -134,6 +134,7 @@ class WebServiceTestJob(object):
         self.passed = False
         self.failed = False
         self.erred = False
+        self.test_dir = test_description.get("test_dir")
 
     def __str__(self):
         return 'WebServiceTestJob {}'.format(self.name)
@@ -147,7 +148,14 @@ class WebServiceTestJob(object):
                 if j != self.expected:
                     dd = gen_expected_obs_diff(self.expected, j, 'x')
                     self.failed = True
-                    self.status_str = "Wrong response:\n{}".format('\n'.join(dd))
+                    if self.test_dir:
+                        dbout_observed = os.path.join(self.test_dir, "observed.json")
+                        with codecs.open(dbout_observed, 'w', encoding="utf-8") as obsfo:
+                            json.dump(j, obsfo, sort_keys=True, indent=2, separators=(',', ': '))
+                        m = 'Response written to {}'.format(dbout_observed)
+                    else:
+                        m = ''
+                    self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
                     return
             self.passed = True
             self.status_str = "Completed"
@@ -221,7 +229,13 @@ def run_tests(dirs_to_run, test_threads):
     td_list = []
     for test_dir in dirs_to_run:
         with codecs.open(os.path.join(test_dir, "method.json")) as inp:
-            td_list.append(json.load(inp))
+            td = json.load(inp)
+        if os.path.exists(os.path.join(test_dir, "expected.json")):
+            with codecs.open(os.path.join(test_dir, "expected.json")) as inp:
+                td["expected_response_payload"] = json.load(inp)
+        td["test_dir"] = test_dir
+        td_list.append(td)
+
     start_worker(test_threads)
     service_prefix = "http://127.0.0.1:{}/".format(SERVER_PORT)
     all_jobs = [WebServiceTestJob(test_description=td, service_prefix=service_prefix) for td in td_list]
