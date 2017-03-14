@@ -14,6 +14,51 @@ _LOG.addHandler(_lh)
 
 NUM_TESTS = 0
 FAILED_TESTS = []
+
+def _extend_diff_list(diff_list, r):
+    if r:
+        if isinstance(r, list):
+            diff_list.extend(r)
+        else:
+            diff_list.append(r)
+
+def gen_dict_diff_str(expected, observed, ex_pref, obs_pref):
+    if expected == observed:
+        return None
+    diff_list = []
+    if isinstance(expected, dict):
+        if not isinstance(observed, dict):
+            return '{} is a dict, but {} is a {}'.format(ex_pref, obs_pref, type(observed))
+        for ek, ev in expected.items():
+            if ek in observed:
+                ov = observed[ek]
+                if ov != ev:
+                    r = gen_dict_diff_str(ev, ov, '{}["{}"]'.format(ex_pref, ek), '{}["{}"]'.format(obs_pref, ek))
+                    _extend_diff_list(diff_list, r)
+
+            else:
+                diff_list.append('{}["{}"] is absent'.format(obs_pref, ek))
+        for k in observed.keys():
+            if k not in expected:
+                diff_list.append('{}["{}"] was present, but not an expected key'.format(obs_pref, ek))
+    elif isinstance(expected, list) or isinstance(expected, tuple):
+        if not isinstance(observed, list) or isinstance(observed, tuple):
+            return '{} is a list, but {} is a {}'.format(ex_pref, obs_pref, type(observed))
+        ml = min(len(expected), len(observed))
+        for ind in range(ml):
+            eel, oel = expected[ind], observed[ind]
+            if eel != oel:
+                r = gen_dict_diff_str(eel, oel, '{}[{}]'.format(ex_pref, ind), '{}[{}]'.format(obs_pref, ind))
+                _extend_diff_list(diff_list, r)
+    elif type(expected) == type(observed):
+        return ['{} = {}, but {} = {}'.format(ex_pref, repr(expected), obs_pref, repr(observed))]
+    else:
+        return ['{} is the {} equal to {}, but {} is a {}'.format(ex_pref, type(expected), repr(expected), obs_pref, type(observed))]
+    return diff_list
+
+def gen_expected_obs_diff(expected, observed, tag):
+    return gen_dict_diff_str(expected, observed, 'Expected {}'.format(tag), 'Observed {}'.format(tag))
+
 #########################################################################################
 # The following code for execution in a non-blocking thread is from pyraphyletic. If
 #    we moved it to peyotl, we could import it from there (at the cost of making)
@@ -100,8 +145,9 @@ class WebServiceTestJob(object):
             if self.expected is not None:
                 j = response.json()
                 if j != self.expected:
+                    dd = gen_expected_obs_diff(self.expected, j, 'x')
                     self.failed = True
-                    self.status_str = "Wrong response: {}".format(json.dumps(j))
+                    self.status_str = "Wrong response:\n{}".format('\n'.join(dd))
                     return
             self.passed = True
             self.status_str = "Completed"
