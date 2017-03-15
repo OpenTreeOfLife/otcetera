@@ -1,0 +1,32 @@
+{
+  "mrca": {
+    "conflicts_with": {
+      "xx_1@t2": "node2"
+    },
+    "node_id": "mrcaott1ott11",
+    "num_tips": 6,
+    "supported_by": {
+      "xx_1@t1": "node2"
+    }
+  },
+  "nearest_taxon": {
+    "name": "ABC",
+    "ott_id": 1001,
+    "rank": "no rank",
+    "tax_sources": null,
+    "uniqname": "ABC"
+  },
+  "source_id_map": {
+    "xx_1@t1": {
+      "git_sha": "0",
+      "study_id": "xx_1",
+      "tree_id": "t1"
+    },
+    "xx_1@t2": {
+      "git_sha": "0",
+      "study_id": "xx_1",
+      "tree_id": "t2"
+    }
+  },
+  "synth_id": "<UNKNOWN>"
+}

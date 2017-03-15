@@ -1,0 +1,9 @@
+{
+  "url_fragment": "tree_of_life/subtree",
+  "verb": "POST",
+  "arguments": {
+    "node_id": "mrcaott1ott11",
+    "height_limit":10,
+    "label_format":"name_and_id"
+  }
+}
