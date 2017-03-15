@@ -40,7 +40,7 @@ def gen_dict_diff_str(expected, observed, ex_pref, obs_pref):
                 diff_list.append('{}["{}"] is absent'.format(obs_pref, ek))
         for k in observed.keys():
             if k not in expected:
-                diff_list.append('{}["{}"] was present, but not an expected key'.format(obs_pref, ek))
+                diff_list.append('{}["{}"] was present, but not an expected key'.format(obs_pref, k))
     elif isinstance(expected, list) or isinstance(expected, tuple):
         if not isinstance(observed, list) or isinstance(observed, tuple):
             return '{} is a list, but {} is a {}'.format(ex_pref, obs_pref, type(observed))

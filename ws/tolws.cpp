@@ -578,9 +578,9 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
 
 void taxon_info_ws_method(const TreesToServe & tts,
                           const RTRichTaxNode * taxon_node,
-                          bool , //include_lineage,
-                          bool , //include_children,
-                          bool , //include_terminal_descendants,
+                          bool include_lineage,
+                          bool include_children,
+                          bool include_terminal_descendants,
                           string & response_str,
                           int & status_code) {
     const auto & taxonomy = tts.get_taxonomy();
@@ -589,7 +589,8 @@ void taxon_info_ws_method(const TreesToServe & tts,
     const auto & taxonomy_tree_data = taxonomy_tree.get_data();
     const auto & node_data = taxon_node->get_data();
     json response;
-    response["source"] = taxonomy.get_version();
+    add_taxon_info(taxonomy, *taxon_node, response);
+    response["source"] = taxonomy.get_version(); //TBD "source" ?
     response["ott_id"] = taxon_node->get_ott_id();
     response["name"] = string(node_data.get_name());
     response["uniqname"] = string(node_data.get_uniqname());
