@@ -126,7 +126,6 @@ API_HEADERS = {'content-type' : 'application/json',
 class WebServiceTestJob(object):
     def __init__(self, test_description, service_prefix):
         self.url_fragment = test_description["url_fragment"]
-        self.name = test_description.get("name", self.url_fragment)
         self.arguments = test_description["arguments"]
         v = test_description.get("verb", "GET").upper()
         self.requests_method = _verb_name_to_req_method[v]
@@ -138,14 +137,16 @@ class WebServiceTestJob(object):
         self.failed = False
         self.erred = False
         self.test_dir = test_description.get("test_dir")
-
+        self.test_subdir = os.path.split(self.test_dir)[-1]
+        self.name = test_description.get("name", self.test_subdir or self.url_fragment)
+        
     def __str__(self):
         return 'WebServiceTestJob {}'.format(self.name)
 
     def run_ws_test(self):
         try:
             if self.arguments:
-                _LOG.debug("Arguments = {}".format(repr(self.arguments)))
+                _LOG.debug("{} arguments = {}".format(self.name, repr(self.arguments)))
                 response = self.requests_method(self.url, headers=API_HEADERS, data=json.dumps(self.arguments))
             else:
                 response = self.requests_method(self.url)
@@ -154,7 +155,7 @@ class WebServiceTestJob(object):
                 try:
                     j = response.json()
                 except:
-                    _LOG.error("No JSON in response: {}".format(response.text))
+                    _LOG.error("{} no JSON in response: {}".format(self.name, response.text))
                     raise
                 if j != self.expected:
                     dd = gen_expected_obs_diff(self.expected, j, 'x')
