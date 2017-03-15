@@ -120,6 +120,9 @@ _verb_name_to_req_method = {"GET": requests.get,
                             "HEAD": requests.head,
                             "OPTIONS": requests.options,
                             }
+API_HEADERS = {'content-type' : 'application/json',
+               'accept' : 'application/json',
+              }
 class WebServiceTestJob(object):
     def __init__(self, test_description, service_prefix):
         self.url_fragment = test_description["url_fragment"]
@@ -141,10 +144,18 @@ class WebServiceTestJob(object):
 
     def run_ws_test(self):
         try:
-            response = self.requests_method(self.url)
+            if self.arguments:
+                _LOG.debug("Arguments = {}".format(repr(self.arguments)))
+                response = self.requests_method(self.url, headers=API_HEADERS, data=json.dumps(self.arguments))
+            else:
+                response = self.requests_method(self.url)
             response.raise_for_status()
             if self.expected is not None:
-                j = response.json()
+                try:
+                    j = response.json()
+                except:
+                    _LOG.error("No JSON in response: {}".format(response.text))
+                    raise
                 if j != self.expected:
                     dd = gen_expected_obs_diff(self.expected, j, 'x')
                     self.failed = True
