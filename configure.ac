@@ -79,6 +79,7 @@ else
 	MAYBE_TEST_DIR="test"
 fi
 AC_SUBST(MAYBE_TEST_DIR)
+AC_SUBST(MAYBE_WS_DIR)
 AC_PROG_MAKE_SET
 
 # Write our compilation flags to config.h so that we can report them with the version info.
