@@ -65,7 +65,11 @@ prefix); also note that the path to the libraries in the build BOOST dir is plat
 
 # restbed
 
-https://github.com/corvusoft/restbed
+https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
+
+# requests
+
+The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
 
 ## configuration + building
 
