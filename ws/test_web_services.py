@@ -9,7 +9,7 @@ from threading import Thread
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
 _lh = logging.StreamHandler()
-_lh.setFormatter(logging.Formatter("[%(asctime)s] %(filename)s (%(lineno)d): %(levelname) 8s: %(message)s"))
+_lh.setFormatter(logging.Formatter("[%(asctime)s] %(filename)s (%(lineno)3d): %(levelname) 8s: %(message)s"))
 _LOG.addHandler(_lh)
 
 NUM_TESTS = 0
