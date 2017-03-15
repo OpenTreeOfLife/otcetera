@@ -56,8 +56,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-tree-tool \
 				otc-version-reporter \
 				otc-munge-names \
-				otc-conflict-stats
-
+				otc-conflict-stats \
+				otc-broken-taxa
 
 
 LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS) 
@@ -151,6 +151,9 @@ otc_relabel_tree_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_tree_tool_SOURCES = tree-tool.cpp
 otc_tree_tool_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_broken_taxa_SOURCES = broken-taxa.cpp
+otc_broken_taxa_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_unprune_solution_and_name_unnamed_nodes_SOURCES = unprune-solution-and-name-unnamed-nodes.cpp
 otc_unprune_solution_and_name_unnamed_nodes_CPPFLAGS = $(AM_CPPFLAGS)
