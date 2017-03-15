@@ -1,4 +1,4 @@
-SUBDIRS = otc $(MAYBE_TEST_DIR) tools ws
+SUBDIRS = otc $(MAYBE_TEST_DIR) tools $(MAYBE_WS_DIR)
 
 pkgconfigdir= $(libdir)/pkgconfig
 pkgconfig_DATA= otceterav0.0.pc
