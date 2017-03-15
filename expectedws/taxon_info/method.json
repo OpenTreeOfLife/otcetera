@@ -1,0 +1,7 @@
+{
+  "url_fragment": "taxonomy/taxon_info",
+  "verb": "POST",
+  "arguments": {
+    "ott_id": 1000000
+  }
+}
