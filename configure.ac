@@ -58,6 +58,20 @@ AC_PATH_PROG([PYTHON], [python], [], [$PATH])
 AC_PYTHON_MODULE([subprocess], [], [])
 AC_SUBST(PYTHON)
 
+AC_ARG_WITH(
+    [webservices],
+    AC_HELP_STRING(
+        [--with-webservices=yes],
+        [enables compilation of the ws subdirectory (requires restbed be installed)]
+        ),
+    [
+    if test "$withval" = "yes"; then
+        MAYBE_WS_DIR="ws"
+    else
+        MAYBE_WS_DIR=
+    fi
+    ])
+
 if test -z "$PYTHON"
 then
 	MAYBE_TEST_DIR=
