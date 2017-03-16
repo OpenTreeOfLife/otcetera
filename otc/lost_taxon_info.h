@@ -200,11 +200,39 @@ inline LostTaxonDetails<N>::LostTaxonDetails(OttId oid,
     // each attachment child that is not wholly assigned to this taxon
     // this traversal can include too many IDs we'll fix that below...
     OttIdSet intruding_taxa_plus;
+    std::set<const N *> checked;
     for (auto nd : attachment_set) {
         for (auto c : iter_child_const(*nd)) {
+            checked.insert(c);
             if (no_interloper.count(c) == 0) {
                 accumulate_closest_ott_id_for_subtree(c, intruding_taxa_plus);
             }
+        }
+        checked.insert(nd);
+    }
+    // we have to make sure that we get the induced tree to find all intruders
+    for (auto nd : attachment_set) {
+        if (nd == mrca) {
+            continue;
+        }
+        auto ancnd = nd->get_parent();
+        while (true) {
+            if (checked.count(ancnd) > 0) {
+                break;
+            }
+            for (auto c : iter_child_const(*ancnd)) {
+                if (checked.count(c) > 0) {
+                    continue;
+                }
+                checked.insert(c);
+                if (no_interloper.count(c) == 0) {
+                    accumulate_closest_ott_id_for_subtree(c, intruding_taxa_plus);
+                }
+            }
+            if (ancnd == mrca) {
+                break;
+            }
+            ancnd = ancnd->get_parent();
         }
     }
     auto intruding_taxa_uncl = set_difference_as_set(intruding_taxa_plus, des_ids_for_taxon);

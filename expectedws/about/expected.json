@@ -1,0 +1,41 @@
+{
+  "date_created": "2017-02-01 19:51:14",
+  "filtered_flags": [
+    "major_rank_conflict",
+    "major_rank_conflict_inherited",
+    "environmental",
+    "unclassified_inherited",
+    "unclassified",
+    "viral",
+    "barren",
+    "not_otu",
+    "incertae_sedis",
+    "incertae_sedis_inherited",
+    "extinct_inherited",
+    "extinct",
+    "hidden",
+    "unplaced",
+    "unplaced_inherited",
+    "was_container",
+    "inconsistent",
+    "hybrid",
+    "merged"
+  ],
+  "num_source_trees": 2,
+  "root": {
+    "node_id": "ott1000000",
+    "num_tips": 9,
+    "taxon": {
+      "name": "Exampleroot",
+      "ott_id": 1000000,
+      "rank": "no rank",
+      "tax_sources": [
+        "ncbi:10239",
+        "gbif:8"
+      ],
+      "uniqname": "Exampleroot"
+    }
+  },
+  "synth_id": "<UNKNOWN>",
+  "taxonomy_version": "exampletaxonomy"
+}

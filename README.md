@@ -65,12 +65,20 @@ prefix); also note that the path to the libraries in the build BOOST dir is plat
 
 # restbed
 
+<<<<<<< HEAD
+https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
+
+# requests
+
+The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
+=======
 We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
 
 To build including restbed, you will also need to set:
 
     CPPFLAGS=-Ipath_to_restbed_include
     LDFLAGS=-Lpath_to_restbed_library
+>>>>>>> origin/master
 
 ## configuration + building
 

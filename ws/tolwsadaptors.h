@@ -124,10 +124,10 @@ inline otc::vec_src_node_ids extract_node_id_vec(otc::TreesToServe & tts,
                                                  const nlohmann::json & sbv) {
     std::list<otc::src_node_id> lsni;
     for (nlohmann::json::const_iterator jit = sbv.begin(); jit != sbv.end(); ++jit) {
-        const std::string * kp = tts.getStoredString(jit.key());
+        const std::string * kp = tts.get_stored_string(jit.key());
         const auto & v = jit.value();
         for (nlohmann::json::const_iterator vit = v.begin(); vit != v.end(); ++vit) {
-            const std::string * vp = tts.getStoredString(*vit);
+            const std::string * vp = tts.get_stored_string(*vit);
             lsni.push_back(otc::src_node_id(kp, vp));
         } 
     }

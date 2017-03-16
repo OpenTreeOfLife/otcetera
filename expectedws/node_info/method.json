@@ -1,0 +1,8 @@
+{
+  "url_fragment": "tree_of_life/node_info",
+  "verb": "POST",
+  "arguments": {
+    "node_id": "ott100",
+    "include_lineage": true
+  }
+}

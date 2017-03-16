@@ -71,7 +71,7 @@ void add_node_support_info(const TreesToServe & tts,
                            const SumTreeNode_t & nd,
                            json & noderepr,
                            set<string> & usedSrcIds) {
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     const auto & d = nd.get_data();
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
@@ -168,7 +168,7 @@ void about_ws_method(const TreesToServe &tts,
                      int & status_code) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["date_created"] = sta->date_completed;
@@ -190,7 +190,7 @@ void about_ws_method(const TreesToServe &tts,
 void tax_about_ws_method(const TreesToServe &tts,
                          string & response_str,
                          int & status_code) {
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     string weburl;
@@ -257,7 +257,7 @@ void node_info_ws_method(const TreesToServe & tts,
         status_code = 400;
         return;
     }
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
@@ -310,7 +310,7 @@ void mrca_ws_method(const TreesToServe & tts,
         status_code = 400;
         return;
     }
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
@@ -483,7 +483,7 @@ void induced_subtree_ws_method(const TreesToServe & tts,
             cnd = cnd->get_parent(); 
         } 
     }
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
     writeVisitedNewick(out, visited, focal, nnsbs);
@@ -511,7 +511,7 @@ void newick_subtree_ws_method(const TreesToServe & tts,
         return;
     }
     assert(sta != nullptr);
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
@@ -563,7 +563,7 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
         return;
     }
     assert(sta != nullptr);
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
@@ -578,18 +578,19 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
 
 void taxon_info_ws_method(const TreesToServe & tts,
                           const RTRichTaxNode * taxon_node,
-                          bool , //include_lineage,
-                          bool , //include_children,
-                          bool , //include_terminal_descendants,
+                          bool include_lineage,
+                          bool include_children,
+                          bool include_terminal_descendants,
                           string & response_str,
                           int & status_code) {
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     assert(taxon_node != nullptr);
     const auto & taxonomy_tree = taxonomy.getTaxTree();
     const auto & taxonomy_tree_data = taxonomy_tree.get_data();
     const auto & node_data = taxon_node->get_data();
     json response;
-    response["source"] = taxonomy.get_version();
+    add_taxon_info(taxonomy, *taxon_node, response);
+    response["source"] = taxonomy.get_version(); //TBD "source" ?
     response["ott_id"] = taxon_node->get_ott_id();
     response["name"] = string(node_data.get_name());
     response["uniqname"] = string(node_data.get_uniqname());
