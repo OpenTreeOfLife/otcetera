@@ -591,10 +591,6 @@ void taxon_info_ws_method(const TreesToServe & tts,
     json response;
     add_taxon_info(taxonomy, *taxon_node, response);
     response["source"] = taxonomy.get_version(); //TBD "source" ?
-    response["ott_id"] = taxon_node->get_ott_id();
-    response["name"] = string(node_data.get_name());
-    response["uniqname"] = string(node_data.get_uniqname());
-    response["tax_sources"] = node_data.get_sources_json();
     response["flags"] = flags_to_string_vec(node_data.get_flags());
     json syn_list;
     for (auto tjs : node_data.junior_synonyms) {
