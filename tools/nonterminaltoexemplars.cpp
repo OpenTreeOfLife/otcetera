@@ -19,7 +19,7 @@ bool writeTreeOrDie(OTCLI & otCLI, const std::string & fp, const T & tree, bool 
     } else {
         *outPtr << fp << '\n';
     }
-    writeTreeAsNewick(*outPtr, tree);
+    write_tree_as_newick(*outPtr, tree);
     *outPtr << "\n";
     if (!useStdOut) {
         outp.close();
@@ -32,8 +32,8 @@ inline OttIdSet findIncludedTipIds(const T & nd, const Y & container) {
     OttIdSet r;
     for (auto t : iter_leaf_n_const(nd)) {
         if (contains(container, t)) {
-            assert(t->hasOttId());
-            r.insert(t->getOttId());
+            assert(t->has_ott_id());
+            r.insert(t->get_ott_id());
         }
     }
     return r;
@@ -47,23 +47,23 @@ inline void replaceTipWithSet(T & tree, Y * nd, const OttIdSet & oids) {
     bool hasNodeName = false;
     std::string noden;
     if (transferNodeNameToExemplars) {
-        std::string onn = nd->getName();
-        auto opts = getSourceNodeName(onn);
+        std::string onn = nd->get_name();
+        auto opts = get_source_node_name(onn);
         if (opts) {
             noden = *opts;
             hasNodeName = true;
         }
     }
     for (auto oid : oids) {
-        auto x = tree.createNode(nullptr);
-        x->setOttId(oid);
+        auto x = tree.create_node(nullptr);
+        x->set_ott_id(oid);
         if (hasNodeName) {
             std::string n = noden + " ott" + std::to_string(oid);
-            x->setName(n);
+            x->set_name(n);
         }
-        nd->addSibOnLeft(x);
+        nd->add_sib_on_left(x);
     }
-    nd->detachThisNode();
+    nd->detach_this_node();
 }
 
 void writeJSONLogForExemplifications(const std::string & outfilename,
@@ -134,7 +134,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                 continue;
             }
             const ListTreeNdPair & treeNdPairList{mappedPhyloListIt->second};
-            assert(!nd->isTip());
+            assert(!nd->is_tip());
             bool hasIncludedDes = false;
             for (auto c : iter_child(*nd)) {
                 if (contains(includedNodes, c)) {
@@ -142,16 +142,16 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
                     break;
                 }
             }
-            const auto nid = nd->getOttId();
+            const auto nid = nd->get_ott_id();
             
             OttIdSet exemplarIDs;
             if (hasIncludedDes) {
                 exemplarIDs = findIncludedTipIds(*nd, includedNodes);
             } else {
-                const RootedTreeNodeNoData * n = findLeftmostInSubtree(nd);
+                const RootedTreeNodeNoData * n = find_leftmost_in_subtree(nd);
                 includedNodes.insert(n);
-                insertAncestorsToParaphyleticSet(n, includedNodes);
-                exemplarIDs.insert(n->getOttId());
+                insert_ancestors_to_paraphyletic_set(n, includedNodes);
+                exemplarIDs.insert(n->get_ott_id());
             }
             LOG(INFO) << "Exemplifying OTT-ID" << nid << " with:";
             for (auto rid : exemplarIDs) {
@@ -173,12 +173,12 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         std::set<RootedTreeNodeNoData *> toPrune;
         for (auto nd : iter_node(*taxonomy)) {
             const RootedTreeNodeNoData *  c = const_cast<const RootedTreeNodeNoData *>(nd);
-            if ((!contains(includedNodes, c)) && contains(includedNodes, c->getParent())) {
+            if ((!contains(includedNodes, c)) && contains(includedNodes, c->get_parent())) {
                 toPrune.insert(nd);
             }
         }
         for (auto nd : toPrune) {
-            pruneAndDelete(*taxonomy, nd);
+            prune_and_delete(*taxonomy, nd);
         }
     }
 
@@ -201,7 +201,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
             return false;
         }
         for (auto treePtr : treePtrByIndex) {
-            auto pp = exportDir + treePtr->getName();
+            auto pp = exportDir + treePtr->get_name();
             if (!writeTreeOrDie(otCLI, pp, *treePtr, useStdOut)) {
                 return false;
             }
@@ -213,17 +213,17 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         return true;
     }
     
-    bool processTaxonomyTree(OTCLI & otCLI) override {
-        bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::processTaxonomyTree(otCLI);
+    bool process_taxonomy_tree(OTCLI & otCLI) override {
+        bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::process_taxonomy_tree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
-        otCLI.getParsingRules().setOttIdForInternals = false;
+        otCLI.get_parsing_rules().set_ott_idForInternals = false;
         if (!outputNonEmptyTreeOutput.empty()) {
             nonEmptyFileStream.open(outputNonEmptyTreeOutput.c_str());
         }
         return r;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedEmptyNodes> treeup) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedEmptyNodes> treeup) override {
         assert(treeup != nullptr);
         assert(taxonomy != nullptr);
         // Store the tree pointer with a map to its index, and an alias for fast index->tree.
@@ -233,21 +233,21 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         inputTreesToIndex[std::move(treeup)] = treeIndex;
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
-        raw->setName(otCLI.currentFilename);
+        raw->set_name(otCLI.currentFilename);
         std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
         auto nleaves = 0;
         for (auto nd : iter_leaf(*raw)) {
             nleaves += 1;
-            auto ottId = nd->getOttId();
-            auto taxoNode = taxonomy->getData().getNodeForOttId(ottId);
+            auto ottId = nd->get_ott_id();
+            auto taxoNode = taxonomy->get_data().get_node_by_ott_id(ottId);
             assert(taxoNode != nullptr);
             if (!contains(includedNodes, taxoNode)) {
                 includedNodes.insert(taxoNode);
-                insertAncestorsToParaphyleticSet(taxoNode, includedNodes);
+                insert_ancestors_to_paraphyletic_set(taxoNode, includedNodes);
             }
-            if (!taxoNode->isTip()) {
+            if (!taxoNode->is_tip()) {
                 if (storeLogInfo) {
-                    exemplifedTaxonToTreeNamesForJSONLog[ottId].push_back(raw->getName());
+                    exemplifedTaxonToTreeNamesForJSONLog[ottId].push_back(raw->get_name());
                 }
                 TreeNdPair tnp{raw, nd};
                 nonTermToMappedPhylo[taxoNode].push_back(tnp);
@@ -323,25 +323,25 @@ int main(int argc, char *argv[]) {
                 helpMsg,
                 "-estep_5 taxonomy.tre inp1.tre inp2.tre");
     NonTerminalsToExemplarsState proc;
-    otCLI.addFlag('e',
+    otCLI.add_flag('e',
                   "ARG should be the name of a directory. A .tre file will be written to this directory for each input tree",
                   handleExportModified,
                   true);
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   " requests that standard output stream, rather than the export directory, be used for all output.",
                   handleStdout,
                   false);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "ARG is and output file that will list the filename for each input tree that was not empty",
                   handleNonemptyTreeOutput,
                   true);
-    otCLI.addFlag('j',
+    otCLI.add_flag('j',
                   "Name of an output JSON file that summarizes the set of IDs used to exemplify each taxon.",
                   handleJSONOutput,
                   true);
-    otCLI.addFlag('t',
+    otCLI.add_flag('t',
                   "Label exemplified taxa with just OTT ID. If omitted, they are labelled with nodeID_ottID",
                   handleUseJustOTTID,
                   false);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, false);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, false);
 }

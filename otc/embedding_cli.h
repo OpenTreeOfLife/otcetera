@@ -19,8 +19,8 @@ namespace otc {
 /// EmbeddingCLI is intended as a base class for tools that need to 
 //      produce an EmbeddedTree with tree 0 serving as the 
 //      "outer" tree and all subsequent trees to be embedded in a taxonomic tree.
-// It provides overrides for the TaxonomyDependentTreeProcessor hooks processTaxonomyTree,
-//  and processSourceTree. It also proveds a cloneTaxonomyAsASourceTree method that allows
+// It provides overrides for the TaxonomyDependentTreeProcessor hooks process_taxonomy_tree,
+//  and process_source_tree. It also proveds a clone_taxonomy_as_a_source_tree method that allows
 //  the taxonomy tree to be embedded inside itself (this feature is used by the uncontested-decompose
 //  so that it can correctly emit the fracments of the input trees (including the taxonomic tree)
 //  when it writes a subproblem).
@@ -43,22 +43,22 @@ class EmbeddingCLI
          debuggingOutput(false) {
     }
 
-    bool processTaxonomyTree(OTCLI & otCLI) override {
+    bool process_taxonomy_tree(OTCLI & otCLI) override {
         debuggingOutput = otCLI.verbose;
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
-        //checkTreeInvariants(*taxonomy);
-        suppressMonotypicTaxaPreserveDeepestDangle(*taxonomy, false);
-        monotypicRemapping = generateIdRemapping(*taxonomy);
-        //checkTreeInvariants(*taxonomy);
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
+        //check_tree_invariants(*taxonomy);
+        suppress_monotypic_taxa_preserve_deepest_dangle(*taxonomy, false);
+        monotypicRemapping = generate_id_remapping(*taxonomy);
+        //check_tree_invariants(*taxonomy);
         for (NodeWithSplits * nd : iter_node(*taxonomy)) {
-            _getEmbeddingForNode(nd); // side effect is introducint a new, empty embedding
+            _get_embedding_for_node(nd); // side effect is introducint a new, empty embedding
         }
-        otCLI.getParsingRules().setOttIdForInternals = false;
-        otCLI.getParsingRules().idRemapping = &monotypicRemapping;
+        otCLI.get_parsing_rules().set_ott_idForInternals = false;
+        otCLI.get_parsing_rules().id_remapping = &monotypicRemapping;
         return true;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> treeup) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> treeup) override {
         assert(treeup != nullptr);
         assert(taxonomy != nullptr);
         // Store the tree pointer with a map to its index, and an alias for fast index->tree.
@@ -68,17 +68,17 @@ class EmbeddingCLI
         inputTreesToIndex[std::move(treeup)] = treeIndex;
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
-        raw->setName(otCLI.currentFilename);
-        suppressMonotypicTaxaPreserveShallowDangle(*raw);
-        embedNewTree(*taxonomy, *raw, treeIndex);
+        raw->set_name(otCLI.currentFilename);
+        suppress_monotypic_taxa_preserve_shallow_dangle(*raw);
+        embed_new_tree(*taxonomy, *raw, treeIndex);
         otCLI.err << "# pathPairings = " << pathPairings.size() << '\n';
         return true;
     }
 
-    bool cloneTaxonomyAsASourceTree() {
+    bool clone_taxonomy_as_a_source_tree() {
         assert(taxonomy != nullptr);
         assert(taxonomyAsSource == nullptr);
-        std::unique_ptr<TreeMappedWithSplits> tree = cloneTree(*taxonomy);
+        std::unique_ptr<TreeMappedWithSplits> tree = clone_tree(*taxonomy);
         taxonomyAsSource = tree.get();
         std::size_t treeIndex = inputTreesToIndex.size();
         inputTreesToIndex[std::move(tree)] = treeIndex;
@@ -86,17 +86,17 @@ class EmbeddingCLI
         // suppress the internal node OTT IDs from the des
         OttIdSet internalIDs;
         for (auto nd : iter_post_internal(*taxonomyAsSource)) {
-            if (nd->hasOttId()) {
-                internalIDs.insert(nd->getOttId());
+            if (nd->has_ott_id()) {
+                internalIDs.insert(nd->get_ott_id());
             }
-            auto & d = nd->getData().desIds;
+            auto & d = nd->get_data().des_ids;
             for (auto o : internalIDs) {
                 d.erase(o);
             }
         }
         // Store the tree's filename
-        taxonomyAsSource->setName("TAXONOMY");
-        embedScaffoldClone(*taxonomy, *taxonomyAsSource, treeIndex);
+        taxonomyAsSource->set_name("TAXONOMY");
+        embed_scaffold_clone(*taxonomy, *taxonomyAsSource, treeIndex);
         return true;
     }
 };

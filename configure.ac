@@ -58,6 +58,20 @@ AC_PATH_PROG([PYTHON], [python], [], [$PATH])
 AC_PYTHON_MODULE([subprocess], [], [])
 AC_SUBST(PYTHON)
 
+AC_ARG_WITH(
+    [webservices],
+    AC_HELP_STRING(
+        [--with-webservices=yes],
+        [enables compilation of the ws subdirectory (requires restbed be installed)]
+        ),
+    [
+    if test "$withval" = "yes"; then
+        MAYBE_WS_DIR="ws"
+    else
+        MAYBE_WS_DIR=
+    fi
+    ])
+
 if test -z "$PYTHON"
 then
 	MAYBE_TEST_DIR=
@@ -65,6 +79,7 @@ else
 	MAYBE_TEST_DIR="test"
 fi
 AC_SUBST(MAYBE_TEST_DIR)
+AC_SUBST(MAYBE_WS_DIR)
 AC_PROG_MAKE_SET
 
 # Write our compilation flags to config.h so that we can report them with the version info.
@@ -76,6 +91,7 @@ AC_CONFIG_FILES([					\
 	otc/Makefile					\
 	test/Makefile \
 	tools/Makefile \
-	otceterav0.0.pc \
+    ws/Makefile \
+    otceterav0.0.pc \
 	])
 AC_OUTPUT

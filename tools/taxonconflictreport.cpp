@@ -5,18 +5,18 @@ template<typename T, typename U>
 void getInducedInformativeGroupingMaps(const T & tree1,
                                        std::map<std::set<long>, std::list<const typename T::node_type *> > & inducedSplitMaps,
                                        const U & tree2) {
-    const auto inducingLabels = getOttIdSetForLeaves(tree2);
-    auto mrca = findMRCAUsingDesIds(tree1, inducingLabels);
+    const auto inducingLabels = get_ott_id_set_for_leaves(tree2);
+    auto mrca = find_mrca_using_des_ids(tree1, inducingLabels);
     std::function<bool(const typename T::node_type &)> sf = [inducingLabels](const typename T::node_type &nd){
-        return haveIntersection(inducingLabels, nd.getData().desIds);
+        return have_intersection(inducingLabels, nd.get_data().des_ids);
     };
     for (auto n : iter_pre_filter_n_const(mrca, sf)) {
-        //std::cout << n->getOttId() << '\n';
+        //std::cout << n->get_ott_id() << '\n';
         if (n == mrca) {
             continue;
         }
-        auto inducedDesIds = n->getData().desIds;
-        const auto x = intersectionOfSets(inducingLabels, inducedDesIds);
+        auto inducedDesIds = n->get_data().des_ids;
+        const auto x = intersection_of_sets(inducingLabels, inducedDesIds);
         if (x.size() > 1) {
             inducedSplitMaps[std::move(x)].push_back(n);
         }
@@ -27,12 +27,12 @@ void getInducedInformativeGroupingMaps(const T & tree1,
 template<typename T>
 inline void getInformativeGroupingMaps(const T & tree2,
                                       std::map<std::set<long>, const typename T::node_type *> & tree2Splits) {
-    auto t2r = tree2.getRoot();
+    auto t2r = tree2.get_root();
     for (auto n : iter_pre_internal_const(tree2)) {
         if (n == t2r) {
             continue;
         }
-        const std::set<long> & x = n->getData().desIds;
+        const std::set<long> & x = n->get_data().des_ids;
         if (x.size() > 1) {
             tree2Splits[x] = n;
         }
@@ -62,7 +62,7 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
             if (t2s == ics) {
                 found = true;
             } else {
-                if (!areCompatibleDesIdSets(t2s, ics)) {
+                if (!are_compatible_des_id_sets(t2s, ics)) {
                     std::set<long> e = set_difference_as_set(t2s, ics);
                     std::set<long> m = set_difference_as_set(ics, t2s);
                     assert(!e.empty() || !m.empty());
@@ -80,8 +80,8 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
                 auto mIt = begin(missingIds);
                 auto nIt = begin(nodeList);
                 for (; nIt != end(nodeList); ++nIt, ++eIt, ++mIt) {
-                    out << getContestedPreamble(*taxonNode, tree2);
-                    emitConflictDetails(out, **nIt, *eIt, *mIt);
+                    out << get_contested_preamble(*taxonNode, tree2);
+                    emit_conflict_details(out, **nIt, *eIt, *mIt);
                 }
                 nm += 1;
             }
@@ -93,10 +93,10 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
 
 struct ConflictReporterProc : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
     virtual ~ConflictReporterProc(){}
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) {
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
-        tree->setName(otCLI.currentFilename);
+        tree->set_name(otCLI.currentFilename);
         reportOnInducedConflicts(otCLI.out, *taxonomy, *tree, true);
         return true;
     }
@@ -107,6 +107,6 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a full tree, and some number of input trees. Writes a summary of the difference in taxonomic inclusion for nodes that are in conflict",
                 "taxonomy.tre inp1.tre inp2.tre");
     ConflictReporterProc proc;
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
 
 }

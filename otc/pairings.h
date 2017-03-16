@@ -12,108 +12,108 @@ namespace otc {
 template<typename T, typename U> class NodeEmbedding;
 
 template<typename T, typename U>
-void updateAncestralPathOttIdSet(T * nd,
+void update_ancestral_path_ott_id_set(T * nd,
                                  const OttIdSet & oldEls,
                                  const OttIdSet & newEls,
                                  std::map<const T *, NodeEmbedding<T, U> > & m);
 
 /* a pair of aligned nodes from an embedding of a phylogeny onto a scaffold
    In NodeEmbedding objects two forms of these pairings are created:
-        1. tips of the tree are mapped to the scaffoldNode assigned the same
+        1. tips of the tree are mapped to the scaffold_node assigned the same
             OTT Id,
         2. internal nodes in phylo tree are mapped to the least inclusive node
             in the scaffold tree that has all of the descendant OTT Ids from
-            the phylo tree. (so the phyloNode->getData().desIds will be a subset
-            of scaffoldNode->getData().desIds)
+            the phylo tree. (so the phylo_node->get_data().des_ids will be a subset
+            of scaffold_node->get_data().des_ids)
 */
 template<typename T, typename U>
 class NodePairing {
     public:
-    T * scaffoldNode;
-    U * phyloNode;
+    T * scaffold_node;
+    U * phylo_node;
     NodePairing(T *taxo, U *phylo)
-        :scaffoldNode(taxo),
-        phyloNode(phylo) {
+        :scaffold_node(taxo),
+        phylo_node(phylo) {
         assert(taxo != nullptr);
         assert(phylo != nullptr);
     }
 };
 
-/* Represents the mapping of an edge from phyloParent -> phyloChild onto
+/* Represents the mapping of an edge from phylo_parent -> phylo_child onto
     a scaffold tree. The endpoints will be pairs of nodes that were aligned.
-    Note that the phyloChild is a child of phyloParent, but scaffoldDes can
-    be the same node as scaffoldAnc or it can be any descendant of that node.
+    Note that the phylo_child is a child of phylo_parent, but scaffold_des can
+    be the same node as scaffold_anc or it can be any descendant of that node.
     Thus an directed edge in the phylo tree pairs with a directed path in the
     scaffold.
 */
 template<typename T, typename U>
 class PathPairing {
     public:
-    T * scaffoldDes;
-    T * scaffoldAnc;
-    U * const phyloChild;
-    U * phyloParent; //@TMP used to be const, but the resolving step edits
+    T * scaffold_des;
+    T * scaffold_anc;
+    U * const phylo_child;
+    U * phylo_parent; //@TMP used to be const, but the resolving step edits
                      // rather than creating a new path pairing... 
                      // that is probably the best way to do this (const was
                      // probably to retrictive). But more careful consideration may be needed
-    OttIdSet currChildOttIdSet;
-    bool pathIsNowTrivial() {
-        return currChildOttIdSet.size() == 1;
+    OttIdSet curr_child_ott_id_set;
+    bool path_is_now_trivial() {
+        return curr_child_ott_id_set.size() == 1;
     }
-    void setOttIdSet(long oid,
+    void set_ott_id_set(long oid,
                      std::map<const U *, NodeEmbedding<T, U> > & m) {
-        if (currChildOttIdSet.size() == 1 && *currChildOttIdSet.begin() == oid) {
+        if (curr_child_ott_id_set.size() == 1 && *curr_child_ott_id_set.begin() == oid) {
             return;
         }
-        LOG(DEBUG) << "setOttIdSet to " << oid << "  for path " << reinterpret_cast<long>(this);
-        dbWriteOttSet("prev currChildOttIdSet = ", currChildOttIdSet);
+        LOG(DEBUG) << "set_ott_id_set to " << oid << "  for path " << reinterpret_cast<long>(this);
+        db_write_ott_id_set("prev curr_child_ott_id_set = ", curr_child_ott_id_set);
         OttIdSet n;
         OttIdSet oldIds;
-        std::swap(oldIds, currChildOttIdSet);
+        std::swap(oldIds, curr_child_ott_id_set);
         if (contains(oldIds, oid)) {
             oldIds.erase(oid);
         }
         n.insert(oid);
-        updateDesIdsForSelfAndAnc(oldIds, n, m);
+        update_des_ids_for_self_and_anc(oldIds, n, m);
     }
-    void updateDesIdsForSelfAndAnc(const OttIdSet & oldIds,
+    void update_des_ids_for_self_and_anc(const OttIdSet & oldIds,
                                    const OttIdSet & newIds,
                                    std::map<const U *, NodeEmbedding<T, U> > & m) {
-        updateAncestralPathOttIdSet(scaffoldDes, oldIds, newIds, m);
-        currChildOttIdSet = newIds;
-        dbWriteOttSet(" updateDesIdsForSelfAndAnc onExit currChildOttIdSet = ", currChildOttIdSet);
+        update_ancestral_path_ott_id_set(scaffold_des, oldIds, newIds, m);
+        curr_child_ott_id_set = newIds;
+        db_write_ott_id_set(" update_des_ids_for_self_and_anc onExit curr_child_ott_id_set = ", curr_child_ott_id_set);
     }
-    bool updateOttIdSetNoTraversal(const OttIdSet & oldEls, const OttIdSet & newEls);
+    bool update_ott_id_set_no_traversal(const OttIdSet & oldEls, const OttIdSet & newEls);
     PathPairing(const NodePairing<T, U> & parent,
                 const NodePairing<T, U> & child)
-        :scaffoldDes(child.scaffoldNode),
-        scaffoldAnc(parent.scaffoldNode),
-        phyloChild(child.phyloNode),
-        phyloParent(parent.phyloNode),
-        currChildOttIdSet(child.phyloNode->getData().desIds) {
-        assert(phyloChild->getParent() == phyloParent);
-        assert(scaffoldAnc == scaffoldDes || isAncestorDesNoIter(scaffoldAnc, scaffoldDes));
+        :scaffold_des(child.scaffold_node),
+        scaffold_anc(parent.scaffold_node),
+        phylo_child(child.phylo_node),
+        phylo_parent(parent.phylo_node),
+        curr_child_ott_id_set(child.phylo_node->get_data().des_ids) {
+        assert(phylo_child->get_parent() == phylo_parent);
+        assert(scaffold_anc == scaffold_des || is_ancestor_des_no_iter(scaffold_anc, scaffold_des));
     }
     PathPairing(T * scafPar,
                 U * phyPar,
                 const NodePairing<T, U> & child)
-        :scaffoldDes(child.scaffoldNode),
-        scaffoldAnc(scafPar),
-        phyloChild(child.phyloNode),
-        phyloParent(phyPar),
-        currChildOttIdSet(child.phyloNode->getData().desIds) {
-        assert(phyloChild->getParent() == phyloParent);
-        assert(scaffoldAnc == scaffoldDes || isAncestorDesNoIter(scaffoldAnc, scaffoldDes));
+        :scaffold_des(child.scaffold_node),
+        scaffold_anc(scafPar),
+        phylo_child(child.phylo_node),
+        phylo_parent(phyPar),
+        curr_child_ott_id_set(child.phylo_node->get_data().des_ids) {
+        assert(phylo_child->get_parent() == phylo_parent);
+        assert(scaffold_anc == scaffold_des || is_ancestor_des_no_iter(scaffold_anc, scaffold_des));
     }
     // as Paths get paired back deeper in the tree, the ID may be mapped to a higher
-    // taxon. The currChildOttIdSet starts out identical to the phylogenetic node's 
+    // taxon. The curr_child_ott_id_set starts out identical to the phylogenetic node's 
     // descendant Ott Id set. But may change to reflect this remapping to the effective
     // set of IDs that include the tip.
-    const OttIdSet & getOttIdSet() const {
-        return currChildOttIdSet;
+    const OttIdSet & get_ott_id_set() const {
+        return curr_child_ott_id_set;
     }
-    const OttIdSet & getPhyloChildDesID() const {
-        return phyloChild->getData().desIds;
+    const OttIdSet & get_phylo_child_des_id() const {
+        return phylo_child->get_data().des_ids;
     }
 };
 

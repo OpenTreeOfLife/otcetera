@@ -15,8 +15,8 @@ static bool listNames = false;
 template<typename T>
 bool listTipOttIds(OTCLI & , T * tree) {
     for (auto nd : iter_leaf_const(*tree)) {
-        assert(nd->hasOttId());
-        std::cout << nd->getOttId() << '\n';
+        assert(nd->has_ott_id());
+        std::cout << nd->get_ott_id() << '\n';
     }
     return true;
 }
@@ -24,8 +24,8 @@ bool listTipOttIds(OTCLI & , T * tree) {
 template<typename T>
 bool listTipNames(OTCLI & , T * tree) {
     for (auto nd : iter_leaf_const(*tree)) {
-        assert(nd->hasOttId());
-        std::cout << nd->getName() << '\n';
+        assert(nd->has_ott_id());
+        std::cout << nd->get_name() << '\n';
     }
     return true;
 }
@@ -67,14 +67,14 @@ int main(int argc, char *argv[]) {
                  "takes a filepath to a newick file and reports the number of leaves",
                  {"some.tre"});
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnl = writeNumLeaves<Tree_t>;
-    otCLI.addFlag('l',
+    otCLI.add_flag('l',
                   "If present, list the tip OTT IDs rather than counting them",
                   handleListTips,
                   false);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "If present, names rather than counting them",
                   handleListNameTips,
                   false);
-    return treeProcessingMain<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
 }
 

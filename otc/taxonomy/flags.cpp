@@ -11,7 +11,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/utility/string_ref.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <bitset>
 
@@ -30,17 +29,14 @@ using std::endl;
 using std::bitset;
 
 using boost::spirit::qi::symbols;
-using boost::string_ref;
 using namespace boost::spirit;
 
 // https://github.com/OpenTreeOfLife/taxomachine/blob/master/src/main/java/org/opentree/taxonomy/OTTFlag.java
 
 // http://www.boost.org/doc/libs/1_50_0/libs/spirit/doc/html/spirit/qi/reference/string/symbols.html
 
-auto get_symbols()
-{
+auto get_symbols() {
     symbols<char, int> sym;
-
     sym.add
         ("not_otu", 0)
         ("environmental", 1)
@@ -80,79 +76,77 @@ auto get_symbols()
 
 auto flag_symbols = get_symbols();
 
-namespace otc
-{
-    int flag_from_string(const char* start, const char* end)
-    {
-        int n = end - start;
-        assert(n >= 0);
-        if (n == 0)
-        {
-            std::cout<<"fail!";
-            std::abort();
-        }
-
-        int flag = 0;
-	auto cur = start;
-	boost::spirit::qi::parse(cur, end, flag_symbols, flag);
-	if (cur != end)
-	    throw OTCError()<<"Flag '"<<string(start,end)<<"' not recognized.";
-
-        return flag;
+namespace otc {
+int flag_from_string(const char* start, const char* end) {
+    int n = end - start;
+    assert(n > 0);
+    int flag = 0;
+    auto cur = start;
+    boost::spirit::qi::parse(cur, end, flag_symbols, flag);
+    if (cur != end) {
+        throw OTCError() << "Flag '" << string(start, end) << "' not recognized.";
     }
-
-    int flag_from_string(const string& s)
-    {
-        const char* start = s.c_str();
-        const char* end = start + s.length();
-        return flag_from_string(start, end);
-    }
-
-    std::bitset<32> flags_from_string(const char* start, const char* end)
-    {
-        assert(start <= end);
-
-        bitset<32> flags;
-        while (start < end)
-        {
-            assert(start <= end);
-            const char* sep = std::strchr(start, ',');
-            if (not sep) sep = end;
-            int flag = flag_from_string(start, sep);
-            flags |= (1<<flag);
-            start = sep + 1;
-        }
-        return flags;
-    }
-
-    std::bitset<32> flags_from_string(const string& s)
-    {
-        const char* start = s.c_str();
-        const char* end = start + s.length();
-        return flags_from_string(start, end);
-    }
-
-    std::bitset<32> cleaning_flags_from_config_file(const string& filename)
-    {
-        boost::property_tree::ptree pt;
-        boost::property_tree::ini_parser::read_ini(filename, pt);
-        string cleaning_flags_string = pt.get<std::string>("taxonomy.cleaning_flags");
-        return flags_from_string(cleaning_flags_string);
-    }
-
-    string string_for_flag(int i)
-    {
-        vector<string> matches;
-        flag_symbols.for_each([&](const string& s, int j){if (i==j) {matches.push_back(s);}});
-        return matches[0];
-    }
-
-    std::string flags_to_string(const std::bitset<32> flags)
-    {
-        vector<string> f;
-        for(int i=0;i<32;i++)
-            if (flags.test(i))
-                f.push_back(string_for_flag(i));
-        return boost::algorithm::join(f, ", ");
-    }
+    return flag;
 }
+
+int flag_from_string(const string& s) {
+    const char* start = s.c_str();
+    const char* end = start + s.length();
+    return flag_from_string(start, end);
+}
+
+tax_flags flags_from_string(const char* start, const char* end) {
+    assert(start <= end);
+    bitset<32> flags;
+    while (start < end) {
+        assert(start <= end);
+        const char* sep = std::strchr(start, ',');
+        if (not sep) {
+            sep = end;
+        }
+        int flag = flag_from_string(start, sep);
+        flags |= (1 << flag);
+        start = sep + 1;
+    }
+    return flags;
+}
+
+tax_flags flags_from_string(const string& s) {
+    const char* start = s.c_str();
+    const char* end = start + s.length();
+    return flags_from_string(start, end);
+}
+
+tax_flags cleaning_flags_from_config_file(const string& filename) {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ini_parser::read_ini(filename, pt);
+    string cleaning_flags_string = pt.get<std::string>("taxonomy.cleaning_flags");
+    return flags_from_string(cleaning_flags_string);
+}
+
+string string_for_flag(int i) {
+    vector<string> matches;
+    flag_symbols.for_each([&](const string& s, int j) {
+                             if (i == j) {
+                                 matches.push_back(s);
+                             }
+                         });
+    return matches[0];
+}
+
+std::string flags_to_string(const tax_flags flags) {
+    vector<string> f = flags_to_string_vec(flags);
+    return boost::algorithm::join(f, ", ");
+}
+
+std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags) {
+    vector<string> f;
+    for(int i=0;i<32;i++) {
+        if (flags.test(i)) {
+            f.push_back(string_for_flag(i));
+        }
+    }
+    return f;
+}
+
+} // namespace otc

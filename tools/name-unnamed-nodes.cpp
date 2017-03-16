@@ -12,19 +12,7 @@ using std::vector;
 using std::unique_ptr;
 using std::string;
 
-struct RTNodeSmallestChild {
-    long smallestChild = 0;
-};
-
 using Tree_t = RootedTree<RTNodeSmallestChild, RTreeNoData>;
-
-inline long smallestChild(const Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
-
-inline long& smallestChild(Tree_t::node_type* node) {
-    return node->getData().smallestChild;
-}
 
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-name-unnamed-nodes",
@@ -36,7 +24,7 @@ int main(int argc, char *argv[]) {
     if (argc < 2) {
         throw OTCError("No trees provided!");
     }
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
         return 1;
     }
     if (trees.empty()) {
@@ -44,10 +32,10 @@ int main(int argc, char *argv[]) {
     }
     // Add names to unnamed nodes
     for(const auto& tree: trees) {
-        nameUnamedNodes(*tree);
+        name_unnamed_nodes(*tree);
     }
     for(const auto& tree: trees) {
-        writeTreeAsNewick(std::cout, *tree);
+        write_tree_as_newick(std::cout, *tree);
         std::cout<<"\n";
     }
     return 0;

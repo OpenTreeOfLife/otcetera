@@ -34,32 +34,32 @@ struct SubtreePrunerState {
             numErrors = 1;
             return;
         }
-        const Node_t * mrca = findMRCAFromIDSet(*toPrune, designators, -1);
+        const Node_t * mrca = find_mrca_from_id_set(*toPrune, designators, -1);
         if (mrca == nullptr) {
             otCLI.err << "MRCA could not be found\n";
             numErrors = 1;
             return;
         }
-        const Node_t * toEmit = ((emitParent || emitSiblings) ? mrca->getParent() : mrca);
+        const Node_t * toEmit = ((emitParent || emitSiblings) ? mrca->get_parent() : mrca);
         if (toEmit == nullptr) {
             otCLI.err << "MRCA had no parent\n";
             numErrors = 1;
             return;
         }
-        if (emitChildren && toEmit->isTip()) {
+        if (emitChildren && toEmit->is_tip()) {
             otCLI.err << "MRCA has no children\n";
             numErrors = 1;
             return;
         }
         if ((!emitSiblings) && (!emitChildren)) {
-            writeNewick<Node_t>(otCLI.out, toEmit);
+            write_newick<Node_t>(otCLI.out, toEmit);
             otCLI.out << ";\n";
         } else {
             for (auto c : iter_child_const(*toEmit)) {
                 if (emitSiblings && c == mrca) {
                     continue;
                 }
-                writeNewick<Node_t>(otCLI.out, c);
+                write_newick<Node_t>(otCLI.out, c);
                 otCLI.out << ";\n";
             }
         }
@@ -92,7 +92,7 @@ bool handleNodeFlag(OTCLI & otCLI, const std::string &nextArg) {
         otCLI.err << "Expecting only 1 flag listing designators.\n";
         return false;
     }
-    fusp->designators = parseDelimSeparatedIDs(nextArg, ',');
+    fusp->designators = parse_delim_separated_ids(nextArg, ',');
     return true;
 }
 
@@ -132,23 +132,23 @@ int main(int argc, char *argv[]) {
                 "-n5315,3512 some.tre");
     SubtreePrunerState cts;
     otCLI.blob = static_cast<void *>(&cts);
-    otCLI.addFlag('p',
+    otCLI.add_flag('p',
                   "ARG=a comma separated list of OTT numbers. The parent of the MRCA of the IDs will be printed.",
                   handleParentFlag,
                   true);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "ARG=a comma separated list of OTT numbers. The MRCA of the IDs will be printed.",
                   handleNodeFlag,
                   true);
-    otCLI.addFlag('s',
+    otCLI.add_flag('s',
                   "ARG=a comma separated list of OTT numbers. The siblings of the MRCA of the IDs will be printed.",
                   handleSiblingsFlag,
                   true);
-    otCLI.addFlag('c',
+    otCLI.add_flag('c',
                   "ARG=a comma separated list of OTT numbers. The children of the MRCA of the IDs will be printed.",
                   handleChildrenFlag,
                   true);
-    auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
+    auto rc = tree_processing_main<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
     if (rc == 0) {
         cts.summarize(otCLI);
         return cts.numErrors;

@@ -18,40 +18,40 @@ class EmbeddedTree {
     public:
     EmbeddedTree() {
     }
-    void embedNewTree(TreeMappedWithSplits & scaffoldTree,
+    void embed_new_tree(TreeMappedWithSplits & scaffold_tree,
                       TreeMappedWithSplits & tree,
                       std::size_t treeIndex);
-    void embedScaffoldClone(TreeMappedWithSplits & scaffoldTree,
+    void embed_scaffold_clone(TreeMappedWithSplits & scaffold_tree,
                             TreeMappedWithSplits & tree,
                             std::size_t treeIndex);
-    void writeDOTExport(std::ostream & out,
+    void write_dot_export(std::ostream & out,
                         const NodeEmbedding<NodeWithSplits, NodeWithSplits> & thr,
                         const NodeWithSplits * nd,
                         const std::vector<TreeMappedWithSplits *> &,
                         bool entireSubtree,
                         bool includeLastTree) const;
     // for testing...
-    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> &_getScaffoldNdToNodeEmbedding() {
+    std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> &_get_scaffold_nd_to_node_embedding() {
         return scaffoldNdToNodeEmbedding;
     }
     protected:
-    NodePairingWithSplits * _addNodeMapping(NodeWithSplits *taxo,
+    NodePairingWithSplits * _add_node_mapping(NodeWithSplits *taxo,
                                             NodeWithSplits *nd,
                                             std::size_t treeIndex);
-    PathPairingWithSplits * _addPathMapping(NodePairingWithSplits * parentPairing,
+    PathPairingWithSplits * _add_path_mapping(NodePairingWithSplits * parentPairing,
                                             NodePairingWithSplits * childPairing,
                                             std::size_t treeIndex);
-    NodeEmbeddingWithSplits & _getEmbeddingForNode(NodeWithSplits * nd);
-    const NodeEmbeddingWithSplits & _getEmbeddingForNode(const NodeWithSplits * nd) const {
+    NodeEmbeddingWithSplits & _get_embedding_for_node(NodeWithSplits * nd);
+    const NodeEmbeddingWithSplits & _get_embedding_for_node(const NodeWithSplits * nd) const {
         return scaffoldNdToNodeEmbedding.at(nd);
     }
-    void embedTree(TreeMappedWithSplits & scaffoldTree,
+    void embedTree(TreeMappedWithSplits & scaffold_tree,
                    TreeMappedWithSplits & tree,
                    std::size_t treeIndex,
                    bool isScaffoldClone);
 };
 
-inline NodeEmbeddingWithSplits & EmbeddedTree::_getEmbeddingForNode(NodeWithSplits * nd) {
+inline NodeEmbeddingWithSplits & EmbeddedTree::_get_embedding_for_node(NodeWithSplits * nd) {
     const auto sIt = scaffoldNdToNodeEmbedding.find(nd);
     if (sIt == scaffoldNdToNodeEmbedding.end()) {
         auto eres = scaffoldNdToNodeEmbedding.emplace(std::piecewise_construct,
@@ -63,16 +63,16 @@ inline NodeEmbeddingWithSplits & EmbeddedTree::_getEmbeddingForNode(NodeWithSpli
     return sIt->second;
 }
 
-inline void EmbeddedTree::embedNewTree(TreeMappedWithSplits & scaffoldTree,
+inline void EmbeddedTree::embed_new_tree(TreeMappedWithSplits & scaffold_tree,
                                 TreeMappedWithSplits & tree,
                                 std::size_t treeIndex) {
-    embedTree(scaffoldTree, tree, treeIndex, false);
+    embedTree(scaffold_tree, tree, treeIndex, false);
 }
 
-inline void EmbeddedTree::embedScaffoldClone(TreeMappedWithSplits & scaffoldTree,
+inline void EmbeddedTree::embed_scaffold_clone(TreeMappedWithSplits & scaffold_tree,
                                       TreeMappedWithSplits & tree,
                                       std::size_t treeIndex) {
-    embedTree(scaffoldTree, tree, treeIndex, true);
+    embedTree(scaffold_tree, tree, treeIndex, true);
 }
 
 } // namespace

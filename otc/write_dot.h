@@ -7,13 +7,13 @@
 #include "otc/otc_base_includes.h"
 namespace otc {
 
-void writeDOTForEmbedding(std::ostream & out,
+void write_dot_for_embedding(std::ostream & out,
                           const NodeWithSplits * nd,
                           const std::vector<TreeMappedWithSplits *> &,
                           const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
                           bool entireSubtree,
                           bool includeLastTree);
-void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &);
+void write_dot_forest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &);
 
 } //namespace
 #endif

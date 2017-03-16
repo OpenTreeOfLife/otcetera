@@ -8,5 +8,20 @@
       "invocation" : ["otc-solve-subproblem", "<INFILELIST>"],
       "infile_list": ["place-is/tree1.tre", "place-is/tax.tre"],
       "expected": "place-no-is"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "-I../../../data/place-is/is.txt", "<INFILELIST>"],
+      "infile_list": ["place-is/tree1.tre", "place-is/tax.tre"],
+      "expected": "place-is"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "-I../../../data/is-naming/is1.txt", "<INFILELIST>"],
+      "infile_list": ["is-naming/tree1.tre", "is-naming/tax1.tre"],
+      "expected": "is-naming1"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "-I../../../data/is-naming/is2.txt", "<INFILELIST>"],
+      "infile_list": ["is-naming/tree2.tre", "is-naming/tax2.tre"],
+      "expected": "is-naming2"
   }
 ]

@@ -9,7 +9,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/utility/string_ref.hpp>
 #include <boost/tokenizer.hpp>
 #include <bitset>
 #include <set>
@@ -38,7 +37,6 @@ using std::map;
 using json = nlohmann::json;
 
 using boost::spirit::qi::symbols;
-using boost::string_ref;
 using namespace boost::spirit;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
@@ -116,114 +114,15 @@ long n_nodes(const Tree_t& T) {
     return count;
 }
 
-char format_needs_taxonomy(const string& format)
-{
-    int pos = 0;
-    do {
-        auto loc = format.find('%', pos);
-        if (loc == string::npos)
-            break;
-        loc++;
-        const auto nc = format[loc];
-        if (nc == 0) {
-            std::abort();
-        }
-        if (nc == 'I' 
-            || nc == 'N'
-            || nc == 'U'
-            || nc == 'R'
-            || nc == 'S') {
-            return nc;
-        } else if (nc == 'L' || nc == '%') {
-            ; // pass
-        }
-        else {
-            throw OTCError() << "Invalid format specification '%" << nc << "' in format string '" << format << "'";
-        }
-        pos = loc + 1;
-    }
-    while (pos < static_cast<int>(format.size()));
-
-    return false;
-}
-
-string format_with_taxonomy(const string& orig, const string& format, const taxonomy_record& rec)
-{
-    string result;
-    int pos = 0;
-    do {
-        auto loc = format.find('%',pos);
-        if (loc == string::npos) {
-            result += format.substr(pos);
-            break;
-        }
-        result += format.substr(pos, loc - pos);
-        loc++;
-        const auto nc = format[loc];
-        if (nc == 0) {
-            std::abort();
-        } 
-        if (nc == 'I') {
-            result += std::to_string(rec.id);
-        } else if (nc == 'N') {
-            result += rec.name.to_string();
-        } else if (nc == 'U') {
-            result += rec.uniqname.to_string();
-        } else if (nc == 'R') {
-            result += rec.rank.to_string();
-        } else if (format[loc] == 'S') {
-            result += rec.sourceinfo.to_string();
-        } else if (format[loc] == 'L') {
-            result += orig;
-        } else if (format[loc] == '%') {
-            result += '%';
-        } else {
-            throw OTCError() << "Invalid format specification '%" << nc << "' in taxonomy-based format string '" << format <<"'";
-        }
-        pos = loc + 1;
-    }
-    while (pos < static_cast<int>(format.size()));
-    return result;
-}
-
-string format_without_taxonomy(const string& orig, const string& format)
-{
-    string result;
-    int pos = 0;
-    do {
-        auto loc = format.find('%',pos);
-        if (loc == string::npos) {
-            result += format.substr(pos);
-            break;
-        }
-        result += format.substr(pos, loc - pos);
-        loc++;
-        const auto nc = format[loc];
-        if (nc == 0) {
-            std::abort();
-        }
-        if (nc == 'L') {
-            result += orig;
-        } else if (format[loc] == '%') {
-            result += '%';
-        } else {
-            throw OTCError() << "Invalid format specification '%" << nc << "' in non-taxonomy-based format string '" << format <<"'";
-        }
-        pos = loc + 1;
-    }
-    while (pos < static_cast<int>(format.size()));
-    return result;
-}
-
 void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
     auto & prunedTipSet = globalCauseToPrunedMap[string("higher-taxon-tip")];
     // first we collect the tips to prune
     set<Tree_t::node_type*> tipsToPrune;
     for (auto nd: iter_leaf(tree)) {
-        if (not nd->hasOttId()) {
-            throw OTCError() << "Tip \"" << nd->getName() << "\" lacks an OTT ID.";
+        if (not nd->has_ott_id()) {
+            throw OTCError() << "Tip \"" << nd->get_name() << "\" lacks an OTT ID.";
         }
-        const auto ottId = nd->getOttId();
+        const auto ottId = nd->get_ott_id();
         const auto & taxonrecord = taxonomy.record_from_id(ottId);
         const auto & rank = taxonrecord.rank;
         if (rank.length() > 0 && (rank != "no rank"
@@ -238,31 +137,31 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
             prunedTipSet.insert(ottId);
         }
     }
-    const auto root = tree.getRoot();
+    const auto root = tree.get_root();
     // now delete the tips and put their parents in a queue to check (to see if they've become tips)
     set<Tree_t::node_type*> toCheckNext;
     for (auto nd: tipsToPrune) {
         if (nd == root) {
             throw OTCError() << "Please do not call this program with a dot tree.";
         }
-        toCheckNext.insert(nd->getParent());
-        nd->detachThisNode();
+        toCheckNext.insert(nd->get_parent());
+        nd->detach_this_node();
     }
     auto & prunedInternalSet = globalCauseToPrunedMap[string("empty-after-higher-taxon-tip-prune")];
     while (!toCheckNext.empty()) {
         set<Tree_t::node_type*> parSet;
         for (auto nd: toCheckNext) {
-            if (!nd->hasChildren()) {
+            if (!nd->has_children()) {
                 if (nd == root) {
                     throw OTCError() << "The tree was pruned to non-existence!";
                 }
-                if (not nd->hasOttId()) {
-                    throw OTCError() << "Node \"" << nd->getName() << "\" lacks an OTT ID.";
+                if (not nd->has_ott_id()) {
+                    throw OTCError() << "Node \"" << nd->get_name() << "\" lacks an OTT ID.";
                 }
-                const auto ottId = nd->getOttId();
+                const auto ottId = nd->get_ott_id();
                 prunedInternalSet.insert(ottId);
-                parSet.insert(nd->getParent());
-                nd->detachThisNode();
+                parSet.insert(nd->get_parent());
+                nd->detach_this_node();
             }
         }
         toCheckNext.swap(parSet);
@@ -276,26 +175,26 @@ void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> p
         nodes.push_back(nd);
     }
     for(auto nd: nodes) {
-        if (not nd->hasOttId()) {
+        if (not nd->has_ott_id()) {
             continue;
         }
-        auto id = nd->getOttId();
+        auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
-            if (nd == tree.getRoot()) {
-                if (nd->isOutDegreeOneNode()) {
-                    auto newroot = nd->getFirstChild();
-                    newroot->detachThisNode();
-                    tree._setRoot(newroot);
+            if (nd == tree.get_root()) {
+                if (nd->is_outdegree_one_node()) {
+                    auto newroot = nd->get_first_child();
+                    newroot->detach_this_node();
+                    tree._set_root(newroot);
                 } else {
                     throw OTCError()<<"The root has flags set for pruning, but is not monotypic!";
                 }
             }
-            while (nd->hasChildren()) {
-                auto c = nd->getFirstChild();
-                c->detachThisNode();
-                nd->addSibOnLeft(c);
+            while (nd->has_children()) {
+                auto c = nd->get_first_child();
+                c->detach_this_node();
+                nd->add_sib_on_left(c);
             }
-            nd->detachThisNode();
+            nd->detach_this_node();
         }
     }
 }
@@ -307,15 +206,15 @@ void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> pr
         nodes.push_back(nd);
     }
     for(auto nd: nodes) {
-        if (not nd->hasOttId()) {
+        if (not nd->has_ott_id()) {
             continue;
         }
-        auto id = nd->getOttId();
+        auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
-            if (nd == tree.getRoot()) {
+            if (nd == tree.get_root()) {
                 throw OTCError()<<"The root has flags set for pruning!";
             }
-            nd->detachThisNode();
+            nd->detach_this_node();
         }
     }
 }
@@ -382,25 +281,25 @@ int main(int argc, char* argv[])
             filterTreeByFlags(*tree, *taxonomy, flags);
         }
         if (args.count("del-monotypic")) {
-            suppressMonotypicFast(*tree);
+            suppress_monotypic_fast(*tree);
         }
         if (do_prune_higher) {
             pruneHigherTaxonTips(*tree, *taxonomy);
         }
         for(auto nd: iter_pre(*tree)) {
             string name;
-            if (nd->hasOttId()) {
-                int id = nd->getOttId();
+            if (nd->has_ott_id()) {
+                int id = nd->get_ott_id();
                 if (taxonomy) {
                     const auto& record = (*taxonomy).record_from_id(id);
-                    name = format_with_taxonomy(nd->getName(), format_tax, record);
+                    name = format_with_taxonomy(nd->get_name(), format_tax, record);
                 } else {
-                    name = format_without_taxonomy(nd->getName(), format_tax);
+                    name = format_without_taxonomy(nd->get_name(), format_tax);
                 }
             } else {
-                name = format_without_taxonomy(nd->getName(), format_unknown);
+                name = format_without_taxonomy(nd->get_name(), format_unknown);
             }
-            nd->setName(std::move(name));
+            nd->set_name(std::move(name));
         }
         if (args.count("replace")) {
             string match_replace = args["replace"].as<string>();
@@ -419,12 +318,12 @@ int main(int argc, char* argv[])
             std::regex match (match_replace.substr(1, loc2 - 1));
             string replace = match_replace.substr(loc2 + 1, loc3 - loc2 - 1);
             for(auto nd: iter_pre(*tree)) {
-                string name = nd->getName();
+                string name = nd->get_name();
                 name = std::regex_replace(name,match,replace);
-                nd->setName(name);
+                nd->set_name(name);
             }
         }
-        writeTreeAsNewick(cout, *tree);
+        write_tree_as_newick(cout, *tree);
         std::cout<<std::endl;
         if (json_log && !globalCauseToPrunedMap.empty()) {
             writeLog(*json_log, globalCauseToPrunedMap);

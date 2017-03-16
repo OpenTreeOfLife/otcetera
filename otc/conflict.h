@@ -6,48 +6,42 @@
 #include <vector>
 
 template <typename node_t>
-int n_include_tips(const node_t* node)
-{
-    return node->getData().n_include_tips;
+int n_include_tips(const node_t* node) {
+    return node->get_data().n_include_tips;
 }
 
 template <typename node_t>
-int n_tips(const node_t* node)
-{
-    return node->getData().n_tips;
+int n_tips(const node_t* node) {
+    return node->get_data().n_tips;
 }
 
 template <typename node_t>
-int& n_include_tips(node_t* node)
-{
-    return node->getData().n_include_tips;
+int& n_include_tips(node_t* node) {
+    return node->get_data().n_include_tips;
 }
 
 template <typename node_t>
-int& n_tips(node_t* node)
-{
-    return node->getData().n_tips;
+int& n_tips(node_t* node) {
+    return node->get_data().n_tips;
 }
 
 // Compute number of tips at this node or below it
 template <typename Tree_t>
-void compute_tips(Tree_t& tree)
-{
+void compute_tips(Tree_t& tree) {
     // Iterate over nodes, leaves first
     for(auto nd: iter_post(tree)) {
-        if (nd->isTip()) {
-            nd->getData().n_tips = 1;
+        if (nd->is_tip()) {
+            nd->get_data().n_tips = 1;
         }
-        auto p = nd->getParent();
+        auto p = nd->get_parent();
         if (p) {
-            p->getData().n_tips += nd->getData().n_tips;
+            p->get_data().n_tips += nd->get_data().n_tips;
         }
     }
 }
 
 template <typename N>
-std::vector<N*> leaf_nodes_below(N* node)
-{
+std::vector<N*> leaf_nodes_below(N* node) {
     std::vector<N*> nodes;
     for(auto nd: iter_leaf_n_const(*node)) {
         nodes.push_back(nd);
@@ -56,8 +50,7 @@ std::vector<N*> leaf_nodes_below(N* node)
 }
 
 template <typename N>
-std::vector<N*> map_to_summary(const std::vector<const N*>& nodes)
-{
+std::vector<N*> map_to_summary(const std::vector<const N*>& nodes) {
     std::vector<N*> nodes2(nodes.size(),nullptr);
     for(int i=0;i<(int)nodes2.size();i++) {
         nodes2[i] = summary_node(nodes[i]);
@@ -66,13 +59,12 @@ std::vector<N*> map_to_summary(const std::vector<const N*>& nodes)
 }
 
 template <typename N>
-auto find_induced_nodes(const std::vector<N*>& leaves)
-{
+auto find_induced_nodes(const std::vector<N*>& leaves) {
     std::unordered_set<N*> nodes;
     N* MRCA = nullptr;
     for(auto leaf: leaves) {
         nodes.insert(leaf);
-        MRCA = trace_find_MRCA(MRCA, leaf, nodes);
+        MRCA = trace_find_mrca(MRCA, leaf, nodes);
     }
     std::vector<N*> vnodes;
     for(auto nd: nodes) {
@@ -99,16 +91,15 @@ void perform_conflict_analysis(const Tree_t& tree1,
                                node_logger_t<Tree_t> log_partial_path_of,
                                node_logger_t<Tree_t> log_conflicts_with,
                                node_logger_t<Tree_t> log_resolved_by,
-                               node_logger_t<Tree_t> log_terminal)
-{
+                               node_logger_t<Tree_t> log_terminal) {
     // Handle non-leaf correspondence?
     auto induced_tree1 = get_induced_tree<Tree_t>(tree1, ottid_to_node1, tree2, ottid_to_node2);
     auto induced_tree2 = get_induced_tree<Tree_t>(tree2, ottid_to_node2, tree1, ottid_to_node1);
 
-    computeDepth(*induced_tree1);
+    compute_depth(*induced_tree1);
     compute_tips(*induced_tree1);
 
-    computeDepth(*induced_tree2);
+    compute_depth(*induced_tree2);
     compute_tips(*induced_tree2);
 
     std::vector<typename Tree_t::node_type*> conflicts;
@@ -118,12 +109,12 @@ void perform_conflict_analysis(const Tree_t& tree1,
         
     // make summary_node field of induced_tree1 leaves point to leaves of induced_tree2.
     for(auto leaf: iter_leaf(*induced_tree1)) {
-        auto leaf2 = map2.at(leaf->getOttId());
+        auto leaf2 = map2.at(leaf->get_ott_id());
         summary_node(leaf) = leaf2;
     }
         
-    auto L = countLeaves(*induced_tree1);
-    assert(L == countLeaves(*induced_tree2));
+    auto L = count_leaves(*induced_tree1);
+    assert(L == count_leaves(*induced_tree2));
         
     std::vector<typename Tree_t::node_type*> tree_nodes;
     for(auto nd: iter_post(*induced_tree1)) {
@@ -131,25 +122,25 @@ void perform_conflict_analysis(const Tree_t& tree1,
     }
 
     for(auto nd: tree_nodes) {
-        if (not nd->getParent()) {
+        if (not nd->get_parent()) {
             continue;
         }
         // Ignore knuckles in input trees.
         // (Note that in general, if we've pruned this tree down to match the shared taxon set
         //  then this could produce knuckles that were not originally there.)
-        if (nd->isOutDegreeOneNode()) {
+        if (nd->is_outdegree_one_node()) {
             continue;
         }
         // If this node contains all tips under it, then it doesn't correspond to a split.
-        if (nd->getData().n_tips == (int)L) {
+        if (nd->get_data().n_tips == (int)L) {
             continue;
         }
         // If this node is a tip, the mark the corresponding nodes
-        if (nd->isTip()) {
+        if (nd->is_tip()) {
             auto nd2 = summary_node(nd);
             log_terminal(nd2, nd);
-            nd2 = nd2->getParent();
-            for(; nd2 and nd2->isOutDegreeOneNode(); nd2 = nd2->getParent()) {
+            nd2 = nd2->get_parent();
+            for(; nd2 and nd2->is_outdegree_one_node(); nd2 = nd2->get_parent()) {
                 log_terminal(nd2, nd);
             }
             continue;
@@ -182,10 +173,10 @@ void perform_conflict_analysis(const Tree_t& tree1,
         if (nodes.size() > 1) {
             for(std::size_t i=0;i<nodes.size()-1;i++) {
                 auto nd = nodes[i];
-                if (nd->isTip()) {
+                if (nd->is_tip()) {
                     n_include_tips(nd) = n_tips(nd);
                 }
-                auto p = nd->getParent();
+                auto p = nd->get_parent();
                 assert(p);
                 assert(nd != MRCA);
                 n_include_tips(p) += n_include_tips(nd);
@@ -198,11 +189,11 @@ void perform_conflict_analysis(const Tree_t& tree1,
 
         // Supported_by or partial_path_of
         if (not conflicts_or_resolved_by) {
-            assert(MRCA->getParent());
-            if (MRCA->getParent()->getData().n_tips > MRCA->getData().n_tips) {
+            assert(MRCA->get_parent());
+            if (MRCA->get_parent()->get_data().n_tips > MRCA->get_data().n_tips) {
                 log_supported_by(MRCA, nd);
             } else {
-                for(auto nd2 = MRCA; nd2 and nd2->getData().n_tips == MRCA->getData().n_tips; nd2 = nd2->getParent()) {
+                for(auto nd2 = MRCA; nd2 and nd2->get_data().n_tips == MRCA->get_data().n_tips; nd2 = nd2->get_parent()) {
                     log_partial_path_of(nd2, nd);
                 }
             }

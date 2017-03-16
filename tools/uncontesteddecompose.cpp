@@ -21,16 +21,15 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
     }
 
     void exportOrCollapse(NodeWithSplits * scaffoldNd, SupertreeContextWithSplits & sc, json * documentP) {
-        assert(!scaffoldNd->isTip());
-        auto & thr = _getEmbeddingForNode(scaffoldNd);
+        assert(!scaffoldNd->is_tip());
+        auto & thr = _get_embedding_for_node(scaffoldNd);
 
-        LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->getOttId() << " outdegree = " << scaffoldNd->getOutDegree() << " numLoopTrees = " << thr.getNumLoopTrees() << " numLoops = " << thr.getTotalNumLoops();
-        if (thr.isContested()) {
-            //thr.debugNodeEmbedding("before thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
-            //auto p = scaffoldNd->getParent();
+        LOG(INFO) << " exportOrCollapse for ott" << scaffoldNd->get_ott_id() << " outdegree = " << scaffoldNd->get_out_degree() << " numLoopTrees = " << thr.get_num_loop_trees() << " numLoops = " << thr.get_total_num_loops();
+        if (thr.is_contested()) {
+            //auto p = scaffoldNd->get_parent();
             LOG(INFO) << "    Contested";
             if (documentP != nullptr) {
-                auto treeIndToContestingNodeMap = thr.getHowTreeContestsMonophylyMaps();
+                auto treeIndToContestingNodeMap = thr.get_how_tree_contests_monophyly_maps();
                 json treeIDToNodeMapJSON;
                 for (auto treeCNMPair : treeIndToContestingNodeMap) {
                     auto & treei = treeCNMPair.first;
@@ -43,28 +42,27 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
                         const auto & childSet = parChildSetPair.second;
                         json childSetAsJSONList = json::array();
                         for (auto childP : childSet) {
-                            childSetAsJSONList.push_back(childP->getName());
+                            childSetAsJSONList.push_back(childP->get_name());
                         }
-                        pcsObj["parent"] = parNode->getName();
+                        pcsObj["parent"] = parNode->get_name();
                         pcsObj["children_from_taxon"] = childSetAsJSONList;
                         parToChildSetJSON.push_back(pcsObj);
                     }
-                    treeIDToNodeMapJSON[ct->getName()] = parToChildSetJSON;
+                    treeIDToNodeMapJSON[ct->get_name()] = parToChildSetJSON;
                 }
-                std::string ottIdStr = "ott" + std::to_string(scaffoldNd->getOttId());
+                std::string ottIdStr = "ott" + std::to_string(scaffoldNd->get_ott_id());
                 (*documentP)[ottIdStr] = treeIDToNodeMapJSON;
             }
-            thr.constructPhyloGraphAndCollapseIfNecessary(*scaffoldNd, sc);
-            //_getEmbeddingForNode(p).debugNodeEmbedding("after thr.constructPhyloGraphAndCollapseIfNecessary", true, scaffoldNdToNodeEmbedding);
+            thr.collapse_group(*scaffoldNd, sc);
         } else {
-            //thr.debugNodeEmbedding(" focal node before export", false, scaffoldNdToNodeEmbedding);
-            //if (scaffoldNd->getParent()) {
-            //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding(" parent before export", true, scaffoldNdToNodeEmbedding);
+            //thr.debug_node_embeddings(" focal node before export", false, scaffoldNdToNodeEmbedding);
+            //if (scaffoldNd->get_parent()) {
+            //    _get_embedding_for_node(scaffoldNd->get_parent()).debug_node_embeddings(" parent before export", true, scaffoldNdToNodeEmbedding);
             //}
             LOG(INFO) << "    Uncontested";
-            auto fn = thr.exportSubproblemAndResolve(*scaffoldNd, exportDir, exportStream, sc);
-            //if (scaffoldNd->getParent()) {
-            //    _getEmbeddingForNode(scaffoldNd->getParent()).debugNodeEmbedding("after export", true, scaffoldNdToNodeEmbedding);
+            auto fn = thr.export_subproblem_and_resolve(*scaffoldNd, exportDir, exportStream, sc);
+            //if (scaffoldNd->get_parent()) {
+            //    _get_embedding_for_node(scaffoldNd->get_parent()).debug_node_embeddings("after export", true, scaffoldNdToNodeEmbedding);
             //}
             if ((subproblemIdStream != nullptr) && (!fn.empty())) {
                 *subproblemIdStream << fn << '\n';
@@ -76,24 +74,24 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
         TreeMappedWithSplits * tax = taxonomy.get();
         SupertreeContextWithSplits sc{treePtrByIndex, scaffoldNdToNodeEmbedding, *tax};
         if (userRequestsRetentionOfTipsMappedToContestedTaxa) {
-            sc.pruneTipsMappedToContestedTaxa = false;
+            sc.prune_tips_mapped_to_contested_taxa = false;
         }
         std::list<NodeWithSplits * > postOrder;
         for (auto nd : iter_post(*taxonomy)) {
-            if (nd->isTip()) {
-                assert(nd->hasOttId());
+            if (nd->is_tip()) {
+                assert(nd->has_ott_id());
                 // this is only needed for monotypic cases in which a tip node
-                //  may have multiple OTT Ids in its desIds set
-                _getEmbeddingForNode(nd).setOttIdForExitEmbeddings(nd,
-                                                                   nd->getOttId(),
+                //  may have multiple OTT Ids in its des_ids set
+                _get_embedding_for_node(nd).set_ott_id_for_exit_embeddings(nd,
+                                                                   nd->get_ott_id(),
                                                                    scaffoldNdToNodeEmbedding);
             } else {
                 postOrder.push_back(nd);
             }
-            //_getEmbeddingForNode(nd).debugNodeEmbedding(" getting postorder", true, scaffoldNdToNodeEmbedding);
+            //_get_embedding_for_node(nd).debug_node_embeddings(" getting postorder", true, scaffoldNdToNodeEmbedding);
         }
         for (auto nd : postOrder) {
-            assert(!nd->isTip());
+            assert(!nd->is_tip());
             exportOrCollapse(nd, sc, documentP);
         }
     }
@@ -117,7 +115,7 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             }
             documentP = &document;
         }
-        cloneTaxonomyAsASourceTree();
+        clone_taxonomy_as_a_source_tree();
         exportSubproblems(otCLI, documentP);
         subproblemIdStream = nullptr;
         if (documentP != nullptr) {
@@ -181,26 +179,26 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees, and -e flag to specify an export directory",
                 "taxonomy.tre inp1.tre inp2.tre");
     UncontestedTaxonDecompose proc;
-    otCLI.addFlag('e',
+    otCLI.add_flag('e',
                   "ARG should be the name of a directory. A .tre file will be written to that directory for each subproblem",
                   handleExportSubproblems,
                   true);
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   "If present, the trees will be exported to standard output",
                   handleExportToStdoutSubproblems,
                   false);
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "If present, the tips in input trees which are mapped to contested taxa. The default behavior is to prune these tips",
                   handleRetainTipsMapToContestedTaxaSubproblems,
                   false);
-    otCLI.addFlag('x',
+    otCLI.add_flag('x',
                   "ARG should be a file path. a line listing the name (but not the full path) over every created .tre file will be written to this file.",
                   handleListSubproblemIds,
                   true);
-    otCLI.addFlag('c',
+    otCLI.add_flag('c',
                   "ARG should be a file path. A JSON representation of the trees that contest each taxon will be written to that filepath.",
                   handleContestingLog,
                   true);
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
 }
 

@@ -8,28 +8,28 @@
 
 template <typename N>
 inline int depth(const N* node) {
-    assert(node->getData().depth > 0);
-    return node->getData().depth;
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
 }
 
 
 template <typename N>
 inline int& depth(N* node) {
-    assert(node->getData().depth > 0);
-    return node->getData().depth;
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
 }
 
 template <typename node_t>
 node_t* trace_to_parent(node_t* node, std::unordered_set<node_t*>& nodes) {
     assert(nodes.count(node));
-    node = node->getParent(); // move to parent and insert it.
+    node = node->get_parent(); // move to parent and insert it.
     nodes.insert(node);
     return node;
 }
 
 /// Walk up the tree from node1 and node2 until we find the common ancestor, putting nodes into set `nodes`.
 template <typename N>
-N* trace_find_MRCA(N* node1, N* node2, std::unordered_set<N*>& nodes)
+N* trace_find_mrca(N* node1, N* node2, std::unordered_set<N*>& nodes)
 {
     assert(node1 or node2);
     if (not node1) {
@@ -52,8 +52,8 @@ N* trace_find_MRCA(N* node1, N* node2, std::unordered_set<N*>& nodes)
     }
     assert(depth(node1) == depth(node2));
     while (node1 != node2) {
-        assert(node1->getParent());
-        assert(node2->getParent());
+        assert(node1->get_parent());
+        assert(node2->get_parent());
         node1 = trace_to_parent(node1, nodes);
         node2 = trace_to_parent(node2, nodes);
     }
@@ -72,7 +72,7 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
     for(auto leaf: leaves)
     {
         nodes.insert(leaf);
-        MRCA = trace_find_MRCA(MRCA, leaf, nodes);
+        MRCA = trace_find_mrca(MRCA, leaf, nodes);
     }
 
     std::unique_ptr<Tree_t> induced_tree(new Tree_t());
@@ -81,13 +81,13 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
     std::unordered_map<const typename Tree_t::node_type*, typename Tree_t::node_type*> to_induced_tree;
     for(auto nd: nodes)
     {
-        auto nd2 = induced_tree->createNode(nullptr);
+        auto nd2 = induced_tree->create_node(nullptr);
 
-        if (nd->hasOttId())
-            nd2->setOttId(nd->getOttId());
+        if (nd->has_ott_id())
+            nd2->set_ott_id(nd->get_ott_id());
 
-        if (nd->getName().size())
-            nd2->setName(nd->getName());
+        if (nd->get_name().size())
+            nd2->set_name(nd->get_name());
 
         to_induced_tree[nd] = nd2;
     }
@@ -95,7 +95,7 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
     // 3. Link corresponding nodes to their corresponding parents
     for(auto nd: nodes)
     {
-        auto p = nd->getParent();
+        auto p = nd->get_parent();
 
         auto nd2 = to_induced_tree.find(nd)->second;
         auto p2_it = to_induced_tree.find(p);
@@ -107,12 +107,12 @@ std::unique_ptr<Tree_t> get_induced_tree(const std::vector<const typename Tree_t
         else
         {
             auto p2 = p2_it->second;
-            p2->addChild(nd2);
+            p2->add_child(nd2);
         }
     }
 
     // 4. Set the root of the induced tree to node corresponding to the MRCA
-    induced_tree->_setRoot( to_induced_tree.at(MRCA) );
+    induced_tree->_set_root( to_induced_tree.at(MRCA) );
     
     return induced_tree;
 }
@@ -128,7 +128,7 @@ std::vector<const typename Tree_t::node_type*> get_induced_leaves(const Tree_t& 
     {
         for(auto leaf: iter_leaf_const(T2))
         {
-            auto id = leaf->getOttId();
+            auto id = leaf->get_ott_id();
             auto it = nodes1.find(id);
             if (it != nodes1.end())
                 leaves.push_back(it->second);
@@ -138,7 +138,7 @@ std::vector<const typename Tree_t::node_type*> get_induced_leaves(const Tree_t& 
     {
         for(auto leaf: iter_leaf_const(T1))
         {
-            auto id = leaf->getOttId();
+            auto id = leaf->get_ott_id();
             if (nodes2.find(id) != nodes2.end())
                 leaves.push_back(leaf);
         }
@@ -155,7 +155,7 @@ std::unique_ptr<Tree_t> get_induced_tree(const Tree_t& T1, const std::unordered_
     auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
 
     auto induced_tree = get_induced_tree<Tree_t>(induced_leaves);
-    induced_tree->setName(T1.getName());
+    induced_tree->set_name(T1.get_name());
 
     return induced_tree;
 }

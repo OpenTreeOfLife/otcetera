@@ -16,9 +16,9 @@ class TestValidTreeStruct {
             :filename(fn) {
         }
         char runTest(const TestHarness &h) const {
-            auto fp = h.getFilePath(filename);
+            auto fp = h.get_filepath(filename);
             std::ifstream inp;
-            if (!openUTF8File(fp, inp)) {
+            if (!open_utf8_file(fp, inp)) {
                 return 'U';
             }
             ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
@@ -26,7 +26,7 @@ class TestValidTreeStruct {
             std::list<std::unique_ptr<TreeMappedWithSplits> > tv;
             for (;;) {
                 ParsingRules pr;
-                auto nt = readNextNewick<Tree_t>(inp, pos, pr);
+                auto nt = read_next_newick<Tree_t>(inp, pos, pr);
                 if (nt == nullptr) {
                     break;
                 }
@@ -34,15 +34,15 @@ class TestValidTreeStruct {
             }
             EmbeddedTree et;
             Tree_t fakeScaffold;
-            auto r = fakeScaffold.createRoot();
-            auto & fsd = fakeScaffold.getData().ottIdToNode;
+            auto r = fakeScaffold.create_root();
+            auto & fsd = fakeScaffold.get_data().ott_id_to_node;
             std::set<long> ids;
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
-                const OttIdSet & td = tree.getRoot()->getData().desIds;
+                const OttIdSet & td = tree.get_root()->get_data().des_ids;
                 for (auto oid : td) {
                     if (!contains(ids, oid)) {
-                        fsd[oid] = fakeScaffold.createChild(r);
+                        fsd[oid] = fakeScaffold.create_child(r);
                         ids.insert(oid);
                     }
                 }
@@ -52,7 +52,7 @@ class TestValidTreeStruct {
             ftv.push_back(&fakePhylo);
 
             SupertreeContextWithSplits sc{ftv,
-                                          et._getScaffoldNdToNodeEmbedding(),
+                                          et._get_scaffold_nd_to_node_embedding(),
                                           fakeScaffold};
             GreedyBandedForest<NodeWithSplits, NodeWithSplits> gpf{-1};
             int treeInd = 0;
@@ -60,23 +60,23 @@ class TestValidTreeStruct {
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
                 const OttIdSet * incGroup = nullptr;
-                for (auto nd : iter_child(*tree.getRoot())) {
-                    if (!nd->isTip()) {
+                for (auto nd : iter_child(*tree.get_root())) {
+                    if (!nd->is_tip()) {
                         if (incGroup != nullptr) {
                             return 'F';
                         }
-                        incGroup = &(nd->getData().desIds);
+                        incGroup = &(nd->get_data().des_ids);
                     }
                 }
                 if (incGroup == nullptr) {
                     return 'F';
                 }
-                const OttIdSet & leafSet = tree.getRoot()->getData().desIds;
+                const OttIdSet & leaf_set = tree.get_root()->get_data().des_ids;
                 std::cerr << groupInd + 1 << '\n';
-                gpf.attemptToAddGrouping(*incGroup, leafSet, treeInd, groupInd++, nullptr);
+                gpf.attempt_to_add_grouping(*incGroup, leaf_set, treeInd, groupInd++, nullptr);
             }
             NodeEmbeddingWithSplits emptyEmbedding(r);
-            gpf.finishResolutionOfEmbeddedClade(*r, &emptyEmbedding, &sc);
+            gpf.finish_resolution_of_embedded_clade(*r, &emptyEmbedding, &sc);
             return '.';
         }
 };
@@ -103,6 +103,6 @@ int main(int argc, char *argv[]) {
         const TestFn tf{fn, tcb};
         tests.push_back(tf);
     }
-    return th.runTests(tests);
+    return th.run_tests(tests);
 }
 

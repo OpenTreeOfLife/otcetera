@@ -15,28 +15,28 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     bool summarize(OTCLI &otCLI) override {
         assert (taxonomy != nullptr);
         for (auto nd : contestedNodes) {
-            otCLI.out << nd->getName() << '\n';
+            otCLI.out << nd->get_name() << '\n';
         }
         return true;
     }
 
-    bool processTaxonomyTree(OTCLI & otCLI) override {
-        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::processTaxonomyTree(otCLI);
+    bool process_taxonomy_tree(OTCLI & otCLI) override {
+        TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         return true;
     }
 
-    bool processSourceTree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> tree) override {
         assert(taxonomy != nullptr);
         assert(tree != nullptr);
-        expandOTTInternalsWhichAreLeaves(*tree, *taxonomy);
+        expand_ott_internals_which_are_leaves(*tree, *taxonomy);
         return processExpandedTree(otCLI, *tree);
     }
 
     bool processExpandedTree(OTCLI &otCLI, TreeMappedWithSplits & tree) {
         std::map<const NodeWithSplits *, std::set<long> > prunedDesId;
         for (auto nd : iter_leaf_const(tree)) {
-            auto ottId = nd->getOttId();
-            markPathToRoot(*taxonomy, ottId, prunedDesId);
+            auto ottId = nd->get_ott_id();
+            mark_path_to_root(*taxonomy, ottId, prunedDesId);
         }
         std::map<std::set<long>, std::list<const NodeWithSplits *> > taxCladesToTaxNdList;
         for (auto & nodeSetPair : prunedDesId) {
@@ -55,11 +55,11 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         }
         std::set<std::set<long> > sourceClades;
         for (auto nd : iter_post_internal(tree)) {
-            if (nd->getParent() != nullptr && !nd->isTip()) {
-                sourceClades.insert(std::move(nd->getData().desIds));
+            if (nd->get_parent() != nullptr && !nd->is_tip()) {
+                sourceClades.insert(std::move(nd->get_data().des_ids));
             }
         }
-        auto numLeaves = tree.getRoot()->getData().desIds.size();
+        auto numLeaves = tree.get_root()->get_data().des_ids.size();
         recordContested(taxCladesToTaxNdList, sourceClades, contestedNodes, numLeaves, otCLI.currentFilename);
         return true;
     }
@@ -88,10 +88,10 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 continue;
             }
             for (const auto & sc : sourceClades) {
-                if (!areCompatibleDesIdSets(taxNodesDesSets, sc)) {
+                if (!are_compatible_des_id_sets(taxNodesDesSets, sc)) {
                     for (auto nd : ndlist) {
                         contestedSet.insert(nd);
-                        std::cerr << getContestedPreambleFromName(*nd, treeName) << '\n';
+                        std::cerr << get_contested_preamble_from_name(*nd, treeName) << '\n';
                     }
                     break;
                 }
@@ -105,5 +105,5 @@ int main(int argc, char *argv[]) {
                 "takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. Writes the OTT IDs of clades in the taxonomy whose monophyly is questioned by at least one input",
                 "taxonomy.tre inp1.tre inp2.tre");
     DetectContestedState proc;
-    return taxDependentTreeProcessingMain(otCLI, argc, argv, proc, 2, true);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
 }

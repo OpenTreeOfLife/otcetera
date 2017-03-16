@@ -50,8 +50,8 @@ struct SetOfIdsState {
 
     void fillWithIds(const Tree_t & tree, OttIdSet & ier) {
         for (const auto nd : iter_node_const(tree)) {
-            if (nd->hasOttId() && (includeInternals || nd->isTip())) {
-                ier.insert(nd->getOttId());
+            if (nd->has_ott_id() && (includeInternals || nd->is_tip())) {
+                ier.insert(nd->get_ott_id());
             }
         }
     }
@@ -99,19 +99,19 @@ int main(int argc, char *argv[]) {
                 "some.tre");
     SetOfIdsState cts;
     otCLI.blob = static_cast<void *>(&cts);
-    otCLI.addFlag('t',
+    otCLI.add_flag('t',
                   "Only consider OTT ids from tips",
                   handleTipsOnly,
                   false);
-    otCLI.addFlag('i',
+    otCLI.add_flag('i',
                   "write the intersection of the OTT Ids rather than the union.",
                   handleIntersectionOnly,
                   false);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "write output as a newick polytomy.",
                   handleNewick,
                   false);
-    auto rc = treeProcessingMain<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
+    auto rc = tree_processing_main<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
     if (rc == 0) {
         cts.summarize(otCLI);
         return cts.numErrors;

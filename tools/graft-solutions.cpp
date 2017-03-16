@@ -25,7 +25,7 @@ bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg);
 bool handleRootName(OTCLI &, const std::string & arg);
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().setOttIds = get_bool(arg,"-o: ");
+    otCLI.get_parsing_rules().set_ott_ids = get_bool(arg,"-o: ");
     return true;
 }
 
@@ -39,11 +39,11 @@ int main(int argc, char *argv[]) {
                 "Takes a series of tree files, which are treated as subproblem solutions.\n"
                 "Each solution tree should have an OTT Id at the root.\n",
                 "solutions.tre");
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   "Require OTT ids.  Defaults to true",
                   handleRequireOttIds,
                   true);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "Rename the root to this name",
                   handleRootName,
                   true);
@@ -54,17 +54,17 @@ int main(int argc, char *argv[]) {
     }
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
         return 1;
     }
 
     if (trees.empty()) {
         throw OTCError("No trees loaded!");
     }
-    const bool setOttIds = otCLI.getParsingRules().setOttIds;
+    const bool set_ott_ids = otCLI.get_parsing_rules().set_ott_ids;
     vector<std::size_t> no_root_label;
     for (std::size_t i = 0U; i < trees.size(); i++) {
-        if (trees[i]->getRoot()->getName().empty()) {
+        if (trees[i]->get_root()->get_name().empty()) {
             no_root_label.push_back(i);
         }
     }
@@ -83,10 +83,10 @@ int main(int argc, char *argv[]) {
         }
         throw e;
     }
-    if (not setOttIds) {
-        auto name_to_id = createIdsFromNamesFromTrees(trees);
+    if (not set_ott_ids) {
+        auto name_to_id = create_ids_from_names_from_trees(trees);
         for(auto& tree: trees) {
-            setIdsFromNames(*tree, name_to_id);
+            set_ids_from_names(*tree, name_to_id);
         }
     }
     std::unordered_map<long,Tree_t::node_type*> my_leaf;
@@ -94,14 +94,14 @@ int main(int argc, char *argv[]) {
     // Each tip id should occur only once as a tip.
     for(const auto& tree: trees) {
         for(auto nd:iter_pre(*tree)){
-            if (nd->isTip()) {
-                assert(nd->hasOttId());
-                long id = nd->getOttId();
+            if (nd->is_tip()) {
+                assert(nd->has_ott_id());
+                long id = nd->get_ott_id();
                 if (my_leaf.find(id) != my_leaf.end()) {
-                    if (setOttIds){
+                    if (set_ott_ids){
                         throw OTCError()<<"OTT Id "<<id<<" occurs at multiple tips!";
                     } else {
-                        throw OTCError()<<"Label '"<<nd->getName()<<"' occurs at multiple tips!";
+                        throw OTCError()<<"Label '"<<nd->get_name()<<"' occurs at multiple tips!";
                     }
                 }
                 my_leaf[id] = nd;
@@ -112,22 +112,22 @@ int main(int argc, char *argv[]) {
     // Each root id should occur only once as a root.
     std::unordered_set<long> root_ids;
     for (auto i = 0U; i < trees.size(); i++) {
-        auto root = trees[i]->getRoot();
-        long id = root->getOttId();
+        auto root = trees[i]->get_root();
+        long id = root->get_ott_id();
         if (not root_ids.count(id)) {
             root_ids.insert(id);
         } else {
-            if (setOttIds) {
+            if (set_ott_ids) {
                 throw OTCError()<<"OTT Id "<<id<<" occurs at the root of multiple trees!";
             } else {
-                throw OTCError()<<"Label '"<<root->getName()<<"' occurs at the root of multiple trees!";
+                throw OTCError()<<"Label '"<<root->get_name()<<"' occurs at the root of multiple trees!";
             }
         }
     }
     // Glue each root into its corresponding tip.
     vector<unique_ptr<Tree_t>> roots;
     for (auto i = 0U; i < trees.size(); i++) {
-        long id = trees[i]->getRoot()->getOttId();
+        long id = trees[i]->get_root()->get_ott_id();
         if (not my_leaf.count(id)) {
             if (otCLI.verbose) {
                 LOG(INFO)<<"OTT Id "<<id<<" is not a leaf in any subproblem.  Must be a root.\n";
@@ -136,14 +136,14 @@ int main(int argc, char *argv[]) {
             std::swap(roots.back(), trees[i]);
         } else {
             auto nd = my_leaf[id];
-            replaceWithSubtree<Tree_t>(nd, *trees[i]);
+            replace_with_subtree<Tree_t>(nd, *trees[i]);
         }
     }
     if (roots.size() == 1 and not rootName.empty()) {
-        roots[0]->getRoot()->setName(rootName);
+        roots[0]->get_root()->set_name(rootName);
     }
     for(const auto& tree: roots) {
-        writeTreeAsNewick(std::cout, *tree);
+        write_tree_as_newick(std::cout, *tree);
         std::cout<<"\n";
     }
     return (roots.size() != 1 ? 1 : 0);

@@ -44,6 +44,7 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-suppress-monotypic \
 				otc-taxon-conflict-report \
 				otc-uncontested-decompose \
+				otc-sample-tips \
 				otc-solve-subproblem \
 				otc-graft-solutions \
 				otc-unprune-solution \
@@ -55,8 +56,8 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-tree-tool \
 				otc-version-reporter \
 				otc-munge-names \
-				otc-conflict-stats
-
+				otc-conflict-stats \
+				otc-broken-taxa
 
 
 LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIBS) 
@@ -64,6 +65,8 @@ LIBS = $(BOOST_PROGRAM_OPTIONS_LIBS) $(BOOST_FILESYSTEM_LIBS) $(BOOST_SYSTEM_LIB
 otc_munge_names_SOURCES = mungenames.cpp
 otc_munge_names_CPPFLAGS = $(AM_CPPFLAGS)
 
+otc_sample_tips_SOURCES = sampletips.cpp
+otc_sample_tips_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_displayed_stats_SOURCES = displayedstats.cpp
 otc_displayed_stats_CPPFLAGS = $(AM_CPPFLAGS)
@@ -149,6 +152,9 @@ otc_relabel_tree_CPPFLAGS = $(AM_CPPFLAGS)
 otc_tree_tool_SOURCES = tree-tool.cpp
 otc_tree_tool_CPPFLAGS = $(AM_CPPFLAGS)
 
+otc_broken_taxa_SOURCES = broken-taxa.cpp
+otc_broken_taxa_CPPFLAGS = $(AM_CPPFLAGS)
+
 otc_unprune_solution_and_name_unnamed_nodes_SOURCES = unprune-solution-and-name-unnamed-nodes.cpp
 otc_unprune_solution_and_name_unnamed_nodes_CPPFLAGS = $(AM_CPPFLAGS)
 
@@ -161,5 +167,6 @@ nodist_otc_version_reporter_SOURCES = git_version.h
 BUILT_SOURCES = version-reporter.cpp git_version.stamp
 
 check:
+	cp $(abs_top_srcdir)/data/is_incertae_sedis.txt $(abs_top_srcdir)/expected/unprune-and-name/incertae-sedis
 	python $(abs_top_srcdir)/tools/test_otc_tools.py $(abs_top_srcdir)/data $(abs_top_srcdir)/expected $(abs_builddir)
 

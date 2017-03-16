@@ -14,132 +14,132 @@ namespace otc {
 ////////////////////////////////////////////////////////////////////////////////
 // no ops for no data
 template <typename N, typename T>
-inline void newickCloseNodeHook(RootedTree<N,T> & ,
+inline void newick_close_node_hook(RootedTree<N,T> & ,
                                 RootedTreeNode<N> & ,
                                 const NewickTokenizer::Token & ,
                                 const ParsingRules & )
 { }
 
 template <typename N, typename T>
-inline void newickParseNodeInfo(RootedTree<N, T> & ,
+inline void newick_parse_node_info(RootedTree<N, T> & ,
                                 RootedTreeNode<N> & node,
                                 const NewickTokenizer::Token * labelToken,
                                 const NewickTokenizer::Token * , // used for comment
                                 const NewickTokenizer::Token * ,
                                 const ParsingRules &parsingRules) {
     if (labelToken) {
-        node.setName(labelToken->content());
-        if (not parsingRules.setOttIds)
+        node.set_name(labelToken->content());
+        if (not parsingRules.set_ott_ids)
             return;
-        if ((!parsingRules.setOttIdForInternals) && node.isInternal()) {
+        if ((!parsingRules.set_ott_idForInternals) && node.is_internal()) {
             return;
         }
-        long ottID = ottIDFromName(labelToken->content());
+        long ottID = ott_id_from_name(labelToken->content());
         if (ottID >= 0) {
-            if (parsingRules.idRemapping != nullptr) {
-                auto rIt = parsingRules.idRemapping->find(ottID);
-                if (rIt != parsingRules.idRemapping->end()) {
-                    LOG(DEBUG) << "idRemapping from OTT" << ottID << " to OTT" << rIt->second;
+            if (parsingRules.id_remapping != nullptr) {
+                auto rIt = parsingRules.id_remapping->find(ottID);
+                if (rIt != parsingRules.id_remapping->end()) {
+                    LOG(DEBUG) << "id_remapping from OTT" << ottID << " to OTT" << rIt->second;
                     ottID = rIt->second;
                 }
             }
-            node.setOttId(ottID);
+            node.set_ott_id(ottID);
         }
     }
 }
 
 template<typename N, typename T>
-inline void postParseHook(RootedTree<N,T> & , const ParsingRules & ) {
+inline void post_parse_hook(RootedTree<N,T> & , const ParsingRules & ) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
 
 template <typename T, typename U>
-void setOttIdAndAddToMap(RootedTree<T, U> & tree,
+void set_ott_id_and_add_to_map(RootedTree<T, U> & tree,
                          RootedTreeNode<T> & node,
                          const NewickTokenizer::Token * labelToken,
                          const ParsingRules &);
 
 template <typename T, typename U>
-inline void setOttIdAndAddToMap(RootedTree<T, U> & tree,
+inline void set_ott_id_and_add_to_map(RootedTree<T, U> & tree,
                          RootedTreeNode<T> & node,
                          const NewickTokenizer::Token * labelToken,
                          const ParsingRules & parsingRules) {
     if (labelToken) {
-        node.setName(labelToken->content());
-        if (not parsingRules.setOttIds) return;
-        if (not parsingRules.setOttIdForInternals and node.isInternal()) return;
-        long ottID = ottIDFromName(labelToken->content());
+        node.set_name(labelToken->content());
+        if (not parsingRules.set_ott_ids) return;
+        if (not parsingRules.set_ott_idForInternals and node.is_internal()) return;
+        long ottID = ott_id_from_name(labelToken->content());
         if (ottID >= 0) {
-            if (parsingRules.ottIdValidator != nullptr) {
-                if (!contains(*parsingRules.ottIdValidator, ottID)) {
-                    if (!parsingRules.pruneUnrecognizedInputTips) {
+            if (parsingRules.ott_id_validator != nullptr) {
+                if (!contains(*parsingRules.ott_id_validator, ottID)) {
+                    if (!parsingRules.prune_unrecognized_input_tips) {
                         std::string m = "Unrecognized OTT Id ";
                         m += std::to_string(ottID);
-                        throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->getStartPos());
+                        throw OTCParsingError(m.c_str(), labelToken->content(), labelToken->get_start_pos());
                     } else {
                         return;
                     }
                 }
             }
-            if (parsingRules.idRemapping != nullptr) {
-                auto rIt = parsingRules.idRemapping->find(ottID);
-                if (rIt != parsingRules.idRemapping->end()) {
-                    LOG(DEBUG) << "idRemapping from OTT" << ottID << " to OTT" << rIt->second;
+            if (parsingRules.id_remapping != nullptr) {
+                auto rIt = parsingRules.id_remapping->find(ottID);
+                if (rIt != parsingRules.id_remapping->end()) {
+                    LOG(DEBUG) << "id_remapping from OTT" << ottID << " to OTT" << rIt->second;
                     ottID = rIt->second;
                 }
             }
-            node.setOttId(ottID);
-            U & treeData = tree.getData();
-            if (contains(treeData.ottIdToNode, ottID)) {
+            node.set_ott_id(ottID);
+            U & treeData = tree.get_data();
+            if (contains(treeData.ott_id_to_node, ottID)) {
                 throw OTCParsingError("Expecting an OTT Id to only occur one time in a tree.",
                                       labelToken->content(),
-                                      labelToken->getStartPos());
+                                      labelToken->get_start_pos());
             }
-            treeData.ottIdToNode[ottID] = &node;
-        } else if (parsingRules.requireOttIds and not parsingRules.pruneUnrecognizedInputTips) {
+            treeData.ott_id_to_node[ottID] = &node;
+        } else if (parsingRules.require_ott_ids and not parsingRules.prune_unrecognized_input_tips) {
             throw OTCParsingError("Expecting a name for a taxon to end with an ott##### where the numbers are the OTT Id.",
                                   labelToken->content(),
-                                  labelToken->getStartPos());
+                                  labelToken->get_start_pos());
         }
     }
 }
 
 template<typename N>
-inline void newickParseNodeInfo(RootedTree<N, RTreeOttIDMapping<N> > & tree,
+inline void newick_parse_node_info(RootedTree<N, RTreeOttIDMapping<N> > & tree,
                                 RootedTreeNode<N> & node,
                                 const NewickTokenizer::Token * labelToken,
                                 const NewickTokenizer::Token * , // used for comment
                                 const NewickTokenizer::Token * ,
                                 const ParsingRules & parsingRules) {
-    setOttIdAndAddToMap(tree, node, labelToken, parsingRules);
+    set_ott_id_and_add_to_map(tree, node, labelToken, parsingRules);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // tree-level mapping of ottID to Node data
 template<>
-inline void newickCloseNodeHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
+inline void newick_close_node_hook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & ,
                                 RootedTreeNode<RTSplits> & node,
                                 const NewickTokenizer::Token & token,
                                 const ParsingRules & parsingRules) {
-    if (not parsingRules.setOttIds) return;
-    if (node.isTip()
-        && !node.hasOttId()
-        && (!parsingRules.pruneUnrecognizedInputTips)) {
-        throw OTCParsingContentError("Expecting each tip to have an ID.", token.getStartPos());
+    if (not parsingRules.set_ott_ids) return;
+    if (node.is_tip()
+        && !node.has_ott_id()
+        && (!parsingRules.prune_unrecognized_input_tips)) {
+        throw OTCParsingContentError("Expecting each tip to have an ID.", token.get_start_pos());
     }
 }
 
 template<>
-inline void postParseHook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
-    if (not parsingRules.setOttIds) return;
-    if (parsingRules.includeInternalNodesInDesIdSets) {
-        fillDesIdSetsIncludingInternals(tree);
+inline void post_parse_hook(RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & tree, const ParsingRules & parsingRules) {
+    if (not parsingRules.set_ott_ids) return;
+    if (parsingRules.include_internal_nodes_in_des_id_sets) {
+        fill_des_ids_including_internals(tree);
     } else {
-        fillDesIdSets(tree);
+        fill_des_ids(tree);
     }
-    for (auto p : tree.getData().ottIdToNode) {
-        assert(p.first == p.second->getOttId());
+    for (auto p : tree.get_data().ott_id_to_node) {
+        assert(p.first == p.second->get_ott_id());
     }
 }
 

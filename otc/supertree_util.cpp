@@ -25,7 +25,7 @@ std::string source_from_tree_name(const std::string& name) {
     return string_between_chars(name, ' ', '.');
 }
 
-boost::optional<std::string> getSourceNodeName(const std::string& name) {
+boost::optional<std::string> get_source_node_name(const std::string& name) {
     static std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
     std::smatch matches;
     if (std::regex_match(name,matches,e))
@@ -38,10 +38,10 @@ boost::optional<std::string> getSourceNodeName(const std::string& name) {
         return boost::none;
 }
 
-bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,
+bool culled_and_complete_incompat_wrt_leaf_set(const OttIdSet & culled,
                                                 const OttIdSet & complete,
-                                                const OttIdSet & leafSet) {
-    //TMP this could be more efficient. See areCompatibleDesIdSets
+                                                const OttIdSet & leaf_set) {
+    //TMP this could be more efficient. See are_compatible_des_id_sets
     const OttIdSet inter = set_intersection_as_set(culled, complete);
     if (inter.empty()) {
         return false;
@@ -49,7 +49,7 @@ bool culledAndCompleteIncompatWRTLeafSet(const OttIdSet & culled,
     if (inter == culled) {
         return false;
     }
-    const OttIdSet compCulled = set_intersection_as_set(complete, leafSet);
+    const OttIdSet compCulled = set_intersection_as_set(complete, leaf_set);
     return (inter != compCulled);
 }
 

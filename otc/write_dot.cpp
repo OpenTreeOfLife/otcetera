@@ -119,7 +119,7 @@ void uncheckedWriteNodeDOT(std::ostream & out,
     const NodeWithSplits * nd{k.first};
     const std::string & prefix{k.second};
     std::string name{prefix};
-    const std::string unadorned = forceMRCANaming ? getMRCADesignator(*nd) :  getDesignator(*nd);
+    const std::string unadorned = forceMRCANaming ? get_mrca_designator(*nd) :  get_designator(*nd);
     name.append(unadorned);
     nd2name.emplace(k, NamePair{name, unadorned});
     assert(contains(nd2name, k));
@@ -178,7 +178,7 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
     const bool isScaffoldSide = (sideDes == scaffDes);
     //constexpr bool mergeScPhAnc = false;
     const char * ancPref = (isScaffoldSide ? "" : prefix); // = (isScaffoldSide || (mergeScPhAnc && focalNode != scaffAnc)) ...
-    const char * desPref = ((isScaffoldSide || sideDes->isTip()) ? "" : prefix);
+    const char * desPref = ((isScaffoldSide || sideDes->is_tip()) ? "" : prefix);
     // If we have a tip or a node outside of this focal node, use the scaffold node for the 
     //  phylo side of the graph. Not accurate, but cuts down on the # of nodes.
     ToDotKey ancK{sidePar, ancPref};
@@ -186,7 +186,7 @@ void writeOneSideOfPathPairingToDOT(std::ostream & out,
         ancK = ToDotKey{scaffAnc, ""};
     }*/
     ToDotKey desK{sideDes, desPref};
-    if (scaffDes->isTip()) {
+    if (scaffDes->is_tip()) {
         desK = ToDotKey{scaffDes, ""};
     }
     
@@ -220,10 +220,10 @@ void writePathPairingToDOT(std::ostream & out,
     const std::string sname ="__" + std::to_string(reinterpret_cast<long>(&pp));
     const NamePair pv{pname, emptyStr};
     const NamePair sv{sname, emptyStr};
-    const auto * pn = pp.phyloParent;
-    const auto * pd = pp.phyloChild;
-    const auto * sd = pp.scaffoldDes;
-    const auto * sn = pp.scaffoldAnc;
+    const auto * pn = pp.phylo_parent;
+    const auto * pd = pp.phylo_child;
+    const auto * sd = pp.scaffold_des;
+    const auto * sn = pp.scaffold_anc;
     const ToDotKey pk{pd, "_phpath"};
     writeOneSideOfPathPairingToDOT(out, pn, pd, sn, sd, pk, pv, nd2name, n, style, prefix);
     style = bstyle;
@@ -245,20 +245,20 @@ void writeDOTEmbeddingForNode(std::ostream & out,
                               const char * prefix,
                               std::size_t treeIndex
                               ) {
-    auto & exits = thr.getExitEmbeddings();
+    auto & exits = thr.get_exit_embeddings();
     const auto eait = exits.find(treeIndex);
     if (eait != exits.end()) {
         for (const auto & pp : eait->second) {
             writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
         }
     }
-    const auto incoming = thr.getAllIncomingPathPairs(eForNd, treeIndex);
+    const auto incoming = thr.get_all_incoming_path_pairs(eForNd, treeIndex);
     for (auto pp : incoming) {
         writePathPairingToDOT(out, nd, *pp, nd2name, pathSet, color, prefix);
     }
 }
 
-void writeDOTForEmbedding(std::ostream & out,
+void write_dot_for_embedding(std::ostream & out,
                      const NodeWithSplits * nd,
                      const std::vector<TreeMappedWithSplits *> & tv,
                      const std::map<const NodeWithSplits *, NodeEmbeddingWithSplits> & eForNd,
@@ -271,13 +271,13 @@ void writeDOTForEmbedding(std::ostream & out,
         const ToDotKey k{n, ""};
         writeNodeDOT(out, k, nd2name, "", false, true, false);
     }
-    auto ndp = nd->getParent();
+    auto ndp = nd->get_parent();
     if (ndp != nullptr) {
         const ToDotKey k{ndp, ""};
         writeNodeDOT(out, k, nd2name, "", false, true, false);
     }
     for (auto n : iter_pre_n_const(nd)) {
-        auto p = n->getParent();
+        auto p = n->get_parent();
         if (p == nullptr) {
             continue;
         }
@@ -324,7 +324,7 @@ void writeDOTExclusion(std::ostream & out,
                        const std::string & ndStyle,
                        const std::string & style) {
     for (auto n : iter_pre_n_const(node)) {
-        const auto & excForThisNode = exclusion.getNodesExcludedFromNode(n);
+        const auto & excForThisNode = exclusion.get_nodes_excluded_from_node(n);
         const ToDotKey ancK{n, connPrefix};
         for (auto en : excForThisNode) {
             const ToDotKey desK{en, prefix};
@@ -364,15 +364,15 @@ void writeDOTForFtree(std::ostream & out,
     const std::string nsty = esty;
     std::string tn = "t";
     tn += std::to_string(treeIndex);
-    auto r = tree.getRoot();
+    auto r = tree.get_root();
     for (auto n : iter_pre_n_const(r)) {
-        auto p = n->getParent();
+        auto p = n->get_parent();
         if (p == nullptr) {
             continue;
         }
         const ToDotKey ancK{p, tn};
         ToDotKey desK{n, tn};
-        if (n->isTip()) {
+        if (n->is_tip()) {
             desK = ToDotKey{n, ""};
         }
         writeNodeDOT(out, ancK, nd2name, nsty, false, true, false);
@@ -388,7 +388,7 @@ void writeDOTForFtree(std::ostream & out,
     writeDOTGroupingConstraintSingle(out, inc, itn, tn, nd2name, incStyle, esty);
     */
     const std::string etn = std::string("exc") + tn;
-    const auto & exc = tree.getExclusions();
+    const auto & exc = tree.get_exclusions();
     std::string excStyle = "shape=octagon color=\"";
     excStyle += color;
     excStyle += "\"";
@@ -401,17 +401,17 @@ ToDotKey findAnyKey(const NodeWithSplits *nd, const NodeToDotNames & nd2name) {
             return kv.first;
         }
     }
-    UNREACHABLE;
+    OTC_UNREACHABLE;
 }
 template<typename T>
 void writeDOTBandsForForest(std::ostream & out, const T & bandList, NodeToDotNames & nd2name) {
     const std::string esty = "style=\"dotted\"";
     for (const auto & b : bandList) {
-        if (b.isSingleTreeBand()) {
+        if (b.is_single_tree_band()) {
             continue;
         }
         const NodeWithSplits * prev = nullptr;
-        for (auto n : b.getBandedNodes()) {
+        for (auto n : b.get_banded_nodes()) {
             if (prev != nullptr) {
                 ToDotKey ancK = findAnyKey(prev, nd2name);
                 ToDotKey desK = findAnyKey(n, nd2name);
@@ -422,15 +422,15 @@ void writeDOTBandsForForest(std::ostream & out, const T & bandList, NodeToDotNam
     }
 }
 
-void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
-    const auto & o2n = forest.getOttIdToNodeMapping();
+void write_dot_forest(std::ostream & out, const RootedForest<RTSplits, MappedWithSplitsData> &forest) {
+    const auto & o2n = forest.get_ott_id_to_node_mapping();
     NodeToDotNames nd2name;
     std::string emptyStr;
     out << "digraph G{\n";
     for (auto & oidNodePair : o2n) {
         auto n = oidNodePair.second;
-        bool writePlainNd = forest.isAttached(n->getOttId());
-        if (!writePlainNd && (!forest.isInABand(n)) && (!forest.hasNodesExcludedFromIt(n))) {
+        bool writePlainNd = forest.is_attached(n->get_ott_id());
+        if (!writePlainNd && (!forest.is_in_a_band(n)) && (!forest.has_nodes_excluded_from_it(n))) {
             writePlainNd = true;
         }
         if (writePlainNd) {
@@ -438,7 +438,7 @@ void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithS
             writeNodeDOT(out, k, nd2name, emptyStr, false, true, false);
         }
     }
-    const auto & trees = forest.getTrees();
+    const auto & trees = forest.get_trees();
     auto i = 0U;
     for (const auto & tiTrPair : trees) {
         auto colorIndex = std::min(LAST_COLOR_IND, i);
@@ -447,7 +447,7 @@ void writeDOTForest(std::ostream & out, const RootedForest<RTSplits, MappedWithS
         writeDOTForFtree(out, tree, nd2name, color, i);
         ++i;
     }
-    writeDOTBandsForForest(out, forest.getAllBands(), nd2name);
+    writeDOTBandsForForest(out, forest.get_all_bands(), nd2name);
     out << "}\n";
 }
 

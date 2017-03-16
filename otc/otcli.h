@@ -29,7 +29,7 @@ class OTCLI {
         std::string currTmpFilepath;
         void * blob;
 
-        void addFlag(char flag, const std::string & help, bool (*cb)(OTCLI &, const std::string &), bool argNeeded) {
+        void add_flag(char flag, const std::string & help, bool (*cb)(OTCLI &, const std::string &), bool argNeeded) {
             if (clientDefFlagHelp.find(flag) != clientDefFlagHelp.end()) {
                 throw OTCError("Clashing flag assignment");
             }
@@ -39,27 +39,27 @@ class OTCLI {
                 clientDefArgNeeded.insert(flag);
             }
         }
-        bool handleFlag(const std::string & flagWithoutDash);
-        bool parseArgs(int argc, char *argv[], std::vector<std::string> & args);
-        void printHelp(std::ostream & outStream);
+        bool handle_flag(const std::string & flagWithoutDash);
+        bool parse_args(int argc, char *argv[], std::vector<std::string> & args);
+        void print_help(std::ostream & outStream);
         
         /*int readFilepath(const std::string &fp,
                           ProcessedTreeValidationFunction func=0L,
                           void * blob=0L);
         // reads a NexSON v1.2 at filepath and returns a NxsSimpleTree with the associated treeID
         NxsSimpleTree * readTreeFromNexSONv_1_2(const std::string &filepath, const std::string & tree_id); */
-        bool isDotTxtFile(const std::string &fp);
-        auto getTitle() const {
+        bool is_dot_txt_file(const std::string &fp);
+        auto get_title() const {
             return this->titleStr;
         }
-        ParsingRules & getParsingRules() {
+        ParsingRules & get_parsing_rules() {
             return parsingRules;
         }
-        const ParsingRules & getParsingRules() const {
+        const ParsingRules & get_parsing_rules() const {
             return parsingRules;
         }
-        void turnOnVerboseMode();
-        void turnOffVerboseMode();
+        void turn_on_verbose_mode();
+        void turn_off_verbose_mode();
     private:
         std::string titleStr;
         std::string descriptionStr;
@@ -75,12 +75,12 @@ class OTCLI {
 };
 
 template<typename T>
-inline bool processTrees(const std::string& filename,
+inline bool process_trees(const std::string& filename,
                          const ParsingRules& parsingRules,
                          std::function<bool (std::unique_ptr<T>)> treePtr)
 {
     std::ifstream inp;
-    if (!openUTF8File(filename, inp)) {
+    if (!open_utf8_file(filename, inp)) {
         throw OTCError("Could not open \"" + filename + "\"");
     }
     LOG(INFO) << "reading \"" << filename << "\"...";
@@ -89,20 +89,20 @@ inline bool processTrees(const std::string& filename,
     FilePosStruct pos(filenamePtr);
     unsigned treeNumInThisFile = 1;
     for (;;) {
-        std::unique_ptr<T> nt = readNextNewick<T>(inp, pos, parsingRules);
+        std::unique_ptr<T> nt = read_next_newick<T>(inp, pos, parsingRules);
         if (nt == nullptr) {
             break;
         }
-        if (parsingRules.pruneUnrecognizedInputTips) {
-            pruneTipsWithoutIds(*nt);
-            if (nt->getRoot() == nullptr) {
+        if (parsingRules.prune_unrecognized_input_tips) {
+            prune_tips_without_ids(*nt);
+            if (nt->get_root() == nullptr) {
                 continue;
             }
         }
         std::string treeName = std::string("tree ") + std::to_string(treeNumInThisFile++);
         treeName.append(" from ");
-        treeName.append(filepathToFilename(filename));
-        nt->setName(treeName);
+        treeName.append(filepath_to_filename(filename));
+        nt->set_name(treeName);
         const auto cbr = treePtr(std::move(nt));
         if (not cbr) {
             return false;
@@ -117,7 +117,7 @@ std::vector<std::unique_ptr<Tree_t>> get_trees(const std::vector<std::string>& f
     std::vector<std::unique_ptr<Tree_t>> trees;
     std::function<bool(std::unique_ptr<Tree_t>)> proc = [&](std::unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
     for(auto& filename: filenames)
-	otc::processTrees(filename,rules,proc);
+	otc::process_trees(filename,rules,proc);
     return trees;
 }
 
@@ -139,12 +139,12 @@ template<typename Tree_t>
 std::unique_ptr<Tree_t> get_tree(const std::string& filename)
 {
     ParsingRules rules;
-    rules.requireOttIds = false;
+    rules.require_ott_ids = false;
     return get_tree<Tree_t>(filename, rules);
 }
 
 template<typename T>
-int treeProcessingMain(OTCLI & otCLI,
+int tree_processing_main(OTCLI & otCLI,
                           int argc,
                           char * argv[],
                           std::function<bool (OTCLI &, std::unique_ptr<T>)> treePtr,
@@ -152,20 +152,20 @@ int treeProcessingMain(OTCLI & otCLI,
                           unsigned minNumTrees);
 
 template<typename T>
-inline int treeProcessingMain(OTCLI & otCLI,
+inline int tree_processing_main(OTCLI & otCLI,
                                  int argc,
                                  char * argv[],
                                  std::function<bool (OTCLI &, std::unique_ptr<T>)> treePtr,
                                  int (*summarizePtr)(OTCLI &),
                                  unsigned minNumTrees) {
     std::vector<std::string> filenameVec;
-    if (!otCLI.parseArgs(argc, argv, filenameVec)) {
+    if (!otCLI.parse_args(argc, argv, filenameVec)) {
         otCLI.exitCode = 1;
         return otCLI.exitCode;
     }
     if (filenameVec.size() < minNumTrees) {
-        otCLI.printHelp(otCLI.err);
-        otCLI.err << otCLI.getTitle() << ": Expecting at least " << minNumTrees << " tree filepath(s).\n";
+        otCLI.print_help(otCLI.err);
+        otCLI.err << otCLI.get_title() << ": Expecting at least " << minNumTrees << " tree filepath(s).\n";
         otCLI.exitCode = 1;
         return otCLI.exitCode;
     }
@@ -176,8 +176,8 @@ inline int treeProcessingMain(OTCLI & otCLI,
                 {return treePtr(otCLI,std::move(t));};
             
             for (const auto & filename : filenameVec) {
-                otCLI.currentFilename = filepathToFilename(filename);
-                const auto cbr = processTrees(filename, otCLI.getParsingRules(), treePtr1);
+                otCLI.currentFilename = filepath_to_filename(filename);
+                const auto cbr = process_trees(filename, otCLI.get_parsing_rules(), treePtr1);
                 if (not cbr) {
                     otCLI.exitCode = 2;
                     return otCLI.exitCode;
@@ -196,19 +196,19 @@ inline int treeProcessingMain(OTCLI & otCLI,
 }
 
 template<typename Tree>
-inline std::set<long> getAllOTTIds(const Tree& taxonomy) {
+inline std::set<long> get_all_ott_ids(const Tree& taxonomy) {
     std::set<long> o;
     for (auto nd : iter_node_const(taxonomy)) {
-        if (nd->hasOttId()) {
-            o.insert(nd->getOttId());
+        if (nd->has_ott_id()) {
+            o.insert(nd->get_ott_id());
         }
     }
     return o;
 }
 
 template<>
-inline std::set<long> getAllOTTIds(const TreeMappedWithSplits &taxonomy) {
-    return taxonomy.getRoot()->getData().desIds;
+inline std::set<long> get_all_ott_ids(const TreeMappedWithSplits &taxonomy) {
+    return taxonomy.get_root()->get_data().des_ids;
 }
  
 template<typename T>
@@ -222,15 +222,15 @@ class TaxonomyDependentTreeProcessor {
         std::unique_ptr<T> taxonomy;
         std::set<long> ottIds;
 
-        virtual bool processTaxonomyTree(OTCLI & otCLI) {
-            ottIds = getAllOTTIds(*taxonomy);
-            if (not taxonomy->getRoot()->hasOttId())
+        virtual bool process_taxonomy_tree(OTCLI & otCLI) {
+            ottIds = get_all_ott_ids(*taxonomy);
+            if (not taxonomy->get_root()->has_ott_id())
                 throw OTCError()<<"Taxonomy root does not have an OTT ID!";
-            otCLI.getParsingRules().ottIdValidator = &ottIds;
-            otCLI.getParsingRules().includeInternalNodesInDesIdSets = false;
+            otCLI.get_parsing_rules().ott_id_validator = &ottIds;
+            otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
             return true;
         }
-        virtual bool processSourceTree(OTCLI & , std::unique_ptr<T> tree) {
+        virtual bool process_source_tree(OTCLI & , std::unique_ptr<T> tree) {
             assert(tree != nullptr);
             assert(taxonomy != nullptr);
             return true;
@@ -246,29 +246,29 @@ class TaxonomyDependentTreeProcessor {
 };
 
 template<typename T>
-inline bool taxDependentProcessNextTree(OTCLI & otCLI, std::unique_ptr<T> tree) {
+inline bool tax_dependent_process_next_tree(OTCLI & otCLI, std::unique_ptr<T> tree) {
     TaxonomyDependentTreeProcessor<T> * tdtp = static_cast<TaxonomyDependentTreeProcessor<T> *>(otCLI.blob);
     assert(tdtp != nullptr);
     assert(tree != nullptr);
     if (tdtp->taxonomy == nullptr) {
         tdtp->taxonomy = std::move(tree);
-        return tdtp->processTaxonomyTree(otCLI);
+        return tdtp->process_taxonomy_tree(otCLI);
     }
-    return tdtp->processSourceTree(otCLI, std::move(tree));
+    return tdtp->process_source_tree(otCLI, std::move(tree));
 }
 
 template<typename T>
-int taxDependentTreeProcessingMain(OTCLI & otCLI,
+int tax_dependent_tree_processing_main(OTCLI & otCLI,
                                    int argc,
                                    char *argv[],
                                    TaxonomyDependentTreeProcessor<T> & proc,
-                                   unsigned int numTrees,
-                                   bool includeInternalNodesInDesIdSets) {
+                                   unsigned int num_trees,
+                                   bool include_internal_nodes_in_des_id_sets) {
     assert(otCLI.blob == nullptr);
     otCLI.blob = static_cast<void *>(&proc);
-    otCLI.getParsingRules().includeInternalNodesInDesIdSets = includeInternalNodesInDesIdSets;
-    std::function<bool (OTCLI &, std::unique_ptr<T>)> pcb = taxDependentProcessNextTree<T>;
-    auto rc = treeProcessingMain<T>(otCLI, argc, argv, pcb, nullptr, numTrees);
+    otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = include_internal_nodes_in_des_id_sets;
+    std::function<bool (OTCLI &, std::unique_ptr<T>)> pcb = tax_dependent_process_next_tree<T>;
+    auto rc = tree_processing_main<T>(otCLI, argc, argv, pcb, nullptr, num_trees);
     if (rc == 0) {
         return (proc.summarize(otCLI) ? 0 : 1);
     }

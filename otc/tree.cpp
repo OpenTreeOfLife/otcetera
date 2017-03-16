@@ -6,20 +6,20 @@ template<typename T>
 class TreeEdge {
     public:
         typedef class TreeNode<T> Node_t;
-        const Node_t * getParent() const {
+        const Node_t * get_parent() const {
             return parent;
         }
         const Node_t * getChild() const {
             return child;
         }
-        T & getData() const {
-            return child->getData();
+        T & get_data() const {
+            return child->get_data();
         }
     private:
         void setParent(Node_t * p) {
             this->parent = p;
         }
-        void writeAsNewick(std::ostream &out, bool nhx) const;
+        void write_as_newick(std::ostream &out, bool nhx) const;
         TreeEdge<T>(Node_t * par, Node_t  * des)
             :parent(par),
             child(des) {

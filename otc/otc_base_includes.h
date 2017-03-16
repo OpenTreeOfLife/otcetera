@@ -8,14 +8,12 @@
 #pragma clang diagnostic ignored  "-Wweak-vtables"
 #endif
 #define ELPP_CUSTOM_COUT std::cerr
-#define NOT_IMPLEMENTED assert("not implemented"[0] == 'f');
-#define UNREACHABLE assert(false);
+#define OTC_UNREACHABLE assert(false);
 
 #include "otc/easylogging++.hpp"
 
 namespace otc {
-extern bool debuggingOutputEnabled;
-extern long ottIDBeingDebugged;
+extern bool debugging_output_enabled;
 // Might want to move to using
 //      https://github.com/lczech/genesis/blob/master/src/tree/bipartitions.hpp
 // at some point for faster operations on sets of indices
@@ -38,6 +36,10 @@ template<typename T, typename U> class PathPairing;
 template<typename T, typename U> class NodeEmbedding;
 template<typename T, typename U> class SupertreeContext;
 template<typename T, typename U> class RootedForest;
+
+struct RTNodeSmallestChild {
+    OttId smallest_child = 0;
+};
 
 using RootedTreeNodeNoData = RootedTreeNode<RTNodeNoData>;
 using RootedTreeTopologyNoData = RootedTree<RTNodeNoData, RTreeNoData> ;

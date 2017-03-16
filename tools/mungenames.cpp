@@ -41,12 +41,12 @@ std::string generateCleanedName(const std::string & name) {
 template<typename T>
 bool cleanNamesAndWrite(OTCLI & otCLI, std::unique_ptr<T> tree) {
     for (auto nd : iter_node(*tree)) {
-        const auto name = nd->getName();
+        const auto name = nd->get_name();
         if (hasProblematicCharacter(name)) {
-            nd->setName(generateCleanedName(name));
+            nd->set_name(generateCleanedName(name));
         }
     }
-    writeTreeAsNewick(std::cout, *tree);
+    write_tree_as_newick(std::cout, *tree);
     return true;
 }
 
@@ -58,6 +58,6 @@ int main(int argc, char *argv[]) {
                  "   , ( ) : ; [ ] { } ' <TAB> <NEWLINE>",
                  {"some.tre"});
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnl = cleanNamesAndWrite<Tree_t>;
-    return treeProcessingMain<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
 }
 

@@ -9,7 +9,11 @@
      "mrcaott5435764ott5435765"
     ]
    },
+   "intruding_taxa": [
+    "ott5422413"
+   ],
    "mrca": "mrcaott4736806ott5422413"
   }
- }
+ },
+ "taxa_matching_multiple_ott_ids": null
 }

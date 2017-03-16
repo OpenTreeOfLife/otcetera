@@ -1,0 +1,95 @@
+{
+"nexml": {
+"@about": "#study", 
+"@generator": "Open Tree API", 
+"@id": "study", 
+"@nexml2json": "1.2.1", 
+"@nexmljson": "http://purl.org/opentree/nexson", 
+"@version": "0.9", 
+"@xmlns": {
+"$": "http://www.nexml.org/2009", 
+"nex": "http://www.nexml.org/2009", 
+"ot": "http://purl.org/opentree-terms#", 
+"xhtml": "http://www.w3.org/1999/xhtml/vocab#", 
+"xsd": "http://www.w3.org/2001/XMLSchema#", 
+"xsi": "http://www.w3.org/2001/XMLSchema-instance"
+}, 
+"^ot:otusElementOrder": [
+"otus1"
+], 
+"^ot:treesElementOrder": [
+"trees1"
+], 
+"otusById": {
+"otus1": {
+"otuById": {
+"otu3": {
+"^ot:originalLabel": "A1 ott1", 
+"^ot:ottId": 1, 
+"^ot:ottTaxonName": "A1 ott1"
+}, 
+"otu4": {
+"^ot:originalLabel": "B1 ott11", 
+"^ot:ottId": 11, 
+"^ot:ottTaxonName": "B1 ott11"
+}, 
+"otu5": {
+"^ot:originalLabel": "C1 ott21", 
+"^ot:ottId": 21, 
+"^ot:ottTaxonName": "C1 ott21"
+}
+}
+}
+}, 
+"treesById": {
+"trees1": {
+"@otus": "otus1", 
+"^ot:treeElementOrder": [
+"t1"
+], 
+"treeById": {
+"t1": {
+"^ot:rootNodeId": "node1", 
+"edgeBySourceId": {
+"node1": {
+"edge2": {
+"@source": "node1", 
+"@target": "node2"
+}, 
+"edge5": {
+"@source": "node1", 
+"@target": "node5"
+}
+}, 
+"node2": {
+"edge3": {
+"@source": "node2", 
+"@target": "node3"
+}, 
+"edge4": {
+"@source": "node2", 
+"@target": "node4"
+}
+}
+}, 
+"nodeById": {
+"node1": {
+"@root": true
+}, 
+"node2": {}, 
+"node3": {
+"@otu": "otu3"
+}, 
+"node4": {
+"@otu": "otu4"
+}, 
+"node5": {
+"@otu": "otu5"
+}
+}
+}
+}
+}
+}
+}
+}

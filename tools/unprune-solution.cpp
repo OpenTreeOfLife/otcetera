@@ -30,7 +30,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     assert(trees.size() == 2);
     auto& solution = *trees[0];
     auto& taxonomy = *trees[1];
-    std::cerr << "Leaves:           solution = " << countLeaves(solution) << "   taxonomy = " << countLeaves(taxonomy) << std::endl;
+    std::cerr << "Leaves:           solution = " << count_leaves(solution) << "   taxonomy = " << count_leaves(taxonomy) << std::endl;
     std::cerr << "Internal:         solution = " << n_internal(solution) << "   taxonomy = " << n_internal(taxonomy) << std::endl;
     std::cerr << "Internal splits:  solution = " << n_internal_out_degree_many(solution) << "   taxonomy = " << n_internal_out_degree_many(taxonomy) << std::endl;
     const auto out_degree_many1 = n_internal_out_degree_many(taxonomy);
@@ -40,35 +40,35 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     // 1a. Index solution nodes by OttId.
     map<long, Tree_t::node_type*> ott_to_sol;
     for (auto nd: iter_post(solution)){
-        if (nd->hasOttId()){
-            ott_to_sol[nd->getOttId()] = nd;
+        if (nd->has_ott_id()){
+            ott_to_sol[nd->get_ott_id()] = nd;
         }
     }
     map<long, Tree_t::node_type*> ott_to_tax;
     for (auto nd: iter_post(taxonomy)){
-        if (nd->hasOttId()) {
-            ott_to_tax[nd->getOttId()] = nd;
+        if (nd->has_ott_id()) {
+            ott_to_tax[nd->get_ott_id()] = nd;
         } else {
             LOG(WARNING) << "  warning: node in taxonomy without an OTT ID.\n";
         }
     }
     for (auto nd: iter_post(solution)) {
-        if (nd->isTip()) {
-            if (not ott_to_tax.count(nd->getOttId())) {
-                throw OTCError()<<"OttId "<<nd->getOttId()<<" not in taxonomy!";
+        if (nd->is_tip()) {
+            if (not ott_to_tax.count(nd->get_ott_id())) {
+                throw OTCError()<<"OttId "<<nd->get_ott_id()<<" not in taxonomy!";
             }
-            //auto nd2 = ott_to_tax.at(nd->getOttId());
+            //auto nd2 = ott_to_tax.at(nd->get_ott_id());
         }
     }
     // 1b. Find the subtree ancestral to the solution OttIds, and mark nodes monotypic in this subtree
     std::set<Tree_t::node_type*> ancestral;
     for (auto nd: iter_post(taxonomy)) {
-        if (ott_to_sol.count(nd->getOttId())) {
+        if (ott_to_sol.count(nd->get_ott_id())) {
             ancestral.insert(nd);
-            auto a = nd->getParent();
+            auto a = nd->get_parent();
             while (a) {
                 ancestral.insert(a);
-                a = a->getParent();
+                a = a->get_parent();
             }
         }
     }
@@ -82,34 +82,34 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
             continue;
         }
         Tree_t::node_type* nd1 = nullptr;
-        if (ott_to_sol.count(nd->getOttId()) > 0) {
-            nd1 = ott_to_sol.at(nd->getOttId());
+        if (ott_to_sol.count(nd->get_ott_id()) > 0) {
+            nd1 = ott_to_sol.at(nd->get_ott_id());
         }
         vector<Tree_t::node_type*> nodes = {nd};
-        auto anc = nd->getParent();
+        auto anc = nd->get_parent();
         while (not nd1 and anc and is_monotypic_in_set(anc,ancestral)) {
             nodes.push_back(anc);
-            if (ott_to_sol.count(anc->getOttId()) > 0) {
+            if (ott_to_sol.count(anc->get_ott_id()) > 0) {
                 if (verbose){
-                    LOG(INFO) << "Monotypic ancestor '" << anc->getName() << "' in solution tree!";
+                    LOG(INFO) << "Monotypic ancestor '" << anc->get_name() << "' in solution tree!";
                 }
-                nd1 = ott_to_sol.at(anc->getOttId());
+                nd1 = ott_to_sol.at(anc->get_ott_id());
             }
-            anc = anc->getParent();
+            anc = anc->get_parent();
         }
         if (nd1) {
-            if (not ott_to_sol.count(nd->getOttId())) {
+            if (not ott_to_sol.count(nd->get_ott_id())) {
                 nd1 = bisect_branch_with_new_child(nd1);
-                nd1->setOttId(nd->getOttId());
-                nd1->setName(nd->getName());
-                ott_to_sol[nd1->getOttId()] = nd1;
+                nd1->set_ott_id(nd->get_ott_id());
+                nd1->set_name(nd->get_name());
+                ott_to_sol[nd1->get_ott_id()] = nd1;
             }
-            assert(ott_to_sol.count(nd->getOttId()));
+            assert(ott_to_sol.count(nd->get_ott_id()));
         } else {
             while(nodes.size()) {
                 if (verbose) {
-                    LOG(INFO)<<"Removing Id = '"<<nodes.back()->getName()<<"' ("<<nodes.back()->getOttId()<<")"
-                             <<"  children = "<<nodes.back()->getOutDegree()
+                    LOG(INFO)<<"Removing Id = '"<<nodes.back()->get_name()<<"' ("<<nodes.back()->get_ott_id()<<")"
+                             <<"  children = "<<nodes.back()->get_out_degree()
                              <<"  ancestral children = "<<count_children_in_set(nodes.back(),ancestral);
                 }
                 // MTH this is where we should make note of which higher taxa do not make it into the solution.
@@ -128,44 +128,44 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     //map<const Tree_t::node_type*,Tree_t::node_type*> sol_to_tax;
     for (auto nd2: iter_post(taxonomy)) {
         if (ancestral.count(nd2) and not is_monotypic_in_set(nd2,ancestral)){
-            assert(ott_to_sol.count(nd2->getOttId()));
+            assert(ott_to_sol.count(nd2->get_ott_id()));
         }
     }
     for (auto nd2: all_nodes(taxonomy)){
-        if (ancestral.count(nd2) and ott_to_sol.count(nd2->getOttId())) {
-            auto nd1 = ott_to_sol.at(nd2->getOttId());
-            assert(nd1->getOttId() == nd2->getOttId());
+        if (ancestral.count(nd2) and ott_to_sol.count(nd2->get_ott_id())) {
+            auto nd1 = ott_to_sol.at(nd2->get_ott_id());
+            assert(nd1->get_ott_id() == nd2->get_ott_id());
             // Add the immediate ancestral nodes of nd2 to the solution tree, if they are monotypic
-            while (nd2->getParent() and is_monotypic_in_set(nd2->getParent(),ancestral)
-                   and not ott_to_sol.count(nd2->getParent()->getOttId())) {
-                nd2 = nd2->getParent();
-                assert(nd1->getParent());
-                auto x = solution.createChild(nd1->getParent());
-                nd1->detachThisNode();
-                x->addChild(nd1);
+            while (nd2->get_parent() and is_monotypic_in_set(nd2->get_parent(),ancestral)
+                   and not ott_to_sol.count(nd2->get_parent()->get_ott_id())) {
+                nd2 = nd2->get_parent();
+                assert(nd1->get_parent());
+                auto x = solution.create_child(nd1->get_parent());
+                nd1->detach_this_node();
+                x->add_child(nd1);
                 nd1 = x;
-                nd1->setOttId(nd2->getOttId());
-                nd1->setName(nd2->getName());
-                ott_to_sol[nd1->getOttId()] = nd1;
+                nd1->set_ott_id(nd2->get_ott_id());
+                nd1->set_name(nd2->get_name());
+                ott_to_sol[nd1->get_ott_id()] = nd1;
             }
         }
     }
     for(auto nd2: iter_post(taxonomy)) {
         if (ancestral.count(nd2)) {
-            assert(ott_to_sol.count(nd2->getOttId()));
+            assert(ott_to_sol.count(nd2->get_ott_id()));
         }
     }
     for(auto nd2: all_nodes(taxonomy)) {
         if (ancestral.count(nd2)) {
-            auto id = nd2->getOttId();
+            auto id = nd2->get_ott_id();
             auto nd1 = ott_to_sol.at(id);
-            nd1->setName(nd2->getName());
+            nd1->set_name(nd2->get_name());
         } else {
-            auto p2 = nd2->getParent();
+            auto p2 = nd2->get_parent();
             if (ancestral.count(p2)) {
-                auto p1 = ott_to_sol.at(p2->getOttId());
-                nd2->detachThisNode();
-                p1->addChild(nd2);
+                auto p1 = ott_to_sol.at(p2->get_ott_id());
+                nd2->detach_this_node();
+                p1->add_child(nd2);
             }
         }
     }
@@ -180,12 +180,12 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
 }
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().setOttIds = get_bool(arg,"-o: ");
+    otCLI.get_parsing_rules().set_ott_ids = get_bool(arg,"-o: ");
     return true;
 }
 
 bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
-    otCLI.getParsingRules().pruneUnrecognizedInputTips = get_bool(arg,"-p: ");
+    otCLI.get_parsing_rules().prune_unrecognized_input_tips = get_bool(arg,"-p: ");
     return true;
 }
 
@@ -209,19 +209,19 @@ int main(int argc, char *argv[]) {
                 "Files are concatenated and the combined list treated as a single subproblem.\n"
                 "Trees should occur in order of priority, with the taxonomy last.\n",
                 "subproblem.tre");
-    otCLI.addFlag('o',
+    otCLI.add_flag('o',
                   "Require OTT ids.  Defaults to true",
                   handleRequireOttIds,
                   true);
-    otCLI.addFlag('p',
+    otCLI.add_flag('p',
                   "Prune unrecognized tips.  Defaults to false",
                   handlePruneUnrecognizedTips,
                   true);
-    otCLI.addFlag('n',
+    otCLI.add_flag('n',
                   "Rename the root to this name",
                   handleRootName,
                   true);
-    otCLI.addFlag('r',
+    otCLI.add_flag('r',
                   "Regrafting pruned leaves: assume two trees, a solution tree and\n"
                   "a taxonomy.  Determine conflicting clades in the taxonomy based on\n"
                   "which OTT Ids occur in the solution tree.",
@@ -234,19 +234,19 @@ int main(int argc, char *argv[]) {
     }
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
-    if (treeProcessingMain<Tree_t>(otCLI, argc, argv, get, nullptr, 1)){
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)){
         std::exit(1);
     }
 
     if (trees.empty()) {
         throw OTCError("No trees loaded!");
     }
-    bool setOttIds = otCLI.getParsingRules().setOttIds;
+    bool set_ott_ids = otCLI.get_parsing_rules().set_ott_ids;
     // Add fake Ott Ids to tips
-    if (not setOttIds) {
-        auto name_to_id = createIdsFromNames(*trees.back());
+    if (not set_ott_ids) {
+        auto name_to_id = create_ids_from_names(*trees.back());
         for(auto& tree: trees) {
-            setIdsFromNames(*tree, name_to_id);
+            set_ids_from_names(*tree, name_to_id);
         }
     }
     if (trees.size() != 2) {
@@ -255,9 +255,9 @@ int main(int argc, char *argv[]) {
     combine2(trees, otCLI.verbose);
     unique_ptr<Tree_t> tree = std::move(trees[0]);
     if (not rootName.empty()){
-        tree->getRoot()->setName(rootName);
+        tree->get_root()->set_name(rootName);
     }
-    writeTreeAsNewick(std::cout, *tree);
+    write_tree_as_newick(std::cout, *tree);
     std::cout<<"\n";
     return 0;
 }
