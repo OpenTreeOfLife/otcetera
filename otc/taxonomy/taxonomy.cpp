@@ -618,10 +618,24 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, long kr)
     :Taxonomy(dir, cf, kr) {
     auto nodeNamer = [](const auto&){return string();};
     this->tree = get_tree<RichTaxTree>(nodeNamer);
+    _fill_ids_to_suppress_set();
     this->read_synonyms();
     // Could call:
     // index.clear(); 
     // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move
+}
+
+void RichTaxonomy::_fill_ids_to_suppress_set() {
+    const string sup_flag_comma = "not_otu,environmental,environmental_inherited,viral,hidden,hidden_inherited,was_container";
+    const auto suppress_flags = flags_from_string(sup_flag_comma);
+    for (const auto nd : iter_node_const(*tree)) {
+        const auto & tax_record_flags = nd->get_data().get_flags();
+        auto intersection = suppress_flags & tax_record_flags;
+        if (intersection.any()) {
+            const auto ott_id = nd->get_ott_id();
+            ids_to_suppress_from_tnrs.insert(ott_id);
+        }
+    }
 }
 
 string format_with_taxonomy(const string& orig, const string& format, const TaxonomyRecord& rec) {

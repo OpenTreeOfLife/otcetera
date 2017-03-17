@@ -104,6 +104,7 @@ struct SummaryTreeAnnotation {
         std::map<std::string, SourceTreeId> source_id_map;
         std::vector<std::string> sources;
         nlohmann::json full_source_id_map_json;
+        OttIdSet suppressed_from_tree; // IDs not included in tree
 };
 
 class TreesToServe {
@@ -136,22 +137,28 @@ class TreesToServe {
             assert(taxonomy_ptr != nullptr);
             return *taxonomy_ptr;
         }
-        void fill_ott_id_set(const std::bitset<32> & flags, OttIdSet & ott_id_set) {
+        void fill_ott_id_set(const std::bitset<32> & flags,
+                              OttIdSet & ott_id_set,
+                              OttIdSet & suppressed_from_tree) {
             ott_id_set.clear();
             for (const auto nd : iter_node_const(*taxonomy_tree)) {
                 const auto & tax_record_flags = nd->get_data().get_flags();
                 auto intersection = flags & tax_record_flags;
+                const auto ott_id = nd->get_ott_id();
                 if (!intersection.any()) {
-                    ott_id_set.insert(nd->get_ott_id());
+                    ott_id_set.insert(ott_id);
+                } else {
+                    suppressed_from_tree.insert(ott_id);
                 }
             }
         }
-        std::pair<SummaryTree_t &, SummaryTreeAnnotation &> get_new_tree_and_annotations(const std::string & configfilename,
-                                                                                     const std::string & filename) {
+        typedef std::pair<SummaryTree_t &, SummaryTreeAnnotation &> SumTreeInitPair;
+        SumTreeInitPair get_new_tree_and_annotations(const std::string & configfilename,
+                                                     const std::string & filename) {
             
-            OttIdSet ott_id_set;
+            OttIdSet ott_id_set, suppressed_id_set;
             auto cleaning_flags = cleaning_flags_from_config_file(configfilename);
-            fill_ott_id_set(cleaning_flags, ott_id_set);
+            fill_ott_id_set(cleaning_flags, ott_id_set, suppressed_id_set);
 
             assert(taxonomy_ptr != nullptr);
             ParsingRules parsingRules;
@@ -172,7 +179,9 @@ class TreesToServe {
             set_traversal_entry_exit(*nt);
             tree_list.push_back(move(nt));
             annotation_list.push_back(SummaryTreeAnnotation());
-            return {*(tree_list.back()), annotation_list.back()};
+            auto & sta = annotation_list.back();
+            sta.suppressed_from_tree = suppressed_id_set;
+            return {*(tree_list.back()), sta};
         }
         void register_last_tree_and_annotations() {
             const SummaryTreeAnnotation & sta = annotation_list.back();

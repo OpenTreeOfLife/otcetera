@@ -285,10 +285,17 @@ struct RichTaxonomy : public Taxonomy {
         return i2n_it->second;
     }
     void add_taxonomic_addition_string(const std::string &s);
+    const OttIdSet & get_ids_to_suppress_from_tnrs() const {
+        return ids_to_suppress_from_tnrs;
+    }
     private:
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
+    // flags: not_otu, environmental, environmental_inherited, viral, hidden, hidden_inherited, was_container
+    //    are excluded from being returned in TNRS results.
+    OttIdSet ids_to_suppress_from_tnrs;
     void read_synonyms();
+    void _fill_ids_to_suppress_set();
     RichTaxonomy(const RichTaxonomy &) = delete;
 };
 

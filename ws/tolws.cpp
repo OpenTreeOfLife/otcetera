@@ -575,6 +575,20 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
+// taxon_info
+void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, json & taxonrepr) {
+    add_taxon_info(taxonomy, nd_taxon, taxonrepr);
+    taxonrepr["source"] = taxonomy.get_version(); //TBD "source" ?
+    const auto & taxon_data = nd_taxon.get_data();
+    taxonrepr["flags"] = flags_to_string_vec(taxon_data.get_flags());
+    json syn_list;
+    for (auto tjs : taxon_data.junior_synonyms) {
+        syn_list.push_back(tjs->get_name());
+    }
+    taxonrepr["synonyms"] = syn_list;
+    const auto & ots = taxonomy.get_ids_to_suppress_from_tnrs();
+    taxonrepr["is_suppressed"] = (0 < ots.count(nd_taxon.get_ott_id()));
+}
 
 void taxon_info_ws_method(const TreesToServe & tts,
                           const RTRichTaxNode * taxon_node,
@@ -589,14 +603,7 @@ void taxon_info_ws_method(const TreesToServe & tts,
     const auto & taxonomy_tree_data = taxonomy_tree.get_data();
     const auto & node_data = taxon_node->get_data();
     json response;
-    add_taxon_info(taxonomy, *taxon_node, response);
-    response["source"] = taxonomy.get_version(); //TBD "source" ?
-    response["flags"] = flags_to_string_vec(node_data.get_flags());
-    json syn_list;
-    for (auto tjs : node_data.junior_synonyms) {
-        syn_list.push_back(tjs->get_name());
-    }
-    response["synonyms"] = syn_list;
+    tax_service_add_taxon_info(taxonomy, *taxon_node, response);
     //add_lineage(a, focal, taxonomy, usedSrcIds);
     //response["arguson"] = a;
     response_str = response.dump(1);
