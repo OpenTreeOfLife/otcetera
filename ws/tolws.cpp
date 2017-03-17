@@ -622,6 +622,13 @@ void taxon_info_ws_method(const TreesToServe & tts,
         }
         response["children"] = c_array;
     }
+    if (include_terminal_descendants) {
+        json td_array = json::array();
+        for (auto nd : iter_leaf_n_const(*taxon_node)) {
+            td_array.push_back(nd->get_ott_id());
+        }
+        response["terminal_descendants"] = td_array;
+    }
     response_str = response.dump(1);
     status_code = OK;
 }

@@ -10,5 +10,17 @@
     "ncbi:10239",
     "gbif:8"
   ],
+  "terminal_descendants": [
+    999999,
+    1,
+    2,
+    3,
+    11,
+    12,
+    13,
+    21,
+    22,
+    23
+  ],
   "uniqname": "Exampleroot"
 }
