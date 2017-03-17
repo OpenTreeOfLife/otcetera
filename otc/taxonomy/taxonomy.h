@@ -104,7 +104,7 @@ inline std::vector<std::string> comma_separated_as_vec(const std::string & sourc
 }
 
 inline nlohmann::json sources_vec_as_json(const std::vector<std::string> & vs) {
-    nlohmann::json j;
+    nlohmann::json j = nlohmann::json::array();
     for (auto src_entry : vs) {
         j.push_back(src_entry);
     }

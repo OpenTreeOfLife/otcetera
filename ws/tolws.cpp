@@ -604,6 +604,15 @@ void taxon_info_ws_method(const TreesToServe & tts,
     const auto & node_data = taxon_node->get_data();
     json response;
     tax_service_add_taxon_info(taxonomy, *taxon_node, response);
+    if (include_lineage) {
+        json anc_array = json::array();
+        for (auto a : iter_anc(*taxon_node)) {
+            json a_el;
+            tax_service_add_taxon_info(taxonomy, *a, a_el);
+            anc_array.push_back(a_el);
+        }
+        response["lineage"] = anc_array;
+    }
     response_str = response.dump(1);
     status_code = OK;
 }

@@ -1,14 +1,38 @@
 {
   "flags": [],
   "is_suppressed": false,
-  "name": "Exampleroot",
-  "ott_id": 1000000,
+  "lineage": [
+    {
+      "flags": [],
+      "is_suppressed": false,
+      "name": "ABC",
+      "ott_id": 1001,
+      "rank": "no rank",
+      "source": "0.0draft0",
+      "synonyms": [],
+      "tax_sources": [],
+      "uniqname": "ABC"
+    },
+    {
+      "flags": [],
+      "is_suppressed": false,
+      "name": "Exampleroot",
+      "ott_id": 1000000,
+      "rank": "no rank",
+      "source": "0.0draft0",
+      "synonyms": [],
+      "tax_sources": [
+        "ncbi:10239",
+        "gbif:8"
+      ],
+      "uniqname": "Exampleroot"
+    }
+  ],
+  "name": "A",
+  "ott_id": 100,
   "rank": "no rank",
   "source": "0.0draft0",
   "synonyms": [],
-  "tax_sources": [
-    "ncbi:10239",
-    "gbif:8"
-  ],
-  "uniqname": "Exampleroot"
+  "tax_sources": [],
+  "uniqname": "A"
 }
