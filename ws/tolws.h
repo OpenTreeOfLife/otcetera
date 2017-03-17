@@ -255,6 +255,12 @@ void taxonomy_mrca_ws_method(const TreesToServe & tts,
                              const OttIdSet & ott_id_set,
                              std::string & response_str,
                              int & status_code);
+void taxon_subtree_ws_method(const TreesToServe & tts,
+                             const RTRichTaxNode * taxon_node,
+                             NodeNameStyle label_format, 
+                             std::string & response_str,
+                             int & status_code);
+
 
 bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
 

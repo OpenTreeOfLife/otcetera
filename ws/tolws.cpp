@@ -344,7 +344,7 @@ void mrca_ws_method(const TreesToServe & tts,
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            const string & node_id, 
                                            int height_limit,
-                                           int32_t tip_limit,
+                                           uint32_t tip_limit,
                                            string & response_str,
                                            int & status_code) {
     assert(tree_ptr != nullptr);
@@ -360,8 +360,7 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
         status_code = 400;
         return nullptr;
     }
-    if (focal->get_data().num_tips > tip_limit
-        && height_limit < 0) {
+    if (focal->get_data().num_tips > tip_limit && height_limit < 0) {
         response_str = "The requested subtree is too large to be returned via the API. Download the entire tree.\n";
         status_code = 400;
         return nullptr;  
@@ -380,11 +379,11 @@ class NodeNamerSupportedByStasher {
         }
 
         string operator()(const SumTreeNode_t *nd) const {
-            const string & id_str = nd->get_name(); // in this tree the "name" is really the "ott###" string
             const SumTreeNodeData & d = nd->get_data();
             for (auto & p : d.supported_by) {
                 study_id_set.insert(p.first);
             }
+            const string & id_str = nd->get_name(); // in this tree the "name" is really the "ott###" string
             if (nns != NodeNameStyle::NNS_ID_ONLY && nd->has_ott_id()) {
                 const auto * tr = taxonomy.taxon_from_id(nd->get_ott_id());
                 if (tr == nullptr) {
@@ -403,6 +402,28 @@ class NodeNamerSupportedByStasher {
                 }
             }
             return id_str;
+        }
+        static string ott_id_to_idstr(OttId ott_id) {
+            string ret;
+            ret = "ott";
+            ret += std::to_string(ott_id);
+            return ret;
+        }
+        string operator()(const RTRichTaxNode *nd) const {
+            if (nns == NodeNameStyle::NNS_ID_ONLY) {
+                return ott_id_to_idstr(nd->get_ott_id());
+            }
+            const string & taxon_name = string(nd->get_data().get_uniqname());
+            if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
+                string ret;
+                string id_str = ott_id_to_idstr(nd->get_ott_id());
+                ret.reserve(taxon_name.length() + 1 + id_str.length());
+                ret = taxon_name;
+                ret += ' ';
+                ret += id_str;
+                return ret;    
+            }
+            return taxon_name;
         }
 };
 
@@ -503,7 +524,7 @@ void newick_subtree_ws_method(const TreesToServe & tts,
                      int height_limit,
                      string & response_str,
                      int & status_code) {
-    const int32_t NEWICK_TIP_LIMIT = 25000;
+    const uint32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
     if (focal == nullptr) {
         return;
@@ -555,7 +576,7 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
                      int height_limit,
                      string & response_str,
                      int & status_code) {
-    const int NEWICK_TIP_LIMIT = 25000;
+    const uint NEWICK_TIP_LIMIT = 25000;
     auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
     if (focal == nullptr) {
         return;
@@ -586,10 +607,11 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNo
     taxonrepr["synonyms"] = syn_list;
     const auto & ots = taxonomy.get_ids_to_suppress_from_tnrs();
     const auto ott_id = nd_taxon.get_ott_id();
-    taxonrepr["is_suppressed"] = (0 < ots.count(ott_id));
+    const bool is_suppressed = (0 < ots.count(ott_id));
+    taxonrepr["is_suppressed"] = is_suppressed;
     auto isfs = taxonomy.get_ids_suppressed_from_summary_tree_alias();
     if (isfs) {
-        taxonrepr["is_suppressed_from_synth"] = (0 < isfs->count(ott_id));
+        taxonrepr["is_suppressed_from_synth"] = is_suppressed || (0 < isfs->count(ott_id));
     }
 }
 
@@ -602,9 +624,6 @@ void taxon_info_ws_method(const TreesToServe & tts,
                           int & status_code) {
     const auto & taxonomy = tts.get_taxonomy();
     assert(taxon_node != nullptr);
-    const auto & taxonomy_tree = taxonomy.getTaxTree();
-    const auto & taxonomy_tree_data = taxonomy_tree.get_data();
-    const auto & node_data = taxon_node->get_data();
     json response;
     tax_service_add_taxon_info(taxonomy, *taxon_node, response);
     if (include_lineage) {
@@ -642,7 +661,6 @@ void taxonomy_mrca_ws_method(const TreesToServe & tts,
                              string & response_str,
                              int & status_code) {
     const auto & taxonomy = tts.get_taxonomy();
-    const auto & taxonomy_tree = taxonomy.getTaxTree();
     const RTRichTaxNode * focal = nullptr;
     bool first = true;
     for (auto ott_id : ott_id_set) {
@@ -676,6 +694,23 @@ void taxonomy_mrca_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
+void taxon_subtree_ws_method(const TreesToServe & tts,
+                          const RTRichTaxNode * taxon_node,
+                          NodeNameStyle label_format, 
+                          string & response_str,
+                          int & status_code) {
+    const auto & taxonomy = tts.get_taxonomy();
+    assert(taxon_node != nullptr);
+    const auto & taxonomy_tree = taxonomy.getTaxTree();
+    json response;
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    int height_limit = -1;
+    write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, height_limit);
+    response["newick"] = out.str();
+    response_str = response.dump(1);
+    status_code = OK;
+}
 
 } //namespace otc
 

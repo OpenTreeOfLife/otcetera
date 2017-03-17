@@ -3,6 +3,7 @@
   "verb": "POST",
   "arguments": {
     "source_id": "ncbi:10239",
-    "include_terminal_descendants": true
+    "include_terminal_descendants": true,
+    "include_children": true
   }
 }

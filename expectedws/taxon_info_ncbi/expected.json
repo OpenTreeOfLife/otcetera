@@ -1,4 +1,32 @@
 {
+  "children": [
+    {
+      "flags": [
+        "not_otu"
+      ],
+      "is_suppressed": true,
+      "is_suppressed_from_synth": true,
+      "name": "Nototuexample",
+      "ott_id": 999999,
+      "rank": "no rank",
+      "source": "0.0draft0",
+      "synonyms": [],
+      "tax_sources": [],
+      "uniqname": "Nototuexample"
+    },
+    {
+      "flags": [],
+      "is_suppressed": false,
+      "is_suppressed_from_synth": false,
+      "name": "ABC",
+      "ott_id": 1001,
+      "rank": "no rank",
+      "source": "0.0draft0",
+      "synonyms": [],
+      "tax_sources": [],
+      "uniqname": "ABC"
+    }
+  ],
   "flags": [],
   "is_suppressed": false,
   "is_suppressed_from_synth": false,
