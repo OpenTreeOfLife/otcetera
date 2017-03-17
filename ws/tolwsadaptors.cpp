@@ -28,6 +28,19 @@ namespace otc {
     TreesToServe tts;
 }
 
+bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbody, int & status_code) {
+    try {
+        if (!body.empty()) {
+            parsedargs = json::parse(body);
+            return true;
+        }
+    } catch (...) {
+        rbody = "Could not parse body of call as JSON.\n";
+        status_code = 400;
+    }
+    return false;
+}
+
 ///////////////////////
 // handlers that are registered as callback
 
@@ -35,18 +48,10 @@ void about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
-        try {
-            if (!body.empty()) {
-                parsedargs = json::parse(body);
-            }
-        } catch (...) {
-            rbody = "Could not parse body of call as JSON.\n";
-            status_code = 400;
-        }
+        parse_body_or_err(body, parsedargs, rbody, status_code);
         bool include_sources = false;
         string synth_id;
         if (status_code == OK) {
@@ -118,18 +123,10 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
-        try {
-            if (!body.empty()) {
-                parsedargs = json::parse(body);
-            }
-        } catch (...) {
-            rbody = "Could not parse body of call as JSON.\n";
-            status_code = 400;
-        }
+        parse_body_or_err(body, parsedargs, rbody, status_code);
         bool include_lineage = false;
         string synth_id;
         string node_id;
@@ -155,18 +152,10 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
-        try {
-            if (!body.empty()) {
-                parsedargs = json::parse(body);
-            }
-        } catch (...) {
-            rbody = "Could not parse body of call as JSON.\n";
-            status_code = 400;
-        }
+        parse_body_or_err(body, parsedargs, rbody, status_code);
         string synth_id;
         vector<string> node_id_vec;
         get_synth_and_node_id_vec(parsedargs, synth_id, node_id_vec, rbody, status_code);
@@ -188,18 +177,10 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
-        try {
-            if (!body.empty()) {
-                parsedargs = json::parse(body);
-            }
-        } catch (...) {
-            rbody = "Could not parse body of call as JSON.\n";
-            status_code = 400;
-        }
+        parse_body_or_err(body, parsedargs, rbody, status_code);
         string synth_id;
         string node_id;
         string format = "newick"; // : (string) Defines the tree format; either "newick" or "arguson"; default="newick"
@@ -247,18 +228,10 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
-        try {
-            if (!body.empty()) {
-                parsedargs = json::parse(body);
-            }
-        } catch (...) {
-            rbody = "Could not parse body of call as JSON.\n";
-            status_code = 400;
-        }
+        parse_body_or_err(body, parsedargs, rbody, status_code);
         string synth_id;
         vector<string> node_id_vec;
         get_synth_and_node_id_vec(parsedargs, synth_id, node_id_vec, rbody, status_code);
@@ -284,7 +257,6 @@ void tax_about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
@@ -299,18 +271,10 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
-        try {
-            if (!body.empty()) {
-                parsedargs = json::parse(body);
-            }
-        } catch (...) {
-            rbody = "Could not parse body of call as JSON.\n";
-            status_code = 400;
-        }
+        parse_body_or_err(body, parsedargs, rbody, status_code);
         bool include_lineage = false;
         bool include_children = false;
         bool include_terminal_descendants = false;
@@ -412,23 +376,15 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
         session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
-
+        
 void taxon_mrca_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        stringstream id;
         json parsedargs;
         std::string rbody;
         int status_code = OK;
-        try {
-            if (!body.empty()) {
-                parsedargs = json::parse(body);
-            }
-        } catch (...) {
-            rbody = "Could not parse body of call as JSON.\n";
-            status_code = 400;
-        }
+        parse_body_or_err(body, parsedargs, rbody, status_code);
         string ott_version;
         OttIdSet ott_id_set;
         if (!extract_from_request(parsedargs, "ott_ids", ott_id_set, rbody, status_code)) {
