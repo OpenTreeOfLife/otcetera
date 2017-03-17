@@ -581,7 +581,7 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNo
     taxonrepr["source"] = taxonomy.get_version(); //TBD "source" ?
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["flags"] = flags_to_string_vec(taxon_data.get_flags());
-    json syn_list;
+    json syn_list = json::array();
     for (auto tjs : taxon_data.junior_synonyms) {
         syn_list.push_back(tjs->get_name());
     }
@@ -604,8 +604,6 @@ void taxon_info_ws_method(const TreesToServe & tts,
     const auto & node_data = taxon_node->get_data();
     json response;
     tax_service_add_taxon_info(taxonomy, *taxon_node, response);
-    //add_lineage(a, focal, taxonomy, usedSrcIds);
-    //response["arguson"] = a;
     response_str = response.dump(1);
     status_code = OK;
 }

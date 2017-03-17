@@ -5,7 +5,7 @@
   "ott_id": 1000000,
   "rank": "no rank",
   "source": "0.0draft0",
-  "synonyms": null,
+  "synonyms": [],
   "tax_sources": [
     "ncbi:10239",
     "gbif:8"
