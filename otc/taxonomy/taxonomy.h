@@ -207,6 +207,9 @@ class RTRichTaxNodeData {
     //nlohmann::json sources;
     const TaxonomyRecord * tax_record;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
+    std::uint32_t trav_enter = UINT32_MAX;
+    std::uint32_t trav_exit = UINT32_MAX;
+    
     boost::string_ref get_name() const {
         return tax_record->name;
     }

@@ -102,11 +102,10 @@ void add_node_support_info(const TreesToServe & tts,
 
 }
 
-const SumTreeNode_t * find_mrca(const SumTreeNode_t *f,
-                                const SumTreeNode_t *s) {
+template<typename N>
+N * find_mrca_via_traversal_indices(N *f, N *s) {
     const auto * fdata = &(f->get_data());
     const auto sec_ind = s->get_data().trav_enter;
-    //cerr << "f->name = " << f->get_name() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
         f = f->get_parent();
         if (f == nullptr) {
@@ -114,7 +113,6 @@ const SumTreeNode_t * find_mrca(const SumTreeNode_t *f,
             return nullptr;
         }
         fdata = &(f->get_data());
-        //cerr << "f->name = " << f->get_name() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     }
     return f;
 }
@@ -145,7 +143,7 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
         if (sec_nd == nullptr) {
             return nullptr;
         }
-        return find_mrca(fir_nd, sec_nd);
+        return find_mrca_via_traversal_indices(fir_nd, sec_nd);
     }
     if (std::regex_match(node_id, matches, ott_id_pattern)) {
         auto bt_it = tree_data.broken_taxa.find(node_id);
@@ -298,7 +296,7 @@ void mrca_ws_method(const TreesToServe & tts,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca(focal, n);
+            focal = find_mrca_via_traversal_indices(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -346,7 +344,7 @@ void mrca_ws_method(const TreesToServe & tts,
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            const string & node_id, 
                                            int height_limit,
-                                           int tip_limit,
+                                           int32_t tip_limit,
                                            string & response_str,
                                            int & status_code) {
     assert(tree_ptr != nullptr);
@@ -462,7 +460,7 @@ void induced_subtree_ws_method(const TreesToServe & tts,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca(focal, n);
+            focal = find_mrca_via_traversal_indices(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -505,7 +503,7 @@ void newick_subtree_ws_method(const TreesToServe & tts,
                      int height_limit,
                      string & response_str,
                      int & status_code) {
-    const int NEWICK_TIP_LIMIT = 25000;
+    const int32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
     if (focal == nullptr) {
         return;
@@ -637,6 +635,47 @@ void taxon_info_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
     status_code = OK;
 }
+
+
+void taxonomy_mrca_ws_method(const TreesToServe & tts,
+                             const OttIdSet & ott_id_set,
+                             string & response_str,
+                             int & status_code) {
+    const auto & taxonomy = tts.get_taxonomy();
+    const auto & taxonomy_tree = taxonomy.getTaxTree();
+    const RTRichTaxNode * focal = nullptr;
+    bool first = true;
+    for (auto ott_id : ott_id_set) {
+        const RTRichTaxNode * n = taxonomy.taxon_from_id(ott_id);
+        if (n == nullptr) {
+            response_str = "ott_id \"";
+            response_str += ott_id;
+            response_str += "\" was not recognized.\n";
+            status_code = 400;
+            return;
+        }
+        if (first) {
+            first = false;
+            focal = n;
+        } else {
+            focal = find_mrca_via_traversal_indices(focal, n);
+            if (focal == nullptr) {
+                break;
+            }
+        }
+    }
+    bool is_broken = false;
+    if (focal == nullptr) {
+        response_str = "MRCA of taxa was not found. Please report this bug!\n";
+        status_code = 400;
+        return;
+    }
+    status_code = OK;
+    json response;
+    tax_service_add_taxon_info(taxonomy, *focal, response);
+    response_str = response.dump(1);
+}
+
 
 } //namespace otc
 

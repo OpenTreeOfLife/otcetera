@@ -295,7 +295,6 @@ void tax_about_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
-
 void taxon_info_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
@@ -414,7 +413,36 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
-
+void taxon_mrca_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+        stringstream id;
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        try {
+            if (!body.empty()) {
+                parsedargs = json::parse(body);
+            }
+        } catch (...) {
+            rbody = "Could not parse body of call as JSON.\n";
+            status_code = 400;
+        }
+        string ott_version;
+        OttIdSet ott_id_set;
+        if (!extract_from_request(parsedargs, "ott_ids", ott_id_set, rbody, status_code)) {
+            if (status_code == OK) {
+                rbody = "The ott_ids argument is required.";
+                status_code = 400;
+            }
+        }
+        if (status_code == OK) {
+            taxonomy_mrca_ws_method(tts, ott_id_set, rbody, status_code);
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
 /// End of method_handler. Start of global service related code
 Service * global_service_ptr = nullptr;
 

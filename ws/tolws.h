@@ -1,5 +1,6 @@
 #ifndef OTC_TOLWS_H
 #define OTC_TOLWS_H
+#include <cstdint>
 #include <list>
 #include <map>
 #include <string>
@@ -19,50 +20,17 @@ namespace otc {
 typedef std::pair<const std::string *, const std::string *> src_node_id;
 typedef std::vector<src_node_id> vec_src_node_ids;
 
-template<typename T>
-void index_nodes_by_name(T & tree) {
-    auto & td = tree.get_data();
-    auto & m = td.name_to_node;
-    long ind = 0;
-    for (auto nd : iter_pre(tree)) {
-        m[nd->get_name()] = nd;
-    }
-}
-
-template<typename T>
-void set_traversal_entry_exit(T & tree) {
-    auto & td = tree.get_data();
-    long ind = 0;
-    for (auto nd : iter_pre(tree)) {
-        nd->get_data().trav_enter = ind++;
-    }
-    for (auto pnd : iter_post(tree)) {
-        auto fc = pnd->get_last_child();
-        auto & d = pnd->get_data();
-        if (fc == nullptr) {
-            d.trav_exit = d.trav_enter;
-            d.num_tips = 1;
-        } else {
-            d.trav_exit = fc->get_data().trav_exit;
-            d.num_tips = 0;
-            for (auto c : iter_child_const(*pnd)) {
-                d.num_tips += c->get_data().num_tips;
-            }
-        }
-    }
-}
-
 class SumTreeNodeData {
     public:
-    long trav_enter = -1;
-    long trav_exit = -1;
+    std::uint32_t trav_enter = UINT32_MAX;
+    std::uint32_t trav_exit = UINT32_MAX;
     vec_src_node_ids supported_by;
     vec_src_node_ids conflicts_with;
     vec_src_node_ids resolves;
     vec_src_node_ids partial_path_of;
     vec_src_node_ids terminal;
     bool was_uncontested = false;
-    long num_tips = 0;
+    uint32_t num_tips = 0;
 };
 
 typedef RootedTreeNode<SumTreeNodeData> SumTreeNode_t;
@@ -176,7 +144,7 @@ class TreesToServe {
             FilePosStruct pos(filenamePtr);
             std::unique_ptr<SummaryTree_t> nt = read_next_newick<SummaryTree_t>(inp, pos, parsingRules);
             index_nodes_by_name(*nt);
-            set_traversal_entry_exit(*nt);
+            set_traversal_entry_exit_and_num_tips(*nt);
             tree_list.push_back(move(nt));
             annotation_list.push_back(SummaryTreeAnnotation());
             auto & sta = annotation_list.back();
@@ -283,6 +251,10 @@ void taxon_info_ws_method(const TreesToServe & tts,
                           bool include_terminal_descendants,
                           std::string & response_str,
                           int & status_code);
+void taxonomy_mrca_ws_method(const TreesToServe & tts,
+                             const OttIdSet & ott_id_set,
+                             std::string & response_str,
+                             int & status_code);
 
 bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
 

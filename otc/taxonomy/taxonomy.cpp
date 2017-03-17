@@ -618,6 +618,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, long kr)
     :Taxonomy(dir, cf, kr) {
     auto nodeNamer = [](const auto&){return string();};
     this->tree = get_tree<RichTaxTree>(nodeNamer);
+    set_traversal_entry_exit(*tree);
     _fill_ids_to_suppress_set();
     this->read_synonyms();
     // Could call:
