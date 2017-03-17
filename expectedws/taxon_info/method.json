@@ -3,6 +3,7 @@
   "verb": "POST",
   "arguments": {
     "ott_id": 100,
+    "include_children": true,
     "include_lineage": true
   }
 }

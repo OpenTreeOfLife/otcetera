@@ -606,12 +606,21 @@ void taxon_info_ws_method(const TreesToServe & tts,
     tax_service_add_taxon_info(taxonomy, *taxon_node, response);
     if (include_lineage) {
         json anc_array = json::array();
-        for (auto a : iter_anc(*taxon_node)) {
+        for (auto a : iter_anc_const(*taxon_node)) {
             json a_el;
             tax_service_add_taxon_info(taxonomy, *a, a_el);
             anc_array.push_back(a_el);
         }
         response["lineage"] = anc_array;
+    }
+    if (include_children) {
+        json c_array = json::array();
+        for (auto c : iter_child_const(*taxon_node)) {
+            json c_el;
+            tax_service_add_taxon_info(taxonomy, *c, c_el);
+            c_array.push_back(c_el);
+        }
+        response["children"] = c_array;
     }
     response_str = response.dump(1);
     status_code = OK;
