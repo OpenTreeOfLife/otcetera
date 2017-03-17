@@ -210,6 +210,16 @@ class TreesToServe {
         std::size_t get_num_trees() const {
             return id_to_tree.size();
         }
+        void final_tree_added() {
+            if (get_num_trees() == 1) {
+                const auto & annot = annotation_list.back();
+                const auto & sft = annot.suppressed_from_tree;
+                assert(taxonomy_ptr != nullptr);
+                // TODO: make taxonomy_ptr non-const or make the relevant field mutable. Probably the former.
+                auto nct = const_cast<RichTaxonomy *>(taxonomy_ptr);
+                nct->set_ids_suppressed_from_summary_tree_alias(&sft);
+            }
+        }
 };
 
 enum NodeNameStyle {

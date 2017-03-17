@@ -288,12 +288,23 @@ struct RichTaxonomy : public Taxonomy {
     const OttIdSet & get_ids_to_suppress_from_tnrs() const {
         return ids_to_suppress_from_tnrs;
     }
+    void set_ids_suppressed_from_summary_tree_alias(const OttIdSet * ott_id_set_ptr) {
+        is_suppressed_from_synth = ott_id_set_ptr;
+    }
+
+    const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {
+        return is_suppressed_from_synth;
+    }
     private:
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
     // flags: not_otu, environmental, environmental_inherited, viral, hidden, hidden_inherited, was_container
     //    are excluded from being returned in TNRS results.
     OttIdSet ids_to_suppress_from_tnrs;
+    // If there is just one summary tree in memory, the web services code
+    //    can pass a non-nullptr pointer in using the setter. This
+    //    will allow the services to report "is_suppressed_from_synth" option.
+    const OttIdSet * is_suppressed_from_synth = nullptr;
     void read_synonyms();
     void _fill_ids_to_suppress_set();
     RichTaxonomy(const RichTaxonomy &) = delete;

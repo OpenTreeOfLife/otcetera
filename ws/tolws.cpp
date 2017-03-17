@@ -587,7 +587,12 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNo
     }
     taxonrepr["synonyms"] = syn_list;
     const auto & ots = taxonomy.get_ids_to_suppress_from_tnrs();
-    taxonrepr["is_suppressed"] = (0 < ots.count(nd_taxon.get_ott_id()));
+    const auto ott_id = nd_taxon.get_ott_id();
+    taxonrepr["is_suppressed"] = (0 < ots.count(ott_id));
+    auto isfs = taxonomy.get_ids_suppressed_from_summary_tree_alias();
+    if (isfs) {
+        taxonrepr["is_suppressed_from_synth"] = (0 < isfs->count(ott_id));
+    }
 }
 
 void taxon_info_ws_method(const TreesToServe & tts,

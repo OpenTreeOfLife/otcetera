@@ -1,6 +1,7 @@
 {
   "flags": [],
   "is_suppressed": false,
+  "is_suppressed_from_synth": false,
   "name": "Exampleroot",
   "ott_id": 1000000,
   "rank": "no rank",
