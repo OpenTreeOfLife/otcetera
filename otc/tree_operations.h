@@ -1429,6 +1429,54 @@ inline void accumulate_closest_ott_id_for_subtree(const N * nd, OttIdSet & ott_i
     }
 }
 
+template<typename T>
+void index_nodes_by_name(T & tree) {
+    auto & td = tree.get_data();
+    auto & m = td.name_to_node;
+    long ind = 0;
+    for (auto nd : iter_pre(tree)) {
+        m[nd->get_name()] = nd;
+    }
+}
+
+template<typename T>
+void set_traversal_entry_exit(T & tree) {
+    std::uint32_t ind = 0;
+    for (auto nd : iter_pre(tree)) {
+        nd->get_data().trav_enter = ind++;
+    }
+    for (auto pnd : iter_post(tree)) {
+        auto fc = pnd->get_last_child();
+        auto & d = pnd->get_data();
+        if (fc == nullptr) {
+            d.trav_exit = d.trav_enter;
+        } else {
+            d.trav_exit = fc->get_data().trav_exit;
+        }
+    }
+}
+
+template<typename T>
+void set_traversal_entry_exit_and_num_tips(T & tree) {
+    std::uint32_t ind = 0;
+    for (auto nd : iter_pre(tree)) {
+        nd->get_data().trav_enter = ind++;
+    }
+    for (auto pnd : iter_post(tree)) {
+        auto fc = pnd->get_last_child();
+        auto & d = pnd->get_data();
+        if (fc == nullptr) {
+            d.trav_exit = d.trav_enter;
+            d.num_tips = 1;
+        } else {
+            d.trav_exit = fc->get_data().trav_exit;
+            d.num_tips = 0;
+            for (auto c : iter_child_const(*pnd)) {
+                d.num_tips += c->get_data().num_tips;
+            }
+        }
+    }
+}
 
  
 }// namespace otc

@@ -104,7 +104,7 @@ inline std::vector<std::string> comma_separated_as_vec(const std::string & sourc
 }
 
 inline nlohmann::json sources_vec_as_json(const std::vector<std::string> & vs) {
-    nlohmann::json j;
+    nlohmann::json j = nlohmann::json::array();
     for (auto src_entry : vs) {
         j.push_back(src_entry);
     }
@@ -207,6 +207,9 @@ class RTRichTaxNodeData {
     //nlohmann::json sources;
     const TaxonomyRecord * tax_record;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
+    std::uint32_t trav_enter = UINT32_MAX;
+    std::uint32_t trav_exit = UINT32_MAX;
+    
     boost::string_ref get_name() const {
         return tax_record->name;
     }
@@ -285,10 +288,28 @@ struct RichTaxonomy : public Taxonomy {
         return i2n_it->second;
     }
     void add_taxonomic_addition_string(const std::string &s);
+    const OttIdSet & get_ids_to_suppress_from_tnrs() const {
+        return ids_to_suppress_from_tnrs;
+    }
+    void set_ids_suppressed_from_summary_tree_alias(const OttIdSet * ott_id_set_ptr) {
+        is_suppressed_from_synth = ott_id_set_ptr;
+    }
+
+    const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {
+        return is_suppressed_from_synth;
+    }
     private:
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
+    // flags: not_otu, environmental, environmental_inherited, viral, hidden, hidden_inherited, was_container
+    //    are excluded from being returned in TNRS results.
+    OttIdSet ids_to_suppress_from_tnrs;
+    // If there is just one summary tree in memory, the web services code
+    //    can pass a non-nullptr pointer in using the setter. This
+    //    will allow the services to report "is_suppressed_from_synth" option.
+    const OttIdSet * is_suppressed_from_synth = nullptr;
     void read_synonyms();
+    void _fill_ids_to_suppress_set();
     RichTaxonomy(const RichTaxonomy &) = delete;
 };
 

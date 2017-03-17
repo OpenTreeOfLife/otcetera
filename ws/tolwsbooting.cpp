@@ -126,6 +126,7 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
             }
         }
     }
+    tts.final_tree_added();
     return true;
 }
 

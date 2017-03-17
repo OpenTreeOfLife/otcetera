@@ -1,0 +1,8 @@
+{
+  "url_fragment": "taxonomy/subtree",
+  "verb": "POST",
+  "arguments": {
+    "source_id": "ncbi:10239",
+    "label_format": "name_and_id"
+  }
+}

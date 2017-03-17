@@ -20,7 +20,7 @@
         "name": "ABC",
         "ott_id": 1001,
         "rank": "no rank",
-        "tax_sources": null,
+        "tax_sources": [],
         "uniqname": "ABC"
       }
     },
@@ -69,7 +69,7 @@
     "name": "A",
     "ott_id": 100,
     "rank": "no rank",
-    "tax_sources": null,
+    "tax_sources": [],
     "uniqname": "A"
   },
   "terminal": {

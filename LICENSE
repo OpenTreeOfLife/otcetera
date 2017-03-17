@@ -1,4 +1,10 @@
-Copyright (c) 2015 Mark T. Holder and Benjamin D. Redelings
+If you use otcetera without the --with-webservices=yes configure
+flag, then you can choose between a GPL or BSD license.
+
+If you use the --with-webservices=yes configure flag, only the
+    GPL is permitted.
+
+Copyright (c) 2015-2017 Mark T. Holder and Benjamin D. Redelings
 All rights reserved.
 
 otcetera builds upon NCL and is distributed under the same license:

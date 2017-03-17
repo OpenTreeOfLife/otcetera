@@ -6,7 +6,7 @@ uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|
 200	|	1001	|	B	|	no rank	|		|		|		|	
 300	|	1001	|	C	|	no rank	|		|		|		|	
 1	|	100	|	A1	|	no rank	|		|		|		|	
-2	|	100	|	A3	|	no rank	|		|		|		|	
+2	|	100	|	A2	|	no rank	|		|		|		|	
 3	|	100	|	A3	|	no rank	|		|		|		|	
 11	|	200	|	B1	|	no rank	|		|		|		|	
 12	|	200	|	B2	|	no rank	|		|		|		|	
