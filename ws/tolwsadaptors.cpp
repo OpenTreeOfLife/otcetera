@@ -547,6 +547,9 @@ int run_server(const po::variables_map & args) {
     auto r_taxon_info = make_shared< Resource >( );
     r_taxon_info->set_path( "/taxonomy/taxon_info" );
     r_taxon_info->set_method_handler( "POST", taxon_info_method_handler );
+    auto r_taxon_mrca = make_shared< Resource >( );
+    r_taxon_mrca->set_path( "/taxonomy/mrca" );
+    r_taxon_mrca->set_method_handler( "POST", taxon_mrca_method_handler );
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
     settings->set_port( port_number );
@@ -563,6 +566,7 @@ int run_server(const po::variables_map & args) {
     service.publish( r_induced_subtree );
     service.publish( r_tax_about );
     service.publish( r_taxon_info );
+    service.publish( r_taxon_mrca );
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
     LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";
