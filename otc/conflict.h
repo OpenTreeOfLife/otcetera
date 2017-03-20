@@ -76,9 +76,27 @@ auto find_induced_nodes(const std::vector<N*>& leaves) {
 template <typename Tree_t>
 using node_logger_t = std::function<void(const typename Tree_t::node_type* node2, const typename Tree_t::node_type* node1)>;
 
+// This procedure finds examples of (y supported_by x), (y partial_path of x), (y conflicts_with x), (y resolved_by y), and (y terminal x),
+//   where y is a node of tree2 and x is a node of tree1.
+//
+// The corresponding log_* functions take arguments in the same order.  Thus log_resolved_by(y,x) means that node y in tree2
+//   is resolved by node x in tree1.
+//
+// We decompose (y displays x) into one of (y supported_by x), (y partial_path_of x) or (y terminal x).
+// If y displays x then
+// - if split(y) is non-informative in the induced trees, then (y terminal x)
+// - else if y displays x2 and x2 != x, then
+//     (y partial_path_of x)
+// - else
+//     (y supported_by x)   <- x is the unique node of tree1 that is displayed by y.
+//   
+// Multiple nodes of tree2 can conflict with a given node of tree1.
+// Multiple nodes of tree1 can conflict with a given node of tree2.
+// Each node of tree1 can resolve at most 1 node of tree2, but a node of tree2 can be resolved_by several nodes of tree1.
+// 
 // Map nodes of T1 onto T2.
-// * Monotypic nodes of T1 are ignored.
-// * Leaves of T1 should correspond to leaves of T2, or nothing in T2. (?)
+// * Monotypic nodes of T1 are currently ignored.
+// * Leaves of T1 should correspond to leaves of T2.
 // * Each non-monotypic node of T1 will equal (supported_by/partial_path_of), conflict with, or be a terminal of nodes in T2.
 // * A node of T1 can equal one node of T2 (supported_by) or several nodes of T2 (partial_path_of).
 // * A node of T1 can conflict with several nodes of T2.
@@ -104,7 +122,7 @@ void perform_conflict_analysis(const Tree_t& tree1,
 
     std::vector<typename Tree_t::node_type*> conflicts;
 
-    auto map1 = get_ottid_to_node_map(*induced_tree1);
+//    auto map1 = get_ottid_to_node_map(*induced_tree1);
     auto map2 = get_ottid_to_node_map(*induced_tree2);
         
     // make summary_node field of induced_tree1 leaves point to leaves of induced_tree2.
