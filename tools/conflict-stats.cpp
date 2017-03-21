@@ -175,6 +175,9 @@ void mapNextTree1(const Tree_t& summaryTree,
 		  const Tree_t & tree,
 		  stats& s) //isTaxoComp is third param
 {
+    typedef Tree_t::node_type node_type;
+    std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
+
     string source_name = source_from_tree_name(tree.get_name());
 
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
@@ -185,8 +188,8 @@ void mapNextTree1(const Tree_t& summaryTree,
         auto log_resolved_by     = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.resolved_by,node2,node1,source_name);};
         auto log_terminal        = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.terminal,node2,node1,source_name);};
 
-        perform_conflict_analysis(tree, ottid_to_node,
-                                  summaryTree, constSummaryOttIdToNode,
+        perform_conflict_analysis(tree, ottid_to_node, mrca_of_pair,
+                                  summaryTree, constSummaryOttIdToNode, mrca_of_pair,
                                   log_supported_by,
                                   log_partial_path_of,
                                   log_conflicts_with,
@@ -197,8 +200,8 @@ void mapNextTree1(const Tree_t& summaryTree,
         auto nothing    = [](const node_t*, const node_t*) {};
         auto log_resolved_by     = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.resolves,node1,node2,source_name);};
 
-        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode,
-                                  tree, ottid_to_node,
+        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode, mrca_of_pair,
+                                  tree, ottid_to_node, mrca_of_pair,
                                   nothing,
                                   nothing,
                                   nothing,
@@ -212,6 +215,9 @@ void mapNextTree2(const Tree_t& summaryTree,
 		  const Tree_t & tree,
 		  stats& s) //isTaxoComp is third param
 {
+    typedef Tree_t::node_type node_type;
+    std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
+
     string source_name = source_from_tree_name(summaryTree.get_name());
 
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
@@ -222,8 +228,8 @@ void mapNextTree2(const Tree_t& summaryTree,
         auto log_resolved_by     = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.resolved_by,node2,node1,source_name);};
         auto log_terminal        = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.terminal,node2,node1,source_name);};
 
-        perform_conflict_analysis(tree, ottid_to_node,
-                                  summaryTree, constSummaryOttIdToNode,
+        perform_conflict_analysis(tree, ottid_to_node, mrca_of_pair,
+                                  summaryTree, constSummaryOttIdToNode, mrca_of_pair,
                                   log_supported_by,
                                   log_partial_path_of,
                                   log_conflicts_with,
@@ -234,8 +240,8 @@ void mapNextTree2(const Tree_t& summaryTree,
         auto nothing    = [](const node_t*, const node_t*) {};
         auto log_resolved_by     = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.resolves,node1,node2,source_name);};
 
-        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode,
-                                  tree, ottid_to_node,
+        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode, mrca_of_pair,
+                                  tree, ottid_to_node, mrca_of_pair,
                                   nothing,
                                   nothing,
                                   nothing,

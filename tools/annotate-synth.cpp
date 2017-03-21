@@ -266,9 +266,13 @@ json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nod
 }
 
 void mapNextTree(const Tree_t& summaryTree,
-         const map<long, const Tree_t::node_type*>& constSummaryOttIdToNode,
-         const Tree_t & tree,
-         const string& source_name) {
+		 const map<long, const Tree_t::node_type*>& constSummaryOttIdToNode,
+		 const Tree_t & tree,
+		 const string& source_name) {
+
+    typedef Tree_t::node_type node_type;
+    std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
+
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
     {
         auto log_supported_by    = [&source_name](const node_t* node2, const node_t* node1) {set_supported_by(node2,node1,source_name);};
@@ -277,8 +281,8 @@ void mapNextTree(const Tree_t& summaryTree,
         auto log_resolved_by     = [&source_name](const node_t* node2, const node_t* node1) {set_resolved_by(node2,node1,source_name);};
         auto log_terminal        = [&source_name](const node_t* node2, const node_t* node1) {set_terminal(node2,node1,source_name);};
 
-        perform_conflict_analysis(tree, ottid_to_node,
-                                  summaryTree, constSummaryOttIdToNode,
+        perform_conflict_analysis(tree, ottid_to_node, mrca_of_pair,
+                                  summaryTree, constSummaryOttIdToNode, mrca_of_pair,
                                   log_supported_by,
                                   log_partial_path_of,
                                   log_conflicts_with,
@@ -292,8 +296,8 @@ void mapNextTree(const Tree_t& summaryTree,
         auto log_resolved_by     = [&source_name](const node_t* node2, const node_t* node1) {set_resolves(node1,node2,source_name);};
         auto log_terminal        = [&source_name](const node_t*, const node_t*) {};
 
-        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode,
-                                  tree, ottid_to_node,
+        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode, mrca_of_pair,
+                                  tree, ottid_to_node, mrca_of_pair,
                                   log_supported_by,
                                   log_partial_path_of,
                                   log_conflicts_with,

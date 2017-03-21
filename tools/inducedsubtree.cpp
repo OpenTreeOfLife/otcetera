@@ -6,10 +6,10 @@
 using namespace otc;
 using std::vector;
 
+/// Walk up the tree from node1 and node2 until we find the common ancestor, putting nodes into set `nodes`.
 
 struct RTNodeDepth {
     int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
-    RootedTreeNode<RTNodeDepth>* summary_node;
 };
 
 using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
@@ -26,7 +26,8 @@ struct InducedSubtreeState
         for(auto id: inducingIds)
             leaves.push_back(tax_node_map.at(id));
         compute_depth(*taxonomy);
-        auto induced_tree = get_induced_tree<Tree_t>(leaves);
+        auto mrca = [](const Tree_t::node_type* n1, const Tree_t::node_type* n2) {return mrca_from_depth(n1,n2);};
+        auto induced_tree = get_induced_tree<Tree_t,Tree_t>(leaves, mrca);
         write_tree_as_newick(otCLI.out, *induced_tree);
         otCLI.out << std::endl;
         return true;
