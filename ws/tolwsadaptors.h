@@ -2,12 +2,27 @@
 #define OTC_TOLWS_ADAPTORS_H
 #include <restbed>
 #include "ws/tolws.h"
+#include "otc/otc_base_includes.h"
+
 template<typename T>
 bool extract_from_request(const nlohmann::json & j,
                           std::string opt_name,
                           T & setting,
                           std::string & response,
                           int & status_code);
+
+inline bool set_type_expectations_error(const std::string & opt_name,
+                                        const char * type_name_with_article,
+                                        std::string & response,
+                                        int & status_code) {
+    response = "Expecting ";
+    response += opt_name;
+    response += " to be ";
+    response += type_name_with_article;
+    response += ".\n";
+    status_code = 400;
+    return false;
+}
 
 template<>
 inline bool extract_from_request(const nlohmann::json & j,
@@ -21,10 +36,7 @@ inline bool extract_from_request(const nlohmann::json & j,
             setting = opt->get<bool>();
             return true;
         }
-        response = "Expecting ";
-        response += opt_name;
-        response += " to be a boolean.\n";
-        status_code = 400;
+        return set_type_expectations_error(opt_name, "a boolean", response, status_code);
     }
     return false;
 }
@@ -41,10 +53,7 @@ inline bool extract_from_request(const nlohmann::json & j,
             setting = opt->get<std::string>();
             return true;
         }
-        response = "Expecting ";
-        response += opt_name;
-        response += " to be a string.\n";
-        status_code = 400;
+        return set_type_expectations_error(opt_name, "a string", response, status_code);
     }
     return false;
 }
@@ -61,10 +70,7 @@ inline bool extract_from_request(const nlohmann::json & j,
             setting = opt->get<int>();
             return true;
         }
-        response = "Expecting ";
-        response += opt_name;
-        response += " to be a number.\n";
-        status_code = 400;
+        return set_type_expectations_error(opt_name, "an integer", response, status_code);
     }
     return false;
 }
@@ -81,10 +87,7 @@ inline bool extract_from_request(const nlohmann::json & j,
             setting = opt->get<long>();
             return true;
         }
-        response = "Expecting ";
-        response += opt_name;
-        response += " to be a number.\n";
-        status_code = 400;
+        return set_type_expectations_error(opt_name, "an integer", response, status_code);
     }
     return false;
 }
@@ -102,32 +105,49 @@ inline bool extract_from_request(const nlohmann::json & j,
                 if (sIt->is_string()) {
                     setting.push_back(sIt->get<std::string>());
                 } else {
-                    response = "Expecting ";
-                    response += opt_name;
-                    response += " to be an array of strings.\n";
-                    status_code = 400;
-                    return false;
+                    return set_type_expectations_error(opt_name, "an array of strings", response, status_code);
                 }   
             }
             return true;
         }
-        response = "Expecting ";
-        response += opt_name;
-        response += " to be an array of strings.\n";
-        status_code = 400;
+        return set_type_expectations_error(opt_name, "an array of strings", response, status_code);
     }
     return false;
 }
+
+template<>
+inline bool extract_from_request(const nlohmann::json & j,
+                                 std::string opt_name,
+                                 otc::OttIdSet & setting,
+                                 std::string & response,
+                                 int & status_code) {
+    auto opt = j.find(opt_name);
+    if (opt != j.end()) {
+        if (opt->is_array()) {
+            for (nlohmann::json::const_iterator sIt = opt->begin(); sIt != opt->end(); ++sIt) {
+                if (sIt->is_number()) {
+                    setting.insert(sIt->get<otc::OttId>());
+                } else {
+                    return set_type_expectations_error(opt_name, "an array of integers", response, status_code);
+                }   
+            }
+            return true;
+        }
+        return set_type_expectations_error(opt_name, "an array of integers", response, status_code);
+    }
+    return false;
+}
+
 
 
 inline otc::vec_src_node_ids extract_node_id_vec(otc::TreesToServe & tts,
                                                  const nlohmann::json & sbv) {
     std::list<otc::src_node_id> lsni;
     for (nlohmann::json::const_iterator jit = sbv.begin(); jit != sbv.end(); ++jit) {
-        const std::string * kp = tts.getStoredString(jit.key());
+        const std::string * kp = tts.get_stored_string(jit.key());
         const auto & v = jit.value();
         for (nlohmann::json::const_iterator vit = v.begin(); vit != v.end(); ++vit) {
-            const std::string * vp = tts.getStoredString(*vit);
+            const std::string * vp = tts.get_stored_string(*vit);
             lsni.push_back(otc::src_node_id(kp, vp));
         } 
     }

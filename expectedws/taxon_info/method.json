@@ -1,0 +1,9 @@
+{
+  "url_fragment": "taxonomy/taxon_info",
+  "verb": "POST",
+  "arguments": {
+    "ott_id": 100,
+    "include_children": true,
+    "include_lineage": true
+  }
+}

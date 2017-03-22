@@ -1,8 +1,8 @@
-# otcetera - phylogenetic file format parser in C++ 
+# otcetera - phylogenetic file format parser in C++
 [![Build Status](https://secure.travis-ci.org/OpenTreeOfLife/otcetera.png)](http://travis-ci.org/OpenTreeOfLife/otcetera)
 
 otcetera owes a lot of code and ideas to Paul Lewis' Nexus Class Library.
-  See http://hydrodictyon.eeb.uconn.edu/ncl/ and 
+  See http://hydrodictyon.eeb.uconn.edu/ncl/ and
   https://github.com/mtholder/ncl
 
 It also uses easyloggingpp which is distributed under an MIT License. See
@@ -29,16 +29,16 @@ these with something like apt, then you can grab the sources. The following
 worked for MTH on Mac on 28-Feb-2015:
 
     wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
-    tar xfvz autoconf-2.69.tar.gz 
+    tar xfvz autoconf-2.69.tar.gz
     cd autoconf-2.69
-    ./configure 
+    ./configure
     make
     sudo make install
     cd ..
     wget http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
-    tar xfvz automake-1.15.tar.gz 
+    tar xfvz automake-1.15.tar.gz
     cd automake-1.15
-    ./configure 
+    ./configure
     make
     sudo make install
 
@@ -65,7 +65,20 @@ prefix); also note that the path to the libraries in the build BOOST dir is plat
 
 # restbed
 
-https://github.com/corvusoft/restbed
+<<<<<<< HEAD
+https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
+
+# requests
+
+The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
+=======
+We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
+
+To build including restbed, you will also need to set:
+
+    CPPFLAGS=-Ipath_to_restbed_include
+    LDFLAGS=-Lpath_to_restbed_library
+>>>>>>> origin/master
 
 ## configuration + building
 
@@ -91,7 +104,7 @@ Python 2 (recent enough to have the subprocess module as part of the standard li
 is required for the `make check` operation to succeed.
 
 Those `reconf-...sh` scripts set the installation prefix to an `installed` sub-directory
-of your build directory as the prefix for the installation. So, you will need to 
+of your build directory as the prefix for the installation. So, you will need to
 add `$PWD/installed/bin` to your `PATH` environmental variable to use the version
 of the otc tools that you just installed. Depending on your platform, you may have to
 add the `$PWD/installed/lib` to your `LD_LIBRARY_PATH` variable.
@@ -106,7 +119,7 @@ See the [supertree/README.md](./supertree/README.md) for instructions on using
 `otcetera` to build a supertree (work in progress).
 
 ## Common command line flags
-The tools use the same (OTCLI) class to process command line arguments. 
+The tools use the same (OTCLI) class to process command line arguments.
 This provides the following command line flags:
   * `-h` for help
   * `-fFILE` to treat every line of FILE as if it were a command line argument
@@ -117,7 +130,7 @@ This provides the following command line flags:
 
 Unless otherwise stated:
 
-  1. the command line tools that need a tree take a filepath 
+  1. the command line tools that need a tree take a filepath
 to a newick tree file. The numeric suffix of each label in the tree is taken to
 be the OTT id. This accommodates the name munging that some of the open tree of
 life tools perform on taxonomic names with special characters (because only the
@@ -153,22 +166,22 @@ Then you can reference that directory by writing `%(home)s` in other variables i
 will report any nodes in `synth.tre` that are not named and which do not have
 any [ITEB support](https://github.com/OpenTreeOfLife/treemachine/blob/nonsense-1/nonsense/iteb_support_theorem.md)
 
-The taxonomy is just used for the ottID validation (on the assumption that 
+The taxonomy is just used for the ottID validation (on the assumption that
 the nodes supported by the taxonomy and the the otcchecktaxonomicnodes tool
 can help identify problems with those nodes).
 
-Note that this check identifies a nodes that could be collapsed to produce 
+Note that this check identifies a nodes that could be collapsed to produce
   a "minimal" tree (*sensu* [Semple, 2003](http://ir.canterbury.ac.nz/handle/10092/1652)).
-As discussed in section 1.3 "Trees without unsupported groups" of 
+As discussed in section 1.3 "Trees without unsupported groups" of
 [the docs](http://phylo.bio.ku.edu/ot/summarizing-taxonomy-plus-trees.pdf), if you
-want to get rid of such groups, then you should remove them one at a time and rerun 
+want to get rid of such groups, then you should remove them one at a time and rerun
 the check. Otherwise you may cause a supertree to display fewer of the input clusters.
 
 
 ### Checking for incorrect internal labels in a full tree
 
-If you add a `-x` argument to the invocation, then the program will act like the taxonomy 
-is also a source of support for nodes.  Furthermore a report on problems with 
+If you add a `-x` argument to the invocation, then the program will act like the taxonomy
+is also a source of support for nodes.  Furthermore a report on problems with
 taxonomic labels in synth.tre will be reported before the summary.
 
 Using both `-x` and `-r` will create the taxonomic report, but then clear the taxonomic
@@ -177,8 +190,8 @@ be equivalent to what you get by dropping both the `-x` and `-r` args.
 
     otc-check-supertree -x -d taxonomy.tre synth.tre
 
-will check every labelled internal node is correctly labelled. To do this, it 
-verifies that the set of OTT ids associated with tips that descend from the 
+will check every labelled internal node is correctly labelled. To do this, it
+verifies that the set of OTT ids associated with tips that descend from the
 node is identical to the set of OTT ids associated with terminal taxa below
 the corresponding node in the taxonomic tree.
 
@@ -265,7 +278,7 @@ This is intended to perform steps 2.5 and 2.6 of the supertree pipeline mentione
 
     otc-prune-taxonomy taxonomy.tre inp1.tre inp2.tre ...
 
-will write (to stdout) a newick version of the taxonomy that has been pruned to 
+will write (to stdout) a newick version of the taxonomy that has been pruned to
 not include subtrees that do not include any of the tips of the input trees.  See
 [supertree/step-2-pruned-taxonomy/README.md](./supertree/step-2-pruned-taxonomy/README.md)
 for a more precise description of the pruning rules. This is intended to be used in the
@@ -281,10 +294,10 @@ should be an input tree filepath. Each output will have:
   * a name that corresponds to the OTT taxon,
   * the trees pruned down for each subproblem (in the) same order as the trees were
       provided in the invocation, and
-  * a corresponding ott###-tree-names.txt file that list the input filenames for each 
+  * a corresponding ott###-tree-names.txt file that list the input filenames for each
     tree (or "TAXONOMY" for taxonomy, which will always be the last tree).
 
-*NOTE*: phylogenetic tips mapped to internal labels in the taxonomy will be pruned if 
+*NOTE*: phylogenetic tips mapped to internal labels in the taxonomy will be pruned if
    the taxon is contested. This is probably not what one usually wants to do...
 
 ### supertree using the decomposition and a greedy subproblem solver
@@ -328,7 +341,7 @@ As of 5, May 2015, the columns of the report are:
   * LSS = size of the leaf label set
   * ILSS = size of the set of labels included in at least one "ingroup"
   * NT = The number of trees.
-  * TreeSummaryName = tree index or summary name where the summary name can be Phylo-only or Total. 
+  * TreeSummaryName = tree index or summary name where the summary name can be Phylo-only or Total.
   "Total" summarizes info all trees in the file (including the taxonomy).
   "Phylo-only" former summarizes all of the phylogenetic inputs.
 
@@ -391,7 +404,7 @@ otc-name-unnamed-nodes tree1.tre > tree1-named.tre
 ```
 
 It is assumed that monotypic nodes always have OTT Ids, and are therefore named.  Names for
-unnamed nodes are of the form mrca-ottX-ottY.  To find X and Y in a unique, repeatable way, 
+unnamed nodes are of the form mrca-ottX-ottY.  To find X and Y in a unique, repeatable way,
 each node in the tree is annotated with the OTT Id of the smallest leaf in the include group
 for that node.  X and Y are then the annotations of the child nodes
 with the smallest, and second-smallest annotations, respectively.
@@ -446,14 +459,14 @@ is just a summary of the info reported by `otcdegreedistribution`.
 
 ### Detecting contested taxa
 
-`otc-detect-contested` takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees. 
+`otc-detect-contested` takes at least 2 newick file paths: a full taxonomy tree, and some number of input trees.
 It will print out the OTT IDs of clades in the taxonomy whose monophyly is questioned by at least one input:
 
     otc-detect-contested taxonomy.tre inp1.tre inp2.tre
 
 ### Get an induced subtree
 
-`otc-induced-subtree` takes at least 2 newick file paths: a full tree, and some number of input trees. 
+`otc-induced-subtree` takes at least 2 newick file paths: a full tree, and some number of input trees.
 It will print a newick representation of the topology of the first tree if it is pruned down to the leafset of the inputs (without removing internal nodes):
 
     otc-induced-subtree taxonomy.tre inp1.tre
@@ -472,14 +485,14 @@ of its siblings (`-s` flag and writing one line per sib):
     otc-prune-to-subtree -n5315,3512 some.tre
     otc-prune-to-subtree -c5315,3512 some.tre
     otc-prune-to-subtree -s5315,3512 some.tre
-    
+
 
 **Untested**
 
 ### Find distance between a supertree and the input trees
-`otc-disance` takes at least 2 newick file paths: a supertree, and some number of input trees. 
-It will print the Robinson-Foulds symmetric difference between the induced tree from the full tree to each 
-input tree (one RF distance per line), or the number of groupings in each input tree that are 
+`otc-disance` takes at least 2 newick file paths: a supertree, and some number of input trees.
+It will print the Robinson-Foulds symmetric difference between the induced tree from the full tree to each
+input tree (one RF distance per line), or the number of groupings in each input tree that are
 either displayed or not displayed by the supertree
 
     otc-distance -r taxonomy.tre inp1.tre inp2.tre
@@ -493,13 +506,13 @@ Thus, one can calculate "missing" and "extra" grouping counts from the output of
 **Untested**
 
 ### Suppress nodes of outdegree=1
-`otc-suppress-monotypic` takes a filepath to a newick file and writes a newick 
+`otc-suppress-monotypic` takes a filepath to a newick file and writes a newick
 without any nodes that have just one child:
 
     otc-suppress-monotypic taxonomy.tre
 
 ### Suppress nodes of outdegree=1
-`otc-suppress-monotypic` takes a filepath to a newick file and writes a newick 
+`otc-suppress-monotypic` takes a filepath to a newick file and writes a newick
 without any nodes that have just one child:
 
     otc-suppress-monotypic taxonomy.tre
@@ -508,7 +521,7 @@ without any nodes that have just one child:
 
     otc-set-of-ids tree1.tre tree2.tre
 
-will print out the union of OTT Ids in tree1 and tree2. 
+will print out the union of OTT Ids in tree1 and tree2.
 The `-i` flag requests the intersection rather than the union.
 The `-t` flag requests that only the tips be considered.
 The `-n` flag requests that the output should be a newick tree (a polytomy) rather than a list.
@@ -517,7 +530,7 @@ The `-n` flag requests that the output should be a newick tree (a polytomy) rath
 `otcetera` is still very much under development. You can trigger the running of the
 tests by:
 
-    $ make 
+    $ make
     $ make check
 
 (currently there are no tests in the `make installcheck` target).
@@ -545,7 +558,7 @@ and the directories that describe the expected behavior are in the `expected` su
 See comments above about usage of [easyloggingpp](https://github.com/easylogging/)
 and [rapidjson](https://github.com/miloyip/rapidjson)
 
-To acknowledge the contributions of the NCL code and ideas, a snapshot of the 
+To acknowledge the contributions of the NCL code and ideas, a snapshot of the
 NCL credits taken from the version of NCL used to jump start otcetera is:
 
 As of March 09, 2012, NCL is available under a Simplified BSD license (see
@@ -584,4 +597,3 @@ Thanks to NESCent and  Google for supporting that work.
 Many of the files used for testing were provided by Arlin Stoltzfus (see
 http://www.molevol.org/camel/projects/nexus/ for more information), the Mesquite
 package, and from TreeBase (thanks, Bill Piel!).
-

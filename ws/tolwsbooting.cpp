@@ -126,6 +126,7 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
             }
         }
     }
+    tts.final_tree_added();
     return true;
 }
 
@@ -153,8 +154,8 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    const RichTaxonomy & taxonomy = tts.getTaxonomy();
-    auto tree_and_ann = tts.getNewTreeAndAnnotations(config_path.native(), tree_path.native());
+    const RichTaxonomy & taxonomy = tts.get_taxonomy();
+    auto tree_and_ann = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
     try {
         SummaryTree_t & tree = tree_and_ann.first;
         SummaryTreeAnnotation & sta = tree_and_ann.second;
@@ -227,9 +228,9 @@ bool read_tree_and_annotations(const fs::path & config_path,
             }
         }
         sta.initialized = true;
-        tts.registerLastTreeAndAnnotations();
+        tts.register_last_tree_and_annotations();
     } catch (...) {
-        tts.freeLastTreeAndAnnotations();
+        tts.free_last_tree_and_annotations();
         throw;
     }
     return true;

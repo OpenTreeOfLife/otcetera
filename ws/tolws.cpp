@@ -71,7 +71,7 @@ void add_node_support_info(const TreesToServe & tts,
                            const SumTreeNode_t & nd,
                            json & noderepr,
                            set<string> & usedSrcIds) {
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     const auto & d = nd.get_data();
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
@@ -102,11 +102,10 @@ void add_node_support_info(const TreesToServe & tts,
 
 }
 
-const SumTreeNode_t * find_mrca(const SumTreeNode_t *f,
-                                const SumTreeNode_t *s) {
+template<typename N>
+N * find_mrca_via_traversal_indices(N *f, N *s) {
     const auto * fdata = &(f->get_data());
     const auto sec_ind = s->get_data().trav_enter;
-    //cerr << "f->name = " << f->get_name() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
         f = f->get_parent();
         if (f == nullptr) {
@@ -114,7 +113,6 @@ const SumTreeNode_t * find_mrca(const SumTreeNode_t *f,
             return nullptr;
         }
         fdata = &(f->get_data());
-        //cerr << "f->name = " << f->get_name() <<" sec_ind = " << sec_ind << " enter, exit = " << fdata->trav_enter << " " << fdata->trav_exit << '\n';
     }
     return f;
 }
@@ -145,7 +143,7 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
         if (sec_nd == nullptr) {
             return nullptr;
         }
-        return find_mrca(fir_nd, sec_nd);
+        return find_mrca_via_traversal_indices(fir_nd, sec_nd);
     }
     if (std::regex_match(node_id, matches, ott_id_pattern)) {
         auto bt_it = tree_data.broken_taxa.find(node_id);
@@ -168,7 +166,7 @@ void about_ws_method(const TreesToServe &tts,
                      int & status_code) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["date_created"] = sta->date_completed;
@@ -190,7 +188,7 @@ void about_ws_method(const TreesToServe &tts,
 void tax_about_ws_method(const TreesToServe &tts,
                          string & response_str,
                          int & status_code) {
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     string weburl;
@@ -257,7 +255,7 @@ void node_info_ws_method(const TreesToServe & tts,
         status_code = 400;
         return;
     }
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
@@ -298,7 +296,7 @@ void mrca_ws_method(const TreesToServe & tts,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca(focal, n);
+            focal = find_mrca_via_traversal_indices(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -310,7 +308,7 @@ void mrca_ws_method(const TreesToServe & tts,
         status_code = 400;
         return;
     }
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
@@ -346,7 +344,7 @@ void mrca_ws_method(const TreesToServe & tts,
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            const string & node_id, 
                                            int height_limit,
-                                           int tip_limit,
+                                           uint32_t tip_limit,
                                            string & response_str,
                                            int & status_code) {
     assert(tree_ptr != nullptr);
@@ -362,8 +360,7 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
         status_code = 400;
         return nullptr;
     }
-    if (focal->get_data().num_tips > tip_limit
-        && height_limit < 0) {
+    if (focal->get_data().num_tips > tip_limit && height_limit < 0) {
         response_str = "The requested subtree is too large to be returned via the API. Download the entire tree.\n";
         status_code = 400;
         return nullptr;  
@@ -382,11 +379,11 @@ class NodeNamerSupportedByStasher {
         }
 
         string operator()(const SumTreeNode_t *nd) const {
-            const string & id_str = nd->get_name(); // in this tree the "name" is really the "ott###" string
             const SumTreeNodeData & d = nd->get_data();
             for (auto & p : d.supported_by) {
                 study_id_set.insert(p.first);
             }
+            const string & id_str = nd->get_name(); // in this tree the "name" is really the "ott###" string
             if (nns != NodeNameStyle::NNS_ID_ONLY && nd->has_ott_id()) {
                 const auto * tr = taxonomy.taxon_from_id(nd->get_ott_id());
                 if (tr == nullptr) {
@@ -405,6 +402,28 @@ class NodeNamerSupportedByStasher {
                 }
             }
             return id_str;
+        }
+        static string ott_id_to_idstr(OttId ott_id) {
+            string ret;
+            ret = "ott";
+            ret += std::to_string(ott_id);
+            return ret;
+        }
+        string operator()(const RTRichTaxNode *nd) const {
+            if (nns == NodeNameStyle::NNS_ID_ONLY) {
+                return ott_id_to_idstr(nd->get_ott_id());
+            }
+            const string & taxon_name = string(nd->get_data().get_uniqname());
+            if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
+                string ret;
+                string id_str = ott_id_to_idstr(nd->get_ott_id());
+                ret.reserve(taxon_name.length() + 1 + id_str.length());
+                ret = taxon_name;
+                ret += ' ';
+                ret += id_str;
+                return ret;    
+            }
+            return taxon_name;
         }
 };
 
@@ -462,7 +481,7 @@ void induced_subtree_ws_method(const TreesToServe & tts,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca(focal, n);
+            focal = find_mrca_via_traversal_indices(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -483,7 +502,7 @@ void induced_subtree_ws_method(const TreesToServe & tts,
             cnd = cnd->get_parent(); 
         } 
     }
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
     writeVisitedNewick(out, visited, focal, nnsbs);
@@ -505,13 +524,13 @@ void newick_subtree_ws_method(const TreesToServe & tts,
                      int height_limit,
                      string & response_str,
                      int & status_code) {
-    const int NEWICK_TIP_LIMIT = 25000;
+    const uint32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
     if (focal == nullptr) {
         return;
     }
     assert(sta != nullptr);
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
@@ -557,13 +576,13 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
                      int height_limit,
                      string & response_str,
                      int & status_code) {
-    const int NEWICK_TIP_LIMIT = 25000;
+    const uint NEWICK_TIP_LIMIT = 25000;
     auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
     if (focal == nullptr) {
         return;
     }
     assert(sta != nullptr);
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
@@ -575,33 +594,120 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
+// taxon_info
+void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, json & taxonrepr) {
+    add_taxon_info(taxonomy, nd_taxon, taxonrepr);
+    taxonrepr["source"] = taxonomy.get_version(); //TBD "source" ?
+    const auto & taxon_data = nd_taxon.get_data();
+    taxonrepr["flags"] = flags_to_string_vec(taxon_data.get_flags());
+    json syn_list = json::array();
+    for (auto tjs : taxon_data.junior_synonyms) {
+        syn_list.push_back(tjs->get_name());
+    }
+    taxonrepr["synonyms"] = syn_list;
+    const auto & ots = taxonomy.get_ids_to_suppress_from_tnrs();
+    const auto ott_id = nd_taxon.get_ott_id();
+    const bool is_suppressed = (0 < ots.count(ott_id));
+    taxonrepr["is_suppressed"] = is_suppressed;
+    auto isfs = taxonomy.get_ids_suppressed_from_summary_tree_alias();
+    if (isfs) {
+        taxonrepr["is_suppressed_from_synth"] = is_suppressed || (0 < isfs->count(ott_id));
+    }
+}
 
 void taxon_info_ws_method(const TreesToServe & tts,
                           const RTRichTaxNode * taxon_node,
-                          bool , //include_lineage,
-                          bool , //include_children,
-                          bool , //include_terminal_descendants,
+                          bool include_lineage,
+                          bool include_children,
+                          bool include_terminal_descendants,
                           string & response_str,
                           int & status_code) {
-    const auto & taxonomy = tts.getTaxonomy();
+    const auto & taxonomy = tts.get_taxonomy();
+    assert(taxon_node != nullptr);
+    json response;
+    tax_service_add_taxon_info(taxonomy, *taxon_node, response);
+    if (include_lineage) {
+        json anc_array = json::array();
+        for (auto a : iter_anc_const(*taxon_node)) {
+            json a_el;
+            tax_service_add_taxon_info(taxonomy, *a, a_el);
+            anc_array.push_back(a_el);
+        }
+        response["lineage"] = anc_array;
+    }
+    if (include_children) {
+        json c_array = json::array();
+        for (auto c : iter_child_const(*taxon_node)) {
+            json c_el;
+            tax_service_add_taxon_info(taxonomy, *c, c_el);
+            c_array.push_back(c_el);
+        }
+        response["children"] = c_array;
+    }
+    if (include_terminal_descendants) {
+        json td_array = json::array();
+        for (auto nd : iter_leaf_n_const(*taxon_node)) {
+            td_array.push_back(nd->get_ott_id());
+        }
+        response["terminal_descendants"] = td_array;
+    }
+    response_str = response.dump(1);
+    status_code = OK;
+}
+
+
+void taxonomy_mrca_ws_method(const TreesToServe & tts,
+                             const OttIdSet & ott_id_set,
+                             string & response_str,
+                             int & status_code) {
+    const auto & taxonomy = tts.get_taxonomy();
+    const RTRichTaxNode * focal = nullptr;
+    bool first = true;
+    for (auto ott_id : ott_id_set) {
+        const RTRichTaxNode * n = taxonomy.taxon_from_id(ott_id);
+        if (n == nullptr) {
+            response_str = "ott_id \"";
+            response_str += ott_id;
+            response_str += "\" was not recognized.\n";
+            status_code = 400;
+            return;
+        }
+        if (first) {
+            first = false;
+            focal = n;
+        } else {
+            focal = find_mrca_via_traversal_indices(focal, n);
+            if (focal == nullptr) {
+                break;
+            }
+        }
+    }
+    bool is_broken = false;
+    if (focal == nullptr) {
+        response_str = "MRCA of taxa was not found. Please report this bug!\n";
+        status_code = 400;
+        return;
+    }
+    status_code = OK;
+    json response;
+    tax_service_add_taxon_info(taxonomy, *focal, response);
+    response_str = response.dump(1);
+}
+
+void taxon_subtree_ws_method(const TreesToServe & tts,
+                          const RTRichTaxNode * taxon_node,
+                          NodeNameStyle label_format, 
+                          string & response_str,
+                          int & status_code) {
+    const auto & taxonomy = tts.get_taxonomy();
     assert(taxon_node != nullptr);
     const auto & taxonomy_tree = taxonomy.getTaxTree();
-    const auto & taxonomy_tree_data = taxonomy_tree.get_data();
-    const auto & node_data = taxon_node->get_data();
     json response;
-    response["source"] = taxonomy.get_version();
-    response["ott_id"] = taxon_node->get_ott_id();
-    response["name"] = string(node_data.get_name());
-    response["uniqname"] = string(node_data.get_uniqname());
-    response["tax_sources"] = node_data.get_sources_json();
-    response["flags"] = flags_to_string_vec(node_data.get_flags());
-    json syn_list;
-    for (auto tjs : node_data.junior_synonyms) {
-        syn_list.push_back(tjs->get_name());
-    }
-    response["synonyms"] = syn_list;
-    //add_lineage(a, focal, taxonomy, usedSrcIds);
-    //response["arguson"] = a;
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    int height_limit = -1;
+    write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, height_limit);
+    response["newick"] = out.str();
     response_str = response.dump(1);
     status_code = OK;
 }
