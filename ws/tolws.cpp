@@ -1,6 +1,8 @@
 #include <regex>
 #include "ws/tolws.h"
 #include "ws/tolwsadaptors.h"
+#include "otc/conflict.h"
+#include "otc/tree_operations.h"
 INITIALIZE_EASYLOGGINGPP
 
 using namespace std;
@@ -710,6 +712,127 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
     response["newick"] = out.str();
     response_str = response.dump(1);
     status_code = OK;
+}
+
+
+void conflict_with_taxonomy(const ConflictTree& query_tree,
+			    const RichTaxTree& taxonomy)
+{
+    using cnode_type = ConflictTree::node_type;
+    using tnode_type = RTRichTaxNode;
+
+    map<string, set<const cnode_type*>> supported_by;
+    map<string, set<const cnode_type*>> partial_path_of;
+    map<string, set<const cnode_type*>> conflicts_with;
+    map<string, set<const cnode_type*>> resolved_by;
+    map<string, set<const cnode_type*>> resolves;
+    map<string, set<const cnode_type*>> terminal;
+
+    std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
+    std::function<const tnode_type*(const tnode_type*,const tnode_type*)> taxonomy_mrca;
+
+    auto log_supported_by    = [&](const cnode_type* node2, const cnode_type* node1) {supported_by[node1->get_name()].insert(node2);};
+    auto log_partial_path_of = [&](const cnode_type* node2, const cnode_type* node1) {partial_path_of[node1->get_name()].insert(node2);};
+    auto log_conflicts_with  = [&](const cnode_type* node2, const cnode_type* node1) {conflicts_with[node1->get_name()].insert(node2);};
+    auto log_resolved_by     = [&](const cnode_type* node2, const cnode_type* node1) {resolved_by[node1->get_name()].insert(node2);};
+    auto log_terminal        = [&](const cnode_type* node2, const cnode_type* node1) {terminal[node1->get_name()].insert(node2);};
+
+    auto ottid_to_query_node    = otc::get_ottid_to_const_node_map(query_tree);
+    auto ottid_to_taxonomy_node = otc::get_ottid_to_const_node_map(taxonomy);
+
+    perform_conflict_analysis(query_tree, ottid_to_query_node, query_mrca,
+			      taxonomy, ottid_to_taxonomy_node, taxonomy_mrca,
+			      log_supported_by,
+			      log_partial_path_of,
+			      log_conflicts_with,
+			      log_resolved_by,
+			      log_terminal);
+
+    auto log_resolves        = [&](const cnode_type* node1, const cnode_type* node2) {resolves[node1->get_name()].insert(node2);};
+    auto do_nothing          = [](const cnode_type*, const cnode_type*) {};
+
+    perform_conflict_analysis(taxonomy, ottid_to_taxonomy_node, taxonomy_mrca,
+			      query_tree, ottid_to_query_node, query_mrca,
+			      do_nothing,
+			      do_nothing,
+			      do_nothing,
+			      log_resolves,
+			      do_nothing);
+    
+}
+			   
+
+
+
+void conflict_with_summary(const ConflictTree& query_tree,
+			   const SummaryTree_t& summary)
+			   
+{
+    using cnode_type = ConflictTree::node_type;
+    using snode_type = SummaryTree_t::node_type;
+
+    // ok, so this doesn't work because we can't modify inserted pairs.
+    
+    map<string, set<const cnode_type*>> supported_by;
+    map<string, set<const cnode_type*>> partial_path_of;
+    map<string, set<const cnode_type*>> conflicts_with;
+    map<string, set<const cnode_type*>> resolved_by;
+    map<string, set<const cnode_type*>> resolves;
+    map<string, set<const cnode_type*>> terminal;
+
+    std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
+    std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca;
+
+    auto log_supported_by    = [&](const cnode_type* node2, const cnode_type* node1) {supported_by[node1->get_name()].insert(node2);};
+    auto log_partial_path_of = [&](const cnode_type* node2, const cnode_type* node1) {partial_path_of[node1->get_name()].insert(node2);};
+    auto log_conflicts_with  = [&](const cnode_type* node2, const cnode_type* node1) {conflicts_with[node1->get_name()].insert(node2);};
+    auto log_resolved_by     = [&](const cnode_type* node2, const cnode_type* node1) {resolved_by[node1->get_name()].insert(node2);};
+    auto log_terminal        = [&](const cnode_type* node2, const cnode_type* node1) {terminal[node1->get_name()].insert(node2);};
+
+    auto ottid_to_query_node = otc::get_ottid_to_const_node_map(query_tree);
+    auto ottid_to_summary_node = otc::get_ottid_to_const_node_map(summary);
+
+    perform_conflict_analysis(query_tree, ottid_to_query_node, query_mrca,
+			      summary, ottid_to_summary_node, summary_mrca,
+			      log_supported_by,
+			      log_partial_path_of,
+			      log_conflicts_with,
+			      log_resolved_by,
+			      log_terminal);
+
+    auto log_resolves        = [&](const cnode_type* node1, const cnode_type* node2) {resolves[node1->get_name()].insert(node2);};
+    auto do_nothing          = [](const cnode_type*, const cnode_type*) {};
+
+    perform_conflict_analysis(summary, ottid_to_summary_node, summary_mrca,
+			      query_tree, ottid_to_query_node, query_mrca,
+			      do_nothing,
+			      do_nothing,
+			      do_nothing,
+			      log_resolves,
+			      do_nothing);
+    
+}
+			   
+
+
+
+void conflict_ws_method(const SummaryTree_t& summary,
+			const RichTaxonomy & taxonomy,
+			const string& tree1s,
+			const string& tree2s,
+			string & response_str,
+			int& status_code )
+{
+    ConflictTree query_tree;
+    if (tree2s == "ott")
+    {
+	conflict_with_taxonomy(query_tree, taxonomy.getTaxTree());
+    }
+    else if (tree2s == "synth")
+    {
+	conflict_with_summary(query_tree, summary);
+    }
+
 }
 
 } //namespace otc
