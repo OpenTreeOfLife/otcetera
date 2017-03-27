@@ -76,28 +76,11 @@ struct hash<pair<T,U>>
 };
 }
 
-struct RTNodeDepth {
-    int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
-    int n_tips = 0;
-    int n_include_tips = 0;
-    RootedTreeNode<RTNodeDepth>* summary_node;
-};
-
-using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
+using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
 
-Tree_t::node_type* summary_node(const Tree_t::node_type* node);
-Tree_t::node_type*& summary_node(Tree_t::node_type* node);
 void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
 string get_source_node_name_if_available(const Tree_t::node_type* node);
-
-inline Tree_t::node_type* summary_node(const Tree_t::node_type* node) {
-    return node->get_data().summary_node;
-}
-
-inline Tree_t::node_type*& summary_node(Tree_t::node_type* node) {
-    return node->get_data().summary_node;
-}
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
 void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
