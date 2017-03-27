@@ -3,6 +3,7 @@
 #include "otc/tree.h"
 #include "otc/induced_tree.h"
 #include "otc/tree_operations.h"
+#include "otc/supertree_util.h" // for count_leaves( )
 #include <unordered_map>
 #include <vector>
 
@@ -115,8 +116,8 @@ void perform_conflict_analysis(const Tree1_t& tree1,
                                node_logger_t log_resolved_by,
                                node_logger_t log_terminal)
 {
-    auto induced_tree1 = get_induced_tree<Tree1_t,ConflictTree>(tree1, ottid_to_node1, MRCA_of_pair1, tree2, ottid_to_node2);
-    auto induced_tree2 = get_induced_tree<Tree2_t,ConflictTree>(tree2, ottid_to_node2, MRCA_of_pair2, tree1, ottid_to_node1);
+    auto induced_tree1 = get_induced_tree<Tree1_t,Tree2_t,ConflictTree>(tree1, ottid_to_node1, MRCA_of_pair1, tree2, ottid_to_node2);
+    auto induced_tree2 = get_induced_tree<Tree2_t,Tree1_t,ConflictTree>(tree2, ottid_to_node2, MRCA_of_pair2, tree1, ottid_to_node1);
 
     typedef ConflictTree::node_type node_type;
 
