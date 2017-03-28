@@ -714,13 +714,10 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
     status_code = OK;
 }
 
+using cnode_type = ConflictTree::node_type;
 
-void conflict_with_taxonomy(const ConflictTree& query_tree,
-			    const RichTaxTree& taxonomy)
+struct conflict_stats
 {
-    using cnode_type = ConflictTree::node_type;
-    using tnode_type = RTRichTaxNode;
-
     map<string, set<const cnode_type*>> supported_by;
     map<string, set<const cnode_type*>> partial_path_of;
     map<string, set<const cnode_type*>> conflicts_with;
@@ -728,14 +725,23 @@ void conflict_with_taxonomy(const ConflictTree& query_tree,
     map<string, set<const cnode_type*>> resolves;
     map<string, set<const cnode_type*>> terminal;
 
+};
+
+void conflict_with_taxonomy(const ConflictTree& query_tree,
+			    const RichTaxTree& taxonomy)
+{
+    using tnode_type = RTRichTaxNode;
+
+    conflict_stats stats;
+
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
     std::function<const tnode_type*(const tnode_type*,const tnode_type*)> taxonomy_mrca;
 
-    auto log_supported_by    = [&](const cnode_type* node2, const cnode_type* node1) {supported_by[node1->get_name()].insert(node2);};
-    auto log_partial_path_of = [&](const cnode_type* node2, const cnode_type* node1) {partial_path_of[node1->get_name()].insert(node2);};
-    auto log_conflicts_with  = [&](const cnode_type* node2, const cnode_type* node1) {conflicts_with[node1->get_name()].insert(node2);};
-    auto log_resolved_by     = [&](const cnode_type* node2, const cnode_type* node1) {resolved_by[node1->get_name()].insert(node2);};
-    auto log_terminal        = [&](const cnode_type* node2, const cnode_type* node1) {terminal[node1->get_name()].insert(node2);};
+    auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.supported_by[node1->get_name()].insert(node2);};
+    auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.partial_path_of[node1->get_name()].insert(node2);};
+    auto log_conflicts_with  = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.conflicts_with[node1->get_name()].insert(node2);};
+    auto log_resolved_by     = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.resolved_by[node1->get_name()].insert(node2);};
+    auto log_terminal        = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.terminal[node1->get_name()].insert(node2);};
 
     auto ottid_to_query_node    = otc::get_ottid_to_const_node_map(query_tree);
     auto ottid_to_taxonomy_node = otc::get_ottid_to_const_node_map(taxonomy);
@@ -748,7 +754,7 @@ void conflict_with_taxonomy(const ConflictTree& query_tree,
 			      log_resolved_by,
 			      log_terminal);
 
-    auto log_resolves        = [&](const cnode_type* node1, const cnode_type* node2) {resolves[node1->get_name()].insert(node2);};
+    auto log_resolves        = [&stats](const cnode_type* node1, const cnode_type* node2) {stats.resolves[node1->get_name()].insert(node2);};
     auto do_nothing          = [](const cnode_type*, const cnode_type*) {};
 
     perform_conflict_analysis(taxonomy, ottid_to_taxonomy_node, taxonomy_mrca,
@@ -762,32 +768,20 @@ void conflict_with_taxonomy(const ConflictTree& query_tree,
 }
 			   
 
-
-
-void conflict_with_summary(const ConflictTree& query_tree,
-			   const SummaryTree_t& summary)
-			   
+void conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& summary)
 {
-    using cnode_type = ConflictTree::node_type;
     using snode_type = SummaryTree_t::node_type;
 
-    // ok, so this doesn't work because we can't modify inserted pairs.
+    conflict_stats stats;
     
-    map<string, set<const cnode_type*>> supported_by;
-    map<string, set<const cnode_type*>> partial_path_of;
-    map<string, set<const cnode_type*>> conflicts_with;
-    map<string, set<const cnode_type*>> resolved_by;
-    map<string, set<const cnode_type*>> resolves;
-    map<string, set<const cnode_type*>> terminal;
-
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
     std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca;
 
-    auto log_supported_by    = [&](const cnode_type* node2, const cnode_type* node1) {supported_by[node1->get_name()].insert(node2);};
-    auto log_partial_path_of = [&](const cnode_type* node2, const cnode_type* node1) {partial_path_of[node1->get_name()].insert(node2);};
-    auto log_conflicts_with  = [&](const cnode_type* node2, const cnode_type* node1) {conflicts_with[node1->get_name()].insert(node2);};
-    auto log_resolved_by     = [&](const cnode_type* node2, const cnode_type* node1) {resolved_by[node1->get_name()].insert(node2);};
-    auto log_terminal        = [&](const cnode_type* node2, const cnode_type* node1) {terminal[node1->get_name()].insert(node2);};
+    auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.supported_by[node1->get_name()].insert(node2);};
+    auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.partial_path_of[node1->get_name()].insert(node2);};
+    auto log_conflicts_with  = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.conflicts_with[node1->get_name()].insert(node2);};
+    auto log_resolved_by     = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.resolved_by[node1->get_name()].insert(node2);};
+    auto log_terminal        = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.terminal[node1->get_name()].insert(node2);};
 
     auto ottid_to_query_node = otc::get_ottid_to_const_node_map(query_tree);
     auto ottid_to_summary_node = otc::get_ottid_to_const_node_map(summary);
@@ -800,7 +794,7 @@ void conflict_with_summary(const ConflictTree& query_tree,
 			      log_resolved_by,
 			      log_terminal);
 
-    auto log_resolves        = [&](const cnode_type* node1, const cnode_type* node2) {resolves[node1->get_name()].insert(node2);};
+    auto log_resolves        = [&stats](const cnode_type* node1, const cnode_type* node2) {stats.resolves[node1->get_name()].insert(node2);};
     auto do_nothing          = [](const cnode_type*, const cnode_type*) {};
 
     perform_conflict_analysis(summary, ottid_to_summary_node, summary_mrca,
