@@ -771,7 +771,6 @@ void conflict_with_taxonomy(const ConflictTree& query_tree,
 			      do_nothing);
     
 }
-			   
 
 void conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& summary)
 {
