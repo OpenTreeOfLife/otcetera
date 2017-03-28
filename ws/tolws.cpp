@@ -775,7 +775,7 @@ void conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& 
     conflict_stats stats;
     
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
-    std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca;
+    std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca = [](const snode_type* n1, const snode_type* n2) {return find_mrca_via_traversal_indices(n1,n2);};
 
     auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.supported_by[node1->get_name()].insert(node2);};
     auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.partial_path_of[node1->get_name()].insert(node2);};
