@@ -56,18 +56,18 @@ class RootedTreeNode {
             return n;
         }
         bool has_ott_id() const {
-            return ottId != LONG_MAX;
+            return ottId != std::numeric_limits<OttId>::max();
         }
-        long get_ott_id() const {
+        OttId get_ott_id() const {
             assert(has_ott_id());
             return ottId;
         }
-        void set_ott_id(long i) {
+        void set_ott_id(OttId i) {
             ottId = i;
             assert(has_ott_id());
         }
         void del_ott_id() {
-            ottId = LONG_MAX;
+            ottId = std::numeric_limits<OttId>::max();
         }
         // non-empty only for internals that are labelled with names that are NOT taxLabels
         const namestring_t & get_name() const {
@@ -243,7 +243,7 @@ class RootedTreeNode {
         node_type * rSib = nullptr;
         node_type * parent = nullptr;
         namestring_t name;     // non-empty only for internals that are labelled with names that are NOT taxLabels
-        long ottId = LONG_MAX; // present for every leaf. UINT_MAX for internals labeled with taxlabels
+        OttId ottId = std::numeric_limits<OttId>::max(); // present for every leaf. UINT_MAX for internals labeled with taxlabels
         T data;
     private:
         RootedTreeNode<T>(const RootedTreeNode<T> &) = delete;

@@ -196,8 +196,8 @@ inline int tree_processing_main(OTCLI & otCLI,
 }
 
 template<typename Tree>
-inline std::set<long> get_all_ott_ids(const Tree& taxonomy) {
-    std::set<long> o;
+inline OttIdSet get_all_ott_ids(const Tree& taxonomy) {
+    OttIdSet o;
     for (auto nd : iter_node_const(taxonomy)) {
         if (nd->has_ott_id()) {
             o.insert(nd->get_ott_id());
@@ -207,7 +207,7 @@ inline std::set<long> get_all_ott_ids(const Tree& taxonomy) {
 }
 
 template<>
-inline std::set<long> get_all_ott_ids(const TreeMappedWithSplits &taxonomy) {
+inline OttIdSet get_all_ott_ids(const TreeMappedWithSplits &taxonomy) {
     return taxonomy.get_root()->get_data().des_ids;
 }
  
@@ -220,7 +220,7 @@ class TaxonomyDependentTreeProcessor {
         using tree_type = T;
 
         std::unique_ptr<T> taxonomy;
-        std::set<long> ottIds;
+        OttIdSet ottIds;
 
         virtual bool process_taxonomy_tree(OTCLI & otCLI) {
             ottIds = get_all_ott_ids(*taxonomy);

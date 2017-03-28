@@ -49,7 +49,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     
     std::unique_ptr<TreeMappedWithSplits> toCheck;
     int numErrors = 0;
-    std::map<const NodeWithSplits *, std::set<long> > aPrioriProblemNodes;
+    std::map<const NodeWithSplits *, OttIdSet > aPrioriProblemNodes;
     std::map<const NodeWithSplits *, unsigned char> supportedNodes;
     std::map<const NodeWithSplits *, std::set<std::size_t> > supportedBy;
     // true is default. False means that the expansion of a tip does not create
@@ -373,13 +373,13 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         if (toCheck == nullptr) {
             throw OTCError("Designator files (if used) must be passed in after the tree to check");
         }
-        std::list<std::set<long> > dl = parse_designators_file(fp);
+        std::list<OttIdSet > dl = parse_designators_file(fp);
         for (auto d : dl) {
             markSuspectNode(d);
         }
     }
 
-    void markSuspectNode(const std::set<long> & designators) {
+    void markSuspectNode(const OttIdSet & designators) {
         const NodeWithSplits * mrca = find_mrca_from_id_set(*toCheck, designators, -1);
         aPrioriProblemNodes[mrca] = designators;
     }
@@ -439,7 +439,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                              const TreeMappedWithSplits & tree,
                              const std::set<const NodeWithSplits *> & expandedTips) {
         assert(toCheck != nullptr);
-        std::map<const NodeWithSplits *, std::set<long> > restrictedDesIds;
+        std::map<const NodeWithSplits *, OttIdSet > restrictedDesIds;
         if (inTheProcessOfAnalyzingTax) {
             identifySupportedNodesTaxo(tree);
         } else {
@@ -454,7 +454,7 @@ struct FindUnsupportedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
 
     void identifySupportedNodes(OTCLI & otCLI,
                                 const TreeMappedWithSplits & tree,
-                                const std::map<const NodeWithSplits *, std::set<long> > & inducedNdToEffDesId,
+                                const std::map<const NodeWithSplits *, OttIdSet > & inducedNdToEffDesId,
                                 const std::set<const NodeWithSplits *> & expandedTips) {
         for (auto pd : inducedNdToEffDesId) {
             checkNodeForSupport(otCLI, pd.first, pd.second, tree, inducedNdToEffDesId, expandedTips);

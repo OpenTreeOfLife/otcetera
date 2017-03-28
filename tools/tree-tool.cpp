@@ -50,17 +50,17 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description tree("Tree options");
     tree.add_options()
-        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
-        ("prune,p", value<std::vector<long> >()->composing(),"OTT ids of taxa to prune")
-        ("slice,s", value<std::vector<long> >()->composing(),"OTT ids of root and taxa to prune")
+        ("root,r", value<OttId>(), "OTT id of root node of subtree to keep")
+        ("prune,p", value<std::vector<OttId> >()->composing(),"OTT ids of taxa to prune")
+        ("slice,s", value<std::vector<OttId> >()->composing(),"OTT ids of root and taxa to prune")
         ;
 
     options_description output("Output options");
     output.add_options()
         ("high-degree-nodes", value<long>(), "Show the top <arg> high-degree nodes.")
-        ("degree-of",value<long>(), "Show the degree of node <arg>")
-        ("children-of",value<long>(), "List the children of node <arg>")
-        ("parent-of",value<long>(), "List the parent of node <arg>")
+        ("degree-of",value<OttId>(), "Show the degree of node <arg>")
+        ("children-of",value<OttId>(), "List the children of node <arg>")
+        ("parent-of",value<OttId>(), "List the parent of node <arg>")
         ("count-nodes","Show the number of nodes")
         ("count-leaves","Show the number of leaves")
         ("show-leaves","Show the number of leaves")
@@ -83,10 +83,10 @@ variables_map parse_cmd_line(int argc,char* argv[])
     return vm;
 }
 
-long n_nodes(const Tree_t& T) {
+std::size_t n_nodes(const Tree_t& T) {
 #pragma clang diagnostic ignored  "-Wunused-variable"
 #pragma GCC diagnostic ignored  "-Wunused-variable"
-    long count = 0;
+    std::size_t count = 0;
     for(auto nd: iter_post_const(T)){
         count++;
     }
@@ -94,15 +94,17 @@ long n_nodes(const Tree_t& T) {
 }
 
 void show_nodes(const Tree_t& T) {
-    for(auto nd: iter_post_const(T))
-	if (nd->get_name().size())
-	    std::cout<<nd->get_name()<<"\n";
+    for(auto nd: iter_post_const(T)) {
+    	if (nd->get_name().size()) {
+    	    std::cout << nd->get_name() << "\n";
+        }
+    }
 }
 
-long n_leaves(const Tree_t& T) {
+std::size_t n_leaves(const Tree_t& T) {
 #pragma clang diagnostic ignored  "-Wunused-variable"
 #pragma GCC diagnostic ignored  "-Wunused-variable"
-    long count = 0;
+    std::size_t count = 0;
     for(auto nd: iter_leaf_const(T)){
         count++;
     }
@@ -161,7 +163,7 @@ unique_ptr<Tree_t> get_tree(const string& filename)
     return std::move(trees[0]);
 }
 
-Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, long root_ott_id)
+Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, OttId root_ott_id)
 {
     for(auto nd: iter_pre(tree))
         if (nd->has_ott_id() and nd->get_ott_id() == root_ott_id)
@@ -179,7 +181,7 @@ Tree_t::node_type* find_node_by_name(Tree_t& tree, const string& name)
     throw OTCError()<<"Can't find node with name '"<<name<<"' in tree '"<<tree.get_name()<<"'";
 }
 
-unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long root_ott_id)
+unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, OttId root_ott_id)
 {
     auto root = find_node_by_ott_id(*tree, root_ott_id);
     root->detach_this_node();
@@ -189,8 +191,8 @@ unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, long r
 }
 
 unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
-                              long root_ott_id,
-                              const std::vector<long> & tips) {
+                              OttId root_ott_id,
+                              const std::vector<OttId> & tips) {
     for (auto t_ott_id : tips) {
         auto tn = find_node_by_ott_id(*tree, t_ott_id);
         if (tn && !tn->is_tip()) {
@@ -210,7 +212,7 @@ unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
 
 void show_high_degree_nodes(const Tree_t& tree, int n)
 {
-    std::multimap<long,std::string> nodes;
+    std::multimap<OttId,std::string> nodes;
     for(auto nd: iter_pre_const(tree))
     {
         auto outdegree = nd->get_out_degree();
@@ -319,16 +321,16 @@ int main(int argc, char* argv[])
 
         if (args.count("root"))
         {
-            long root = args["root"].as<long>();
+            OttId root = args["root"].as<OttId>();
             tree = truncate_to_subtree_by_ott_id(std::move(tree), root);
         }
         if (args.count("slice"))
         {
-            std::vector<long> slice = args["slice"].as<std::vector<long> >();
+            std::vector<OttId> slice = args["slice"].as<std::vector<OttId> >();
             if (slice.empty()) {
                 throw OTCError() << "Expecting a root ID followed by a OTT Ids to slice from the tree";
             }
-            long root = slice[0];
+            OttId root = slice[0];
             slice.erase(slice.begin());
             tree = slice_tree(std::move(tree), root, slice);
         }
@@ -337,16 +339,16 @@ int main(int argc, char* argv[])
             long n = args["high-degree-nodes"].as<long>();
             show_high_degree_nodes(*tree, n);
         } else if (args.count("degree-of")) {
-            long n = args["degree-of"].as<long>();
+            OttId n = args["degree-of"].as<OttId>();
             auto nd = find_node_by_ott_id(*tree, n);
             std::cout<<nd->get_out_degree()<<"\n";
         } else if (args.count("children-of")) {
-            long n = args["children-of"].as<long>();
+            OttId n = args["children-of"].as<OttId>();
             auto nd = find_node_by_ott_id(*tree, n);
             for(auto c = nd->get_first_child(); c; c = c->get_next_sib())
                 std::cout<<c->get_name()<<"\n";
         } else if (args.count("parent-of")) {
-            long n = args["parent-of"].as<long>();
+            OttId n = args["parent-of"].as<OttId>();
             auto nd = find_node_by_ott_id(*tree, n);
             if (nd->get_parent())
                 std::cout<<nd->get_parent()->get_name()<<"\n";

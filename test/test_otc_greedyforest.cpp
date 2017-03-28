@@ -36,7 +36,7 @@ class TestValidTreeStruct {
             Tree_t fakeScaffold;
             auto r = fakeScaffold.create_root();
             auto & fsd = fakeScaffold.get_data().ott_id_to_node;
-            std::set<long> ids;
+            OttIdSet ids;
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
                 const OttIdSet & td = tree.get_root()->get_data().des_ids;
@@ -56,7 +56,7 @@ class TestValidTreeStruct {
                                           fakeScaffold};
             GreedyBandedForest<NodeWithSplits, NodeWithSplits> gpf{-1};
             int treeInd = 0;
-            long groupInd = 0;
+            OttId groupInd = 0;
             for (const auto & tp : tv) {
                 const Tree_t & tree = *tp;
                 const OttIdSet * incGroup = nullptr;

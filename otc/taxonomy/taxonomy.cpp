@@ -23,6 +23,8 @@ namespace fs = boost::filesystem;
 #include "otc/taxonomy/flags.h"
 #include "otc/config_file.h"
 
+#include "otc/otc_base_includes.h"
+
 using namespace otc;
 
 using std::string;
@@ -75,14 +77,14 @@ TaxonomyRecord::TaxonomyRecord(const string& line_)
     rank_strings.insert(string(rank));
 }
 
-const TaxonomyRecord& Taxonomy::record_from_id(long id) const {
+const TaxonomyRecord& Taxonomy::record_from_id(OttId id) const {
     auto loc = index.find(id);
     if (loc == index.end()) {
         auto loc2 = forwards.find(id);
         if (loc2 == forwards.end()) {
             throw OTCError() << "ID " << id << " not in taxonomy or forwarding list";
         }
-        long newid = loc2->second;
+        OttId newid = loc2->second;
         loc = index.find(newid);
         // If id is in the forwarding table, then newid should be in the taxonomy
         assert(loc != index.end());
@@ -90,14 +92,14 @@ const TaxonomyRecord& Taxonomy::record_from_id(long id) const {
     return (*this)[loc->second];
 }
 
-TaxonomyRecord& Taxonomy::record_from_id(long id) {
+TaxonomyRecord& Taxonomy::record_from_id(OttId id) {
     auto loc = index.find(id);
     if (loc == index.end()) {
         auto loc2 = forwards.find(id);
         if (loc2 == forwards.end()) {
             throw OTCError() << "ID " << id <<" not in taxonomy or forwarding list";
         }
-        long newid = loc2->second;
+        OttId newid = loc2->second;
         loc = index.find(newid);
         // If id is in the forwarding table, then newid should be in the taxonomy
         assert(loc != index.end());
@@ -105,7 +107,7 @@ TaxonomyRecord& Taxonomy::record_from_id(long id) {
     return (*this)[loc->second];
 }
 
-long Taxonomy::map(long old_id) const {
+OttId Taxonomy::map(OttId old_id) const {
     if (index.count(old_id)) {
         return old_id;
     }
@@ -173,7 +175,7 @@ const std::regex ott_version_pattern("^([.0-9]+)draft.*");
 
 Taxonomy::Taxonomy(const string& dir,
                    bitset<32> cf,
-                   long kr)
+                   OttId kr)
     :keep_root(kr),
      cleaning_flags(cf),
      path(dir),
@@ -268,28 +270,28 @@ void Taxonomy::read_forwards_file(string filepath) {
             }
             const char* temp2 = temp+1;
             long new_id = std::strtoul(temp2, &temp, 10);
-            forwards[old_id] = new_id;
+            forwards[check_ott_id_size(old_id)] = check_ott_id_size(new_id);
         }
     }
     // walk through the full forwards table, and try to find any that are multiple
     //    step paths of forwards.
-    unordered_set<long> need_iterating;
+    unordered_set<OttId> need_iterating;
     for (auto old_new : forwards) {
         auto new_id = old_new.second;
         if (new_id >= 0) {
-            long nnid = this->map(new_id);
+            OttId nnid = this->map(new_id);
             if (nnid != new_id) {
                 need_iterating.insert(old_new.first);
             }
         }
     }
     while (!need_iterating.empty()) {
-        unordered_set<long> scratch;
+        unordered_set<OttId> scratch;
         for (auto old_id: need_iterating) {
             auto fm_it = forwards.find(old_id);
             assert(fm_it != forwards.end());
             auto curr_new_id = fm_it->second;
-            long nnid = this->map(fm_it->second);
+            OttId nnid = this->map(fm_it->second);
             assert(nnid != fm_it->second);
             fm_it->second = nnid;
             if (nnid > 0 && nnid != this->map(nnid)) {
@@ -332,11 +334,11 @@ std::string get_taxonomy_dir(const variables_map& args) {
     return *dir;
 }
 
-long root_ott_id_from_file(const string& filename) {
+OttId root_ott_id_from_file(const string& filename) {
     boost::property_tree::ptree pt;
     boost::property_tree::ini_parser::read_ini(filename, pt);
     try {
-        return pt.get<long>("synthesis.root_ott_id");
+        return pt.get<OttId>("synthesis.root_ott_id");
     } catch (...) {
         return -1;
     }
@@ -344,9 +346,9 @@ long root_ott_id_from_file(const string& filename) {
 
 Taxonomy load_taxonomy(const variables_map& args) {
     string taxonomy_dir = get_taxonomy_dir(args);
-    long keep_root = -1;
+    OttId keep_root = -1;
     if (args.count("root")) {
-        keep_root = args["root"].as<long>();
+        keep_root = args["root"].as<OttId>();
     } else if (args.count("config")) {
         keep_root = root_ott_id_from_file(args["config"].as<string>());
     }
@@ -362,9 +364,9 @@ Taxonomy load_taxonomy(const variables_map& args) {
 
 RichTaxonomy load_rich_taxonomy(const variables_map& args) {
     string taxonomy_dir = get_taxonomy_dir(args);
-    long keep_root = -1;
+    OttId keep_root = -1;
     if (args.count("root")) {
-        keep_root = args["root"].as<long>();
+        keep_root = args["root"].as<OttId>();
     } else if (args.count("config")) {
         keep_root = root_ott_id_from_file(args["config"].as<string>());
     }
@@ -492,10 +494,11 @@ void process_source_info_vec(const std::vector<std::string> & vs,
         std::size_t pos;
         //LOG(INFO) << src_entry;
         try {
-            unsigned long foreign_id  = std::stoul(id_str.c_str(), &pos);
-            if (pos < id_str.length()) {
+            long raw_foreign_id  = std::stoul(id_str.c_str(), &pos);
+            if (pos < id_str.length() || raw_foreign_id < 0) {
                 throw OTCError() << "Could not convert ID to unsigned long \"" << src_entry << "\"";
             }
+            OttId foreign_id = check_ott_id_size(raw_foreign_id);
             if (prefix == "ncbi") {
                 tree_data.ncbi_id_map[foreign_id] = this_node;
             } else if (prefix == "gbif") {
@@ -588,8 +591,9 @@ void RichTaxonomy::read_synonyms() {
         end[4] = start[0] + line.length() - 3 ; // -3 for the \t|\t
         char *temp;
         string name = string(start[0], end[0] - start[0]);
-        unsigned long id = std::strtoul(start[1], &temp, 10);
-        const RTRichTaxNode * primary = tree_data.id2node.at(id);
+        unsigned long raw_id = std::strtoul(start[1], &temp, 10);
+        OttId ott_id = check_ott_id_size(raw_id);
+        const RTRichTaxNode * primary = tree_data.id2node.at(ott_id);
         string sourceinfo = string(start[4], end[4] - start[4]);
         
         this->synonyms.emplace_back(name, primary, sourceinfo);
@@ -614,13 +618,33 @@ void RichTaxonomy::read_synonyms() {
     }
 }
 
-RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, long kr)
+
+template<typename T, typename V>
+T max_key(const std::unordered_map<T, V> & m) {
+    bool first = false;
+    T maxkey = 0;
+    for (auto el : m) {
+        if (first || el.first > maxkey) {
+            first = false;
+            maxkey = el.first;
+        }
+    }
+    return maxkey;
+}
+
+RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     :Taxonomy(dir, cf, kr) {
     auto nodeNamer = [](const auto&){return string();};
     this->tree = get_tree<RichTaxTree>(nodeNamer);
     set_traversal_entry_exit(*tree);
     _fill_ids_to_suppress_set();
     this->read_synonyms();
+    const auto & td = tree->get_data();
+    LOG(INFO) << "last # in ncbi_id_map = " << max_key(td.ncbi_id_map);
+    LOG(INFO) << "last # in gbif_id_map = " <<  max_key(td.gbif_id_map);
+    LOG(INFO) << "last # in worms_id_map = " <<  max_key(td.worms_id_map);
+    LOG(INFO) << "last # in if_id_map = " <<  max_key(td.if_id_map);
+    LOG(INFO) << "last # in irmng_id_map = " <<  max_key(td.irmng_id_map);
     // Could call:
     // index.clear(); 
     // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move

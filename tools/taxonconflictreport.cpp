@@ -3,7 +3,7 @@ using namespace otc;
 
 template<typename T, typename U>
 void getInducedInformativeGroupingMaps(const T & tree1,
-                                       std::map<std::set<long>, std::list<const typename T::node_type *> > & inducedSplitMaps,
+                                       std::map<OttIdSet, std::list<const typename T::node_type *> > & inducedSplitMaps,
                                        const U & tree2) {
     const auto inducingLabels = get_ott_id_set_for_leaves(tree2);
     auto mrca = find_mrca_using_des_ids(tree1, inducingLabels);
@@ -26,13 +26,13 @@ void getInducedInformativeGroupingMaps(const T & tree1,
 
 template<typename T>
 inline void getInformativeGroupingMaps(const T & tree2,
-                                      std::map<std::set<long>, const typename T::node_type *> & tree2Splits) {
+                                      std::map<OttIdSet, const typename T::node_type *> & tree2Splits) {
     auto t2r = tree2.get_root();
     for (auto n : iter_pre_internal_const(tree2)) {
         if (n == t2r) {
             continue;
         }
-        const std::set<long> & x = n->get_data().des_ids;
+        const auto & x = n->get_data().des_ids;
         if (x.size() > 1) {
             tree2Splits[x] = n;
         }
@@ -46,16 +46,16 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
                                        const U & tree2,
                                        bool firstIsSuperset) {
     assert(firstIsSuperset);
-    std::map<std::set<long>, std::list<const typename T::node_type *> > inducedSplitMap;
-    std::map<std::set<long>, const typename U::node_type *> tree2Splits;
+    std::map<OttIdSet, std::list<const typename T::node_type *> > inducedSplitMap;
+    std::map<OttIdSet, const typename U::node_type *> tree2Splits;
     getInducedInformativeGroupingMaps(tree1, inducedSplitMap, tree2);
     getInformativeGroupingMaps(tree2, tree2Splits);
     unsigned long nm = 0;
     for (const auto & icsm : inducedSplitMap) {
         const auto & ics = icsm.first;
         bool found = false;
-        std::list<std::set<long> > extraIds;
-        std::list<std::set<long> > missingIds;
+        std::list<OttIdSet > extraIds;
+        std::list<OttIdSet > missingIds;
         std::list<const typename U::node_type *> nodeList;
         for (const auto & t2sP : tree2Splits) {
             const auto & t2s = t2sP.first;
@@ -63,8 +63,8 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
                 found = true;
             } else {
                 if (!are_compatible_des_id_sets(t2s, ics)) {
-                    std::set<long> e = set_difference_as_set(t2s, ics);
-                    std::set<long> m = set_difference_as_set(ics, t2s);
+                    auto e = set_difference_as_set(t2s, ics);
+                    auto m = set_difference_as_set(ics, t2s);
                     assert(!e.empty() || !m.empty());
                     extraIds.push_back(e);
                     missingIds.push_back(m);

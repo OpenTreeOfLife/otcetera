@@ -115,7 +115,7 @@ class RootedForest {
     public:
     using node_type = RootedTreeNode<T>;
     using tree_type = FTree<T, U>;
-    RootedForest(long rootOttID);
+    RootedForest(OttId rootOttID);
     RootedForest(const RootedForest &) = delete;
     RootedForest & operator=(const RootedForest &) = delete;
     //accessors/queries:
@@ -131,7 +131,7 @@ class RootedForest {
     const std::map<std::size_t, tree_type> & get_trees() const {
         return trees;
     }
-    bool is_attached(long ottId) const;
+    bool is_attached(OttId ottId) const;
     bool is_in_a_band(const node_type * ) const;
     bool has_nodes_excluded_from_it(const node_type * ) const;
     bool node_is_attached(RootedTreeNode<T> & n) const;
@@ -146,7 +146,7 @@ class RootedForest {
     void register_tree_for_node(node_type * nd, FTree<T, U> * ftree) {
         node_to_tree[nd] = ftree;
     }
-    void register_leaf(long ottId);
+    void register_leaf(OttId ottId);
     void write_forest_dot_to_fn(const std::string &fn) const;
 #if defined(DO_DEBUG_CHECKS)
     void debug_invariants_check() const;
@@ -199,7 +199,7 @@ class RootedForest {
     typedef std::set<OttIdSet> SetOfOTTIdSets;
     std::map<OttIdSet, SetOfOTTIdSets> added_splits_by_leaf_set;
     std::vector<PhyloStatement> novel_accepted_phylo_statements_in_order;// TMP debugging
-    const long rootID;
+    const OttId rootID;
 };
 
 template<typename T, typename U>

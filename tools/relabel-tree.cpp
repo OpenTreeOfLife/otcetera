@@ -63,7 +63,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     taxonomy.add_options()
         ("config,c",value<string>(),"Config file containing flags to filter")
         ("clean",value<string>(),"Comma-separated string of flags to filter")
-        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
+        ("root,r", value<OttId>(), "OTT id of root node of subtree to keep")
         ("taxonomy", value<string>(),"Directory name for the taxonomy")
         ;
 
@@ -104,10 +104,10 @@ variables_map parse_cmd_line(int argc,char* argv[])
     return vm;
 }
 
-long n_nodes(const Tree_t& T) {
+std::size_t n_nodes(const Tree_t& T) {
 #pragma clang diagnostic ignored  "-Wunused-variable"
 #pragma GCC diagnostic ignored  "-Wunused-variable"
-    long count = 0;
+    std::size_t count = 0;
     for(auto nd: iter_post_const(T)) {
         count++;
     }

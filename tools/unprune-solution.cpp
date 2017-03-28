@@ -38,13 +38,13 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     const auto n_internal_new = n_internal(solution) - n_internal_confirmed;
     // 1. First, remove nodes from the taxonomy that do not occur in the solution
     // 1a. Index solution nodes by OttId.
-    map<long, Tree_t::node_type*> ott_to_sol;
+    map<OttId, Tree_t::node_type*> ott_to_sol;
     for (auto nd: iter_post(solution)){
         if (nd->has_ott_id()){
             ott_to_sol[nd->get_ott_id()] = nd;
         }
     }
-    map<long, Tree_t::node_type*> ott_to_tax;
+    map<OttId, Tree_t::node_type*> ott_to_tax;
     for (auto nd: iter_post(taxonomy)){
         if (nd->has_ott_id()) {
             ott_to_tax[nd->get_ott_id()] = nd;

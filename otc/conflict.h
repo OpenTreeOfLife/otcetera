@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+namespace otc {
+
 template <typename node_t>
 int n_include_tips(const node_t* node) {
     return node->get_data().n_include_tips;
@@ -104,10 +106,10 @@ inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node) {
 // * A node of T1 can conflict with several nodes of T2.
 template <typename Tree1_t, typename Tree2_t>
 void perform_conflict_analysis(const Tree1_t& tree1,
-                               const std::unordered_map<long, const typename Tree1_t::node_type*>& ottid_to_node1,
+                               const std::unordered_map<OttId, const typename Tree1_t::node_type*>& ottid_to_node1,
 			       std::function<const typename Tree1_t::node_type*(const typename Tree1_t::node_type*,const typename Tree1_t::node_type*)> MRCA_of_pair1,
                                const Tree2_t& tree2,
-                               const std::unordered_map<long, const typename Tree2_t::node_type*>& ottid_to_node2,
+                               const std::unordered_map<OttId, const typename Tree2_t::node_type*>& ottid_to_node2,
 			       std::function<const typename Tree2_t::node_type*(const typename Tree2_t::node_type*,const typename Tree2_t::node_type*)> MRCA_of_pair2,
                                node_logger_t log_supported_by,
                                node_logger_t log_partial_path_of,
@@ -263,4 +265,6 @@ void perform_conflict_analysis(const Tree1_t& tree1,
     }
 }
 
+
+} // namespace otc
 #endif

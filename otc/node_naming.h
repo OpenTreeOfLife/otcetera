@@ -9,8 +9,8 @@
 
 namespace otc {
 
-std::string make_name(const std::string& prefix, long number);
-std::string make_mrca_name(long number1, long number2);
+std::string make_name(const std::string& prefix, OttId number);
+std::string make_mrca_name(OttId number1, OttId number2);
 template<typename N>
 OttId smallest_child(const N* node);
 template<typename N>
@@ -96,7 +96,7 @@ void name_unnamed_nodes(T & tree) {
         delete nd;
     }
     
-    long id = 1;
+    OttId id = 1;
     for(auto nd:iter_pre(tree)) {
         if (nd->has_ott_id()) {
             nd->set_name("ott"+std::to_string(nd->get_ott_id()));
@@ -117,11 +117,11 @@ void name_unnamed_nodes(T & tree) {
     }
 }
 
-inline std::string make_name(const std::string& pre, long number) {
+inline std::string make_name(const std::string& pre, OttId number) {
     return pre + std::to_string(number);
 }
 
-inline std::string make_mrca_name(long number1, long number2) {
+inline std::string make_mrca_name(OttId number1, OttId number2) {
     const static std::string mrca_prefix = "mrcaott";
     return mrca_prefix + std::to_string(number1) + "ott" + std::to_string(number2);
 }

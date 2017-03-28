@@ -34,16 +34,16 @@ std::string strip_surrounding_whitespace(const std::string &n);
 //  elements. With the delimiter, consecutive delimiters will lead to an empty string
 std::list<std::string> split_string(const std::string &s);
 std::list<std::string> split_string(const std::string &s, const char delimiter);
-std::list<std::set<long> > parse_designators_file(const std::string &fp);
-std::set<long> parse_list_of_ott_ids(const std::string &fp);
+std::list<OttIdSet > parse_designators_file(const std::string &fp);
+OttIdSet parse_list_of_ott_ids(const std::string &fp);
 
 QuotingRequirementsEnum determine_newick_quoting_requirements(const std::string & s);
 std::string add_newick_quotes(const std::string &s);
 std::string blanks_to_underscores(const std::string &s);
 void write_escaped_for_newick(std::ostream & out, const std::string & n);
-void write_ott_id_set(std::ostream & out, const char *indent, const std::set<long> &fir, const char * sep);
-void db_write_ott_id_set(const char * label, const std::set<long> &fir);
-void write_ott_id_set_diff(std::ostream & out, const char *indent, const std::set<long> &fir, const char *firN, const std::set<long> & sec, const char *secN);
+void write_ott_id_set(std::ostream & out, const char *indent, const OttIdSet &fir, const char * sep);
+void db_write_ott_id_set(const char * label, const OttIdSet &fir);
+void write_ott_id_set_diff(std::ostream & out, const char *indent, const OttIdSet &fir, const char *firN, const OttIdSet & sec, const char *secN);
 template<typename T>
 std::set<T> container_as_set(const std::vector<T> &);
 template<typename T>
@@ -64,7 +64,7 @@ template<typename T>
 inline bool vcontains(const std::vector<T> & container, const T & key);
 template<typename T, typename U>
 std::set<T> keys(const std::map<T, U> & container);
-std::set<long> parse_delim_separated_ids(const std::string &str, const char delimiter);
+OttIdSet parse_delim_separated_ids(const std::string &str, const char delimiter);
 
 void append_include_leaf_set_as_newick(const char *fn, const OttIdSet & inc, const OttIdSet & ls);
 template <typename T>
@@ -124,9 +124,9 @@ inline std::set<T> keys(const std::map<T, U> & container) {
 }
 
 inline void write_ott_id_set(std::ostream & out,
-                        const char *indent,
-                        const std::set<long> &fir,
-                        const char * sep) {
+                             const char *indent,
+                             const OttIdSet &fir,
+                             const char * sep) {
     for (auto rIt = fir.begin(); rIt != fir.end(); ++rIt) {
         if (rIt != fir.begin()) {
             out << sep;
@@ -135,7 +135,7 @@ inline void write_ott_id_set(std::ostream & out,
     }
 }
 inline void db_write_ott_id_set(const char * label,
-                          const std::set<long> &fir) {
+                                const OttIdSet &fir) {
     if (!debugging_output_enabled) {
         return;
     }
@@ -145,9 +145,9 @@ inline void db_write_ott_id_set(const char * label,
 }
 inline void write_ott_id_set_diff(std::ostream & out,
                             const char *indent,
-                            const std::set<long> &fir,
+                            const OttIdSet &fir,
                             const char *firN,
-                            const std::set<long> & sec,
+                            const OttIdSet & sec,
                             const char *secN) {
     for (const auto & rIt : fir) {
         if (sec.find(rIt) == sec.end()) {

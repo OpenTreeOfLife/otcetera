@@ -280,17 +280,22 @@ inline std::string extract_string(const nlohmann::json &j, const char * field) {
     throw OTCError() << "Expected \"" << field << "\" field to be a string.\n";
 }
 
-inline OttId extract_unsigned_long(const nlohmann::json &j, const char * field) {
+inline long extract_unsigned_long(const nlohmann::json &j, const char * field) {
     auto dc_el = j.find(field);
     if (dc_el == j.end()) {
         throw OTCError() << "Missing \"" << field << "\" field.\n";
     }
     if (dc_el->is_number()) {
-        return dc_el->get<OttId>();
+        return dc_el->get<long>();
     }
     throw OTCError() << "Expected \"" << field << "\" field to be a non-negative integer.\n";
 }
 
+
+inline OttId extract_ott_id(const nlohmann::json &j, const char * field) {
+    long ol = extract_unsigned_long(j, field);
+    return check_ott_id_size(ol);
+}
 inline void to_json(nlohmann::json &j, const SourceTreeId & sti) {
     j = nlohmann::json{{"git_sha", sti.git_sha}, {"study_id", sti.study_id}, {"tree_id", sti.tree_id}};
 }

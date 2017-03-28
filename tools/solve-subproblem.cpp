@@ -66,8 +66,8 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
 void add_names(Tree_t& tree, const vector<Tree_t::node_type const*>& taxa);
-set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map);
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t> >& trees, const set<long>&, bool verbose);
+set<int> remap_ids(const set<OttId>& s1, const map<OttId,int>& id_map);
+unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t> >& trees, const set<OttId>&, bool verbose);
 unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
 
 namespace po = boost::program_options;
@@ -297,7 +297,7 @@ void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy)
     }
 }
 
-Tree_t::node_type* find_mrca_of_desids(const set<long>& ids, const std::unordered_map<long, Tree_t::node_type*>& summaryOttIdToNode)
+Tree_t::node_type* find_mrca_of_desids(const set<OttId>& ids, const std::unordered_map<OttId, Tree_t::node_type*>& summaryOttIdToNode)
 {
     int first = *ids.begin();
     auto node = summaryOttIdToNode.at(first);
@@ -414,7 +414,7 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa)
     }
 }
 
-set<int> remap_ids(const set<long>& s1, const map<long,int>& id_map) {
+set<int> remap_ids(const set<OttId>& s1, const map<OttId,int>& id_map) {
     set<int> s2;
     for(auto x: s1) {
         auto it = id_map.find(x);
@@ -437,9 +437,9 @@ vector<typename Tree_t::node_type const*> get_siblings(typename Tree_t::node_typ
 }
 
 template<typename Tree_T>
-map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const Tree_t& tree, const set<long>& incertae_sedis)
+map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const Tree_t& tree, const set<OttId>& incertae_sedis)
 {
-    map<typename Tree_t::node_type const*, set<long>> exclude;
+    map<typename Tree_t::node_type const*, set<OttId>> exclude;
 
     // Set exclude set for root node to the empty set.
     exclude[tree.get_root()]; 	    
@@ -451,7 +451,7 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 	if (nd == tree.get_root()) continue;
 	
 	// the exclude set contain the EXCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
-	set<long> ex = exclude.at(nd->get_parent());
+	set<OttId> ex = exclude.at(nd->get_parent());
 	for(auto nd2: get_siblings<Tree_t>(nd)) {
 	    if (not incertae_sedis.count(nd2->get_ott_id())) {
 		auto& ex_sib = nd2->get_data().des_ids;
@@ -464,22 +464,22 @@ map<typename Tree_t::node_type const*, set<long>> construct_exclude_sets(const T
 }
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<long>& incertae_sedis, bool verbose) {
+unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
     auto all_leaves = taxonomy->get_root()->get_data().des_ids;
     // index -> id
-    vector<long> ids;
+    vector<OttId> ids;
     // id -> index
-    map<long,int> id_map;
-    for(long id: all_leaves) {
+    map<OttId,int> id_map;
+    for(OttId id: all_leaves) {
         int i = ids.size();
         id_map[id] = i;
         ids.push_back(id);
         assert(id_map[ids[i]] == i);
         assert(ids[id_map[id]] == id);
     }
-    auto remap = [&id_map](const set<long>& argIds) {return remap_ids(argIds, id_map);};
+    auto remap = [&id_map](const set<OttId>& argIds) {return remap_ids(argIds, id_map);};
     vector<int> all_leaves_indices;
     for(int i=0;i<all_leaves.size();i++) {
         all_leaves_indices.push_back(i);
@@ -581,11 +581,11 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     std::unique_ptr<Tree_t> retTree(new Tree_t());
     retTree->create_root();
     if (use_ids) {
-        map<long,string> names;
+        map<OttId,string> names;
         for(const auto& tree: trees) {
             for(auto nd: iter_pre_const(*tree)) {
                 if (nd->is_tip()) {
-                    long id = nd->get_ott_id();
+                    OttId id = nd->get_ott_id();
                     auto it = names.find(id);
                     if (it == names.end()) {
                         names[id] = nd->get_name();
@@ -651,7 +651,7 @@ int main(int argc, char *argv[])
 	}
 
 	//2.5 Load Incertae Sedis info
-	std::set<long> incertae_sedis;
+	OttIdSet incertae_sedis;
 	if (args.count("incertae-sedis"))
 	{
 	    auto filename = args["incertae-sedis"].as<string>();
@@ -660,7 +660,7 @@ int main(int argc, char *argv[])
 		throw OTCError()<<"Cannot open incertae sedis file '"<<fs::absolute(filename)<<"'";
 	    while (file)
 	    {
-		long i;
+		OttId i;
 		file >> i;
 		incertae_sedis.insert(i);
 	    }

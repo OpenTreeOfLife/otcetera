@@ -39,7 +39,7 @@ void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta) {
     sta.num_source_studies = extract_unsigned_long(j, "num_source_studies");
     sta.num_source_trees = extract_unsigned_long(j, "num_source_trees");
     sta.num_tips = extract_unsigned_long(j, "num_tips");
-    sta.root_ott_id = extract_unsigned_long(j, "root_ott_id");
+    sta.root_ott_id = extract_ott_id(j, "root_ott_id");
     sta.root_taxon_name = extract_string(j, "root_taxon_name");
     sta.synth_id = extract_string(j, "synth_id");
     sta.taxonomy_version = extract_string(j, "taxonomy_version");

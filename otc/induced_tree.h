@@ -5,7 +5,9 @@
 #include <memory>
 #include "otc/tree.h"
 #include "otc/tree_operations.h"
+#include "otc/otc_base_includes.h"
 
+namespace otc {
 template <typename N>
 inline int depth(const N* node) {
     assert(node->get_data().depth > 0);
@@ -174,8 +176,8 @@ get_induced_tree(const std::vector<const typename Tree_In_t::node_type*>& leaves
 
 // Get a list of leaves of tree 1 that are also in tree 2.
 template <typename Tree_t>
-std::vector<const typename Tree_t::node_type*> get_induced_leaves(const Tree_t& T1, const std::unordered_map<long, const typename Tree_t::node_type*>& nodes1,
-								  const Tree_t& T2, const std::unordered_map<long, const typename Tree_t::node_type*>& nodes2)
+std::vector<const typename Tree_t::node_type*> get_induced_leaves(const Tree_t& T1, const std::unordered_map<OttId, const typename Tree_t::node_type*>& nodes1,
+								  const Tree_t& T2, const std::unordered_map<OttId, const typename Tree_t::node_type*>& nodes2)
 {
   std::vector<const typename Tree_t::node_type*> leaves;
 
@@ -204,9 +206,9 @@ std::vector<const typename Tree_t::node_type*> get_induced_leaves(const Tree_t& 
 
 // Get the subtree of T1 connecting the leaves of T1 that are also in T2.
 template <typename Tree_In_t, typename Tree_Out_t>
-std::unique_ptr<Tree_Out_t> get_induced_tree(const Tree_In_t& T1, const std::unordered_map<long, const typename Tree_In_t::node_type*>& nodes1,
+std::unique_ptr<Tree_Out_t> get_induced_tree(const Tree_In_t& T1, const std::unordered_map<OttId, const typename Tree_In_t::node_type*>& nodes1,
 					     std::function<const typename Tree_In_t::node_type*(const typename Tree_In_t::node_type*,const typename Tree_In_t::node_type*)> MRCA_of_pair,
-					     const Tree_In_t& T2, const std::unordered_map<long, const typename Tree_In_t::node_type*>& nodes2)
+					     const Tree_In_t& T2, const std::unordered_map<OttId, const typename Tree_In_t::node_type*>& nodes2)
 {
     auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
 
@@ -217,4 +219,5 @@ std::unique_ptr<Tree_Out_t> get_induced_tree(const Tree_In_t& T1, const std::uno
 }
 
 
+}// namespace otc
 #endif

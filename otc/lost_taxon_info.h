@@ -77,7 +77,7 @@ class LostTaxonDetails {
     attachment_to_node_set & get_attach_node_to_attached_set() {
         return attach_node_to_attached_set;
     }
-    long ott_id = 0L;
+    OttId ott_id = 0;
     const N * mrca = nullptr;
     // for each attachment point, we store which subtrees for this taxon attach there.
     attachment_to_node_set attach_node_to_attached_set;

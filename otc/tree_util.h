@@ -66,10 +66,10 @@ inline T find_rightmost_in_subtree(T nd) {
 //      the "leftmost" descendant of `nd` and the leftmost descendant of the rightmost child of `nd`
 //      OR the Id of `nd` twice (if `nd` is a tip)
 template<typename T>
-inline std::pair<long, long> get_mrca_ott_id_pair(T nd) {
+inline std::pair<OttId, OttId> get_mrca_ott_id_pair(T nd) {
     assert(nd != nullptr);
     if (nd->is_tip()) {
-        return std::pair<long, long>(nd->get_ott_id(), nd->get_ott_id());
+        return std::pair<OttId, OttId>(nd->get_ott_id(), nd->get_ott_id());
     }
     T f = find_leftmost_in_subtree(nd);
     T r = nd->get_last_child();
@@ -79,11 +79,11 @@ inline std::pair<long, long> get_mrca_ott_id_pair(T nd) {
     assert(f->is_tip());
     assert(r->is_tip());
     if (f->has_ott_id() && r->has_ott_id()) {
-        return std::pair<long, long>(f->get_ott_id(), r->get_ott_id());
+        return std::pair<OttId, OttId>(f->get_ott_id(), r->get_ott_id());
     }
-    long fl = (f->has_ott_id() ? f->get_ott_id() : -1);
-    long rl = (r->has_ott_id() ? r->get_ott_id() : -2);
-    return std::pair<long, long>(fl, rl);
+    OttId fl = (f->has_ott_id() ? f->get_ott_id() : -1);
+    OttId rl = (r->has_ott_id() ? r->get_ott_id() : -2);
+    return std::pair<OttId, OttId>(fl, rl);
 }
 
 /// returns a string of "ott#" for any node with an OTT ID, "EMPTY_NODE" for a tip without an ID
@@ -119,7 +119,7 @@ inline std::string get_mrca_designator(const T &nd) {
 /// Writes a representation of the `extra` or `missing` IDs from the node `ndRef`. 
 //  get_designator is used to refer to the node in the output stream
 template<typename T>
-void emit_conflict_details(std::ostream & out, const T & ndRef, const std::set<long> & extras,  const std::set<long> & missing) {
+void emit_conflict_details(std::ostream & out, const T & ndRef, const OttIdSet & extras,  const OttIdSet & missing) {
     out << "    split: " << get_designator(ndRef);
     out << ";    extras in phylo: ";
     for (auto o : extras) {

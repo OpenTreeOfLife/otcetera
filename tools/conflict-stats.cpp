@@ -79,11 +79,11 @@ struct hash<pair<T,U>>
 using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
 
-void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode);
+void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& summaryOttIdToNode);
 string get_source_node_name_if_available(const Tree_t::node_type* node);
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
-void compute_summary_leaves(Tree_t& tree, const map<long,Tree_t::node_type*>& summaryOttIdToNode) {
+void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& summaryOttIdToNode) {
     for(auto leaf: iter_leaf(tree)) {
         summary_node(leaf) = summaryOttIdToNode.at(leaf->get_ott_id());
     }
@@ -154,7 +154,7 @@ void add_element(set<pair<string, string>>& s,
 }
 
 void mapNextTree1(const Tree_t& summaryTree,
-		  const map<long, const Tree_t::node_type*>& constSummaryOttIdToNode,
+		  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
 		  const Tree_t & tree,
 		  stats& s) //isTaxoComp is third param
 {
@@ -194,7 +194,7 @@ void mapNextTree1(const Tree_t& summaryTree,
 }
 
 void mapNextTree2(const Tree_t& summaryTree,
-		  const map<long, const Tree_t::node_type*>& constSummaryOttIdToNode,
+		  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
 		  const Tree_t & tree,
 		  stats& s) //isTaxoComp is third param
 {
@@ -234,7 +234,7 @@ void mapNextTree2(const Tree_t& summaryTree,
 }
 
 void mapNextTree(const Tree_t& summaryTree,
-		 const map<long, const Tree_t::node_type*>& constSummaryOttIdToNode,
+		 const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
 		 const Tree_t & tree,
 		 stats& s, //isTaxoComp is third param
 		 bool sw)

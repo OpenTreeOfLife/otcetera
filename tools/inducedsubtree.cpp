@@ -16,7 +16,7 @@ using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
 
 struct InducedSubtreeState
   : public TaxonomyDependentTreeProcessor<Tree_t> {
-    std::unordered_set<long> inducingIds;
+    std::unordered_set<OttId> inducingIds;
     virtual ~InducedSubtreeState(){}
 
     // write the induced tree to the output stream

@@ -61,7 +61,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     taxonomy.add_options()
         ("config,c",value<string>(),"Config file containing flags to filter")
         ("clean",value<string>(),"Comma-separated string of flags to filter")
-        ("root,r", value<long>(), "OTT id of root node of subtree to keep")
+        ("root,r", value<OttId>(), "OTT id of root node of subtree to keep")
         ("taxonomy", value<string>(),"Directory name for the taxonomy")
         ;
 
@@ -85,11 +85,11 @@ variables_map parse_cmd_line(int argc,char* argv[])
     return vm;
 }
 
-long get_ott_id_from_string(const string& s)
+OttId get_ott_id_from_string(const string& s)
 {
     if (s.size() <= 3 or s[0] != 'o' or s[1] != 't' or s[2] != 't')
 	throw OTCError()<<"String '"<<s<<"' does not begin with 'ott'";
-    return std::stol(s.substr(3));
+    return check_ott_id_size(std::stol(s.substr(3)));
 }
 
 void add_name_and_rank(json& broken_taxa, const Taxonomy& taxonomy)

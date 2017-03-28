@@ -113,8 +113,8 @@ inline nlohmann::json sources_vec_as_json(const std::vector<std::string> & vs) {
 
 struct TaxonomyRecord {
     std::string line;
-    long id = 0;
-    long parent_id = 0;
+    OttId id = 0;
+    OttId parent_id = 0;
     int parent_index = 0;
     boost::string_ref name;
     boost::string_ref rank;
@@ -146,10 +146,10 @@ inline std::vector<int> get_index_vec(std::size_t sz) {
 
 class Taxonomy: public std::vector<TaxonomyRecord> {
     protected:
-    std::unordered_map<long, int> index;
-    std::unordered_map<long, long> forwards;
-    std::unordered_set<long> deprecated;
-    long keep_root;
+    std::unordered_map<OttId, int> index;
+    std::unordered_map<OttId, OttId> forwards;
+    std::unordered_set<OttId> deprecated;
+    OttId keep_root;
     std::bitset<32> cleaning_flags;
     std::string path;
     std::string version;
@@ -165,15 +165,15 @@ class Taxonomy: public std::vector<TaxonomyRecord> {
         return version_number;
     }
 
-    TaxonomyRecord& record_from_id(long id);
+    TaxonomyRecord& record_from_id(OttId id);
     
-    const TaxonomyRecord& record_from_id(long id) const;
+    const TaxonomyRecord& record_from_id(OttId id) const;
     
-    TaxonomyRecord& record_from_unforwarded_id(long id) {
+    TaxonomyRecord& record_from_unforwarded_id(OttId id) {
         return at(index.at(id));
     }
     
-    const TaxonomyRecord& record_from_unforwarded_id(long id) const {
+    const TaxonomyRecord& record_from_unforwarded_id(OttId id) const {
         return at(index.at(id));
     }
 
@@ -188,13 +188,13 @@ class Taxonomy: public std::vector<TaxonomyRecord> {
     //    -2 if known to be deprecated.
     //  Note that relying on -1 and -2 requires having read in the deprecated.tsv
     //    file (which is optional)
-    long map(long id) const;
+    OttId map(OttId id) const;
 
     /// Write out a taxonomy to directory dirname
     void write(const std::string& dirname);
 
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-    Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), long keep_root=-1);
+    Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), OttId keep_root=-1);
     protected:
     void read_forwards_file(std::string filepath);
 };
@@ -253,11 +253,11 @@ class TaxonomicJuniorSynonym {
 
 class RTRichTaxTreeData {
     public:
-    std::unordered_map<unsigned long, const RTRichTaxNode *> ncbi_id_map;
-    std::unordered_map<unsigned long, const RTRichTaxNode *> gbif_id_map;
-    std::unordered_map<unsigned long, const RTRichTaxNode *> worms_id_map;
-    std::unordered_map<unsigned long, const RTRichTaxNode *> if_id_map;
-    std::unordered_map<unsigned long, const RTRichTaxNode *> irmng_id_map;
+    std::unordered_map<OttId, const RTRichTaxNode *> ncbi_id_map;
+    std::unordered_map<OttId, const RTRichTaxNode *> gbif_id_map;
+    std::unordered_map<OttId, const RTRichTaxNode *> worms_id_map;
+    std::unordered_map<OttId, const RTRichTaxNode *> if_id_map;
+    std::unordered_map<OttId, const RTRichTaxNode *> irmng_id_map;
     std::unordered_map<std::bitset<32>, nlohmann::json> flags2json;
     std::map<boost::string_ref, const RTRichTaxNode *> name_to_node; // null if homonym, then check homonym2node
 
@@ -272,7 +272,7 @@ struct RichTaxonomy : public Taxonomy {
         return *tree;
     }
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-    RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), long kr = -1);
+    RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), OttId kr = -1);
     RichTaxonomy(RichTaxonomy &&) = default;
     const RTRichTaxNode * taxon_from_id(OttId ott_id) const {
         //Returns node * or nullptr if not found.
@@ -373,7 +373,7 @@ std::string format_with_taxonomy(const std::string& orig, const std::string& for
 std::string format_without_taxonomy(const std::string& orig, const std::string& format);
 char format_needs_taxonomy(const std::string& format);
 
-long root_ott_id_from_file(const std::string& filename);
+OttId root_ott_id_from_file(const std::string& filename);
 std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
 Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
 RichTaxonomy load_rich_taxonomy(const boost::program_options::variables_map& args);

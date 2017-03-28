@@ -67,7 +67,11 @@ inline bool extract_from_request(const nlohmann::json & j,
     auto opt = j.find(opt_name);
     if (opt != j.end()) {
         if (opt->is_number()) {
-            setting = opt->get<int>();
+            long ls = opt->get<long>();
+            if (ls >= std::numeric_limits<int>::max()) {
+              return set_type_expectations_error(opt_name, "a non-huge integer", response, status_code);
+            }
+            setting = static_cast<int>(ls);
             return true;
         }
         return set_type_expectations_error(opt_name, "an integer", response, status_code);

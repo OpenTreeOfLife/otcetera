@@ -30,7 +30,7 @@ typedef LostTaxonDetails<Node_t> LostTaxInfo;
 typedef std::map<OttId, LostTaxInfo > LostTaxonMap;
 
 struct RTNodePartialDesSet {
-    std::set<long> des_ids;
+    OttIdSet des_ids;
     OttIdSet * nonexcluded_ids = nullptr; // union of IDs that descend from any child of an ancestor marked as incertae sedis
     OttId smallest_child  = 0;
     int tax_level = -1;
@@ -100,10 +100,10 @@ using std::vector;
 
 // adds ott_id to the des_ids field of every node from first_node down to
 // its ancestor anc_and_last_node (inclusive).
-void add_to_des_ids_for_anc(long ott_id,
+void add_to_des_ids_for_anc(OttId ott_id,
                             Node_t *first_node,
                             Node_t *anc_and_last_node,
-                            const map<long, childParPair> & ott_to_tax) {
+                            const map<OttId, childParPair> & ott_to_tax) {
     assert(first_node);
     while (true) {
         first_node->get_data().des_ids.insert(ott_id);
@@ -327,7 +327,7 @@ size_t incorporate_higher_taxon(N* taxon,
                                 N* root_supertree_node,
                                 UnpruneStats & unprune_stats,
                                 bool record_in_ltm,
-                                const map<long, childParPair> & ott_to_tax,
+                                const map<OttId, childParPair> & ott_to_tax,
                                 map<N *, set<N*> > & non_mono_to_register) {
     assert(taxon);
     assert(root_supertree_node);
@@ -425,10 +425,10 @@ typedef pair<Node_t *, Node_t *> TaxSolnNdPair;
 
 void register_covering_of_incertae_sedis(OttId effective_tip_id, 
                                           Node_t * effective_tip_taxon_node,
-                                          const map<long, Node_t *> & ott_to_supertree, 
+                                          const map<OttId, Node_t *> & ott_to_supertree, 
                                           const UnpruneStats & unprune_stats,
                                           std::map<Node_t *, std::set<TaxSolnNdPair> > & curr_slice_inc_sed_map,
-                                          const map<long, childParPair> & ott_to_tax) {
+                                          const map<OttId, childParPair> & ott_to_tax) {
     const auto & inc_sed_internals = unprune_stats.inc_sed_internals;
     auto anc = ott_to_tax.at(effective_tip_id).second;
     effective_tip_taxon_node->get_data().des_ids.insert(effective_tip_id);
@@ -468,8 +468,8 @@ typedef tuple<node_set_t, node_set_t, dec_inc_sed_map_t, node_set_t> leaf_inc_se
 leaf_inc_sed_tuple_t detect_leaves_for_slice(Node_t * root_taxon,
        OttId ott_id,
        const OttIdSet & supertree_des_ids,
-       const map<long, childParPair> & ott_to_tax,
-       const map<long, Node_t *> & ott_to_supertree,
+       const map<OttId, childParPair> & ott_to_tax,
+       const map<OttId, Node_t *> & ott_to_supertree,
        UnpruneStats & unprune_stats
        ) {
     typedef pair<OttId, OttId> CarriedIDRealId;
@@ -598,7 +598,7 @@ inc_sed_class_pair classify_incertae_sedis_for_slice(OttId ott_id,
 // If a node in supertree_leaves higher taxon, then graft on it unsampled children here. 
 // \returns the number of supertree_leaves expanded.
 size_t expand_slice_tips(const node_set_t & supertree_leaves,
-                         const map<long, childParPair> & ott_to_tax) {
+                         const map<OttId, childParPair> & ott_to_tax) {
     size_t num_expanded = 0;
     for (auto l : supertree_leaves) {
         if (l->is_tip()) {
@@ -626,7 +626,7 @@ size_t expand_slice_tips(const node_set_t & supertree_leaves,
 }
 
 void record_broken_taxa(const map<Node_t *, node_set_t > & non_mono_to_register,
-                        map<long, Node_t *> & ott_to_supertree,
+                        map<OttId, Node_t *> & ott_to_supertree,
                         UnpruneStats & unprune_stats) {
     for (auto nmel : non_mono_to_register) {
         auto nm = nmel.first;
@@ -662,8 +662,8 @@ void record_broken_taxa(const map<Node_t *, node_set_t > & non_mono_to_register,
 // Returns the set of IDs that should  
 template <typename N>
 void unprune_slice(N *root_supertree_node,
-                   const map<long, childParPair> & ott_to_tax, 
-                   map<long, N*> & ott_to_supertree, 
+                   const map<OttId, childParPair> & ott_to_tax, 
+                   map<OttId, N*> & ott_to_supertree, 
                    UnpruneStats & unprune_stats) {
     assert(root_supertree_node);
     assert(root_supertree_node->has_ott_id());
@@ -890,7 +890,7 @@ void fill_nonexcluded_id_fields(Tree_t & taxonomy, const OttIdSet & incertae_sed
 // This info is used to create the "non-excluded" sets, but it is expensive to do
 //    on the whole taxonomy, so we just do it for subtrees rooted at an 
 //    incertae sedis taxon.
-void fill_des_ids_for_incertae_sedis_only(const map<long, childParPair> & ott_to_tax,
+void fill_des_ids_for_incertae_sedis_only(const map<OttId, childParPair> & ott_to_tax,
                                           const OttIdSet & incertae_sedis_ids, 
                                           UnpruneStats & unprune_stats) {
     for (auto ist_id: incertae_sedis_ids) {
@@ -920,7 +920,7 @@ void fill_des_ids_for_incertae_sedis_only(const map<long, childParPair> & ott_to
 //    fields in `unprune_stats`
 map<OttId, childParPair> index_nodes_by_id(Tree_t & taxonomy,
                                            UnpruneStats & unprune_stats) {
-    map<long, childParPair> ott_to_tax;
+    map<OttId, childParPair> ott_to_tax;
     OttIdSet & moi = unprune_stats.monotypic_ott_ids;
     for (auto nd: iter_post(taxonomy)){
         if (nd->has_ott_id()) {
@@ -946,7 +946,7 @@ map<OttId, childParPair> index_nodes_by_id(Tree_t & taxonomy,
 //    taxon are sampled in the supertree
 void find_incertae_sedis_in_supertree(Tree_t & taxonomy,
                                  Tree_t & supertree,
-                                 const map<long, childParPair> & ott_to_tax,
+                                 const map<OttId, childParPair> & ott_to_tax,
                                  UnpruneStats & unprune_stats) {
     auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto snd: iter_leaf(supertree)) {
@@ -975,7 +975,7 @@ void find_incertae_sedis_in_supertree(Tree_t & taxonomy,
 // results are stored in unprune_stats. This relies on having been filled...
 void find_broken_incertae_sedis_des(Tree_t & taxonomy,
                                         Tree_t & supertree,
-                                        const map<long, childParPair> & ott_to_tax,
+                                        const map<OttId, childParPair> & ott_to_tax,
                                         UnpruneStats & unprune_stats) {
     const auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto ttm_it: to_tips_map) {
@@ -1001,9 +1001,9 @@ void find_broken_incertae_sedis_des(Tree_t & taxonomy,
 void unprune_by_postorder_traversal(Tree_t & taxonomy,
                           Tree_t & supertree,
                           const OttIdSet & incertae_sedis_ids,
-                          const map<long, childParPair> & ott_to_tax,
+                          const map<OttId, childParPair> & ott_to_tax,
                           UnpruneStats & unprune_stats) {
-    map<long, Node_t*> ott_to_sol;
+    map<OttId, Node_t*> ott_to_sol;
     const auto snVec = all_nodes(supertree);
     // postorder walk over supertree. Every time we find a node assigned to a taxon
     //  we augment the slice of the tree that is rooted at that node (and is the
@@ -1260,12 +1260,12 @@ int main(int argc, char *argv[]) {
         string line;
         while (std::getline(incert_sed_id_file, line)) {
             char* temp;
-            long ott_id = std::strtoul(line.c_str(), &temp, 10);
+            long raw_ott_id = std::strtoul(line.c_str(), &temp, 10);
             if (*temp != '\0' && *temp != '\n') {
                 std::cerr << "Expecting just numbers and newlines in incertae sedis file found: " << line << "\n";
                 return 1;
             }
-            incertae_sedis_ids.insert(ott_id);
+            incertae_sedis_ids.insert(check_ott_id_size(raw_ott_id));
         }
     }
     auto & supertree = *(trees.at(0));

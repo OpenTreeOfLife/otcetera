@@ -3,6 +3,7 @@
 
 #include <map>
 #include <set>
+#include <limits>
 #include "otc/otc_base_includes.h"
 #include "otc/util.h"
 #include "otc/tree_iter.h"
@@ -70,9 +71,9 @@ void remove_des_ids_from_node_and_anc(T * nd, const OttIdSet & oid) {
 // used post-suppression of monotypic taxa to create a map
 //  from the alias to the original OTT ID.
 template<typename T>
-inline std::map<long, long> generate_id_remapping(const T & tree) {
+inline std::map<OttId, OttId> generate_id_remapping(const T & tree) {
     const auto & id2ndMap = tree.get_data().ott_id_to_node;
-    std::map<long, long> r;
+    std::map<OttId, OttId> r;
     for (const auto & idNdPair : id2ndMap) {
         const auto & inID = idNdPair.first;
         const auto outID = idNdPair.second->get_ott_id();
@@ -94,7 +95,7 @@ inline std::unique_ptr<TreeMappedWithSplits> clone_tree(const TreeMappedWithSpli
         newRoot->set_ott_id(r->get_ott_id());
         std::map<const NodeWithSplits *, NodeWithSplits *> templateToNew;
         templateToNew[r]= newRoot;
-        std::map<long, NodeWithSplits *> & newMap = rawTreePtr->get_data().ott_id_to_node;
+        std::map<OttId, NodeWithSplits *> & newMap = rawTreePtr->get_data().ott_id_to_node;
         rawTreePtr->get_data().des_id_sets_contain_internals = tree.get_data().des_id_sets_contain_internals;
         for (auto nd : iter_pre_const(tree)) {
             auto p = nd->get_parent();
@@ -128,14 +129,14 @@ void sort_children_by_lowest_des_ott_id(T *nd);
 
 template<typename T>
 void sort_children_by_lowest_des_ott_id(T *deepest) {
-    std::map<T *, long> node2Id;
+    std::map<T *, OttId> node2Id;
     std::set<T *> internals;
     for (auto nd : iter_post_n(*deepest)) {
         if (nd->is_tip()) {
             assert(nd->has_ott_id());
             node2Id[nd] = nd->get_ott_id();
         } else {
-            long lm = LONG_MAX;
+            OttId lm = std::numeric_limits<OttId>::max();
             for (auto c : iter_child_const(*nd)) {
                 auto coid = node2Id.at(const_cast<T *>(c));
                 lm = std::min(lm, coid);
@@ -145,7 +146,7 @@ void sort_children_by_lowest_des_ott_id(T *deepest) {
         }
     }
     for (auto nd : internals) {
-        std::map<long, T *> id2child;
+        std::map<OttId, T *> id2child;
         for (auto c : iter_child(*nd)) {
             auto coid = node2Id.at(c);
             auto i2csize = id2child.size();
@@ -193,25 +194,25 @@ inline bool can_be_resolved_to_display_only_inc_exc_group(const T *nd, const Ott
 /// Functions below here are hackier in that they codify systems for embedding IDs in newick labels
 
 template<typename T>
-inline std::map<std::string, long> create_ids_from_names(const T & taxonomy);
+inline std::map<std::string, OttId> create_ids_from_names(const T & taxonomy);
 template<typename T>
-inline std::map<std::string, long> create_ids_from_names_from_trees(const T& treeColl);
+inline std::map<std::string, OttId> create_ids_from_names_from_trees(const T& treeColl);
 // awkward should merge the following 2 functions and use template specialization
 template<typename T>
-void set_ids_from_names_and_refresh(T& tree, const std::map<std::string, long>& name_to_id);
+void set_ids_from_names_and_refresh(T& tree, const std::map<std::string, OttId>& name_to_id);
 template<typename T>
-void set_ids_from_names(T& tree, const std::map<std::string, long>& name_to_id);
+void set_ids_from_names(T& tree, const std::map<std::string, OttId>& name_to_id);
 template<typename T>
-void fill_id_map_from_names(const T & taxonomy, std::map<std::string, long> & name_to_id, long &nextId, bool allowRep);
-std::string add_ott_id(const std::string & s, long id);
+void fill_id_map_from_names(const T & taxonomy, std::map<std::string, OttId> & name_to_id, OttId &nextId, bool allowRep);
+std::string add_ott_id(const std::string & s, OttId id);
 template<typename T>
 inline void relabel_nodes_with_ott_id(T& tree);
 /// Create a mapping from name -> id.
 /// throws exception for repeated names or unnamed tips
 template<typename T>
-inline std::map<std::string, long> create_ids_from_names(const T& taxonomy) {
-    long id = 1;
-    std::map<std::string, long> name_to_id;
+inline std::map<std::string, OttId> create_ids_from_names(const T& taxonomy) {
+    OttId id = 1;
+    std::map<std::string, OttId> name_to_id;
     fill_id_map_from_names(taxonomy, name_to_id, id, false);
     return name_to_id;
 }
@@ -219,9 +220,9 @@ inline std::map<std::string, long> create_ids_from_names(const T& taxonomy) {
 /// Create a mapping from name -> id.
 /// throws exception for unnamed tips - does NOT verify that a name only occurs once in a tree!
 template<typename T>
-inline std::map<std::string, long> create_ids_from_names_from_trees(const T& treeColl) {
-    long id = 1;
-    std::map<std::string, long> name_to_id;
+inline std::map<std::string, OttId> create_ids_from_names_from_trees(const T& treeColl) {
+    OttId id = 1;
+    std::map<std::string, OttId> name_to_id;
     for (const auto & tree : treeColl) {
         fill_id_map_from_names(*tree, name_to_id, id, true);
     }
@@ -230,7 +231,7 @@ inline std::map<std::string, long> create_ids_from_names_from_trees(const T& tre
 
 
 template<typename T>
-inline void fill_id_map_from_names(const T & tree, std::map<std::string, long> & name_to_id, long & nextId, bool allowRep) {
+inline void fill_id_map_from_names(const T & tree, std::map<std::string, OttId> & name_to_id, OttId & nextId, bool allowRep) {
     for(auto nd: iter_post_const(tree)) {
         if (nd->get_name().size()) {
             const std::string name = nd->get_name();
@@ -250,7 +251,7 @@ inline void fill_id_map_from_names(const T & tree, std::map<std::string, long> &
 
 /// Set ids on the tree based on the name
 template<typename T>
-inline void set_ids_from_names_and_refresh(T& tree, const std::map<std::string,long> & name_to_id) {
+inline void set_ids_from_names_and_refresh(T& tree, const std::map<std::string,OttId> & name_to_id) {
     for(auto nd: iter_post(tree)){
         if (nd->get_name().size()) {
             const auto name = nd->get_name();
@@ -270,7 +271,7 @@ inline void set_ids_from_names_and_refresh(T& tree, const std::map<std::string,l
 
 /// Set ids on the tree based on the name
 template<typename T>
-inline void set_ids_from_names(T& tree, const std::map<std::string,long> & name_to_id) {
+inline void set_ids_from_names(T& tree, const std::map<std::string,OttId> & name_to_id) {
     for(auto nd: iter_post(tree)){
         if (nd->get_name().size()) {
             const auto name = nd->get_name();
@@ -287,7 +288,7 @@ inline void set_ids_from_names(T& tree, const std::map<std::string,long> & name_
 }
 
 
-inline std::string add_ott_id(const std::string & s, long id) {
+inline std::string add_ott_id(const std::string & s, OttId id) {
     std::string tag = "ott" + std::to_string(id);
     if (not s.size()) {
         return tag;

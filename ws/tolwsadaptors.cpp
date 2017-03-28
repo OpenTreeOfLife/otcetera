@@ -274,7 +274,7 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs,
     if (status_code != OK) {
         return nullptr;
     }
-    long ott_id;
+    OttId ott_id;
     string source_id;
     bool supplied_ott_id = false;
     bool supplied_source_id = false;
@@ -319,9 +319,18 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs,
         string id_str = *pref_id.rbegin();
         try {
             std::size_t pos;
-            long foreign_id  = std::stol(id_str.c_str(), &pos);
+            long raw_foreign_id  = std::stol(id_str.c_str(), &pos);
             if (pos < id_str.length()) {
                 rbody = "Expecting the ID portion of the source_id to be numeric. Found: ";
+                rbody += id_str;
+                status_code = 400;
+                return nullptr;
+            }
+            OttId foreign_id;
+            try {
+                foreign_id = check_ott_id_size(raw_foreign_id);
+            } catch (OTCError &) {
+                rbody = "The ID portion of the source_id was too large. Found: ";
                 rbody += id_str;
                 status_code = 400;
                 return nullptr;

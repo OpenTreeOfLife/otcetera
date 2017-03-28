@@ -12,10 +12,10 @@
 namespace otc {
 
 struct ParsingRules {
-    const std::set<long> * ott_id_validator = nullptr;
+    const OttIdSet * ott_id_validator = nullptr;
     bool include_internal_nodes_in_des_id_sets = false;
     bool set_ott_idForInternals = true; // TEMP. Do we want to just remove them after processing, rather than adding a conditional to the parsing logic...
-    const std::map<long, long> * id_remapping = nullptr;
+    const std::map<OttId, OttId> * id_remapping = nullptr;
     bool prune_unrecognized_input_tips = false;
     bool require_ott_ids = true;  // Every label must include an OttId
     bool set_ott_ids = true;      // Read and set OttIds for labels that have them.
@@ -341,7 +341,7 @@ class NewickTokenizer {
 };
 
 /// Get OTT Id from a string of the form (ott######) or (.......[ \t_]ott#####).
-inline long ott_id_from_name(const std::string & n) {
+inline long long_ott_id_from_name(const std::string & n) {
     if (n.empty()) {
         return -1;
     }
@@ -361,9 +361,13 @@ inline long ott_id_from_name(const std::string & n) {
     if (currInd < 3) {
         return -2;
     }
-    if (currInd >= 3 and strncmp(c+currInd-3,"ott",3) != 0) return -2;
+    if (currInd >= 3 and strncmp(c+currInd-3,"ott",3) != 0) {
+        return -2;
+    }
     // Valid separators between ott####### and previous characters.
-    if (currInd > 3 and strchr("_ \t",c[currInd-4]) == 0) return -2;
+    if (currInd > 3 and strchr("_ \t",c[currInd-4]) == 0) {
+        return -2;
+    }
     long conv = -2;
     auto r = char_ptr_to_long(c + currInd, &conv);
     assert(r);
@@ -371,7 +375,7 @@ inline long ott_id_from_name(const std::string & n) {
 }
 
 /// Get the OTT Id from a string ###### consisting of digits only, with no whitespace or other characters.
-inline long string_to_ott_id(const std::string & n) {
+inline long string_to_long_ott_id(const std::string & n) {
     if (n.empty()) {
         return -1;
     }
