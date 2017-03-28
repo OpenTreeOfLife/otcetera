@@ -718,13 +718,64 @@ using cnode_type = ConflictTree::node_type;
 
 struct conflict_stats
 {
-    map<string, set<const cnode_type*>> supported_by;
-    map<string, set<const cnode_type*>> partial_path_of;
-    map<string, set<const cnode_type*>> conflicts_with;
-    map<string, set<const cnode_type*>> resolved_by;
-    map<string, set<const cnode_type*>> resolves;
-    map<string, set<const cnode_type*>> terminal;
+    map<string, string> supported_by;
+    map<string, string> partial_path_of;
+    map<string, pair<string, const cnode_type*>> conflicts_with;
+    map<string, string> resolved_by;
+    map<string, string> resolves;
+    map<string, string> terminal;
 
+    void add_supported_by(const cnode_type* node2, const cnode_type* node1)
+    {
+	auto result = supported_by.insert({node1->get_name(), node2->get_name()});
+	assert(result.second);
+    }
+
+
+    void add_partial_path_of(const cnode_type* node2, const cnode_type* node1)
+    {
+	auto result = partial_path_of.insert({node1->get_name(), node2->get_name()});
+	assert(result.second);
+    }
+
+
+    void add_resolved_by(const cnode_type* node2, const cnode_type* node1)
+    {
+	auto result = resolved_by.insert({node1->get_name(), node2->get_name()});
+	assert(result.second);
+    }
+
+
+    void add_resolves(const cnode_type* node2, const cnode_type* node1)
+    {
+	auto result = resolves.insert({node1->get_name(), node2->get_name()});
+	assert(result.second);
+    }
+
+
+    void add_terminal(const cnode_type* node2, const cnode_type* node1)
+    {
+	auto result = terminal.insert({node1->get_name(), node2->get_name()});
+	assert(result.second);
+    }
+
+
+    void add_conflicts_with(const cnode_type* node2, const cnode_type* node1)
+    {
+	auto& name1 = node1->get_name();
+	auto& name2 = node2->get_name();
+	auto present = conflicts_with.insert({name1,{name2,node2}});
+	if (present.second)
+	{
+	    const cnode_type* node2b = present.first->second.second;
+	    if (depth(node2) < depth(node2b))
+	    {
+		conflicts_with.erase(present.first);
+		conflicts_with.insert({name1,{name2,node2}});
+	    }
+	}
+    }
+    json to_json() const;
 };
 
 using tnode_type = RTRichTaxNode;
@@ -734,7 +785,21 @@ int depth(const tnode_type* node)
     return node->get_data().tax_record->depth;
 }
 
-void conflict_with_taxonomy(const ConflictTree& query_tree,
+json conflict_stats::to_json() const
+{
+    json nodes;
+    for(auto& x: supported_by)
+    {
+	json j;
+	j["witness"] = x.second;
+	// if name is ottXXX, then j["witness_name"] = lookup(XXX).name; 
+	j["status"] = "supported_by";
+	nodes[x.first] = j;
+    }
+    return nodes;
+}
+
+json conflict_with_taxonomy(const ConflictTree& query_tree,
 			    const RichTaxTree& taxonomy)
 {
     conflict_stats stats;
@@ -742,11 +807,11 @@ void conflict_with_taxonomy(const ConflictTree& query_tree,
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
     std::function<const tnode_type*(const tnode_type*,const tnode_type*)> taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {return mrca_from_depth(n1,n2);};
 
-    auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.supported_by[node1->get_name()].insert(node2);};
-    auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.partial_path_of[node1->get_name()].insert(node2);};
-    auto log_conflicts_with  = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.conflicts_with[node1->get_name()].insert(node2);};
-    auto log_resolved_by     = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.resolved_by[node1->get_name()].insert(node2);};
-    auto log_terminal        = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.terminal[node1->get_name()].insert(node2);};
+    auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_supported_by(node2, node1);};
+    auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_partial_path_of(node2, node1);};
+    auto log_conflicts_with  = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_conflicts_with(node2, node1);};
+    auto log_resolved_by     = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_resolved_by(node2, node1);};
+    auto log_terminal        = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_terminal(node2, node1);};
 
     auto ottid_to_query_node    = otc::get_ottid_to_const_node_map(query_tree);
     auto ottid_to_taxonomy_node = otc::get_ottid_to_const_node_map(taxonomy);
@@ -759,7 +824,7 @@ void conflict_with_taxonomy(const ConflictTree& query_tree,
 			      log_resolved_by,
 			      log_terminal);
 
-    auto log_resolves        = [&stats](const cnode_type* node1, const cnode_type* node2) {stats.resolves[node1->get_name()].insert(node2);};
+    auto log_resolves        = [&stats](const cnode_type* node1, const cnode_type* node2) {stats.add_resolves(node2, node1);};
     auto do_nothing          = [](const cnode_type*, const cnode_type*) {};
 
     perform_conflict_analysis(taxonomy, ottid_to_taxonomy_node, taxonomy_mrca,
@@ -770,9 +835,10 @@ void conflict_with_taxonomy(const ConflictTree& query_tree,
 			      log_resolves,
 			      do_nothing);
     
+    return stats.to_json();
 }
 
-void conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& summary)
+json conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& summary)
 {
     using snode_type = SummaryTree_t::node_type;
 
@@ -781,11 +847,11 @@ void conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& 
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
     std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca = [](const snode_type* n1, const snode_type* n2) {return find_mrca_via_traversal_indices(n1,n2);};
 
-    auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.supported_by[node1->get_name()].insert(node2);};
-    auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.partial_path_of[node1->get_name()].insert(node2);};
-    auto log_conflicts_with  = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.conflicts_with[node1->get_name()].insert(node2);};
-    auto log_resolved_by     = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.resolved_by[node1->get_name()].insert(node2);};
-    auto log_terminal        = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.terminal[node1->get_name()].insert(node2);};
+    auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_supported_by(node2, node1);};
+    auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_partial_path_of(node2, node1);};
+    auto log_conflicts_with  = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_conflicts_with(node2, node1);};
+    auto log_resolved_by     = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_resolved_by(node2, node1);};
+    auto log_terminal        = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.add_terminal(node2, node1);};
 
     auto ottid_to_query_node = otc::get_ottid_to_const_node_map(query_tree);
     auto ottid_to_summary_node = otc::get_ottid_to_const_node_map(summary);
@@ -798,7 +864,7 @@ void conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& 
 			      log_resolved_by,
 			      log_terminal);
 
-    auto log_resolves        = [&stats](const cnode_type* node1, const cnode_type* node2) {stats.resolves[node1->get_name()].insert(node2);};
+    auto log_resolves        = [&stats](const cnode_type* node1, const cnode_type* node2) {stats.add_resolves(node2, node1);};
     auto do_nothing          = [](const cnode_type*, const cnode_type*) {};
 
     perform_conflict_analysis(summary, ottid_to_summary_node, summary_mrca,
@@ -809,6 +875,7 @@ void conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& 
 			      log_resolves,
 			      do_nothing);
     
+    return stats.to_json();
 }
 			   
 
@@ -822,15 +889,17 @@ void conflict_ws_method(const SummaryTree_t& summary,
 			int& status_code )
 {
     ConflictTree query_tree;
+    json j;
     if (tree2s == "ott")
     {
-	conflict_with_taxonomy(query_tree, taxonomy.getTaxTree());
+	j = conflict_with_taxonomy(query_tree, taxonomy.getTaxTree());
     }
     else if (tree2s == "synth")
     {
-	conflict_with_summary(query_tree, summary);
+	j = conflict_with_summary(query_tree, summary);
     }
-
+    response_str = j.dump(1);
+    status_code = OK;
 }
 
 } //namespace otc
