@@ -727,15 +727,20 @@ struct conflict_stats
 
 };
 
+using tnode_type = RTRichTaxNode;
+
+int depth(const tnode_type* node)
+{
+    return node->get_data().tax_record->depth;
+}
+
 void conflict_with_taxonomy(const ConflictTree& query_tree,
 			    const RichTaxTree& taxonomy)
 {
-    using tnode_type = RTRichTaxNode;
-
     conflict_stats stats;
 
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
-    std::function<const tnode_type*(const tnode_type*,const tnode_type*)> taxonomy_mrca;
+    std::function<const tnode_type*(const tnode_type*,const tnode_type*)> taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {return mrca_from_depth(n1,n2);};
 
     auto log_supported_by    = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.supported_by[node1->get_name()].insert(node2);};
     auto log_partial_path_of = [&stats](const cnode_type* node2, const cnode_type* node1) {stats.partial_path_of[node1->get_name()].insert(node2);};
