@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <iterator>
 #include <list>
+#include <unordered_map>
 #include "otc/otc_base_includes.h"
 #include "otc/error.h"
 
@@ -74,7 +75,20 @@ std::ostream& write_separated_collection(std::ostream& o, const std::list<T>& s,
 template <typename T>
 std::ostream& write_separated_collection(std::ostream& o, const std::vector<T>& s, const char * sep);
 
-
+template<typename T, typename V>
+inline T max_numeric_key(const std::unordered_map<T, V> & m) {
+    if (m.empty()) {
+        throw std::out_of_range("empty map in max_numeric_key");
+    }
+    auto m_it = m.begin();
+    T maxkey = m_it->first;
+    for (m_it++; m_it != m.end(); ++m_it) {
+        if (m_it->first > maxkey) {
+            maxkey = m_it->first;
+        }
+    }
+    return maxkey;
+}
 template<typename T>
 inline std::string get_contested_preamble_from_name(const T & nd, const std::string & treeName) {
     std::ostringstream ss;

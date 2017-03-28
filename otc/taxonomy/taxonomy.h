@@ -82,7 +82,7 @@ extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
 extern const std::string empty_string;
 extern const std::set<std::string> indexed_source_prefixes;
 
-inline const std::string & to_string(const TaxonomicRank &r) {
+inline const std::string & rank_to_string(const TaxonomicRank &r) {
     auto i = rank_enum_to_name.find(r);
     if (i == rank_enum_to_name.end()) {
         return empty_string;
@@ -143,20 +143,17 @@ inline std::vector<int> get_index_vec(std::size_t sz) {
     return iv;
 }
 
-
-class Taxonomy: public std::vector<TaxonomyRecord> {
+class BaseTaxonomy {
     protected:
-    std::unordered_map<OttId, int> index;
     std::unordered_map<OttId, OttId> forwards;
-    std::unordered_set<OttId> deprecated;
     OttId keep_root;
     std::bitset<32> cleaning_flags;
     std::string path;
     std::string version;
     std::string version_number;
+    BaseTaxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), OttId keep_root=-1);
+    
     public:
-    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
-
     const std::string & get_version() const {
         return version;
     }
@@ -164,6 +161,14 @@ class Taxonomy: public std::vector<TaxonomyRecord> {
     const std::string & get_version_number() const {
         return version_number;
     }
+};
+
+class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
+    protected:
+    std::unordered_map<OttId, int> index;
+    void read_forwards_file(std::string filepath);
+    public:
+    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
 
     TaxonomyRecord& record_from_id(OttId id);
     
@@ -185,7 +190,7 @@ class Taxonomy: public std::vector<TaxonomyRecord> {
 
     /// Given an OTT ID, forward if necessary and return the current Ott ID.
     //    Returns -1 if not found and not known to be deprecated.
-    //    -2 if known to be deprecated.
+    //    Not implemented yet: return -2 if known to be deprecated.
     //  Note that relying on -1 and -2 requires having read in the deprecated.tsv
     //    file (which is optional)
     OttId map(OttId id) const;
@@ -195,8 +200,7 @@ class Taxonomy: public std::vector<TaxonomyRecord> {
 
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), OttId keep_root=-1);
-    protected:
-    void read_forwards_file(std::string filepath);
+    friend class RichTaxonomy;
 };
 
 class TaxonomicJuniorSynonym;
@@ -205,25 +209,27 @@ class RTRichTaxNodeData {
     public:
     //TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
     //nlohmann::json sources;
-    const TaxonomyRecord * tax_record;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
     std::uint32_t trav_enter = UINT32_MAX;
     std::uint32_t trav_exit = UINT32_MAX;
-    
-    boost::string_ref get_name() const {
-        return tax_record->name;
+    TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
+    std::bitset<32> flags;
+    std::string source_info;
+    boost::string_ref possibly_nonunique_name;
+    boost::string_ref get_nonuniqname() const {
+        return possibly_nonunique_name;
     }
-    boost::string_ref get_uniqname() const {
-        return tax_record->uniqname;
-    }
-    boost::string_ref get_rank() const {
-        return tax_record->rank;
+    const std::string & get_rank() const {
+        return rank_to_string(rank);
     }
     const std::bitset<32> get_flags() const {
-        return tax_record->flags;
+        return flags;
+    }
+    std::vector<std::string> sourceinfoAsVec() const {
+        return comma_separated_as_vec(source_info);
     }
     nlohmann::json get_sources_json() const {
-        auto vs = tax_record->sourceinfoAsVec();
+        auto vs = this->sourceinfoAsVec();
         return sources_vec_as_json(vs);
     }
 };
@@ -263,11 +269,14 @@ class RTRichTaxTreeData {
 
     std::unordered_map<OttId, const RTRichTaxNode *> id2node;
     std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym2node;
+    std::map<std::string, OttIdSet> non_unique_taxon_names;
+    
 };
 
 typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;
 
-struct RichTaxonomy : public Taxonomy {
+class RichTaxonomy: public BaseTaxonomy {
+    public:
     const RichTaxTree & getTaxTree() const {
         return *tree;
     }
@@ -315,10 +324,10 @@ struct RichTaxonomy : public Taxonomy {
 
 
 
-class RTTaxNodeData {
-    public:
-    const TaxonomyRecord * taxonomy_line = nullptr;
-};
+//class RTTaxNodeData {
+//    public:
+//    const TaxonomyRecord * taxonomy_line = nullptr;
+//};
 
 template <typename Node_t, typename TREE>
 void populate_node_from_taxonomy_record(Node_t & nd,
@@ -337,6 +346,8 @@ inline void populate_node_from_taxonomy_record(Node_t & nd,
     nd.set_name(get_name(line));    
 }
 
+#if 0
+No longer used?
 // default behavior is to set ID and Name from line
 template <typename TREE>
 inline void populate_node_from_taxonomy_record(RootedTreeNode<RTTaxNodeData> & nd,
@@ -346,6 +357,7 @@ inline void populate_node_from_taxonomy_record(RootedTreeNode<RTTaxNodeData> & n
     nd.set_ott_id(line.id);
     nd.get_data().taxonomy_line = &line;    
 }
+#endif
 
 
 template <typename Tree_t>

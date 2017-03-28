@@ -11,12 +11,16 @@ namespace otc {
 const int OK = restbed::OK;
 extern TreesToServe tts;
 
+inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
+    return nd_taxon.get_name();
+} 
+
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["tax_sources"] = taxon_data.get_sources_json();
-    taxonrepr["name"] = string(taxon_data.get_name());
-    taxonrepr["uniqname"] = string(taxon_data.get_uniqname());
-    taxonrepr["rank"] = string(taxon_data.get_rank());
+    taxonrepr["name"] = string(taxon_data.get_nonuniqname());
+    taxonrepr["uniqname"] = get_taxon_unique_name(nd_taxon);
+    taxonrepr["rank"] = taxon_data.get_rank();
     taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
 }
 
@@ -389,7 +393,7 @@ class NodeNamerSupportedByStasher {
                 if (tr == nullptr) {
                     throw OTCError() << "OTT Id " << nd->get_ott_id() << " in namer not found in taxonomy! Please report this bug";
                 }
-                string taxon_name = string(tr->get_data().get_uniqname());
+                string taxon_name = get_taxon_unique_name(*tr);
                 if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
                     string ret;
                     ret.reserve(taxon_name.length() + 1 + id_str.length());
@@ -410,10 +414,11 @@ class NodeNamerSupportedByStasher {
             return ret;
         }
         string operator()(const RTRichTaxNode *nd) const {
+            assert(nd != nullptr);
             if (nns == NodeNameStyle::NNS_ID_ONLY) {
                 return ott_id_to_idstr(nd->get_ott_id());
             }
-            const string & taxon_name = string(nd->get_data().get_uniqname());
+            const string & taxon_name = get_taxon_unique_name(*nd);
             if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
                 string ret;
                 string id_str = ott_id_to_idstr(nd->get_ott_id());

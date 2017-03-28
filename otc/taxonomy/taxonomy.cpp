@@ -22,7 +22,7 @@ namespace fs = boost::filesystem;
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
 #include "otc/config_file.h"
-
+#include "otc/util.h"
 #include "otc/otc_base_includes.h"
 
 using namespace otc;
@@ -50,6 +50,100 @@ using po::variables_map;
 namespace otc
 {
 
+
+const map<string, TaxonomicRank> rank_name_to_enum = 
+    {   {"domain", RANK_DOMAIN},
+        {"superkingdom", RANK_SUPERKINGDOM},
+        {"kingdom", RANK_KINGDOM},
+        {"subkingdom", RANK_SUBKINGDOM},
+        {"infrakingdom", RANK_INFRAKINGDOM},
+        {"superphylum", RANK_SUPERPHYLUM},
+        {"phylum", RANK_PHYLUM},
+        {"division", RANK_DIVISION},
+        {"subphylum", RANK_SUBPHYLUM},
+        {"subdivision", RANK_SUBDIVISION},
+        {"infraphylum", RANK_INFRAPHYLUM},
+        {"superclass", RANK_SUPERCLASS},
+        {"class", RANK_CLASS},
+        {"subclass", RANK_SUBCLASS},
+        {"infraclass", RANK_INFRACLASS},
+        {"superorder", RANK_SUPERORDER},
+        {"order", RANK_ORDER},
+        {"suborder", RANK_SUBORDER},
+        {"infraorder", RANK_INFRAORDER},
+        {"parvorder", RANK_PARVORDER},
+        {"superfamily", RANK_SUPERFAMILY},
+        {"family", RANK_FAMILY},
+        {"subfamily", RANK_SUBFAMILY},
+        {"supertribe", RANK_SUPERTRIBE},
+        {"tribe", RANK_TRIBE},
+        {"subtribe", RANK_SUBTRIBE},
+        {"genus", RANK_GENUS},
+        {"subgenus", RANK_SUBGENUS},
+        {"section", RANK_SECTION},
+        {"subsection", RANK_SUBSECTION},
+        {"species group", RANK_SPECIES_GROUP},
+        {"species subgroup", RANK_SPECIES_SUBGROUP},
+        {"species", RANK_SPECIES},
+        {"subspecies", RANK_SUBSPECIES},
+        {"infraspecificname", RANK_INFRASPECIFICNAME},
+        {"forma", RANK_FORMA},
+        {"subform", RANK_SUBFORM},
+        {"varietas", RANK_VARIETAS},
+        {"variety", RANK_VARIETY},
+        {"subvariety", RANK_SUBVARIETY},
+        {"no rank", RANK_NO_RANK},
+        {"no rank - terminal", RANK_NO_RANK_TERMINAL},
+        {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
+    };
+
+const map<TaxonomicRank, string> rank_enum_to_name = 
+    {   {RANK_DOMAIN, "domain"},
+        {RANK_SUPERKINGDOM, "superkingdom"},
+        {RANK_KINGDOM, "kingdom"},
+        {RANK_SUBKINGDOM, "subkingdom"},
+        {RANK_INFRAKINGDOM, "infrakingdom"},
+        {RANK_SUPERPHYLUM, "superphylum"},
+        {RANK_PHYLUM, "phylum"},
+        {RANK_DIVISION, "division"},
+        {RANK_SUBPHYLUM, "subphylum"},
+        {RANK_SUBDIVISION, "subdivision"},
+        {RANK_INFRAPHYLUM, "infraphylum"},
+        {RANK_SUPERCLASS, "superclass"},
+        {RANK_CLASS, "class"},
+        {RANK_SUBCLASS, "subclass"},
+        {RANK_INFRACLASS, "infraclass"},
+        {RANK_SUPERORDER, "superorder"},
+        {RANK_ORDER, "order"},
+        {RANK_SUBORDER, "suborder"},
+        {RANK_INFRAORDER, "infraorder"},
+        {RANK_PARVORDER, "parvorder"},
+        {RANK_SUPERFAMILY, "superfamily"},
+        {RANK_FAMILY, "family"},
+        {RANK_SUBFAMILY, "subfamily"},
+        {RANK_SUPERTRIBE, "supertribe"},
+        {RANK_TRIBE, "tribe"},
+        {RANK_SUBTRIBE, "subtribe"},
+        {RANK_GENUS, "genus"},
+        {RANK_SUBGENUS, "subgenus"},
+        {RANK_SECTION, "section"},
+        {RANK_SUBSECTION, "subsection"},
+        {RANK_SPECIES_GROUP, "species group"},
+        {RANK_SPECIES_SUBGROUP, "species subgroup"},
+        {RANK_SPECIES, "species"},
+        {RANK_SUBSPECIES, "subspecies"},
+        {RANK_INFRASPECIFICNAME, "infraspecificname"},
+        {RANK_FORMA, "forma"},
+        {RANK_SUBFORM, "subform"},
+        {RANK_VARIETAS, "varietas"},
+        {RANK_VARIETY, "variety"},
+        {RANK_SUBVARIETY, "subvariety"},
+        {RANK_NO_RANK, "no rank"},
+        {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
+        {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT
+    };
+const std::string empty_string;
+const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
 std::set<std::string> rank_strings;
 
 TaxonomyRecord::TaxonomyRecord(const string& line_)
@@ -115,9 +209,9 @@ OttId Taxonomy::map(OttId old_id) const {
     if (loc != forwards.end()) {
         return loc->second;
     }
-    if (deprecated.count(old_id) != 0) {
-        return -2;
-    }
+    //if (deprecated.count(old_id) != 0) {
+    //    return -2;
+    //}
     return -1;
 }
 
@@ -173,7 +267,7 @@ void Taxonomy::write(const std::string& newdirname) {
 
 const std::regex ott_version_pattern("^([.0-9]+)draft.*");
 
-Taxonomy::Taxonomy(const string& dir,
+BaseTaxonomy::BaseTaxonomy(const string& dir,
                    bitset<32> cf,
                    OttId kr)
     :keep_root(kr),
@@ -187,6 +281,12 @@ Taxonomy::Taxonomy(const string& dir,
     } else {
         throw OTCError() << "Could not parse version number out of ott version string " << version;
     }
+}
+
+Taxonomy::Taxonomy(const string& dir,
+                   bitset<32> cf,
+                   OttId kr)
+    :BaseTaxonomy(dir, cf, kr) {
     string filename = path + "/taxonomy.tsv";
     // 1. Open the file.
     ifstream taxonomy_stream(filename);
@@ -256,6 +356,35 @@ Taxonomy::Taxonomy(const string& dir,
     */
     read_forwards_file(path + "/forwards.tsv");
 }
+
+RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
+    :BaseTaxonomy(dir, cf, kr) {
+    { //braced to reduce scope of light_taxonomy to reduced memory
+        Taxonomy light_taxonomy(dir, cf, kr); 
+        auto nodeNamer = [](const auto&){return string();};
+        tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer);
+        std::swap(forwards, light_taxonomy.forwards);
+        //std::swap(deprecated, light_taxonomy.deprecated);
+        std::swap(keep_root, light_taxonomy.keep_root);
+        std::swap(cleaning_flags, light_taxonomy.cleaning_flags);
+        std::swap(path, light_taxonomy.path);
+        std::swap(version, light_taxonomy.version);
+        std::swap(version_number, light_taxonomy.version_number);
+    }
+    set_traversal_entry_exit(*tree);
+    _fill_ids_to_suppress_set();
+    this->read_synonyms();
+    const auto & td = tree->get_data();
+    LOG(INFO) << "last # in ncbi_id_map = " << (td.ncbi_id_map.empty() ? 0 : max_numeric_key(td.ncbi_id_map));
+    LOG(INFO) << "last # in gbif_id_map = " <<  (td.gbif_id_map.empty() ? 0 : max_numeric_key(td.gbif_id_map));
+    LOG(INFO) << "last # in worms_id_map = " <<  (td.worms_id_map.empty() ? 0 : max_numeric_key(td.worms_id_map));
+    LOG(INFO) << "last # in if_id_map = " <<  (td.if_id_map.empty() ? 0 : max_numeric_key(td.if_id_map));
+    LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
+    // Could call:
+    // index.clear(); 
+    // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move
+}
+
 
 void Taxonomy::read_forwards_file(string filepath) {
     ifstream forwards_stream(filepath);
@@ -380,101 +509,6 @@ RichTaxonomy load_rich_taxonomy(const variables_map& args) {
     return {taxonomy_dir, cleaning_flags, keep_root};
 }
 
-const map<string, TaxonomicRank> rankNameToEnum = 
-    {   {"domain", RANK_DOMAIN},
-        {"superkingdom", RANK_SUPERKINGDOM},
-        {"kingdom", RANK_KINGDOM},
-        {"subkingdom", RANK_SUBKINGDOM},
-        {"infrakingdom", RANK_INFRAKINGDOM},
-        {"superphylum", RANK_SUPERPHYLUM},
-        {"phylum", RANK_PHYLUM},
-        {"division", RANK_DIVISION},
-        {"subphylum", RANK_SUBPHYLUM},
-        {"subdivision", RANK_SUBDIVISION},
-        {"infraphylum", RANK_INFRAPHYLUM},
-        {"superclass", RANK_SUPERCLASS},
-        {"class", RANK_CLASS},
-        {"subclass", RANK_SUBCLASS},
-        {"infraclass", RANK_INFRACLASS},
-        {"superorder", RANK_SUPERORDER},
-        {"order", RANK_ORDER},
-        {"suborder", RANK_SUBORDER},
-        {"infraorder", RANK_INFRAORDER},
-        {"parvorder", RANK_PARVORDER},
-        {"superfamily", RANK_SUPERFAMILY},
-        {"family", RANK_FAMILY},
-        {"subfamily", RANK_SUBFAMILY},
-        {"supertribe", RANK_SUPERTRIBE},
-        {"tribe", RANK_TRIBE},
-        {"subtribe", RANK_SUBTRIBE},
-        {"genus", RANK_GENUS},
-        {"subgenus", RANK_SUBGENUS},
-        {"section", RANK_SECTION},
-        {"subsection", RANK_SUBSECTION},
-        {"species group", RANK_SPECIES_GROUP},
-        {"species subgroup", RANK_SPECIES_SUBGROUP},
-        {"species", RANK_SPECIES},
-        {"subspecies", RANK_SUBSPECIES},
-        {"infraspecificname", RANK_INFRASPECIFICNAME},
-        {"forma", RANK_FORMA},
-        {"subform", RANK_SUBFORM},
-        {"varietas", RANK_VARIETAS},
-        {"variety", RANK_VARIETY},
-        {"subvariety", RANK_SUBVARIETY},
-        {"no rank", RANK_NO_RANK},
-        {"no rank - terminal", RANK_NO_RANK_TERMINAL},
-        {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
-    };
-
-const map<TaxonomicRank, string> rank_enum_to_name = 
-    {   {RANK_DOMAIN, "domain"},
-        {RANK_SUPERKINGDOM, "superkingdom"},
-        {RANK_KINGDOM, "kingdom"},
-        {RANK_SUBKINGDOM, "subkingdom"},
-        {RANK_INFRAKINGDOM, "infrakingdom"},
-        {RANK_SUPERPHYLUM, "superphylum"},
-        {RANK_PHYLUM, "phylum"},
-        {RANK_DIVISION, "division"},
-        {RANK_SUBPHYLUM, "subphylum"},
-        {RANK_SUBDIVISION, "subdivision"},
-        {RANK_INFRAPHYLUM, "infraphylum"},
-        {RANK_SUPERCLASS, "superclass"},
-        {RANK_CLASS, "class"},
-        {RANK_SUBCLASS, "subclass"},
-        {RANK_INFRACLASS, "infraclass"},
-        {RANK_SUPERORDER, "superorder"},
-        {RANK_ORDER, "order"},
-        {RANK_SUBORDER, "suborder"},
-        {RANK_INFRAORDER, "infraorder"},
-        {RANK_PARVORDER, "parvorder"},
-        {RANK_SUPERFAMILY, "superfamily"},
-        {RANK_FAMILY, "family"},
-        {RANK_SUBFAMILY, "subfamily"},
-        {RANK_SUPERTRIBE, "supertribe"},
-        {RANK_TRIBE, "tribe"},
-        {RANK_SUBTRIBE, "subtribe"},
-        {RANK_GENUS, "genus"},
-        {RANK_SUBGENUS, "subgenus"},
-        {RANK_SECTION, "section"},
-        {RANK_SUBSECTION, "subsection"},
-        {RANK_SPECIES_GROUP, "species group"},
-        {RANK_SPECIES_SUBGROUP, "species subgroup"},
-        {RANK_SPECIES, "species"},
-        {RANK_SUBSPECIES, "subspecies"},
-        {RANK_INFRASPECIFICNAME, "infraspecificname"},
-        {RANK_FORMA, "forma"},
-        {RANK_SUBFORM, "subform"},
-        {RANK_VARIETAS, "varietas"},
-        {RANK_VARIETY, "variety"},
-        {RANK_SUBVARIETY, "subvariety"},
-        {RANK_NO_RANK, "no rank"},
-        {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
-        {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT
-    };
-const std::string empty_string;
-
-const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
-
 template<typename T>
 void process_source_info_vec(const std::vector<std::string> & vs,
                              RTRichTaxTreeData & tree_data,
@@ -524,30 +558,40 @@ void process_source_info_vec(const std::vector<std::string> & vs,
 // default behavior is to set ID and Name from line
 template <>
 inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
-                                           const TaxonomyRecord & line,
+                                           const TaxonomyRecord & tr,
                                            std::function<std::string(const TaxonomyRecord&)>,
                                            RichTaxTree & tree) {
     RTRichTaxNode * this_node = &nd;
-    nd.set_ott_id(line.id);
+    nd.set_ott_id(tr.id);
     auto & data = nd.get_data();
     auto & tree_data = tree.get_data();
-    nd.set_ott_id(line.id);
-    tree_data.id2node[nd.get_ott_id()] = this_node;
-    data.tax_record = &line;
-    auto name = data.get_name();
-    auto nit = tree_data.name_to_node.lower_bound(name);
+    nd.set_ott_id(tr.id);
+    tree_data.id2node[tr.id] = this_node;
+    this_node->set_name(string(tr.uniqname));
+    const string & uname = this_node->get_name();
+    if (tr.uniqname != tr.name) {
+        string sn = string(tr.name);
+        tree_data.non_unique_taxon_names[sn].insert(tr.id);
+        auto nit = tree_data.non_unique_taxon_names.find(sn);
+        assert(nit != tree_data.non_unique_taxon_names.end());
+        data.possibly_nonunique_name = string_ref(nit->first);
+    } else {
+        data.possibly_nonunique_name = string_ref(nd.get_name());
+    }
+    data.flags = tr.flags;
+    data.rank = rank_name_to_enum.at(string(tr.rank));
+    auto nit = tree_data.name_to_node.lower_bound(data.possibly_nonunique_name);
     typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
-    if (nit->first != name) {
-        nit = tree_data.name_to_node.insert(nit, name_map_pair(name, this_node));
+    if (nit->first != data.possibly_nonunique_name) {
+        nit = tree_data.name_to_node.insert(nit, name_map_pair(data.possibly_nonunique_name, this_node));
     } else {
         if (nit->second != nullptr) {
-            tree_data.homonym2node[name].push_back(nit->second);
+            tree_data.homonym2node[data.possibly_nonunique_name].push_back(nit->second);
             nit->second = nullptr;
         }
-        tree_data.homonym2node[name].push_back(this_node);
+        tree_data.homonym2node[data.possibly_nonunique_name].push_back(this_node);
     }
-    auto uname = data.get_uniqname();
-    if (uname != name) {
+    if (uname != tr.name) {
         auto r2 = tree_data.name_to_node.insert(name_map_pair(uname, this_node));
         assert(r2.second); // should be uniq.
     }
@@ -561,7 +605,8 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
             fj.push_back(fs);
         }
     }
-    auto vs = line.sourceinfoAsVec();
+    auto vs = tr.sourceinfoAsVec();
+    data.source_info = string(tr.sourceinfo);
     process_source_info_vec(vs, tree_data, data, this_node);
 }
 
@@ -616,38 +661,6 @@ void RichTaxonomy::read_synonyms() {
         RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
         mp->get_data().junior_synonyms.push_back(&tjs);
     }
-}
-
-
-template<typename T, typename V>
-T max_key(const std::unordered_map<T, V> & m) {
-    bool first = false;
-    T maxkey = 0;
-    for (auto el : m) {
-        if (first || el.first > maxkey) {
-            first = false;
-            maxkey = el.first;
-        }
-    }
-    return maxkey;
-}
-
-RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
-    :Taxonomy(dir, cf, kr) {
-    auto nodeNamer = [](const auto&){return string();};
-    this->tree = get_tree<RichTaxTree>(nodeNamer);
-    set_traversal_entry_exit(*tree);
-    _fill_ids_to_suppress_set();
-    this->read_synonyms();
-    const auto & td = tree->get_data();
-    LOG(INFO) << "last # in ncbi_id_map = " << max_key(td.ncbi_id_map);
-    LOG(INFO) << "last # in gbif_id_map = " <<  max_key(td.gbif_id_map);
-    LOG(INFO) << "last # in worms_id_map = " <<  max_key(td.worms_id_map);
-    LOG(INFO) << "last # in if_id_map = " <<  max_key(td.if_id_map);
-    LOG(INFO) << "last # in irmng_id_map = " <<  max_key(td.irmng_id_map);
-    // Could call:
-    // index.clear(); 
-    // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move
 }
 
 void RichTaxonomy::_fill_ids_to_suppress_set() {

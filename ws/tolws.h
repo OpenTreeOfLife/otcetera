@@ -42,7 +42,6 @@ class SumTreeData {
     std::unordered_map<std::string, const SumTreeNode_t *> name_to_node;
     std::unordered_map<std::string, BrokenMRCAAttachVec> broken_taxa;
 };
-using TaxTree_t = otc::RootedTree<RTTaxNodeData, RTreeNoData>;
 using SummaryTree_t = otc::RootedTree<SumTreeNodeData, SumTreeData>;
 
 struct SourceTreeId {
