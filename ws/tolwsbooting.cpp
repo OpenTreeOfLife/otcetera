@@ -130,6 +130,84 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
     return true;
 }
 
+#if defined(REPORT_MEMORY_USAGE)
+
+template<>
+inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper &mb) {
+    std::size_t sz_el_size = sizeof(OttId) + sizeof(const RTRichTaxNode *);
+    std::size_t nm_sz = calc_memory_used_by_map_eqsize(d.ncbi_id_map, sz_el_size, mb);
+    std::size_t gm_sz = calc_memory_used_by_map_eqsize(d.gbif_id_map, sz_el_size, mb);
+    std::size_t wm_sz = calc_memory_used_by_map_eqsize(d.worms_id_map, sz_el_size, mb);
+    std::size_t fm_sz = calc_memory_used_by_map_eqsize(d.if_id_map, sz_el_size, mb);
+    std::size_t im_sz = calc_memory_used_by_map_eqsize(d.irmng_id_map, sz_el_size, mb);
+    std::size_t f2j_sz = calc_memory_used_by_map_simple(d.flags2json, mb);
+    std::size_t in_sz = calc_memory_used_by_map_simple(d.id_to_node, mb);
+    std::size_t nn_sz = calc_memory_used_by_map_simple(d.name_to_node, mb);
+    std::size_t nutn_sz = calc_memory_used_by_map_simple(d.non_unique_taxon_names, mb);
+    std::size_t htn_sz = 0;
+    for (auto el : d.homonym_to_node) {
+        htn_sz += sizeof(boost::string_ref);
+        htn_sz += calc_memory_used_by_vector_eqsize(el.second, sizeof(const RTRichTaxNode *), mb);
+    }
+    mb["taxonomy data ncbi map"] += nm_sz;
+    mb["taxonomy data gbif map"] += gm_sz;
+    mb["taxonomy data worms map"] += wm_sz;
+    mb["taxonomy data indexfungorum map"] += fm_sz;
+    mb["taxonomy data irmng map"] += im_sz;
+    mb["taxonomy data flags2json"] += f2j_sz;
+    mb["taxonomy data id_to_node"] += in_sz;
+    mb["taxonomy data name_to_node"] += nn_sz;
+    mb["taxonomy data non_unique_taxon_names"] += nutn_sz;
+    mb["taxonomy data homonym_to_node"] += htn_sz;
+    return nm_sz + gm_sz + wm_sz + fm_sz + im_sz + f2j_sz + in_sz + nn_sz + nutn_sz + htn_sz;
+}
+
+template<>
+inline std::size_t calc_memory_used(const TaxonomicJuniorSynonym &d, MemoryBookkeeper &mb) {
+    return calc_memory_used(d.name, mb) + calc_memory_used(d.source_string, mb) + sizeof(char *);
+}
+
+template<>
+inline std::size_t calc_memory_used(const std::list<TaxonomicJuniorSynonym> &d, MemoryBookkeeper &mb) {
+    std::size_t total = sizeof(size_t) * (2 + 2*d.size()) ; // start and capacity
+    for (auto i = d.begin(); i != d.end(); ++i) {
+        total += calc_memory_used(*i, mb);
+    }
+    return total;
+}
+template<>
+inline std::size_t calc_memory_used(const RTRichTaxNodeData &rtn, MemoryBookkeeper &mb) {
+    size_t total = 0;
+    size_t x = calc_memory_used_by_vector_eqsize(rtn.junior_synonyms, sizeof(char *), mb);
+    mb["taxonomy node data junior_synonyms"] += x; total += x;
+    x = 2*sizeof(std::uint32_t);
+    mb["taxonomy node data traversal"] += x; total += x;
+    x = sizeof(TaxonomicRank);
+    mb["taxonomy node data rank"] += x; total += x;
+    x = sizeof(int32_t) + sizeof(std::bitset<32>);
+    mb["taxonomy node data flags"] += x; total += x;
+    x = calc_memory_used(rtn.source_info, mb);
+    mb["taxonomy node data source_info"] += x; total += x;
+    x = sizeof(boost::string_ref);
+    mb["taxonomy node data nonunique name"] += x; total += x;
+    return total;
+}
+
+template<>
+inline std::size_t calc_memory_used(const RichTaxonomy &rt, MemoryBookkeeper &mb) {
+    const auto & tax_tree = rt.get_tax_tree();
+    std::size_t ttsz = calc_memory_used_by_tree(tax_tree, mb);
+    const auto & syn_list = rt.get_synonyms_list();
+    std::size_t slsz = calc_memory_used(syn_list, mb);
+    const auto & suppress_trns_set = rt.get_ids_to_suppress_from_tnrs();
+    std::size_t stssz = calc_memory_used(suppress_trns_set, mb);
+    mb["taxonomy tree"] += ttsz;
+    mb["taxonomy synonyms list"] += slsz;
+    mb["taxonomy set of ids to suppress from tnrs"] += stssz;
+    return ttsz + slsz + stssz;
+}
+
+#endif
 
 bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & tree_path,
@@ -155,6 +233,12 @@ bool read_tree_and_annotations(const fs::path & config_path,
         throw;
     }
     const RichTaxonomy & taxonomy = tts.get_taxonomy();
+#   if defined(REPORT_MEMORY_USAGE)
+        MemoryBookkeeper tax_mem_b;
+        std::size_t tree_mem = 0;
+        auto tax_mem = calc_memory_used(taxonomy, tax_mem_b);
+        write_memory_bookkeeping(LOG(INFO), tax_mem_b, "taxonomy", tax_mem);
+#   endif
     auto tree_and_ann = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
     try {
         SummaryTree_t & tree = tree_and_ann.first;
@@ -229,6 +313,12 @@ bool read_tree_and_annotations(const fs::path & config_path,
         }
         sta.initialized = true;
         tts.register_last_tree_and_annotations();
+#       if defined(REPORT_MEMORY_USAGE)
+            MemoryBookkeeper tree_mem_b;
+            tree_mem += calc_memory_used_by_tree(tree, tree_mem_b);
+            write_memory_bookkeeping(LOG(INFO), tree_mem_b, "tree", tree_mem);
+            LOG(INFO) << "tax + tree memory = " << tax_mem << " + " << tree_mem << " = " << tax_mem + tree_mem;
+#       endif
     } catch (...) {
         tts.free_last_tree_and_annotations();
         throw;

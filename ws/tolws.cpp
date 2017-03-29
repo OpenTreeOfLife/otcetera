@@ -706,7 +706,7 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
                           int & status_code) {
     const auto & taxonomy = tts.get_taxonomy();
     assert(taxon_node != nullptr);
-    const auto & taxonomy_tree = taxonomy.getTaxTree();
+    const auto & taxonomy_tree = taxonomy.get_tax_tree();
     json response;
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;

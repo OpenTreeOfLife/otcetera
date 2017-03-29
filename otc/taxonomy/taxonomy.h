@@ -187,7 +187,6 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
         return 0;
     }
 
-
     /// Given an OTT ID, forward if necessary and return the current Ott ID.
     //    Returns -1 if not found and not known to be deprecated.
     //    Not implemented yet: return -2 if known to be deprecated.
@@ -287,7 +286,7 @@ typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;
 
 class RichTaxonomy: public BaseTaxonomy {
     public:
-    const RichTaxTree & getTaxTree() const {
+    const RichTaxTree & get_tax_tree() const {
         return *tree;
     }
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
@@ -316,6 +315,9 @@ class RichTaxonomy: public BaseTaxonomy {
 
     const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {
         return is_suppressed_from_synth;
+    }
+    const std::list<TaxonomicJuniorSynonym> & get_synonyms_list() const {
+        return synonyms;
     }
     private:
     std::vector<TaxonomyRecord> filtered_records;

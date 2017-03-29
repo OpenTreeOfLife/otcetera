@@ -15,6 +15,12 @@
 #include "otc/taxonomy/flags.h"
 #include "json.hpp"
 
+#define REPORT_MEMORY_USAGE 1
+
+#if defined(REPORT_MEMORY_USAGE)
+#include "otc/memory_usage.h"
+#endif
+
 namespace otc {
 
 typedef std::pair<const std::string *, const std::string *> src_node_id;
@@ -33,6 +39,35 @@ class SumTreeNodeData {
     uint32_t num_tips = 0;
 };
 
+#if defined(REPORT_MEMORY_USAGE)
+template<>
+inline std::size_t calc_memory_used(const src_node_id &d, MemoryBookkeeper &) {
+    return  2 * sizeof(const std::string *); // we are aliasing stored strings, so we don't count len
+}
+
+template<>
+inline std::size_t calc_memory_used(const SumTreeNodeData &d, MemoryBookkeeper &mb) {
+    std::size_t total = 3 * sizeof(std::uint32_t); // traversals and num_tips
+    mb["tree node data trav + num_tips"] += total;
+    std::size_t v_el_size = 2 * sizeof(const std::string *);
+    std::size_t x;
+    x = calc_memory_used_by_vector_eqsize(d.supported_by, v_el_size, mb);
+    mb["tree node data supported_by"] += x; total += x;
+    x = calc_memory_used_by_vector_eqsize(d.conflicts_with, v_el_size, mb);
+    mb["tree node data conflicts_with"] += x; total += x;
+    x = calc_memory_used_by_vector_eqsize(d.resolves, v_el_size, mb);
+    mb["tree node data resolves"] += x; total += x;
+    x = calc_memory_used_by_vector_eqsize(d.partial_path_of, v_el_size, mb);
+    mb["tree node data partial_path_of"] += x; total += x;
+    x = calc_memory_used_by_vector_eqsize(d.terminal, v_el_size, mb);
+    mb["tree node data terminal"] += x; total += x;
+    total += sizeof(bool);
+    return total;
+}
+
+#endif
+
+
 typedef RootedTreeNode<SumTreeNodeData> SumTreeNode_t;
 typedef std::vector<const SumTreeNode_t *> SumTreeNodeVec_t;
 typedef std::pair<const SumTreeNode_t *, SumTreeNodeVec_t> BrokenMRCAAttachVec;
@@ -43,6 +78,34 @@ class SumTreeData {
     std::unordered_map<std::string, BrokenMRCAAttachVec> broken_taxa;
 };
 using SummaryTree_t = otc::RootedTree<SumTreeNodeData, SumTreeData>;
+
+
+#if defined(REPORT_MEMORY_USAGE)
+
+template<>
+inline std::size_t calc_memory_used(const BrokenMRCAAttachVec &d, MemoryBookkeeper &mb) {
+    std::size_t total = sizeof(const SumTreeNode_t *);
+    total += calc_memory_used_by_vector_eqsize(d.second, sizeof(const SumTreeNode_t *), mb);
+    return total;
+}
+
+template<>
+inline std::size_t calc_memory_used(const SumTreeData &d, MemoryBookkeeper &mb) {
+    const auto n2nnum_unused_buckets = d.name_to_node.bucket_count() - d.name_to_node.size();
+    std::size_t n2nmem = n2nnum_unused_buckets * (sizeof(std::string) + sizeof(SumTreeNode_t *));
+    for (auto n : d.name_to_node) {
+        n2nmem += calc_memory_used(n.first, mb) + sizeof(const SumTreeNode_t *);
+    }
+    const auto btnum_unused_buckets = d.broken_taxa.bucket_count() - d.broken_taxa.size();
+    std::size_t btmem = btnum_unused_buckets * (sizeof(std::string) + sizeof(BrokenMRCAAttachVec ));
+    for (auto n : d.broken_taxa) {
+        btmem += calc_memory_used(n.first, mb) + calc_memory_used(n.second, mb);
+    }
+    mb["SumTreeData name_to_node"] += n2nmem;
+    mb["SumTreeData broken_taxa"] += btmem;
+    return btmem + n2nmem;
+}
+#endif
 
 struct SourceTreeId {
     std::string tree_id;
@@ -98,7 +161,7 @@ class TreesToServe {
         void set_taxonomy(const RichTaxonomy &taxonomy) {
             assert(taxonomy_ptr == nullptr);
             taxonomy_ptr = &taxonomy;
-            taxonomy_tree = &(taxonomy.getTaxTree());
+            taxonomy_tree = &(taxonomy.get_tax_tree());
         }
         const RichTaxonomy & get_taxonomy() const {
             assert(taxonomy_ptr != nullptr);

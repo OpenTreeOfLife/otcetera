@@ -391,6 +391,13 @@ class RootedTree {
         void mark_as_attached(node_type * nd) {
           detached.erase(nd);
         }
+        std::set<const node_type *> get_detached() const{
+            std::set<const node_type *> r;
+            for (auto d : detached) {
+                r.insert(d);
+            }
+            return r;
+        }
     private:
         RootedTree<T, U>(const RootedTree<T, U> &) = delete;
         RootedTree<T, U> & operator=(const RootedTree<T, U> &) = delete;
