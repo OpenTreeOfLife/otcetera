@@ -437,6 +437,35 @@ void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+void conflict_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+        json parsedargs;
+        std::string rbody;
+        int status_code = OK;
+        parse_body_or_err(body, parsedargs, rbody, status_code);
+
+	const auto& summary = *tts.get_summary_tree("");
+	const auto& taxonomy = tts.get_taxonomy();
+
+	string tree1;
+	if (status_code == OK) {
+	    extract_from_request<string>(parsedargs, "tree1", tree1, rbody, status_code);
+	}
+
+	string tree2;
+	if (status_code == OK) {
+	    extract_from_request(parsedargs, "tree2", tree1, rbody, status_code);
+	}
+
+        if (status_code == OK) {
+            conflict_ws_method(summary, taxonomy, tree1, tree2, rbody, status_code);
+        }
+        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
+
 /// End of method_handler. Start of global service related code
 Service * global_service_ptr = nullptr;
 

@@ -888,15 +888,15 @@ void conflict_ws_method(const SummaryTree_t& summary,
 			string & response_str,
 			int& status_code )
 {
-    ConflictTree query_tree;
+    auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
     json j;
     if (tree2s == "ott")
     {
-	j = conflict_with_taxonomy(query_tree, taxonomy.getTaxTree());
+	j = conflict_with_taxonomy(*query_tree, taxonomy.getTaxTree());
     }
     else if (tree2s == "synth")
     {
-	j = conflict_with_summary(query_tree, summary);
+	j = conflict_with_summary(*query_tree, summary);
     }
     response_str = j.dump(1);
     status_code = OK;

@@ -261,6 +261,12 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
                              std::string & response_str,
                              int & status_code);
 
+void conflict_ws_method(const SummaryTree_t & summary,
+			const RichTaxonomy & taxonomy,
+			const std::string& tree1s,
+			const std::string& tree2s,
+			std::string & response_str,
+			int& status_code );
 
 bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
 
