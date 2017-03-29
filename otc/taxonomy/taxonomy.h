@@ -256,19 +256,29 @@ class TaxonomicJuniorSynonym {
     TaxonomicJuniorSynonym(const TaxonomicJuniorSynonym &) = delete;
 };
 
-
+#define MAP_FOREIGN_TO_POINTER
 class RTRichTaxTreeData {
     public:
+#if defined(MAP_FOREIGN_TO_POINTER)
     std::unordered_map<OttId, const RTRichTaxNode *> ncbi_id_map;
     std::unordered_map<OttId, const RTRichTaxNode *> gbif_id_map;
     std::unordered_map<OttId, const RTRichTaxNode *> worms_id_map;
     std::unordered_map<OttId, const RTRichTaxNode *> if_id_map;
     std::unordered_map<OttId, const RTRichTaxNode *> irmng_id_map;
+#else
+    std::unordered_map<OttId, OttId> ncbi_id_map;
+    std::unordered_map<OttId, OttId> gbif_id_map;
+    std::unordered_map<OttId, OttId> worms_id_map;
+    std::unordered_map<OttId, OttId> if_id_map;
+    std::unordered_map<OttId, OttId> irmng_id_map;
+#endif
     std::unordered_map<std::bitset<32>, nlohmann::json> flags2json;
     std::map<boost::string_ref, const RTRichTaxNode *> name_to_node; // null if homonym, then check homonym2node
-
-    std::unordered_map<OttId, const RTRichTaxNode *> id2node;
-    std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym2node;
+    std::map<boost::string_ref, const TaxonomyRecord *> name_to_record; // for filtered
+    std::unordered_map<OttId, const RTRichTaxNode *> id_to_node;
+    std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
+    std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym_to_node;
+    std::map<boost::string_ref, std::vector<const TaxonomyRecord *> > homonym_to_record;
     std::map<std::string, OttIdSet> non_unique_taxon_names;
     
 };
@@ -283,16 +293,16 @@ class RichTaxonomy: public BaseTaxonomy {
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), OttId kr = -1);
     RichTaxonomy(RichTaxonomy &&) = default;
-    const RTRichTaxNode * taxon_from_id(OttId ott_id) const {
+    const RTRichTaxNode * included_taxon_from_id(OttId ott_id) const {
         //Returns node * or nullptr if not found.
         const auto & td = tree->get_data();
-        auto i2n_it = td.id2node.find(ott_id);
-        if (i2n_it == td.id2node.end()) {
+        auto i2n_it = td.id_to_node.find(ott_id);
+        if (i2n_it == td.id_to_node.end()) {
             auto fit = forwards.find(ott_id);
             if (fit == forwards.end()) {
                 return nullptr;
             }
-            return taxon_from_id(fit->second);
+            return included_taxon_from_id(fit->second);
         }
         return i2n_it->second;
     }
@@ -308,6 +318,7 @@ class RichTaxonomy: public BaseTaxonomy {
         return is_suppressed_from_synth;
     }
     private:
+    std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
     // flags: not_otu, environmental, environmental_inherited, viral, hidden, hidden_inherited, was_container

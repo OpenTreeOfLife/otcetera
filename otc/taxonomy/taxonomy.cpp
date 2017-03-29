@@ -146,6 +146,29 @@ const std::string empty_string;
 const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
 std::set<std::string> rank_strings;
 
+template<typename T>
+void register_taxon_in_maps(std::map<boost::string_ref, const T *> & n2n,
+                            std::map<boost::string_ref, std::vector<const T *> > & homonym_map,
+                            boost::string_ref possibly_nonunique_name,
+                            boost::string_ref uname,
+                            const T * ti) {
+    auto nit = n2n.lower_bound(possibly_nonunique_name);
+    typedef std::pair<boost::string_ref, const T *> name_map_pair;
+    if (nit->first != possibly_nonunique_name) {
+        nit = n2n.insert(nit, name_map_pair(possibly_nonunique_name, ti));
+    } else {
+        if (nit->second != nullptr) {
+            homonym_map[possibly_nonunique_name].push_back(nit->second);
+            nit->second = nullptr;
+        }
+       homonym_map[possibly_nonunique_name].push_back(ti);
+    }
+    if (uname != possibly_nonunique_name) {
+        auto r2 = n2n.insert(name_map_pair(uname, ti));
+        assert(r2.second); // should be uniq.
+    }
+}
+
 TaxonomyRecord::TaxonomyRecord(const string& line_)
     :line(line_) {
     // parse the line
@@ -363,6 +386,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
         Taxonomy light_taxonomy(dir, cf, kr); 
         auto nodeNamer = [](const auto&){return string();};
         tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer);
+        auto & tree_data = tree->get_data();
         std::swap(forwards, light_taxonomy.forwards);
         //std::swap(deprecated, light_taxonomy.deprecated);
         std::swap(keep_root, light_taxonomy.keep_root);
@@ -370,19 +394,33 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
         std::swap(path, light_taxonomy.path);
         std::swap(version, light_taxonomy.version);
         std::swap(version_number, light_taxonomy.version_number);
+        for (auto tr_it = light_taxonomy.begin(); tr_it != light_taxonomy.end(); ++tr_it) {
+            const auto & tr = *tr_it;
+            auto ott_id = tr.id;
+            if (tree_data.id_to_node.count(ott_id) == 0) {
+                filtered_records.push_back(TaxonomyRecord(tr.line));
+            }
+        }
+        for (auto tr_it = filtered_records.begin(); tr_it != filtered_records.end(); ++tr_it) {
+            const auto & tr = *tr_it;
+            register_taxon_in_maps(tree_data.name_to_record,
+                                   tree_data.homonym_to_record,
+                                   tr.name,
+                                   tr.uniqname,
+                                   &tr);
+            tree_data.id_to_record[tr.id] = &tr;
+        }
     }
     set_traversal_entry_exit(*tree);
     _fill_ids_to_suppress_set();
     this->read_synonyms();
     const auto & td = tree->get_data();
+    LOG(INFO) << "# of taxa stored in taxonomy, but filtered from taxonomy tree = " << filtered_records.size();
     LOG(INFO) << "last # in ncbi_id_map = " << (td.ncbi_id_map.empty() ? 0 : max_numeric_key(td.ncbi_id_map));
     LOG(INFO) << "last # in gbif_id_map = " <<  (td.gbif_id_map.empty() ? 0 : max_numeric_key(td.gbif_id_map));
     LOG(INFO) << "last # in worms_id_map = " <<  (td.worms_id_map.empty() ? 0 : max_numeric_key(td.worms_id_map));
     LOG(INFO) << "last # in if_id_map = " <<  (td.if_id_map.empty() ? 0 : max_numeric_key(td.if_id_map));
     LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
-    // Could call:
-    // index.clear(); 
-    // to save about 8M RAM, but this disables some Taxonomy functionality! DANGEROUS move
 }
 
 
@@ -533,16 +571,22 @@ void process_source_info_vec(const std::vector<std::string> & vs,
                 throw OTCError() << "Could not convert ID to unsigned long \"" << src_entry << "\"";
             }
             OttId foreign_id = check_ott_id_size(raw_foreign_id);
+#           if defined(MAP_FOREIGN_TO_POINTER)
+                auto to_map_to = this_node;
+#           else
+                auto to_map_to = this_node->get_ott_id();
+#           endif
+
             if (prefix == "ncbi") {
-                tree_data.ncbi_id_map[foreign_id] = this_node;
+                tree_data.ncbi_id_map[foreign_id] = to_map_to;
             } else if (prefix == "gbif") {
-                tree_data.gbif_id_map[foreign_id] = this_node;
+                tree_data.gbif_id_map[foreign_id] = to_map_to;
             } else if (prefix == "worms") {
-                tree_data.worms_id_map[foreign_id] = this_node;
+                tree_data.worms_id_map[foreign_id] = to_map_to;
             } else if (prefix == "if") {
-                tree_data.if_id_map[foreign_id] = this_node;
+                tree_data.if_id_map[foreign_id] = to_map_to;
             } else if (prefix == "irmng") {
-                tree_data.irmng_id_map[foreign_id] = this_node;
+                tree_data.irmng_id_map[foreign_id] = to_map_to;
             } else {
                 assert(false);
             }
@@ -566,7 +610,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
     auto & data = nd.get_data();
     auto & tree_data = tree.get_data();
     nd.set_ott_id(tr.id);
-    tree_data.id2node[tr.id] = this_node;
+    tree_data.id_to_node[tr.id] = this_node;
     this_node->set_name(string(tr.uniqname));
     const string & uname = this_node->get_name();
     if (tr.uniqname != tr.name) {
@@ -580,21 +624,11 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
     }
     data.flags = tr.flags;
     data.rank = rank_name_to_enum.at(string(tr.rank));
-    auto nit = tree_data.name_to_node.lower_bound(data.possibly_nonunique_name);
-    typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
-    if (nit->first != data.possibly_nonunique_name) {
-        nit = tree_data.name_to_node.insert(nit, name_map_pair(data.possibly_nonunique_name, this_node));
-    } else {
-        if (nit->second != nullptr) {
-            tree_data.homonym2node[data.possibly_nonunique_name].push_back(nit->second);
-            nit->second = nullptr;
-        }
-        tree_data.homonym2node[data.possibly_nonunique_name].push_back(this_node);
-    }
-    if (uname != tr.name) {
-        auto r2 = tree_data.name_to_node.insert(name_map_pair(uname, this_node));
-        assert(r2.second); // should be uniq.
-    }
+    register_taxon_in_maps(tree_data.name_to_node,
+                           tree_data.homonym_to_node,
+                           data.possibly_nonunique_name,
+                           uname,
+                           this_node);
     auto flags = data.get_flags();
     // If the flag combination is new, store the JSON representation
     if (tree_data.flags2json.count(flags) == 0) {
@@ -638,7 +672,7 @@ void RichTaxonomy::read_synonyms() {
         string name = string(start[0], end[0] - start[0]);
         unsigned long raw_id = std::strtoul(start[1], &temp, 10);
         OttId ott_id = check_ott_id_size(raw_id);
-        const RTRichTaxNode * primary = tree_data.id2node.at(ott_id);
+        const RTRichTaxNode * primary = tree_data.id_to_node.at(ott_id);
         string sourceinfo = string(start[4], end[4] - start[4]);
         
         this->synonyms.emplace_back(name, primary, sourceinfo);
@@ -650,10 +684,10 @@ void RichTaxonomy::read_synonyms() {
             nit = tree_data.name_to_node.insert(nit, name_map_pair(name_ref, primary));
         } else {
             if (nit->second != nullptr) {
-                tree_data.homonym2node[name_ref].push_back(nit->second);
+                tree_data.homonym_to_node[name_ref].push_back(nit->second);
                 nit->second = nullptr;
             }
-            tree_data.homonym2node[name_ref].push_back(primary);
+            tree_data.homonym_to_node[name_ref].push_back(primary);
         }
         
         auto vs = comma_separated_as_vec(sourceinfo);

@@ -29,7 +29,7 @@ void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd
     noderepr["num_tips"] = nd.get_data().num_tips;
     if (nd.has_ott_id()) {
         auto nd_id = nd.get_ott_id();
-        const auto * nd_taxon = taxonomy.taxon_from_id(nd_id);
+        const auto * nd_taxon = taxonomy.included_taxon_from_id(nd_id);
         if (nd_taxon == nullptr) {
             throw OTCError() << "OTT Id " << nd_id << " not found in taxonomy! Please report this bug";
         }
@@ -332,7 +332,7 @@ void mrca_ws_method(const TreesToServe & tts,
             }
         }
         json nt;
-        const RTRichTaxNode * anc_taxon = taxonomy.taxon_from_id(anc->get_ott_id());
+        const RTRichTaxNode * anc_taxon = taxonomy.included_taxon_from_id(anc->get_ott_id());
         if (anc_taxon == nullptr) {
             throw OTCError() << "Ancd OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
         }
@@ -389,7 +389,7 @@ class NodeNamerSupportedByStasher {
             }
             const string & id_str = nd->get_name(); // in this tree the "name" is really the "ott###" string
             if (nns != NodeNameStyle::NNS_ID_ONLY && nd->has_ott_id()) {
-                const auto * tr = taxonomy.taxon_from_id(nd->get_ott_id());
+                const auto * tr = taxonomy.included_taxon_from_id(nd->get_ott_id());
                 if (tr == nullptr) {
                     throw OTCError() << "OTT Id " << nd->get_ott_id() << " in namer not found in taxonomy! Please report this bug";
                 }
@@ -669,7 +669,7 @@ void taxonomy_mrca_ws_method(const TreesToServe & tts,
     const RTRichTaxNode * focal = nullptr;
     bool first = true;
     for (auto ott_id : ott_id_set) {
-        const RTRichTaxNode * n = taxonomy.taxon_from_id(ott_id);
+        const RTRichTaxNode * n = taxonomy.included_taxon_from_id(ott_id);
         if (n == nullptr) {
             response_str = "ott_id \"";
             response_str += ott_id;

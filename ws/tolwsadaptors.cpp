@@ -336,19 +336,39 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs,
                 return nullptr;
             }
             try {
+#               if defined(MAP_FOREIGN_TO_POINTER)
+                    const RTRichTaxNode * in_ott = nullptr;
+#               else
+                    OttId in_ott = 0;
+#               endif
+
                 if (source_prefix == "ncbi") {
-                    return taxonomy_tree_data.ncbi_id_map.at(foreign_id);
+                    in_ott = taxonomy_tree_data.ncbi_id_map.at(foreign_id);
                 } else if (source_prefix == "gbif") {
-                    return taxonomy_tree_data.gbif_id_map.at(foreign_id);
+                    in_ott = taxonomy_tree_data.gbif_id_map.at(foreign_id);
                 } else if (source_prefix == "worms") {
-                    return taxonomy_tree_data.worms_id_map.at(foreign_id);
+                    in_ott =  taxonomy_tree_data.worms_id_map.at(foreign_id);
                 } else if (source_prefix == "if") {
-                    return taxonomy_tree_data.if_id_map.at(foreign_id);
+                    in_ott =  taxonomy_tree_data.if_id_map.at(foreign_id);
                 } else if (source_prefix == "irmng") {
-                    return taxonomy_tree_data.irmng_id_map.at(foreign_id);
+                    in_ott =  taxonomy_tree_data.irmng_id_map.at(foreign_id);
                 } else {
                     assert(false);
+                    throw OTCError() << " unknown prefix " << source_prefix << " made it passed our indexed_source_prefixes check";
                 }
+#               if defined(MAP_FOREIGN_TO_POINTER)
+                    return in_ott;
+#               else
+                    auto taxon_node =  taxonomy.included_taxon_from_id(in_ott);
+                    if (taxon_node == nullptr) {
+                        rbody = "Foreign ID " ;
+                        rbody += supplied_source_id;
+                        rbody += " mapped to unknown OTT ID: ";
+                        rbody += to_string(ott_id);
+                        status_code = 400;
+                    }
+                    return taxon_node;
+#               endif
             } catch (std::out_of_range & x) {
                 rbody = "No taxon in the taxonomy is associated with source_id of ";
                 rbody += source_id;
@@ -363,7 +383,7 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs,
     }
     const RTRichTaxNode * taxon_node = nullptr;
     if (status_code == OK && supplied_ott_id) {
-        taxon_node = taxonomy.taxon_from_id(ott_id);
+        taxon_node = taxonomy.included_taxon_from_id(ott_id);
         if (taxon_node == nullptr) {
             rbody = "Unrecognized OTT ID: ";
             rbody += to_string(ott_id);
