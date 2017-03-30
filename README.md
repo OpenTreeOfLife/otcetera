@@ -63,22 +63,39 @@ libraries to your dynamic library loading path. On Mac:
 on most other unix variants the variable is called `LD_LIBRARY_PATH` (without the `DY`
 prefix); also note that the path to the libraries in the build BOOST dir is platform-dependent.
 
-# restbed
-
-<<<<<<< HEAD
-https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
 
 # requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
-=======
+# restbed
+
+HEAD
+https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
+
 We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
+
+On debian or ubuntu:
+
+    sudo apt-get install g++-5
+    sudo apt-get install cmake
+    sudo apt-get install libtool
+    sudo apt-get install libboost-all-dev
+
+then:
+
+    git clone --recursive https://github.com/corvusoft/restbed.git
+    mkdir restbed/build
+    cd restbed/build/
+    cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX=$PWD/install ..
+    make install
+    export CPPFLAGS="$CPPFLAGS -I$PWD/install/include "
+    export LDFLAGS="$LDFLAGS -I$PWD/install/library "
+
 
 To build including restbed, you will also need to set:
 
     CPPFLAGS=-Ipath_to_restbed_include
     LDFLAGS=-Lpath_to_restbed_library
->>>>>>> origin/master
 
 ## configuration + building
 
