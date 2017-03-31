@@ -145,14 +145,28 @@ inline bool extract_from_request(const nlohmann::json & j,
 
 
 inline otc::vec_src_node_ids extract_node_id_vec(otc::TreesToServe & tts,
-                                                 const nlohmann::json & sbv) {
-    std::list<otc::src_node_id> lsni;
+                                                 const nlohmann::json & sbv
+#                                                if defined(JOINT_MAPPING_VEC)
+                                                   , otc::SourceEdgeMappingType semt
+#                                                endif
+                                                 ) {
+#   if defined(JOINT_MAPPING_VEC)
+       using lel_t = otc::semt_ind_t;
+#   else
+       using lel_t = std::uint32_t;
+#   endif
+    std::list<lel_t> lsni;
     for (nlohmann::json::const_iterator jit = sbv.begin(); jit != sbv.end(); ++jit) {
         const std::string * kp = tts.get_stored_string(jit.key());
         const auto & v = jit.value();
         for (nlohmann::json::const_iterator vit = v.begin(); vit != v.end(); ++vit) {
             const std::string * vp = tts.get_stored_string(*vit);
-            lsni.push_back(otc::src_node_id(kp, vp));
+            const auto sni_ind = tts.get_source_node_id_index(otc::src_node_id(kp, vp));
+#           if defined(JOINT_MAPPING_VEC)
+                lsni.push_back(lel_t(semt, sni_ind));
+#           else
+                lsni.push_back(sni_ind);
+#           endif
         } 
     }
     return otc::vec_src_node_ids(lsni.begin(), lsni.end());

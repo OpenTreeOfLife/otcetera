@@ -24,17 +24,37 @@
 namespace otc {
 
 typedef std::pair<const std::string *, const std::string *> src_node_id;
-typedef std::vector<src_node_id> vec_src_node_ids;
+typedef std::vector<src_node_id> vec_src_node_id_mapper;
+
+#define JOINT_MAPPING_VEC
+
+#if defined(JOINT_MAPPING_VEC)
+    enum SourceEdgeMappingType {
+        CONFLICTS_WITH_MAPPING = 0,
+        PARTIAL_PATH_OF_MAPPING = 1,
+        RESOLVES_MAPPING = 2,
+        SUPPORTED_BY_MAPPING = 3,
+        TERMINAL_MAPPING = 4
+    };
+    typedef std::pair<SourceEdgeMappingType, std::uint32_t> semt_ind_t;
+    typedef std::vector<semt_ind_t> vec_src_node_ids;
+#else
+    typedef std::vector<std::uint32_t> vec_src_node_ids;
+#endif
 
 class SumTreeNodeData {
     public:
     std::uint32_t trav_enter = UINT32_MAX;
     std::uint32_t trav_exit = UINT32_MAX;
-    vec_src_node_ids supported_by;
-    vec_src_node_ids conflicts_with;
-    vec_src_node_ids resolves;
-    vec_src_node_ids partial_path_of;
-    vec_src_node_ids terminal;
+#   if defined(JOINT_MAPPING_VEC)
+        vec_src_node_ids source_edge_mappings;
+#   else
+        vec_src_node_ids supported_by;
+        vec_src_node_ids conflicts_with;
+        vec_src_node_ids resolves;
+        vec_src_node_ids partial_path_of;
+        vec_src_node_ids terminal;
+#   endif
     bool was_uncontested = false;
     uint32_t num_tips = 0;
 };
@@ -49,8 +69,13 @@ template<>
 inline std::size_t calc_memory_used(const SumTreeNodeData &d, MemoryBookkeeper &mb) {
     std::size_t total = 3 * sizeof(std::uint32_t); // traversals and num_tips
     mb["tree node data trav + num_tips"] += total;
-    std::size_t v_el_size = 2 * sizeof(const std::string *);
     std::size_t x;
+#if defined(JOINT_MAPPING_VEC)
+    std::size_t v_el_size = sizeof(SourceEdgeMappingType) + sizeof(std::uint32_t); // 2 * sizeof(const std::string *);
+    x = calc_memory_used_by_vector_eqsize(d.source_edge_mappings, v_el_size, mb);
+    mb["tree node data source_edge_mappings"] += x; total += x;
+#else
+    std::size_t v_el_size = sizeof(std::uint32_t); // 2 * sizeof(const std::string *);
     x = calc_memory_used_by_vector_eqsize(d.supported_by, v_el_size, mb);
     mb["tree node data supported_by"] += x; total += x;
     x = calc_memory_used_by_vector_eqsize(d.conflicts_with, v_el_size, mb);
@@ -61,6 +86,7 @@ inline std::size_t calc_memory_used(const SumTreeNodeData &d, MemoryBookkeeper &
     mb["tree node data partial_path_of"] += x; total += x;
     x = calc_memory_used_by_vector_eqsize(d.terminal, v_el_size, mb);
     mb["tree node data terminal"] += x; total += x;
+#endif
     total += sizeof(bool);
     return total;
 }
@@ -137,6 +163,16 @@ struct SummaryTreeAnnotation {
         OttIdSet suppressed_from_tree; // IDs not included in tree
 };
 
+template<typename T>
+void clear_names_for_nodes_with_ids(T & tree) {
+    const std::string empty_string;
+    for (auto nd : iter_node(tree)) {
+        if (nd->has_ott_id()) {
+            nd->set_name(empty_string);
+        }
+    }
+}
+
 class TreesToServe {
         std::list< SummaryTreeAnnotation> annotation_list;
         std::list<std::unique_ptr<SummaryTree_t> > tree_list;
@@ -147,7 +183,26 @@ class TreesToServe {
         std::map<std::string, const std::string *> stored_strings;
         std::list<std::string> stored_strings_list;
         const RichTaxTree * taxonomy_tree = nullptr;
+        vec_src_node_id_mapper src_node_id_storer;
+        std::map<src_node_id, std::uint32_t> lookup_for_node_ids_while_registering_trees;
+        bool finalized = false;
     public:
+        const src_node_id & decode_study_node_id_index(std::uint32_t sni_ind) const {
+            return src_node_id_storer.at(sni_ind);
+        }
+        std::uint32_t get_source_node_id_index(src_node_id sni) {
+            assert(!finalized); // should only be called while registering
+            auto it = lookup_for_node_ids_while_registering_trees.find(sni);
+            std::uint32_t r;
+            if (it == lookup_for_node_ids_while_registering_trees.end()) {
+                r = src_node_id_storer.size();
+                lookup_for_node_ids_while_registering_trees[sni] = r;
+                src_node_id_storer.push_back(sni);
+            } else {
+                r = it->second;
+            }
+            return r;
+        }
         const std::string * get_stored_string(const std::string & k) {
             const std::string * v = stored_strings[k];
             if (v == nullptr) {
@@ -206,6 +261,7 @@ class TreesToServe {
             FilePosStruct pos(filenamePtr);
             std::unique_ptr<SummaryTree_t> nt = read_next_newick<SummaryTree_t>(inp, pos, parsingRules);
             index_nodes_by_name(*nt);
+            //clear_names_for_nodes_with_ids(*nt);
             set_traversal_entry_exit_and_num_tips(*nt);
             tree_list.push_back(move(nt));
             annotation_list.push_back(SummaryTreeAnnotation());
@@ -241,6 +297,7 @@ class TreesToServe {
             return id_to_tree.size();
         }
         void final_tree_added() {
+            finalized = true;
             if (get_num_trees() == 1) {
                 const auto & annot = annotation_list.back();
                 const auto & sft = annot.suppressed_from_tree;
@@ -249,6 +306,9 @@ class TreesToServe {
                 auto nct = const_cast<RichTaxonomy *>(taxonomy_ptr);
                 nct->set_ids_suppressed_from_summary_tree_alias(&sft);
             }
+
+            std::map<src_node_id, std::uint32_t> tmpm;
+            std::swap(lookup_for_node_ids_while_registering_trees, tmpm);
         }
 };
 

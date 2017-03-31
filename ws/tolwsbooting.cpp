@@ -262,19 +262,47 @@ bool read_tree_and_annotations(const fs::path & config_path,
             SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(stn);
             SumTreeNodeData & mstnd = mstn->get_data();
             const auto & supportj = nit.value();
+#           if defined(JOINT_MAPPING_VEC)
+                vec_src_node_ids tmpv;
+#           endif
             for (json::const_iterator sbit = supportj.begin(); sbit != supportj.end(); ++sbit) {
                 const auto & sbk = sbit.key();
                 const auto & sbv = sbit.value();
-                if (sbk == "conflicts_with") {
-                    mstnd.conflicts_with = extract_node_id_vec(tts, sbv);
-                } else if (sbk == "supported_by") {
-                    mstnd.supported_by = extract_node_id_vec(tts, sbv);
+                if (sbk == "supported_by") {            
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::SUPPORTED_BY_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.supported_by = extract_node_id_vec(tts, sbv);
+#                   endif
                 } else if (sbk == "terminal") {
-                    mstnd.terminal = extract_node_id_vec(tts, sbv);
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::TERMINAL_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.terminal = extract_node_id_vec(tts, sbv);
+#                   endif
+                } else if (sbk == "conflicts_with") {
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::CONFLICTS_WITH_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.conflicts_with = extract_node_id_vec(tts, sbv)
+#                   endif
                 } else if (sbk == "partial_path_of") {
-                    mstnd.partial_path_of = extract_node_id_vec(tts, sbv);
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.partial_path_of = extract_node_id_vec(tts, sbv);
+#                   endif
                 } else if (sbk == "resolves") {
-                    mstnd.resolves = extract_node_id_vec(tts, sbv);
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::RESOLVES_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.resolves = extract_node_id_vec(tts, sbv);
+#                   endif
                 } else if (sbk == "was_uncontested") {
                     if (sbv.is_boolean()) {
                         mstnd.was_uncontested =  sbv.get<bool>();
@@ -287,6 +315,12 @@ bool read_tree_and_annotations(const fs::path & config_path,
                     }
                 }
             }
+#           if defined(JOINT_MAPPING_VEC)
+                mstnd.source_edge_mappings.clear();
+                std::swap(mstnd.source_edge_mappings, tmpv);
+                //LOG(INFO) << "mstnd.source_edge_mappings size = " << mstnd.source_edge_mappings.size() << " for k = " << k;
+#           endif
+
         }
         auto & tree_broken_taxa = sum_tree_data.broken_taxa;
         // read the info from the broken taxa file

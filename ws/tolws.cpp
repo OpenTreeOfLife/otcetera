@@ -24,8 +24,23 @@ void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json 
     taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
 }
 
+inline string ott_id_to_idstr(OttId ott_id) {
+    string ret;
+    ret.reserve(12);
+    ret = "ott";
+    ret += std::to_string(ott_id);
+    return ret;
+}
+        
+inline string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
+    return nd.get_name();
+    // code below from when we were trying calling clear_names_for_nodes_with_ids to clear
+    //    the name strings, but I that saved trivial memory
+    //return (nd.has_ott_id() ? ott_id_to_idstr(nd.get_ott_id()) : nd.get_name());
+}
+
 void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
-    noderepr["node_id"] = nd.get_name();
+    noderepr["node_id"] = node_id_for_summary_tree_node(nd);
     noderepr["num_tips"] = nd.get_data().num_tips;
     if (nd.has_ott_id()) {
         auto nd_id = nd.get_ott_id();
@@ -54,6 +69,7 @@ inline void add_str_to_str_or_vec_string(json & o, const string * first, const s
     }
 }
 
+#if !defined(JOINT_MAPPING_VEC)
 void add_support_info_vec(const char * tag,
                           const vec_src_node_ids & v,
                           json & noderepr,
@@ -61,7 +77,8 @@ void add_support_info_vec(const char * tag,
                           const string * extra_src=nullptr,
                           const string * extra_node_id=nullptr) {
     json o;
-    for (const auto & study_node_pair : v ) {
+    for (const auto & sni : v ) {
+        const auto study_node_pair = tts.decode_study_node_id_index(sni);
         usedSrcIds.insert(*study_node_pair.first);
         add_str_to_str_or_vec_string(o, study_node_pair.first, study_node_pair.second);
     }
@@ -70,6 +87,7 @@ void add_support_info_vec(const char * tag,
     }
     noderepr[tag] = o;
 }
+#endif
 
 void add_node_support_info(const TreesToServe & tts,
                            const SumTreeNode_t & nd,
@@ -79,11 +97,67 @@ void add_node_support_info(const TreesToServe & tts,
     const auto & d = nd.get_data();
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
+    string tmp;
     if (nd.has_ott_id()) {
         extra_src = &(taxonomy.get_version());
-        extra_node_id = &(nd.get_name());
+        tmp = node_id_for_summary_tree_node(nd);
+        extra_node_id = &tmp;
         usedSrcIds.insert(taxonomy.get_version());
     }
+
+#if defined(JOINT_MAPPING_VEC)
+    json supported_j; bool had_conflicts = false;
+    json conflicts_j; bool had_supported = false;
+    json partial_path_j; bool had_partial_path = false;
+    json resolves_j; bool had_resolves = false;
+    json terminal_j; bool had_terminal = false;
+    for (auto el : d.source_edge_mappings) {
+        const auto study_node_pair = tts.decode_study_node_id_index(el.second);
+        usedSrcIds.insert(*study_node_pair.first);
+        switch (el.first) {
+            case SourceEdgeMappingType::CONFLICTS_WITH_MAPPING:
+                add_str_to_str_or_vec_string(conflicts_j, study_node_pair.first, study_node_pair.second);
+                had_conflicts = true;
+                break;
+            case SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING:
+                add_str_to_str_or_vec_string(partial_path_j, study_node_pair.first, study_node_pair.second);
+                had_partial_path = true;
+                break;
+            case SourceEdgeMappingType::RESOLVES_MAPPING:
+                add_str_to_str_or_vec_string(resolves_j, study_node_pair.first, study_node_pair.second);
+                had_resolves = true;
+                break;
+            case SourceEdgeMappingType::SUPPORTED_BY_MAPPING:
+                add_str_to_str_or_vec_string(supported_j, study_node_pair.first, study_node_pair.second);
+                had_supported = true;
+                break;
+            case SourceEdgeMappingType::TERMINAL_MAPPING:
+                add_str_to_str_or_vec_string(terminal_j, study_node_pair.first, study_node_pair.second);
+                had_terminal = true;
+                break;
+        }
+    }
+    if (extra_src && extra_node_id) {
+        add_str_to_str_or_vec_string(supported_j, extra_src, extra_node_id);
+        had_supported = true;
+    }
+    if (had_conflicts) {
+        noderepr["conflicts_with"] = conflicts_j;
+    }
+    if (had_partial_path) {
+        noderepr["partial_path_of"] = partial_path_j;
+    }
+    if (had_resolves) {
+        noderepr["resolves"] = resolves_j;
+    }
+    if (had_supported) {
+        noderepr["supported_by"] = supported_j;
+    }
+    if (had_terminal) {
+        noderepr["terminal"] = terminal_j;
+    }
+
+#else
     if (extra_src != nullptr || !d.supported_by.empty()) {
         add_support_info_vec("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
     }
@@ -99,6 +173,7 @@ void add_node_support_info(const TreesToServe & tts,
     if (!d.terminal.empty()) {
         add_support_info_vec("terminal", d.terminal, noderepr, usedSrcIds);
     }
+#endif
     if (d.was_uncontested) {
         noderepr["was_uncontested"] = true;
         noderepr["was_constrained"] = true;
@@ -384,10 +459,17 @@ class NodeNamerSupportedByStasher {
 
         string operator()(const SumTreeNode_t *nd) const {
             const SumTreeNodeData & d = nd->get_data();
-            for (auto & p : d.supported_by) {
-                study_id_set.insert(p.first);
-            }
-            const string & id_str = nd->get_name(); // in this tree the "name" is really the "ott###" string
+#           if defined(JOINT_MAPPING_VEC)
+                for (auto & el : d.source_edge_mappings) {
+                    if (el.first == SourceEdgeMappingType::SUPPORTED_BY_MAPPING) {
+                        study_id_set.insert(tts.decode_study_node_id_index(el.second).first);
+                    }
+                }
+#           else
+                for (auto & sni : d.supported_by) {
+                    study_id_set.insert(tts.decode_study_node_id_index(sni).first);
+                }
+#           endif
             if (nns != NodeNameStyle::NNS_ID_ONLY && nd->has_ott_id()) {
                 const auto * tr = taxonomy.included_taxon_from_id(nd->get_ott_id());
                 if (tr == nullptr) {
@@ -396,6 +478,7 @@ class NodeNamerSupportedByStasher {
                 string taxon_name = get_taxon_unique_name(*tr);
                 if (nns == NodeNameStyle::NNS_NAME_AND_ID) {
                     string ret;
+                    const string id_str = node_id_for_summary_tree_node(*nd);
                     ret.reserve(taxon_name.length() + 1 + id_str.length());
                     ret = taxon_name;
                     ret += ' ';
@@ -405,13 +488,7 @@ class NodeNamerSupportedByStasher {
                     return taxon_name;
                 }
             }
-            return id_str;
-        }
-        static string ott_id_to_idstr(OttId ott_id) {
-            string ret;
-            ret = "ott";
-            ret += std::to_string(ott_id);
-            return ret;
+            return node_id_for_summary_tree_node(*nd);
         }
         string operator()(const RTRichTaxNode *nd) const {
             assert(nd != nullptr);

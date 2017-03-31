@@ -74,7 +74,8 @@ class RootedTreeNode {
             return name;
         }
         void set_name(const namestring_t &n) {
-            name = n;
+            std::string t = n;
+            swap(name, t);
         }
         void set_name(namestring_t && n) {
             name = std::move(n);
