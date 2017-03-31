@@ -33,10 +33,10 @@ inline string ott_id_to_idstr(OttId ott_id) {
 }
         
 inline string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
-    return nd.get_name();
+    //return nd.get_name();
     // code below from when we were trying calling clear_names_for_nodes_with_ids to clear
     //    the name strings, but I that saved trivial memory
-    //return (nd.has_ott_id() ? ott_id_to_idstr(nd.get_ott_id()) : nd.get_name());
+    return (nd.has_ott_id() ? ott_id_to_idstr(nd.get_ott_id()) : nd.get_name());
 }
 
 void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
@@ -204,12 +204,34 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           bool & was_broken) {
     was_broken = false;
     const auto & tree_data = tree.get_data();
-    auto n2nit = tree_data.name_to_node.find(node_id);
-    if (n2nit != tree_data.name_to_node.end()) {
-        return n2nit->second;
-    }
+    //auto n2nit = tree_data.name_to_node.find(node_id);
+    //if (n2nit != tree_data.name_to_node.end()) {
+    //    return n2nit->second;
+    //}
     std::smatch matches;
+    if (std::regex_match(node_id, matches, ott_id_pattern)) {
+        long raw_ott_id = long_ott_id_from_name(node_id);
+        if (raw_ott_id >= 0) {
+            OttId ott_id = check_ott_id_size(raw_ott_id);
+            auto i2nit = tree_data.id_to_node.find(ott_id);
+            if (i2nit != tree_data.id_to_node.end()) {
+                return i2nit->second;
+            }
+            LOG(WARNING) << "not finding " << ott_id << " extracted from " << node_id;
+        }
+        auto bt_it = tree_data.broken_taxa.find(node_id);
+        if (bt_it == tree_data.broken_taxa.end()) {
+            return nullptr;
+        }
+        // if found we return the MRCA pointer in the first slot of the pair.
+        was_broken = true;
+        return bt_it->second.first;
+    }
     if (std::regex_match(node_id, matches, mrca_id_pattern)) {
+        auto n2nit = tree_data.broken_name_to_node.find(node_id);
+        if (n2nit != tree_data.broken_name_to_node.end()) {
+            return n2nit->second;
+        }
         assert(matches.size() >= 2);
         std::string first_id = matches[1];
         std::string second_id = matches[2];
@@ -223,15 +245,6 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
             return nullptr;
         }
         return find_mrca_via_traversal_indices(fir_nd, sec_nd);
-    }
-    if (std::regex_match(node_id, matches, ott_id_pattern)) {
-        auto bt_it = tree_data.broken_taxa.find(node_id);
-        if (bt_it == tree_data.broken_taxa.end()) {
-            return nullptr;
-        }
-        // if found we return the MRCA pointer in the first slot of the pair.
-        was_broken = true;
-        return bt_it->second.first;
     }
     return nullptr;
 }

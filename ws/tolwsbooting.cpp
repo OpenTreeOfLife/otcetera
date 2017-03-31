@@ -251,14 +251,16 @@ bool read_tree_and_annotations(const fs::path & config_path,
         // read the node annotations and add them to the tree.
         auto node_obj = extract_obj(annotations_obj, "nodes");
         auto & sum_tree_data = tree.get_data();
-        const auto & n2n = sum_tree_data.name_to_node;
+        //const auto & n2n = sum_tree_data.name_to_node;
         for (json::const_iterator nit = node_obj.begin(); nit != node_obj.end(); ++nit) {
             string k = nit.key();
-            auto stnit = n2n.find(k);
-            if (stnit == n2n.end()) {
+            bool was_broken = false;
+            const SumTreeNode_t * stn = find_node_by_id_str(tree, k, was_broken);
+            //auto stnit = n2n.find(k);
+            if (stn == nullptr) {
                 throw OTCError() << "Node " << k << " from annotations not found in tree.";
             }
-            const SumTreeNode_t * stn = stnit->second;
+            //const SumTreeNode_t * stn = stnit->second;
             SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(stn);
             SumTreeNodeData & mstnd = mstn->get_data();
             const auto & supportj = nit.value();
@@ -336,11 +338,14 @@ bool read_tree_and_annotations(const fs::path & config_path,
                 for (json::const_iterator ai_it = attach_obj.begin(); ai_it != attach_obj.end(); ++ai_it) {
                     attach_id_list.push_back(ai_it.key());
                 }
-                const SumTreeNode_t * mrca_nd = n2n.at(mrca_id);
+                bool was_broken = false;
+                const SumTreeNode_t * mrca_nd = find_node_by_id_str(tree, mrca_id, was_broken);
                 vector<const SumTreeNode_t *> avec;
                 avec.reserve(attach_id_list.size());
                 for (auto attach_id : attach_id_list) {
-                    avec.push_back(n2n.at(attach_id));
+                    auto anptr = find_node_by_id_str(tree, attach_id, was_broken);
+                    assert(anptr != nullptr);
+                    avec.push_back(anptr);
                 }
                 tree_broken_taxa[broken_ott] = BrokenMRCAAttachVec(mrca_nd, avec);
             }

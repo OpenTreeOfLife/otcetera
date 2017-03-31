@@ -100,7 +100,9 @@ typedef std::pair<const SumTreeNode_t *, SumTreeNodeVec_t> BrokenMRCAAttachVec;
 
 class SumTreeData {
     public:
-    std::unordered_map<std::string, const SumTreeNode_t *> name_to_node;
+    std::unordered_map<std::string, const SumTreeNode_t *> broken_name_to_node;
+    std::unordered_map<OttId, const SumTreeNode_t *> id_to_node;
+    
     std::unordered_map<std::string, BrokenMRCAAttachVec> broken_taxa;
 };
 using SummaryTree_t = otc::RootedTree<SumTreeNodeData, SumTreeData>;
@@ -117,19 +119,22 @@ inline std::size_t calc_memory_used(const BrokenMRCAAttachVec &d, MemoryBookkeep
 
 template<>
 inline std::size_t calc_memory_used(const SumTreeData &d, MemoryBookkeeper &mb) {
-    const auto n2nnum_unused_buckets = d.name_to_node.bucket_count() - d.name_to_node.size();
-    std::size_t n2nmem = n2nnum_unused_buckets * (sizeof(std::string) + sizeof(SumTreeNode_t *));
-    for (auto n : d.name_to_node) {
-        n2nmem += calc_memory_used(n.first, mb) + sizeof(const SumTreeNode_t *);
+    const auto bn2nnum_unused_buckets = d.broken_name_to_node.bucket_count() - d.broken_name_to_node.size();
+    std::size_t bn2nmem = bn2nnum_unused_buckets * (sizeof(std::string) + sizeof(SumTreeNode_t *));
+    for (auto n : d.broken_name_to_node) {
+        bn2nmem += calc_memory_used(n.first, mb) + sizeof(const SumTreeNode_t *);
     }
+    const auto i2nnum_unused_buckets = d.id_to_node.bucket_count() - d.broken_name_to_node.size();
+    std::size_t i2nmem = (d.id_to_node.size() + i2nnum_unused_buckets) * (sizeof(OttId) + sizeof(SumTreeNode_t *));
     const auto btnum_unused_buckets = d.broken_taxa.bucket_count() - d.broken_taxa.size();
     std::size_t btmem = btnum_unused_buckets * (sizeof(std::string) + sizeof(BrokenMRCAAttachVec ));
     for (auto n : d.broken_taxa) {
         btmem += calc_memory_used(n.first, mb) + calc_memory_used(n.second, mb);
     }
-    mb["SumTreeData name_to_node"] += n2nmem;
+    mb["SumTreeData broken_name_to_node"] += bn2nmem;
+    mb["SumTreeData id_to_node"] += i2nmem;
     mb["SumTreeData broken_taxa"] += btmem;
-    return btmem + n2nmem;
+    return btmem + i2nmem + bn2nmem;
 }
 #endif
 
@@ -164,15 +169,24 @@ struct SummaryTreeAnnotation {
 };
 
 template<typename T>
-void clear_names_for_nodes_with_ids(T & tree) {
+void index_by_name_or_id(T & tree) {
     const std::string empty_string;
-    for (auto nd : iter_node(tree)) {
+    auto & td = tree.get_data();
+    auto & bm = td.broken_name_to_node;
+    auto & im = td.id_to_node;
+    for (auto nd : iter_pre(tree)) {
         if (nd->has_ott_id()) {
             nd->set_name(empty_string);
+            im[nd->get_ott_id()] = nd;
+        } else {
+            bm[nd->get_name()] = nd;
         }
     }
 }
 
+const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
+                                          const std::string & node_id,
+                                          bool & was_broken);
 class TreesToServe {
         std::list< SummaryTreeAnnotation> annotation_list;
         std::list<std::unique_ptr<SummaryTree_t> > tree_list;
@@ -260,8 +274,7 @@ class TreesToServe {
             ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
             FilePosStruct pos(filenamePtr);
             std::unique_ptr<SummaryTree_t> nt = read_next_newick<SummaryTree_t>(inp, pos, parsingRules);
-            index_nodes_by_name(*nt);
-            //clear_names_for_nodes_with_ids(*nt);
+            index_by_name_or_id(*nt);
             set_traversal_entry_exit_and_num_tips(*nt);
             tree_list.push_back(move(nt));
             annotation_list.push_back(SummaryTreeAnnotation());
