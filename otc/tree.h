@@ -243,8 +243,8 @@ class RootedTreeNode {
                 }
 #           endif
             parent = nullptr;
+            rSib = nullptr;
 #           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
-                rSib = nullptr;
                 lSib = nullptr;
 #           endif
         }
