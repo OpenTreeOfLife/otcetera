@@ -31,7 +31,7 @@ class RootedTreeNode {
         const node_type * get_first_child() const { return lChild; }
               node_type * get_first_child()       { return lChild; }
 
-#       if defined(MINIMAL_NODE_NAVIGATION_PTRS)
+#   if defined(MINIMAL_NODE_NAVIGATION_PTRS)
         const node_type * get_last_child_impl() const {
             const node_type * c = lChild;
             if (lChild == nullptr) {
@@ -65,12 +65,12 @@ class RootedTreeNode {
               node_type * get_last_child()       { return const_cast<node_type *>(get_last_child_impl()); }
         const node_type * get_prev_sib() const { return get_prev_sib_impl(); }
               node_type * get_prev_sib()       { return const_cast<node_type *>(get_prev_sib_impl()); }
-#       else
+#   else
         const node_type * get_last_child() const { return rChild; }
               node_type * get_last_child()       { return rChild; }
         const node_type * get_prev_sib() const { return lSib; }
               node_type * get_prev_sib()       { return lSib; }
-#       endif
+#   endif
 
         const node_type * get_next_sib() const { return rSib; }
               node_type * get_next_sib()       { return rSib; }
@@ -256,10 +256,10 @@ class RootedTreeNode {
             assert (n != nullptr);
             assert(parent);
             assert(parent->has_children());
-            auto ls = get_prev_sib();
+            auto ls = const_cast<node_type *>(get_prev_sib());
 #           if !defined (MINIMAL_NODE_NAVIGATION_PTRS)
                 n->lSib = lSib;
-#           else
+#           endif
             if (ls) {
                 ls->rSib = n;
             } else {
