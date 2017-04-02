@@ -256,20 +256,17 @@ class RootedTreeNode {
             assert (n != nullptr);
             assert(parent);
             assert(parent->has_children());
-#           if defined (MINIMAL_NODE_NAVIGATION_PTRS)
-                auto ls = get_prev_sib();
-                if (ls) {
-                    ls->rSib = n;
-                }
-                n->rSib = rSib;            
-#           else
+            auto ls = get_prev_sib();
+#           if !defined (MINIMAL_NODE_NAVIGATION_PTRS)
                 n->lSib = lSib;
-                if (lSib){
-                    lSib->rSib = n;
-                } else {
-                    parent->lChild = n;
-                }
-                n->rSib = rSib;
+#           else
+            if (ls) {
+                ls->rSib = n;
+            } else {
+                parent->lChild = n;          
+            }
+            n->rSib = rSib;            
+#           if !defined (MINIMAL_NODE_NAVIGATION_PTRS)
                 if (rSib) {
                     rSib->lSib = n;
                 } else {
