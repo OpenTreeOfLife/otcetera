@@ -185,11 +185,7 @@ class RootedTreeNode {
             }
         }
         void add_child(node_type *n) {
-#           if defined (MINIMAL_NODE_NAVIGATION_PTRS)                
-                auto rc = get_last_child();
-#           else
-                auto rc = rChild;
-#           endif
+            auto rc = get_last_child();
             if (rc) {
                 rc->add_sib(n);
             } else {
