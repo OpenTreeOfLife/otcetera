@@ -190,8 +190,8 @@ class RootedTreeNode {
                 rc->add_sib(n);
             } else {
                 lChild = n;
-                rc = n;
 #               if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                    rChild = n;
                     n->lSib = nullptr;
 #               endif
                 n->rSib = nullptr;
