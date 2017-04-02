@@ -31,11 +31,46 @@ class RootedTreeNode {
         const node_type * get_first_child() const { return lChild; }
               node_type * get_first_child()       { return lChild; }
 
+#       if defined(MINIMAL_NODE_NAVIGATION_PTRS)
+        const node_type * get_last_child_impl() const {
+            const node_type * c = lChild;
+            if (lChild == nullptr) {
+                return nullptr;
+            }
+            const node_type * n = c->get_next_sib();
+            while (n != nullptr) {
+                c = n;
+                n = n->get_next_sib();
+            }
+            return c;
+        }
+        const node_type * get_prev_sib_impl() const {
+            if (parent == nullptr) {
+                return nullptr;
+            }
+            const node_type * s = parent->get_first_child();
+            if (s == this) {
+                return nullptr;
+            }
+            const node_type * n = s->get_next_sib();
+            while (n != this) {
+                assert(n != nullptr);
+                s = n;
+                n = n->get_next_sib();
+            }
+            return s; 
+           }
+
+        const node_type * get_last_child() const { return get_last_child_impl(); }
+              node_type * get_last_child()       { return const_cast<node_type *>(get_last_child_impl()); }
+        const node_type * get_prev_sib() const { return get_prev_sib_impl(); }
+              node_type * get_prev_sib()       { return const_cast<node_type *>(get_prev_sib_impl()); }
+#       else
         const node_type * get_last_child() const { return rChild; }
               node_type * get_last_child()       { return rChild; }
-
         const node_type * get_prev_sib() const { return lSib; }
               node_type * get_prev_sib()       { return lSib; }
+#       endif
 
         const node_type * get_next_sib() const { return rSib; }
               node_type * get_next_sib()       { return rSib; }
@@ -93,35 +128,39 @@ class RootedTreeNode {
             assert(n);
 
             // Connect left (from n)
-            n->lSib = lSib;
-            if (n->lSib)
-                n->lSib->rSib = n;
-            else
-            {
+            auto ls = get_prev_sib();
+#           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                n->lSib = ls;
+#           endif
+            if (ls) {
+                ls->rSib = n;
+            } else  {
                 assert(parent->lChild == this);
                 parent->lChild = n;
             }
 
             // Connect right (from n)
             n->rSib = this;
-            lSib = n;
-
+#           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                lSib = n;
+#           endif
             // Connect up (from n)
             n->parent = parent;
         }
         void add_sib_on_right(node_type *n) {
             assert(n);
-
             // Connect right (from n)
             n->rSib = rSib;
-            if (n->rSib) {
-                n->rSib->lSib = n;
-            } else {
-                assert(parent->rChild == this);
-                parent->rChild = n;
-            }
-            // Connect left (from n)
-            n->lSib = this;
+#           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                if (n->rSib) {
+                    n->rSib->lSib = n;
+                } else {
+                    assert(parent->rChild == this);
+                    parent->rChild = n;
+                }
+                // Connect left (from n)
+                n->lSib = this;
+#           endif
             rSib = n;
             // Connect up (from n)
             n->parent = parent;
@@ -137,25 +176,36 @@ class RootedTreeNode {
                 lChild->add_sib_on_left(n);
             } else {
                 lChild = n;
-                rChild = n;
-                n->lSib = nullptr;
+#               if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                    rChild = n;
+                    n->lSib = nullptr;
+#               endif
                 n->rSib = nullptr;
                 n->parent = this;
             }
         }
         void add_child(node_type *n) {
-            if (rChild) {
-                rChild->add_sib(n);
+#           if defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                auto rc = get_last_child();
+#           else
+                auto rc = rChild;
+#           endif
+            if (rc) {
+                rc->add_sib(n);
             } else {
                 lChild = n;
-                rChild = n;
-                n->lSib = nullptr;
+                rc = n;
+#               if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                    n->lSib = nullptr;
+#               endif
                 n->rSib = nullptr;
                 n->parent = this;
             }
         }
         bool has_children() const {
-            assert(bool(lChild) == bool(rChild));
+#           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                 assert(bool(lChild) == bool(rChild));
+#           endif
             return lChild;
         }
         void remove_child(node_type *n) {
@@ -183,19 +233,24 @@ class RootedTreeNode {
         void detach_this_node() {
             assert(parent);
             assert(parent->has_children());
-            if (lSib){
-                lSib->rSib = rSib;
+            auto ls = get_prev_sib();
+            if (ls){
+                ls->rSib = rSib;
             } else {
                 parent->lChild = rSib;
             }
-            if (rSib) {
-                rSib->lSib = lSib;
-            } else {
-                parent->rChild = lSib;
-            }
+#           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                if (rSib) {
+                    rSib->lSib = lSib;
+                } else {
+                    parent->rChild = lSib;
+                }
+#           endif
             parent = nullptr;
-            rSib = nullptr;
-            lSib = nullptr;
+#           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
+                rSib = nullptr;
+                lSib = nullptr;
+#           endif
         }
 
         // places `n` into the parent node's child array in the place
@@ -205,18 +260,26 @@ class RootedTreeNode {
             assert (n != nullptr);
             assert(parent);
             assert(parent->has_children());
-            n->lSib = lSib;
-            if (lSib){
-                lSib->rSib = n;
-            } else {
-                parent->lChild = n;
-            }
-            n->rSib = rSib;
-            if (rSib) {
-                rSib->lSib = n;
-            } else {
-                parent->rChild = n;
-            }
+#           if defined (MINIMAL_NODE_NAVIGATION_PTRS)
+                auto ls = get_prev_sib();
+                if (ls) {
+                    ls->rSib = n;
+                }
+                n->rSib = rSib;            
+#           else
+                n->lSib = lSib;
+                if (lSib){
+                    lSib->rSib = n;
+                } else {
+                    parent->lChild = n;
+                }
+                n->rSib = rSib;
+                if (rSib) {
+                    rSib->lSib = n;
+                } else {
+                    parent->rChild = n;
+                }
+#           endif
             n->parent = parent;
         }
     public:
@@ -239,8 +302,10 @@ class RootedTreeNode {
         void add_self_and_des_to_preorder(std::vector<const node_type *> &p) const;
     private:
         node_type * lChild = nullptr;
-        node_type * rChild = nullptr;
-        node_type * lSib = nullptr;
+#       if ! defined(MINIMAL_NODE_NAVIGATION_PTRS)
+           node_type * rChild = nullptr;
+           node_type * lSib = nullptr;
+#       endif
         node_type * rSib = nullptr;
         node_type * parent = nullptr;
         namestring_t name;     // non-empty only for internals that are labelled with names that are NOT taxLabels
