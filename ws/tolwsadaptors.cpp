@@ -437,7 +437,7 @@ void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
-void conflict_method_handler( const shared_ptr< Session > session ) {
+void conflict_conflict_status_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
@@ -576,6 +576,10 @@ int run_server(const po::variables_map & args) {
     auto r_taxon_subtree = make_shared< Resource >( );
     r_taxon_subtree->set_path( "/taxonomy/subtree" );
     r_taxon_subtree->set_method_handler( "POST", taxon_subtree_method_handler );
+    // conflict
+    auto r_conflict_conflict_status = make_shared< Resource >( );
+    r_conflict_conflict_status->set_path( "/conflict/conflict-status" );
+    r_conflict_conflict_status->set_method_handler( "POST", conflict_conflict_status_method_handler );
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
     settings->set_port( port_number );
@@ -594,6 +598,7 @@ int run_server(const po::variables_map & args) {
     service.publish( r_taxon_info );
     service.publish( r_taxon_mrca );
     service.publish( r_taxon_subtree );
+    service.publish( r_conflict_conflict_status );
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
     LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";
