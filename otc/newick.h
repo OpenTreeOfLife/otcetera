@@ -87,7 +87,7 @@ inline std::unique_ptr<T> tree_from_newick_string(const std::string& s)
 {
     ParsingRules rules;
     rules.require_ott_ids = false;
-    return tree_from_newick_string<T>(s);
+    return tree_from_newick_string<T>(s,rules);
 }
 
 
