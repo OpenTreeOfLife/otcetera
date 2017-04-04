@@ -719,18 +719,16 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
 using cnode_type = ConflictTree::node_type;
 
 template <typename N>
-string name_or_ottid(const N* node)
+boost::optional<string> node_name_or_ottid(const N* node)
 {
-    if (not node->get_name().empty())
-    {
-	return node->get_name();
-    }
+    auto result = get_source_node_name(node->get_name());
+
+    if (result)
+	return result;
     else if (node->has_ott_id())
-    {
 	return string("ott")+std::to_string(node->get_ott_id());
-    }
     else
-	throw OTCError()<<"Node has no name!";
+	return boost::none;
 }
 
 struct conflict_stats
@@ -744,48 +742,48 @@ struct conflict_stats
 
     void add_supported_by(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = supported_by.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	auto result = supported_by.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
 	if (not result.second)
-	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
+	    throw OTCError()<<*node_name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_partial_path_of(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = partial_path_of.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	auto result = partial_path_of.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
 	if (not result.second)
-	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
+	    throw OTCError()<<*node_name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_resolved_by(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = resolved_by.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	auto result = resolved_by.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
 	if (not result.second)
-	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
+	    throw OTCError()<<*node_name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_resolves(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = resolves.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	auto result = resolves.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
 	if (not result.second)
-	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
+	    throw OTCError()<<*node_name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_terminal(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = terminal.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	auto result = terminal.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
 	if (not result.second)
-	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
+	    throw OTCError()<<*node_name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_conflicts_with(const cnode_type* node2, const cnode_type* node1)
     {
-	auto name1 = name_or_ottid(node1);
-	auto name2 = name_or_ottid(node2);
+	auto name1 = *node_name_or_ottid(node1);
+	auto name2 = *node_name_or_ottid(node2);
 	auto present = conflicts_with.insert({name1,{name2,node2}});
 	if (present.second)
 	{
@@ -924,11 +922,11 @@ json conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& 
     return stats.get_json(Tax);
 }
 			   
-template <typename T>
+template<typename T>
 bool has_internal_node_names(const T& t)
 {
     for(const auto nd: iter_post_const(t))
-	if (nd->get_name().empty())
+	if (not node_name_or_ottid(nd->get_name()))
 	    return false;
     return true;
 }
@@ -942,8 +940,14 @@ string conflict_ws_method(const SummaryTree_t& summary,
     auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
     compute_depth(*query_tree);
     compute_tips(*query_tree);
-    if (not has_internal_node_names(*query_tree))
-	throw OTCWSError(400)<<"Newick tree has unnamed internal nodes!";
+
+    for(const auto nd: iter_post_const(*query_tree))
+    {
+	string name = nd->get_name();
+	auto node_name = node_name_or_ottid(nd);
+	if (not node_name)
+	    throw OTCWSError(400)<<"Newick tree node with name='"<<name<<"' and OTT Id="<<nd->get_ott_id()<<"does not have node name annotation!";
+    }
 
     if (tree2s == "ott")
     {
