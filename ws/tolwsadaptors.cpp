@@ -456,7 +456,7 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
 
 	string tree2;
 	if (status_code == OK) {
-	    extract_from_request(parsedargs, "tree2", tree1, rbody, status_code);
+	    extract_from_request(parsedargs, "tree2", tree2, rbody, status_code);
 	}
 
         if (status_code == OK) {
