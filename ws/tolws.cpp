@@ -716,6 +716,21 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
 
 using cnode_type = ConflictTree::node_type;
 
+template <typename N>
+string name_or_ottid(const N* node)
+{
+    if (not node->get_name().empty())
+    {
+	return node->get_name();
+    }
+    else if (node->has_ott_id())
+    {
+	return string("ott")+std::to_string(node->get_ott_id());
+    }
+    else
+	throw OTCError()<<"Node has no name!";
+}
+
 struct conflict_stats
 {
     map<string, string> supported_by;
@@ -727,43 +742,48 @@ struct conflict_stats
 
     void add_supported_by(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = supported_by.insert({node1->get_name(), node2->get_name()});
-	assert(result.second);
+	auto result = supported_by.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	if (not result.second)
+	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_partial_path_of(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = partial_path_of.insert({node1->get_name(), node2->get_name()});
-	assert(result.second);
+	auto result = partial_path_of.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	if (not result.second)
+	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_resolved_by(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = resolved_by.insert({node1->get_name(), node2->get_name()});
-	assert(result.second);
+	auto result = resolved_by.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	if (not result.second)
+	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_resolves(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = resolves.insert({node1->get_name(), node2->get_name()});
-	assert(result.second);
+	auto result = resolves.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	if (not result.second)
+	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_terminal(const cnode_type* node2, const cnode_type* node1)
     {
-	auto result = terminal.insert({node1->get_name(), node2->get_name()});
-	assert(result.second);
+	auto result = terminal.insert({name_or_ottid(node1), name_or_ottid(node2)});
+	if (not result.second)
+	    throw OTCError()<<name_or_ottid(node1)<<" occurs twice!";
     }
 
 
     void add_conflicts_with(const cnode_type* node2, const cnode_type* node1)
     {
-	auto& name1 = node1->get_name();
-	auto& name2 = node2->get_name();
+	auto name1 = name_or_ottid(node1);
+	auto name2 = name_or_ottid(node2);
 	auto present = conflicts_with.insert({name1,{name2,node2}});
 	if (present.second)
 	{
