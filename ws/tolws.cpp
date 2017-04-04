@@ -13,7 +13,7 @@ namespace otc {
 const int OK = restbed::OK;
 extern TreesToServe tts;
 
-OTCWSError::OTCWSError():status_code(OK) {};
+OTCWSError::OTCWSError() noexcept :status_code(OK) {};
 
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.get_data();

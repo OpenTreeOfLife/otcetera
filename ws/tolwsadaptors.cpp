@@ -472,10 +472,8 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
 	    const auto& taxonomy = tts.get_taxonomy();
 
 	    string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
-	    LOG(INFO)<<"Got tree1 = '"<<tree1<<"'";
 
 	    string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
-	    LOG(INFO)<<"Got tree2 = '"<<tree2<<"'";
 
 	    rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
 	}

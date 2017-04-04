@@ -23,9 +23,14 @@ typedef std::vector<src_node_id> vec_src_node_ids;
 class OTCWSError : public OTCError {
 public:
     int status_code;
-    OTCWSError();
-    OTCWSError(int s):status_code(s) {};
-    OTCWSError(int s, const std::string& m):OTCError(m),status_code(s) {};
+    template <typename T> OTCWSError& operator<<(const T& t)
+    {
+	static_cast<OTCError&>(*this)<<t;
+	return *this;
+    }
+    OTCWSError() noexcept;
+    OTCWSError(int s) noexcept :status_code(s) {};
+    OTCWSError(int s, const std::string& m) noexcept :OTCError(m),status_code(s) {};
 };
 
 class SumTreeNodeData {
