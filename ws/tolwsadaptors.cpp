@@ -28,6 +28,17 @@ namespace otc {
     TreesToServe tts;
 }
 
+json parse_body_or_throw(const Bytes & body)
+{
+    try {
+	return json::parse(body);
+    }
+    catch (...) {
+	throw OTCWSError(400)<<"Could not parse body of call as JSON.\n";
+    }
+}
+
+
 bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbody, int & status_code) {
     try {
         if (!body.empty()) {
