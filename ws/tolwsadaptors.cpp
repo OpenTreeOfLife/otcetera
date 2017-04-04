@@ -52,6 +52,17 @@ bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbod
     return false;
 }
 
+template<typename T>
+T extract_from_request_or_throw(const nlohmann::json & j, const std::string& opt_name)
+{
+    string response;
+    T setting;
+    int status_code = restbed::OK;
+    if (not extract_from_request(j, opt_name, setting, response, status_code))
+	throw OTCWSError(status_code, response);
+    return setting;
+}
+
 ///////////////////////
 // handlers that are registered as callback
 
