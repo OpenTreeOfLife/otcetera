@@ -945,10 +945,16 @@ void conflict_ws_method(const SummaryTree_t& summary,
     }
     catch (OTCError & x)
     {
-	std::abort();
+	response_str = "conflict error: ";
+	response_str +=  x.what();
+	status_code = OK;
+	LOG(ERROR)<<response_str;
     }
     catch (...)
     {
+	response_str = "conflict error";
+	status_code = OK;
+	LOG(ERROR)<<response_str;
     }
 }
 
