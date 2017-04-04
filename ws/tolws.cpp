@@ -795,7 +795,7 @@ struct conflict_stats
 	    }
 	}
     }
-    json to_json() const;
+    json get_json(const Taxonomy&) const;
 };
 
 using tnode_type = RTRichTaxNode;
@@ -805,23 +805,47 @@ int depth(const tnode_type* node)
     return node->get_data().tax_record->depth;
 }
 
-json conflict_stats::to_json() const
+json get_node_status(const string& witness, string status, const Taxonomy& Tax)
+{
+    json j;
+    j["witness"] = witness;
+    j["status"] = std::move(status);
+    auto id = ott_id_from_name(witness);
+    if (id != -1)
+	j["witness_name"] = string(Tax.record_from_id(id).name);
+    return j;
+}
+
+json conflict_stats::get_json(const Taxonomy& Tax) const
 {
     json nodes;
+
     for(auto& x: supported_by)
-    {
-	json j;
-	j["witness"] = x.second;
-	// if name is ottXXX, then j["witness_name"] = lookup(XXX).name; 
-	j["status"] = "supported_by";
-	nodes[x.first] = j;
-    }
+	nodes[x.first] = get_node_status(x.second, "supported_by", Tax);
+
+    for(auto& x: partial_path_of)
+	nodes[x.first] = get_node_status(x.second, "partial_path_of", Tax);
+
+    for(auto& x: terminal)
+	nodes[x.first] = get_node_status(x.second, "terminal", Tax);
+
+    for(auto& x: conflicts_with)
+	nodes[x.first] = get_node_status(x.second.first, "conflicts_with", Tax);
+
+    for(auto& x: resolves)
+	nodes[x.first] = get_node_status(x.second, "resolves", Tax);
+
+    for(auto& x: resolved_by)
+	nodes[x.first] = get_node_status(x.second, "resolved_by", Tax);
+
     return nodes;
 }
 
 json conflict_with_taxonomy(const ConflictTree& query_tree,
-			    const RichTaxTree& taxonomy)
+			    const RichTaxonomy& Tax)
 {
+    auto& taxonomy = Tax.getTaxTree();
+
     conflict_stats stats;
 
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {return mrca_from_depth(n1,n2);};
@@ -855,10 +879,10 @@ json conflict_with_taxonomy(const ConflictTree& query_tree,
 			      log_resolves,
 			      do_nothing);
     
-    return stats.to_json();
+    return stats.get_json(Tax);
 }
 
-json conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& summary)
+json conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& summary, const RichTaxonomy& Tax)
 {
     using snode_type = SummaryTree_t::node_type;
 
@@ -895,7 +919,7 @@ json conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& 
 			      log_resolves,
 			      do_nothing);
     
-    return stats.to_json();
+    return stats.get_json(Tax);
 }
 			   
 template <typename T>
@@ -927,13 +951,13 @@ void conflict_ws_method(const SummaryTree_t& summary,
 
 	if (tree2s == "ott")
 	{
-	    j = conflict_with_taxonomy(*query_tree, taxonomy.getTaxTree());
+	    j = conflict_with_taxonomy(*query_tree, taxonomy);
 	    response_str = j.dump(1);
 	    status_code = OK;
 	}
 	else if (tree2s == "synth")
 	{
-	    j = conflict_with_summary(*query_tree, summary);
+	    j = conflict_with_summary(*query_tree, summary, taxonomy);
 	    response_str = j.dump(1);
 	    status_code = OK;
 	}
