@@ -946,7 +946,14 @@ string conflict_ws_method(const SummaryTree_t& summary,
 	string name = nd->get_name();
 	auto node_name = node_name_or_ottid(nd);
 	if (not node_name)
-	    throw OTCWSError(400)<<"Newick tree node with name='"<<name<<"' and OTT Id="<<nd->get_ott_id()<<"does not have node name annotation!";
+	{
+	    OTCWSError E(400);
+	    E<<"Newick tree node with name='"<<name<<"'";
+	    if (nd->has_ott_id())
+		E<<" and OTT Id="<<nd->get_ott_id();
+	    E<<" does not have node name annotation!";
+	    throw E;
+	}
     }
 
     if (tree2s == "ott")
