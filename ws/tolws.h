@@ -20,6 +20,14 @@ namespace otc {
 typedef std::pair<const std::string *, const std::string *> src_node_id;
 typedef std::vector<src_node_id> vec_src_node_ids;
 
+class OTCWSError : public OTCError {
+public:
+    int status_code;
+    OTCWSError();
+    OTCWSError(int s):status_code(s) {};
+    OTCWSError(int s, const std::string& m):OTCError(m),status_code(s) {};
+};
+
 class SumTreeNodeData {
     public:
     std::uint32_t trav_enter = UINT32_MAX;
