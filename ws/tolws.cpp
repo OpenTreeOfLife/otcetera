@@ -878,8 +878,14 @@ json conflict_with_summary(const ConflictTree& query_tree, const SummaryTree_t& 
     return stats.to_json();
 }
 			   
-
-
+template <typename T>
+bool has_internal_node_names(const T& t)
+{
+    for(const auto nd: iter_post_const(t))
+	if (nd->get_name().empty())
+	    return false;
+    return true;
+}
 
 void conflict_ws_method(const SummaryTree_t& summary,
 			const RichTaxonomy & taxonomy,
@@ -893,6 +899,12 @@ void conflict_ws_method(const SummaryTree_t& summary,
 	auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
 	compute_depth(*query_tree);
 	compute_tips(*query_tree);
+	if (not has_internal_node_names(*query_tree))
+	{
+	    response_str = "Newick tree has unnamed internal nodes!";
+	    status_code = 400;
+	}
+
 	if (tree2s == "ott")
 	{
 	    j = conflict_with_taxonomy(*query_tree, taxonomy.getTaxTree());
