@@ -888,18 +888,36 @@ void conflict_ws_method(const SummaryTree_t& summary,
 			string & response_str,
 			int& status_code )
 {
-    auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
     json j;
-    if (tree2s == "ott")
-    {
-	j = conflict_with_taxonomy(*query_tree, taxonomy.getTaxTree());
+    try {
+	auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
+	compute_depth(*query_tree);
+	compute_tips(*query_tree);
+	if (tree2s == "ott")
+	{
+	    j = conflict_with_taxonomy(*query_tree, taxonomy.getTaxTree());
+	    response_str = j.dump(1);
+	    status_code = OK;
+	}
+	else if (tree2s == "synth")
+	{
+	    j = conflict_with_summary(*query_tree, summary);
+	    response_str = j.dump(1);
+	    status_code = OK;
+	}
+	else
+	{
+	    response_str = "Error: tree2 = '" + tree2s + "' not recognized!";
+	    status_code = OK;
+	}
     }
-    else if (tree2s == "synth")
+    catch (OTCError & x)
     {
-	j = conflict_with_summary(*query_tree, summary);
+	std::abort();
     }
-    response_str = j.dump(1);
-    status_code = OK;
+    catch (...)
+    {
+    }
 }
 
 } //namespace otc
