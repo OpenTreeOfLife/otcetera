@@ -1,0 +1,32 @@
+{
+ "node1": {
+  "status": "terminal",
+  "witness": "ott1",
+  "witness_name": "A1"
+ },
+ "node2": {
+  "status": "terminal",
+  "witness": "ott2",
+  "witness_name": "A2"
+ },
+ "node3": {
+  "status": "terminal",
+  "witness": "ott11",
+  "witness_name": "B1"
+ },
+ "node4": {
+  "status": "terminal",
+  "witness": "ott12",
+  "witness_name": "B2"
+ },
+ "node5": {
+  "status": "supported_by",
+  "witness": "ott100",
+  "witness_name": "A"
+ },
+ "node6": {
+  "status": "supported_by",
+  "witness": "ott200",
+  "witness_name": "B"
+ }
+}
