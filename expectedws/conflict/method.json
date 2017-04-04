@@ -2,7 +2,7 @@
   "url_fragment": "conflict/conflict-status",
   "verb": "POST",
   "arguments": {
-      "tree1": "((A1_ott1,A2_ott2),(B1_ott11,B2_ott12));",
+      "tree1": "((A1_ott1,A2_ott2)node1,(B1_ott11,B2_ott12)node2)node3;",
       "tree2": "ott"
   }
 }
