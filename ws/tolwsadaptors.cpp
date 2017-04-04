@@ -463,28 +463,39 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
+	std::string rbody;
+	int status_code = OK;
+	try {
+	    auto parsed_args = parse_body_or_throw(body);
 
-	const auto& summary = *tts.get_summary_tree("");
-	const auto& taxonomy = tts.get_taxonomy();
+	    const auto& summary = *tts.get_summary_tree("");
+	    const auto& taxonomy = tts.get_taxonomy();
 
-	string tree1;
-	if (status_code == OK) {
-	    extract_from_request<string>(parsedargs, "tree1", tree1, rbody, status_code);
+	    string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
+	    LOG(INFO)<<"Got tree1 = '"<<tree1<<"'";
+
+	    string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
+	    LOG(INFO)<<"Got tree2 = '"<<tree2<<"'";
+
+	    rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
 	}
-
-	string tree2;
-	if (status_code == OK) {
-	    extract_from_request(parsedargs, "tree2", tree2, rbody, status_code);
+	catch (OTCWSError & x)
+	{
+	    rbody = string("conflict error [") + std::to_string(x.status_code) + "]: " + x.what();
+	    status_code = x.status_code;
+	    LOG(ERROR)<<rbody;
 	}
-
-        if (status_code == OK) {
-            conflict_ws_method(summary, taxonomy, tree1, tree2, rbody, status_code);
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	catch (OTCError & x)
+	{
+	    rbody = string("conflict error: ") + x.what();
+	    LOG(ERROR)<<rbody;
+	}
+	catch (...)
+	{
+	    rbody = "conflict error";
+	    LOG(ERROR)<<rbody;
+	}
+	session->close( status_code, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
 

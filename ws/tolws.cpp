@@ -933,55 +933,29 @@ bool has_internal_node_names(const T& t)
     return true;
 }
 
-void conflict_ws_method(const SummaryTree_t& summary,
-			const RichTaxonomy & taxonomy,
-			const string& tree1s,
-			const string& tree2s,
-			string & response_str,
-			int& status_code )
+string conflict_ws_method(const SummaryTree_t& summary,
+			  const RichTaxonomy & taxonomy,
+			  const string& tree1s,
+			  const string& tree2s)
 {
-    json j;
-    try {
-	auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
-	compute_depth(*query_tree);
-	compute_tips(*query_tree);
-	if (not has_internal_node_names(*query_tree))
-	{
-	    response_str = "Newick tree has unnamed internal nodes!";
-	    status_code = 400;
-	}
 
-	if (tree2s == "ott")
-	{
-	    j = conflict_with_taxonomy(*query_tree, taxonomy);
-	    response_str = j.dump(1);
-	    status_code = OK;
-	}
-	else if (tree2s == "synth")
-	{
-	    j = conflict_with_summary(*query_tree, summary, taxonomy);
-	    response_str = j.dump(1);
-	    status_code = OK;
-	}
-	else
-	{
-	    response_str = "Error: tree2 = '" + tree2s + "' not recognized!";
-	    status_code = OK;
-	}
-    }
-    catch (OTCError & x)
+    auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
+    compute_depth(*query_tree);
+    compute_tips(*query_tree);
+    if (not has_internal_node_names(*query_tree))
+	throw OTCWSError(400)<<"Newick tree has unnamed internal nodes!";
+
+    if (tree2s == "ott")
     {
-	response_str = "conflict error: ";
-	response_str +=  x.what();
-	status_code = OK;
-	LOG(ERROR)<<response_str;
+	return conflict_with_taxonomy(*query_tree, taxonomy).dump(1);
     }
-    catch (...)
+    else if (tree2s == "synth")
     {
-	response_str = "conflict error";
-	status_code = OK;
-	LOG(ERROR)<<response_str;
+	return conflict_with_summary(*query_tree, summary, taxonomy).dump(1);
     }
+
+
+    throw OTCWSError(400)<<"Error: tree2 = '"<<tree2s<<"' not recognized!";
 }
 
 } //namespace otc
