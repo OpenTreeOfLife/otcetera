@@ -2,6 +2,7 @@
 #define OTC_TOLWS_ADAPTORS_H
 #include <restbed>
 #include "ws/tolws.h"
+#include "ws/parallelreadserialwrite.h"
 #include "otc/otc_base_includes.h"
 
 template<typename T>

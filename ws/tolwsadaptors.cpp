@@ -23,6 +23,8 @@ namespace fs = boost::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
 
+
+std::mutex otc::ParallelReadSerialWrite::cout_mutex;
 namespace otc {
     // global
     TreesToServe tts;
