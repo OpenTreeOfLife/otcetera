@@ -13,6 +13,7 @@
 #include "otc/error.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
+#include "ws/parallelreadserialwrite.h"
 #include "json.hpp"
 
 #define REPORT_MEMORY_USAGE 1
@@ -144,6 +145,9 @@ struct SourceTreeId {
     std::string git_sha;
 };
 
+struct SummaryTreeAnnotation;
+void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta);
+
 struct SummaryTreeAnnotation {
     public:
         bool initialized = false;
@@ -166,6 +170,19 @@ struct SummaryTreeAnnotation {
         std::vector<std::string> sources;
         nlohmann::json full_source_id_map_json;
         OttIdSet suppressed_from_tree; // IDs not included in tree
+        ParallelReadSerialWrite taxonomy_thread_safety;
+
+        explicit SummaryTreeAnnotation()
+            :taxonomy_thread_safety("taxonomy") {
+
+            }
+        SummaryTreeAnnotation(const SummaryTreeAnnotation &) = delete;
+        SummaryTreeAnnotation(const SummaryTreeAnnotation &&) = delete;
+        SummaryTreeAnnotation &operator=(const SummaryTreeAnnotation &) = delete;
+        SummaryTreeAnnotation &operator=(const nlohmann::json &j) {
+            from_json(j, *this);
+            return *this;
+        }
 };
 
 template<typename T>
@@ -277,7 +294,7 @@ class TreesToServe {
             index_by_name_or_id(*nt);
             set_traversal_entry_exit_and_num_tips(*nt);
             tree_list.push_back(move(nt));
-            annotation_list.push_back(SummaryTreeAnnotation());
+            annotation_list.emplace(annotation_list.end());
             auto & sta = annotation_list.back();
             sta.suppressed_from_tree = suppressed_id_set;
             return {*(tree_list.back()), sta};
@@ -431,6 +448,7 @@ inline OttId extract_ott_id(const nlohmann::json &j, const char * field) {
     long ol = extract_unsigned_long(j, field);
     return check_ott_id_size(ol);
 }
+
 inline void to_json(nlohmann::json &j, const SourceTreeId & sti) {
     j = nlohmann::json{{"git_sha", sti.git_sha}, {"study_id", sti.study_id}, {"tree_id", sti.tree_id}};
 }

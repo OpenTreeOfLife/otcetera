@@ -348,6 +348,7 @@ void node_info_ws_method(const TreesToServe & tts,
         return;
     }
     const auto & taxonomy = tts.get_taxonomy();
+    
     status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;

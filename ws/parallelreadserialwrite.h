@@ -127,7 +127,6 @@ class ReadWriteMutex {
     ReadWriteMutex(const ReadWriteMutex &) = delete;
     ReadWriteMutex(const ReadWriteMutex &&) = delete;
     ReadWriteMutex operator=(const ReadWriteMutex &) = delete;
-
 };
 
 class  ReadMutexWrapper: public ReadWriteMutex {
