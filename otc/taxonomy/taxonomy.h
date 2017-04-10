@@ -215,6 +215,7 @@ class RTRichTaxNodeData {
     std::bitset<32> flags;
     std::string source_info;
     boost::string_ref possibly_nonunique_name;
+    uint32_t depth;
     boost::string_ref get_nonuniqname() const {
         return possibly_nonunique_name;
     }

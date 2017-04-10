@@ -6,6 +6,7 @@
 // Depended on by: tools
 #include <vector>
 #include <unordered_map>
+#include <sstream>
 #include "otc/otc_base_includes.h"
 #include "otc/tree_iter.h"
 #include "otc/error.h"
@@ -878,6 +879,13 @@ template<typename T>
 inline void write_tree_as_newick(std::ostream & out, const T &tree) {
     write_newick<typename T::node_type>(out, tree.get_root());
     out << ';';
+}
+
+template<typename T>
+inline std::string newick_string(const T& Tree) {
+    std::ostringstream s;
+    write_tree_as_newick(s, Tree);
+    return std::move(s.str());
 }
 
 template<typename T>

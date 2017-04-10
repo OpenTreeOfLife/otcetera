@@ -103,12 +103,12 @@ class ReadWriteMutex {
         if (!at_work) { // no bookkeeping to be done if there was an excep
             return;
         }
-        bool is_last_reader, writers_block;
+        bool is_last_reader; //, writers_block;
         {
             std::unique_lock<std::mutex> book_lock(shared.mutex);
             //debug_book_lock_held("start done_read ", std::cerr);
             is_last_reader = (shared.num_readers_working == 1);
-            writers_block = (shared.num_writers_waiting > 0);
+            //writers_block = (shared.num_writers_waiting > 0);
             assert(shared.the_working_writer == nullptr);
             shared.num_readers_working -= 1;
             //debug_book_lock_held("end   done_read ", std::cerr);

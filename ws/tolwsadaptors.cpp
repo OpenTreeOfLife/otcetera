@@ -30,6 +30,17 @@ namespace otc {
     TreesToServe tts;
 }
 
+json parse_body_or_throw(const Bytes & body)
+{
+    try {
+	return json::parse(body);
+    }
+    catch (...) {
+	throw OTCWSError(400)<<"Could not parse body of call as JSON.\n";
+    }
+}
+
+
 bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbody, int & status_code) {
     try {
         if (!body.empty()) {
@@ -41,6 +52,17 @@ bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbod
         status_code = 400;
     }
     return false;
+}
+
+template<typename T>
+T extract_from_request_or_throw(const nlohmann::json & j, const std::string& opt_name)
+{
+    string response;
+    T setting;
+    int status_code = restbed::OK;
+    if (not extract_from_request(j, opt_name, setting, response, status_code))
+	throw OTCWSError(status_code, response);
+    return setting;
 }
 
 ///////////////////////
@@ -468,6 +490,44 @@ void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+void conflict_conflict_status_method_handler( const shared_ptr< Session > session ) {
+    const auto request = session->get_request( );
+    size_t content_length = request->get_header( "Content-Length", 0 );
+    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+	std::string rbody;
+	int status_code = OK;
+	try {
+	    auto parsed_args = parse_body_or_throw(body);
+
+	    const auto& summary = *tts.get_summary_tree("");
+	    const auto& taxonomy = tts.get_taxonomy();
+
+	    string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
+
+	    string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
+
+	    rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
+	}
+	catch (OTCWSError & x)
+	{
+	    rbody = string("conflict error [") + std::to_string(x.status_code) + "]: " + x.what();
+	    status_code = x.status_code;
+	    LOG(ERROR)<<rbody;
+	}
+	catch (OTCError & x)
+	{
+	    rbody = string("conflict error: ") + x.what();
+	    LOG(ERROR)<<rbody;
+	}
+	catch (...)
+	{
+	    rbody = "conflict error";
+	    LOG(ERROR)<<rbody;
+	}
+	session->close( status_code, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+    });
+}
+
 /// End of method_handler. Start of global service related code
 Service * global_service_ptr = nullptr;
 
@@ -578,6 +638,10 @@ int run_server(const po::variables_map & args) {
     auto r_taxon_subtree = make_shared< Resource >( );
     r_taxon_subtree->set_path( "/taxonomy/subtree" );
     r_taxon_subtree->set_method_handler( "POST", taxon_subtree_method_handler );
+    // conflict
+    auto r_conflict_conflict_status = make_shared< Resource >( );
+    r_conflict_conflict_status->set_path( "/conflict/conflict-status" );
+    r_conflict_conflict_status->set_method_handler( "POST", conflict_conflict_status_method_handler );
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
     settings->set_port( port_number );
@@ -596,6 +660,7 @@ int run_server(const po::variables_map & args) {
     service.publish( r_taxon_info );
     service.publish( r_taxon_mrca );
     service.publish( r_taxon_subtree );
+    service.publish( r_conflict_conflict_status );
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
     LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";

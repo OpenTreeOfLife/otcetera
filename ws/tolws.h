@@ -43,6 +43,19 @@ typedef std::vector<src_node_id> vec_src_node_id_mapper;
     typedef std::vector<std::uint32_t> vec_src_node_ids;
 #endif
 
+class OTCWSError : public OTCError {
+public:
+    int status_code;
+    template <typename T> OTCWSError& operator<<(const T& t)
+    {
+	static_cast<OTCError&>(*this)<<t;
+	return *this;
+    }
+    OTCWSError() noexcept;
+    OTCWSError(int s) noexcept :status_code(s) {};
+    OTCWSError(int s, const std::string& m) noexcept :OTCError(m),status_code(s) {};
+};
+
 class SumTreeNodeData {
     public:
     std::uint32_t trav_enter = UINT32_MAX;
@@ -62,7 +75,8 @@ class SumTreeNodeData {
 
 #if defined(REPORT_MEMORY_USAGE)
 template<>
-inline std::size_t calc_memory_used(const src_node_id &d, MemoryBookkeeper &) {
+inline std::size_t calc_memory_used(const src_node_id &,
+                                    MemoryBookkeeper &) {
     return  2 * sizeof(const std::string *); // we are aliasing stored strings, so we don't count len
 }
 
@@ -413,10 +427,13 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
                              std::string & response_str,
                              int & status_code);
 
+std::string conflict_ws_method(const SummaryTree_t & summary,
+			       const RichTaxonomy & taxonomy,
+			       const std::string& tree1s,
+			       const std::string& tree2s);
 
 bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
 
-void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta);
 void from_json(const nlohmann::json &j, SourceTreeId & sti);
 void to_json(nlohmann::json &j, const SourceTreeId & sti);
 
