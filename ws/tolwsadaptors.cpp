@@ -35,9 +35,9 @@ json parse_body_or_throw(const Bytes & body)
 	return json::parse(body);
     }
     catch (...) {
-	throw invalid_argument("Could not parse body of call as JSON.\n");
+	throw OTCBadRequest("Could not parse body of call as JSON.\n");
     }
-    if (body.empty()) throw invalid_argument("Emtpy body!");
+    if (body.empty()) throw OTCBadRequest("Emtpy body!");
 }
 
 
@@ -96,11 +96,11 @@ T extract_from_request_or_throw(const json & j, const std::string& opt_name)
 {
     auto opt = j.find(opt_name);
     if (opt == j.end())
-	throw invalid_argument("Error: expecting argument '")<<opt_name<<"'\n";
+	throw OTCBadRequest("expecting argument '")<<opt_name<<"'\n";
 
     auto arg = convert_to<T>(*opt);
     if (not arg)
-	throw invalid_argument("Error: expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"\n";
+	throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"\n";
 
     return *arg;
 }
@@ -505,19 +505,26 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
+	try
+	{
+	    auto parsed_args = parse_body_or_throw(body);
 
-	auto parsed_args = parse_body_or_throw(body);
+	    const auto& summary = *tts.get_summary_tree("");
+	    const auto& taxonomy = tts.get_taxonomy();
 
-	const auto& summary = *tts.get_summary_tree("");
-	const auto& taxonomy = tts.get_taxonomy();
+	    string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
 
-	string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
+	    string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
 
-	string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
+	    string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
 
-	string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
-
-	session->close( restbed::OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	    session->close( restbed::OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[conflict-status] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
     });
 }
 

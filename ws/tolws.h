@@ -21,13 +21,35 @@ namespace otc {
 typedef std::pair<const std::string *, const std::string *> src_node_id;
 typedef std::vector<src_node_id> vec_src_node_ids;
 
+class OTCWebError : public std::exception {
+protected:
+    int status_code_ = 500;
+    std::string message;
+public:
+    int status_code() const {return status_code_;}
+    const char * what() const noexcept {
+        return message.c_str();
+    }
+    template <typename T> OTCWebError& operator<<(const T&);
+    void prepend(const std::string& s) {
+        message = s + message;
+    }
+    OTCWebError() noexcept {}
+    OTCWebError(int c) noexcept :status_code_(c) {}
+    OTCWebError(const std::string & msg) noexcept :message(msg) {}
+    OTCWebError(int c, const std::string & msg) noexcept :status_code_(c), message(msg) {}
+};
+
 template <typename T>
-std::invalid_argument operator<<(const std::invalid_argument& e, const T& t)
-{
-    std::ostringstream oss;
-    oss << e.what() << t;
-    return std::invalid_argument(oss.str());
+OTCWebError& OTCWebError::operator<<(const T& t) {
+  std::ostringstream oss;
+  oss << message << t;
+  message = oss.str();
+  return *this;
 }
+
+inline OTCWebError OTCBadRequest() {return OTCWebError(400);}
+inline OTCWebError OTCBadRequest(const std::string& m) {return OTCWebError(400,m);}
 
 class SumTreeNodeData {
     public:

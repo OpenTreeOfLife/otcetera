@@ -945,7 +945,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
 	auto node_name = node_name_or_ottid(nd);
 	if (not node_name)
 	{
-	    invalid_argument E("");
+	    auto E = OTCBadRequest();
 	    E<<"Newick tree node with name='"<<name<<"'";
 	    if (nd->has_ott_id())
 		E<<" and OTT Id="<<nd->get_ott_id();
@@ -964,7 +964,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
     }
 
 
-    throw invalid_argument("")<<"Error: tree2 = '"<<tree2s<<"' not recognized!";
+    throw OTCBadRequest()<<"tree2 = '"<<tree2s<<"' not recognized!";
 }
 
 } //namespace otc
