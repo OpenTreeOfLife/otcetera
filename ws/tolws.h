@@ -7,6 +7,7 @@
 #include <vector>
 #include <unordered_map>
 #include <boost/filesystem/operations.hpp>
+#include <stdexcept>
 #include "otc/newick_tokenizer.h"
 #include "otc/newick.h"
 #include "otc/tree.h"
@@ -20,18 +21,13 @@ namespace otc {
 typedef std::pair<const std::string *, const std::string *> src_node_id;
 typedef std::vector<src_node_id> vec_src_node_ids;
 
-class OTCWSError : public OTCError {
-public:
-    int status_code;
-    template <typename T> OTCWSError& operator<<(const T& t)
-    {
-	static_cast<OTCError&>(*this)<<t;
-	return *this;
-    }
-    OTCWSError() noexcept;
-    OTCWSError(int s) noexcept :status_code(s) {};
-    OTCWSError(int s, const std::string& m) noexcept :OTCError(m),status_code(s) {};
-};
+template <typename T>
+std::invalid_argument operator<<(const std::invalid_argument& e, const T& t)
+{
+    std::ostringstream oss;
+    oss << e.what() << t;
+    return std::invalid_argument(oss.str());
+}
 
 class SumTreeNodeData {
     public:

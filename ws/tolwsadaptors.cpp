@@ -22,6 +22,7 @@ using namespace otc;
 namespace fs = boost::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
+using boost::optional;
 
 namespace otc {
     // global
@@ -34,8 +35,9 @@ json parse_body_or_throw(const Bytes & body)
 	return json::parse(body);
     }
     catch (...) {
-	throw OTCWSError(400)<<"Could not parse body of call as JSON.\n";
+	throw invalid_argument("Could not parse body of call as JSON.\n");
     }
+    if (body.empty()) throw invalid_argument("Emtpy body!");
 }
 
 
@@ -53,14 +55,54 @@ bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbod
 }
 
 template<typename T>
-T extract_from_request_or_throw(const nlohmann::json & j, const std::string& opt_name)
+optional<T> convert_to(const json & j);
+
+template <>
+optional<bool> convert_to(const json & j)
 {
-    string response;
-    T setting;
-    int status_code = restbed::OK;
-    if (not extract_from_request(j, opt_name, setting, response, status_code))
-	throw OTCWSError(status_code, response);
-    return setting;
+    if (j.is_boolean())
+	return j.get<bool>();
+    else
+	return boost::none;
+}
+
+template <>
+optional<string> convert_to(const json & j)
+{
+    if (j.is_string())
+	return j.get<string>();
+    else
+	return boost::none;
+}
+
+template <>
+optional<int> convert_to(const json & j)
+{
+    if (j.is_number())
+	return j.get<int>();
+    else
+	return boost::none;
+}
+
+template <typename T>
+constexpr const char* type_name_with_article();
+
+template <> constexpr const char* type_name_with_article<bool>() {return "a boolean";}
+template <> constexpr const char* type_name_with_article<int>() {return "an integer";}
+template <> constexpr const char* type_name_with_article<string>() {return "a string";}
+
+template<typename T>
+T extract_from_request_or_throw(const json & j, const std::string& opt_name)
+{
+    auto opt = j.find(opt_name);
+    if (opt == j.end())
+	throw invalid_argument("Error: expecting argument '")<<opt_name<<"'\n";
+
+    auto arg = convert_to<T>(*opt);
+    if (not arg)
+	throw invalid_argument("Error: expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"\n";
+
+    return *arg;
 }
 
 ///////////////////////
@@ -463,37 +505,19 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-	std::string rbody;
-	int status_code = OK;
-	try {
-	    auto parsed_args = parse_body_or_throw(body);
 
-	    const auto& summary = *tts.get_summary_tree("");
-	    const auto& taxonomy = tts.get_taxonomy();
+	auto parsed_args = parse_body_or_throw(body);
 
-	    string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
+	const auto& summary = *tts.get_summary_tree("");
+	const auto& taxonomy = tts.get_taxonomy();
 
-	    string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
+	string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
 
-	    rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
-	}
-	catch (OTCWSError & x)
-	{
-	    rbody = string("conflict error [") + std::to_string(x.status_code) + "]: " + x.what();
-	    status_code = x.status_code;
-	    LOG(ERROR)<<rbody;
-	}
-	catch (OTCError & x)
-	{
-	    rbody = string("conflict error: ") + x.what();
-	    LOG(ERROR)<<rbody;
-	}
-	catch (...)
-	{
-	    rbody = "conflict error";
-	    LOG(ERROR)<<rbody;
-	}
-	session->close( status_code, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
+
+	string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
+
+	session->close( restbed::OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
 

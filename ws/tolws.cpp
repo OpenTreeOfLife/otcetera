@@ -13,8 +13,6 @@ namespace otc {
 const int OK = restbed::OK;
 extern TreesToServe tts;
 
-OTCWSError::OTCWSError() noexcept :status_code(OK) {};
-
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["tax_sources"] = taxon_data.get_sources_json();
@@ -947,7 +945,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
 	auto node_name = node_name_or_ottid(nd);
 	if (not node_name)
 	{
-	    OTCWSError E(400);
+	    invalid_argument E("");
 	    E<<"Newick tree node with name='"<<name<<"'";
 	    if (nd->has_ott_id())
 		E<<" and OTT Id="<<nd->get_ott_id();
@@ -966,7 +964,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
     }
 
 
-    throw OTCWSError(400)<<"Error: tree2 = '"<<tree2s<<"' not recognized!";
+    throw invalid_argument("")<<"Error: tree2 = '"<<tree2s<<"' not recognized!";
 }
 
 } //namespace otc
