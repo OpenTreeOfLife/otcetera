@@ -84,12 +84,58 @@ optional<int> convert_to(const json & j)
 	return boost::none;
 }
 
+template <>
+optional<vector<string>> convert_to(const json & j)
+{
+    if (not j.is_array()) return boost::none;
+
+    vector<string> v;
+    for(auto& xj: j)
+    {
+	auto x = convert_to<string>(xj);
+	if (not x) return boost::none;
+	v.push_back(*x);
+    }
+
+    return v;
+}
+
+template <>
+optional<OttId> convert_to(const json & j)
+{
+    if (j.is_number())
+	return j.get<OttId>();
+    else
+	return boost::none;
+}
+
+template <>
+optional<OttIdSet> convert_to(const json & j)
+{
+    if (not j.is_array()) return boost::none;
+
+    OttIdSet ids;
+    for(auto& jid: j)
+    {
+	auto id = convert_to<OttId>(jid);
+	if (not id) return boost::none;
+	ids.insert(*id);
+    }
+
+    return ids;
+}
+
+
+
 template <typename T>
 constexpr const char* type_name_with_article();
 
 template <> constexpr const char* type_name_with_article<bool>() {return "a boolean";}
 template <> constexpr const char* type_name_with_article<int>() {return "an integer";}
 template <> constexpr const char* type_name_with_article<string>() {return "a string";}
+template <> constexpr const char* type_name_with_article<OttId>() {return "an OttId";}
+template <> constexpr const char* type_name_with_article<vector<string>>() {return "an array of strings";}
+template <> constexpr const char* type_name_with_article<OttIdSet>() {return "an array of integers";}
 
 template<typename T>
 T extract_from_request_or_throw(const json & j, const std::string& opt_name)
