@@ -37,7 +37,6 @@ json parse_body_or_throw(const Bytes & body)
     catch (...) {
 	throw OTCBadRequest("Could not parse body of call as JSON.\n");
     }
-    if (body.empty()) throw OTCBadRequest("Emtpy body!");
 }
 
 
@@ -138,15 +137,29 @@ template <> constexpr const char* type_name_with_article<vector<string>>() {retu
 template <> constexpr const char* type_name_with_article<OttIdSet>() {return "an array of integers";}
 
 template<typename T>
-T extract_from_request_or_throw(const json & j, const std::string& opt_name)
+T extract_argument(const json & j, const std::string& opt_name)
 {
     auto opt = j.find(opt_name);
     if (opt == j.end())
-	throw OTCBadRequest("expecting argument '")<<opt_name<<"'\n";
+	throw OTCWebError(500)<<"expecting argument '"<<opt_name<<"'!\n";
 
     auto arg = convert_to<T>(*opt);
     if (not arg)
-	throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"\n";
+	throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
+
+    return *arg;
+}
+
+template<typename T>
+T extract_required_argument(const json & j, const std::string& opt_name)
+{
+    auto opt = j.find(opt_name);
+    if (opt == j.end())
+	throw OTCBadRequest("argument '")<<opt_name<<"' is required!\n";
+
+    auto arg = convert_to<T>(*opt);
+    if (not arg)
+	throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
 
     return *arg;
 }
@@ -558,9 +571,9 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
 	    const auto& summary = *tts.get_summary_tree("");
 	    const auto& taxonomy = tts.get_taxonomy();
 
-	    string tree1 = extract_from_request_or_throw<string>(parsed_args, "tree1");
+	    string tree1 = extract_required_argument<string>(parsed_args, "tree1");
 
-	    string tree2 = extract_from_request_or_throw<string>(parsed_args, "tree2");
+	    string tree2 = extract_required_argument<string>(parsed_args, "tree2");
 
 	    string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
 
