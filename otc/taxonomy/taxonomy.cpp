@@ -411,6 +411,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
             tree_data.id_to_record[tr.id] = &tr;
         }
     }
+    compute_depth(*tree);
     set_traversal_entry_exit(*tree);
     _fill_ids_to_suppress_set();
     this->read_synonyms();
