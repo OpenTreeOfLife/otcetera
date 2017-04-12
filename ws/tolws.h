@@ -282,10 +282,9 @@ void taxon_info_ws_method(const TreesToServe & tts,
                           bool include_terminal_descendants,
                           std::string & response_str,
                           int & status_code);
-void taxonomy_mrca_ws_method(const TreesToServe & tts,
-                             const OttIdSet & ott_id_set,
-                             std::string & response_str,
-                             int & status_code);
+
+std::string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set);
+
 void taxon_subtree_ws_method(const TreesToServe & tts,
                              const RTRichTaxNode * taxon_node,
                              NodeNameStyle label_format, 

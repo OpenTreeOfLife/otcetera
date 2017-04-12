@@ -520,22 +520,21 @@ void taxon_mrca_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
-        string ott_version;
-        OttIdSet ott_id_set;
-        if (!extract_from_request(parsedargs, "ott_ids", ott_id_set, rbody, status_code)) {
-            if (status_code == OK) {
-                rbody = "The ott_ids argument is required.";
-                status_code = 400;
-            }
-        }
-        if (status_code == OK) {
-            taxonomy_mrca_ws_method(tts, ott_id_set, rbody, status_code);
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	try
+	{
+	    auto parsedargs = parse_body_or_throw(body);
+//	    string ott_version;
+	    OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
+
+	    string rbody = taxonomy_mrca_ws_method(tts, ott_id_set);
+
+	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[taxonony/mrca] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
     });
 }
 
@@ -577,7 +576,7 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
 
 	    string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
 
-	    session->close( restbed::OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
 	}
 	catch (OTCWebError& e)
 	{

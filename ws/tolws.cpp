@@ -658,22 +658,15 @@ void taxon_info_ws_method(const TreesToServe & tts,
 }
 
 
-void taxonomy_mrca_ws_method(const TreesToServe & tts,
-                             const OttIdSet & ott_id_set,
-                             string & response_str,
-                             int & status_code) {
+string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set) {
     const auto & taxonomy = tts.get_taxonomy();
     const RTRichTaxNode * focal = nullptr;
     bool first = true;
     for (auto ott_id : ott_id_set) {
         const RTRichTaxNode * n = taxonomy.taxon_from_id(ott_id);
-        if (n == nullptr) {
-            response_str = "ott_id \"";
-            response_str += ott_id;
-            response_str += "\" was not recognized.\n";
-            status_code = 400;
-            return;
-        }
+
+        if (n == nullptr) throw OTCBadRequest()<<"ott_id \""<<ott_id<<"\" was not recognized.\n";
+
         if (first) {
             first = false;
             focal = n;
@@ -685,15 +678,13 @@ void taxonomy_mrca_ws_method(const TreesToServe & tts,
         }
     }
     bool is_broken = false;
-    if (focal == nullptr) {
-        response_str = "MRCA of taxa was not found. Please report this bug!\n";
-        status_code = 400;
-        return;
-    }
-    status_code = OK;
+
+    if (focal == nullptr) throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
+
     json response;
     tax_service_add_taxon_info(taxonomy, *focal, response);
-    response_str = response.dump(1);
+
+    return response.dump(1);
 }
 
 void taxon_subtree_ws_method(const TreesToServe & tts,
