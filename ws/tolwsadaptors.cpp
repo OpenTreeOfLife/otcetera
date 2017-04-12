@@ -23,6 +23,7 @@ namespace fs = boost::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
 using boost::optional;
+using std::pair;
 
 namespace otc {
     // global
@@ -198,28 +199,22 @@ void about_method_handler( const shared_ptr< Session > session ) {
 }
 
 
-void get_synth_and_node_id(const json &j, string & synth_id, string & node_id, string & rbody, int & status_code) {
-    if (status_code == OK) {
-        extract_from_request(j, "synth_id", synth_id, rbody, status_code);
-    }
-    if (status_code == OK) {
-        if (!extract_from_request(j, "node_id", node_id, rbody, status_code)) {
-            rbody = "node_id is required.\n";
-            status_code = 400;
-        }
-    }
+pair<string,string> get_synth_and_node_id(const json &j) {
+
+    auto synth_id =  extract_argument<string>(j, "synth_id");
+
+    auto node_id = extract_required_argument<string>(j, "node_id");
+
+    return pair<string,string>(synth_id?(*synth_id):"", node_id);
 }
 
-void get_synth_and_node_id_vec(const json &j, string & synth_id, vector<string> & vec_node_ids, string & rbody, int & status_code) {
-    if (status_code == OK) {
-        extract_from_request(j, "synth_id", synth_id, rbody, status_code);
-    }
-    if (status_code == OK) {
-        if (!extract_from_request(j, "node_ids", vec_node_ids, rbody, status_code)) {
-            rbody = "node_ids is required.\n";
-            status_code = 400;
-        }
-    }
+pair<string,vector<string>> get_synth_and_node_id_vec(const json &j) {
+
+    auto synth_id =  extract_argument<string>(j, "synth_id");
+
+    auto node_id_vec = extract_required_argument<vector<string>>(j, "node_ids");
+
+    return pair<string, vector<string>>(synth_id?(*synth_id):"", node_id_vec);
 }
 
 
@@ -251,9 +246,11 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
         int status_code = OK;
         parse_body_or_err(body, parsedargs, rbody, status_code);
         bool include_lineage = false;
+
         string synth_id;
         string node_id;
-        get_synth_and_node_id(parsedargs, synth_id, node_id, rbody, status_code);
+        tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+
         if (status_code == OK) {
             extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
         }
@@ -279,9 +276,11 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
         std::string rbody;
         int status_code = OK;
         parse_body_or_err(body, parsedargs, rbody, status_code);
+
         string synth_id;
         vector<string> node_id_vec;
-        get_synth_and_node_id_vec(parsedargs, synth_id, node_id_vec, rbody, status_code);
+        tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+
         if (status_code == OK) {
             const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
             const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
@@ -300,49 +299,57 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
-        string synth_id;
-        string node_id;
-        string format = "newick"; // : (string) Defines the tree format; either "newick" or "arguson"; default="newick"
-        int height_limit = -1; // :
-        get_synth_and_node_id(parsedargs, synth_id, node_id, rbody, status_code);
-        if (status_code == OK) {
-            if (extract_from_request(parsedargs, "format", format, rbody, status_code)) {
-                if (format != "newick" && format != "arguson") {
-                    rbody = "format must be \"newick\" or \"arguson\".\n";
-                    status_code = 400;
-                } else if (format == "arguson") {
-                    height_limit = 3;
-                }
-            }
-        }
-        NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
-        if (status_code == OK && format == "newick") {
-            get_label_format(parsedargs, nns, rbody, status_code);
-        }
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "height_limit", height_limit, rbody, status_code);
-        }
-        if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-            if (sta == nullptr || treeptr == nullptr) {
-               rbody = "Did not recognize the synth_id.\n";
-               status_code = 400;
-            } else if (format == "newick") {
-                newick_subtree_ws_method(tts, treeptr, sta,
-                                         node_id, nns, height_limit,
-                                         rbody, status_code);
-            } else {
-                arguson_subtree_ws_method(tts, treeptr, sta,
-                                         node_id, height_limit,
-                                         rbody, status_code);    
-            }
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	try {
+	    std::string rbody;
+	    int status_code = OK;
+	    json parsedargs = parse_body_or_throw(body);
+	    string format = "newick"; // : (string) Defines the tree format; either "newick" or "arguson"; default="newick"
+	    int height_limit = -1; // :
+
+	    string synth_id;
+	    string node_id;
+	    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+
+	    if (status_code == OK) {
+		if (extract_from_request(parsedargs, "format", format, rbody, status_code)) {
+		    if (format != "newick" && format != "arguson") {
+			rbody = "format must be \"newick\" or \"arguson\".\n";
+			status_code = 400;
+		    } else if (format == "arguson") {
+			height_limit = 3;
+		    }
+		}
+	    }
+	    NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
+	    if (status_code == OK && format == "newick") {
+		get_label_format(parsedargs, nns, rbody, status_code);
+	    }
+	    if (status_code == OK) {
+		extract_from_request(parsedargs, "height_limit", height_limit, rbody, status_code);
+	    }
+	    if (status_code == OK) {
+		const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+		const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
+		if (sta == nullptr || treeptr == nullptr) {
+		    rbody = "Did not recognize the synth_id.\n";
+		    status_code = 400;
+		} else if (format == "newick") {
+		    newick_subtree_ws_method(tts, treeptr, sta,
+					     node_id, nns, height_limit,
+					     rbody, status_code);
+		} else {
+		    arguson_subtree_ws_method(tts, treeptr, sta,
+					      node_id, height_limit,
+					      rbody, status_code);
+		}
+	    }
+	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[subtree] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
     });
 }
 
@@ -355,9 +362,11 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
         std::string rbody;
         int status_code = OK;
         parse_body_or_err(body, parsedargs, rbody, status_code);
+
         string synth_id;
         vector<string> node_id_vec;
-        get_synth_and_node_id_vec(parsedargs, synth_id, node_id_vec, rbody, status_code);
+        tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+
         NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
         get_label_format(parsedargs, nns, rbody, status_code);
         if (status_code == OK) {
