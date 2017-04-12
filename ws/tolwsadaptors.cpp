@@ -232,23 +232,18 @@ pair<string,vector<string>> get_synth_and_node_id_vec(const json &j) {
 }
 
 
-void get_label_format(const json &j, NodeNameStyle & nns, string & rbody, int & status_code) {
-    string label_format = "name_and_id";
-    if (status_code == OK) {
-        if (extract_from_request(j, "label_format", label_format, rbody, status_code)) {
-            if (label_format != "name_and_id"
-                && label_format != "id"
-                && label_format != "name") {
-                rbody = "label_format must be \"name_and_id\", \"name\" or \"id\".\n";
-                status_code = 400;
-            }
-            if (label_format == "id") {
-                nns = NodeNameStyle::NNS_ID_ONLY;
-            } else if (label_format == "name") {
-                nns = NodeNameStyle::NNS_NAME_ONLY;
-            }
-        }
-    }
+NodeNameStyle get_label_format(const json &j) {
+
+    auto label_format = extract_argument_or_default<string>(j, "label_format", "name_and_id");
+
+    if (label_format == "id")
+	return NodeNameStyle::NNS_ID_ONLY;
+    else if (label_format == "name")
+	return NodeNameStyle::NNS_NAME_ONLY;
+    else if (label_format == "name_and_id")
+	return NodeNameStyle::NNS_NAME_AND_ID;
+    else
+	throw OTCBadRequest("label_format must be \"name_and_id\", \"name\" or \"id\".\n");
 }
 
 void node_info_method_handler( const shared_ptr< Session > session ) {
@@ -317,30 +312,20 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
 	    std::string rbody;
 	    int status_code = OK;
 	    json parsedargs = parse_body_or_throw(body);
-	    string format = "newick"; // : (string) Defines the tree format; either "newick" or "arguson"; default="newick"
-	    int height_limit = -1; // :
 
 	    string synth_id;
 	    string node_id;
 	    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
 
-	    if (status_code == OK) {
-		if (extract_from_request(parsedargs, "format", format, rbody, status_code)) {
-		    if (format != "newick" && format != "arguson") {
-			rbody = "format must be \"newick\" or \"arguson\".\n";
-			status_code = 400;
-		    } else if (format == "arguson") {
-			height_limit = 3;
-		    }
-		}
-	    }
-	    NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
-	    if (status_code == OK && format == "newick") {
-		get_label_format(parsedargs, nns, rbody, status_code);
-	    }
-	    if (status_code == OK) {
-		extract_from_request(parsedargs, "height_limit", height_limit, rbody, status_code);
-	    }
+	    auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
+
+	    if (format != "newick" && format != "arguson")
+		throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
+
+	    NodeNameStyle nns = get_label_format(parsedargs);
+
+	    int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")?3:-1);
+
 	    if (status_code == OK) {
 		const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
 		const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
@@ -381,9 +366,9 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
         vector<string> node_id_vec;
         tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
 
-        NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
-        get_label_format(parsedargs, nns, rbody, status_code);
-        if (status_code == OK) {
+        NodeNameStyle nns = get_label_format(parsedargs);
+
+	if (status_code == OK) {
             const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
             const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
             if (sta == nullptr || treeptr == nullptr) {
@@ -544,9 +529,8 @@ void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
 	    std::string rbody;
 	    int status_code = OK;
 	    json parsedargs = parse_body_or_throw(body);
-	    NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
 
-	    get_label_format(parsedargs, nns, rbody, status_code);
+	    NodeNameStyle nns = get_label_format(parsedargs);
 
 	    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
 	    if (status_code == OK) {
