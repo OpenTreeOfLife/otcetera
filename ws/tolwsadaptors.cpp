@@ -137,17 +137,17 @@ template <> constexpr const char* type_name_with_article<vector<string>>() {retu
 template <> constexpr const char* type_name_with_article<OttIdSet>() {return "an array of integers";}
 
 template<typename T>
-T extract_argument(const json & j, const std::string& opt_name)
+optional<T> extract_argument(const json & j, const std::string& opt_name)
 {
     auto opt = j.find(opt_name);
     if (opt == j.end())
-	throw OTCWebError(500)<<"expecting argument '"<<opt_name<<"'!\n";
+	return boost::none;
 
     auto arg = convert_to<T>(*opt);
     if (not arg)
 	throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
 
-    return *arg;
+    return arg;
 }
 
 template<typename T>
