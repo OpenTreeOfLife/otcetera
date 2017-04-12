@@ -138,6 +138,20 @@ template <> constexpr const char* type_name_with_article<vector<string>>() {retu
 template <> constexpr const char* type_name_with_article<OttIdSet>() {return "an array of integers";}
 
 template<typename T>
+T extract_argument_or_default(const json & j, const std::string& opt_name, const T& _default_)
+{
+    auto opt = j.find(opt_name);
+    if (opt == j.end())
+	return _default_;
+
+    auto arg = convert_to<T>(*opt);
+    if (not arg)
+	throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
+
+    return *arg;
+}
+
+template<typename T>
 optional<T> extract_argument(const json & j, const std::string& opt_name)
 {
     auto opt = j.find(opt_name);
@@ -201,20 +215,20 @@ void about_method_handler( const shared_ptr< Session > session ) {
 
 pair<string,string> get_synth_and_node_id(const json &j) {
 
-    auto synth_id =  extract_argument<string>(j, "synth_id");
+    auto synth_id = extract_argument_or_default<string>(j, "synth_id", "");
 
     auto node_id = extract_required_argument<string>(j, "node_id");
 
-    return pair<string,string>(synth_id?(*synth_id):"", node_id);
+    return pair<string,string>(synth_id, node_id);
 }
 
 pair<string,vector<string>> get_synth_and_node_id_vec(const json &j) {
 
-    auto synth_id =  extract_argument<string>(j, "synth_id");
+    auto synth_id =  extract_argument_or_default<string>(j, "synth_id", "");
 
     auto node_id_vec = extract_required_argument<vector<string>>(j, "node_ids");
 
-    return pair<string, vector<string>>(synth_id?(*synth_id):"", node_id_vec);
+    return pair<string, vector<string>>(synth_id, node_id_vec);
 }
 
 
