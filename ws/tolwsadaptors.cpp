@@ -391,64 +391,37 @@ void tax_about_method_handler( const shared_ptr< Session > session ) {
 }
 
 // looks for ott_id or source_id args to find a node
-const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs,
-                                                   std::string & rbody,
-                                                   int & status_code) {
-    if (status_code != OK) {
-        return nullptr;
-    }
-    long ott_id;
-    string source_id;
-    bool supplied_ott_id = false;
-    bool supplied_source_id = false;
+const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs) {
     const auto & taxonomy = tts.get_taxonomy();
     const auto & taxonomy_tree = taxonomy.getTaxTree();
     const auto & taxonomy_tree_data = taxonomy_tree.get_data();
-    supplied_ott_id = extract_from_request(parsedargs, "ott_id", ott_id, rbody, status_code);
-    if (status_code != OK) {
-        return nullptr;
-    }
-    supplied_source_id = extract_from_request(parsedargs, "source_id", source_id, rbody, status_code);
-    if (status_code != OK) {
-        return nullptr;
-    }
-    if (supplied_ott_id && supplied_source_id) {
-        rbody = "ott_id or source_id arguments cannot both be supplied.";
-        status_code = 400;
-        return nullptr;
-    }
-    if ((!supplied_source_id) && (!supplied_ott_id)) {
-        rbody = "An ott_id or source_id argument is required.";
-        status_code = 400;
-        return nullptr;
-    }
-    if (supplied_source_id) {
-        auto pref_id = split_string(source_id, ':');
-        if (pref_id.size() != 2) {
-            rbody = "Expecting exactly 1 colon in a source ID string. Found: \"";
-            rbody += source_id;
-            rbody += "\".";
-            status_code = 400;
-            return nullptr;
-        }
+
+    auto ott_id = extract_argument<OttId>(parsedargs, "ott_id");
+    auto source_id = extract_argument<string>(parsedargs, "source_id");
+
+    if (ott_id and source_id)
+	throw OTCBadRequest("'ott_id' and 'source_id' arguments cannot both be supplied.");
+
+    else if (not ott_id and not source_id)
+	throw OTCBadRequest("An 'ott_id' or 'source_id' argument is required.");
+
+    else if (source_id) {
+        auto pref_id = split_string(*source_id, ':');
+        if (pref_id.size() != 2)
+	    throw OTCBadRequest()<<"Expecting exactly 1 colon in a source ID string. Found: \""<<*source_id<<"\".";
+
         string source_prefix = *pref_id.begin();
-        if (indexed_source_prefixes.count(source_prefix) == 0) {
-            rbody = "IDs from source ";
-            rbody += source_prefix ;
-            rbody += " are not known or not indexed for searching.";
-            status_code = 400;
-            return nullptr;
-        }
+
+	if (indexed_source_prefixes.count(source_prefix) == 0)
+	    throw OTCBadRequest()<<"IDs from source "<<source_prefix<<" are not known or not indexed for searching.";
+
         string id_str = *pref_id.rbegin();
         try {
             std::size_t pos;
             long foreign_id  = std::stol(id_str.c_str(), &pos);
-            if (pos < id_str.length()) {
-                rbody = "Expecting the ID portion of the source_id to be numeric. Found: ";
-                rbody += id_str;
-                status_code = 400;
-                return nullptr;
-            }
+            if (pos < id_str.length())
+		throw OTCBadRequest()<<"Expecting the ID portion of the source_id to be numeric. Found: "<<id_str;
+
             try {
                 if (source_prefix == "ncbi") {
                     return taxonomy_tree_data.ncbi_id_map.at(foreign_id);
@@ -464,55 +437,57 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs,
                     assert(false);
                 }
             } catch (std::out_of_range & x) {
-                rbody = "No taxon in the taxonomy is associated with source_id of ";
-                rbody += source_id;
-                status_code = 400;
+		throw OTCBadRequest()<<"No taxon in the taxonomy is associated with source_id of "<<source_id;
             }
         } catch (...) {
-            rbody = "Expecting the ID portion of the source_id to be numeric. Found: ";
-            rbody += id_str;
-            status_code = 400;
+	    throw OTCBadRequest()<<"Expecting the ID portion of the source_id to be numeric. Found: "<<id_str;
         }   
         return nullptr;
     }
-    const RTRichTaxNode * taxon_node = nullptr;
-    if (status_code == OK && supplied_ott_id) {
-        taxon_node = taxonomy.taxon_from_id(ott_id);
+    else
+    {
+	assert(ott_id);
+        auto taxon_node = taxonomy.taxon_from_id(*ott_id);
         if (taxon_node == nullptr) {
-            rbody = "Unrecognized OTT ID: ";
-            rbody += to_string(ott_id);
-            status_code = 400;
+	    throw OTCBadRequest()<<"Unrecognized OTT ID: "<<*ott_id;
         }
+	return taxon_node;
     }
-    return taxon_node;
 }
 
 void taxon_info_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
-        bool include_lineage = false;
-        bool include_children = false;
-        bool include_terminal_descendants = false;
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
-        }
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "include_children", include_children, rbody, status_code);
-        }
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "include_terminal_descendants", include_terminal_descendants, rbody, status_code);
-        }
-        const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, rbody, status_code);
-        if (status_code == OK) {
-            assert(taxon_node != nullptr);
-            taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants, rbody, status_code);
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	try {
+	    json parsedargs;
+	    std::string rbody;
+	    int status_code = OK;
+	    parse_body_or_err(body, parsedargs, rbody, status_code);
+	    bool include_lineage = false;
+	    bool include_children = false;
+	    bool include_terminal_descendants = false;
+	    if (status_code == OK) {
+		extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
+	    }
+	    if (status_code == OK) {
+		extract_from_request(parsedargs, "include_children", include_children, rbody, status_code);
+	    }
+	    if (status_code == OK) {
+		extract_from_request(parsedargs, "include_terminal_descendants", include_terminal_descendants, rbody, status_code);
+	    }
+	    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
+	    if (status_code == OK) {
+		assert(taxon_node != nullptr);
+		taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants, rbody, status_code);
+	    }
+	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[taxonomy/taxon_info] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
     });
 }
         
@@ -532,7 +507,7 @@ void taxon_mrca_method_handler( const shared_ptr< Session > session ) {
 	}
 	catch (OTCWebError& e)
 	{
-	    string rbody = string("[taxonony/mrca] Error: ") + e.what();
+	    string rbody = string("[taxonomy/mrca] Error: ") + e.what();
 	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
 	}
     });
@@ -542,20 +517,26 @@ void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
-        NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
-        if (status_code == OK) {
-            get_label_format(parsedargs, nns, rbody, status_code);
-        }
-        const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, rbody, status_code);
-        if (status_code == OK) {
-            assert(taxon_node != nullptr);
-            taxon_subtree_ws_method(tts, taxon_node, nns, rbody, status_code);
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	try {
+	    std::string rbody;
+	    int status_code = OK;
+	    json parsedargs = parse_body_or_throw(body);
+	    NodeNameStyle nns = NodeNameStyle::NNS_NAME_AND_ID;
+
+	    get_label_format(parsedargs, nns, rbody, status_code);
+
+	    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
+	    if (status_code == OK) {
+		assert(taxon_node != nullptr);
+		taxon_subtree_ws_method(tts, taxon_node, nns, rbody, status_code);
+	    }
+	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[taxonomy/subtree] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
     });
 }
 
