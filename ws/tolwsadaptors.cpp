@@ -32,6 +32,9 @@ namespace otc {
 
 json parse_body_or_throw(const Bytes & body)
 {
+    // This line is necessary for the otcetera test for tree_of_life/about to succeed, apparently.
+    if (body.empty()) return json();
+
     try {
 	return json::parse(body);
     }
@@ -200,10 +203,7 @@ void about_method_handler( const shared_ptr< Session > session ) {
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
         try {
-	    json parsedargs;
-	    std::string rbody;
-	    int status_code = OK;
-	    parse_body_or_err(body, parsedargs, rbody, status_code);
+	    auto parsedargs = parse_body_or_throw(body);
 
 	    bool include_sources = extract_argument_or_default<bool>  (parsedargs, "include_source_list", false);
 	    string synth_id      = extract_argument_or_default<string>(parsedargs, "synth_id",            ""   );
@@ -211,7 +211,7 @@ void about_method_handler( const shared_ptr< Session > session ) {
 	    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
 	    const SummaryTree_t * treeptr     = get_summary_tree(tts, synth_id);
 
-	    about_ws_method(tts, treeptr, sta, include_sources, rbody, status_code);
+	    string rbody = about_ws_method(tts, treeptr, sta, include_sources);
 
 	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
 	}

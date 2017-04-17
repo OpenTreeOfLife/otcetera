@@ -168,16 +168,14 @@ const SumTreeNode_t * find_required_node_by_id_str(const SummaryTree_t & tree,
     return node;
 }
 
-void about_ws_method(const TreesToServe &tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     bool include_sources,
-                     string & response_str,
-                     int & status_code) {
+string about_ws_method(const TreesToServe &tts,
+		       const SummaryTree_t * tree_ptr,
+		       const SummaryTreeAnnotation * sta,
+		       bool include_sources) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     const auto & taxonomy = tts.get_taxonomy();
-    status_code = OK;
+
     json response;
     response["date_created"] = sta->date_completed;
     response["num_source_trees"] = sta->num_source_trees;
@@ -192,7 +190,7 @@ void about_ws_method(const TreesToServe &tts,
     auto root_node = tree_ptr->get_root();
     add_basic_node_info(taxonomy, *root_node, root);
     response["root"] = root;
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 void tax_about_ws_method(const TreesToServe &tts,

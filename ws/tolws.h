@@ -227,12 +227,11 @@ enum NodeNameStyle {
     NNS_NAME_AND_ID = 2
 };
 
-void about_ws_method(const TreesToServe &tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     bool include_sources,
-                     std::string & response_str,
-                     int & status_code);
+std::string about_ws_method(const TreesToServe &tts,
+			    const SummaryTree_t * tree_ptr,
+			    const SummaryTreeAnnotation * sta,
+			    bool include_sources);
+
 void tax_about_ws_method(const TreesToServe &tts,
                          std::string & response_str,
                          int & status_code);
