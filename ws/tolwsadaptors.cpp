@@ -39,11 +39,7 @@ json parse_body_or_throw(const Bytes & body)
 	return json::parse(body);
     }
     catch (...) {
-	auto e = OTCBadRequest("Could not parse body of call as JSON.\n'");
-	for(auto& c: body)
-	    e<<char(c);
-	e<<"'";
-	throw e;
+	throw OTCBadRequest("Could not parse body of call as JSON.\n");
     }
 }
 
