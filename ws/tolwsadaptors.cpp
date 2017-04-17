@@ -36,7 +36,11 @@ json parse_body_or_throw(const Bytes & body)
 	return json::parse(body);
     }
     catch (...) {
-	throw OTCBadRequest("Could not parse body of call as JSON.\n");
+	auto e = OTCBadRequest("Could not parse body of call as JSON.\n'");
+	for(auto& c: body)
+	    e<<char(c);
+	e<<"'";
+	throw e;
     }
 }
 
@@ -174,33 +178,48 @@ T extract_required_argument(const json & j, const std::string& opt_name)
 ///////////////////////
 // handlers that are registered as callback
 
+const SummaryTreeAnnotation * get_annotations(const TreesToServe& tts, const string& synth_id)
+{
+    auto sta = tts.get_annotations(synth_id);
+    if (not sta)
+	throw OTCBadRequest()<<"Did not recognize synth_id '"<<synth_id<<"'";
+    return sta;
+}
+
+const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& synth_id)
+{
+    auto treeptr = tts.get_summary_tree(synth_id);
+    if (not treeptr)
+	throw OTCBadRequest()<<"Did not recognize synth_id '"<<synth_id<<"'";
+    return treeptr;
+}
+
+
 void about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
-        bool include_sources = false;
-        string synth_id;
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "include_source_list", include_sources, rbody, status_code);
-        }
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
-        }
-        if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-            if (sta == nullptr || treeptr == nullptr) {
-               rbody = "Did not recognize the synth_id.\n";
-               status_code = 400;
-            } else {
-                about_ws_method(tts, treeptr, sta, include_sources, rbody, status_code);
-            }
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        try {
+	    json parsedargs;
+	    std::string rbody;
+	    int status_code = OK;
+	    parse_body_or_err(body, parsedargs, rbody, status_code);
+
+	    bool include_sources = extract_argument_or_default<bool>  (parsedargs, "include_source_list", false);
+	    string synth_id      = extract_argument_or_default<string>(parsedargs, "synth_id",            ""   );
+
+	    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+	    const SummaryTree_t * treeptr     = get_summary_tree(tts, synth_id);
+
+	    about_ws_method(tts, treeptr, sta, include_sources, rbody, status_code);
+
+	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[/tree_of_life/about] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
     });
 }
 
@@ -256,14 +275,10 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
             extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
         }
         if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-            if (sta == nullptr || treeptr == nullptr) {
-               rbody = "Did not recognize the synth_id.\n";
-               status_code = 400;
-            } else {
-                node_info_ws_method(tts, treeptr, sta, node_id, include_lineage, rbody, status_code);
-            }
+            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
+
+	    node_info_ws_method(tts, treeptr, sta, node_id, include_lineage, rbody, status_code);
         }
         session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
@@ -282,10 +297,8 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
 	    vector<string> node_id_vec;
 	    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
 
-	    const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-	    const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-	    if (sta == nullptr || treeptr == nullptr)
-		throw OTCBadRequest()<<"Did not recognize the synth_id '"<<synth_id<<"'.";
+	    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+	    const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
 	    rbody = mrca_ws_method(tts, treeptr, sta, node_id_vec);
 
@@ -319,10 +332,8 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
 
 	    int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")?3:-1);
 
-	    const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-	    const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-	    if (sta == nullptr || treeptr == nullptr)
-		throw OTCBadRequest()<<"Did not recognize the synth_id '"<<synth_id<<"'.";
+	    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+	    const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
 	    string rbody;
 	    if (format == "newick") {
@@ -355,10 +366,8 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
 
 	    NodeNameStyle nns = get_label_format(parsedargs);
 
-	    const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-	    const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-	    if (sta == nullptr || treeptr == nullptr)
-		throw OTCBadRequest()<<"Did not recognize the synth_id '"<<synth_id<<"'.";
+	    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+	    const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
 	    auto rbody = induced_subtree_ws_method(tts, treeptr, sta, node_id_vec, nns);
 
