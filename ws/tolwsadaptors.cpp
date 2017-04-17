@@ -349,30 +349,29 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
+        try {
+	    auto parsedargs = parse_body_or_throw(body);
 
-        string synth_id;
-        vector<string> node_id_vec;
-        tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+	    string synth_id;
+	    vector<string> node_id_vec;
+	    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
 
-        NodeNameStyle nns = get_label_format(parsedargs);
+	    NodeNameStyle nns = get_label_format(parsedargs);
 
-	if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-            if (sta == nullptr || treeptr == nullptr) {
-               rbody = "Did not recognize the synth_id.\n";
-               status_code = 400;
-            } else {
-                induced_subtree_ws_method(tts, treeptr, sta,
-                                         node_id_vec, nns,
-                                         rbody, status_code);
-            }
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	    const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+	    const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
+	    if (sta == nullptr || treeptr == nullptr)
+		throw OTCBadRequest()<<"Did not recognize the synth_id '"<<synth_id<<"'.";
+
+	    auto rbody = induced_subtree_ws_method(tts, treeptr, sta, node_id_vec, nns);
+
+	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[tree_of_life/induced_subtree] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+	}
     });
 }
 
