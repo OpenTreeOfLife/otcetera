@@ -434,7 +434,8 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs) {
                 } else if (source_prefix == "irmng") {
                     return taxonomy_tree_data.irmng_id_map.at(foreign_id);
                 } else {
-                    assert(false);
+		    assert(false); // We should catch an unknown source_prefix above
+		    throw OTCBadRequest()<<"Don't recognized source_prefix = '"<<source_prefix<<"' - but we shouldn't get here.";
                 }
             } catch (std::out_of_range & x) {
 		throw OTCBadRequest()<<"No taxon in the taxonomy is associated with source_id of "<<source_id;
@@ -442,7 +443,6 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs) {
         } catch (...) {
 	    throw OTCBadRequest()<<"Expecting the ID portion of the source_id to be numeric. Found: "<<id_str;
         }   
-        return nullptr;
     }
     else
     {
@@ -460,27 +460,18 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
 	try {
-	    json parsedargs;
-	    std::string rbody;
-	    int status_code = OK;
-	    parse_body_or_err(body, parsedargs, rbody, status_code);
-	    bool include_lineage = false;
-	    bool include_children = false;
-	    bool include_terminal_descendants = false;
-	    if (status_code == OK) {
-		extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
-	    }
-	    if (status_code == OK) {
-		extract_from_request(parsedargs, "include_children", include_children, rbody, status_code);
-	    }
-	    if (status_code == OK) {
-		extract_from_request(parsedargs, "include_terminal_descendants", include_terminal_descendants, rbody, status_code);
-	    }
+	    auto parsedargs = parse_body_or_throw(body);
+
+	    auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
+
+	    auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
+
+	    auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);	    
+
 	    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
-	    if (status_code == OK) {
-		assert(taxon_node != nullptr);
-		taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants, rbody, status_code);
-	    }
+
+	    auto rbody = taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants);
+
 	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
 	}
 	catch (OTCWebError& e)

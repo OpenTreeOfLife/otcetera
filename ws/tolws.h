@@ -275,13 +275,11 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
                                int height_limit,
                                std::string & response_str,
                                int & status_code);
-void taxon_info_ws_method(const TreesToServe & tts,
-                          const RTRichTaxNode * taxon_node,
-                          bool include_lineage,
-                          bool include_children,
-                          bool include_terminal_descendants,
-                          std::string & response_str,
-                          int & status_code);
+std::string taxon_info_ws_method(const TreesToServe & tts,
+				 const RTRichTaxNode * taxon_node,
+				 bool include_lineage,
+				 bool include_children,
+				 bool include_terminal_descendants);
 
 std::string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set);
 

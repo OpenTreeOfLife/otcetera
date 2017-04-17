@@ -617,13 +617,11 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNo
     }
 }
 
-void taxon_info_ws_method(const TreesToServe & tts,
-                          const RTRichTaxNode * taxon_node,
-                          bool include_lineage,
-                          bool include_children,
-                          bool include_terminal_descendants,
-                          string & response_str,
-                          int & status_code) {
+string taxon_info_ws_method(const TreesToServe & tts,
+			    const RTRichTaxNode * taxon_node,
+			    bool include_lineage,
+			    bool include_children,
+			    bool include_terminal_descendants) {
     const auto & taxonomy = tts.get_taxonomy();
     assert(taxon_node != nullptr);
     json response;
@@ -653,8 +651,7 @@ void taxon_info_ws_method(const TreesToServe & tts,
         }
         response["terminal_descendants"] = td_array;
     }
-    response_str = response.dump(1);
-    status_code = OK;
+    return response.dump(1);
 }
 
 
