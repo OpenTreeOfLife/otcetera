@@ -17,9 +17,6 @@ inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
     return nd_taxon.get_name();
 } 
 
-OTCWSError::OTCWSError() noexcept :status_code(OK) {
-}
-
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["tax_sources"] = taxon_data.get_sources_json();
@@ -400,7 +397,7 @@ void mrca_ws_method(const TreesToServe & tts,
             }
         }
     }
-    bool is_broken = false;
+    //    bool is_broken = false; (UNUSED)
     if (focal == nullptr) {
         response_str = "MRCA of taxa was not found.\n";
         status_code = 400;
@@ -419,16 +416,13 @@ void mrca_ws_method(const TreesToServe & tts,
         assert(anc != nullptr);
         while (!anc->has_ott_id()) {
             anc = anc->get_parent();
-            if (anc == nullptr) {
-                response_str = "No ancestors were taxa. That is odd.\n";
-                status_code = 500;
-                return;
-            }
+            if (anc == nullptr)
+        throw OTCWebError("No ancestors were taxa. That is odd.\n");
         }
         json nt;
         const RTRichTaxNode * anc_taxon = taxonomy.included_taxon_from_id(anc->get_ott_id());
         if (anc_taxon == nullptr) {
-            throw OTCError() << "Ancd OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
+            throw OTCWebError() << "Ancd OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
         }
         add_taxon_info(taxonomy, *anc_taxon, nt);
         response["nearest_taxon"] = nt;
@@ -555,13 +549,11 @@ inline void writeVisitedNewick(std::ostream & out,
 }
 
 
-void induced_subtree_ws_method(const TreesToServe & tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     const vector<string> & node_id_vec,
-                     NodeNameStyle label_format, 
-                     string & response_str,
-                     int & status_code) {
+string induced_subtree_ws_method(const TreesToServe & tts,
+                 const SummaryTree_t * tree_ptr,
+                 const SummaryTreeAnnotation * sta,
+                 const vector<string> & node_id_vec,
+                 NodeNameStyle label_format) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
@@ -570,14 +562,10 @@ void induced_subtree_ws_method(const TreesToServe & tts,
     set<const SumTreeNode_t *> tip_nodes;
     for (auto node_id : node_id_vec) {
         const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+        if (n == nullptr)
+        throw OTCBadRequest()<<"node_id \""<<node_id<<"\" was not recognized.\n";
+
         tip_nodes.insert(n);
-        if (n == nullptr) {
-            response_str = "node_id \"";
-            response_str += node_id;
-            response_str += "\" was not recognized.\n";
-            status_code = 400;
-            return;
-        }
         if (first) {
             first = false;
             focal = n;
@@ -589,11 +577,9 @@ void induced_subtree_ws_method(const TreesToServe & tts,
         }
     }
     bool is_broken = false;
-    if (focal == nullptr) {
-        response_str = "MRCA of taxa was not found.\n";
-        status_code = 400;
-        return;
-    }
+    if (focal == nullptr)
+    throw OTCBadRequest()<<"MRCA of taxa was not found.\n";
+
     set<const SumTreeNode_t *> visited;
     visited.insert(focal);
     for (auto tni : tip_nodes) {
@@ -614,7 +600,7 @@ void induced_subtree_ws_method(const TreesToServe & tts,
         ss_arr.push_back(*study_it_ptr);
     }
     response["supporting_studies"] = ss_arr;
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 void newick_subtree_ws_method(const TreesToServe & tts,
@@ -716,13 +702,11 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNo
     }
 }
 
-void taxon_info_ws_method(const TreesToServe & tts,
-                          const RTRichTaxNode * taxon_node,
-                          bool include_lineage,
-                          bool include_children,
-                          bool include_terminal_descendants,
-                          string & response_str,
-                          int & status_code) {
+string taxon_info_ws_method(const TreesToServe & tts,
+                const RTRichTaxNode * taxon_node,
+                bool include_lineage,
+                bool include_children,
+                bool include_terminal_descendants) {
     const auto & taxonomy = tts.get_taxonomy();
     assert(taxon_node != nullptr);
     json response;
@@ -752,26 +736,18 @@ void taxon_info_ws_method(const TreesToServe & tts,
         }
         response["terminal_descendants"] = td_array;
     }
-    response_str = response.dump(1);
-    status_code = OK;
+    return response.dump(1);
 }
 
 
-void taxonomy_mrca_ws_method(const TreesToServe & tts,
-                             const OttIdSet & ott_id_set,
-                             string & response_str,
-                             int & status_code) {
+string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set) {
     const auto & taxonomy = tts.get_taxonomy();
     const RTRichTaxNode * focal = nullptr;
     bool first = true;
     for (auto ott_id : ott_id_set) {
         const RTRichTaxNode * n = taxonomy.included_taxon_from_id(ott_id);
         if (n == nullptr) {
-            response_str = "ott_id \"";
-            response_str += ott_id;
-            response_str += "\" was not recognized.\n";
-            status_code = 400;
-            return;
+            throw OTCBadRequest() << "ott_id \"" << ott_id <<  "\" was not recognized.\n";
         }
         if (first) {
             first = false;
@@ -784,15 +760,13 @@ void taxonomy_mrca_ws_method(const TreesToServe & tts,
         }
     }
     bool is_broken = false;
-    if (focal == nullptr) {
-        response_str = "MRCA of taxa was not found. Please report this bug!\n";
-        status_code = 400;
-        return;
-    }
-    status_code = OK;
+
+    if (focal == nullptr) throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
+
     json response;
     tax_service_add_taxon_info(taxonomy, *focal, response);
-    response_str = response.dump(1);
+
+    return response.dump(1);
 }
 
 void taxon_subtree_ws_method(const TreesToServe & tts,
@@ -1023,7 +997,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
         string name = nd->get_name();
         auto node_name = node_name_or_ottid(nd);
         if (not node_name) {
-            OTCWSError E(400);
+            auto E = OTCBadRequest();
             E << "Newick tree node with name='" << name << "'";
             if (nd->has_ott_id()) {
                 E << " and OTT Id=" << nd->get_ott_id();
@@ -1037,7 +1011,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
     } else if (tree2s == "synth") {
         return conflict_with_summary(*query_tree, summary, taxonomy).dump(1);
     }
-    throw OTCWSError(400) << "Error: tree2 = '" << tree2s << "' not recognized!";
+    throw OTCBadRequest()<<"tree2 = '"<<tree2s<<"' not recognized!";
 }
 
 

@@ -7,6 +7,7 @@
 #include <vector>
 #include <unordered_map>
 #include <boost/filesystem/operations.hpp>
+#include <stdexcept>
 #include "otc/newick_tokenizer.h"
 #include "otc/newick.h"
 #include "otc/tree.h"
@@ -43,18 +44,35 @@ typedef std::vector<src_node_id> vec_src_node_id_mapper;
     typedef std::vector<std::uint32_t> vec_src_node_ids;
 #endif
 
-class OTCWSError : public OTCError {
+class OTCWebError : public std::exception {
+protected:
+    int status_code_ = 500;
+    std::string message;
 public:
-    int status_code;
-    template <typename T> OTCWSError& operator<<(const T& t)
-    {
-	static_cast<OTCError&>(*this)<<t;
-	return *this;
+    int status_code() const {return status_code_;}
+    const char * what() const noexcept {
+        return message.c_str();
     }
-    OTCWSError() noexcept;
-    OTCWSError(int s) noexcept :status_code(s) {};
-    OTCWSError(int s, const std::string& m) noexcept :OTCError(m),status_code(s) {};
+    template <typename T> OTCWebError& operator<<(const T&);
+    void prepend(const std::string& s) {
+        message = s + message;
+    }
+    OTCWebError() noexcept {}
+    OTCWebError(int c) noexcept :status_code_(c) {}
+    OTCWebError(const std::string & msg) noexcept :message(msg) {}
+    OTCWebError(int c, const std::string & msg) noexcept :status_code_(c), message(msg) {}
 };
+
+template <typename T>
+OTCWebError& OTCWebError::operator<<(const T& t) {
+  std::ostringstream oss;
+  oss << message << t;
+  message = oss.str();
+  return *this;
+}
+
+inline OTCWebError OTCBadRequest() {return OTCWebError(400);}
+inline OTCWebError OTCBadRequest(const std::string& m) {return OTCWebError(400,m);}
 
 class SumTreeNodeData {
     public:
@@ -387,13 +405,11 @@ void mrca_ws_method(const TreesToServe & tts,
                     std::string & response_str,
                     int & status_code);
 
-void induced_subtree_ws_method(const TreesToServe & tts,
-                               const SummaryTree_t * tree_ptr,
-                               const SummaryTreeAnnotation * sta,
-                               const std::vector<std::string> & node_id_vec,
-                               NodeNameStyle label_format, 
-                               std::string & response_str,
-                               int & status_code);
+std::string induced_subtree_ws_method(const TreesToServe & tts,
+				      const SummaryTree_t * tree_ptr,
+				      const SummaryTreeAnnotation * sta,
+				      const std::vector<std::string> & node_id_vec,
+				      NodeNameStyle label_format);
 
 void newick_subtree_ws_method(const TreesToServe & tts,
                               const SummaryTree_t * tree_ptr,
@@ -410,17 +426,14 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
                                int height_limit,
                                std::string & response_str,
                                int & status_code);
-void taxon_info_ws_method(const TreesToServe & tts,
-                          const RTRichTaxNode * taxon_node,
-                          bool include_lineage,
-                          bool include_children,
-                          bool include_terminal_descendants,
-                          std::string & response_str,
-                          int & status_code);
-void taxonomy_mrca_ws_method(const TreesToServe & tts,
-                             const OttIdSet & ott_id_set,
-                             std::string & response_str,
-                             int & status_code);
+std::string taxon_info_ws_method(const TreesToServe & tts,
+				 const RTRichTaxNode * taxon_node,
+				 bool include_lineage,
+				 bool include_children,
+				 bool include_terminal_descendants);
+
+std::string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set);
+
 void taxon_subtree_ws_method(const TreesToServe & tts,
                              const RTRichTaxNode * taxon_node,
                              NodeNameStyle label_format, 
