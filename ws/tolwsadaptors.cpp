@@ -301,8 +301,6 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
 	try {
-	    std::string rbody;
-	    int status_code = OK;
 	    json parsedargs = parse_body_or_throw(body);
 
 	    string synth_id;
@@ -318,22 +316,18 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
 
 	    int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")?3:-1);
 
-	    if (status_code == OK) {
-		const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-		const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-		if (sta == nullptr || treeptr == nullptr) {
-		    rbody = "Did not recognize the synth_id.\n";
-		    status_code = 400;
-		} else if (format == "newick") {
-		    newick_subtree_ws_method(tts, treeptr, sta,
-					     node_id, nns, height_limit,
-					     rbody, status_code);
-		} else {
-		    arguson_subtree_ws_method(tts, treeptr, sta,
-					      node_id, height_limit,
-					      rbody, status_code);
-		}
+	    const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
+	    const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
+	    if (sta == nullptr || treeptr == nullptr)
+		throw OTCBadRequest()<<"Did not recognize the synth_id '"<<synth_id<<"'.";
+
+	    string rbody;
+	    if (format == "newick") {
+		rbody = newick_subtree_ws_method(tts, treeptr, sta, node_id, nns, height_limit);
+	    } else {
+		rbody = arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
 	    }
+
 	    session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
 	}
 	catch (OTCWebError& e)
