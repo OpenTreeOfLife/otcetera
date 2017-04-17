@@ -159,6 +159,14 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
     return nullptr;
 }
 
+const SumTreeNode_t * find_required_node_by_id_str(const SummaryTree_t & tree,
+						   const string & node_id,
+						   bool & was_broken) {
+    auto node  = find_node_by_id_str(tree, node_id, was_broken);
+    if (not node)
+	throw OTCBadRequest()<<"node_id '"<<node_id<<"' was not found!";
+    return node;
+}
 
 void about_ws_method(const TreesToServe &tts,
                      const SummaryTree_t * tree_ptr,
@@ -251,12 +259,8 @@ void node_info_ws_method(const TreesToServe & tts,
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
-    const SumTreeNode_t * focal = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-    if (focal == nullptr) {
-        response_str = "node_id was not found.\n";
-        status_code = 400;
-        return;
-    }
+    const SumTreeNode_t * focal = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
+
     const auto & taxonomy = tts.get_taxonomy();
     status_code = OK;
     json response;
@@ -274,26 +278,18 @@ void node_info_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
-void mrca_ws_method(const TreesToServe & tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     const vector<string> & node_id_vec,
-                     string & response_str,
-                     int & status_code) {
+string mrca_ws_method(const TreesToServe & tts,
+		      const SummaryTree_t * tree_ptr,
+		      const SummaryTreeAnnotation * sta,
+		      const vector<string> & node_id_vec) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
     for (auto node_id : node_id_vec) {
-        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-        if (n == nullptr) {
-            response_str = "node_id \"";
-            response_str += node_id;
-            response_str += "\" was not recognized.\n";
-            status_code = 400;
-            return;
-        }
+        const SumTreeNode_t * n = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
+
         if (first) {
             first = false;
             focal = n;
@@ -304,14 +300,11 @@ void mrca_ws_method(const TreesToServe & tts,
             }
         }
     }
-    //    bool is_broken = false; (UNUSED)
-    if (focal == nullptr) {
-        response_str = "MRCA of taxa was not found.\n";
-        status_code = 400;
-        return;
-    }
+
+    if (not focal)
+	throw OTCBadRequest("MRCA of taxa was not found.\n");
+
     const auto & taxonomy = tts.get_taxonomy();
-    status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
     json mrcaj;
@@ -336,7 +329,7 @@ void mrca_ws_method(const TreesToServe & tts,
     }
     response["mrca"] = mrcaj;
     add_source_id_map(response, usedSrcIds, taxonomy, sta);
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 
@@ -346,9 +339,7 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            uint32_t tip_limit) {
     assert(tree_ptr != nullptr);
     bool was_broken = false;
-    const SumTreeNode_t * focal = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-    if (focal == nullptr)
-	throw OTCBadRequest("node_id was not found.\n");
+    const SumTreeNode_t * focal = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
 
     if (was_broken)
 	throw OTCBadRequest("node_id was not found (broken taxon).\n");
@@ -457,9 +448,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     bool first = true;
     set<const SumTreeNode_t *> tip_nodes;
     for (auto node_id : node_id_vec) {
-        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-        if (n == nullptr)
-	    throw OTCBadRequest()<<"node_id \""<<node_id<<"\" was not recognized.\n";
+        const SumTreeNode_t * n = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
 
         tip_nodes.insert(n);
         if (first) {

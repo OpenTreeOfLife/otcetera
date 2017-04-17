@@ -245,12 +245,10 @@ void node_info_ws_method(const TreesToServe & tts,
                          std::string & response_str,
                          int & status_code);
 
-void mrca_ws_method(const TreesToServe & tts,
-                    const SummaryTree_t * tree_ptr,
-                    const SummaryTreeAnnotation * sta,
-                    const std::vector<std::string> & node_id_vec,
-                    std::string & response_str,
-                    int & status_code);
+std::string mrca_ws_method(const TreesToServe & tts,
+			   const SummaryTree_t * tree_ptr,
+			   const SummaryTreeAnnotation * sta,
+			   const std::vector<std::string> & node_id_vec);
 
 std::string induced_subtree_ws_method(const TreesToServe & tts,
 				      const SummaryTree_t * tree_ptr,
