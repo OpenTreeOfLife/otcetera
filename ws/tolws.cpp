@@ -251,17 +251,23 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
     return nullptr;
 }
 
+const SumTreeNode_t * find_required_node_by_id_str(const SummaryTree_t & tree,
+						   const string & node_id,
+						   bool & was_broken) {
+    auto node  = find_node_by_id_str(tree, node_id, was_broken);
+    if (not node)
+	throw OTCBadRequest()<<"node_id '"<<node_id<<"' was not found!";
+    return node;
+}
 
-void about_ws_method(const TreesToServe &tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     bool include_sources,
-                     string & response_str,
-                     int & status_code) {
+string about_ws_method(const TreesToServe &tts,
+		       const SummaryTree_t * tree_ptr,
+		       const SummaryTreeAnnotation * sta,
+		       bool include_sources) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     const auto & taxonomy = tts.get_taxonomy();
-    status_code = OK;
+
     json response;
     response["date_created"] = sta->date_completed;
     response["num_source_trees"] = sta->num_source_trees;
@@ -276,7 +282,7 @@ void about_ws_method(const TreesToServe &tts,
     auto root_node = tree_ptr->get_root();
     add_basic_node_info(taxonomy, *root_node, root);
     response["root"] = root;
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 void tax_about_ws_method(const TreesToServe &tts,
@@ -343,12 +349,8 @@ void node_info_ws_method(const TreesToServe & tts,
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
-    const SumTreeNode_t * focal = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-    if (focal == nullptr) {
-        response_str = "node_id was not found.\n";
-        status_code = 400;
-        return;
-    }
+    const SumTreeNode_t * focal = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
+
     const auto & taxonomy = tts.get_taxonomy();
     
     status_code = OK;
@@ -367,26 +369,18 @@ void node_info_ws_method(const TreesToServe & tts,
     response_str = response.dump(1);
 }
 
-void mrca_ws_method(const TreesToServe & tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     const vector<string> & node_id_vec,
-                     string & response_str,
-                     int & status_code) {
+string mrca_ws_method(const TreesToServe & tts,
+		      const SummaryTree_t * tree_ptr,
+		      const SummaryTreeAnnotation * sta,
+		      const vector<string> & node_id_vec) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
     for (auto node_id : node_id_vec) {
-        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-        if (n == nullptr) {
-            response_str = "node_id \"";
-            response_str += node_id;
-            response_str += "\" was not recognized.\n";
-            status_code = 400;
-            return;
-        }
+        const SumTreeNode_t * n = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
+
         if (first) {
             first = false;
             focal = n;
@@ -397,14 +391,11 @@ void mrca_ws_method(const TreesToServe & tts,
             }
         }
     }
-    //    bool is_broken = false; (UNUSED)
-    if (focal == nullptr) {
-        response_str = "MRCA of taxa was not found.\n";
-        status_code = 400;
-        return;
-    }
+
+    if (not focal)
+	throw OTCBadRequest("MRCA of taxa was not found.\n");
+
     const auto & taxonomy = tts.get_taxonomy();
-    status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
     json mrcaj;
@@ -429,34 +420,24 @@ void mrca_ws_method(const TreesToServe & tts,
     }
     response["mrca"] = mrcaj;
     add_source_id_map(response, usedSrcIds, taxonomy, sta);
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            const string & node_id, 
                                            int height_limit,
-                                           uint32_t tip_limit,
-                                           string & response_str,
-                                           int & status_code) {
+                                           uint32_t tip_limit) {
     assert(tree_ptr != nullptr);
     bool was_broken = false;
-    const SumTreeNode_t * focal = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-    if (focal == nullptr) {
-        response_str = "node_id was not found.\n";
-        status_code = 400;
-        return nullptr;
-    }
-    if (was_broken) {
-        response_str = "node_id was not found.\n";
-        status_code = 400;
-        return nullptr;
-    }
-    if (focal->get_data().num_tips > tip_limit && height_limit < 0) {
-        response_str = "The requested subtree is too large to be returned via the API. Download the entire tree.\n";
-        status_code = 400;
-        return nullptr;  
-    }
+    const SumTreeNode_t * focal = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
+
+    if (was_broken)
+	throw OTCBadRequest("node_id was not found (broken taxon).\n");
+
+    if (focal->get_data().num_tips > tip_limit && height_limit < 0)
+	throw OTCBadRequest()<<"The requested subtree is too large to be returned via the API. (Tip limit = "<<tip_limit<<".) Download the entire tree.\n";
+
     return focal;
 }
 
@@ -561,10 +542,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     bool first = true;
     set<const SumTreeNode_t *> tip_nodes;
     for (auto node_id : node_id_vec) {
-        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-        if (n == nullptr)
-        throw OTCBadRequest()<<"node_id \""<<node_id<<"\" was not recognized.\n";
-
+        const SumTreeNode_t * n = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
         tip_nodes.insert(n);
         if (first) {
             first = false;
@@ -603,22 +581,19 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
-void newick_subtree_ws_method(const TreesToServe & tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     const string & node_id,
-                     NodeNameStyle label_format, 
-                     int height_limit,
-                     string & response_str,
-                     int & status_code) {
+string newick_subtree_ws_method(const TreesToServe & tts,
+				const SummaryTree_t * tree_ptr,
+				const SummaryTreeAnnotation * sta,
+				const string & node_id,
+				NodeNameStyle label_format, 
+				int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
-    const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
-    if (focal == nullptr) {
-        return;
-    }
+    const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
+
     assert(sta != nullptr);
+    // sta not used?
     const auto & taxonomy = tts.get_taxonomy();
-    status_code = OK;
+
     json response;
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
@@ -629,7 +604,7 @@ void newick_subtree_ws_method(const TreesToServe & tts,
         ss_arr.push_back(*study_it_ptr);
     }
     response["supporting_studies"] = ss_arr;
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 
@@ -656,21 +631,17 @@ inline void write_arguson(json & j,
     add_node_support_info(tts, *nd, j, usedSrcIds);
 }
 
-void arguson_subtree_ws_method(const TreesToServe & tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     const string & node_id,
-                     int height_limit,
-                     string & response_str,
-                     int & status_code) {
+string arguson_subtree_ws_method(const TreesToServe & tts,
+				 const SummaryTree_t * tree_ptr,
+				 const SummaryTreeAnnotation * sta,
+				 const string & node_id,
+				 int height_limit) {
     const uint NEWICK_TIP_LIMIT = 25000;
-    auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT, response_str, status_code);
-    if (focal == nullptr) {
-        return;
-    }
+    auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
+
     assert(sta != nullptr);
     const auto & taxonomy = tts.get_taxonomy();
-    status_code = OK;
+
     json response;
     response["synth_id"] = sta->synth_id;
     set<string> usedSrcIds;
@@ -678,7 +649,7 @@ void arguson_subtree_ws_method(const TreesToServe & tts,
     write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
     add_lineage(a, focal, taxonomy, usedSrcIds);
     response["arguson"] = a;
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 // taxon_info

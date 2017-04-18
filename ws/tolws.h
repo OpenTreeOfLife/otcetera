@@ -380,12 +380,11 @@ enum NodeNameStyle {
     NNS_NAME_AND_ID = 2
 };
 
-void about_ws_method(const TreesToServe &tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     bool include_sources,
-                     std::string & response_str,
-                     int & status_code);
+std::string about_ws_method(const TreesToServe &tts,
+			    const SummaryTree_t * tree_ptr,
+			    const SummaryTreeAnnotation * sta,
+			    bool include_sources);
+
 void tax_about_ws_method(const TreesToServe &tts,
                          std::string & response_str,
                          int & status_code);
@@ -398,12 +397,10 @@ void node_info_ws_method(const TreesToServe & tts,
                          std::string & response_str,
                          int & status_code);
 
-void mrca_ws_method(const TreesToServe & tts,
-                    const SummaryTree_t * tree_ptr,
-                    const SummaryTreeAnnotation * sta,
-                    const std::vector<std::string> & node_id_vec,
-                    std::string & response_str,
-                    int & status_code);
+std::string mrca_ws_method(const TreesToServe & tts,
+			   const SummaryTree_t * tree_ptr,
+			   const SummaryTreeAnnotation * sta,
+			   const std::vector<std::string> & node_id_vec);
 
 std::string induced_subtree_ws_method(const TreesToServe & tts,
 				      const SummaryTree_t * tree_ptr,
@@ -411,21 +408,19 @@ std::string induced_subtree_ws_method(const TreesToServe & tts,
 				      const std::vector<std::string> & node_id_vec,
 				      NodeNameStyle label_format);
 
-void newick_subtree_ws_method(const TreesToServe & tts,
-                              const SummaryTree_t * tree_ptr,
-                              const SummaryTreeAnnotation * sta,
-                              const std::string & node_id,
-                              NodeNameStyle label_format, 
-                              int height_limit,
-                              std::string & response_str,
-                              int & status_code);
-void arguson_subtree_ws_method(const TreesToServe & tts,
-                               const SummaryTree_t * tree_ptr,
-                               const SummaryTreeAnnotation * sta,
-                               const std::string & node_id,
-                               int height_limit,
-                               std::string & response_str,
-                               int & status_code);
+std::string newick_subtree_ws_method(const TreesToServe & tts,
+				     const SummaryTree_t * tree_ptr,
+				     const SummaryTreeAnnotation * sta,
+				     const std::string & node_id,
+				     NodeNameStyle label_format, 
+				     int height_limit);
+
+std::string arguson_subtree_ws_method(const TreesToServe & tts,
+				      const SummaryTree_t * tree_ptr,
+				      const SummaryTreeAnnotation * sta,
+				      const std::string & node_id,
+				      int height_limit);
+
 std::string taxon_info_ws_method(const TreesToServe & tts,
 				 const RTRichTaxNode * taxon_node,
 				 bool include_lineage,

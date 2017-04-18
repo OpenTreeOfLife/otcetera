@@ -25,20 +25,22 @@ using namespace restbed;
 using boost::optional;
 using std::pair;
 
-
 std::mutex otc::ParallelReadSerialWrite::cout_mutex;
 namespace otc {
     // global
     TreesToServe tts;
 }
 
-json parse_body_or_throw(const Bytes & body)
-{
+json parse_body_or_throw(const Bytes & body) {
+    // This line is necessary for the otcetera test for tree_of_life/about to succeed, apparently.
+    if (body.empty()) {
+        return json();
+    }
     try {
-    return json::parse(body);
+        return json::parse(body);
     }
     catch (...) {
-    throw OTCBadRequest("Could not parse body of call as JSON.\n");
+        throw OTCBadRequest("Could not parse body of call as JSON.\n");
     }
 }
 
@@ -60,45 +62,40 @@ template<typename T>
 optional<T> convert_to(const json & j);
 
 template <>
-optional<bool> convert_to(const json & j)
-{
-    if (j.is_boolean())
-    return j.get<bool>();
-    else
-    return boost::none;
-}
-
-template <>
-optional<string> convert_to(const json & j)
-{
-    if (j.is_string())
-    return j.get<string>();
-    else
-    return boost::none;
-}
-
-template <>
-optional<int> convert_to(const json & j)
-{
-    if (j.is_number())
-    return j.get<int>();
-    else
-    return boost::none;
-}
-
-template <>
-optional<vector<string>> convert_to(const json & j)
-{
-    if (not j.is_array()) return boost::none;
-
-    vector<string> v;
-    for(auto& xj: j)
-    {
-    auto x = convert_to<string>(xj);
-    if (not x) return boost::none;
-    v.push_back(*x);
+optional<bool> convert_to(const json & j) {
+    if (j.is_boolean()) {
+        return j.get<bool>();
     }
+    return boost::none;
+}
 
+template <>
+optional<string> convert_to(const json & j) {
+    if (j.is_string()) {
+        return j.get<string>();
+    }
+    return boost::none;
+}
+
+template <>
+optional<int> convert_to(const json & j) {
+    if (j.is_number()) {
+        j.get<int>();
+    }
+    return boost::none;
+}
+
+template <>
+optional<vector<string>> convert_to(const json & j) {
+    if (not j.is_array()) {
+        return boost::none;
+    }
+    vector<string> v;
+    for(auto& xj: j) {
+        auto x = convert_to<string>(xj);
+        if (not x) return boost::none;
+        v.push_back(*x);
+    }
     return v;
 }
 
@@ -110,18 +107,16 @@ optional<OttId> convert_to(const json & j) {
 #endif
 
 template <>
-optional<OttIdSet> convert_to(const json & j)
-{
-    if (not j.is_array()) return boost::none;
-
-    OttIdSet ids;
-    for(auto& jid: j)
-    {
-    auto id = convert_to<OttId>(jid);
-    if (not id) return boost::none;
-    ids.insert(*id);
+optional<OttIdSet> convert_to(const json & j) {
+    if (not j.is_array()) {
+        return boost::none;
     }
-
+    OttIdSet ids;
+    for(auto& jid: j) {
+        auto id = convert_to<OttId>(jid);
+        if (not id) return boost::none;
+        ids.insert(*id);
+    }
     return ids;
 }
 
@@ -152,104 +147,102 @@ template <> constexpr const char* type_name_with_article<OttIdSet>() {
 }
 
 template<typename T>
-optional<T> extract_argument(const json & j, const std::string& opt_name)
-{
+optional<T> extract_argument(const json & j, const std::string& opt_name) {
     auto opt = j.find(opt_name);
-    if (opt == j.end())
-    return boost::none;
-
+    if (opt == j.end()) {
+        return boost::none;
+    }
     auto arg = convert_to<T>(*opt);
-    if (not arg)
-    throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
-
+    if (not arg) {
+        throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
+    }
     return arg;
 }
 
 template<typename T>
-T extract_argument_or_default(const json & j, const std::string& opt_name, const T& _default_)
-{
+T extract_argument_or_default(const json & j, const std::string& opt_name, const T& _default_) {
     auto arg = extract_argument<T>(j, opt_name);
-    if (arg)
-    return *arg;
-    else
-    return _default_;
+    return (arg ? *arg : _default_);
 }
 
 template<typename T>
-T extract_required_argument(const json & j, const std::string& opt_name)
-{
+T extract_required_argument(const json & j, const std::string& opt_name) {
     auto arg = extract_argument<T>(j, opt_name);
-    if (arg)
-    return *arg;
-    else
-    throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
+    if (arg) {
+        return *arg;
+    } else {
+        throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
+    }
 }
 
 ///////////////////////
 // handlers that are registered as callback
 
+const SummaryTreeAnnotation * get_annotations(const TreesToServe& tts, const string& synth_id) {
+    auto sta = tts.get_annotations(synth_id);
+    if (not sta) {
+        throw OTCBadRequest()<<"Did not recognize synth_id '"<<synth_id<<"'";
+    }
+    return sta;
+}
+
+const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& synth_id) {
+    auto treeptr = tts.get_summary_tree(synth_id);
+    if (not treeptr) {
+        throw OTCBadRequest()<<"Did not recognize synth_id '"<<synth_id<<"'";
+    }
+    return treeptr;
+}
+
+
 void about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
-        bool include_sources = false;
-        string synth_id;
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "include_source_list", include_sources, rbody, status_code);
+        try {
+            auto parsedargs = parse_body_or_throw(body);
+
+            bool include_sources = extract_argument_or_default<bool>  (parsedargs, "include_source_list", false);
+            string synth_id      = extract_argument_or_default<string>(parsedargs, "synth_id",            ""   );
+
+            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+            const SummaryTree_t * treeptr     = get_summary_tree(tts, synth_id);
+
+            string rbody = about_ws_method(tts, treeptr, sta, include_sources);
+
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[/tree_of_life/about] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         }
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "synth_id", synth_id, rbody, status_code);
-        }
-        if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-            if (sta == nullptr || treeptr == nullptr) {
-               rbody = "Did not recognize the synth_id.\n";
-               status_code = 400;
-            } else {
-                about_ws_method(tts, treeptr, sta, include_sources, rbody, status_code);
-            }
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
 
 
 pair<string,string> get_synth_and_node_id(const json &j) {
-
     auto synth_id = extract_argument_or_default<string>(j, "synth_id", "");
-
     auto node_id = extract_required_argument<string>(j, "node_id");
-
     return pair<string,string>(synth_id, node_id);
 }
 
 pair<string,vector<string>> get_synth_and_node_id_vec(const json &j) {
-
     auto synth_id =  extract_argument_or_default<string>(j, "synth_id", "");
-
     auto node_id_vec = extract_required_argument<vector<string>>(j, "node_ids");
-
     return pair<string, vector<string>>(synth_id, node_id_vec);
 }
 
 
 NodeNameStyle get_label_format(const json &j) {
-
     auto label_format = extract_argument_or_default<string>(j, "label_format", "name_and_id");
-
-    if (label_format == "id")
-    return NodeNameStyle::NNS_ID_ONLY;
-    else if (label_format == "name")
-    return NodeNameStyle::NNS_NAME_ONLY;
-    else if (label_format == "name_and_id")
-    return NodeNameStyle::NNS_NAME_AND_ID;
-    else
-    throw OTCBadRequest("label_format must be \"name_and_id\", \"name\" or \"id\".\n");
+    if (label_format == "id") {
+        return NodeNameStyle::NNS_ID_ONLY;
+    } else if (label_format == "name") {
+        return NodeNameStyle::NNS_NAME_ONLY;
+    } else if (label_format == "name_and_id") {
+        return NodeNameStyle::NNS_NAME_AND_ID;
+    } else {
+        throw OTCBadRequest("label_format must be \"name_and_id\", \"name\" or \"id\".\n");
+    }
 }
 
 void node_info_method_handler( const shared_ptr< Session > session ) {
@@ -270,14 +263,9 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
             extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
         }
         if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-            if (sta == nullptr || treeptr == nullptr) {
-               rbody = "Did not recognize the synth_id.\n";
-               status_code = 400;
-            } else {
-                node_info_ws_method(tts, treeptr, sta, node_id, include_lineage, rbody, status_code);
-            }
+            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
+            node_info_ws_method(tts, treeptr, sta, node_id, include_lineage, rbody, status_code);
         }
         session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
@@ -287,26 +275,25 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
+        try {    
+            std::string rbody;
+            int status_code = OK;
+            auto parsedargs = parse_body_or_throw(body);
 
-        string synth_id;
-        vector<string> node_id_vec;
-        tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+            string synth_id;
+            vector<string> node_id_vec;
+            tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
 
-        if (status_code == OK) {
-            const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-            const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-            if (sta == nullptr || treeptr == nullptr) {
-               rbody = "Did not recognize the synth_id.\n";
-               status_code = 400;
-            } else {
-                mrca_ws_method(tts, treeptr, sta, node_id_vec, rbody, status_code);
-            }
+            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
+
+            rbody = mrca_ws_method(tts, treeptr, sta, node_id_vec);
+
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[/tree_of_life/mrca] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
 
@@ -314,47 +301,35 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-    try {
-        std::string rbody;
-        int status_code = OK;
-        json parsedargs = parse_body_or_throw(body);
+        try {
+            json parsedargs = parse_body_or_throw(body);
+            string synth_id;
+            string node_id;
+            tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+            auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
 
-        string synth_id;
-        string node_id;
-        tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+            if (format != "newick" && format != "arguson") {
+                throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
+            }
 
-        auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
+            NodeNameStyle nns = get_label_format(parsedargs);
 
-        if (format != "newick" && format != "arguson")
-        throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
+            int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")?3:-1);
 
-        NodeNameStyle nns = get_label_format(parsedargs);
+            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
-        int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")?3:-1);
-
-        if (status_code == OK) {
-        const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-        const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-        if (sta == nullptr || treeptr == nullptr) {
-            rbody = "Did not recognize the synth_id.\n";
-            status_code = 400;
-        } else if (format == "newick") {
-            newick_subtree_ws_method(tts, treeptr, sta,
-                         node_id, nns, height_limit,
-                         rbody, status_code);
-        } else {
-            arguson_subtree_ws_method(tts, treeptr, sta,
-                          node_id, height_limit,
-                          rbody, status_code);
+            string rbody;
+            if (format == "newick") {
+                rbody = newick_subtree_ws_method(tts, treeptr, sta, node_id, nns, height_limit);
+            } else {
+                rbody = arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
+            }
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[subtree] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         }
-        }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
-    catch (OTCWebError& e)
-    {
-        string rbody = string("[subtree] Error: ") + e.what();
-        session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
     });
 }
 
@@ -364,28 +339,19 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
         try {
-        auto parsedargs = parse_body_or_throw(body);
-
-        string synth_id;
-        vector<string> node_id_vec;
-        tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
-
-        NodeNameStyle nns = get_label_format(parsedargs);
-
-        const SummaryTreeAnnotation * sta = tts.get_annotations(synth_id);
-        const SummaryTree_t * treeptr = tts.get_summary_tree(synth_id);
-        if (sta == nullptr || treeptr == nullptr)
-        throw OTCBadRequest()<<"Did not recognize the synth_id '"<<synth_id<<"'.";
-
-        auto rbody = induced_subtree_ws_method(tts, treeptr, sta, node_id_vec, nns);
-
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
-    catch (OTCWebError& e)
-    {
-        string rbody = string("[tree_of_life/induced_subtree] Error: ") + e.what();
-        session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
+            auto parsedargs = parse_body_or_throw(body);
+            string synth_id;
+            vector<string> node_id_vec;
+            tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+            NodeNameStyle nns = get_label_format(parsedargs);
+            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
+            auto rbody = induced_subtree_ws_method(tts, treeptr, sta, node_id_vec, nns);
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[tree_of_life/induced_subtree] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        }
     });
 }
 
@@ -495,26 +461,18 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-    try {
-        auto parsedargs = parse_body_or_throw(body);
-
-        auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
-
-        auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
-
-        auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
-
-        const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
-
-        auto rbody = taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants);
-
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
-    catch (OTCWebError& e)
-    {
-        string rbody = string("[taxonomy/taxon_info] Error: ") + e.what();
-        session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
+        try {
+            auto parsedargs = parse_body_or_throw(body);
+            auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
+            auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
+            auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
+            const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
+            auto rbody = taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants);
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[taxonomy/taxon_info] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        }
     });
 }
         
@@ -522,21 +480,15 @@ void taxon_mrca_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-    try
-    {
-        auto parsedargs = parse_body_or_throw(body);
-//      string ott_version;
-        OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
-
-        string rbody = taxonomy_mrca_ws_method(tts, ott_id_set);
-
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
-    catch (OTCWebError& e)
-    {
-        string rbody = string("[taxonomy/mrca] Error: ") + e.what();
-        session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
+        try {
+            auto parsedargs = parse_body_or_throw(body);
+            OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
+            string rbody = taxonomy_mrca_ws_method(tts, ott_id_set);
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[taxonomy/mrca] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        }
     });
 }
 
@@ -544,25 +496,23 @@ void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-    try {
-        std::string rbody;
-        int status_code = OK;
-        json parsedargs = parse_body_or_throw(body);
+        try {
+            std::string rbody;
+            int status_code = OK;
+            json parsedargs = parse_body_or_throw(body);
 
-        NodeNameStyle nns = get_label_format(parsedargs);
+            NodeNameStyle nns = get_label_format(parsedargs);
 
-        const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
-        if (status_code == OK) {
-        assert(taxon_node != nullptr);
-        taxon_subtree_ws_method(tts, taxon_node, nns, rbody, status_code);
+            const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
+            if (status_code == OK) {
+            assert(taxon_node != nullptr);
+            taxon_subtree_ws_method(tts, taxon_node, nns, rbody, status_code);
+            }
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[taxonomy/subtree] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
-    catch (OTCWebError& e)
-    {
-        string rbody = string("[taxonomy/subtree] Error: ") + e.what();
-        session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
     });
 }
 
@@ -570,26 +520,18 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-    try
-    {
-        auto parsed_args = parse_body_or_throw(body);
-
-        const auto& summary = *tts.get_summary_tree("");
-        const auto& taxonomy = tts.get_taxonomy();
-
-        string tree1 = extract_required_argument<string>(parsed_args, "tree1");
-
-        string tree2 = extract_required_argument<string>(parsed_args, "tree2");
-
-        string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
-
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
-    catch (OTCWebError& e)
-    {
-        string rbody = string("[conflict-status] Error: ") + e.what();
-        session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-    }
+        try {
+            auto parsed_args = parse_body_or_throw(body);
+            const auto& summary = *tts.get_summary_tree("");
+            const auto& taxonomy = tts.get_taxonomy();
+            string tree1 = extract_required_argument<string>(parsed_args, "tree1");
+            string tree2 = extract_required_argument<string>(parsed_args, "tree2");
+            string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[conflict-status] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        }
     });
 }
 
