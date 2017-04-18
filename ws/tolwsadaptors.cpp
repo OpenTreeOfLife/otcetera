@@ -80,7 +80,7 @@ optional<string> convert_to(const json & j) {
 template <>
 optional<int> convert_to(const json & j) {
     if (j.is_number()) {
-        j.get<int>();
+        return j.get<int>();
     }
     return boost::none;
 }
@@ -147,14 +147,17 @@ template <> constexpr const char* type_name_with_article<OttIdSet>() {
 }
 
 template<typename T>
-optional<T> extract_argument(const json & j, const std::string& opt_name) {
+optional<T> extract_argument(const json & j, const std::string& opt_name, bool required=false) {
     auto opt = j.find(opt_name);
     if (opt == j.end()) {
+        if (required) {
+            throw OTCBadRequest("expecting ") << type_name_with_article<T>()<<" argument called \"" << opt_name << "\"\n";
+        }
         return boost::none;
     }
     auto arg = convert_to<T>(*opt);
     if (not arg) {
-        throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
+        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found \"" << *opt << "\"\n";
     }
     return arg;
 }
@@ -167,12 +170,9 @@ T extract_argument_or_default(const json & j, const std::string& opt_name, const
 
 template<typename T>
 T extract_required_argument(const json & j, const std::string& opt_name) {
-    auto arg = extract_argument<T>(j, opt_name);
-    if (arg) {
-        return *arg;
-    } else {
-        throw OTCBadRequest("expecting argument '")<<opt_name<<"' to be "<<type_name_with_article<T>()<<"!\n";
-    }
+    auto arg = extract_argument<T>(j, opt_name, true);
+    assert(arg);
+    return *arg;
 }
 
 ///////////////////////
@@ -307,18 +307,13 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
             string node_id;
             tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
             auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
-
             if (format != "newick" && format != "arguson") {
                 throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
             }
-
             NodeNameStyle nns = get_label_format(parsedargs);
-
-            int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")?3:-1);
-
+            int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")? 3 : -1);
             const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
             const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-
             string rbody;
             if (format == "newick") {
                 rbody = newick_subtree_ws_method(tts, treeptr, sta, node_id, nns, height_limit);

@@ -381,9 +381,9 @@ enum NodeNameStyle {
 };
 
 std::string about_ws_method(const TreesToServe &tts,
-			    const SummaryTree_t * tree_ptr,
-			    const SummaryTreeAnnotation * sta,
-			    bool include_sources);
+                            const SummaryTree_t * tree_ptr,
+                            const SummaryTreeAnnotation * sta,
+                            bool include_sources);
 
 void tax_about_ws_method(const TreesToServe &tts,
                          std::string & response_str,
@@ -398,34 +398,34 @@ void node_info_ws_method(const TreesToServe & tts,
                          int & status_code);
 
 std::string mrca_ws_method(const TreesToServe & tts,
-			   const SummaryTree_t * tree_ptr,
-			   const SummaryTreeAnnotation * sta,
-			   const std::vector<std::string> & node_id_vec);
+                           const SummaryTree_t * tree_ptr,
+                           const SummaryTreeAnnotation * sta,
+                           const std::vector<std::string> & node_id_vec);
 
 std::string induced_subtree_ws_method(const TreesToServe & tts,
-				      const SummaryTree_t * tree_ptr,
-				      const SummaryTreeAnnotation * sta,
-				      const std::vector<std::string> & node_id_vec,
-				      NodeNameStyle label_format);
+                                      const SummaryTree_t * tree_ptr,
+                                      const SummaryTreeAnnotation * sta,
+                                      const std::vector<std::string> & node_id_vec,
+                                      NodeNameStyle label_format);
 
 std::string newick_subtree_ws_method(const TreesToServe & tts,
-				     const SummaryTree_t * tree_ptr,
-				     const SummaryTreeAnnotation * sta,
-				     const std::string & node_id,
-				     NodeNameStyle label_format, 
-				     int height_limit);
+                                     const SummaryTree_t * tree_ptr,
+                                     const SummaryTreeAnnotation * sta,
+                                     const std::string & node_id,
+                                     NodeNameStyle label_format, 
+                                     int height_limit);
 
 std::string arguson_subtree_ws_method(const TreesToServe & tts,
-				      const SummaryTree_t * tree_ptr,
-				      const SummaryTreeAnnotation * sta,
-				      const std::string & node_id,
-				      int height_limit);
+                                      const SummaryTree_t * tree_ptr,
+                                      const SummaryTreeAnnotation * sta,
+                                      const std::string & node_id,
+                                      int height_limit);
 
 std::string taxon_info_ws_method(const TreesToServe & tts,
-				 const RTRichTaxNode * taxon_node,
-				 bool include_lineage,
-				 bool include_children,
-				 bool include_terminal_descendants);
+                                 const RTRichTaxNode * taxon_node,
+                                 bool include_lineage,
+                                 bool include_children,
+                                 bool include_terminal_descendants);
 
 std::string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set);
 
@@ -436,9 +436,9 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
                              int & status_code);
 
 std::string conflict_ws_method(const SummaryTree_t & summary,
-			       const RichTaxonomy & taxonomy,
-			       const std::string& tree1s,
-			       const std::string& tree2s);
+                               const RichTaxonomy & taxonomy,
+                               const std::string& tree1s,
+                               const std::string& tree2s);
 
 bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
 
