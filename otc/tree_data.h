@@ -29,7 +29,7 @@ class RTreeOttIDMapping {
 class RTSplits {
     public:
     std::set<OttId> des_ids;
-	int depth = 0;
+    int depth = 0;
 };
 
 

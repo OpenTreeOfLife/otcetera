@@ -154,14 +154,14 @@ void sort_children_by_lowest_des_ott_id(T *deepest) {
             assert(id2child.size() == 1 + i2csize); // assumes tip IDs are unique
         }
         assert(!id2child.empty());
-
         // Remove all the children - they are remembered in the map
-        while(nd->has_children())
+        while(nd->has_children()) {
             nd->get_first_child()->detach_this_node();
-
+        }
         // Add the children back in sorted order
-        for(const auto& x: id2child)
+        for(const auto& x: id2child) {
             nd->add_child(x.second);
+        }
         assert(node2Id.at(nd->get_first_child()) == node2Id.at(nd));
     }
 }
@@ -238,13 +238,13 @@ inline void fill_id_map_from_names(const T & tree, std::map<std::string, OttId> 
             auto it = name_to_id.find(name);
             if (it != name_to_id.end()) {
                 if (not allowRep) {
-                    throw OTCError()<<"Tip label '"<<name<<"' occurs twice!";
+                    throw OTCError() << "Tip label '" << name << "' occurs twice!";
                 }
             } else {
                 name_to_id[name] = nextId++;
             }
         } else if (nd->is_tip()) {
-            throw OTCError()<<"tip has no label!";
+            throw OTCError() << "tip has no label!";
         }
     }
 }
@@ -257,13 +257,13 @@ inline void set_ids_from_names_and_refresh(T& tree, const std::map<std::string,O
             const auto name = nd->get_name();
             const auto it = name_to_id.find(name);
             if (it == name_to_id.end()) {
-                throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
+                throw OTCError() << "Can't find label '" << name << "' in taxonomy!";
             }
             const auto id = it->second;
             nd->set_ott_id(id);
             tree.get_data().ott_id_to_node[id] = nd;
         } else if (nd->is_tip()){
-            throw OTCError()<<"Tree tip has no label!";
+            throw OTCError() << "Tree tip has no label!";
         }
     }
     clear_and_fill_des_ids(tree);
@@ -277,12 +277,12 @@ inline void set_ids_from_names(T& tree, const std::map<std::string,OttId> & name
             const auto name = nd->get_name();
             const auto it = name_to_id.find(name);
             if (it == name_to_id.end()) {
-                throw OTCError()<<"Can't find label '"<<name<<"' in taxonomy!";
+                throw OTCError() << "Can't find label '" << name << "' in taxonomy!";
             }
             const auto id = it->second;
             nd->set_ott_id(id);
         } else if (nd->is_tip()){
-            throw OTCError()<<"Tree tip has no label!";
+            throw OTCError() << "Tree tip has no label!";
         }
     }
 }

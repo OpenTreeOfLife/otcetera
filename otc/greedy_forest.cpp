@@ -127,7 +127,7 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
         if (sn->has_ott_id() && sn->get_ott_id() > 0) { // might assign negative number to nodes created in synth...
-        auto nid = sn->get_ott_id();
+            auto nid = sn->get_ott_id();
             //LOG(DEBUG) << " node in src has ID " << nid;
             dn = dOttIdToNode.at(nid);
             //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->get_ott_id();
@@ -148,8 +148,9 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
             }
         } else {
             dn = destTree.create_child(dp);
-        if (sn->has_ott_id())
-          dn->set_ott_id(sn->get_ott_id());
+            if (sn->has_ott_id()) {
+                dn->set_ott_id(sn->get_ott_id());
+            }
         }
         //LOG(DEBUG) << " adding " << sn;
         gpf2scaff[sn] = dn;

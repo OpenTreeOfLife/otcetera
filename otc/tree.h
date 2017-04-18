@@ -94,24 +94,20 @@ class RootedTreeNode {
 
             // Connect left (from n)
             n->lSib = lSib;
-            if (n->lSib)
+            if (n->lSib) {
                 n->lSib->rSib = n;
-            else
-            {
+            } else {
                 assert(parent->lChild == this);
                 parent->lChild = n;
             }
-
             // Connect right (from n)
             n->rSib = this;
             lSib = n;
-
             // Connect up (from n)
             n->parent = parent;
         }
         void add_sib_on_right(node_type *n) {
             assert(n);
-
             // Connect right (from n)
             n->rSib = rSib;
             if (n->rSib) {
@@ -382,8 +378,9 @@ class RootedTree {
         }
         std::set<const node_type *> get_set_of_all_attached_nodes() const {
             std::set<const node_type*> nodes;
-            for(auto nd: get_all_attached_nodes())
+            for(auto nd: get_all_attached_nodes()) {
                 nodes.insert(nd);
+            }
             return nodes;
         }
         void mark_as_detached(node_type * nd) {

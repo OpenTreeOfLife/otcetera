@@ -15,8 +15,7 @@ bool suppressMonotypicAndWrite(OTCLI & , std::unique_ptr<T> tree);
 //         do not want to check invariants.
 //       I believe this is a "shallow dangle" version, because we delete monotypic nodes
 //         instead of preserving the one closest to the root.
-void suppress_monotypic_fast(Tree_t& tree)
-{
+void suppress_monotypic_fast(Tree_t& tree) {
     std::vector<Tree_t::node_type*> remove;
     for (auto nd:iter_pre(tree)) {
         if (nd->is_outdegree_one_node()) {

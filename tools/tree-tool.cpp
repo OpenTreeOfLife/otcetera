@@ -38,8 +38,7 @@ using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 namespace po = boost::program_options;
 using po::variables_map;
 
-variables_map parse_cmd_line(int argc,char* argv[]) 
-{ 
+variables_map parse_cmd_line(int argc,char* argv[]) { 
     using namespace po;
 
     // named options
@@ -95,8 +94,8 @@ std::size_t n_nodes(const Tree_t& T) {
 
 void show_nodes(const Tree_t& T) {
     for(auto nd: iter_post_const(T)) {
-    	if (nd->get_name().size()) {
-    	    std::cout << nd->get_name() << "\n";
+        if (nd->get_name().size()) {
+            std::cout << nd->get_name() << "\n";
         }
     }
 }
@@ -112,15 +111,19 @@ std::size_t n_leaves(const Tree_t& T) {
 }
 
 void show_leaf_nodes(const Tree_t& T) {
-    for(auto nd: iter_leaf_const(T))
-	if (nd->get_name().size())
-	    std::cout<<nd->get_name()<<"\n";
+    for(auto nd: iter_leaf_const(T)) {
+        if (nd->get_name().size()){
+            std::cout << nd->get_name() << "\n";
+        }
+    }
 }
 
 void show_internal_nodes(const Tree_t& T) {
-    for(auto nd: iter_post_const(T))
-	if (nd->get_name().size() and not nd->is_tip())
-	    std::cout<<nd->get_name()<<"\n";
+    for(auto nd: iter_post_const(T)) {
+        if (nd->get_name().size() and not nd->is_tip()) {
+            std::cout << nd->get_name() << "\n";
+        }
+    }
 }
 
 void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
@@ -153,8 +156,7 @@ void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
     
 }
 
-unique_ptr<Tree_t> get_tree(const string& filename)
-{
+unique_ptr<Tree_t> get_tree(const string& filename) {
     vector<unique_ptr<Tree_t>> trees;
     std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
     ParsingRules rules;
@@ -163,26 +165,25 @@ unique_ptr<Tree_t> get_tree(const string& filename)
     return std::move(trees[0]);
 }
 
-Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, OttId root_ott_id)
-{
-    for(auto nd: iter_pre(tree))
-        if (nd->has_ott_id() and nd->get_ott_id() == root_ott_id)
+Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, OttId root_ott_id) {
+    for(auto nd: iter_pre(tree)) {
+        if (nd->has_ott_id() and nd->get_ott_id() == root_ott_id) {
             return nd;
-    
-    throw OTCError()<<"Can't find node with id "<<root_ott_id<<" in tree '"<<tree.get_name()<<"'";
+        }
+    }
+    throw OTCError() << "Can't find node with id " << root_ott_id << " in tree '" << tree.get_name() << "'";
 }
 
-Tree_t::node_type* find_node_by_name(Tree_t& tree, const string& name)
-{
-    for(auto nd: iter_pre(tree))
-        if (nd->get_name().size() and nd->get_name() == name)
+Tree_t::node_type* find_node_by_name(Tree_t& tree, const string& name) {
+    for(auto nd: iter_pre(tree)) {
+        if (nd->get_name().size() and nd->get_name() == name) {
             return nd;
-    
-    throw OTCError()<<"Can't find node with name '"<<name<<"' in tree '"<<tree.get_name()<<"'";
+        }
+    }
+    throw OTCError() << "Can't find node with name '" << name << "' in tree '" << tree.get_name() << "'";
 }
 
-unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, OttId root_ott_id)
-{
+unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, OttId root_ott_id) {
     auto root = find_node_by_ott_id(*tree, root_ott_id);
     root->detach_this_node();
     unique_ptr<Tree_t> tree2 (new Tree_t);
@@ -210,122 +211,104 @@ unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
 }
 
 
-void show_high_degree_nodes(const Tree_t& tree, int n)
-{
+void show_high_degree_nodes(const Tree_t& tree, int n) {
     std::multimap<OttId,std::string> nodes;
-    for(auto nd: iter_pre_const(tree))
-    {
+    for(auto nd: iter_pre_const(tree)) {
         auto outdegree = nd->get_out_degree();
-        if (outdegree > 1)
+        if (outdegree > 1) {
             nodes.insert({outdegree,nd->get_name()});
+        }
     }
-
-    for(const auto& x: boost::adaptors::reverse(nodes))
-    {
+    for(const auto& x: boost::adaptors::reverse(nodes)) {
         --n;
-        if (n <= 0) return;
-        std::cout<<x.first<<"\t"<<x.second<<std::endl;
-    } 
+        if (n <= 0) {
+            return;
+        }
+        std::cout << x.first << "\t" << x.second << std::endl;
+    }
 }
 
-void create_file( const fs::path & ph, const std::string & contents )
-{
-  std::ofstream f( ph.string().c_str() );
-
-  if (not f)
-    throw OTCError()<<"Could not create empty file '"<<ph.string()<<"'";
-
-  if (not contents.empty())
-    f << contents;
+void create_file( const fs::path & ph, const std::string & contents ) {
+    std::ofstream f( ph.string().c_str() );
+    if (not f) {
+        throw OTCError() << "Could not create empty file '" << ph.string() << "'";
+    }
+    if (not contents.empty()) {
+        f << contents;
+    }
 }
 
 std::string remove_ott_suffix(std::string name) {
     static std::regex ott("(.*)[_ ]ott.*");
     std::smatch matches;
-    if (std::regex_match(name,matches,ott))
-    {
+    if (std::regex_match(name,matches,ott)) {
         name = matches[1];
     }
     return name;
 }
 
-void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree)
-{
-  fs::path new_dir = dirname;
-
-  if (fs::exists(new_dir))
-    throw OTCError()<<"File '"<<dirname<<"' already exists!";
-
-  fs::create_directories(new_dir);
-
-  // Create empty files
-  for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "weaklog.csv"})
-    create_file(new_dir / name, "");
-
-  // Write the about.json file.
-  create_file(new_dir/"about.json",string("{\"inputs\":[\"") + tree.get_name() + "\"]}");
-
-  // Write the synonyms.tsv file.
-  create_file(new_dir/"synonyms.tsv","name\t|\tuid\t|\ttype\t|\tuniqname\t|\t\n");
-
-  // Write the version file.
-  create_file(new_dir/"version.txt","0.0");
-
-  // Write the new taxonomy file.
-  {
-    std::ofstream tf ((new_dir/"taxonomy.tsv").string());
-    tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t"<<std::endl;
-    string sep = "\t|\t";
-    for(auto nd: iter_pre_const(tree))
-    {
-      tf<<nd->get_ott_id();
-      /* */ tf<<sep;
-      if (nd->get_parent())
-	tf<<nd->get_parent()->get_ott_id();
-      /* */ tf<<sep;
-      tf<<remove_ott_suffix(nd->get_name());
-      /* */ tf<<sep;
-      tf<<"no rank";
-      /* */ tf<<sep;
-      tf<<"tree:0";
-      //      tf<<"tree:"<<tree.get_name();
-      /* */ tf<<sep;
-      /* */ tf<<sep;
-      /* */ tf<<sep;
-      tf<<"\n";
+void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree) {
+    fs::path new_dir = dirname;
+    if (fs::exists(new_dir)) {
+        throw OTCError() << "File '" << dirname << "' already exists!";
     }
-
-    tf.close();
-  }
-
-  // Write the new forwards file.
-  {
-    std::ofstream ff((new_dir/"forwards.tsv").string());
-    ff << "id\treplacement\n";
-    ff.close();
-  }
+    fs::create_directories(new_dir);
+    // Create empty files
+    for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "weaklog.csv"}) {
+        create_file(new_dir / name, "");
+    }
+    // Write the about.json file.
+    create_file(new_dir/"about.json",string("{\"inputs\":[\"") + tree.get_name() + "\"]}");
+    // Write the synonyms.tsv file.
+    create_file(new_dir/"synonyms.tsv","name\t|\tuid\t|\ttype\t|\tuniqname\t|\t\n");
+    // Write the version file.
+    create_file(new_dir/"version.txt","0.0");
+    // Write the new taxonomy file.
+    {
+        std::ofstream tf ((new_dir/"taxonomy.tsv").string());
+        tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t" << std::endl;
+        string sep = "\t|\t";
+        for(auto nd: iter_pre_const(tree)) {
+            tf << nd->get_ott_id();
+            tf << sep;
+            if (nd->get_parent()) {
+                tf << nd->get_parent()->get_ott_id();
+            }
+            tf << sep;
+            tf << remove_ott_suffix(nd->get_name());
+            tf << sep;
+            tf << "no rank";
+            tf << sep;
+            tf << "tree:0";
+            //      tf << "tree:" << tree.get_name();
+            tf << sep;
+            tf << sep;
+            tf << sep;
+            tf << "\n";
+        }
+        tf.close();
+    }
+    // Write the new forwards file.
+    {
+        std::ofstream ff((new_dir/"forwards.tsv").string());
+        ff << "id\treplacement\n";
+        ff.close();
+    }
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
-
-    try
-    {
+    try {
         variables_map args = parse_cmd_line(argc,argv);
-
-        if (not args.count("tree"))
-            throw OTCError()<<"Please specify the tree to operate on!";
-        
+        if (not args.count("tree")) {
+            throw OTCError() << "Please specify the tree to operate on!";
+        }
         auto tree = get_tree(args["tree"].as<string>());
-
-        if (args.count("root"))
-        {
+        if (args.count("root")) {
             OttId root = args["root"].as<OttId>();
             tree = truncate_to_subtree_by_ott_id(std::move(tree), root);
         }
-        if (args.count("slice"))
-        {
+        if (args.count("slice")) {
             std::vector<OttId> slice = args["slice"].as<std::vector<OttId> >();
             if (slice.empty()) {
                 throw OTCError() << "Expecting a root ID followed by a OTT Ids to slice from the tree";
@@ -334,32 +317,33 @@ int main(int argc, char* argv[])
             slice.erase(slice.begin());
             tree = slice_tree(std::move(tree), root, slice);
         }
-        
         if (args.count("high-degree-nodes")) {
             long n = args["high-degree-nodes"].as<long>();
             show_high_degree_nodes(*tree, n);
         } else if (args.count("degree-of")) {
             OttId n = args["degree-of"].as<OttId>();
             auto nd = find_node_by_ott_id(*tree, n);
-            std::cout<<nd->get_out_degree()<<"\n";
+            std::cout << nd->get_out_degree() << "\n";
         } else if (args.count("children-of")) {
             OttId n = args["children-of"].as<OttId>();
             auto nd = find_node_by_ott_id(*tree, n);
-            for(auto c = nd->get_first_child(); c; c = c->get_next_sib())
-                std::cout<<c->get_name()<<"\n";
+            for(auto c = nd->get_first_child(); c; c = c->get_next_sib()) {
+                std::cout << c->get_name() << "\n";
+            }
         } else if (args.count("parent-of")) {
             OttId n = args["parent-of"].as<OttId>();
             auto nd = find_node_by_ott_id(*tree, n);
-            if (nd->get_parent())
-                std::cout<<nd->get_parent()->get_name()<<"\n";
-            else
-                std::cout<<"No parent: that node is the root.\n";
+            if (nd->get_parent()) {
+                std::cout << nd->get_parent()->get_name() << "\n";
+            } else {
+                std::cout << "No parent: that node is the root.\n";
+            }
         } else if (args.count("count-nodes")) {
-            std::cout<<n_nodes(*tree)<<std::endl;
+            std::cout << n_nodes(*tree) << std::endl;
         } else if (args.count("show-nodes")) {
             show_nodes(*tree);
         } else if (args.count("count-leaves")) {
-            std::cout<<n_leaves(*tree)<<std::endl;
+            std::cout << n_leaves(*tree) << std::endl;
         } else if (args.count("show-leaves")) {
             show_leaf_nodes(*tree);
         } else if (args.count("show-internal")) {
@@ -373,10 +357,8 @@ int main(int argc, char* argv[])
             write_tree_as_newick(std::cout, *tree);
             std::cout << std::endl;
         }
-    }
-    catch (std::exception& e)
-    {
-        cerr<<"otc-tree-tool: Error! "<<e.what()<<std::endl;
+    } catch (std::exception& e) {
+        cerr << "otc-tree-tool: Error! " << e.what() << std::endl;
         exit(1);
     }
 }

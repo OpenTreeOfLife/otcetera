@@ -44,7 +44,6 @@ json parse_body_or_throw(const Bytes & body) {
     }
 }
 
-
 bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbody, int & status_code) {
     try {
         if (!body.empty()) {
@@ -151,7 +150,7 @@ optional<T> extract_argument(const json & j, const std::string& opt_name, bool r
     auto opt = j.find(opt_name);
     if (opt == j.end()) {
         if (required) {
-            throw OTCBadRequest("expecting ") << type_name_with_article<T>()<<" argument called \"" << opt_name << "\"\n";
+            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called \"" << opt_name << "\"\n";
         }
         return boost::none;
     }
@@ -181,7 +180,7 @@ T extract_required_argument(const json & j, const std::string& opt_name) {
 const SummaryTreeAnnotation * get_annotations(const TreesToServe& tts, const string& synth_id) {
     auto sta = tts.get_annotations(synth_id);
     if (not sta) {
-        throw OTCBadRequest()<<"Did not recognize synth_id '"<<synth_id<<"'";
+        throw OTCBadRequest() << "Did not recognize synth_id '" << synth_id << "'";
     }
     return sta;
 }
@@ -189,7 +188,7 @@ const SummaryTreeAnnotation * get_annotations(const TreesToServe& tts, const str
 const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& synth_id) {
     auto treeptr = tts.get_summary_tree(synth_id);
     if (not treeptr) {
-        throw OTCBadRequest()<<"Did not recognize synth_id '"<<synth_id<<"'";
+        throw OTCBadRequest() << "Did not recognize synth_id '" << synth_id << "'";
     }
     return treeptr;
 }
@@ -380,11 +379,11 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs) {
     } else if (source_id) {
         auto pref_id = split_string(*source_id, ':');
         if (pref_id.size() != 2) {
-            throw OTCBadRequest()<<"Expecting exactly 1 colon in a source ID string. Found: \""<<*source_id<<"\".";
+            throw OTCBadRequest() << "Expecting exactly 1 colon in a source ID string. Found: \"" << *source_id << "\".";
         }
         string source_prefix = *pref_id.begin();
         if (indexed_source_prefixes.count(source_prefix) == 0) {
-            throw OTCBadRequest()<<"IDs from source "<<source_prefix<<" are not known or not indexed for searching.";
+            throw OTCBadRequest() << "IDs from source " << source_prefix << " are not known or not indexed for searching.";
         }
         string id_str = *pref_id.rbegin();
         try {

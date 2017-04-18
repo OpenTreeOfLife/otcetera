@@ -133,8 +133,7 @@ get_induced_tree_from_leaves_and_MRCA(const std::vector<const typename Tree_In_t
 template <typename Tree_In_t, typename Tree_Out_t=Tree_In_t>
 std::unique_ptr<Tree_Out_t>
 get_induced_tree(const std::vector<const typename Tree_In_t::node_type*>& leaves,
-                 std::function<const typename Tree_In_t::node_type*(const typename Tree_In_t::node_type*,const typename Tree_In_t::node_type*)> MRCA_of_pair)
-{
+                 std::function<const typename Tree_In_t::node_type*(const typename Tree_In_t::node_type*,const typename Tree_In_t::node_type*)> MRCA_of_pair) {
     return get_induced_tree_from_leaves_and_MRCA<Tree_In_t,Tree_Out_t>(leaves, MRCA_of_group(leaves, MRCA_of_pair));
 }
 
@@ -171,8 +170,7 @@ std::unique_ptr<Tree_Out_t> get_induced_tree(const Tree_In1_t& T1,
                                              const std::unordered_map<OttId, const typename Tree_In1_t::node_type*>& nodes1,
                                              std::function<const typename Tree_In1_t::node_type*(const typename Tree_In1_t::node_type*,const typename Tree_In1_t::node_type*)> MRCA_of_pair,
                                              const Tree_In2_t& T2,
-                                             const std::unordered_map<OttId, const typename Tree_In2_t::node_type*>& nodes2)
-{
+                                             const std::unordered_map<OttId, const typename Tree_In2_t::node_type*>& nodes2) {
     auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
     auto induced_tree = get_induced_tree<Tree_In1_t, Tree_Out_t>(induced_leaves, MRCA_of_pair);
     induced_tree->set_name(T1.get_name());

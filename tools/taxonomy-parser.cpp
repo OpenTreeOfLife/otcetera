@@ -38,10 +38,8 @@ namespace po = boost::program_options;
 using po::variables_map;
 using namespace boost::property_tree;
 
-variables_map parse_cmd_line(int argc,char* argv[]) 
-{ 
+variables_map parse_cmd_line(int argc,char* argv[]) {
     using namespace po;
-
     // named options
     options_description invisible("Invisible options");
     invisible.add_options()
@@ -107,33 +105,33 @@ std::size_t n_nodes(const Tree_t& T) {
     return count;
 }
 
-void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
-{
+void report_lost_taxa(const Taxonomy& taxonomy, const string& filename) {
     vector<unique_ptr<Tree_t>> trees;
     std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
     ParsingRules rules;
     rules.require_ott_ids = false;
     otc::process_trees(filename,rules,a);//[&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;});
     const auto& T =  trees[0];
-
     std::unordered_map<long, const Tree_t::node_type*> ottid_to_node;
-    for(auto nd: iter_pre_const(*T))
-        if (nd->has_ott_id())
+    for(auto nd: iter_pre_const(*T)) {
+        if (nd->has_ott_id()) {
             ottid_to_node[nd->get_ott_id()] = nd;
-
+        }
+    }
     vector<const TaxonomyRecord*> records;
-    for(const auto& rec: taxonomy)
+    for(const auto& rec: taxonomy) {
         records.push_back(&rec);
-    
+    }
     std::sort(records.begin(), records.end(), [](const auto& a, const auto& b) {return a->depth < b->depth;});
-    for(const auto& rec: records)
-        if (not ottid_to_node.count(rec->id))
-            std::cout<<"depth="<<rec->depth<<"   id="<<rec->id<<"   uniqname='"<<rec->uniqname<<"'\n";
+    for(const auto& rec: records){
+        if (not ottid_to_node.count(rec->id)){
+            std::cout << "depth=" << rec->depth << "   id=" << rec->id << "   uniqname='" << rec->uniqname << "'\n";
+        }
+    }
 }
 
-void show_rec(const TaxonomyRecord& rec)
-{
-    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"    flags = "<<flags_to_string(rec.flags)<<"\n";
+void show_rec(const TaxonomyRecord& rec) {
+    std::cout << rec.id << "   '" << rec.uniqname << "'   '" << rec.rank << "'   depth = " << rec.depth << "   out-degree = " << rec.out_degree << "    flags = " << flags_to_string(rec.flags) << "\n";
 }
 
 vector<OttId> get_ids_from_file(const string& filename) {
@@ -181,43 +179,40 @@ bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags) {
     return true;
 }
 
-void show_taxonomy_ids(const Taxonomy& taxonomy, const string& format, const vector<OttId>& ids,
-               std::function<bool(tax_flags)> flags_match)
-{
-    for(auto id: ids)
-    {
-    try
-    {
-        auto& rec = taxonomy.record_from_id(id);
-        if (flags_match(rec.flags))
-        std::cout<<format_with_taxonomy("No original label",format,rec)<<"\n";
-    }
-    catch (...) {
-        std::cerr<<"id="<<id<<": not in taxonomy!\n";
-    }
+void show_taxonomy_ids(const Taxonomy& taxonomy,
+                       const string& format,
+                       const vector<OttId>& ids,
+                       std::function<bool(tax_flags)> flags_match) {
+    for(auto id: ids) {
+        try {
+            auto& rec = taxonomy.record_from_id(id);
+            if (flags_match(rec.flags))
+            std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+        } catch (...) {
+            std::cerr << "id=" << id << ": not in taxonomy!\n";
+        }
     }
 }
 
-std::function<bool(tax_flags)> get_flags_match(variables_map& args)
-{
+std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
     tax_flags all_flags;
-    if (args.count("all-flags"))
-    all_flags = flags_from_string(args["all-flags"].as<string>());
-
+    if (args.count("all-flags")) {
+        all_flags = flags_from_string(args["all-flags"].as<string>());
+    }
     tax_flags any_flags;
-    if (args.count("any-flags"))
-    any_flags = flags_from_string(args["any-flags"].as<string>());
-
-    
-    if (any_flags.any() and all_flags.any())
-    return [all_flags,any_flags](tax_flags flags) {return (flags&any_flags).any() and
+    if (args.count("any-flags")) {
+        any_flags = flags_from_string(args["any-flags"].as<string>());
+    }
+    if (any_flags.any() and all_flags.any()) {
+        return [all_flags,any_flags](tax_flags flags) {return (flags&any_flags).any() and
                                                       (flags&all_flags)==all_flags; };
-    else if (any_flags.any())
-    return [any_flags](tax_flags flags) { return (flags&any_flags).any(); };
-    else if (all_flags.any())
-    return [all_flags](tax_flags flags) { return (flags&all_flags)==all_flags; };
-    else
-    return [](tax_flags){return true;};
+    } else if (any_flags.any()) {
+        return [any_flags](tax_flags flags) { return (flags&any_flags).any(); };
+    } else if (all_flags.any()) {
+        return [all_flags](tax_flags flags) { return (flags&all_flags)==all_flags; };
+    } else {
+        return [](tax_flags){return true;};
+    }
 }
 
 

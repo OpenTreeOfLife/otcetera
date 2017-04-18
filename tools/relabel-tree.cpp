@@ -168,8 +168,7 @@ void pruneHigherTaxonTips(Tree_t& tree, const Taxonomy& taxonomy) {
     }
 }
 
-void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags)
-{
+void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags) {
     vector<Tree_t::node_type*> nodes;
     for(auto nd: iter_post(tree)) {
         nodes.push_back(nd);
@@ -186,7 +185,7 @@ void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> p
                     newroot->detach_this_node();
                     tree._set_root(newroot);
                 } else {
-                    throw OTCError()<<"The root has flags set for pruning, but is not monotypic!";
+                    throw OTCError() << "The root has flags set for pruning, but is not monotypic!";
                 }
             }
             while (nd->has_children()) {
@@ -199,8 +198,7 @@ void filterTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> p
     }
 }
 
-void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags)
-{
+void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> prune_flags) {
     vector<Tree_t::node_type*> nodes;
     for(auto nd: iter_post(tree)) {
         nodes.push_back(nd);
@@ -212,7 +210,7 @@ void pruneTreeByFlags(Tree_t& tree, const Taxonomy& taxonomy, std::bitset<32> pr
         auto id = nd->get_ott_id();
         if ((taxonomy.record_from_id(id).flags & prune_flags).any()) {
             if (nd == tree.get_root()) {
-                throw OTCError()<<"The root has flags set for pruning!";
+                throw OTCError() << "The root has flags set for pruning!";
             }
             nd->detach_this_node();
         }
@@ -236,15 +234,14 @@ void writeLog(std::ofstream & out, const Cause2IDSetMap &csmap) {
     out << document.dump(1) << std::endl;
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
     std::ofstream jlogf;
     std::ofstream * json_log = nullptr;
     try {
         variables_map args = parse_cmd_line(argc,argv);
         if (not args.count("tree")) {
-            throw OTCError()<<"Please specify the newick tree to be relabelled!";
+            throw OTCError() << "Please specify the newick tree to be relabelled!";
         }
         if (args.count("json")) {
             string jf = args["json"].as<string>();
@@ -268,7 +265,7 @@ int main(int argc, char* argv[])
             taxonomy = load_taxonomy(args);
         }
         if (char c = format_needs_taxonomy(format_unknown)) {
-            throw OTCError()<<"Cannot use taxonomy-based specifier '%"<<c<<"' in non-taxonomy format string '"<<format_unknown<<"'";
+            throw OTCError() << "Cannot use taxonomy-based specifier '%" << c << "' in non-taxonomy format string '" << format_unknown << "'";
         }
         auto tree = get_tree<Tree_t>(args["tree"].as<string>());
         
@@ -304,14 +301,14 @@ int main(int argc, char* argv[])
         if (args.count("replace")) {
             string match_replace = args["replace"].as<string>();
             if (match_replace.empty()) {
-                throw OTCError()<<"Empty pattern for argument 'replace'!";
+                throw OTCError() << "Empty pattern for argument 'replace'!";
             }
             char sep = match_replace[0];
             if (std::count(match_replace.begin(), match_replace.end(), sep) !=3) {
-                throw OTCError()<<"Delimiter '"<<sep<<"' does not occur exactly three times in '"<<match_replace<<"'!";
+                throw OTCError() << "Delimiter '" << sep << "' does not occur exactly three times in '" << match_replace << "'!";
             }
             if (match_replace.back() != sep) {
-                throw OTCError()<<"Pattern '"<<match_replace<<"' does not end with delimiter '"<<sep<<"'";
+                throw OTCError() << "Pattern '" << match_replace << "' does not end with delimiter '" << sep << "'";
             }
             int loc2 = match_replace.find(sep, 1);
             int loc3 = match_replace.find(sep, loc2 + 1);
@@ -324,13 +321,13 @@ int main(int argc, char* argv[])
             }
         }
         write_tree_as_newick(cout, *tree);
-        std::cout<<std::endl;
+        std::cout << std::endl;
         if (json_log && !globalCauseToPrunedMap.empty()) {
             writeLog(*json_log, globalCauseToPrunedMap);
         }
     }
     catch (std::exception& e) {
-        cerr<<"otc-relabel-tree: Error! "<<e.what()<<std::endl;
+        cerr << "otc-relabel-tree: Error! " << e.what() << std::endl;
         exit(1);
     }
 }

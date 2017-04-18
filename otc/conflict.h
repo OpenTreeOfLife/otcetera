@@ -108,16 +108,15 @@ inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node) {
 template <typename Tree1_t, typename Tree2_t>
 void perform_conflict_analysis(const Tree1_t& tree1,
                                const std::unordered_map<OttId, const typename Tree1_t::node_type*>& ottid_to_node1,
-			       std::function<const typename Tree1_t::node_type*(const typename Tree1_t::node_type*,const typename Tree1_t::node_type*)> MRCA_of_pair1,
+                               std::function<const typename Tree1_t::node_type*(const typename Tree1_t::node_type*,const typename Tree1_t::node_type*)> MRCA_of_pair1,
                                const Tree2_t& tree2,
                                const std::unordered_map<OttId, const typename Tree2_t::node_type*>& ottid_to_node2,
-			       std::function<const typename Tree2_t::node_type*(const typename Tree2_t::node_type*,const typename Tree2_t::node_type*)> MRCA_of_pair2,
+                               std::function<const typename Tree2_t::node_type*(const typename Tree2_t::node_type*,const typename Tree2_t::node_type*)> MRCA_of_pair2,
                                node_logger_t log_supported_by,
                                node_logger_t log_partial_path_of,
                                node_logger_t log_conflicts_with,
                                node_logger_t log_resolved_by,
-                               node_logger_t log_terminal)
-{
+                               node_logger_t log_terminal) {
     auto induced_tree1 = get_induced_tree<Tree1_t,Tree2_t,ConflictTree>(tree1,
                                                                         ottid_to_node1,
                                                                         MRCA_of_pair1,
@@ -184,7 +183,7 @@ void perform_conflict_analysis(const Tree1_t& tree1,
         }
 
         // Find the list of nodes in the input tree that are below nd.
-	std::vector<const node_type*> leaves1 = leaf_nodes_below(const_cast<const node_type*>(nd));
+        std::vector<const node_type*> leaves1 = leaf_nodes_below(const_cast<const node_type*>(nd));
 
         // Since nd is not a tip, and not monotypic, it should have at least 2 leaves below it.
         assert(leaves1.size() >= 2);
@@ -195,16 +194,17 @@ void perform_conflict_analysis(const Tree1_t& tree1,
         }
 
         // Find the corresponding list of nodes in the summary tree
-	std::vector<node_type*> leaves2 = map_to_summary(leaves1);
+        std::vector<node_type*> leaves2 = map_to_summary(leaves1);
 
         // The MRCA should be the last node in the vector.
         node_type* MRCA = MRCA_of_group(leaves2, mrca_of_pair);
 
         // Find the nodes in the induced tree of those nodes
-	std::set<node_type*> node_set = find_induced_nodes(leaves2, MRCA);
-	std::vector<node_type*> nodes;
-	for(auto n: node_set)
-	    nodes.push_back(n);
+        std::set<node_type*> node_set = find_induced_nodes(leaves2, MRCA);
+        std::vector<node_type*> nodes;
+        for(auto n: node_set) {
+            nodes.push_back(n);
+        }
 
         // Sort the nodes by depth to ensure all children occur before their parents -- unfortunately n*log(n) !
         std::sort(nodes.begin(), nodes.end(), [](auto x, auto y){return depth(x) > depth(y);});

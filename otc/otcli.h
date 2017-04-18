@@ -77,8 +77,7 @@ class OTCLI {
 template<typename T>
 inline bool process_trees(const std::string& filename,
                          const ParsingRules& parsingRules,
-                         std::function<bool (std::unique_ptr<T>)> treePtr)
-{
+                         std::function<bool (std::unique_ptr<T>)> treePtr) {
     std::ifstream inp;
     if (!open_utf8_file(filename, inp)) {
         throw OTCError("Could not open \"" + filename + "\"");
@@ -112,32 +111,29 @@ inline bool process_trees(const std::string& filename,
 }
 
 template<typename Tree_t>
-std::vector<std::unique_ptr<Tree_t>> get_trees(const std::vector<std::string>& filenames, const ParsingRules& rules)
-{
+std::vector<std::unique_ptr<Tree_t>> get_trees(const std::vector<std::string>& filenames, const ParsingRules& rules) {
     std::vector<std::unique_ptr<Tree_t>> trees;
     std::function<bool(std::unique_ptr<Tree_t>)> proc = [&](std::unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
-    for(auto& filename: filenames)
-	otc::process_trees(filename,rules,proc);
+    for(auto& filename: filenames) {
+        otc::process_trees(filename,rules,proc);
+    }
     return trees;
 }
 
 template<typename Tree_t>
-std::vector<std::unique_ptr<Tree_t>> get_trees(const std::string& filename, const ParsingRules& rules)
-{
+std::vector<std::unique_ptr<Tree_t>> get_trees(const std::string& filename, const ParsingRules& rules) {
     const std::vector<std::string> filenameVec = {filename};
     return get_trees<Tree_t>(filenameVec, rules);
 }
 
 template<typename Tree_t>
-std::unique_ptr<Tree_t> get_tree(const std::string& filename, const ParsingRules& rules)
-{
+std::unique_ptr<Tree_t> get_tree(const std::string& filename, const ParsingRules& rules) {
     auto trees = get_trees<Tree_t>(filename, rules);
     return std::move(trees[0]);
 }
 
 template<typename Tree_t>
-std::unique_ptr<Tree_t> get_tree(const std::string& filename)
-{
+std::unique_ptr<Tree_t> get_tree(const std::string& filename) {
     ParsingRules rules;
     rules.require_ott_ids = false;
     return get_tree<Tree_t>(filename, rules);
@@ -172,8 +168,9 @@ inline int tree_processing_main(OTCLI & otCLI,
     try {
         if (treePtr) {
             std::function<bool(std::unique_ptr<T>)> treePtr1 = 
-                [&otCLI,&treePtr](std::unique_ptr<T> t)
-                {return treePtr(otCLI,std::move(t));};
+                [&otCLI,&treePtr](std::unique_ptr<T> t) {
+                    return treePtr(otCLI,std::move(t));
+                };
             
             for (const auto & filename : filenameVec) {
                 otCLI.currentFilename = filepath_to_filename(filename);
@@ -224,8 +221,9 @@ class TaxonomyDependentTreeProcessor {
 
         virtual bool process_taxonomy_tree(OTCLI & otCLI) {
             ottIds = get_all_ott_ids(*taxonomy);
-            if (not taxonomy->get_root()->has_ott_id())
-                throw OTCError()<<"Taxonomy root does not have an OTT ID!";
+            if (not taxonomy->get_root()->has_ott_id()) {
+                throw OTCError() << "Taxonomy root does not have an OTT ID!";
+            }
             otCLI.get_parsing_rules().ott_id_validator = &ottIds;
             otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = false;
             return true;

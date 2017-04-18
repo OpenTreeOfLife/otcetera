@@ -252,22 +252,22 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
 }
 
 const SumTreeNode_t * find_required_node_by_id_str(const SummaryTree_t & tree,
-						   const string & node_id,
-						   bool & was_broken) {
+                                                   const string & node_id,
+                                                   bool & was_broken) {
     auto node  = find_node_by_id_str(tree, node_id, was_broken);
-    if (not node)
-	throw OTCBadRequest()<<"node_id '"<<node_id<<"' was not found!";
+    if (not node) {
+        throw OTCBadRequest() << "node_id '" << node_id << "' was not found!";
+    }
     return node;
 }
 
 string about_ws_method(const TreesToServe &tts,
-		       const SummaryTree_t * tree_ptr,
-		       const SummaryTreeAnnotation * sta,
-		       bool include_sources) {
+                       const SummaryTree_t * tree_ptr,
+                       const SummaryTreeAnnotation * sta,
+                       bool include_sources) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     const auto & taxonomy = tts.get_taxonomy();
-
     json response;
     response["date_created"] = sta->date_completed;
     response["num_source_trees"] = sta->num_source_trees;
@@ -370,9 +370,9 @@ void node_info_ws_method(const TreesToServe & tts,
 }
 
 string mrca_ws_method(const TreesToServe & tts,
-		      const SummaryTree_t * tree_ptr,
-		      const SummaryTreeAnnotation * sta,
-		      const vector<string> & node_id_vec) {
+                      const SummaryTree_t * tree_ptr,
+                      const SummaryTreeAnnotation * sta,
+                      const vector<string> & node_id_vec) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
@@ -391,10 +391,9 @@ string mrca_ws_method(const TreesToServe & tts,
             }
         }
     }
-
-    if (not focal)
-	throw OTCBadRequest("MRCA of taxa was not found.\n");
-
+    if (not focal) {
+        throw OTCBadRequest("MRCA of taxa was not found.\n");
+    }
     const auto & taxonomy = tts.get_taxonomy();
     json response;
     response["synth_id"] = sta->synth_id;
@@ -407,8 +406,9 @@ string mrca_ws_method(const TreesToServe & tts,
         assert(anc != nullptr);
         while (!anc->has_ott_id()) {
             anc = anc->get_parent();
-            if (anc == nullptr)
-        throw OTCWebError("No ancestors were taxa. That is odd.\n");
+            if (anc == nullptr) {
+                throw OTCWebError("No ancestors were taxa. That is odd.\n");
+            }
         }
         json nt;
         const RTRichTaxNode * anc_taxon = taxonomy.included_taxon_from_id(anc->get_ott_id());
@@ -431,13 +431,12 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
     assert(tree_ptr != nullptr);
     bool was_broken = false;
     const SumTreeNode_t * focal = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
-
-    if (was_broken)
-	throw OTCBadRequest("node_id was not found (broken taxon).\n");
-
-    if (focal->get_data().num_tips > tip_limit && height_limit < 0)
-	throw OTCBadRequest()<<"The requested subtree is too large to be returned via the API. (Tip limit = "<<tip_limit<<".) Download the entire tree.\n";
-
+    if (was_broken) {
+        throw OTCBadRequest("node_id was not found (broken taxon).\n");
+    }
+    if (focal->get_data().num_tips > tip_limit && height_limit < 0) {
+        throw OTCBadRequest() << "The requested subtree is too large to be returned via the API. (Tip limit = " << tip_limit << ".) Download the entire tree.\n";
+    }
     return focal;
 }
 
@@ -555,9 +554,9 @@ string induced_subtree_ws_method(const TreesToServe & tts,
         }
     }
     bool is_broken = false;
-    if (focal == nullptr)
-    throw OTCBadRequest()<<"MRCA of taxa was not found.\n";
-
+    if (focal == nullptr) {
+        throw OTCBadRequest() << "MRCA of taxa was not found.\n";
+    }
     set<const SumTreeNode_t *> visited;
     visited.insert(focal);
     for (auto tni : tip_nodes) {
@@ -582,11 +581,11 @@ string induced_subtree_ws_method(const TreesToServe & tts,
 }
 
 string newick_subtree_ws_method(const TreesToServe & tts,
-				const SummaryTree_t * tree_ptr,
-				const SummaryTreeAnnotation * sta,
-				const string & node_id,
-				NodeNameStyle label_format, 
-				int height_limit) {
+                                const SummaryTree_t * tree_ptr,
+                                const SummaryTreeAnnotation * sta,
+                                const string & node_id,
+                                NodeNameStyle label_format, 
+                                int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
 
@@ -632,10 +631,10 @@ inline void write_arguson(json & j,
 }
 
 string arguson_subtree_ws_method(const TreesToServe & tts,
-				 const SummaryTree_t * tree_ptr,
-				 const SummaryTreeAnnotation * sta,
-				 const string & node_id,
-				 int height_limit) {
+                                 const SummaryTree_t * tree_ptr,
+                                 const SummaryTreeAnnotation * sta,
+                                 const string & node_id,
+                                 int height_limit) {
     const uint NEWICK_TIP_LIMIT = 25000;
     auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
 
@@ -761,16 +760,15 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
 using cnode_type = ConflictTree::node_type;
 
 template <typename N>
-boost::optional<string> node_name_or_ottid(const N* node)
-{
+boost::optional<string> node_name_or_ottid(const N* node) {
     auto result = get_source_node_name(node->get_name());
-
-    if (result)
+    if (result) {
         return result;
-    else if (node->has_ott_id())
+    } else if (node->has_ott_id()) {
         return string("ott")+std::to_string(node->get_ott_id());
-    else
+    } else {
         return boost::none;
+    }
 }
 
 struct conflict_stats
@@ -982,7 +980,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
     } else if (tree2s == "synth") {
         return conflict_with_summary(*query_tree, summary, taxonomy).dump(1);
     }
-    throw OTCBadRequest()<<"tree2 = '"<<tree2s<<"' not recognized!";
+    throw OTCBadRequest() << "tree2 = '" << tree2s << "' not recognized!";
 }
 
 

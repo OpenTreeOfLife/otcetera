@@ -59,7 +59,7 @@ auto get_symbols() {
         ("hybrid", 18)
         ("incertae_sedis", 19)
         ("incertae_sedis_inherited", 20)
-//	      incertae_sedis_direct
+//     incertae_sedis_direct
         ("infraspecific", 22)
         ("sibling_lower", 23)
         ("sibling_higher", 24)

@@ -28,14 +28,13 @@ std::string source_from_tree_name(const std::string& name) {
 boost::optional<std::string> get_source_node_name(const std::string& name) {
     static std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
     std::smatch matches;
-    if (std::regex_match(name,matches,e))
-    {
+    if (std::regex_match(name,matches,e)) {
         assert(matches.size() >= 2);
         std::string source = matches[2];
         return source;
-    }
-    else
+    } else {
         return boost::none;
+    }
 }
 
 bool culled_and_complete_incompat_wrt_leaf_set(const OttIdSet & culled,

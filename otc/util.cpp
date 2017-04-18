@@ -87,8 +87,7 @@ std::list<std::string> read_lines_of_file(const std::string & filepath) {
     Returns true if `o` points to a string that represents a long (and `o` has no other characters than the long).
     if n is not NULL, then when the function returns true, *n will be the long.
 */
-bool char_ptr_to_long(const char *o, long *n)
-    {
+bool char_ptr_to_long(const char *o, long *n) {
     if (o == nullptr) {
         return false;
     }
@@ -109,14 +108,13 @@ bool char_ptr_to_long(const char *o, long *n)
 // splits a string by whitespace and push the graphical strings to the back of r.
 //  Leading and trailing whitespace is lost ( there will be no empty strings added
 //      to the list.
-std::list<std::string> split_string(const std::string &s)
-    {
+std::list<std::string> split_string(const std::string &s) {
     std::list<std::string> r;
     std::string current;
     for (const auto & c : s) {
-        if (isgraph(c))
+        if (isgraph(c)) {
             current.append(1, c);
-        else if (!current.empty()) {
+        } else if (!current.empty()) {
             r.push_back(current);
             current.clear();
         }
@@ -128,8 +126,7 @@ std::list<std::string> split_string(const std::string &s)
 }
 
 
-std::list<std::string> split_string(const std::string &s, const char delimiter)
-    {
+std::list<std::string> split_string(const std::string &s, const char delimiter) {
     std::list<std::string> r;
     std::string current;
     for (const auto & c : s) {
@@ -172,7 +169,7 @@ OttIdSet parse_list_of_ott_ids(const std::string &fp) {
             if (!stripped.empty()) {
                 long p = string_to_long_ott_id(line);
                 if (p < 0) {
-                    throw OTCError()<<"Expecting an OTT Id.  Found: '"<<line<<"'";
+                    throw OTCError() << "Expecting an OTT Id.  Found: '" << line << "'";
                 }
                 ottIds.insert(check_ott_id_size(p));
             }

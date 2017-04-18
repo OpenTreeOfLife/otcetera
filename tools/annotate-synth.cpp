@@ -249,13 +249,11 @@ json gen_json(const Tree_t& summaryTree, const map<string,string>& monotypic_nod
 }
 
 void mapNextTree(const Tree_t& summaryTree,
-		 const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
-		 const Tree_t & tree,
-		 const string& source_name) {
-
+                 const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
+                 const Tree_t & tree,
+                 const string& source_name) {
     typedef Tree_t::node_type node_type;
     std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
-
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
     {
         auto log_supported_by    = [&source_name](const node_t* node2, const node_t* node1) {set_supported_by(node2,node1,source_name);};
@@ -315,9 +313,9 @@ int main(int argc, char *argv[]) {
         // 3. Generate json document and print it.
         auto document = gen_json(*summaryTree, monotypic_nodes, ignore_monotypic);
         document["sources"] = sources;
-        std::cout<<document.dump(1)<<std::endl;
+        std::cout << document.dump(1) << std::endl;
     } catch (std::exception& e) {
-        std::cerr<<"otc-annotate-synth: Error! "<<e.what()<<std::endl;
+        std::cerr << "otc-annotate-synth: Error! " << e.what() << std::endl;
         exit(1);
     }
 }

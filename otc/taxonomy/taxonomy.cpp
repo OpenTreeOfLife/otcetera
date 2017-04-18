@@ -255,7 +255,7 @@ void Taxonomy::write(const std::string& newdirname) {
         ofstream version_file((new_dir/"version.txt").string());
         version_file << version;
         if (keep_root != -1 or cleaning_flags.any()) {
-            version_file<<"modified: ";
+            version_file << "modified: ";
             if (keep_root != -1) {
                 version_file << "root=" << keep_root <<"  ";
             }
@@ -269,7 +269,7 @@ void Taxonomy::write(const std::string& newdirname) {
     // Write the new taxonomy file.
     {
         ofstream tf ((new_dir/"taxonomy.tsv").string());
-        tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t"<<std::endl;
+        tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t" << std::endl;
         string sep = "\t|\t";
         for(const auto& r: *this) {
             tf << r.line <<"\n";
@@ -369,8 +369,8 @@ Taxonomy::Taxonomy(const string& dir,
         (*this)[back().parent_index].out_degree++;
         index[back().id] = size() - 1;
     }
-    LOG(TRACE)<<"records read = "<<count;
-    LOG(TRACE)<<"records kept = "<<size();
+    LOG(TRACE) << "records read = " << count;
+    LOG(TRACE) << "records kept = " << size();
     taxonomy_stream.close();
     /*
     if (read_deprecated) {
@@ -494,7 +494,7 @@ std::string get_taxonomy_dir(const variables_map& args) {
             E << "\n  No config files specified";
         } else {
             for(const auto& f: config_files) {
-                E << "\n  '"<<f<<"': No variable ott in section [opentree]";
+                E << "\n  '" << f << "': No variable ott in section [opentree]";
             }
         }
         throw E;
