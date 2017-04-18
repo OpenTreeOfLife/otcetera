@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <boost/filesystem/operations.hpp>
 #include <stdexcept>
+#include <memory>
 #include "otc/newick_tokenizer.h"
 #include "otc/newick.h"
 #include "otc/tree.h"
@@ -202,12 +203,8 @@ struct SummaryTreeAnnotation {
         std::vector<std::string> sources;
         nlohmann::json full_source_id_map_json;
         OttIdSet suppressed_from_tree; // IDs not included in tree
-        ParallelReadSerialWrite taxonomy_thread_safety;
-
-        explicit SummaryTreeAnnotation()
-            :taxonomy_thread_safety("taxonomy") {
-
-            }
+        explicit SummaryTreeAnnotation() {
+        }
         SummaryTreeAnnotation(const SummaryTreeAnnotation &) = delete;
         SummaryTreeAnnotation(const SummaryTreeAnnotation &&) = delete;
         SummaryTreeAnnotation &operator=(const SummaryTreeAnnotation &) = delete;
@@ -242,14 +239,18 @@ class TreesToServe {
         std::map<std::string, const SummaryTree_t *> id_to_tree;
         std::map<std::string, const SummaryTreeAnnotation *> id_to_annotations;
         std::string default_synth_id;
-        const RichTaxonomy * taxonomy_ptr = nullptr;
+        RichTaxonomy * taxonomy_ptr = nullptr;
         std::map<std::string, const std::string *> stored_strings;
         std::list<std::string> stored_strings_list;
         const RichTaxTree * taxonomy_tree = nullptr;
         vec_src_node_id_mapper src_node_id_storer;
         std::map<src_node_id, std::uint32_t> lookup_for_node_ids_while_registering_trees;
         bool finalized = false;
+        mutable ParallelReadSerialWrite taxonomy_thread_safety;
     public:
+        explicit TreesToServe()
+            :taxonomy_thread_safety("taxonomy") {
+        }
         const src_node_id & decode_study_node_id_index(std::uint32_t sni_ind) const {
             return src_node_id_storer.at(sni_ind);
         }
@@ -276,14 +277,24 @@ class TreesToServe {
             return v;
         }
 
-        void set_taxonomy(const RichTaxonomy &taxonomy) {
+        void set_taxonomy(RichTaxonomy &taxonomy) {
             assert(taxonomy_ptr == nullptr);
             taxonomy_ptr = &taxonomy;
             taxonomy_tree = &(taxonomy.get_tax_tree());
         }
-        const RichTaxonomy & get_taxonomy() const {
+        using ReadableTaxonomy = std::pair<const RichTaxonomy &,
+                                            std::unique_ptr<ReadMutexWrapper> >;
+        using WritableTaxonomy = std::pair<RichTaxonomy &,
+                                            std::unique_ptr<WriteMutexWrapper> >;
+        ReadableTaxonomy get_readable_taxonomy() const {
             assert(taxonomy_ptr != nullptr);
-            return *taxonomy_ptr;
+            return {*taxonomy_ptr,
+                    std::move(std::make_unique<ReadMutexWrapper>(taxonomy_thread_safety))};
+        }
+        WritableTaxonomy get_writable_taxonomy() {
+            assert(taxonomy_ptr != nullptr);
+            return {*taxonomy_ptr,
+                    std::move(std::make_unique<WriteMutexWrapper>(taxonomy_thread_safety))};
         }
         void fill_ott_id_set(const std::bitset<32> & flags,
                               OttIdSet & ott_id_set,
@@ -385,17 +396,13 @@ std::string about_ws_method(const TreesToServe &tts,
                             const SummaryTreeAnnotation * sta,
                             bool include_sources);
 
-void tax_about_ws_method(const TreesToServe &tts,
-                         std::string & response_str,
-                         int & status_code);
+std::string tax_about_ws_method(const RichTaxonomy &tts);
 
-void node_info_ws_method(const TreesToServe & tts,
-                         const SummaryTree_t * tree_ptr,
-                         const SummaryTreeAnnotation * sta,
-                         const std::string & node_id,
-                         bool include_lineage,
-                         std::string & response_str,
-                         int & status_code);
+std::string node_info_ws_method(const TreesToServe & tts,
+                                const SummaryTree_t * tree_ptr,
+                                const SummaryTreeAnnotation * sta,
+                                const std::string & node_id,
+                                bool include_lineage);
 
 std::string mrca_ws_method(const TreesToServe & tts,
                            const SummaryTree_t * tree_ptr,
@@ -404,13 +411,11 @@ std::string mrca_ws_method(const TreesToServe & tts,
 
 std::string induced_subtree_ws_method(const TreesToServe & tts,
                                       const SummaryTree_t * tree_ptr,
-                                      const SummaryTreeAnnotation * sta,
                                       const std::vector<std::string> & node_id_vec,
                                       NodeNameStyle label_format);
 
 std::string newick_subtree_ws_method(const TreesToServe & tts,
                                      const SummaryTree_t * tree_ptr,
-                                     const SummaryTreeAnnotation * sta,
                                      const std::string & node_id,
                                      NodeNameStyle label_format, 
                                      int height_limit);
@@ -421,19 +426,18 @@ std::string arguson_subtree_ws_method(const TreesToServe & tts,
                                       const std::string & node_id,
                                       int height_limit);
 
-std::string taxon_info_ws_method(const TreesToServe & tts,
+std::string taxon_info_ws_method(const RichTaxonomy & taxonomy,
                                  const RTRichTaxNode * taxon_node,
                                  bool include_lineage,
                                  bool include_children,
                                  bool include_terminal_descendants);
 
-std::string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set);
+std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
+                                    const OttIdSet & ott_id_set);
 
-void taxon_subtree_ws_method(const TreesToServe & tts,
-                             const RTRichTaxNode * taxon_node,
-                             NodeNameStyle label_format, 
-                             std::string & response_str,
-                             int & status_code);
+std::string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
+                                    const RTRichTaxNode * taxon_node,
+                                    NodeNameStyle label_format);
 
 std::string conflict_ws_method(const SummaryTree_t & summary,
                                const RichTaxonomy & taxonomy,

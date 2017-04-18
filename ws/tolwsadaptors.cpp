@@ -25,11 +25,16 @@ using namespace restbed;
 using boost::optional;
 using std::pair;
 
-std::mutex otc::ParallelReadSerialWrite::cout_mutex;
+
 namespace otc {
-    // global
-    TreesToServe tts;
-}
+// global
+TreesToServe tts;
+
+#if defined(DEBUGGING_THREAD_LOCKING)
+    std::mutex otc::ParallelReadSerialWrite::cout_mutex;
+#endif
+
+}// namespace otc
 
 json parse_body_or_throw(const Bytes & body) {
     // This line is necessary for the otcetera test for tree_of_life/about to succeed, apparently.
@@ -42,19 +47,6 @@ json parse_body_or_throw(const Bytes & body) {
     catch (...) {
         throw OTCBadRequest("Could not parse body of call as JSON.\n");
     }
-}
-
-bool parse_body_or_err(const Bytes & body, json & parsedargs, std::string & rbody, int & status_code) {
-    try {
-        if (!body.empty()) {
-            parsedargs = json::parse(body);
-            return true;
-        }
-    } catch (...) {
-        rbody = "Could not parse body of call as JSON.\n";
-        status_code = 400;
-    }
-    return false;
 }
 
 template<typename T>
@@ -248,25 +240,20 @@ void node_info_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        parse_body_or_err(body, parsedargs, rbody, status_code);
-        bool include_lineage = false;
-
-        string synth_id;
-        string node_id;
-        tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
-
-        if (status_code == OK) {
-            extract_from_request(parsedargs, "include_lineage", include_lineage, rbody, status_code);
-        }
-        if (status_code == OK) {
+        try {
+            json parsedargs = parse_body_or_throw(body);
+            string synth_id;
+            string node_id;
+            tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+            bool include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
             const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
             const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-            node_info_ws_method(tts, treeptr, sta, node_id, include_lineage, rbody, status_code);
+            string rbody = node_info_ws_method(tts, treeptr, sta, node_id, include_lineage);
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[/tree_of_life/node_info] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
 
@@ -275,19 +262,13 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
         try {    
-            std::string rbody;
-            int status_code = OK;
             auto parsedargs = parse_body_or_throw(body);
-
             string synth_id;
             vector<string> node_id_vec;
             tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
-
             const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
             const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-
-            rbody = mrca_ws_method(tts, treeptr, sta, node_id_vec);
-
+            string rbody = mrca_ws_method(tts, treeptr, sta, node_id_vec);
             session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         } catch (OTCWebError& e) {
             string rbody = string("[/tree_of_life/mrca] Error: ") + e.what();
@@ -315,7 +296,7 @@ void subtree_method_handler( const shared_ptr< Session > session ) {
             const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
             string rbody;
             if (format == "newick") {
-                rbody = newick_subtree_ws_method(tts, treeptr, sta, node_id, nns, height_limit);
+                rbody = newick_subtree_ws_method(tts, treeptr, node_id, nns, height_limit);
             } else {
                 rbody = arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
             }
@@ -340,7 +321,7 @@ void induced_subtree_method_handler( const shared_ptr< Session > session ) {
             NodeNameStyle nns = get_label_format(parsedargs);
             const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
             const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-            auto rbody = induced_subtree_ws_method(tts, treeptr, sta, node_id_vec, nns);
+            auto rbody = induced_subtree_ws_method(tts, treeptr, node_id_vec, nns);
             session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         } catch (OTCWebError& e) {
             string rbody = string("[tree_of_life/induced_subtree] Error: ") + e.what();
@@ -353,19 +334,23 @@ void tax_about_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & ) {
-        json parsedargs;
-        std::string rbody;
-        int status_code = OK;
-        if (status_code == OK) {
-            tax_about_ws_method(tts, rbody, status_code);
+        try {
+            string rbody;
+            {
+                auto locked_taxonomy = tts.get_readable_taxonomy();
+                const auto & taxonomy = locked_taxonomy.first;
+                rbody = tax_about_ws_method(taxonomy);
+            }
+            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
+        } catch (OTCWebError& e) {
+            string rbody = string("[taxonomy/about] Error: ") + e.what();
+            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         }
-        session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
     });
 }
 
 // looks for ott_id or source_id args to find a node
-const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs) {
-    const auto & taxonomy = tts.get_taxonomy();
+const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, const RichTaxonomy & taxonomy) {
     const auto & taxonomy_tree = taxonomy.get_tax_tree();
     const auto & taxonomy_tree_data = taxonomy_tree.get_data();
 
@@ -460,8 +445,13 @@ void taxon_info_method_handler( const shared_ptr< Session > session ) {
             auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
             auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
             auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
-            const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
-            auto rbody = taxon_info_ws_method(tts, taxon_node, include_lineage, include_children, include_terminal_descendants);
+            string rbody;
+            {
+                auto locked_taxonomy = tts.get_readable_taxonomy();
+                const auto & taxonomy = locked_taxonomy.first;
+                const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
+                rbody = taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+            }
             session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         } catch (OTCWebError& e) {
             string rbody = string("[taxonomy/taxon_info] Error: ") + e.what();
@@ -477,7 +467,12 @@ void taxon_mrca_method_handler( const shared_ptr< Session > session ) {
         try {
             auto parsedargs = parse_body_or_throw(body);
             OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
-            string rbody = taxonomy_mrca_ws_method(tts, ott_id_set);
+            string rbody;
+            {
+                auto locked_taxonomy = tts.get_readable_taxonomy();
+                const auto & taxonomy = locked_taxonomy.first;
+                rbody = taxonomy_mrca_ws_method(taxonomy, ott_id_set);
+            }
             session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         } catch (OTCWebError& e) {
             string rbody = string("[taxonomy/mrca] Error: ") + e.what();
@@ -491,16 +486,15 @@ void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
         try {
-            std::string rbody;
+            string rbody;
             int status_code = OK;
             json parsedargs = parse_body_or_throw(body);
-
             NodeNameStyle nns = get_label_format(parsedargs);
-
-            const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs);
-            if (status_code == OK) {
-            assert(taxon_node != nullptr);
-            taxon_subtree_ws_method(tts, taxon_node, nns, rbody, status_code);
+            {
+                auto locked_taxonomy = tts.get_readable_taxonomy();
+                const auto & taxonomy = locked_taxonomy.first;
+                const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
+                rbody = taxon_subtree_ws_method(taxonomy, taxon_node, nns);
             }
             session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         } catch (OTCWebError& e) {
@@ -516,11 +510,15 @@ void conflict_conflict_status_method_handler( const shared_ptr< Session > sessio
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
         try {
             auto parsed_args = parse_body_or_throw(body);
-            const auto& summary = *tts.get_summary_tree("");
-            const auto& taxonomy = tts.get_taxonomy();
             string tree1 = extract_required_argument<string>(parsed_args, "tree1");
             string tree2 = extract_required_argument<string>(parsed_args, "tree2");
-            string rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
+            const auto& summary = *tts.get_summary_tree("");
+            string rbody;
+            {
+                auto locked_taxonomy = tts.get_readable_taxonomy();
+                const auto & taxonomy = locked_taxonomy.first;
+                rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
+            }
             session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         } catch (OTCWebError& e) {
             string rbody = string("[conflict-status] Error: ") + e.what();

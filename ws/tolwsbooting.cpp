@@ -232,7 +232,8 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    const RichTaxonomy & taxonomy = tts.get_taxonomy();
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
 #   if defined(REPORT_MEMORY_USAGE)
         MemoryBookkeeper tax_mem_b;
         std::size_t tree_mem = 0;

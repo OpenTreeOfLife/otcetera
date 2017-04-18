@@ -95,12 +95,13 @@ void add_node_support_info(const TreesToServe & tts,
                            const SumTreeNode_t & nd,
                            json & noderepr,
                            set<string> & usedSrcIds) {
-    const auto & taxonomy = tts.get_taxonomy();
     const auto & d = nd.get_data();
     const string * extra_src = nullptr;
     const string * extra_node_id = nullptr;
     string tmp;
     if (nd.has_ott_id()) {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
         extra_src = &(taxonomy.get_version());
         tmp = node_id_for_summary_tree_node(nd);
         extra_node_id = &tmp;
@@ -180,7 +181,6 @@ void add_node_support_info(const TreesToServe & tts,
         noderepr["was_uncontested"] = true;
         noderepr["was_constrained"] = true;
     }
-
 }
 
 template<typename N>
@@ -267,7 +267,6 @@ string about_ws_method(const TreesToServe &tts,
                        bool include_sources) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
-    const auto & taxonomy = tts.get_taxonomy();
     json response;
     response["date_created"] = sta->date_completed;
     response["num_source_trees"] = sta->num_source_trees;
@@ -280,26 +279,26 @@ string about_ws_method(const TreesToServe &tts,
     }
     json root;
     auto root_node = tree_ptr->get_root();
-    add_basic_node_info(taxonomy, *root_node, root);
+    {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
+        add_basic_node_info(taxonomy, *root_node, root);
+    }
     response["root"] = root;
     return response.dump(1);
 }
 
-void tax_about_ws_method(const TreesToServe &tts,
-                         string & response_str,
-                         int & status_code) {
-    const auto & taxonomy = tts.get_taxonomy();
-    status_code = OK;
+string tax_about_ws_method(const RichTaxonomy & taxonomy) {
     json response;
     string weburl;
-    weburl = "https://tree.opentreeoflife.org/about/taxonomy-version/ott";
-    weburl += taxonomy.get_version_number();
-    response["weburl"] = weburl;
     response["author"] = "open tree of life project";
     response["name"] = "ott";
+    weburl = "https://tree.opentreeoflife.org/about/taxonomy-version/ott";
+    weburl += taxonomy.get_version_number();
     response["source"] = taxonomy.get_version();
     response["version"] = taxonomy.get_version_number();
-    response_str = response.dump(1);
+    response["weburl"] = weburl;
+    return response.dump(1);
 }
 
 
@@ -339,34 +338,33 @@ inline void add_source_id_map(json & j,
     j["source_id_map"] = sim;
 }
 
-void node_info_ws_method(const TreesToServe & tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     const string & node_id,
-                     bool include_lineage,
-                     string & response_str,
-                     int & status_code) {
+string node_info_ws_method(const TreesToServe & tts,
+                           const SummaryTree_t * tree_ptr,
+                           const SummaryTreeAnnotation * sta,
+                           const string & node_id,
+                           bool include_lineage) {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
     const SumTreeNode_t * focal = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
 
-    const auto & taxonomy = tts.get_taxonomy();
-    
-    status_code = OK;
     json response;
     response["synth_id"] = sta->synth_id;
     set<string> usedSrcIds;
-    add_basic_node_info(taxonomy, *focal, response);
-    add_node_support_info(tts, *focal, response, usedSrcIds);
-    if (include_lineage) {
-        add_lineage(response, focal, taxonomy, usedSrcIds);
+    {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
+        add_basic_node_info(taxonomy, *focal, response);
+        add_node_support_info(tts, *focal, response, usedSrcIds);
+        if (include_lineage) {
+            add_lineage(response, focal, taxonomy, usedSrcIds);
+        }
+        add_source_id_map(response, usedSrcIds, taxonomy, sta);
     }
-    add_source_id_map(response, usedSrcIds, taxonomy, sta);
     if (was_broken) {
         response["response_for_mrca_of_broken_taxon"] = true; //@TODO: discuss and document
     }
-    response_str = response.dump(1);
+    return response.dump(1);
 }
 
 string mrca_ws_method(const TreesToServe & tts,
@@ -394,32 +392,35 @@ string mrca_ws_method(const TreesToServe & tts,
     if (not focal) {
         throw OTCBadRequest("MRCA of taxa was not found.\n");
     }
-    const auto & taxonomy = tts.get_taxonomy();
     json response;
     response["synth_id"] = sta->synth_id;
     json mrcaj;
-    add_basic_node_info(taxonomy, *focal, mrcaj);
     set<string> usedSrcIds;
     add_node_support_info(tts, *focal, mrcaj, usedSrcIds);
-    if (!focal->has_ott_id()) {
-        auto anc = focal->get_parent();
-        assert(anc != nullptr);
-        while (!anc->has_ott_id()) {
-            anc = anc->get_parent();
-            if (anc == nullptr) {
-                throw OTCWebError("No ancestors were taxa. That is odd.\n");
+    {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
+        add_basic_node_info(taxonomy, *focal, mrcaj);
+        if (!focal->has_ott_id()) {
+            auto anc = focal->get_parent();
+            assert(anc != nullptr);
+            while (!anc->has_ott_id()) {
+                anc = anc->get_parent();
+                if (anc == nullptr) {
+                    throw OTCWebError("No ancestors were taxa. That is odd.\n");
+                }
             }
+            json nt;
+            const RTRichTaxNode * anc_taxon = taxonomy.included_taxon_from_id(anc->get_ott_id());
+            if (anc_taxon == nullptr) {
+                throw OTCWebError() << "Ancd OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
+            }
+            add_taxon_info(taxonomy, *anc_taxon, nt);
+            response["nearest_taxon"] = nt;
         }
-        json nt;
-        const RTRichTaxNode * anc_taxon = taxonomy.included_taxon_from_id(anc->get_ott_id());
-        if (anc_taxon == nullptr) {
-            throw OTCWebError() << "Ancd OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
-        }
-        add_taxon_info(taxonomy, *anc_taxon, nt);
-        response["nearest_taxon"] = nt;
+        add_source_id_map(response, usedSrcIds, taxonomy, sta);
     }
     response["mrca"] = mrcaj;
-    add_source_id_map(response, usedSrcIds, taxonomy, sta);
     return response.dump(1);
 }
 
@@ -531,11 +532,9 @@ inline void writeVisitedNewick(std::ostream & out,
 
 string induced_subtree_ws_method(const TreesToServe & tts,
                  const SummaryTree_t * tree_ptr,
-                 const SummaryTreeAnnotation * sta,
                  const vector<string> & node_id_vec,
                  NodeNameStyle label_format) {
     assert(tree_ptr != nullptr);
-    assert(sta != nullptr);
     bool was_broken = false;
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
@@ -566,15 +565,18 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             cnd = cnd->get_parent(); 
         } 
     }
-    const auto & taxonomy = tts.get_taxonomy();
-    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
-    ostringstream out;
-    writeVisitedNewick(out, visited, focal, nnsbs);
     json response;
-    response["newick"] = out.str();
     json ss_arr;
-    for (auto study_it_ptr : nnsbs.study_id_set) {
-        ss_arr.push_back(*study_it_ptr);
+    {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
+        NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+        ostringstream out;
+        writeVisitedNewick(out, visited, focal, nnsbs);
+        response["newick"] = out.str();
+        for (auto study_it_ptr : nnsbs.study_id_set) {
+            ss_arr.push_back(*study_it_ptr);
+        }
     }
     response["supporting_studies"] = ss_arr;
     return response.dump(1);
@@ -582,25 +584,23 @@ string induced_subtree_ws_method(const TreesToServe & tts,
 
 string newick_subtree_ws_method(const TreesToServe & tts,
                                 const SummaryTree_t * tree_ptr,
-                                const SummaryTreeAnnotation * sta,
                                 const string & node_id,
                                 NodeNameStyle label_format, 
                                 int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
-
-    assert(sta != nullptr);
-    // sta not used?
-    const auto & taxonomy = tts.get_taxonomy();
-
     json response;
-    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
-    ostringstream out;
-    write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, height_limit);
-    response["newick"] = out.str();
     json ss_arr;
-    for (auto study_it_ptr : nnsbs.study_id_set) {
-        ss_arr.push_back(*study_it_ptr);
+    {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
+        NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+        ostringstream out;
+        write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, height_limit);
+        response["newick"] = out.str();
+        for (auto study_it_ptr : nnsbs.study_id_set) {
+            ss_arr.push_back(*study_it_ptr);
+        }
     }
     response["supporting_studies"] = ss_arr;
     return response.dump(1);
@@ -637,22 +637,24 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
                                  int height_limit) {
     const uint NEWICK_TIP_LIMIT = 25000;
     auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
-
-    assert(sta != nullptr);
-    const auto & taxonomy = tts.get_taxonomy();
-
     json response;
     response["synth_id"] = sta->synth_id;
     set<string> usedSrcIds;
     json a;
-    write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
-    add_lineage(a, focal, taxonomy, usedSrcIds);
+    {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
+        write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+        add_lineage(a, focal, taxonomy, usedSrcIds);
+    }
     response["arguson"] = a;
     return response.dump(1);
 }
 
 // taxon_info
-void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, json & taxonrepr) {
+void tax_service_add_taxon_info(const RichTaxonomy & taxonomy,
+                                const RTRichTaxNode & nd_taxon,
+                                json & taxonrepr) {
     add_taxon_info(taxonomy, nd_taxon, taxonrepr);
     taxonrepr["source"] = taxonomy.get_version(); //TBD "source" ?
     const auto & taxon_data = nd_taxon.get_data();
@@ -672,12 +674,11 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNo
     }
 }
 
-string taxon_info_ws_method(const TreesToServe & tts,
-                const RTRichTaxNode * taxon_node,
-                bool include_lineage,
-                bool include_children,
-                bool include_terminal_descendants) {
-    const auto & taxonomy = tts.get_taxonomy();
+string taxon_info_ws_method(const RichTaxonomy & taxonomy,
+                            const RTRichTaxNode * taxon_node,
+                            bool include_lineage,
+                            bool include_children,
+                            bool include_terminal_descendants) {
     assert(taxon_node != nullptr);
     json response;
     tax_service_add_taxon_info(taxonomy, *taxon_node, response);
@@ -710,8 +711,9 @@ string taxon_info_ws_method(const TreesToServe & tts,
 }
 
 
-string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id_set) {
-    const auto & taxonomy = tts.get_taxonomy();
+string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
+                               const OttIdSet & ott_id_set) {
+    json response;
     const RTRichTaxNode * focal = nullptr;
     bool first = true;
     for (auto ott_id : ott_id_set) {
@@ -729,22 +731,16 @@ string taxonomy_mrca_ws_method(const TreesToServe & tts, const OttIdSet & ott_id
             }
         }
     }
-    bool is_broken = false;
-
-    if (focal == nullptr) throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
-
-    json response;
+    if (focal == nullptr) {
+        throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
+    }
     tax_service_add_taxon_info(taxonomy, *focal, response);
-
     return response.dump(1);
 }
 
-void taxon_subtree_ws_method(const TreesToServe & tts,
-                          const RTRichTaxNode * taxon_node,
-                          NodeNameStyle label_format, 
-                          string & response_str,
-                          int & status_code) {
-    const auto & taxonomy = tts.get_taxonomy();
+string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
+                             const RTRichTaxNode * taxon_node,
+                             NodeNameStyle label_format) {
     assert(taxon_node != nullptr);
     const auto & taxonomy_tree = taxonomy.get_tax_tree();
     json response;
@@ -753,8 +749,7 @@ void taxon_subtree_ws_method(const TreesToServe & tts,
     int height_limit = -1;
     write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, height_limit);
     response["newick"] = out.str();
-    response_str = response.dump(1);
-    status_code = OK;
+    return response.dump(1);
 }
 
 using cnode_type = ConflictTree::node_type;
