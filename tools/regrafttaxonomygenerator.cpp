@@ -51,14 +51,12 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     options_description taxonomy("Taxonomy options");
     taxonomy.add_options()
         ("config,c",value<string>(),"Config file containing flags to filter")
+        ("in-tree",value<string>(),"Tree of OTT ids in tree")
+        ("json",value<string>(),"filepath for an output file of the pruning points")
         ;
 
-    options_description selection("Selection options");
-    selection.add_options()
-    ("in-tree",value<string>(),"Tree of OTT ids in tree");
-
     options_description visible;
-    visible.add(taxonomy).add(selection).add(otc::standard_options());
+    visible.add(taxonomy).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -141,14 +139,14 @@ int main(int argc, char* argv[]) {
     try {
         auto args = parse_cmd_line(argc,argv);
         if (!args.count("in-tree")) {
-            cerr << "otc-regraft-taxonomy-generator: Error! Excpected an in-tree argument!" << std::endl;
+            cerr << "otc-regraft-taxonomy-generator: Error! Expected an in-tree argument!" << std::endl;
             return 2;
         }
         tax_flags regraft_filters;
         if (args.count("config")) {
             regraft_filters = regrafting_flags_from_config_file(args["config"].as<string>());
         } else {
-            cerr << "otc-regraft-taxonomy-generator: Error! Excpected a confg argument!" << std::endl;
+            cerr << "otc-regraft-taxonomy-generator: Error! Expected a confg argument!" << std::endl;
             return 2;
         }
         auto taxonomy = load_taxonomy(args);
@@ -160,18 +158,21 @@ int main(int argc, char* argv[]) {
         std::cout << std::endl;
         
         // hacky write of pruned_ids to std::cerr
-        auto & jout = std::cerr;
-        jout << "{\"pruned\":\n  [";
-        bool first = true;
-        for (auto i : pruned_ids) {
-            if (first) {
-                first = false;
-            } else {
-                std::cerr << ", ";
+        if (args.count("json")) {
+            string jfp = args["json"].as<string>();
+            std::ofstream jout(jfp);
+            jout << "{\n  \"pruned\": [";
+            bool first = true;
+            for (auto i : pruned_ids) {
+                if (first) {
+                    first = false;
+                } else {
+                    jout << ", ";
+                }
+                jout << i;
             }
-            jout << i;
+            jout << "]\n}" << std::endl;
         }
-        jout << "]\n}" << std::endl;
     } catch (std::exception& e) {
         cerr << "otc-taxonomy-parser: Error! " << e.what() << std::endl;
         return 1;
