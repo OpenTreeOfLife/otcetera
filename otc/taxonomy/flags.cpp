@@ -124,6 +124,17 @@ tax_flags cleaning_flags_from_config_file(const string& filename) {
     return flags_from_string(cleaning_flags_string);
 }
 
+tax_flags regrafting_flags_from_config_file(const std::string& filename) {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ini_parser::read_ini(filename, pt);
+    auto cfs =  pt.get<std::string>("taxonomy.cleaning_flags");
+    auto cf = flags_from_string(cfs);
+    string ars = pt.get<std::string>("taxonomy.additional_regrafting_flags");
+    auto arf = flags_from_string(ars);
+    tax_flags u = cf | arf;
+    return u;
+}
+
 string string_for_flag(int i) {
     vector<string> matches;
     flag_symbols.for_each([&](const string& s, int j) {
