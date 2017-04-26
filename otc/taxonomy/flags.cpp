@@ -136,9 +136,12 @@ tax_flags regrafting_flags_from_config_file(const std::string& filename) {
         cf = flags_from_string(cfs);
     }
     tax_flags arf;
-    string ars = pt.get<std::string>("taxonomy.additional_regrafting_flags");
-    if (!ars.empty()) {
-          arf = flags_from_string(ars);
+    try {
+        string ars = pt.get<std::string>("taxonomy.additional_regrafting_flags");
+        if (!ars.empty()) {
+              arf = flags_from_string(ars);
+        }
+    } catch (...) {
     }
     tax_flags u = cf | arf;
     return u;
