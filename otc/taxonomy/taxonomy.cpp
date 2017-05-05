@@ -288,7 +288,7 @@ void Taxonomy::write(const std::string& newdirname) {
 }
 
 
-const std::regex ott_version_pattern("^([.0-9]+)draft.*");
+const std::regex ott_version_pattern("^([0-9.]+)draft.*");
 
 BaseTaxonomy::BaseTaxonomy(const string& dir,
                    bitset<32> cf,
