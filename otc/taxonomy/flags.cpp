@@ -23,9 +23,6 @@ using namespace otc;
 
 using std::string;
 using std::vector;
-using std::cout;
-using std::cerr;
-using std::endl;
 using std::bitset;
 
 using boost::spirit::qi::symbols;
@@ -79,6 +76,9 @@ auto flag_symbols = get_symbols();
 namespace otc {
 int flag_from_string(const char* start, const char* end) {
     int n = end - start;
+    if (n == 0) {
+        throw OTCError() << "Flags string with consecutive commas or a starting or trailing commas.";
+    }
     assert(n > 0);
     int flag = 0;
     auto cur = start;
@@ -112,6 +112,9 @@ tax_flags flags_from_string(const char* start, const char* end) {
 }
 
 tax_flags flags_from_string(const string& s) {
+    if (s.empty()) {
+        return {};
+    }
     const char* start = s.c_str();
     const char* end = start + s.length();
     return flags_from_string(start, end);
@@ -122,6 +125,26 @@ tax_flags cleaning_flags_from_config_file(const string& filename) {
     boost::property_tree::ini_parser::read_ini(filename, pt);
     string cleaning_flags_string = pt.get<std::string>("taxonomy.cleaning_flags");
     return flags_from_string(cleaning_flags_string);
+}
+
+tax_flags regrafting_flags_from_config_file(const std::string& filename) {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ini_parser::read_ini(filename, pt);
+    auto cfs =  pt.get<std::string>("taxonomy.cleaning_flags");
+    tax_flags cf;
+    if (!cfs.empty()) {
+        cf = flags_from_string(cfs);
+    }
+    tax_flags arf;
+    try {
+        string ars = pt.get<std::string>("taxonomy.additional_regrafting_flags");
+        if (!ars.empty()) {
+              arf = flags_from_string(ars);
+        }
+    } catch (...) {
+    }
+    tax_flags u = cf | arf;
+    return u;
 }
 
 string string_for_flag(int i) {

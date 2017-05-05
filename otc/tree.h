@@ -404,6 +404,11 @@ class RootedTree {
 class RTNodeNoData{};
 class RTreeNoData{};
 
+class RTNodeIncludeBoolData{
+    public:
+        bool include = false;
+};
+
 template<typename Tree>
 inline void add_subtree(typename Tree::node_type* par, Tree& T2) {
     auto c = T2.get_root();
