@@ -721,7 +721,11 @@ inline void write_node_as_newick_label(std::ostream & out, const T *nd) {
     if (nd->is_tip()) { //TEMP tip just like internals, but at some point we may want the label-less internals to be unlabelled, regardless of OTT ID
         const auto & n = nd->get_name();
         if (n.empty()) {
-            out << "ott" << nd->get_ott_id();
+            if (nd->has_ott_id()) {
+                out << "ott" << nd->get_ott_id();  
+            } else {
+                throw OTCError() << " trying to write_newick with a tip that has no name or ID.";
+            }
         } else {
             write_escaped_for_newick(out, nd->get_name());
         }
