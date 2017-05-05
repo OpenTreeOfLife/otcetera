@@ -78,6 +78,7 @@ bool handleTipsOnly(OTCLI & otCLI, const std::string &) {
     SetOfIdsState * proc = static_cast<SetOfIdsState *>(otCLI.blob);
     assert(proc != nullptr);
     proc->includeInternals = false;
+    otCLI.get_parsing_rules().require_ott_ids = false;
     return true;
 }
 bool handleIntersectionOnly(OTCLI & otCLI, const std::string &) {

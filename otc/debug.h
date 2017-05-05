@@ -120,7 +120,7 @@ inline bool check_des_ids(const TreeMappedWithSplits & tree) {
         if (nd->is_tip()) {
             continue;
         }
-        std::set<long> d;
+        OttIdSet d;
         auto sum = 0U;
         for (auto c : iter_child_const(*nd)) {
             const auto & cd = c->get_data().des_ids;

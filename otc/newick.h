@@ -4,6 +4,7 @@
 #include <fstream>
 #include <stack>
 #include <stdexcept>
+#include <sstream>
 #include "otc/otc_base_includes.h"
 #include "otc/tree.h"
 #include "otc/newick_tokenizer.h"
@@ -73,5 +74,22 @@ inline std::unique_ptr<T> read_next_newick(std::istream &inp, FilePosStruct & po
     return treePtr;
 }
 
+template<typename T>
+inline std::unique_ptr<T> tree_from_newick_string(const std::string& s, const ParsingRules & Rules) {
+    std::istringstream sfile(s);
+    FilePosStruct pos;
+    return read_next_newick<T>(sfile, pos, Rules);
+}
+
+template<typename T>
+inline std::unique_ptr<T> tree_from_newick_string(const std::string& s) {
+    ParsingRules rules;
+    rules.require_ott_ids = false;
+    return tree_from_newick_string<T>(s,rules);
+}
+
+
 }// namespace otc
+
+
 #endif

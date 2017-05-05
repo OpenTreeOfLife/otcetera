@@ -144,13 +144,21 @@ class WebServiceTestJob(object):
         return 'WebServiceTestJob {}'.format(self.name)
 
     def run_ws_test(self):
+        self.status_str = ''
         try:
             if self.arguments:
                 _LOG.debug("{} arguments = {}".format(self.name, repr(self.arguments)))
                 response = self.requests_method(self.url, headers=API_HEADERS, data=json.dumps(self.arguments))
             else:
                 response = self.requests_method(self.url)
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except Exception as sce:
+                try:
+                    self.status_str = "Non-200 response body = {}\n".format(response.text)
+                except:
+                    pass
+                raise sce
             if self.expected is not None:
                 try:
                     j = response.json()
@@ -173,7 +181,7 @@ class WebServiceTestJob(object):
             self.status_str = "Completed"
         except Exception as x:
             self.erred = True
-            self.status_str = "Exception: {}".format(x)
+            self.status_str += "Exception: {}".format(x)
 
     def start(self):
         """Trigger to start push - blocking"""

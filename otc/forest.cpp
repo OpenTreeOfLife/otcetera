@@ -22,14 +22,14 @@ RootedForest<T, U>::create_new_tree() {
 }
    
 template<typename T, typename U>
-RootedForest<T, U>::RootedForest(long rootOttId)
+RootedForest<T, U>::RootedForest(OttId rootOttId)
     :next_tree_id(0U),
     ott_id_to_node_map(node_src.get_data().ott_id_to_node),
     rootID(rootOttId) {
 }
 
 template<typename T, typename U>
-void RootedForest<T, U>::register_leaf(long ottId) {
+void RootedForest<T, U>::register_leaf(OttId ottId) {
     if (ottId == rootID) {
         return;
     }
@@ -42,7 +42,7 @@ void RootedForest<T, U>::register_leaf(long ottId) {
 
 // TMP could be faster by storing node->tree lookup
 template<typename T, typename U>
-bool RootedForest<T, U>::is_attached(long ottId) const {
+bool RootedForest<T, U>::is_attached(OttId ottId) const {
     auto f = ott_id_to_node_map.find(ottId);
     if (f == ott_id_to_node_map.end()) {
         return false;
@@ -499,7 +499,7 @@ void RootedForest<T, U>::debug_invariants_check() const {
         assert(!contains(root2tree, r));
         root2tree[r] = &(t.second);
     }
-    std::map<long, const tree_type *> ottId2Tree;
+    std::map<OttId, const tree_type *> ottId2Tree;
     std::map<const node_type *, const tree_type *> internal2Tree;
     std::set<const node_type *> detached;
     for (auto o2n : ott_id_to_node_map) {
@@ -530,7 +530,7 @@ void RootedForest<T, U>::debug_invariants_check() const {
             assert(nullptr != get_tree_for_node(n));
         }
     }
-    std::set<long> connectedIdSet;
+    OttIdSet connectedIdSet;
     for (const auto & t : trees) {
         for (const auto o : t.second.get_connected_ott_ids()) {
             assert(!contains(connectedIdSet, o));

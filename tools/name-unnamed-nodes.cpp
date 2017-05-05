@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     }
     for(const auto& tree: trees) {
         write_tree_as_newick(std::cout, *tree);
-        std::cout<<"\n";
+        std::cout << "\n";
     }
     return 0;
 }

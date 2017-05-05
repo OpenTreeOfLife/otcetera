@@ -52,6 +52,7 @@ bin_PROGRAMS = otc-assert-invariants \
 				otc-unprune-solution-and-name-unnamed-nodes \
 				otc-annotate-synth \
 				otc-taxonomy-parser \
+				otc-regraft-taxonomy-generator \
 				otc-relabel-tree \
 				otc-tree-tool \
 				otc-version-reporter \
@@ -145,6 +146,9 @@ otc_conflict_stats_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_taxonomy_parser_SOURCES = taxonomy-parser.cpp
 otc_taxonomy_parser_CPPFLAGS = $(AM_CPPFLAGS)
+
+otc_regraft_taxonomy_generator_SOURCES = regrafttaxonomygenerator.cpp
+otc_regraft_taxonomy_generator_CPPFLAGS = $(AM_CPPFLAGS)
 
 otc_relabel_tree_SOURCES = relabel-tree.cpp
 otc_relabel_tree_CPPFLAGS = $(AM_CPPFLAGS)

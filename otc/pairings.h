@@ -60,13 +60,11 @@ class PathPairing {
     bool path_is_now_trivial() {
         return curr_child_ott_id_set.size() == 1;
     }
-    void set_ott_id_set(long oid,
+    void set_ott_id_set(OttId oid,
                      std::map<const U *, NodeEmbedding<T, U> > & m) {
         if (curr_child_ott_id_set.size() == 1 && *curr_child_ott_id_set.begin() == oid) {
             return;
         }
-        LOG(DEBUG) << "set_ott_id_set to " << oid << "  for path " << reinterpret_cast<long>(this);
-        db_write_ott_id_set("prev curr_child_ott_id_set = ", curr_child_ott_id_set);
         OttIdSet n;
         OttIdSet oldIds;
         std::swap(oldIds, curr_child_ott_id_set);

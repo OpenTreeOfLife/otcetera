@@ -10,7 +10,7 @@ const char * badNTreesMessage = "Expecting only 1 tree to prune\n";
 
 struct SubtreePrunerState {
     std::unique_ptr<Tree_t> toPrune;
-    std::set<long> designators;
+    OttIdSet designators;
     bool emitParent;
     bool emitChildren;
     bool emitSiblings;

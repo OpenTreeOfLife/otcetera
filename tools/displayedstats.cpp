@@ -257,30 +257,27 @@ std::map<NDSE, std::size_t> doStatCalc(const TreeMappedWithSplits & summaryTree,
             t = p.first;
             if (p.second != nullptr) {
                 nd2summaryTree[nd] = p.second;
-                if (p.first == NDSE::FORKING_DISPLAYED and support)
-                {
+                if (p.first == NDSE::FORKING_DISPLAYED and support) {
                     string node = p.second->get_name();
-                    if (p.second->has_ott_id())
+                    if (p.second->has_ott_id()) {
                         node = "ott"+std::to_string(p.second->get_ott_id());
-
+                    }
                     string study = quote(study_from_tree_name(inpTree.get_name()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
                     string node_in_study = quote(*get_source_node_name(nd->get_name()));
                     std::ostringstream study_tree_node;;
-                    study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
+                    study_tree_node << "[" << study << ", " << tree_in_study << ", " << node_in_study << "]";
                     support->insert({node, study_tree_node.str()});
-                }
-                else if (p.first == NDSE::FORKING_INCOMPATIBLE and conflict)
-                {
+                } else if (p.first == NDSE::FORKING_INCOMPATIBLE and conflict) {
                     string node = p.second->get_name();
-                    if (p.second->has_ott_id())
+                    if (p.second->has_ott_id()) {
                         node = "ott"+std::to_string(p.second->get_ott_id());
-
+                    }
                     string study = quote(study_from_tree_name(inpTree.get_name()));
                     string tree_in_study = quote(tree_in_study_from_tree_name(inpTree.get_name()));
                     string node_in_study = quote(*get_source_node_name(nd->get_name()));
                     std::ostringstream study_tree_node;;
-                    study_tree_node<<"["<<study<<", "<<tree_in_study<<", "<<node_in_study<<"]";
+                    study_tree_node << "[" << study << ", " << tree_in_study << ", " << node_in_study << "]";
                     conflict->insert({node, study_tree_node.str()});
                 }
             }
@@ -366,16 +363,12 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
         if (treatTaxonomyAsLastTree) {
             statsForNextTree(otCLI, *taxonomy, true);
         }
-        if (not showJSON)
-        {
+        if (not showJSON) {
             const std::string label = std::string("Total of ") + std::to_string(num_trees) + std::string(" trees");
             writeNextRow(otCLI.out, totals, label);
-        }
-        else
-        {
-            std::cout<<"  \"nodes\": {\n";
-            for(auto nd: iter_post_const(*summaryTree))
-            {
+        } else {
+            std::cout << "  \"nodes\": {\n";
+            for(auto nd: iter_post_const(*summaryTree)) {
                 string name = nd->get_name();
                 if (nd->has_ott_id()) {
                     name = "ott" + std::to_string(nd->get_ott_id());
@@ -391,19 +384,21 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                     auto range = support.equal_range(name);
                     auto start = range.first;
                     auto end   = range.second;
-                    for (auto iter = start; iter!=end; ++iter)
-                    {
-                        if (iter != start) std::cout<<"                        ";
-                        std::cout<<iter->second;
+                    for (auto iter = start; iter!=end; ++iter) {
+                        if (iter != start) {
+                            std::cout << "                        ";
+                        }
+                        std::cout << iter->second;
                         auto next = iter; ++next;
-                        if (next != end)
-                            std::cout<<",\n";
+                        if (next != end) {
+                            std::cout << ",\n";
+                        }
                     }
-                    std::cout<<" ]";
-                    if (cc > 0){
-                        std::cout<<",";
+                    std::cout << " ]";
+                    if (cc > 0) {
+                        std::cout << ",";
                     }
-                    std::cout<<"\n";
+                    std::cout << "\n";
                 }
                 if (cc) {
                     std::cout << "      \"conflicts-with\": [ ";
@@ -417,7 +412,7 @@ struct DisplayedStatsState : public TaxonomyDependentTreeProcessor<TreeMappedWit
                         std::cout << iter->second;
                         auto next = iter; ++next;
                         if (next != end){
-                            std::cout<<",\n";
+                            std::cout << ",\n";
                         }
                     }
                     std::cout << " ]\n";

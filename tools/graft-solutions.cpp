@@ -77,9 +77,9 @@ int main(int argc, char *argv[]) {
             e << ", " << no_root_label[i];
         }
         if (n > 10) {
-            e<<" ...";
+            e << " ...";
         } else {
-            e<<".";
+            e << ".";
         }
         throw e;
     }
@@ -89,19 +89,19 @@ int main(int argc, char *argv[]) {
             set_ids_from_names(*tree, name_to_id);
         }
     }
-    std::unordered_map<long,Tree_t::node_type*> my_leaf;
+    std::unordered_map<OttId,Tree_t::node_type*> my_leaf;
     // Find the nodes where we would like to graft a tree.
     // Each tip id should occur only once as a tip.
     for(const auto& tree: trees) {
         for(auto nd:iter_pre(*tree)){
             if (nd->is_tip()) {
                 assert(nd->has_ott_id());
-                long id = nd->get_ott_id();
+                OttId id = nd->get_ott_id();
                 if (my_leaf.find(id) != my_leaf.end()) {
                     if (set_ott_ids){
-                        throw OTCError()<<"OTT Id "<<id<<" occurs at multiple tips!";
+                        throw OTCError() << "OTT Id " << id << " occurs at multiple tips!";
                     } else {
-                        throw OTCError()<<"Label '"<<nd->get_name()<<"' occurs at multiple tips!";
+                        throw OTCError() << "Label '" << nd->get_name() << "' occurs at multiple tips!";
                     }
                 }
                 my_leaf[id] = nd;
@@ -110,27 +110,27 @@ int main(int argc, char *argv[]) {
     }
     // Check that we don't have multiple examples of the same subproblem.
     // Each root id should occur only once as a root.
-    std::unordered_set<long> root_ids;
+    std::unordered_set<OttId> root_ids;
     for (auto i = 0U; i < trees.size(); i++) {
         auto root = trees[i]->get_root();
-        long id = root->get_ott_id();
+        OttId id = root->get_ott_id();
         if (not root_ids.count(id)) {
             root_ids.insert(id);
         } else {
             if (set_ott_ids) {
-                throw OTCError()<<"OTT Id "<<id<<" occurs at the root of multiple trees!";
+                throw OTCError() << "OTT Id " << id << " occurs at the root of multiple trees!";
             } else {
-                throw OTCError()<<"Label '"<<root->get_name()<<"' occurs at the root of multiple trees!";
+                throw OTCError() << "Label '" << root->get_name() << "' occurs at the root of multiple trees!";
             }
         }
     }
     // Glue each root into its corresponding tip.
     vector<unique_ptr<Tree_t>> roots;
     for (auto i = 0U; i < trees.size(); i++) {
-        long id = trees[i]->get_root()->get_ott_id();
+        OttId id = trees[i]->get_root()->get_ott_id();
         if (not my_leaf.count(id)) {
             if (otCLI.verbose) {
-                LOG(INFO)<<"OTT Id "<<id<<" is not a leaf in any subproblem.  Must be a root.\n";
+                LOG(INFO) << "OTT Id " << id << " is not a leaf in any subproblem.  Must be a root.\n";
             }
             roots.push_back({});
             std::swap(roots.back(), trees[i]);
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
     }
     for(const auto& tree: roots) {
         write_tree_as_newick(std::cout, *tree);
-        std::cout<<"\n";
+        std::cout << "\n";
     }
     return (roots.size() != 1 ? 1 : 0);
 }

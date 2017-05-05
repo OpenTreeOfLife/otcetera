@@ -55,7 +55,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     std::size_t numIncludable;
     bool addGroups;
     int numErrors;
-    std::map<const NodeWithSplits *, std::set<long> > protectedPolytomy;
+    std::map<const NodeWithSplits *, OttIdSet > protectedPolytomy;
     std::string protectedFilename;
     bool avoidAddingUnsupportedGroups;
     std::list<std::unique_ptr<TreeMappedWithSplits> > allInps;
@@ -142,7 +142,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     }
 
     void recordSupportingStatements(OTCLI & otCLI, TreeMappedWithSplits & tree) {
-        std::map<const NodeWithSplits *, std::set<long> > restrictedDesIds;
+        std::map<const NodeWithSplits *, OttIdSet > restrictedDesIds;
         for (auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->get_ott_id();
             mark_path_to_root(*summaryTreeToResolve, ottId, restrictedDesIds);
@@ -151,7 +151,7 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
     }
     void identifysupportStatementsByNd(OTCLI & otCLI,
                                 const TreeMappedWithSplits & tree,
-                                const std::map<const NodeWithSplits *, std::set<long> > & inducedNdToEffDesId) {
+                                const std::map<const NodeWithSplits *, OttIdSet > & inducedNdToEffDesId) {
         for (auto pd : inducedNdToEffDesId) {
             const auto & nm = pd.second;
             if (nm.size() > 1) {
@@ -378,13 +378,13 @@ struct FindResolutionState : public TaxonomyDependentTreeProcessor<TreeMappedWit
 
     void parseAndProcessMRCADesignatorsFile(const std::string &fp) {
         assert(summaryTreeToResolve != nullptr);
-        std::list<std::set<long> > dl = parse_designators_file(fp);
+        std::list<OttIdSet > dl = parse_designators_file(fp);
         for (auto d : dl) {
             markProtectedNode(d);
         }
     }
 
-    void markProtectedNode(const std::set<long> & designators) {
+    void markProtectedNode(const OttIdSet & designators) {
         const NodeWithSplits * mrca = find_mrca_from_id_set(*summaryTreeToResolve, designators, -1);
         protectedPolytomy[mrca] = designators;
     }

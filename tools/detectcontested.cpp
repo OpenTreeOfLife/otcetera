@@ -33,12 +33,12 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
     }
 
     bool processExpandedTree(OTCLI &otCLI, TreeMappedWithSplits & tree) {
-        std::map<const NodeWithSplits *, std::set<long> > prunedDesId;
+        std::map<const NodeWithSplits *, OttIdSet > prunedDesId;
         for (auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->get_ott_id();
             mark_path_to_root(*taxonomy, ottId, prunedDesId);
         }
-        std::map<std::set<long>, std::list<const NodeWithSplits *> > taxCladesToTaxNdList;
+        std::map<OttIdSet, std::list<const NodeWithSplits *> > taxCladesToTaxNdList;
         for (auto & nodeSetPair : prunedDesId) {
             auto nd = nodeSetPair.first;
             auto & ds = nodeSetPair.second;
@@ -53,7 +53,7 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
                 tctnlIt->second.push_back(nd);
             }
         }
-        std::set<std::set<long> > sourceClades;
+        std::set<OttIdSet > sourceClades;
         for (auto nd : iter_post_internal(tree)) {
             if (nd->get_parent() != nullptr && !nd->is_tip()) {
                 sourceClades.insert(std::move(nd->get_data().des_ids));
@@ -64,8 +64,8 @@ struct DetectContestedState : public TaxonomyDependentTreeProcessor<TreeMappedWi
         return true;
     }
 
-    void recordContested(const std::map<std::set<long>, std::list<const NodeWithSplits *> > & prunedDesId,
-                         const std::set<std::set<long> > & sourceClades,
+    void recordContested(const std::map<OttIdSet, std::list<const NodeWithSplits *> > & prunedDesId,
+                         const std::set<OttIdSet > & sourceClades,
                          std::set<const NodeWithSplits *> & contestedSet,
                          std::size_t numLeaves,
                          const std::string &treeName) {

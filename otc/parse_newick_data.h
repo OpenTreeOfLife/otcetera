@@ -17,8 +17,8 @@ template <typename N, typename T>
 inline void newick_close_node_hook(RootedTree<N,T> & ,
                                 RootedTreeNode<N> & ,
                                 const NewickTokenizer::Token & ,
-                                const ParsingRules & )
-{ }
+                                const ParsingRules & ) {
+}
 
 template <typename N, typename T>
 inline void newick_parse_node_info(RootedTree<N, T> & ,
@@ -29,21 +29,23 @@ inline void newick_parse_node_info(RootedTree<N, T> & ,
                                 const ParsingRules &parsingRules) {
     if (labelToken) {
         node.set_name(labelToken->content());
-        if (not parsingRules.set_ott_ids)
+        if (not parsingRules.set_ott_ids) {
             return;
+        }
         if ((!parsingRules.set_ott_idForInternals) && node.is_internal()) {
             return;
         }
-        long ottID = ott_id_from_name(labelToken->content());
-        if (ottID >= 0) {
+        long raw_ott_id = long_ott_id_from_name(labelToken->content());
+        if (raw_ott_id >= 0) {
+            OttId ott_id = check_ott_id_size(raw_ott_id);
             if (parsingRules.id_remapping != nullptr) {
-                auto rIt = parsingRules.id_remapping->find(ottID);
+                auto rIt = parsingRules.id_remapping->find(ott_id);
                 if (rIt != parsingRules.id_remapping->end()) {
-                    LOG(DEBUG) << "id_remapping from OTT" << ottID << " to OTT" << rIt->second;
-                    ottID = rIt->second;
+                    LOG(DEBUG) << "id_remapping from OTT" << ott_id << " to OTT" << rIt->second;
+                    ott_id = rIt->second;
                 }
             }
-            node.set_ott_id(ottID);
+            node.set_ott_id(ott_id);
         }
     }
 }
@@ -69,8 +71,9 @@ inline void set_ott_id_and_add_to_map(RootedTree<T, U> & tree,
         node.set_name(labelToken->content());
         if (not parsingRules.set_ott_ids) return;
         if (not parsingRules.set_ott_idForInternals and node.is_internal()) return;
-        long ottID = ott_id_from_name(labelToken->content());
-        if (ottID >= 0) {
+        long raw_ott_id = long_ott_id_from_name(labelToken->content());
+        if (raw_ott_id >= 0) {
+            OttId ottID = check_ott_id_size(raw_ott_id);
             if (parsingRules.ott_id_validator != nullptr) {
                 if (!contains(*parsingRules.ott_id_validator, ottID)) {
                     if (!parsingRules.prune_unrecognized_input_tips) {

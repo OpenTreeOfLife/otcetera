@@ -13,7 +13,7 @@ template<typename T, typename U>
 bool GreedyBandedForest<T, U>::attempt_to_add_grouping(const OttIdSet & incGroup,
                                                         const OttIdSet & leaf_set,
                                                         int treeIndex,
-                                                        long groupIndex,
+                                                        OttId groupIndex,
                                                         SupertreeContextWithSplits *sc) {
     if (incGroup.size() == 1) {
         add_leaf(incGroup, leaf_set, treeIndex, groupIndex, sc);
@@ -27,7 +27,7 @@ bool GreedyBandedForest<T, U>::add_leaf(
                       const OttIdSet & incGroup,
                       const OttIdSet & ,
                       int ,
-                      long ,
+                      OttId ,
                       SupertreeContextWithSplits *) {
     assert(incGroup.size() == 1);
     const auto ottId = *incGroup.begin();
@@ -40,7 +40,7 @@ bool GreedyBandedForest<T, U>::create_and_add_phylo_statement(
                 const OttIdSet & incGroup,
                 const OttIdSet & leaf_set,
                 int treeIndex,
-                long groupIndex) {
+                OttId groupIndex) {
     const auto & i = *(encountered.insert(incGroup).first);
     const auto & ls = (leaf_set.empty() ? i : *(encountered.insert(leaf_set).first));
     const OttIdSet exc = set_difference_as_set(ls, i);
@@ -115,7 +115,7 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
                                     SupertreeContextWithSplits * sc) {
     assert(sc != nullptr);
     std::map<const T *, typename U::node_type *> gpf2scaff;
-    std::map<long, typename U::node_type *> & dOttIdToNode = destTree.get_data().ott_id_to_node;
+    auto & dOttIdToNode = destTree.get_data().ott_id_to_node;
     LOG(DEBUG) << " adding " << srcPoly;
     LOG(DEBUG) << " copying structure to resolve " << destPoly->get_ott_id();
     gpf2scaff[srcPoly] = destPoly;
@@ -127,7 +127,7 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
         auto dp = gpf2scaff.at(sp);
         typename U::node_type * dn;
         if (sn->has_ott_id() && sn->get_ott_id() > 0) { // might assign negative number to nodes created in synth...
-        auto nid = sn->get_ott_id();
+            auto nid = sn->get_ott_id();
             //LOG(DEBUG) << " node in src has ID " << nid;
             dn = dOttIdToNode.at(nid);
             //LOG(DEBUG) << " in dest node, that ID maps to a node with id:  " << dn->get_ott_id();
@@ -148,8 +148,9 @@ void copy_structure_to_resolve_polytomy(const T * srcPoly,
             }
         } else {
             dn = destTree.create_child(dp);
-        if (sn->has_ott_id())
-          dn->set_ott_id(sn->get_ott_id());
+            if (sn->has_ott_id()) {
+                dn->set_ott_id(sn->get_ott_id());
+            }
         }
         //LOG(DEBUG) << " adding " << sn;
         gpf2scaff[sn] = dn;
@@ -457,16 +458,6 @@ void GreedyBandedForest<T, U>::transfer_subtree_in_forest(
                 InterTreeBand<RTSplits> * bandBeingMerged) {
     assert(des != nullptr);
     auto oldPar = des->get_parent();
-    //LOG(DEBUG) << "top transfer_subtree_in_forest pre des == " << get_designator(*des) << " " << (long) des << " " << std::hex << (long) des << std::dec;
-    //LOG(DEBUG) << "                            newPar " << (long) newPar << " " << std::hex << (long) newPar << std::dec;
-    //LOG(DEBUG) << "                            oldPar " << (long) oldPar << " " << std::hex << (long) oldPar << std::dec;
-    //LOG(DEBUG) << "    newick of newPar before actions of transfer_subtree_in_forest";
-    //db_write_newick(newPar);
-    //LOG(DEBUG) << "    newick of oldPar before actions of transfer_subtree_in_forest";
-    //db_write_newick(oldPar);
-    //db_write_ott_id_set("    on entry des->des_ids", des->get_data().des_ids);
-    //db_write_ott_id_set("    on entry newPar->des_ids", newPar->get_data().des_ids);
-    //db_write_ott_id_set("    on entry oldPar->des_ids", oldPar->get_data().des_ids);
     if (bandBeingMerged == nullptr) {
         debug_invariants_check();
     }

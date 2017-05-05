@@ -3,6 +3,22 @@
 // Iterators for traversing trees
 // Depends on: tree.h tree_util.h
 // Depended on by: tree_iter.h tree_operation.h 
+// Taking Tree &
+//     iter_leaf, iter_leaf_const
+//     iter_node, iter_node_const
+//     iter_node_internal, iter_node_internal_const
+//     iter_pre, iter_pre_const
+//     iter_pre_internal, iter_pre_internal_const
+//     iter_post, iter_post
+//     iter_post_internal_const, iter_post_internal_const    
+// Taking Node *:
+//     iter_pre_filter_n_const, iter_pre_filter_n
+//     iter_pre_n, iter_pre_n_const
+// Taking Node &: 
+//     iter_anc, iter_anc_const,
+//     iter_child, iter_child_const,
+//     iter_leaf_n, iter_leaf_n_const,
+//     iter_post_n, iter_post_n_const
 
 #include "otc/otc_base_includes.h"
 #include "otc/tree.h"

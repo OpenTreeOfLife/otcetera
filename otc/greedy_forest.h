@@ -22,22 +22,15 @@ using CouldAddResult = std::tuple<bool, NodeWithSplits *, NodeWithSplits *>;
 template<typename T, typename U>
 class GreedyBandedForest: public RootedForest<RTSplits, MappedWithSplitsData> {
     public:
-    GreedyBandedForest(long rootOttId)
+    GreedyBandedForest(OttId rootOttId)
       :RootedForest<RTSplits, MappedWithSplitsData>(rootOttId) {}
     GreedyBandedForest(const GreedyBandedForest &) = delete;
     GreedyBandedForest & operator=(const GreedyBandedForest &) = delete;
-    bool attempt_to_add_grouping(const OttIdSet & incGroup,
-                              const OttIdSet & leaf_set,
-                              int treeIndex,
-                              long groupIndex,
-                              SupertreeContextWithSplits *sc);
-    bool add_leaf(const OttIdSet & incGroup, const OttIdSet & leaf_set, int treeIndex, long groupIndex, SupertreeContextWithSplits *sc);
+    bool attempt_to_add_grouping(const OttIdSet & incGroup, const OttIdSet & leaf_set, int treeIndex, OttId groupIndex, SupertreeContextWithSplits *sc);
+    bool add_leaf(const OttIdSet & incGroup, const OttIdSet & leaf_set, int treeIndex, OttId groupIndex, SupertreeContextWithSplits *sc);
     void finish_resolution_of_embedded_clade(U & scaffold_node, NodeEmbedding<T, U> * , SupertreeContextWithSplits * sc);
     private:
-    bool create_and_add_phylo_statement(const OttIdSet & incGroup,
-                           const OttIdSet & leaf_set,
-                           int treeIndex,
-                           long groupIndex);
+    bool create_and_add_phylo_statement(const OttIdSet & incGroup, const OttIdSet & leaf_set, int treeIndex, OttId groupIndex);
     void finalize_tree(SupertreeContextWithSplits *sc);
     std::pair<NodeWithSplits *, NodeWithSplits *> find_grandparent_that_is_root_or_band_sharing(
                       FTree<RTSplits, MappedWithSplitsData> & donorTree,

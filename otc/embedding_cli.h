@@ -33,7 +33,7 @@ class EmbeddingCLI
     std::vector<TreeMappedWithSplits *> treePtrByIndex;
     TreeMappedWithSplits * taxonomyAsSource;
     bool debuggingOutput;
-    std::map<long, long> monotypicRemapping;
+    std::map<OttId, OttId> monotypicRemapping;
 
     virtual ~EmbeddingCLI(){}
     EmbeddingCLI()

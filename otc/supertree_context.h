@@ -29,7 +29,7 @@ class SupertreeContext {
         std::vector<const TreeMappedWithSplits *> trees_by_index;
         const std::size_t num_trees;
         std::map<const NodeWithSplits *, NodeEmbedding<T, U> > & scaffold_to_node_embedding;
-        std::map<long, typename U::node_type *> & scaffold_ott_id_to_node;
+        std::map<OttId, typename U::node_type *> & scaffold_ott_id_to_node;
         RootedTree<RTSplits, RTreeOttIDMapping<RTSplits> > & scaffold_tree; // should adjust the templating to make more generic
         std::map<std::size_t, std::set<NodeWithSplits *> > pruned_subtrees; // when a tip is mapped to a non-monophyletc terminal it is pruned
         std::list<NodePairingWithSplits> node_pairings_from_resolve;

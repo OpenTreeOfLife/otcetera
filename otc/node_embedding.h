@@ -78,7 +78,7 @@ class NodeEmbedding {
         :embeddedNode(scaffNode) {
     }
     std::size_t get_total_num_node_mappings() const {
-        unsigned long t = 0U;
+        std::size_t t = 0U;
         for (auto i : nodeEmbeddings) {
             t += i.second.size();
         }
@@ -103,14 +103,14 @@ class NodeEmbedding {
         return keys.size();
     }
     std::size_t get_total_num_loops() const {
-        unsigned long t = 0U;
+        std::size_t t = 0U;
         for (auto i : loopEmbeddings) {
             t += i.second.size();
         }
         return t;
     }
     std::size_t get_total_num_edges_below_traversals() const {
-        unsigned long t = 0U;
+        std::size_t t = 0U;
         for (auto i : edgeBelowEmbeddings) {
             t += i.second.size();
         }
@@ -213,7 +213,7 @@ class NodeEmbedding {
     }
     void set_ott_id_for_exit_embeddings(
                         T * newScaffDes,
-                        long ottId,
+                        OttId ottId,
                         std::map<const T *, NodeEmbedding<T, U> > & n2ne);
     void merge_exit_embeddings_if_multiple();
     void resolve_parent_in_favor_of_this_node(

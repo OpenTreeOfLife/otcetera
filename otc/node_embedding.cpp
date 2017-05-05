@@ -51,7 +51,6 @@ bool NodeEmbedding<T, U>::debug_node_embeddings(const char * tag,
                     assert(root == nullptr || !parentsOfExits.empty());
                     assert(is_contested || parentsOfExits.size() < 2);
                 } else {
-                    LOG(DEBUG)  << " parentless " << get_designator(*p) << ' ' << reinterpret_cast<long>(p);
                     if (p->get_parent() != nullptr) {
                         auto gp = p->get_parent();
                         LOG(ERROR)  << " Failing on scaffold ott" << embeddedNode->get_ott_id() << " treeIndex " << treeIndex;
@@ -110,7 +109,7 @@ bool NodeEmbedding<T, U>::debug_node_embeddings(const char * tag,
 template<typename T, typename U>
 void NodeEmbedding<T, U>::set_ott_id_for_exit_embeddings(
                     T * newScaffDes,
-                    long ottId,
+                    OttId ottId,
                     std::map<const T *, NodeEmbedding<T, U> > & n2ne) {
     for (auto treeInd2eout : edgeBelowEmbeddings) {
         assert(treeInd2eout.second.size() < 2);
@@ -386,11 +385,11 @@ enum DOTFileStep {
 const std::string getForestDOTFilename(const std::string & prefix,
                                        const DOTFileStep step,
                                        std::size_t treeIndex,
-                                       long groupIndex);
+                                       OttId groupIndex);
 const std::string getForestDOTFilename(const std::string & prefix,
                                        const DOTFileStep step,
                                        std::size_t treeIndex,
-                                       long groupIndex) {
+                                       OttId groupIndex) {
     std::string base = prefix;
     if (step == INFORMATIVE_SPLIT) {
         base += "AfterInfTree";
@@ -512,7 +511,7 @@ std::string NodeEmbedding<T, U>::export_subproblem_and_resolve(
         auto lnd2par = get_looped_phylo_node_to_par(treeIndex);
         //debugPrintNd2Par("loops", lnd2par);
         const auto shouldHaveBeenPrunedNd2Par = get_un_embedded_phylo_node_to_par(treeIndex);
-        std::map<NodeWithSplits *, long> nd2id;
+        std::map<NodeWithSplits *, OttId> nd2id;
         OttIdSet shouldHaveBeenPrunedIds;
         for (auto unembeddedPair : shouldHaveBeenPrunedNd2Par) {
             auto uDes = unembeddedPair.first;
@@ -556,12 +555,12 @@ std::string NodeEmbedding<T, U>::export_subproblem_and_resolve(
                     db_write_ott_id_set(" rids = ", rids);
                     assert(false);
                 }
-                long ottId = *rids.begin();
+                OttId ottId = *rids.begin();
                 assert(ottId != LONG_MAX);
                 ois.insert(ottId);
             }
             totalLeafSet.insert(ois.begin(), ois.end());
-            for (long ottId : ois) {
+            for (auto ottId : ois) {
                 if (!first) {
                     *treeExpStream << ',';
                 }
@@ -625,7 +624,7 @@ std::string NodeEmbedding<T, U>::export_subproblem_and_resolve(
                 }
                 auto rids = pp->get_ott_id_set();
                 assert(rids.size() == 1);
-                long ottId = *rids.begin();
+                OttId ottId = *rids.begin();
                 assert(ottId != LONG_MAX);
                 totalLeafSet.insert(ottId);
                 nd2id[pp->phylo_child] = ottId;
@@ -692,7 +691,7 @@ void NodeEmbedding<T, U>::resolve_given_uncontested_monophyly(T & scaffold_node,
         for (auto pp : pps) {
             mapToProvideOrder[pp->get_ott_id_set()] = pp;
         }
-        long bogusGroupIndex = 0; // should get this from the node!
+        OttId bogusGroupIndex = 0; // should get this from the node!
         typedef std::pair<const OttIdSet *, PathPairing<T, U> *>  q_t;
         std::queue<q_t> trivialQ;
         for (auto mpoIt = mapToProvideOrder.rbegin(); mpoIt != mapToProvideOrder.rend(); ++mpoIt) {
@@ -728,7 +727,7 @@ void NodeEmbedding<T, U>::resolve_given_uncontested_monophyly(T & scaffold_node,
     //      so we'll just attach them here.
     //  First step: get the list of paths for the children.
     std::size_t bogusTreeIndex = 123456; // should get this from the node!
-    long bogusGroupIndex = 100000; // should get this from the node!
+    OttId bogusGroupIndex = 100000; // should get this from the node!
     auto childExitPaths = get_all_child_exit_paths(scaffold_node, sc.scaffold_to_node_embedding);
     for (auto pathPtr : childExitPaths) {
         if (!contains(considered, pathPtr)) {
@@ -984,8 +983,7 @@ void NodeEmbedding<T, U>::prune_collapsed_node(T & scaffold_node, SupertreeConte
             }
         }
     }
-    while(scaffold_node.has_children())
-    {
+    while(scaffold_node.has_children()) {
         auto n = scaffold_node.get_first_child();
         n->detach_this_node();
         scaffold_node.add_sib_on_left(n);

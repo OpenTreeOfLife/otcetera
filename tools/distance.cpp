@@ -44,8 +44,8 @@ struct DistanceState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplit
         }
         assert(tree != nullptr);
         assert(taxonomy != nullptr);
-        std::set<std::set<long> > inducedSplits;
-        std::set<std::set<long> > tree2Splits;
+        std::set<OttIdSet > inducedSplits;
+        std::set<OttIdSet > tree2Splits;
         induced_clade_sets(*taxonomy, *tree, inducedSplits, tree2Splits, true);
         unsigned long rf = 0;
         unsigned long numNotDisplayed = 0;

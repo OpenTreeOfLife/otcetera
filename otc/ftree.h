@@ -15,12 +15,12 @@ template<typename T, typename U> class RootedForest;
 template<typename T, typename U> class FTree;
 
 struct PhyloStatementSource {
-    PhyloStatementSource(int treeInd, long groupInd)
+    PhyloStatementSource(int treeInd, OttId groupInd)
         :source_tree_id(treeInd),
         clade_id(groupInd) {
     }
     const int source_tree_id;
-    const long clade_id; // ID of the node in the tree
+    const OttId clade_id; // ID of the node in the tree
 };
 
 struct PhyloStatement {
@@ -147,7 +147,7 @@ class ExcludeConstraints {
     bool add_exclude_statement(const node_type * nd2Exclude, const node_type * forbiddenAttach);
     bool is_excluded_from(const node_type * ndToCheck,
                         const node_type * potentialAttachment,
-                        const std::map<long, node_type*> * ott_id_to_node_map) const;
+                        const std::map<OttId, node_type*> * ott_id_to_node_map) const;
     bool has_nodes_excluded_from_it(const node_type *n) const {
         return contains(by_node_with_constraints, n);
     }
@@ -240,7 +240,7 @@ class FTree {
     using NdToConstrainedAt = std::map<node_type *, std::set<node_type *> >;
     FTree(std::size_t treeID,
           RootedForest<T, U> & theForest,
-          std::map<long, node_type *> & ottIdToNodeRef)
+          std::map<OttId, node_type *> & ottIdToNodeRef)
         :tree_id(treeID),
          root(nullptr),
          forest(theForest),
@@ -256,7 +256,7 @@ class FTree {
     const node_type * get_root() const {
         return root;
     }
-    bool ott_id_is_excluded_from_root(long oid) const {
+    bool ott_id_is_excluded_from_root(OttId oid) const {
         return is_excluded_from_root(ott_id_to_node_map.at(oid));
     }
     bool is_excluded_from_root(const node_type *n) const {
@@ -272,7 +272,7 @@ class FTree {
     const OttIdSet & get_included_ott_ids() {
         return get_root()->get_data().des_ids;
     }
-    bool ott_id_is_connected(long ottId) const {
+    bool ott_id_is_connected(OttId ottId) const {
         return contains(get_connected_ott_ids(), ottId);
     }
     const ExcludeConstraints<T> & get_exclusions() const {
@@ -311,11 +311,11 @@ class FTree {
     void register_exclusion_statement_for_transferring_node(node_type * srcNode, FTree<T, U>  & donorTree);
     void register_inclusion_statement_for_transferring_node(node_type * srcNode, FTree<T, U>  & donorTree);
     private:
-    void add_exclude_statement(long ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
+    void add_exclude_statement(OttId ottId, RootedTreeNode<T> *, const PhyloStatementSource &);
     void add_include_group_disjoint_phylo_statement(const PhyloStatement & ps) {
         add_phylo_statement_as_child_of_root(ps);
     }
-    RootedTreeNode<T> * add_leaf_no_des_update(RootedTreeNode<T> * par, long ottId);
+    RootedTreeNode<T> * add_leaf_no_des_update(RootedTreeNode<T> * par, OttId ottId);
     void add_phylo_statement_as_child_of_root(const PhyloStatement &);
     // this is greedy, we should be building separate FTree instances in many cases....
     OttIdSet add_phylo_statement_at_node(const PhyloStatement & ps, 
@@ -325,7 +325,7 @@ class FTree {
     bool add_phantom_nodes_at_node(const node_type *, const OttIdSet &) const ;
     bool any_included_at_node(const node_type *, const OttIdSet &) const ;
     node_type * get_mrca(const OttIdSet &id);
-    bool insert_into_band_no_des_update(InterTreeBand<T> * itbp, RootedTreeNode<T> * connectedNode, long phantomID);
+    bool insert_into_band_no_des_update(InterTreeBand<T> * itbp, RootedTreeNode<T> * connectedNode, OttId phantomID);
     RootedTreeNode<T> * resolve_to_create_clade_of_included(RootedTreeNode<T> * par, const PhyloStatement & ps);
     void update_to_reflect_resolution(node_type *oldAnc,
                                    node_type * newAnc,
@@ -345,7 +345,7 @@ class FTree {
     InterTreeBandBookkeeping<T> bands;
     //std::map<node_type *, std::list<PhyloStatementSource> > supportedBy; // only for non-roots
     RootedForest<T, U> & forest;
-    std::map<long, node_type *> & ott_id_to_node_map;
+    std::map<OttId, node_type *> & ott_id_to_node_map;
 };
 
 template<typename T, typename U>
@@ -358,7 +358,7 @@ inline std::set<RootedTreeNode<T> *> FTree<T, U>::ott_id_set_to_node_set(const O
 }
 
 template<typename T, typename U>
-inline void FTree<T, U>::add_exclude_statement(long ottId,
+inline void FTree<T, U>::add_exclude_statement(OttId ottId,
                                             RootedTreeNode<T> * excludedFrom,
                                             const PhyloStatementSource &) {
     auto eNode = ott_id_to_node_map.at(ottId);

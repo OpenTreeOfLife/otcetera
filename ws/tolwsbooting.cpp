@@ -39,7 +39,7 @@ void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta) {
     sta.num_source_studies = extract_unsigned_long(j, "num_source_studies");
     sta.num_source_trees = extract_unsigned_long(j, "num_source_trees");
     sta.num_tips = extract_unsigned_long(j, "num_tips");
-    sta.root_ott_id = extract_unsigned_long(j, "root_ott_id");
+    sta.root_ott_id = extract_ott_id(j, "root_ott_id");
     sta.root_taxon_name = extract_string(j, "root_taxon_name");
     sta.synth_id = extract_string(j, "synth_id");
     sta.taxonomy_version = extract_string(j, "taxonomy_version");
@@ -130,6 +130,84 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
     return true;
 }
 
+#if defined(REPORT_MEMORY_USAGE)
+
+template<>
+inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper &mb) {
+    std::size_t sz_el_size = sizeof(OttId) + sizeof(const RTRichTaxNode *);
+    std::size_t nm_sz = calc_memory_used_by_map_eqsize(d.ncbi_id_map, sz_el_size, mb);
+    std::size_t gm_sz = calc_memory_used_by_map_eqsize(d.gbif_id_map, sz_el_size, mb);
+    std::size_t wm_sz = calc_memory_used_by_map_eqsize(d.worms_id_map, sz_el_size, mb);
+    std::size_t fm_sz = calc_memory_used_by_map_eqsize(d.if_id_map, sz_el_size, mb);
+    std::size_t im_sz = calc_memory_used_by_map_eqsize(d.irmng_id_map, sz_el_size, mb);
+    std::size_t f2j_sz = calc_memory_used_by_map_simple(d.flags2json, mb);
+    std::size_t in_sz = calc_memory_used_by_map_simple(d.id_to_node, mb);
+    std::size_t nn_sz = calc_memory_used_by_map_simple(d.name_to_node, mb);
+    std::size_t nutn_sz = calc_memory_used_by_map_simple(d.non_unique_taxon_names, mb);
+    std::size_t htn_sz = 0;
+    for (auto el : d.homonym_to_node) {
+        htn_sz += sizeof(boost::string_ref);
+        htn_sz += calc_memory_used_by_vector_eqsize(el.second, sizeof(const RTRichTaxNode *), mb);
+    }
+    mb["taxonomy data ncbi map"] += nm_sz;
+    mb["taxonomy data gbif map"] += gm_sz;
+    mb["taxonomy data worms map"] += wm_sz;
+    mb["taxonomy data indexfungorum map"] += fm_sz;
+    mb["taxonomy data irmng map"] += im_sz;
+    mb["taxonomy data flags2json"] += f2j_sz;
+    mb["taxonomy data id_to_node"] += in_sz;
+    mb["taxonomy data name_to_node"] += nn_sz;
+    mb["taxonomy data non_unique_taxon_names"] += nutn_sz;
+    mb["taxonomy data homonym_to_node"] += htn_sz;
+    return nm_sz + gm_sz + wm_sz + fm_sz + im_sz + f2j_sz + in_sz + nn_sz + nutn_sz + htn_sz;
+}
+
+template<>
+inline std::size_t calc_memory_used(const TaxonomicJuniorSynonym &d, MemoryBookkeeper &mb) {
+    return calc_memory_used(d.name, mb) + calc_memory_used(d.source_string, mb) + sizeof(char *);
+}
+
+template<>
+inline std::size_t calc_memory_used(const std::list<TaxonomicJuniorSynonym> &d, MemoryBookkeeper &mb) {
+    std::size_t total = sizeof(size_t) * (2 + 2*d.size()) ; // start and capacity
+    for (auto i = d.begin(); i != d.end(); ++i) {
+        total += calc_memory_used(*i, mb);
+    }
+    return total;
+}
+template<>
+inline std::size_t calc_memory_used(const RTRichTaxNodeData &rtn, MemoryBookkeeper &mb) {
+    size_t total = 0;
+    size_t x = calc_memory_used_by_vector_eqsize(rtn.junior_synonyms, sizeof(char *), mb);
+    mb["taxonomy node data junior_synonyms"] += x; total += x;
+    x = 2*sizeof(std::uint32_t);
+    mb["taxonomy node data traversal"] += x; total += x;
+    x = sizeof(TaxonomicRank);
+    mb["taxonomy node data rank"] += x; total += x;
+    x = sizeof(int32_t) + sizeof(std::bitset<32>);
+    mb["taxonomy node data flags"] += x; total += x;
+    x = calc_memory_used(rtn.source_info, mb);
+    mb["taxonomy node data source_info"] += x; total += x;
+    x = sizeof(boost::string_ref);
+    mb["taxonomy node data nonunique name"] += x; total += x;
+    return total;
+}
+
+template<>
+inline std::size_t calc_memory_used(const RichTaxonomy &rt, MemoryBookkeeper &mb) {
+    const auto & tax_tree = rt.get_tax_tree();
+    std::size_t ttsz = calc_memory_used_by_tree(tax_tree, mb);
+    const auto & syn_list = rt.get_synonyms_list();
+    std::size_t slsz = calc_memory_used(syn_list, mb);
+    const auto & suppress_trns_set = rt.get_ids_to_suppress_from_tnrs();
+    std::size_t stssz = calc_memory_used(suppress_trns_set, mb);
+    mb["taxonomy tree"] += ttsz;
+    mb["taxonomy synonyms list"] += slsz;
+    mb["taxonomy set of ids to suppress from tnrs"] += stssz;
+    return ttsz + slsz + stssz;
+}
+
+#endif
 
 bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & tree_path,
@@ -154,7 +232,14 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    const RichTaxonomy & taxonomy = tts.get_taxonomy();
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+#   if defined(REPORT_MEMORY_USAGE)
+        MemoryBookkeeper tax_mem_b;
+        std::size_t tree_mem = 0;
+        auto tax_mem = calc_memory_used(taxonomy, tax_mem_b);
+        write_memory_bookkeeping(LOG(INFO), tax_mem_b, "taxonomy", tax_mem);
+#   endif
     auto tree_and_ann = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
     try {
         SummaryTree_t & tree = tree_and_ann.first;
@@ -167,30 +252,60 @@ bool read_tree_and_annotations(const fs::path & config_path,
         // read the node annotations and add them to the tree.
         auto node_obj = extract_obj(annotations_obj, "nodes");
         auto & sum_tree_data = tree.get_data();
-        const auto & n2n = sum_tree_data.name_to_node;
+        //const auto & n2n = sum_tree_data.name_to_node;
         for (json::const_iterator nit = node_obj.begin(); nit != node_obj.end(); ++nit) {
             string k = nit.key();
-            auto stnit = n2n.find(k);
-            if (stnit == n2n.end()) {
+            bool was_broken = false;
+            const SumTreeNode_t * stn = find_node_by_id_str(tree, k, was_broken);
+            //auto stnit = n2n.find(k);
+            if (stn == nullptr) {
                 throw OTCError() << "Node " << k << " from annotations not found in tree.";
             }
-            const SumTreeNode_t * stn = stnit->second;
+            //const SumTreeNode_t * stn = stnit->second;
             SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(stn);
             SumTreeNodeData & mstnd = mstn->get_data();
             const auto & supportj = nit.value();
+#           if defined(JOINT_MAPPING_VEC)
+                vec_src_node_ids tmpv;
+#           endif
             for (json::const_iterator sbit = supportj.begin(); sbit != supportj.end(); ++sbit) {
                 const auto & sbk = sbit.key();
                 const auto & sbv = sbit.value();
-                if (sbk == "conflicts_with") {
-                    mstnd.conflicts_with = extract_node_id_vec(tts, sbv);
-                } else if (sbk == "supported_by") {
-                    mstnd.supported_by = extract_node_id_vec(tts, sbv);
+                if (sbk == "supported_by") {            
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::SUPPORTED_BY_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.supported_by = extract_node_id_vec(tts, sbv);
+#                   endif
                 } else if (sbk == "terminal") {
-                    mstnd.terminal = extract_node_id_vec(tts, sbv);
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::TERMINAL_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.terminal = extract_node_id_vec(tts, sbv);
+#                   endif
+                } else if (sbk == "conflicts_with") {
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::CONFLICTS_WITH_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.conflicts_with = extract_node_id_vec(tts, sbv)
+#                   endif
                 } else if (sbk == "partial_path_of") {
-                    mstnd.partial_path_of = extract_node_id_vec(tts, sbv);
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.partial_path_of = extract_node_id_vec(tts, sbv);
+#                   endif
                 } else if (sbk == "resolves") {
-                    mstnd.resolves = extract_node_id_vec(tts, sbv);
+#                   if defined(JOINT_MAPPING_VEC)
+                        auto x = extract_node_id_vec(tts, sbv, SourceEdgeMappingType::RESOLVES_MAPPING);
+                        tmpv.insert(end(tmpv), x.begin(), x.end());
+#                   else
+                        mstnd.resolves = extract_node_id_vec(tts, sbv);
+#                   endif
                 } else if (sbk == "was_uncontested") {
                     if (sbv.is_boolean()) {
                         mstnd.was_uncontested =  sbv.get<bool>();
@@ -203,6 +318,12 @@ bool read_tree_and_annotations(const fs::path & config_path,
                     }
                 }
             }
+#           if defined(JOINT_MAPPING_VEC)
+                mstnd.source_edge_mappings.clear();
+                std::swap(mstnd.source_edge_mappings, tmpv);
+                //LOG(INFO) << "mstnd.source_edge_mappings size = " << mstnd.source_edge_mappings.size() << " for k = " << k;
+#           endif
+
         }
         auto & tree_broken_taxa = sum_tree_data.broken_taxa;
         // read the info from the broken taxa file
@@ -218,17 +339,26 @@ bool read_tree_and_annotations(const fs::path & config_path,
                 for (json::const_iterator ai_it = attach_obj.begin(); ai_it != attach_obj.end(); ++ai_it) {
                     attach_id_list.push_back(ai_it.key());
                 }
-                const SumTreeNode_t * mrca_nd = n2n.at(mrca_id);
+                bool was_broken = false;
+                const SumTreeNode_t * mrca_nd = find_node_by_id_str(tree, mrca_id, was_broken);
                 vector<const SumTreeNode_t *> avec;
                 avec.reserve(attach_id_list.size());
                 for (auto attach_id : attach_id_list) {
-                    avec.push_back(n2n.at(attach_id));
+                    auto anptr = find_node_by_id_str(tree, attach_id, was_broken);
+                    assert(anptr != nullptr);
+                    avec.push_back(anptr);
                 }
                 tree_broken_taxa[broken_ott] = BrokenMRCAAttachVec(mrca_nd, avec);
             }
         }
         sta.initialized = true;
         tts.register_last_tree_and_annotations();
+#       if defined(REPORT_MEMORY_USAGE)
+            MemoryBookkeeper tree_mem_b;
+            tree_mem += calc_memory_used_by_tree(tree, tree_mem_b);
+            write_memory_bookkeeping(LOG(INFO), tree_mem_b, "tree", tree_mem);
+            LOG(INFO) << "tax + tree memory = " << tax_mem << " + " << tree_mem << " = " << tax_mem + tree_mem;
+#       endif
     } catch (...) {
         tts.free_last_tree_and_annotations();
         throw;

@@ -13,6 +13,10 @@
 
 namespace otc {
 
+void throw_ott_id_type_too_small_exception(long raw_id) {
+    throw OTCError() << "Encountered a taxon ID \"" << raw_id << "\" that is too large to fit in our data structure. If the input is valid, you will need to recompile otcetera with LONG_OTT_ID defined";
+}
+
 const std::string read_str_content_of_utf8_file(const std::string &filepath) {
 #if defined WIDE_STR_VERSION
     const std::wstring utf8content = read_wstr_content_of_utf8_file(filepath);
@@ -83,8 +87,7 @@ std::list<std::string> read_lines_of_file(const std::string & filepath) {
     Returns true if `o` points to a string that represents a long (and `o` has no other characters than the long).
     if n is not NULL, then when the function returns true, *n will be the long.
 */
-bool char_ptr_to_long(const char *o, long *n)
-    {
+bool char_ptr_to_long(const char *o, long *n) {
     if (o == nullptr) {
         return false;
     }
@@ -105,14 +108,13 @@ bool char_ptr_to_long(const char *o, long *n)
 // splits a string by whitespace and push the graphical strings to the back of r.
 //  Leading and trailing whitespace is lost ( there will be no empty strings added
 //      to the list.
-std::list<std::string> split_string(const std::string &s)
-    {
+std::list<std::string> split_string(const std::string &s) {
     std::list<std::string> r;
     std::string current;
     for (const auto & c : s) {
-        if (isgraph(c))
+        if (isgraph(c)) {
             current.append(1, c);
-        else if (!current.empty()) {
+        } else if (!current.empty()) {
             r.push_back(current);
             current.clear();
         }
@@ -124,8 +126,7 @@ std::list<std::string> split_string(const std::string &s)
 }
 
 
-std::list<std::string> split_string(const std::string &s, const char delimiter)
-    {
+std::list<std::string> split_string(const std::string &s, const char delimiter) {
     std::list<std::string> r;
     std::string current;
     for (const auto & c : s) {
@@ -142,33 +143,35 @@ std::list<std::string> split_string(const std::string &s, const char delimiter)
     return r;
 }
 
-std::set<long> parse_delim_separated_ids(const std::string &str, const char delimiter) {
-    std::set<long> ottIds;
+OttIdSet parse_delim_separated_ids(const std::string &str, const char delimiter) {
+    OttIdSet ottIds;
     std::list<std::string> idList = split_string(str, delimiter);
     for (const auto & id : idList) {
-        long p = string_to_ott_id(id);
-        if (p < 0) 
-        throw OTCError()<<"Expecting an OTT Id.  Found: '"<<id<<"'";
-        ottIds.insert(p);
+        long p = string_to_long_ott_id(id);
+        if (p < 0) {
+            throw OTCError() << "Expecting an OTT Id.  Found: '" << id << "'";
+        }
+        ottIds.insert(check_ott_id_size(p));
     }
     return ottIds;
 }
 
-std::set<long> parse_list_of_ott_ids(const std::string &fp) {
+OttIdSet parse_list_of_ott_ids(const std::string &fp) {
     std::ifstream inpf;
     if (!open_utf8_file(fp, inpf)) {
         throw OTCError("Could not open list of OTT ids file \"" + fp + "\"");
     }
     std::string line;
-    std::set<long> ottIds;
+    OttIdSet ottIds;
     try{
         while (getline(inpf, line)) {
             const auto stripped = strip_surrounding_whitespace(line);
             if (!stripped.empty()) {
-                long p = string_to_ott_id(line);
-                if (p < 0)
-            throw OTCError()<<"Expecting an OTT Id.  Found: '"<<line<<"'";
-                ottIds.insert(p);
+                long p = string_to_long_ott_id(line);
+                if (p < 0) {
+                    throw OTCError() << "Expecting an OTT Id.  Found: '" << line << "'";
+                }
+                ottIds.insert(check_ott_id_size(p));
             }
         }
     } catch (...) {
@@ -179,30 +182,26 @@ std::set<long> parse_list_of_ott_ids(const std::string &fp) {
     return ottIds;
 }
 
-std::list<std::set<long> > parse_designators_file(const std::string &fp) {
+std::list<OttIdSet > parse_designators_file(const std::string &fp) {
     std::ifstream inpf;
     if (!open_utf8_file(fp, inpf)) {
         throw OTCError("Could not open designators file \"" + fp + "\"");
     }
     std::string line;
-    std::list<std::set<long> > allDesignators;
+    std::list<OttIdSet > allDesignators;
     try{
         while (getline(inpf, line)) {
             const auto stripped = strip_surrounding_whitespace(line);
             if (!stripped.empty()) {
                 const auto words = split_string(stripped);
                 if (words.size() < 2) {
-                    std::string m = "Expecting >1 designator on each line. Found: ";
-                    m +=  line;
-                    throw OTCError(m);
+                    throw OTCError() << "Expecting >1 designator on each line. Found: " << line;
                 }
-                std::set<long> designators;
+                OttIdSet designators;
                 for (const auto & ds : words) {
                     long d;
                     if (!char_ptr_to_long(ds.c_str(), &d)) {
-                        std::string m = "Expecting numeric designator. Found: ";
-                        m += line;
-                        throw OTCError(m);
+                        throw OTCError() << "Expecting numeric designator. Found: " << line;
                     }
                     designators.insert(d);
                 }

@@ -20,6 +20,8 @@ https://peerj.com/preprints/2538/ describes some of the tools that are a part of
 
 # Installation
 
+The instructions below contain all of the gory detail. There are a few quirks with OS X installation. See [Short OSX instructions](#short-osx-instructions) for an overview of the process on OS X. 
+
 ## prerequisites
 
 ### autotools
@@ -63,27 +65,44 @@ libraries to your dynamic library loading path. On Mac:
 on most other unix variants the variable is called `LD_LIBRARY_PATH` (without the `DY`
 prefix); also note that the path to the libraries in the build BOOST dir is platform-dependent.
 
-# restbed
-
-<<<<<<< HEAD
-https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
 
 # requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
-=======
+# restbed
+
+HEAD
+https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
+
 We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
+
+On debian or ubuntu:
+
+    sudo apt-get install g++-5
+    sudo apt-get install cmake
+    sudo apt-get install libtool
+    sudo apt-get install libboost-all-dev
+
+then:
+
+    git clone --recursive https://github.com/corvusoft/restbed.git
+    mkdir restbed/build
+    cd restbed/build/
+    cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX=$PWD/install ..
+    make install
+    export CPPFLAGS="$CPPFLAGS -I$PWD/install/include "
+    export LDFLAGS="$LDFLAGS -I$PWD/install/library "
+
 
 To build including restbed, you will also need to set:
 
     CPPFLAGS=-Ipath_to_restbed_include
     LDFLAGS=-Lpath_to_restbed_library
->>>>>>> origin/master
 
 ## configuration + building
 
 To run the whole autoreconf stuff in a manner that will add missing bits as needed,
-run:
+run (on OS X and libtool installed with brew, use `boostrap_osx.sh`):
 
     $ sh bootstrap.sh
 
@@ -108,6 +127,38 @@ of your build directory as the prefix for the installation. So, you will need to
 add `$PWD/installed/bin` to your `PATH` environmental variable to use the version
 of the otc tools that you just installed. Depending on your platform, you may have to
 add the `$PWD/installed/lib` to your `LD_LIBRARY_PATH` variable.
+
+# Short OSX instructions
+
+Tested by kcranston on OS X Sierra 10.12.4. These instructions do not include building the web services. Assumes you have the [Homebrew package manager](https://brew.sh/) installed. 
+
+    $ brew install autoconf
+    $ brew install automake
+    $ brew install boost
+    $ brew install libtool
+    
+When you install libtool, you will get the following warning:
+
+```
+In order to prevent conflicts with Apple's own libtool we have prepended a "g"
+so, you have instead: glibtool and glibtoolize.
+```
+
+so you will need to use the OS X specific bootstrap script, which calls the `g*` versions.
+
+    $ sh bootstrap_osx.sh
+    $ mkdir build
+    $ cd build
+    $ bash ../reconf-clang.sh
+    $ make
+    $ make check
+    $ make install
+    $ make installcheck
+
+Finally, add the `bin` directory to your $PATH:
+
+    $ export PATH=$PATH:$PWD/installed/bin
+    
 
 # Documentation
 A LaTeX documentation file is [./doc/summarizing-taxonomy-plus-trees.tex](./doc/summarizing-taxonomy-plus-trees.tex)

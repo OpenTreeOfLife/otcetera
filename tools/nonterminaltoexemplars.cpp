@@ -234,7 +234,7 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
         raw->set_name(otCLI.currentFilename);
-        std::map<const RootedTreeNodeNoData *, std::set<long> > prunedDesId;
+        std::map<const RootedTreeNodeNoData *, OttIdSet > prunedDesId;
         auto nleaves = 0;
         for (auto nd : iter_leaf(*raw)) {
             nleaves += 1;
