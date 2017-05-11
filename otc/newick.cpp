@@ -116,12 +116,13 @@ void NewickTokenizer::iterator::finish_reading_comment(){
         if(!advance_reader_one_logical_char(c)) {
             throw OTCParsingError("Unexpected EOF in comment", '\0', (*this->current_pos));
         }
+        //LOG(TRACE) << numOpenComments << " " << c;
         if (c == ']') {
             numOpenComments -= 1;
             if (numOpenComments == 0) {
                 this->comments.push_back(comment);
+                return;
             }
-            return;
         }
         if (c == '[') {
             numOpenComments += 1;
