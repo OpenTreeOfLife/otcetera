@@ -489,7 +489,7 @@ multimap<string,string> options_headers()
 {
     multimap<string,string> headers;
     headers.insert({ "Access-Control-Allow-Credentials", "true" });
-    headers.insert({" Access-Control-Allow-Headers", "content-type" });
+    headers.insert({ "Access-Control-Allow-Headers", "content-type" });
     headers.insert({ "Access-Control-Allow-Methods", "POST"});
     headers.insert({ "Access-Control-Allow-Origin", "*" });
     headers.insert({ "Access-Control-Max-Age","86400" });
