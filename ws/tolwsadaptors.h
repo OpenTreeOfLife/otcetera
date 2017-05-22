@@ -189,10 +189,7 @@ inline const nlohmann::json & extract_obj(const nlohmann::json &j, const char * 
 
 ///////////////////////
 // handlers that are registered as callback
-//void about_method_handler(const std::shared_ptr<restbed::Session> session);
-void node_info_method_handler(const std::shared_ptr<restbed::Session> session);
 void mrca_method_handler(const std::shared_ptr<restbed::Session> session);
-//void subtree_method_handler(const std::shared_ptr<restbed::Session> session);
 void induced_subtree_method_handler(const std::shared_ptr<restbed::Session> session);
 void tax_about_method_handler(const std::shared_ptr<restbed::Session> session);
 void taxon_info_method_handler(const std::shared_ptr<restbed::Session> session);
