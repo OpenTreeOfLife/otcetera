@@ -402,50 +402,23 @@ string taxon_mrca_method_handler( const json& parsedargs )
     return taxonomy_mrca_ws_method(taxonomy, ott_id_set);
 }
 
-void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {
-            string rbody;
-            int status_code = OK;
-            json parsedargs = parse_body_or_throw(body);
-            NodeNameStyle nns = get_label_format(parsedargs);
-            {
-                auto locked_taxonomy = tts.get_readable_taxonomy();
-                const auto & taxonomy = locked_taxonomy.first;
-                const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
-                rbody = taxon_subtree_ws_method(taxonomy, taxon_node, nns);
-            }
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[taxonomy/subtree] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+string taxon_subtree_method_handler( const json& parsedargs )
+{
+    NodeNameStyle nns = get_label_format(parsedargs);
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
+    return taxon_subtree_ws_method(taxonomy, taxon_node, nns);
 }
 
-void conflict_conflict_status_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {
-            auto parsed_args = parse_body_or_throw(body);
-            string tree1 = extract_required_argument<string>(parsed_args, "tree1");
-            string tree2 = extract_required_argument<string>(parsed_args, "tree2");
-            const auto& summary = *tts.get_summary_tree("");
-            string rbody;
-            {
-                auto locked_taxonomy = tts.get_readable_taxonomy();
-                const auto & taxonomy = locked_taxonomy.first;
-                rbody = conflict_ws_method(summary, taxonomy, tree1, tree2);
-            }
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[conflict-status] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+string conflict_status_method_handler( const json& parsed_args )
+{
+    string tree1 = extract_required_argument<string>(parsed_args, "tree1");
+    string tree2 = extract_required_argument<string>(parsed_args, "tree2");
+    const auto& summary = *tts.get_summary_tree("");
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return conflict_ws_method(summary, taxonomy, tree1, tree2);
 }
 
 /// End of method_handler. Start of global service related code
@@ -597,16 +570,13 @@ int run_server(const po::variables_map & args) {
     auto r_tax_about = make_shared< Resource >( );
     r_tax_about->set_path( "/taxonomy/about" );
     r_tax_about->set_method_handler( "POST", tax_about_method_handler );
-    auto r_taxon_info = path_handler("/taxonomy/taxon_info", taxon_info_method_handler );
-    auto r_taxon_mrca = path_handler("/taxonomy/mrca", taxon_mrca_method_handler );
+    auto r_taxon_info       = path_handler("/taxonomy/taxon_info", taxon_info_method_handler );
+    auto r_taxon_mrca       = path_handler("/taxonomy/mrca", taxon_mrca_method_handler );
+    auto r_taxon_subtree    = path_handler("/taxonomy/subtree", taxon_subtree_method_handler );
 
-    auto r_taxon_subtree = make_shared< Resource >( );
-    r_taxon_subtree->set_path( "/taxonomy/subtree" );
-    r_taxon_subtree->set_method_handler( "POST", taxon_subtree_method_handler );
     // conflict
-    auto r_conflict_conflict_status = make_shared< Resource >( );
-    r_conflict_conflict_status->set_path( "/conflict/conflict-status" );
-    r_conflict_conflict_status->set_method_handler( "POST", conflict_conflict_status_method_handler );
+    auto r_conflict_conflict_status = path_handler("/conflict/conflict-status", conflict_status_method_handler );
+
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
     settings->set_port( port_number );
