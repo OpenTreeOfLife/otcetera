@@ -454,15 +454,34 @@ void ready_handler( Service& ) {
     }
 }
 
+// this is a hack.  Also it doesn't include the time zone
+string ctime(const chrono::system_clock::time_point& t)
+{
+    time_t t2 = chrono::system_clock::to_time_t(t);
+    char* c = ctime(&t2);
+    return c;
+}
+
 multimap<string,string> request_headers(const string& rbody)
 {
     multimap<string,string> headers;
+
     headers.insert({ "Access-Control-Allow-Credentials", "true" });
-    headers.insert({ "Access-Control-Allow-Methods", "POST"});
     headers.insert({ "Access-Control-Allow-Origin", "*" });
     headers.insert({ "Access-Control-Max-Age","86400" });
-    headers.insert({ "Connection", "Keep-Alive"});
+    headers.insert({ "Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"});
+// Connection:Keep-Alive  -- I 
+//  We're calling 'close' so this doesn't make sense, I think...
     headers.insert({ "Content-Length", ::to_string(rbody.length())});
+    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+    headers.insert({ "Date", ctime(chrono::system_clock::now())});
+    headers.insert({ "Expires", ctime(chrono::system_clock::now())});
+// Keep-Alive:timeout=5, max=99
+    headers.insert({ "Pragma", "no-cache"});
+// Server:Apache/2.4.10 (Debian)
+// Set-Cookie:session_id_phylesystem=152.3.12.201-82a8df2c-2a3d-4c10-aca3-3c79ca8ebdd1; Path=/
+    headers.insert({ "Vary", "Accept-Encoding"} );   // cache separately for each encoding?
+    headers.insert({ "X-Powered-By","otc-tol-ws"});  //X-Powered-By:web2py
     return headers;
 }
 
@@ -470,12 +489,19 @@ multimap<string,string> options_headers()
 {
     multimap<string,string> headers;
     headers.insert({ "Access-Control-Allow-Credentials", "true" });
+    headers.insert({" Access-Control-Allow-Headers", "content-type" });
     headers.insert({ "Access-Control-Allow-Methods", "POST"});
     headers.insert({ "Access-Control-Allow-Origin", "*" });
     headers.insert({ "Access-Control-Max-Age","86400" });
-    headers.insert({ "Connection", "Keep-Alive"});
+//    headers.insert({ "Connection", "Keep-Alive"});
     headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
     headers.insert({ "Content-Length", "0"});
+    headers.insert({ "Date", ctime(chrono::system_clock::now())});  //    Date:Mon, 22 May 2017 20:55:05 GMT
+    headers.insert({ "X-Powered-By","otc-tol-ws"});  //X-Powered-By:web2py
+//Keep-Alive:timeout=5, max=100
+//Server:Apache/2.4.10 (Debian)
+//Set-Cookie:session_id_phylesystem=152.3.12.201-0006b381-2288-41df-b7f9-d4285aad48a2; Path=/
+
     return headers;
 }
 
