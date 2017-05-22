@@ -577,6 +577,63 @@ void ready_handler( Service& ) {
     }
 }
 
+multimap<string,string> request_headers(const string& rbody)
+{
+    multimap<string,string> headers;
+    headers.insert({ "Access-Control-Allow-Credentials", "true" });
+    headers.insert({ "Access-Control-Allow-Methods", "POST"});
+    headers.insert({ "Access-Control-Allow-Origin", "*" });
+    headers.insert({ "Access-Control-Max-Age","86400" });
+    headers.insert({ "Connection", "Keep-Alive"});
+    headers.insert({ "Content-Length", ::to_string(rbody.length())});
+    return headers;
+}
+
+multimap<string,string> options_headers()
+{
+    multimap<string,string> headers;
+    headers.insert({ "Access-Control-Allow-Credentials", "true" });
+    headers.insert({ "Access-Control-Allow-Methods", "POST"});
+    headers.insert({ "Access-Control-Allow-Origin", "*" });
+    headers.insert({ "Access-Control-Max-Age","86400" });
+    headers.insert({ "Connection", "Keep-Alive"});
+    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+    headers.insert({ "Content-Length", "0"});
+    return headers;
+}
+
+std::function<void(const shared_ptr< Session > session)>
+create_method_handler(const string& path, const std::function<std::string(const json&)> process_request)
+{
+    return [=](const shared_ptr< Session > session ) {
+	const auto request = session->get_request( );
+	size_t content_length = request->get_header( "Content-Length", 0 );
+	session->fetch( content_length, [ path, process_request, request ]( const shared_ptr< Session > session, const Bytes & body ) {
+		try {
+		    json parsedargs = parse_body_or_throw(body);
+		    auto rbody = process_request(parsedargs);
+		    session->close( OK, rbody, request_headers(rbody) );
+		} catch (OTCWebError& e) {
+		    string rbody = string("[") + path + ("] Error: ") + e.what();
+		    session->close( e.status_code(), rbody, request_headers(rbody) );
+		}
+	    });
+    };
+}
+
+void options_method_handler( const shared_ptr< Session > session ) {
+    session->close( OK, "", options_headers() );
+}
+
+shared_ptr< Resource > path_handler(const string& path, std::function<std::string(const json &)> process_request)
+{
+    auto r_subtree = make_shared< Resource >( );
+    r_subtree->set_path( path );
+    r_subtree->set_method_handler( "POST", create_method_handler(path,process_request));
+    r_subtree->set_method_handler( "OPTIONS", options_method_handler);
+    return r_subtree;
+}
+
 int run_server(const po::variables_map & args) {
     time_t start_time;
     time(&start_time);
