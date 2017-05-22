@@ -277,29 +277,34 @@ void mrca_method_handler( const shared_ptr< Session > session ) {
     });
 }
 
+std::string process_subtree(const json& parsedargs)
+{
+    string synth_id;
+    string node_id;
+    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+    auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
+    if (format != "newick" && format != "arguson") {
+	throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
+    }
+    NodeNameStyle nns = get_label_format(parsedargs);
+    int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")? 3 : -1);
+    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+    const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
+
+    if (format == "newick") {
+	return newick_subtree_ws_method(tts, treeptr, node_id, nns, height_limit);
+    } else {
+	return arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
+    }
+}
+
 void subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
     session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
         try {
             json parsedargs = parse_body_or_throw(body);
-            string synth_id;
-            string node_id;
-            tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
-            auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
-            if (format != "newick" && format != "arguson") {
-                throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
-            }
-            NodeNameStyle nns = get_label_format(parsedargs);
-            int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")? 3 : -1);
-            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
-            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-            string rbody;
-            if (format == "newick") {
-                rbody = newick_subtree_ws_method(tts, treeptr, node_id, nns, height_limit);
-            } else {
-                rbody = arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
-            }
+	    auto rbody = process_subtree(parsedargs);
             session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
         } catch (OTCWebError& e) {
             string rbody = string("[subtree] Error: ") + e.what();
