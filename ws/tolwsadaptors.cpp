@@ -382,49 +382,24 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, cons
     }
 }
 
-void taxon_info_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {
-            auto parsedargs = parse_body_or_throw(body);
-            auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
-            auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
-            auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
-            string rbody;
-            {
-                auto locked_taxonomy = tts.get_readable_taxonomy();
-                const auto & taxonomy = locked_taxonomy.first;
-                const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
-                rbody = taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
-            }
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[taxonomy/taxon_info] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+string taxon_info_method_handler( const json& parsedargs )
+{
+    auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
+    auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
+    auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
+    return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
 }
         
-void taxon_mrca_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {
-            auto parsedargs = parse_body_or_throw(body);
-            OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
-            string rbody;
-            {
-                auto locked_taxonomy = tts.get_readable_taxonomy();
-                const auto & taxonomy = locked_taxonomy.first;
-                rbody = taxonomy_mrca_ws_method(taxonomy, ott_id_set);
-            }
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[taxonomy/mrca] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+string taxon_mrca_method_handler( const json& parsedargs )
+{
+    OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return taxonomy_mrca_ws_method(taxonomy, ott_id_set);
 }
 
 void taxon_subtree_method_handler( const shared_ptr< Session > session ) {
@@ -622,12 +597,9 @@ int run_server(const po::variables_map & args) {
     auto r_tax_about = make_shared< Resource >( );
     r_tax_about->set_path( "/taxonomy/about" );
     r_tax_about->set_method_handler( "POST", tax_about_method_handler );
-    auto r_taxon_info = make_shared< Resource >( );
-    r_taxon_info->set_path( "/taxonomy/taxon_info" );
-    r_taxon_info->set_method_handler( "POST", taxon_info_method_handler );
-    auto r_taxon_mrca = make_shared< Resource >( );
-    r_taxon_mrca->set_path( "/taxonomy/mrca" );
-    r_taxon_mrca->set_method_handler( "POST", taxon_mrca_method_handler );
+    auto r_taxon_info = path_handler("/taxonomy/taxon_info", taxon_info_method_handler );
+    auto r_taxon_mrca = path_handler("/taxonomy/mrca", taxon_mrca_method_handler );
+
     auto r_taxon_subtree = make_shared< Resource >( );
     r_taxon_subtree->set_path( "/taxonomy/subtree" );
     r_taxon_subtree->set_method_handler( "POST", taxon_subtree_method_handler );
