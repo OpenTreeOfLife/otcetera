@@ -276,23 +276,11 @@ string induced_subtree_method_handler( const json& parsedargs )
     return induced_subtree_ws_method(tts, treeptr, node_id_vec, nns);
 }
 
-void tax_about_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & ) {
-        try {
-            string rbody;
-            {
-                auto locked_taxonomy = tts.get_readable_taxonomy();
-                const auto & taxonomy = locked_taxonomy.first;
-                rbody = tax_about_ws_method(taxonomy);
-            }
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[taxonomy/about] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+string tax_about_method_handler( const json& )
+{
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tax_about_ws_method(taxonomy);
 }
 
 // looks for ott_id or source_id args to find a node
@@ -567,15 +555,13 @@ int run_server(const po::variables_map & args) {
     auto r_induced_subtree  = path_handler("/tree_of_life/induced_subtree", induced_subtree_method_handler );
 
     // taxonomy web services
-    auto r_tax_about = make_shared< Resource >( );
-    r_tax_about->set_path( "/taxonomy/about" );
-    r_tax_about->set_method_handler( "POST", tax_about_method_handler );
+    auto r_tax_about        = path_handler("/taxonomy/about", tax_about_method_handler );
     auto r_taxon_info       = path_handler("/taxonomy/taxon_info", taxon_info_method_handler );
     auto r_taxon_mrca       = path_handler("/taxonomy/mrca", taxon_mrca_method_handler );
     auto r_taxon_subtree    = path_handler("/taxonomy/subtree", taxon_subtree_method_handler );
 
     // conflict
-    auto r_conflict_conflict_status = path_handler("/conflict/conflict-status", conflict_status_method_handler );
+    auto r_conflict_status  = path_handler("/conflict/conflict-status", conflict_status_method_handler );
 
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
@@ -595,7 +581,7 @@ int run_server(const po::variables_map & args) {
     service.publish( r_taxon_info );
     service.publish( r_taxon_mrca );
     service.publish( r_taxon_subtree );
-    service.publish( r_conflict_conflict_status );
+    service.publish( r_conflict_status );
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
     LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";
