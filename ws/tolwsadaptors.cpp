@@ -234,24 +234,14 @@ string node_info_method_handler( const json& parsedargs)
     return node_info_ws_method(tts, treeptr, sta, node_id, include_lineage);
 }
 
-void mrca_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {    
-            auto parsedargs = parse_body_or_throw(body);
-            string synth_id;
-            vector<string> node_id_vec;
-            tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
-            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
-            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-            string rbody = mrca_ws_method(tts, treeptr, sta, node_id_vec);
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[/tree_of_life/mrca] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+string mrca_method_handler( const json& parsedargs)
+{
+    string synth_id;
+    vector<string> node_id_vec;
+    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+    const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
+    return mrca_ws_method(tts, treeptr, sta, node_id_vec);
 }
 
 std::string process_subtree(const json& parsedargs)
@@ -632,15 +622,10 @@ int run_server(const po::variables_map & args) {
     }
     ////// ROUTES
     // tree web services
-    auto r_about = path_handler("/tree_of_life/about", about_method_handler);
-
-    auto r_node_info = path_handler("/tree_of_life/node_info", node_info_method_handler );
-
-    auto r_mrca = make_shared< Resource >( );
-    r_mrca->set_path( "/tree_of_life/mrca" );
-    r_mrca->set_method_handler( "POST", mrca_method_handler );
-
-    auto r_subtree = path_handler("/tree_of_life/subtree", process_subtree);
+    auto r_about            = path_handler("/tree_of_life/about", about_method_handler);
+    auto r_node_info        = path_handler("/tree_of_life/node_info", node_info_method_handler );
+    auto r_mrca             = path_handler("/tree_of_life/mrca", mrca_method_handler );
+    auto r_subtree          = path_handler("/tree_of_life/subtree", process_subtree);
 
     auto r_induced_subtree = make_shared< Resource >( );
     r_induced_subtree->set_path( "/tree_of_life/induced_subtree" );
