@@ -459,7 +459,9 @@ string ctime(const chrono::system_clock::time_point& t)
 {
     time_t t2 = chrono::system_clock::to_time_t(t);
     char* c = ctime(&t2);
-    return c;
+    string tt = c;
+    tt.pop_back(); // remove newline
+    return tt;
 }
 
 multimap<string,string> request_headers(const string& rbody)
