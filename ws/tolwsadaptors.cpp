@@ -298,22 +298,6 @@ std::string process_subtree(const json& parsedargs)
     }
 }
 
-void subtree_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {
-            json parsedargs = parse_body_or_throw(body);
-	    auto rbody = process_subtree(parsedargs);
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[subtree] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
-}
-
-
 void induced_subtree_method_handler( const shared_ptr< Session > session ) {
     const auto request = session->get_request( );
     size_t content_length = request->get_header( "Content-Length", 0 );
@@ -680,9 +664,9 @@ int run_server(const po::variables_map & args) {
     auto r_mrca = make_shared< Resource >( );
     r_mrca->set_path( "/tree_of_life/mrca" );
     r_mrca->set_method_handler( "POST", mrca_method_handler );
-    auto r_subtree = make_shared< Resource >( );
-    r_subtree->set_path( "/tree_of_life/subtree" );
-    r_subtree->set_method_handler( "POST", subtree_method_handler );
+
+    auto r_subtree = path_handler("/tree_of_life/subtree", process_subtree);
+
     auto r_induced_subtree = make_shared< Resource >( );
     r_induced_subtree->set_path( "/tree_of_life/induced_subtree" );
     r_induced_subtree->set_method_handler( "POST", induced_subtree_method_handler );
