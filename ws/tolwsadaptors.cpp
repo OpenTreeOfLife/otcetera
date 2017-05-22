@@ -265,25 +265,15 @@ std::string process_subtree(const json& parsedargs)
     }
 }
 
-void induced_subtree_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {
-            auto parsedargs = parse_body_or_throw(body);
-            string synth_id;
-            vector<string> node_id_vec;
-            tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
-            NodeNameStyle nns = get_label_format(parsedargs);
-            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
-            const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-            auto rbody = induced_subtree_ws_method(tts, treeptr, node_id_vec, nns);
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[tree_of_life/induced_subtree] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+string induced_subtree_method_handler( const json& parsedargs )
+{
+    string synth_id;
+    vector<string> node_id_vec;
+    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    NodeNameStyle nns = get_label_format(parsedargs);
+    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+    const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
+    return induced_subtree_ws_method(tts, treeptr, node_id_vec, nns);
 }
 
 void tax_about_method_handler( const shared_ptr< Session > session ) {
@@ -626,10 +616,8 @@ int run_server(const po::variables_map & args) {
     auto r_node_info        = path_handler("/tree_of_life/node_info", node_info_method_handler );
     auto r_mrca             = path_handler("/tree_of_life/mrca", mrca_method_handler );
     auto r_subtree          = path_handler("/tree_of_life/subtree", process_subtree);
+    auto r_induced_subtree  = path_handler("/tree_of_life/induced_subtree", induced_subtree_method_handler );
 
-    auto r_induced_subtree = make_shared< Resource >( );
-    r_induced_subtree->set_path( "/tree_of_life/induced_subtree" );
-    r_induced_subtree->set_method_handler( "POST", induced_subtree_method_handler );
     // taxonomy web services
     auto r_tax_about = make_shared< Resource >( );
     r_tax_about->set_path( "/taxonomy/about" );
