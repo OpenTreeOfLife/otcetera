@@ -186,29 +186,16 @@ const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& sy
 }
 
 
-void about_method_handler( const shared_ptr< Session > session ) {
-    const auto request = session->get_request( );
-    size_t content_length = request->get_header( "Content-Length", 0 );
-    session->fetch( content_length, [ request ]( const shared_ptr< Session > session, const Bytes & body ) {
-        try {
-            auto parsedargs = parse_body_or_throw(body);
+string about_method_handler(const json& parsedargs)
+{
+    bool include_sources = extract_argument_or_default<bool>  (parsedargs, "include_source_list", false);
+    string synth_id      = extract_argument_or_default<string>(parsedargs, "synth_id",            ""   );
 
-            bool include_sources = extract_argument_or_default<bool>  (parsedargs, "include_source_list", false);
-            string synth_id      = extract_argument_or_default<string>(parsedargs, "synth_id",            ""   );
+    const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
+    const SummaryTree_t * treeptr     = get_summary_tree(tts, synth_id);
 
-            const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
-            const SummaryTree_t * treeptr     = get_summary_tree(tts, synth_id);
-
-            string rbody = about_ws_method(tts, treeptr, sta, include_sources);
-
-            session->close( OK, rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        } catch (OTCWebError& e) {
-            string rbody = string("[/tree_of_life/about] Error: ") + e.what();
-            session->close( e.status_code(), rbody, { { "Content-Length", ::to_string( rbody.length( ) ) } } );
-        }
-    });
+    return  about_ws_method(tts, treeptr, sta, include_sources);
 }
-
 
 pair<string,string> get_synth_and_node_id(const json &j) {
     auto synth_id = extract_argument_or_default<string>(j, "synth_id", "");
@@ -655,9 +642,8 @@ int run_server(const po::variables_map & args) {
     }
     ////// ROUTES
     // tree web services
-    auto r_about = make_shared< Resource >( );
-    r_about->set_path( "/tree_of_life/about" );
-    r_about->set_method_handler( "POST", about_method_handler );
+    auto r_about = path_handler("/tree_of_life/about", about_method_handler);
+
     auto r_node_info = make_shared< Resource >( );
     r_node_info->set_path( "/tree_of_life/node_info" );
     r_node_info->set_method_handler( "POST", node_info_method_handler );
