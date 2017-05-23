@@ -21,6 +21,7 @@
     "hybrid",
     "merged"
   ],
+  "num_source_studies": 1,
   "num_source_trees": 2,
   "root": {
     "node_id": "ott1000000",

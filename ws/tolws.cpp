@@ -270,6 +270,7 @@ string about_ws_method(const TreesToServe &tts,
     json response;
     response["date_created"] = sta->date_completed;
     response["num_source_trees"] = sta->num_source_trees;
+    response["num_source_studies"] = sta->num_source_studies;
     response["taxonomy_version"] = sta->taxonomy_version;
     response["filtered_flags"] = sta->filtered_flags_vec;
     response["synth_id"] = sta->synth_id;
