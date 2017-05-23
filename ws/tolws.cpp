@@ -647,6 +647,7 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
         const auto & taxonomy = locked_taxonomy.first;
         write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
         add_lineage(a, focal, taxonomy, usedSrcIds);
+        add_source_id_map(a, usedSrcIds, taxonomy, sta);
     }
     response["arguson"] = a;
     return response.dump(1);
