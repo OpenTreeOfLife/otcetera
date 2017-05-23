@@ -33,7 +33,7 @@
         "ncbi:10239",
         "gbif:8"
       ],
-      "uniqname": "Exampleroot"
+      "unique_name": "Exampleroot"
     }
   },
   "synth_id": "<UNKNOWN>",

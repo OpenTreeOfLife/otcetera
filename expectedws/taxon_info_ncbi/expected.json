@@ -12,7 +12,7 @@
       "source": "0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "Nototuexample"
+      "unique_name": "Nototuexample"
     },
     {
       "flags": [],
@@ -24,7 +24,7 @@
       "source": "0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "ABC"
+      "unique_name": "ABC"
     }
   ],
   "flags": [],
@@ -51,5 +51,5 @@
     22,
     23
   ],
-  "uniqname": "Exampleroot"
+  "unique_name": "Exampleroot"
 }

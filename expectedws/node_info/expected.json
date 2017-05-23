@@ -21,7 +21,7 @@
         "ott_id": 1001,
         "rank": "no rank",
         "tax_sources": [],
-        "uniqname": "ABC"
+        "unique_name": "ABC"
       }
     },
     {
@@ -38,7 +38,7 @@
           "ncbi:10239",
           "gbif:8"
         ],
-        "uniqname": "Exampleroot"
+        "unique_name": "Exampleroot"
       },
       "was_constrained": true,
       "was_uncontested": true
@@ -70,7 +70,7 @@
     "ott_id": 100,
     "rank": "no rank",
     "tax_sources": [],
-    "uniqname": "A"
+    "unique_name": "A"
   },
   "terminal": {
     "xx_1@t1": "node3",

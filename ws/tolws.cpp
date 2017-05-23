@@ -21,7 +21,7 @@ void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json 
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["tax_sources"] = taxon_data.get_sources_json();
     taxonrepr["name"] = string(taxon_data.get_nonuniqname());
-    taxonrepr["uniqname"] = get_taxon_unique_name(nd_taxon);
+    taxonrepr["unique_name"] = get_taxon_unique_name(nd_taxon);
     taxonrepr["rank"] = taxon_data.get_rank();
     taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
 }

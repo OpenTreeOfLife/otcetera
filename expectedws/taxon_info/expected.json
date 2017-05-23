@@ -10,7 +10,7 @@
       "source": "0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "A1"
+      "unique_name": "A1"
     },
     {
       "flags": [],
@@ -22,7 +22,7 @@
       "source": "0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "A2"
+      "unique_name": "A2"
     },
     {
       "flags": [],
@@ -34,7 +34,7 @@
       "source": "0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "A3"
+      "unique_name": "A3"
     }
   ],
   "flags": [],
@@ -51,7 +51,7 @@
       "source": "0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "ABC"
+      "unique_name": "ABC"
     },
     {
       "flags": [],
@@ -66,7 +66,7 @@
         "ncbi:10239",
         "gbif:8"
       ],
-      "uniqname": "Exampleroot"
+      "unique_name": "Exampleroot"
     }
   ],
   "name": "A",
@@ -75,5 +75,5 @@
   "source": "0.0draft0",
   "synonyms": [],
   "tax_sources": [],
-  "uniqname": "A"
+  "unique_name": "A"
 }
