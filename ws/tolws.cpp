@@ -3,11 +3,15 @@
 #include "ws/tolwsadaptors.h"
 #include "otc/conflict.h"
 #include "otc/tree_operations.h"
+#include <boost/optional.hpp>
 INITIALIZE_EASYLOGGINGPP
+
 
 using namespace std;
 using namespace boost::property_tree;
 using json=nlohmann::json;
+
+using boost::optional;
 
 namespace otc {
 const int OK = restbed::OK;
@@ -56,18 +60,18 @@ void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd
     }
 }
 
-inline void add_str_to_str_or_vec_string(json & o, const string * first, const string * second) {
-    const char * studyc = first->c_str();
+inline void add_str_to_str_or_vec_string(json & o, const string& first, const string& second) {
+    const char * studyc = first.c_str();
     if (o.count(studyc)) {
         if (o[studyc].is_array()) {
-            o[studyc].push_back(*second);
+            o[studyc].push_back(second);
         } else {
             string prev = o[studyc].get<string>();
-            json v = {prev, *second};
+            json v = {prev, second};
             o[studyc] = v;
         }
     } else {
-        o[studyc] = *second;
+        o[studyc] = second;
     }
 }
 
@@ -76,8 +80,8 @@ void add_support_info_vec(const char * tag,
                           const vec_src_node_ids & v,
                           json & noderepr,
                           set<string> & usedSrcIds,
-                          const string * extra_src=nullptr,
-                          const string * extra_node_id=nullptr) {
+                          const optional<string>& extra_src = boost::none,
+                          const optional<string>& extra_node_id = boost::none) {
     json o;
     for (const auto & sni : v ) {
         const auto study_node_pair = tts.decode_study_node_id_index(sni);
@@ -85,7 +89,7 @@ void add_support_info_vec(const char * tag,
         add_str_to_str_or_vec_string(o, study_node_pair.first, study_node_pair.second);
     }
     if (extra_src && extra_node_id) {
-        add_str_to_str_or_vec_string(o, extra_src, extra_node_id);
+        add_str_to_str_or_vec_string(o, *extra_src, *extra_node_id);
     }
     noderepr[tag] = o;
 }
@@ -96,16 +100,15 @@ void add_node_support_info(const TreesToServe & tts,
                            json & noderepr,
                            set<string> & usedSrcIds) {
     const auto & d = nd.get_data();
-    const string * extra_src = nullptr;
-    const string * extra_node_id = nullptr;
+    optional<string> extra_src;
+    optional<string> extra_node_id;
     string tmp;
     if (nd.has_ott_id()) {
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
-        extra_src = &(taxonomy.get_version());
-        tmp = node_id_for_summary_tree_node(nd);
-        extra_node_id = &tmp;
-        usedSrcIds.insert(taxonomy.get_version());
+        extra_src = string("ott") + taxonomy.get_version();
+        extra_node_id = node_id_for_summary_tree_node(nd);
+        usedSrcIds.insert(*extra_src);
     }
 
 #if defined(JOINT_MAPPING_VEC)
@@ -119,29 +122,29 @@ void add_node_support_info(const TreesToServe & tts,
         usedSrcIds.insert(*study_node_pair.first);
         switch (el.first) {
             case SourceEdgeMappingType::CONFLICTS_WITH_MAPPING:
-                add_str_to_str_or_vec_string(conflicts_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str_or_vec_string(conflicts_j, *study_node_pair.first, *study_node_pair.second);
                 had_conflicts = true;
                 break;
             case SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING:
-                add_str_to_str_or_vec_string(partial_path_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str_or_vec_string(partial_path_j, *study_node_pair.first, *study_node_pair.second);
                 had_partial_path = true;
                 break;
             case SourceEdgeMappingType::RESOLVES_MAPPING:
-                add_str_to_str_or_vec_string(resolves_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str_or_vec_string(resolves_j, *study_node_pair.first, *study_node_pair.second);
                 had_resolves = true;
                 break;
             case SourceEdgeMappingType::SUPPORTED_BY_MAPPING:
-                add_str_to_str_or_vec_string(supported_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str_or_vec_string(supported_j, *study_node_pair.first, *study_node_pair.second);
                 had_supported = true;
                 break;
             case SourceEdgeMappingType::TERMINAL_MAPPING:
-                add_str_to_str_or_vec_string(terminal_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str_or_vec_string(terminal_j, *study_node_pair.first, *study_node_pair.second);
                 had_terminal = true;
                 break;
         }
     }
     if (extra_src && extra_node_id) {
-        add_str_to_str_or_vec_string(supported_j, extra_src, extra_node_id);
+        add_str_to_str_or_vec_string(supported_j, *extra_src, *extra_node_id);
         had_supported = true;
     }
     if (had_conflicts) {
@@ -161,7 +164,7 @@ void add_node_support_info(const TreesToServe & tts,
     }
 
 #else
-    if (extra_src != nullptr || !d.supported_by.empty()) {
+    if (extra_src || !d.supported_by.empty()) {
         add_support_info_vec("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
     }
     if (!d.conflicts_with.empty()) {
@@ -296,7 +299,7 @@ string tax_about_ws_method(const RichTaxonomy & taxonomy) {
     response["name"] = "ott";
     weburl = "https://tree.opentreeoflife.org/about/taxonomy-version/ott";
     weburl += taxonomy.get_version_number();
-    response["source"] = taxonomy.get_version();
+    response["source"] = string("ott") + taxonomy.get_version();
     response["version"] = taxonomy.get_version_number();
     response["weburl"] = weburl;
     return response.dump(1);
@@ -328,8 +331,8 @@ inline void add_source_id_map(json & j,
     json sim;
     for (auto srcTag : usedSrcIds) {
         json jt;
-        if (srcTag == taxonomy.get_version()) {
-            jt["taxonomy"] = taxonomy.get_version();
+        if (srcTag == string("ott")+taxonomy.get_version()) {
+            jt["taxonomy"] = string("ott")+taxonomy.get_version();
         } else {
             const auto & simentry = sta->source_id_map.at(srcTag);
             jt = simentry;
@@ -658,7 +661,7 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy,
                                 const RTRichTaxNode & nd_taxon,
                                 json & taxonrepr) {
     add_taxon_info(taxonomy, nd_taxon, taxonrepr);
-    taxonrepr["source"] = taxonomy.get_version(); //TBD "source" ?
+    taxonrepr["source"] = string("ott") + taxonomy.get_version(); //TBD "source" ?
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["flags"] = flags_to_string_vec(taxon_data.get_flags());
     json syn_list = json::array();

@@ -14,7 +14,7 @@
       "node_id": "ott1001",
       "num_tips": 9,
       "supported_by": {
-        "0.0draft0": "ott1001"
+        "ott0.0draft0": "ott1001"
       },
       "taxon": {
         "name": "ABC",
@@ -28,7 +28,7 @@
       "node_id": "ott1000000",
       "num_tips": 9,
       "supported_by": {
-        "0.0draft0": "ott1000000"
+        "ott0.0draft0": "ott1000000"
       },
       "taxon": {
         "name": "Exampleroot",
@@ -47,8 +47,8 @@
   "node_id": "ott100",
   "num_tips": 3,
   "source_id_map": {
-    "0.0draft0": {
-      "taxonomy": "0.0draft0"
+    "ott0.0draft0": {
+      "taxonomy": "ott0.0draft0"
     },
     "xx_1@t1": {
       "git_sha": "0",
@@ -62,7 +62,7 @@
     }
   },
   "supported_by": {
-    "0.0draft0": "ott100"
+    "ott0.0draft0": "ott100"
   },
   "synth_id": "<UNKNOWN>",
   "taxon": {
