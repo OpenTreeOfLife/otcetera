@@ -47,7 +47,13 @@ inline string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
 
 void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
     noderepr["node_id"] = node_id_for_summary_tree_node(nd);
-    noderepr["num_tips"] = nd.get_data().num_tips;
+
+    // The number of tips, not including this node.
+    if (nd.is_tip())
+	noderepr["num_tips"] = 0;
+    else
+	noderepr["num_tips"] = nd.get_data().num_tips;
+
     if (nd.has_ott_id()) {
         auto nd_id = nd.get_ott_id();
         const auto * nd_taxon = taxonomy.included_taxon_from_id(nd_id);
