@@ -45,10 +45,58 @@ inline string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
     return (nd.has_ott_id() ? ott_id_to_idstr(nd.get_ott_id()) : nd.get_name());
 }
 
+string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+{
+    if (not nd.has_ott_id())
+	throw OTCError()<<"Node "<<nd.get_name()<<" has no OTT id";
+
+    auto id = nd.get_ott_id();
+    auto nd_taxon = taxonomy.included_taxon_from_id(id);
+    auto& taxon_data = nd_taxon->get_data();
+    return string(taxon_data.get_nonuniqname());
+}
+
+// Corresponds to getNamesOfRepresentativeDescendants( ) in treemachine/src/main/java/opentree/GraphExplorer.java
+// FIXME - Clean up to eliminate recursive calls.
+// FIXME - Looking at more names on each level seems better because it would find higher-ranking descendant names
+//       - is there a reason we weren't doing this?  e.g. scanning all children could go too slow?
+// FIXME - We could cache representative descendants (which takes memory) if too slow.
+json get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+{
+    json names = json::array();
+    if (nd.has_children())
+    {
+	auto first = nd.get_first_child();
+	auto last  = nd.get_last_child();
+	if (first->has_ott_id())
+	    names.push_back(taxon_nonuniquename(taxonomy, *first));
+	else
+	{
+	    auto names2 = get_descendant_names(taxonomy, *first);
+	    if (not names2.empty())
+		names.push_back(names2[0]);
+	}
+
+	if (last != first)
+	{
+	    if (last->has_ott_id())
+		names.push_back(taxon_nonuniquename(taxonomy, *last));
+	    else
+	    {
+		auto names3 = get_descendant_names(taxonomy, *last);
+		if (not names3.empty())
+		    names.push_back(names3.back());
+	    }
+	}
+    }
+    return names;
+}
+
+// Corresponds to getNodeBlobArguson( ) in treemachine/src/main/java/opentree/GraphExplorer.java
 void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
     noderepr["node_id"] = node_id_for_summary_tree_node(nd);
 
-    // The number of tips, not including this node.
+    // The number of descendant tips (.e.g not including this node).
     if (nd.is_tip())
 	noderepr["num_tips"] = 0;
     else
