@@ -92,8 +92,8 @@ json get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
     return names;
 }
 
-// Corresponds to getNodeBlobArguson( ) in treemachine/src/main/java/opentree/GraphExplorer.java
-void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
+// Corresponds to getNodeBlob( ) and getNodeBlobArguson( ) in treemachine/src/main/java/opentree/GraphExplorer.java
+void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr, bool is_arguson = false) {
     noderepr["node_id"] = node_id_for_summary_tree_node(nd);
 
     // The number of descendant tips (.e.g not including this node).
@@ -112,6 +112,8 @@ void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd
         add_taxon_info(taxonomy, *nd_taxon, taxon);
         noderepr["taxon"] = taxon;
     }
+    else if (is_arguson)
+	noderepr["descendant_name_list"] = get_descendant_names(taxonomy, nd);
 }
 
 inline void add_str_to_str_or_vec_string(json & o, const string& first, const string& second) {
@@ -360,7 +362,7 @@ string tax_about_ws_method(const RichTaxonomy & taxonomy) {
 }
 
 
-inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonomy & taxonomy, set<string> & usedSrcIds) {
+inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonomy & taxonomy, set<string> & usedSrcIds, bool is_arguson = false) {
     json lineage_arr;
     const SumTreeNode_t * anc = focal->get_parent();
     if (!anc) {
@@ -370,7 +372,7 @@ inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonom
     }
     while (anc) {
         json ancj;
-        add_basic_node_info(taxonomy, *anc, ancj);
+        add_basic_node_info(taxonomy, *anc, ancj, is_arguson);
         add_node_support_info(tts, *anc, ancj, usedSrcIds);
         lineage_arr.push_back(ancj);
         anc = anc->get_parent();
@@ -684,7 +686,7 @@ inline void write_arguson(json & j,
         }
         j["children"] = c_array;
     }
-    add_basic_node_info(taxonomy, *nd, j);
+    add_basic_node_info(taxonomy, *nd, j, true);
     add_node_support_info(tts, *nd, j, usedSrcIds);
 }
 
@@ -703,7 +705,7 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
         write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
-        add_lineage(a, focal, taxonomy, usedSrcIds);
+        add_lineage(a, focal, taxonomy, usedSrcIds, true);
         add_source_id_map(a, usedSrcIds, taxonomy, sta);
     }
     response["arguson"] = a;
