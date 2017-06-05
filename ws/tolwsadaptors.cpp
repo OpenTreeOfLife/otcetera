@@ -246,6 +246,10 @@ string mrca_method_handler( const json& parsedargs)
 
 std::string process_subtree(const json& parsedargs)
 {
+    // FIXME: According to treemachine/ws-tests/tests.subtree, there is an "include_all_node_labels"
+    //        argument.  Unless this is explicitly set to true, we are supposed to not write node labels
+    //        for non-ottids.  At least in Newick.
+
     string synth_id;
     string node_id;
     tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
@@ -258,8 +262,10 @@ std::string process_subtree(const json& parsedargs)
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
+    bool all_node_labels = extract_argument_or_default<bool>(parsedargs, "include_all_node_labels", false);
+
     if (format == "newick") {
-	return newick_subtree_ws_method(tts, treeptr, node_id, nns, height_limit);
+	return newick_subtree_ws_method(tts, treeptr, node_id, nns, all_node_labels, height_limit);
     } else {
 	return arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
     }

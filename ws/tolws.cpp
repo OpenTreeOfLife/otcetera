@@ -648,6 +648,7 @@ string newick_subtree_ws_method(const TreesToServe & tts,
                                 const SummaryTree_t * tree_ptr,
                                 const string & node_id,
                                 NodeNameStyle label_format, 
+                                bool include_all_node_labels,
                                 int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
@@ -658,7 +659,7 @@ string newick_subtree_ws_method(const TreesToServe & tts,
         const auto & taxonomy = locked_taxonomy.first;
         NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
         ostringstream out;
-        write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, height_limit);
+        write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, include_all_node_labels, height_limit);
         response["newick"] = out.str();
         for (auto study_it_ptr : nnsbs.study_id_set) {
             ss_arr.push_back(*study_it_ptr);
@@ -810,7 +811,8 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
     int height_limit = -1;
-    write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, height_limit);
+    bool include_all_node_labels = true; // ??
+    write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, include_all_node_labels, height_limit);
     response["newick"] = out.str();
     return response.dump(1);
 }
