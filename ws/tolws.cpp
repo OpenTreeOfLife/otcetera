@@ -320,6 +320,8 @@ const SumTreeNode_t * find_required_node_by_id_str(const SummaryTree_t & tree,
     return node;
 }
 
+// See API docs at https://github.com/OpenTreeOfLife/germinator/wiki/Synthetic-tree-API-v3
+
 string about_ws_method(const TreesToServe &tts,
                        const SummaryTree_t * tree_ptr,
                        const SummaryTreeAnnotation * sta,
@@ -335,7 +337,7 @@ string about_ws_method(const TreesToServe &tts,
     response["synth_id"] = sta->synth_id;
     if (include_sources) {
         response["source_id_map"] = sta->full_source_id_map_json;
-        response["sources"] = sta->sources;
+        response["source_list"] = sta->sources;
     }
     json root;
     auto root_node = tree_ptr->get_root();
