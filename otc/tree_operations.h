@@ -798,8 +798,11 @@ inline void write_newick_generic(std::ostream & out,
         }
         out << ')';
     }
+    // We need to call nodeNamer(nd) to mark nd as visited, even if we don't use the name.
+    auto name = nodeNamer(nd);
+
     if (include_all_node_labels or nd->has_ott_id())
-	write_escaped_for_newick(out, nodeNamer(nd));
+	write_escaped_for_newick(out, name);
 }
 
 
