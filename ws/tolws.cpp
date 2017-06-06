@@ -116,6 +116,19 @@ void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd
 	noderepr["descendant_name_list"] = get_descendant_names(taxonomy, nd);
 }
 
+inline void add_str_to_vec_string(json & o, const string& first, const string& second) {
+    const char * studyc = first.c_str();
+    if (not o.count(studyc))
+	o[studyc] = json::array();
+    o[studyc].push_back(second);
+}
+
+inline void add_str_to_str(json & o, const string& first, const string& second) {
+    const char * studyc = first.c_str();
+    assert(not o.count(studyc) or o[studyc].get<string>() == second);
+    o[studyc] = second;
+}
+
 inline void add_str_to_str_or_vec_string(json & o, const string& first, const string& second) {
     const char * studyc = first.c_str();
     if (o.count(studyc)) {
@@ -142,10 +155,28 @@ void add_support_info_vec(const char * tag,
     for (const auto & sni : v ) {
         const auto study_node_pair = tts.decode_study_node_id_index(sni);
         usedSrcIds.insert(*study_node_pair.first);
-        add_str_to_str_or_vec_string(o, study_node_pair.first, study_node_pair.second);
+        add_str_to_vec_string(o, study_node_pair.first, study_node_pair.second);
     }
     if (extra_src && extra_node_id) {
-        add_str_to_str_or_vec_string(o, *extra_src, *extra_node_id);
+        add_str_to_vec_string(o, *extra_src, *extra_node_id);
+    }
+    noderepr[tag] = o;
+}
+
+void add_support_info_single_element(const char * tag,
+				     const vec_src_node_ids & v,
+				     json & noderepr,
+				     set<string> & usedSrcIds,
+				     const optional<string>& extra_src = boost::none,
+				     const optional<string>& extra_node_id = boost::none) {
+    json o;
+    for (const auto & sni : v ) {
+        const auto study_node_pair = tts.decode_study_node_id_index(sni);
+        usedSrcIds.insert(*study_node_pair.first);
+        add_str_to_str(o, study_node_pair.first, study_node_pair.second);
+    }
+    if (extra_src && extra_node_id) {
+        add_str_to_str(o, *extra_src, *extra_node_id);
     }
     noderepr[tag] = o;
 }
@@ -177,30 +208,36 @@ void add_node_support_info(const TreesToServe & tts,
         const auto study_node_pair = tts.decode_study_node_id_index(el.second);
         usedSrcIds.insert(*study_node_pair.first);
         switch (el.first) {
+	    // array
             case SourceEdgeMappingType::CONFLICTS_WITH_MAPPING:
-                add_str_to_str_or_vec_string(conflicts_j, *study_node_pair.first, *study_node_pair.second);
+                add_str_to_vec_string(conflicts_j, *study_node_pair.first, *study_node_pair.second);
                 had_conflicts = true;
                 break;
-            case SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING:
-                add_str_to_str_or_vec_string(partial_path_j, *study_node_pair.first, *study_node_pair.second);
+	    // single element
+	    case SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING:
+                add_str_to_str(partial_path_j, *study_node_pair.first, *study_node_pair.second);
                 had_partial_path = true;
                 break;
+	    // single element
             case SourceEdgeMappingType::RESOLVES_MAPPING:
-                add_str_to_str_or_vec_string(resolves_j, *study_node_pair.first, *study_node_pair.second);
+                add_str_to_str(resolves_j, *study_node_pair.first, *study_node_pair.second);
                 had_resolves = true;
                 break;
+	    // single element
             case SourceEdgeMappingType::SUPPORTED_BY_MAPPING:
-                add_str_to_str_or_vec_string(supported_j, *study_node_pair.first, *study_node_pair.second);
+                add_str_to_str(supported_j, *study_node_pair.first, *study_node_pair.second);
                 had_supported = true;
                 break;
+	    // single element
             case SourceEdgeMappingType::TERMINAL_MAPPING:
-                add_str_to_str_or_vec_string(terminal_j, *study_node_pair.first, *study_node_pair.second);
+                add_str_to_str(terminal_j, *study_node_pair.first, *study_node_pair.second);
                 had_terminal = true;
                 break;
+	    // resolved_by: array
         }
     }
     if (extra_src && extra_node_id) {
-        add_str_to_str_or_vec_string(supported_j, *extra_src, *extra_node_id);
+        add_str_to_str(supported_j, *extra_src, *extra_node_id);
         had_supported = true;
     }
     if (had_conflicts) {
@@ -221,19 +258,19 @@ void add_node_support_info(const TreesToServe & tts,
 
 #else
     if (extra_src || !d.supported_by.empty()) {
-        add_support_info_vec("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
+        add_support_info_single_element("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
     }
     if (!d.conflicts_with.empty()) {
         add_support_info_vec("conflicts_with", d.conflicts_with, noderepr, usedSrcIds);
     }
     if (!d.resolves.empty()) {
-        add_support_info_vec("resolves", d.resolves, noderepr, usedSrcIds);
+        add_support_info_single_element("resolves", d.resolves, noderepr, usedSrcIds);
     }
     if (!d.partial_path_of.empty()) {
-        add_support_info_vec("partial_path_of", d.partial_path_of, noderepr, usedSrcIds);
+        add_support_info_single_element("partial_path_of", d.partial_path_of, noderepr, usedSrcIds);
     }
     if (!d.terminal.empty()) {
-        add_support_info_vec("terminal", d.terminal, noderepr, usedSrcIds);
+        add_support_info_single_element("terminal", d.terminal, noderepr, usedSrcIds);
     }
 #endif
     if (d.was_uncontested) {
