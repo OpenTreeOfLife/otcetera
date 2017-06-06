@@ -592,6 +592,15 @@ inline void writeVisitedNewick(std::ostream & out,
 }
 
 
+json get_supporting_studies(const set<const string*>& study_id_set)
+{
+    json ss_arr = json::array();
+    for (auto study_it_ptr : study_id_set) {
+	ss_arr.push_back(*study_it_ptr);
+    }
+    return ss_arr;
+}
+
 string induced_subtree_ws_method(const TreesToServe & tts,
                  const SummaryTree_t * tree_ptr,
                  const vector<string> & node_id_vec,
@@ -627,20 +636,16 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             cnd = cnd->get_parent(); 
         } 
     }
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    writeVisitedNewick(out, visited, focal, nnsbs);
+
     json response;
-    json ss_arr;
-    {
-        auto locked_taxonomy = tts.get_readable_taxonomy();
-        const auto & taxonomy = locked_taxonomy.first;
-        NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
-        ostringstream out;
-        writeVisitedNewick(out, visited, focal, nnsbs);
-        response["newick"] = out.str();
-        for (auto study_it_ptr : nnsbs.study_id_set) {
-            ss_arr.push_back(*study_it_ptr);
-        }
-    }
-    response["supporting_studies"] = ss_arr;
+    response["newick"] = out.str();
+    response["supporting_studies"] = get_supporting_studies(nnsbs.study_id_set);
     return response.dump(1);
 }
 
@@ -652,20 +657,16 @@ string newick_subtree_ws_method(const TreesToServe & tts,
                                 int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, include_all_node_labels, height_limit);
+
     json response;
-    json ss_arr;
-    {
-        auto locked_taxonomy = tts.get_readable_taxonomy();
-        const auto & taxonomy = locked_taxonomy.first;
-        NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
-        ostringstream out;
-        write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, include_all_node_labels, height_limit);
-        response["newick"] = out.str();
-        for (auto study_it_ptr : nnsbs.study_id_set) {
-            ss_arr.push_back(*study_it_ptr);
-        }
-    }
-    response["supporting_studies"] = ss_arr;
+    response["newick"] = out.str();
+    response["supporting_studies"] = get_supporting_studies(nnsbs.study_id_set);
     return response.dump(1);
 }
 
