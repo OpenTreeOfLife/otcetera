@@ -1,7 +1,9 @@
 {
   "mrca": {
     "conflicts_with": {
-      "xx_1@t2": "node2"
+      "xx_1@t2": [
+        "node2"
+      ]
     },
     "node_id": "mrcaott1ott11",
     "num_tips": 6,
