@@ -247,8 +247,10 @@ void Taxonomy::write(const std::string& newdirname) {
     fs::create_directories(new_dir);
     // Copy the other files.
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
-                "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"}) {
-        fs::copy_file(old_dir/name,new_dir/name);
+                "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
+    {
+	if (fs::exists(old_dir/name))
+	    fs::copy_file(old_dir/name,new_dir/name);
     }
     // Write the new version file.
     {
