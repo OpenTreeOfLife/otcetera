@@ -440,10 +440,15 @@ std::string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
                                     const RTRichTaxNode * taxon_node,
                                     NodeNameStyle label_format);
 
-std::string conflict_ws_method(const SummaryTree_t & summary,
-                               const RichTaxonomy & taxonomy,
-                               const std::string& tree1s,
-                               const std::string& tree2s);
+std::string newick_conflict_ws_method(const SummaryTree_t & summary,
+				      const RichTaxonomy & taxonomy,
+				      const std::string& tree1s,
+				      const std::string& tree2s);
+
+std::string phylesystem_conflict_ws_method(const SummaryTree_t & summary,
+					   const RichTaxonomy & taxonomy,
+					   const std::string& tree1s,
+					   const std::string& tree2s);
 
 bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
 

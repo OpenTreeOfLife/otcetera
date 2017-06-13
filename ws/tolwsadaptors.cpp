@@ -387,7 +387,7 @@ string taxon_info_method_handler( const json& parsedargs )
     const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
     return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
 }
-        
+
 string taxon_mrca_method_handler( const json& parsedargs )
 {
     OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
@@ -407,12 +407,21 @@ string taxon_subtree_method_handler( const json& parsedargs )
 
 string conflict_status_method_handler( const json& parsed_args )
 {
-    string tree1 = extract_required_argument<string>(parsed_args, "tree1");
+    auto tree1newick = extract_argument<string>(parsed_args, "tree1newick");
+    auto tree1 = extract_argument<string>(parsed_args, "tree1");
+
     string tree2 = extract_required_argument<string>(parsed_args, "tree2");
+
     const auto& summary = *tts.get_summary_tree("");
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    return conflict_ws_method(summary, taxonomy, tree1, tree2);
+
+    if (tree1newick)
+	return newick_conflict_ws_method(summary, taxonomy, *tree1newick, tree2);
+    else if (tree1)
+	return phylesystem_conflict_ws_method(summary, taxonomy, *tree1, tree2);
+    else
+	throw OTCBadRequest()<<"Expecting argument 'tree1' or argument 'tree1newick'";
 }
 
 /// End of method_handler. Start of global service related code
