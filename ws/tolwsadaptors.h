@@ -4,6 +4,50 @@
 #include "ws/tolws.h"
 #include "ws/parallelreadserialwrite.h"
 #include "otc/otc_base_includes.h"
+#include <boost/optional.hpp>
+using boost::optional;
+
+inline optional<nlohmann::json> parse_body(const restbed::Bytes& body) {
+    if (body.empty()) {
+        return nlohmann::json();
+    }
+    try {
+        return nlohmann::json::parse(body);
+    }
+    catch (...) {
+	return boost::none;
+    }
+}
+
+
+inline optional<nlohmann::json> parse_body(const unsigned char* body) {
+    if (not body) {
+        return nlohmann::json();
+    }
+    try {
+        return nlohmann::json::parse(body);
+    }
+    catch (...) {
+	return boost::none;
+    }
+}
+
+
+inline nlohmann::json parse_body_or_throw(const restbed::Bytes& body) {
+    auto oj = parse_body(body);
+    if (not oj)
+        throw otc::OTCBadRequest("Could not parse body of call as JSON.\n");
+    else
+	return *oj;
+}
+
+inline nlohmann::json parse_body_or_throw(const unsigned char* body) {
+    auto oj = parse_body(body);
+    if (not oj)
+        throw otc::OTCBadRequest("Could not parse body of call as JSON.\n");
+    else
+	return *oj;
+}
 
 template<typename T>
 bool extract_from_request(const nlohmann::json & j,
