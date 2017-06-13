@@ -6,7 +6,6 @@
     #include <unistd.h>
 #endif
 #include <boost/program_options.hpp>
-#include <boost/optional.hpp>
 #include <restbed>
 #include <iostream>
 #include <fstream>
@@ -22,7 +21,6 @@ using namespace otc;
 namespace fs = boost::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
-using boost::optional;
 using std::pair;
 
 
@@ -35,19 +33,6 @@ TreesToServe tts;
 #endif
 
 }// namespace otc
-
-json parse_body_or_throw(const Bytes & body) {
-    // This line is necessary for the otcetera test for tree_of_life/about to succeed, apparently.
-    if (body.empty()) {
-        return json();
-    }
-    try {
-        return json::parse(body);
-    }
-    catch (...) {
-        throw OTCBadRequest("Could not parse body of call as JSON.\n");
-    }
-}
 
 template<typename T>
 optional<T> convert_to(const json & j);
