@@ -1096,6 +1096,77 @@ string newick_conflict_ws_method(const SummaryTree_t& summary,
     throw OTCBadRequest() << "tree2 = '" << tree2s << "' not recognized!";
 }
 
+// This should probably be a parameter
+static string studybase = "https://api.opentreeoflife.org/v3/study/";
+
+// reference-taxonomy also caches a single study.  We could add a use_cache argument to do the same.
+json get_phylesystem_study(const string& study_id)
+{
+    using namespace restbed;
+    Uri uri( studybase + study_id );
+
+    auto request = make_shared< Request >( uri );
+    request->set_header( "Accept", "*/*" );
+//    request->set_header( "Host", "www.google.co.nz" );
+    request->set_query_parameter( "output_nexml2json", "1.2.1" );
+
+    auto response = Http::sync( request );
+
+    if (response->get_status_code() != 200)
+	throw OTCBadRequest()<<"GET '"<<uri.to_string()<<"' yielded "<<response->get_status_code();
+
+    auto length = response->get_header( "Content-Length", 0 );
+
+    Http::fetch( length, response );
+
+    auto j = parse_body( response->get_body().data() );
+    if (not j)
+	throw OTCBadRequest()<<"Could not parse JSON for study "<<study_id;
+
+    if (not j->count("data"))
+	throw OTCBadRequest()<<"No 'data' property in response to GET "<<uri.to_string();
+
+    j = (*j)["data"];
+
+    if (not j->count("nexml"))
+	throw OTCBadRequest()<<"No 'data' property in json data blob from "<<uri.to_string();
+
+    return *j;
+}
+
+json get_phylesystem_tree(const string& study_id, const string& tree_id)
+{
+    // if the study is not found, I think this throws an exception...
+    auto study = get_phylesystem_study(study_id);
+
+    if (not study.count(tree_id))
+	throw OTCBadRequest()<<"Tree '"<<tree_id<<"' not bound in study '"<<study_id<<"'";
+
+    auto jtree = study[tree_id];
+
+    return jtree;
+}
+
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/conflict/ConflictAnalysis.java
+// HTTP requests: https://github.com/Corvusoft/restbed/blob/master/example/https_client/source/verify_none.cpp
+
+string get_phylesystem_tree(const string& study_tree)
+{
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L242  about  specToTree( )
+    char delim = '#';
+    if (study_tree.find('@') != std::string::npos)
+	delim = '@';
+
+    auto parts = split_string(study_tree, delim);
+
+// get otus = Nexson.getOtus(study)
+    // if no otus, throw exception that there are no otus.
+
+    // Nexson.importTree( )
+}
+
+
 string phylesystem_conflict_ws_method(const SummaryTree_t& summary,
 				      const RichTaxonomy & taxonomy,
 				      const string& tree1s,
