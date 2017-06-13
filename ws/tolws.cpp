@@ -37,7 +37,7 @@ inline string ott_id_to_idstr(OttId ott_id) {
     ret += std::to_string(ott_id);
     return ret;
 }
-        
+
 inline string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
     //return nd.get_name();
     // code below from when we were trying calling clear_names_for_nodes_with_ids to clear
@@ -1058,8 +1058,18 @@ string conflict_ws_method(const SummaryTree_t& summary,
                           const string& tree1s,
                           const string& tree2s) {
     auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
-    compute_depth(*query_tree);
-    compute_tips(*query_tree);
+
+    // 1. Check that all leaves have OTT ids
+    for(auto leaf: iter_leaf(*query_tree))
+	if (not leaf->has_ott_id())
+	{
+	    if (leaf->get_name().empty())
+		throw OTCBadRequest()<<"Un-named leaf has no OTT id!";
+	    else
+		throw OTCBadRequest()<<"Leaf '"<<leaf->get_name()<<"' has no OTT id!";
+	}
+
+    // 2. Check that all leaves have node names
     for(const auto nd: iter_post_const(*query_tree)) {
         string name = nd->get_name();
         auto node_name = node_name_or_ottid(nd);
@@ -1073,6 +1083,10 @@ string conflict_ws_method(const SummaryTree_t& summary,
             throw E;
         }
     }
+
+    compute_depth(*query_tree);
+    compute_tips(*query_tree);
+
     if (tree2s == "ott") {
         return conflict_with_taxonomy(*query_tree, taxonomy).dump(1);
     } else if (tree2s == "synth") {
