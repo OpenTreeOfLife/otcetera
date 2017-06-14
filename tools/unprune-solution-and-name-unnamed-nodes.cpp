@@ -798,13 +798,12 @@ void unprune_slice(N *root_supertree_node,
             Node_t * spike_nd = tsp.first;
             root_supertree_node->get_data().des_ids.insert(spike_nd->get_ott_id());
             //flagIncSedAs
-            while (true) {
+            while (spike_nd != nullptr) {
                 if (inc_sed_mapping_deeper.count(spike_nd) > 0) {
                     break;
                 }
                 spike_nd->get_data().repr_in_supertree_by = root_taxon;
                 spike_nd = spike_nd->get_parent();
-                assert(spike_nd != nullptr);
             }
             samp_tip_set.erase(tsp.second);
         }

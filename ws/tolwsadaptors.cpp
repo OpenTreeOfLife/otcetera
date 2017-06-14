@@ -246,6 +246,10 @@ string mrca_method_handler( const json& parsedargs)
 
 std::string process_subtree(const json& parsedargs)
 {
+    // FIXME: According to treemachine/ws-tests/tests.subtree, there is an "include_all_node_labels"
+    //        argument.  Unless this is explicitly set to true, we are supposed to not write node labels
+    //        for non-ottids.  At least in Newick.
+
     string synth_id;
     string node_id;
     tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
@@ -258,8 +262,10 @@ std::string process_subtree(const json& parsedargs)
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
+    bool all_node_labels = extract_argument_or_default<bool>(parsedargs, "include_all_node_labels", false);
+
     if (format == "newick") {
-	return newick_subtree_ws_method(tts, treeptr, node_id, nns, height_limit);
+	return newick_subtree_ws_method(tts, treeptr, node_id, nns, all_node_labels, height_limit);
     } else {
 	return arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
     }
@@ -544,6 +550,7 @@ int run_server(const po::variables_map & args) {
     time(&start_time);
     int num_threads = 4;
     int port_number = 1984;
+    string prefix = "";
     if (args.count("num-threads")) {
         num_threads = args["num-threads"].as<int>();
     }
@@ -553,43 +560,52 @@ int run_server(const po::variables_map & args) {
     if (args.count("pidfile")) {
         pidfile = args["pidfile"].as<string>();
     }
+    if (args.count("prefix"))
+    {
+	prefix = args["prefix"].as<string>();
+	if (prefix.size() and prefix[0] != '/')
+	    prefix = string("/") + prefix;
+    }
     if (!args.count("tree-dir")) {
         cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
         return 1;
     }
     const fs::path topdir{args["tree-dir"].as<string>()};
+
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
     RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
     time_t post_tax_time;
     time(&post_tax_time);
     tts.set_taxonomy(taxonomy);
+
+    // Now load trees
     if (!read_trees(topdir, tts)) {
         return 2;
     }
     time_t post_trees_time;
     time(&post_trees_time);
-    //
     if (tts.get_num_trees() == 0) {
         cerr << "No tree to serve. Exiting...\n";
         return 3;
     }
+
     ////// ROUTES
     // tree web services
-    auto r_about            = path_handler("/tree_of_life/about", about_method_handler);
-    auto r_node_info        = path_handler("/tree_of_life/node_info", node_info_method_handler );
-    auto r_mrca             = path_handler("/tree_of_life/mrca", mrca_method_handler );
-    auto r_subtree          = path_handler("/tree_of_life/subtree", process_subtree);
-    auto r_induced_subtree  = path_handler("/tree_of_life/induced_subtree", induced_subtree_method_handler );
+    auto r_about            = path_handler(prefix + "/tree_of_life/about", about_method_handler);
+    auto r_node_info        = path_handler(prefix + "/tree_of_life/node_info", node_info_method_handler );
+    auto r_mrca             = path_handler(prefix + "/tree_of_life/mrca", mrca_method_handler );
+    auto r_subtree          = path_handler(prefix + "/tree_of_life/subtree", process_subtree);
+    auto r_induced_subtree  = path_handler(prefix + "/tree_of_life/induced_subtree", induced_subtree_method_handler );
 
     // taxonomy web services
-    auto r_tax_about        = path_handler("/taxonomy/about", tax_about_method_handler );
-    auto r_taxon_info       = path_handler("/taxonomy/taxon_info", taxon_info_method_handler );
-    auto r_taxon_mrca       = path_handler("/taxonomy/mrca", taxon_mrca_method_handler );
-    auto r_taxon_subtree    = path_handler("/taxonomy/subtree", taxon_subtree_method_handler );
+    auto r_tax_about        = path_handler(prefix + "/taxonomy/about", tax_about_method_handler );
+    auto r_taxon_info       = path_handler(prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
+    auto r_taxon_mrca       = path_handler(prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
+    auto r_taxon_subtree    = path_handler(prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
     // conflict
-    auto r_conflict_status  = path_handler("/conflict/conflict-status", conflict_status_method_handler );
+    auto r_conflict_status  = path_handler(prefix + "/conflict/conflict-status", conflict_status_method_handler );
 
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
@@ -645,6 +661,7 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
         ("port,P",value<int>(),"Port to bind to.")
         ("pidfile,p",value<string>(),"filepath for PID")
         ("num-threads,n",value<int>(),"number of threads")
+	("prefix",value<string>(),"prefix for services URL, i.e. /v3")
         ;
 
     options_description visible;

@@ -417,7 +417,8 @@ std::string induced_subtree_ws_method(const TreesToServe & tts,
 std::string newick_subtree_ws_method(const TreesToServe & tts,
                                      const SummaryTree_t * tree_ptr,
                                      const std::string & node_id,
-                                     NodeNameStyle label_format, 
+                                     NodeNameStyle label_format,
+                                     bool include_all_node_labels,
                                      int height_limit);
 
 std::string arguson_subtree_ws_method(const TreesToServe & tts,

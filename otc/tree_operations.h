@@ -781,6 +781,7 @@ template<typename T, typename Y>
 inline void write_newick_generic(std::ostream & out,
                                T nd,
                                Y & nodeNamer,
+                               bool include_all_node_labels,
                                long height_limit) {
     assert(nd != nullptr);
     if (!(nd->is_tip()) && height_limit != 0) {
@@ -793,11 +794,15 @@ inline void write_newick_generic(std::ostream & out,
             } else {
                 out << ',';
             }
-            write_newick_generic<T, Y>(out, c, nodeNamer, nhl);
+            write_newick_generic<T, Y>(out, c, nodeNamer, include_all_node_labels, nhl);
         }
         out << ')';
     }
-    write_escaped_for_newick(out, nodeNamer(nd));
+    // We need to call nodeNamer(nd) to mark nd as visited, even if we don't use the name.
+    auto name = nodeNamer(nd);
+
+    if (include_all_node_labels or nd->has_ott_id())
+	write_escaped_for_newick(out, name);
 }
 
 
