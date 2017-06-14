@@ -102,7 +102,7 @@ To build including restbed, you will also need to set:
 ## configuration + building
 
 To run the whole autoreconf stuff in a manner that will add missing bits as needed,
-run (on OS X and libtool installed with brew, use `boostrap_osx.sh`):
+run:
 
     $ sh bootstrap.sh
 
@@ -144,9 +144,9 @@ In order to prevent conflicts with Apple's own libtool we have prepended a "g"
 so, you have instead: glibtool and glibtoolize.
 ```
 
-so you will need to use the OS X specific bootstrap script, which calls the `g*` versions.
+so on OS X the bootstrap script calls the `g*` versions.
 
-    $ sh bootstrap_osx.sh
+    $ sh bootstrap.sh
     $ mkdir build
     $ cd build
     $ bash ../reconf-clang.sh

@@ -165,13 +165,16 @@ unique_ptr<Tree_t> get_tree(const string& filename) {
     return std::move(trees[0]);
 }
 
-Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, OttId root_ott_id) {
+Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, OttId root_ott_id, bool throw_if_not_found=true) {
     for(auto nd: iter_pre(tree)) {
         if (nd->has_ott_id() and nd->get_ott_id() == root_ott_id) {
             return nd;
         }
     }
-    throw OTCError() << "Can't find node with id " << root_ott_id << " in tree '" << tree.get_name() << "'";
+    if (throw_if_not_found) {
+        throw OTCError() << "Can't find node with id " << root_ott_id << " in tree '" << tree.get_name() << "'";
+    }
+    return nullptr;
 }
 
 Tree_t::node_type* find_node_by_name(Tree_t& tree, const string& name) {
@@ -191,11 +194,25 @@ unique_ptr<Tree_t> truncate_to_subtree_by_ott_id(unique_ptr<Tree_t> tree, OttId 
     return tree2;
 }
 
-unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
-                              OttId root_ott_id,
-                              const std::vector<OttId> & tips) {
+void prune_from_tree(Tree_t & tree, const std::vector<OttId> & tips) {
+    OttIdSet tipset;
+    for (auto t : tips) {
+        tipset.insert(t);
+    }
+    std::set<Tree_t::node_type *> todel;
+    for(auto nd: iter_pre(tree)) {
+        if (nd->has_ott_id() and tipset.count(nd->get_ott_id()) > 0) {
+            todel.insert(nd);
+        }
+    }
+    for (auto tdn : todel) {
+        tdn->detach_this_node();
+    }
+}
+
+void prune_tree(Tree_t & tree, const std::vector<OttId> & tips) {
     for (auto t_ott_id : tips) {
-        auto tn = find_node_by_ott_id(*tree, t_ott_id);
+        auto tn = find_node_by_ott_id(tree, t_ott_id);
         if (tn && !tn->is_tip()) {
             const auto children = all_children(tn);
             for (auto c : children) {
@@ -203,6 +220,12 @@ unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
             }
         }
     }
+}
+
+unique_ptr<Tree_t> slice_tree(unique_ptr<Tree_t> tree,
+                              OttId root_ott_id,
+                              const std::vector<OttId> & tips) {
+    prune_tree(*tree, tips);
     auto root = find_node_by_ott_id(*tree, root_ott_id);
     root->detach_this_node();
     unique_ptr<Tree_t> tree2 (new Tree_t);
@@ -316,6 +339,13 @@ int main(int argc, char* argv[]) {
             OttId root = slice[0];
             slice.erase(slice.begin());
             tree = slice_tree(std::move(tree), root, slice);
+        }
+        if (args.count("prune")) {
+            std::vector<OttId> prune = args["prune"].as<std::vector<OttId> >();
+            if (prune.empty()) {
+                throw OTCError() << "OTT Ids to prune from the tree";
+            }
+            prune_from_tree(*tree, prune);
         }
         if (args.count("high-degree-nodes")) {
             long n = args["high-degree-nodes"].as<long>();

@@ -31,8 +31,7 @@ void throw_ott_id_type_too_small_exception(long);
         return static_cast<OttId>(raw_ott_id);
     }
 #endif
-using OttIdOSet = std::set<OttId>;
-using OttIdSet = OttIdOSet;
+using OttIdSet = std::set<OttId>;
 
 // forward decl
 class RTSplits;

@@ -2,7 +2,9 @@
   "lineage": [
     {
       "conflicts_with": {
-        "xx_1@t2": "node2"
+        "xx_1@t2": [
+          "node2"
+        ]
       },
       "node_id": "mrcaott1ott11",
       "num_tips": 6,
@@ -14,21 +16,21 @@
       "node_id": "ott1001",
       "num_tips": 9,
       "supported_by": {
-        "0.0draft0": "ott1001"
+        "ott0.0draft0": "ott1001"
       },
       "taxon": {
         "name": "ABC",
         "ott_id": 1001,
         "rank": "no rank",
         "tax_sources": [],
-        "uniqname": "ABC"
+        "unique_name": "ABC"
       }
     },
     {
       "node_id": "ott1000000",
       "num_tips": 9,
       "supported_by": {
-        "0.0draft0": "ott1000000"
+        "ott0.0draft0": "ott1000000"
       },
       "taxon": {
         "name": "Exampleroot",
@@ -38,7 +40,7 @@
           "ncbi:10239",
           "gbif:8"
         ],
-        "uniqname": "Exampleroot"
+        "unique_name": "Exampleroot"
       },
       "was_constrained": true,
       "was_uncontested": true
@@ -47,8 +49,8 @@
   "node_id": "ott100",
   "num_tips": 3,
   "source_id_map": {
-    "0.0draft0": {
-      "taxonomy": "0.0draft0"
+    "ott0.0draft0": {
+      "taxonomy": "ott0.0draft0"
     },
     "xx_1@t1": {
       "git_sha": "0",
@@ -62,7 +64,7 @@
     }
   },
   "supported_by": {
-    "0.0draft0": "ott100"
+    "ott0.0draft0": "ott100"
   },
   "synth_id": "<UNKNOWN>",
   "taxon": {
@@ -70,7 +72,7 @@
     "ott_id": 100,
     "rank": "no rank",
     "tax_sources": [],
-    "uniqname": "A"
+    "unique_name": "A"
   },
   "terminal": {
     "xx_1@t1": "node3",

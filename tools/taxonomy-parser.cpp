@@ -55,6 +55,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     options_description selection("Selection options");
     selection.add_options()
+    ("cull-flags",value<string>(),"Show records with none of these flags")
     ("any-flags",value<string>(),"Show records with one of these flags")
     ("all-flags",value<string>(),"Show records with all of these flags")
     ("in-tree",value<string>(),"Show records from OTT ids in tree")
@@ -186,8 +187,9 @@ void show_taxonomy_ids(const Taxonomy& taxonomy,
     for(auto id: ids) {
         try {
             auto& rec = taxonomy.record_from_id(id);
-            if (flags_match(rec.flags))
-            std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+            if (flags_match(rec.flags)) {
+                std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+            }
         } catch (...) {
             std::cerr << "id=" << id << ": not in taxonomy!\n";
         }
@@ -211,6 +213,11 @@ std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
     } else if (all_flags.any()) {
         return [all_flags](tax_flags flags) { return (flags&all_flags)==all_flags; };
     } else {
+        if (args.count("cull-flags")) {
+            tax_flags cull_flags;
+            cull_flags = flags_from_string(args["cull-flags"].as<string>());
+            return [cull_flags](tax_flags flags) { return ! ((flags&cull_flags).any()); };
+        }
         return [](tax_flags){return true;};
     }
 }
@@ -239,6 +246,14 @@ int main(int argc, char* argv[]) {
             show_taxonomy_ids(taxonomy, format, ids, flags_match);
             return 0;
         } else if (args.count("any-flags") or args.count("all-flags")) {
+            string format=args["format"].as<string>();
+            for(const auto& rec: taxonomy) {
+                if (flags_match(rec.flags)) {
+                    std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+                }
+            }
+            return 0;
+        } else if (args.count("cull-flags")) {
             string format=args["format"].as<string>();
             for(const auto& rec: taxonomy) {
                 if (flags_match(rec.flags)) {

@@ -7,10 +7,10 @@
       "name": "A1",
       "ott_id": 1,
       "rank": "no rank",
-      "source": "0.0draft0",
+      "source": "ott0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "A1"
+      "unique_name": "A1"
     },
     {
       "flags": [],
@@ -19,10 +19,10 @@
       "name": "A2",
       "ott_id": 2,
       "rank": "no rank",
-      "source": "0.0draft0",
+      "source": "ott0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "A2"
+      "unique_name": "A2"
     },
     {
       "flags": [],
@@ -31,10 +31,10 @@
       "name": "A3",
       "ott_id": 3,
       "rank": "no rank",
-      "source": "0.0draft0",
+      "source": "ott0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "A3"
+      "unique_name": "A3"
     }
   ],
   "flags": [],
@@ -48,10 +48,10 @@
       "name": "ABC",
       "ott_id": 1001,
       "rank": "no rank",
-      "source": "0.0draft0",
+      "source": "ott0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "ABC"
+      "unique_name": "ABC"
     },
     {
       "flags": [],
@@ -60,20 +60,20 @@
       "name": "Exampleroot",
       "ott_id": 1000000,
       "rank": "no rank",
-      "source": "0.0draft0",
+      "source": "ott0.0draft0",
       "synonyms": [],
       "tax_sources": [
         "ncbi:10239",
         "gbif:8"
       ],
-      "uniqname": "Exampleroot"
+      "unique_name": "Exampleroot"
     }
   ],
   "name": "A",
   "ott_id": 100,
   "rank": "no rank",
-  "source": "0.0draft0",
+  "source": "ott0.0draft0",
   "synonyms": [],
   "tax_sources": [],
-  "uniqname": "A"
+  "unique_name": "A"
 }

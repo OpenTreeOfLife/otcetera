@@ -3,11 +3,15 @@
 #include "ws/tolwsadaptors.h"
 #include "otc/conflict.h"
 #include "otc/tree_operations.h"
+#include <boost/optional.hpp>
 INITIALIZE_EASYLOGGINGPP
+
 
 using namespace std;
 using namespace boost::property_tree;
 using json=nlohmann::json;
+
+using boost::optional;
 
 namespace otc {
 const int OK = restbed::OK;
@@ -21,7 +25,7 @@ void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json 
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["tax_sources"] = taxon_data.get_sources_json();
     taxonrepr["name"] = string(taxon_data.get_nonuniqname());
-    taxonrepr["uniqname"] = get_taxon_unique_name(nd_taxon);
+    taxonrepr["unique_name"] = get_taxon_unique_name(nd_taxon);
     taxonrepr["rank"] = taxon_data.get_rank();
     taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
 }
@@ -41,9 +45,63 @@ inline string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
     return (nd.has_ott_id() ? ott_id_to_idstr(nd.get_ott_id()) : nd.get_name());
 }
 
-void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr) {
+string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+{
+    if (not nd.has_ott_id())
+	throw OTCError()<<"Node "<<nd.get_name()<<" has no OTT id";
+
+    auto id = nd.get_ott_id();
+    auto nd_taxon = taxonomy.included_taxon_from_id(id);
+    auto& taxon_data = nd_taxon->get_data();
+    return string(taxon_data.get_nonuniqname());
+}
+
+// Corresponds to getNamesOfRepresentativeDescendants( ) in treemachine/src/main/java/opentree/GraphExplorer.java
+// FIXME - Clean up to eliminate recursive calls.
+// FIXME - Looking at more names on each level seems better because it would find higher-ranking descendant names
+//       - is there a reason we weren't doing this?  e.g. scanning all children could go too slow?
+// FIXME - We could cache representative descendants (which takes memory) if too slow.
+json get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+{
+    json names = json::array();
+    if (nd.has_children())
+    {
+	auto first = nd.get_first_child();
+	auto last  = nd.get_last_child();
+	if (first->has_ott_id())
+	    names.push_back(taxon_nonuniquename(taxonomy, *first));
+	else
+	{
+	    auto names2 = get_descendant_names(taxonomy, *first);
+	    if (not names2.empty())
+		names.push_back(names2[0]);
+	}
+
+	if (last != first)
+	{
+	    if (last->has_ott_id())
+		names.push_back(taxon_nonuniquename(taxonomy, *last));
+	    else
+	    {
+		auto names3 = get_descendant_names(taxonomy, *last);
+		if (not names3.empty())
+		    names.push_back(names3.back());
+	    }
+	}
+    }
+    return names;
+}
+
+// Corresponds to getNodeBlob( ) and getNodeBlobArguson( ) in treemachine/src/main/java/opentree/GraphExplorer.java
+void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd, json & noderepr, bool is_arguson = false) {
     noderepr["node_id"] = node_id_for_summary_tree_node(nd);
-    noderepr["num_tips"] = nd.get_data().num_tips;
+
+    // The number of descendant tips (.e.g not including this node).
+    if (nd.is_tip())
+	noderepr["num_tips"] = 0;
+    else
+	noderepr["num_tips"] = nd.get_data().num_tips;
+
     if (nd.has_ott_id()) {
         auto nd_id = nd.get_ott_id();
         const auto * nd_taxon = taxonomy.included_taxon_from_id(nd_id);
@@ -54,20 +112,35 @@ void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd
         add_taxon_info(taxonomy, *nd_taxon, taxon);
         noderepr["taxon"] = taxon;
     }
+    else if (is_arguson)
+	noderepr["descendant_name_list"] = get_descendant_names(taxonomy, nd);
 }
 
-inline void add_str_to_str_or_vec_string(json & o, const string * first, const string * second) {
-    const char * studyc = first->c_str();
+inline void add_str_to_vec_string(json & o, const string& first, const string& second) {
+    const char * studyc = first.c_str();
+    if (not o.count(studyc))
+	o[studyc] = json::array();
+    o[studyc].push_back(second);
+}
+
+inline void add_str_to_str(json & o, const string& first, const string& second) {
+    const char * studyc = first.c_str();
+    assert(not o.count(studyc) or o[studyc].get<string>() == second);
+    o[studyc] = second;
+}
+
+inline void add_str_to_str_or_vec_string(json & o, const string& first, const string& second) {
+    const char * studyc = first.c_str();
     if (o.count(studyc)) {
         if (o[studyc].is_array()) {
-            o[studyc].push_back(*second);
+            o[studyc].push_back(second);
         } else {
             string prev = o[studyc].get<string>();
-            json v = {prev, *second};
+            json v = {prev, second};
             o[studyc] = v;
         }
     } else {
-        o[studyc] = *second;
+        o[studyc] = second;
     }
 }
 
@@ -76,16 +149,34 @@ void add_support_info_vec(const char * tag,
                           const vec_src_node_ids & v,
                           json & noderepr,
                           set<string> & usedSrcIds,
-                          const string * extra_src=nullptr,
-                          const string * extra_node_id=nullptr) {
+                          const optional<string>& extra_src = boost::none,
+                          const optional<string>& extra_node_id = boost::none) {
     json o;
     for (const auto & sni : v ) {
         const auto study_node_pair = tts.decode_study_node_id_index(sni);
         usedSrcIds.insert(*study_node_pair.first);
-        add_str_to_str_or_vec_string(o, study_node_pair.first, study_node_pair.second);
+        add_str_to_vec_string(o, study_node_pair.first, study_node_pair.second);
     }
     if (extra_src && extra_node_id) {
-        add_str_to_str_or_vec_string(o, extra_src, extra_node_id);
+        add_str_to_vec_string(o, *extra_src, *extra_node_id);
+    }
+    noderepr[tag] = o;
+}
+
+void add_support_info_single_element(const char * tag,
+				     const vec_src_node_ids & v,
+				     json & noderepr,
+				     set<string> & usedSrcIds,
+				     const optional<string>& extra_src = boost::none,
+				     const optional<string>& extra_node_id = boost::none) {
+    json o;
+    for (const auto & sni : v ) {
+        const auto study_node_pair = tts.decode_study_node_id_index(sni);
+        usedSrcIds.insert(*study_node_pair.first);
+        add_str_to_str(o, study_node_pair.first, study_node_pair.second);
+    }
+    if (extra_src && extra_node_id) {
+        add_str_to_str(o, *extra_src, *extra_node_id);
     }
     noderepr[tag] = o;
 }
@@ -96,16 +187,15 @@ void add_node_support_info(const TreesToServe & tts,
                            json & noderepr,
                            set<string> & usedSrcIds) {
     const auto & d = nd.get_data();
-    const string * extra_src = nullptr;
-    const string * extra_node_id = nullptr;
+    optional<string> extra_src;
+    optional<string> extra_node_id;
     string tmp;
     if (nd.has_ott_id()) {
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
-        extra_src = &(taxonomy.get_version());
-        tmp = node_id_for_summary_tree_node(nd);
-        extra_node_id = &tmp;
-        usedSrcIds.insert(taxonomy.get_version());
+        extra_src = string("ott") + taxonomy.get_version();
+        extra_node_id = node_id_for_summary_tree_node(nd);
+        usedSrcIds.insert(*extra_src);
     }
 
 #if defined(JOINT_MAPPING_VEC)
@@ -118,30 +208,36 @@ void add_node_support_info(const TreesToServe & tts,
         const auto study_node_pair = tts.decode_study_node_id_index(el.second);
         usedSrcIds.insert(*study_node_pair.first);
         switch (el.first) {
+	    // array
             case SourceEdgeMappingType::CONFLICTS_WITH_MAPPING:
-                add_str_to_str_or_vec_string(conflicts_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_vec_string(conflicts_j, *study_node_pair.first, *study_node_pair.second);
                 had_conflicts = true;
                 break;
-            case SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING:
-                add_str_to_str_or_vec_string(partial_path_j, study_node_pair.first, study_node_pair.second);
+	    // single element
+	    case SourceEdgeMappingType::PARTIAL_PATH_OF_MAPPING:
+                add_str_to_str(partial_path_j, *study_node_pair.first, *study_node_pair.second);
                 had_partial_path = true;
                 break;
+	    // single element
             case SourceEdgeMappingType::RESOLVES_MAPPING:
-                add_str_to_str_or_vec_string(resolves_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str(resolves_j, *study_node_pair.first, *study_node_pair.second);
                 had_resolves = true;
                 break;
+	    // single element
             case SourceEdgeMappingType::SUPPORTED_BY_MAPPING:
-                add_str_to_str_or_vec_string(supported_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str(supported_j, *study_node_pair.first, *study_node_pair.second);
                 had_supported = true;
                 break;
+	    // single element
             case SourceEdgeMappingType::TERMINAL_MAPPING:
-                add_str_to_str_or_vec_string(terminal_j, study_node_pair.first, study_node_pair.second);
+                add_str_to_str(terminal_j, *study_node_pair.first, *study_node_pair.second);
                 had_terminal = true;
                 break;
+	    // resolved_by: array
         }
     }
     if (extra_src && extra_node_id) {
-        add_str_to_str_or_vec_string(supported_j, extra_src, extra_node_id);
+        add_str_to_str(supported_j, *extra_src, *extra_node_id);
         had_supported = true;
     }
     if (had_conflicts) {
@@ -161,20 +257,20 @@ void add_node_support_info(const TreesToServe & tts,
     }
 
 #else
-    if (extra_src != nullptr || !d.supported_by.empty()) {
-        add_support_info_vec("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
+    if (extra_src || !d.supported_by.empty()) {
+        add_support_info_single_element("supported_by", d.supported_by, noderepr, usedSrcIds, extra_src, extra_node_id);
     }
     if (!d.conflicts_with.empty()) {
         add_support_info_vec("conflicts_with", d.conflicts_with, noderepr, usedSrcIds);
     }
     if (!d.resolves.empty()) {
-        add_support_info_vec("resolves", d.resolves, noderepr, usedSrcIds);
+        add_support_info_single_element("resolves", d.resolves, noderepr, usedSrcIds);
     }
     if (!d.partial_path_of.empty()) {
-        add_support_info_vec("partial_path_of", d.partial_path_of, noderepr, usedSrcIds);
+        add_support_info_single_element("partial_path_of", d.partial_path_of, noderepr, usedSrcIds);
     }
     if (!d.terminal.empty()) {
-        add_support_info_vec("terminal", d.terminal, noderepr, usedSrcIds);
+        add_support_info_single_element("terminal", d.terminal, noderepr, usedSrcIds);
     }
 #endif
     if (d.was_uncontested) {
@@ -261,6 +357,8 @@ const SumTreeNode_t * find_required_node_by_id_str(const SummaryTree_t & tree,
     return node;
 }
 
+// See API docs at https://github.com/OpenTreeOfLife/germinator/wiki/Synthetic-tree-API-v3
+
 string about_ws_method(const TreesToServe &tts,
                        const SummaryTree_t * tree_ptr,
                        const SummaryTreeAnnotation * sta,
@@ -270,12 +368,13 @@ string about_ws_method(const TreesToServe &tts,
     json response;
     response["date_created"] = sta->date_completed;
     response["num_source_trees"] = sta->num_source_trees;
+    response["num_source_studies"] = sta->num_source_studies;
     response["taxonomy_version"] = sta->taxonomy_version;
     response["filtered_flags"] = sta->filtered_flags_vec;
     response["synth_id"] = sta->synth_id;
     if (include_sources) {
         response["source_id_map"] = sta->full_source_id_map_json;
-        response["sources"] = sta->sources;
+        response["source_list"] = sta->sources;
     }
     json root;
     auto root_node = tree_ptr->get_root();
@@ -295,14 +394,14 @@ string tax_about_ws_method(const RichTaxonomy & taxonomy) {
     response["name"] = "ott";
     weburl = "https://tree.opentreeoflife.org/about/taxonomy-version/ott";
     weburl += taxonomy.get_version_number();
-    response["source"] = taxonomy.get_version();
+    response["source"] = string("ott") + taxonomy.get_version();
     response["version"] = taxonomy.get_version_number();
     response["weburl"] = weburl;
     return response.dump(1);
 }
 
 
-inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonomy & taxonomy, set<string> & usedSrcIds) {
+inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonomy & taxonomy, set<string> & usedSrcIds, bool is_arguson = false) {
     json lineage_arr;
     const SumTreeNode_t * anc = focal->get_parent();
     if (!anc) {
@@ -312,7 +411,7 @@ inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonom
     }
     while (anc) {
         json ancj;
-        add_basic_node_info(taxonomy, *anc, ancj);
+        add_basic_node_info(taxonomy, *anc, ancj, is_arguson);
         add_node_support_info(tts, *anc, ancj, usedSrcIds);
         lineage_arr.push_back(ancj);
         anc = anc->get_parent();
@@ -327,8 +426,8 @@ inline void add_source_id_map(json & j,
     json sim;
     for (auto srcTag : usedSrcIds) {
         json jt;
-        if (srcTag == taxonomy.get_version()) {
-            jt["taxonomy"] = taxonomy.get_version();
+        if (srcTag == string("ott")+taxonomy.get_version()) {
+            jt["taxonomy"] = string("ott")+taxonomy.get_version();
         } else {
             const auto & simentry = sta->source_id_map.at(srcTag);
             jt = simentry;
@@ -530,6 +629,15 @@ inline void writeVisitedNewick(std::ostream & out,
 }
 
 
+json get_supporting_studies(const set<const string*>& study_id_set)
+{
+    json ss_arr = json::array();
+    for (auto study_it_ptr : study_id_set) {
+	ss_arr.push_back(*study_it_ptr);
+    }
+    return ss_arr;
+}
+
 string induced_subtree_ws_method(const TreesToServe & tts,
                  const SummaryTree_t * tree_ptr,
                  const vector<string> & node_id_vec,
@@ -565,20 +673,16 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             cnd = cnd->get_parent(); 
         } 
     }
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    writeVisitedNewick(out, visited, focal, nnsbs);
+
     json response;
-    json ss_arr;
-    {
-        auto locked_taxonomy = tts.get_readable_taxonomy();
-        const auto & taxonomy = locked_taxonomy.first;
-        NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
-        ostringstream out;
-        writeVisitedNewick(out, visited, focal, nnsbs);
-        response["newick"] = out.str();
-        for (auto study_it_ptr : nnsbs.study_id_set) {
-            ss_arr.push_back(*study_it_ptr);
-        }
-    }
-    response["supporting_studies"] = ss_arr;
+    response["newick"] = out.str();
+    response["supporting_studies"] = get_supporting_studies(nnsbs.study_id_set);
     return response.dump(1);
 }
 
@@ -586,23 +690,20 @@ string newick_subtree_ws_method(const TreesToServe & tts,
                                 const SummaryTree_t * tree_ptr,
                                 const string & node_id,
                                 NodeNameStyle label_format, 
+                                bool include_all_node_labels,
                                 int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    ostringstream out;
+    write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, include_all_node_labels, height_limit);
+
     json response;
-    json ss_arr;
-    {
-        auto locked_taxonomy = tts.get_readable_taxonomy();
-        const auto & taxonomy = locked_taxonomy.first;
-        NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
-        ostringstream out;
-        write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, height_limit);
-        response["newick"] = out.str();
-        for (auto study_it_ptr : nnsbs.study_id_set) {
-            ss_arr.push_back(*study_it_ptr);
-        }
-    }
-    response["supporting_studies"] = ss_arr;
+    response["newick"] = out.str();
+    response["supporting_studies"] = get_supporting_studies(nnsbs.study_id_set);
     return response.dump(1);
 }
 
@@ -626,7 +727,7 @@ inline void write_arguson(json & j,
         }
         j["children"] = c_array;
     }
-    add_basic_node_info(taxonomy, *nd, j);
+    add_basic_node_info(taxonomy, *nd, j, true);
     add_node_support_info(tts, *nd, j, usedSrcIds);
 }
 
@@ -645,7 +746,8 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
         write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
-        add_lineage(a, focal, taxonomy, usedSrcIds);
+        add_lineage(a, focal, taxonomy, usedSrcIds, true);
+        add_source_id_map(a, usedSrcIds, taxonomy, sta);
     }
     response["arguson"] = a;
     return response.dump(1);
@@ -656,7 +758,7 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy,
                                 const RTRichTaxNode & nd_taxon,
                                 json & taxonrepr) {
     add_taxon_info(taxonomy, nd_taxon, taxonrepr);
-    taxonrepr["source"] = taxonomy.get_version(); //TBD "source" ?
+    taxonrepr["source"] = string("ott") + taxonomy.get_version(); //TBD "source" ?
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["flags"] = flags_to_string_vec(taxon_data.get_flags());
     json syn_list = json::array();
@@ -747,7 +849,8 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
     int height_limit = -1;
-    write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, height_limit);
+    bool include_all_node_labels = true; // ??
+    write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, include_all_node_labels, height_limit);
     response["newick"] = out.str();
     return response.dump(1);
 }
