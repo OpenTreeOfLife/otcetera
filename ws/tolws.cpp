@@ -1134,7 +1134,23 @@ json get_phylesystem_study(const string& study_id)
     return *j;
 }
 
-json get_phylesystem_tree(const string& study_id, const string& tree_id)
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java#120
+template<typename T>
+std::unique_ptr<T> nexson_get_tree(const json& treeson, const json& otus)
+{
+
+}
+
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java#57
+json nexson_get_otus(const json& study)
+{
+    json nexmlContent = study["nexml"];
+    json otusById = nexmlContent["otusById"];
+}
+
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L266
+template<typename T>
+std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id)
 {
     // if the study is not found, I think this throws an exception...
     auto study = get_phylesystem_study(study_id);
@@ -1142,37 +1158,47 @@ json get_phylesystem_tree(const string& study_id, const string& tree_id)
     if (not study.count(tree_id))
 	throw OTCBadRequest()<<"Tree '"<<tree_id<<"' not bound in study '"<<study_id<<"'";
 
-    auto jtree = study[tree_id];
+    json jtree = study[tree_id];
 
-    return jtree;
+    json otus = nexson_get_otus(study);
+
+    auto tree = nexson_get_tree<T>(jtree, otus);
+    tree->set_name(study_id+"@"+tree_id);
+
+    return tree;
 }
 
-// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/conflict/ConflictAnalysis.java
 // HTTP requests: https://github.com/Corvusoft/restbed/blob/master/example/https_client/source/verify_none.cpp
 
-string get_phylesystem_tree(const string& study_tree)
+
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L242, specToTree(,)
+template<typename T>
+std::unique_ptr<T> get_phylesystem_tree(const string& study_tree)
 {
-// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L242  about  specToTree( )
+    // 1. Determine if delimiter is '#' or '@'
     char delim = '#';
     if (study_tree.find('@') != std::string::npos)
 	delim = '@';
 
-    auto parts = split_string(study_tree, delim);
+    // 2. Decompose study_tree into study@tree
+    list<string> parts_list = split_string(study_tree, delim);
+    vector<string> parts;
+    parts.insert(parts.end(), parts_list.begin(), parts_list.end());
 
-// get otus = Nexson.getOtus(study)
-    // if no otus, throw exception that there are no otus.
+    if (parts.size() != 2)
+	throw OTCBadRequest()<<"Expected study@tree or study@tree, but got '"<<study_tree<<"'";
 
-    // Nexson.importTree( )
+    // 3. Get the study tree from phylesystem
+    return get_source_tree<T>(parts[0], parts[1]);
 }
-
 
 string phylesystem_conflict_ws_method(const SummaryTree_t& summary,
 				      const RichTaxonomy & taxonomy,
 				      const string& tree1s,
 				      const string& tree2s)
 {
-    auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
+    auto query_tree = get_phylesystem_tree<ConflictTree>(tree1s);
 
     // 1. Check that all leaves have OTT ids
     for(auto leaf: iter_leaf(*query_tree))
