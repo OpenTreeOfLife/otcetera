@@ -1102,6 +1102,9 @@ static string studybase = "https://api.opentreeoflife.org/v3/study/";
 // reference-taxonomy also caches a single study.  We could add a use_cache argument to do the same.
 json get_phylesystem_study(const string& study_id)
 {
+    LOG(WARNING)<<"getting phylesystem study '"<<study_id<<"'";
+
+    // 1. Construct request
     using namespace restbed;
     Uri uri( studybase + study_id );
 
@@ -1112,18 +1115,39 @@ json get_phylesystem_study(const string& study_id)
 //    request->set_query_parameter( "output_nexml2json", "1.2.1" );
 //    request->set_query_parameter( "auth_token", "ANONYMOUS" );
 
+    // 2. Send request
+    LOG(WARNING)<<"reading uri "<<uri.to_string();
     auto response = Http::sync( request );
+
+    LOG(WARNING)<<"got HERE ";
 
     if (response->get_status_code() != 200)
 	throw OTCBadRequest()<<"GET '"<<uri.to_string()<<"' yielded "<<response->get_status_code();
 
-    auto length = response->get_header( "Content-Length", 0 );
+    for ( const auto header : response->get_headers( ) )
+        LOG(WARNING)<<"Header '"<<header.first.data()<<"' > '"<<header.second.data()<<"'";
 
-    Http::fetch( length, response );
+    // 3. Read request
+    if (response->has_header("Transfer-Encoding"))
+    {
+	LOG(WARNING)<<"got HERE 2a";
+	Http::fetch("\r\n", response);
+    }
+    else
+    {
+	LOG(WARNING)<<"got HERE 2b";
+	auto length = response->get_header( "Content-Length", 0 );
+	Http::fetch(length, response);
+    }
 
+    LOG(WARNING)<<"Body: '"<<response->get_body().data()<<"'";
+    
+    // 4. Convert quest to JSON
     auto j = parse_body( response->get_body().data() );
     if (not j)
 	throw OTCBadRequest()<<"Could not parse JSON for study "<<study_id;
+
+    LOG(WARNING)<<"got JSON '"<<j->dump(1)<<"'";
 
     if (not j->count("data"))
 	throw OTCBadRequest()<<"No 'data' property in response to GET "<<uri.to_string();
@@ -1131,7 +1155,7 @@ json get_phylesystem_study(const string& study_id)
     j = (*j)["data"];
 
     if (not j->count("nexml"))
-	throw OTCBadRequest()<<"No 'data' property in json data blob from "<<uri.to_string();
+	throw OTCBadRequest()<<"No 'nexml' property in json data blob from "<<uri.to_string();
 
     return *j;
 }
@@ -1154,6 +1178,8 @@ json nexson_get_otus(const json& study)
 template<typename T>
 std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id)
 {
+    LOG(WARNING)<<"getting phylesystem tree '"<<study_id<<"' '"<<tree_id<<"'";
+
     // if the study is not found, I think this throws an exception...
     auto study = get_phylesystem_study(study_id);
 
@@ -1200,6 +1226,7 @@ string phylesystem_conflict_ws_method(const SummaryTree_t& summary,
 				      const string& tree1s,
 				      const string& tree2s)
 {
+    LOG(WARNING)<<"phylesystem conflict: tree1s = '"<<tree1s<<"'   tree1s = '"<<tree2s<<"'";
     auto query_tree = get_phylesystem_tree<ConflictTree>(tree1s);
 
     // 1. Check that all leaves have OTT ids
