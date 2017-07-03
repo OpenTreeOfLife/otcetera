@@ -1107,8 +1107,10 @@ json get_phylesystem_study(const string& study_id)
 
     auto request = make_shared< Request >( uri );
     request->set_header( "Accept", "*/*" );
-//    request->set_header( "Host", "www.google.co.nz" );
-    request->set_query_parameter( "output_nexml2json", "1.2.1" );
+    request->set_header( "Host", "api.opentreeoflife.org" );
+    request->set_header( "User-Agent", "otc-tol-ws" );
+//    request->set_query_parameter( "output_nexml2json", "1.2.1" );
+//    request->set_query_parameter( "auth_token", "ANONYMOUS" );
 
     auto response = Http::sync( request );
 
