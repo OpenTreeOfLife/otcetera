@@ -320,20 +320,16 @@ class TreesToServe {
             fill_ott_id_set(cleaning_flags, ott_id_set, suppressed_id_set);
 
             assert(taxonomy_ptr != nullptr);
+
+	    // Load tree from file
             ParsingRules parsingRules;
             parsingRules.ott_id_validator = &ott_id_set;
             parsingRules.include_internal_nodes_in_des_id_sets = true;
             parsingRules.set_ott_idForInternals = true;
             parsingRules.require_ott_ids = true;
             parsingRules.set_ott_ids = true;
-            std::ifstream inp;
-            if (!open_utf8_file(filename, inp)) {
-                throw OTCError("Could not open \"" + filename + "\"");
-            }
-            LOG(INFO) << "reading \"" << filename << "\"...";
-            ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
-            FilePosStruct pos(filenamePtr);
-            std::unique_ptr<SummaryTree_t> nt = read_next_newick<SummaryTree_t>(inp, pos, parsingRules);
+            std::unique_ptr<SummaryTree_t> nt = first_newick_tree_from_file<SummaryTree_t>(filename, parsingRules);
+
             index_by_name_or_id(*nt);
             set_traversal_entry_exit_and_num_tips(*nt);
             tree_list.push_back(move(nt));
