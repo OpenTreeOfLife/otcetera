@@ -1187,6 +1187,8 @@ std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id
 
     LOG(WARNING)<<"study = '"<<study.dump(1)<<"'";
 
+    // Actually, we are looking for study_id["nexml"]["treesbyid"][tree_id]
+
     if (not study.count(tree_id))
 	throw OTCBadRequest()<<"Tree '"<<tree_id<<"' not bound in study '"<<study_id<<"'";
 
