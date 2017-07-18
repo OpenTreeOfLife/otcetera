@@ -1119,35 +1119,37 @@ json get_phylesystem_study(const string& study_id)
     LOG(WARNING)<<"reading uri "<<uri.to_string();
     auto response = Http::sync( request );
 
-    LOG(WARNING)<<"got HERE ";
-
-    if (response->get_status_code() != 200)
-	throw OTCBadRequest()<<"GET '"<<uri.to_string()<<"' yielded "<<response->get_status_code();
+    LOG(WARNING)<<"Status Code:    "<<response->get_status_code()<<"\n";
+    LOG(WARNING)<<"Status Message: "<<response->get_status_message().data()<<"\n";
+    LOG(WARNING)<<"HTTP Version:   "<<response->get_version()<<"\n";
+    LOG(WARNING)<<"HTTP Protocol:  "<<response->get_protocol().data()<<"\n";
 
     for ( const auto header : response->get_headers( ) )
         LOG(WARNING)<<"Header '"<<header.first.data()<<"' > '"<<header.second.data()<<"'";
+
+    if (response->get_status_code() != 200)
+	throw OTCBadRequest()<<"GET '"<<uri.to_string()<<"' yielded "<<response->get_status_code();
 
     // 3. Read request
     if (response->has_header("Transfer-Encoding"))
     {
 	LOG(WARNING)<<"got HERE 2a";
 	Http::fetch("\r\n", response);
+	LOG(WARNING)<<"got HERE 2a.  response has length "<<response->get_body().size();
     }
     else
     {
-	LOG(WARNING)<<"got HERE 2b";
 	auto length = response->get_header( "Content-Length", 0 );
+	LOG(WARNING)<<"got HERE 2b.  Content-Length = "<<length;
+
 	Http::fetch(length, response);
+	LOG(WARNING)<<"got HERE 2b.  response has length "<<response->get_body().size();
     }
 
-    LOG(WARNING)<<"Body: '"<<response->get_body().data()<<"'";
-    
     // 4. Convert quest to JSON
-    auto j = parse_body( response->get_body().data() );
+    auto j = parse_body( response->get_body() );
     if (not j)
 	throw OTCBadRequest()<<"Could not parse JSON for study "<<study_id;
-
-    LOG(WARNING)<<"got JSON '"<<j->dump(1)<<"'";
 
     if (not j->count("data"))
 	throw OTCBadRequest()<<"No 'data' property in response to GET "<<uri.to_string();
@@ -1155,7 +1157,7 @@ json get_phylesystem_study(const string& study_id)
     j = (*j)["data"];
 
     if (not j->count("nexml"))
-	throw OTCBadRequest()<<"No 'nexml' property in json data blob from "<<uri.to_string();
+	throw OTCBadRequest()<<"No 'nexml' property in JSON data blob from "<<uri.to_string();
 
     return *j;
 }
@@ -1182,6 +1184,8 @@ std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id
 
     // if the study is not found, I think this throws an exception...
     auto study = get_phylesystem_study(study_id);
+
+    LOG(WARNING)<<"study = '"<<study.dump(1)<<"'";
 
     if (not study.count(tree_id))
 	throw OTCBadRequest()<<"Tree '"<<tree_id<<"' not bound in study '"<<study_id<<"'";
