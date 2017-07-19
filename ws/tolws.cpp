@@ -19,7 +19,7 @@ extern TreesToServe tts;
 
 inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
     return nd_taxon.get_name();
-} 
+}
 
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.get_data();
@@ -1096,9 +1096,10 @@ string newick_conflict_ws_method(const SummaryTree_t& summary,
     throw OTCBadRequest() << "tree2 = '" << tree2s << "' not recognized!";
 }
 
+// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L285
+
 // This should probably be a parameter
 static string studybase = "https://api.opentreeoflife.org/v3/study/";
-
 // reference-taxonomy also caches a single study.  We could add a use_cache argument to do the same.
 json get_phylesystem_study(const string& study_id)
 {
@@ -1106,7 +1107,7 @@ json get_phylesystem_study(const string& study_id)
 
     // 1. Construct request
     using namespace restbed;
-    Uri uri( studybase + study_id );
+    Uri uri( studybase + study_id + "?output_nexml2json=1.2.1");
 
     auto request = make_shared< Request >( uri );
     request->set_header( "Accept", "*/*" );
