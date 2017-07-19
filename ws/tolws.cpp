@@ -1163,11 +1163,30 @@ json get_phylesystem_study(const string& study_id)
     return *j;
 }
 
+json treeson_from_nexson(const json& nexson, const string& treeid)
+{
+    if (not nexson.count("nexml"))
+	throw OTCError()<<"No 'nexml' element in json blob";
+    auto nexml = nexson["nexml"];
+
+    if (not nexml.count("treesById"))
+	throw OTCError()<<"No 'treesById' element in nexml element";
+    auto treesById = nexml["treesById"];
+
+    for(auto& x_value: treesById)
+    {
+	auto trees = x_value["treeById"];
+	if (trees.count(treeid))
+	    return trees[treeid];
+    }
+    throw OTCError()<<"No tree '"<<treeid<<"' found in study";
+}
+
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java#120
 template<typename T>
-std::unique_ptr<T> nexson_get_tree(const json& treeson, const json& otus)
+std::unique_ptr<T> treeson_get_tree(const json& treeson, const json& otus)
 {
-
+    std::abort();
 }
 
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java#57
@@ -1175,6 +1194,7 @@ json nexson_get_otus(const json& study)
 {
     json nexmlContent = study["nexml"];
     json otusById = nexmlContent["otusById"];
+    std::abort();
 }
 
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L266
@@ -1186,18 +1206,15 @@ std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id
     // if the study is not found, I think this throws an exception...
     auto study = get_phylesystem_study(study_id);
 
-    LOG(WARNING)<<"study = '"<<study.dump(1)<<"'";
+//    LOG(WARNING)<<"study = '"<<study.dump(1)<<"'";
 
     // Actually, we are looking for study_id["nexml"]["treesbyid"][tree_id]
 
-    if (not study.count(tree_id))
-	throw OTCBadRequest()<<"Tree '"<<tree_id<<"' not bound in study '"<<study_id<<"'";
-
-    json jtree = study[tree_id];
+    json treeson = treeson_from_nexson(study,tree_id);
 
     json otus = nexson_get_otus(study);
 
-    auto tree = nexson_get_tree<T>(jtree, otus);
+    auto tree = treeson_get_tree<T>(treeson, otus);
     tree->set_name(study_id+"@"+tree_id);
 
     return tree;
