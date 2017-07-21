@@ -17,6 +17,17 @@ namespace otc {
 const int OK = restbed::OK;
 extern TreesToServe tts;
 
+    optional<json> lookup(const json& j, const string& s)
+    {
+	auto x = j.find(s);
+	if (x == j.end())
+	    return boost::none;
+	else
+	    return *x;
+    }
+
+
+
 inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
     return nd_taxon.get_name();
 }
@@ -1103,12 +1114,15 @@ static string studybase = "https://api.opentreeoflife.org/v3/study/";
 // reference-taxonomy also caches a single study.  We could add a use_cache argument to do the same.
 json get_phylesystem_study(const string& study_id)
 {
+    using namespace restbed;
+
     LOG(WARNING)<<"getting phylesystem study '"<<study_id<<"'";
 
-    // 1. Construct request
-    using namespace restbed;
-    Uri uri( studybase + study_id + "?output_nexml2json=1.2.1");
+    // 0. Construct session
+    auto session = make_shared< Session > ("");
 
+    // 1. Construct request
+    Uri uri( studybase + study_id + "?output_nexml2json=1.2.1");
     auto request = make_shared< Request >( uri );
     request->set_header( "Accept", "*/*" );
     request->set_header( "Host", "api.opentreeoflife.org" );
@@ -1118,7 +1132,9 @@ json get_phylesystem_study(const string& study_id)
 
     // 2. Send request
     LOG(WARNING)<<"reading uri "<<uri.to_string();
+//    session->send(request, 
     auto response = Http::sync( request );
+
 
     LOG(WARNING)<<"Status Code:    "<<response->get_status_code()<<"\n";
     LOG(WARNING)<<"Status Message: "<<response->get_status_message().data()<<"\n";
@@ -1134,8 +1150,19 @@ json get_phylesystem_study(const string& study_id)
     // 3. Read request
     if (response->has_header("Transfer-Encoding"))
     {
+        // https://github.com/Corvusoft/restbed/blob/master/example/transfer_encoding_request/source/example.cpp
 	LOG(WARNING)<<"got HERE 2a";
 	Http::fetch("\r\n", response);
+	const auto & data = response->get_body();
+	if (not data.empty())
+	{
+	    const string length (data.begin(), data.end());
+	    if (length != "0\r\n")
+	    {
+		const auto chunk_size = stoul(length, nullptr, 16) + strlen("\r\n");
+		LOG(WARNING)<<"chunk size = "<<chunk_size;
+	    }
+	}
 	LOG(WARNING)<<"got HERE 2a.  response has length "<<response->get_body().size();
     }
     else
@@ -1163,38 +1190,96 @@ json get_phylesystem_study(const string& study_id)
     return *j;
 }
 
-json treeson_from_nexson(const json& nexson, const string& treeid)
+// See extract_tree_nexson in peyotl/nexson_syntax/__init__.py
+pair<json,json> extract_tree_nexson(const json& nexson, const string& treeid)
 {
     if (not nexson.count("nexml"))
 	throw OTCError()<<"No 'nexml' element in json blob";
-    auto nexml = nexson["nexml"];
+    auto nexml_el = nexson["nexml"];
 
-    if (not nexml.count("treesById"))
+    if (not nexml_el.count("treesById"))
 	throw OTCError()<<"No 'treesById' element in nexml element";
-    auto treesById = nexml["treesById"];
+    json tree_groups = nexml_el["treesById"];
 
-    for(auto& x_value: treesById)
+    for(auto& tree_group: tree_groups)
     {
-	auto trees = x_value["treeById"];
-	if (trees.count(treeid))
-	    return trees[treeid];
+	auto trees = tree_group["treeById"];
+	if (not trees.count(treeid)) continue;
+
+	auto tree = trees[treeid];
+	auto otu_groups = nexml_el["otusById"];
+	string ogi = tree_group["@otus"];
+	auto otu_group = otu_groups[ogi]["otuById"];
+	return {tree, otu_group};
     }
     throw OTCError()<<"No tree '"<<treeid<<"' found in study";
 }
 
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java#120
 template<typename T>
-std::unique_ptr<T> treeson_get_tree(const json& treeson, const json& otus)
+std::unique_ptr<T> treeson_get_tree(const json& tree, const json& otus)
 {
-    std::abort();
-}
+    // 1. Create objects for nodes
+    auto nodes = tree["nodeById"];
+    std::map<string, typename T::node_type*> node_ptrs;
+    typename T::node_type* root = nullptr;
+    for(auto x = nodes.begin(); x != nodes.end(); x++)
+    {
+	auto node = new typename T::node_type(nullptr);
+	if (x.value().count("@root"))
+	    root = node;
 
-// https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java#57
-json nexson_get_otus(const json& study)
-{
-    json nexmlContent = study["nexml"];
-    json otusById = nexmlContent["otusById"];
-    std::abort();
+	if (x.value().count("@otu"))
+	{
+	    string otuid = x.value()["@otu"];
+	    json otu = otus[otuid];
+	    if (otu.count("^ot:ottId"))
+	    {
+		OttId id = otu["^ot:ottId"];
+		node->set_ott_id(id);
+	    }
+	    if (otu.count("^ot:originalLabel"))
+	    {
+		string label = otu["^ot:originalLabel"];
+		node->set_name(label);
+	    }
+	}
+
+	node_ptrs.insert({x.key(), node});
+    }
+
+    // 2. Connect source node to target node for each edge
+    auto edges = tree["edgeBySourceId"];
+    for(auto x = edges.begin(); x != edges.end(); x++)
+    {
+	const string sourceid = x.key();
+	auto source = node_ptrs.at(sourceid);
+	// x.value is an object where the keys are edge names and the values are @length
+	for(auto& edge: x.value())
+	{
+	    const string targetid = edge["@target"];
+	    auto target = node_ptrs.at(targetid);
+	    source->add_child(target);
+	}
+    }
+
+    std::unique_ptr<T> the_tree(new T);
+    the_tree->_set_root(root);
+
+/*
+    auto ingroup_node_id = lookup(tree, "^ot:inGroupClade");
+    optional<string> root_id;
+    if (ingroup_node_id)
+	root_id = ingroup_node_id;
+    else
+	root_id = lookup(tree,"^ot:rootNodeId");
+    auto edges = tree["edgeBySourceId"];
+    auto nodes = tree["nodeById"];
+
+    // If there is no root, the return a null tree
+    if (not root_id or not edges.count(*root_id)) return {};
+*/
+    return the_tree;
 }
 
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L266
@@ -1208,13 +1293,9 @@ std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id
 
 //    LOG(WARNING)<<"study = '"<<study.dump(1)<<"'";
 
-    // Actually, we are looking for study_id["nexml"]["treesbyid"][tree_id]
+    pair<json,json> tree_and_otus = extract_tree_nexson(study, tree_id);
 
-    json treeson = treeson_from_nexson(study,tree_id);
-
-    json otus = nexson_get_otus(study);
-
-    auto tree = treeson_get_tree<T>(treeson, otus);
+    auto tree = treeson_get_tree<T>(tree_and_otus.first, tree_and_otus.second);
     tree->set_name(study_id+"@"+tree_id);
 
     return tree;
