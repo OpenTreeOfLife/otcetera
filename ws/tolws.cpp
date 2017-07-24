@@ -1054,11 +1054,55 @@ bool has_internal_node_names(const T& t) {
     return true;
 }
 
+template <typename Tree>
+pair<int,int> prune_unmapped_leaves(Tree& tree)
+{
+    int mapped_leaves = 0;
+    int unmapped_leaves = 0;
+    vector<typename Tree::node_type*> leaves;
+    for(auto leaf: iter_leaf(tree))
+	if (not leaf->has_ott_id())
+	{
+	    leaves.push_back(leaf);
+	    unmapped_leaves++;
+	}
+	else
+	    mapped_leaves++;
+
+    for(auto leaf: leaves)
+    {
+	while (leaf and leaf->is_tip())
+	{
+	    auto parent = leaf->get_parent();
+	    if (parent)
+	    {
+		leaf->detach_this_node();
+		delete leaf;
+		leaf = parent;
+	    }
+	    else
+	    {
+		delete leaf;
+		tree._set_root(nullptr);
+	    }
+	}
+	assert(tree.get_root());
+    }
+    return {mapped_leaves, unmapped_leaves};
+}
+
+
+
 string conflict_ws_method(const SummaryTree_t& summary,
 			  const RichTaxonomy & taxonomy,
 			  std::unique_ptr<ConflictTree>& query_tree,
 			  const string& tree2s)
 {
+    // 0. Remove unmapped leaves.
+    auto leaf_counts = prune_unmapped_leaves(*query_tree);
+    if (leaf_counts.first < 3)
+	throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
+
     // 1. Check that all leaves have OTT ids
     for(auto leaf: iter_leaf(*query_tree))
 	if (not leaf->has_ott_id())

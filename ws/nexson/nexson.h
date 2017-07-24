@@ -30,6 +30,7 @@ std::unique_ptr<T> treeson_get_tree(const nlohmann::json& tree, const nlohmann::
 	if (x.value().count("@root"))
 	    root = node;
 
+	node->set_name(x.key());
 	if (x.value().count("@otu"))
 	{
 	    string otuid = x.value()["@otu"];
@@ -44,8 +45,6 @@ std::unique_ptr<T> treeson_get_tree(const nlohmann::json& tree, const nlohmann::
 		string label = otu["^ot:originalLabel"];
 		node->set_name(label);
 	    }
-	    else
-		node->set_name(x.key());
 	}
 
 	node_ptrs.insert({x.key(), node});
