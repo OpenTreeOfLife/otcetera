@@ -18,17 +18,6 @@ namespace otc {
 const int OK = restbed::OK;
 extern TreesToServe tts;
 
-    optional<json> lookup(const json& j, const string& s)
-    {
-	auto x = j.find(s);
-	if (x == j.end())
-	    return boost::none;
-	else
-	    return *x;
-    }
-
-
-
 inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
     return nd_taxon.get_name();
 }

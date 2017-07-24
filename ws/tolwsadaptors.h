@@ -20,6 +20,17 @@ inline optional<nlohmann::json> parse_body(const restbed::Bytes& body) {
 }
 
 
+inline optional<nlohmann::json> lookup(const nlohmann::json& j, const std::string& s)
+    {
+	auto x = j.find(s);
+	if (x == j.end())
+	    return boost::none;
+	else
+	    return *x;
+    }
+
+
+
 inline optional<nlohmann::json> parse_body(const unsigned char* body) {
     if (not body) {
         return nlohmann::json();
