@@ -876,7 +876,7 @@ struct conflict_stats
     template <typename T>
     void throw_otcerror_if_second_not_true(const T & result, const cnode_type* node1) {
         if (not result.second) {
-            throw OTCError() << *node_name_or_ottid(node1) << " occurs twice!";
+            throw OTCError() << "key "<<*node_name_or_ottid(node1) << " occurs twice in a conflict_stats map!";
         }    
     }
     public:
