@@ -1091,7 +1091,60 @@ pair<int,int> prune_unmapped_leaves(Tree& tree)
     return {mapped_leaves, unmapped_leaves};
 }
 
+template <typename Tree>
+void delete_tip_and_monotypic_ancestors(Tree& tree, typename Tree::node_type* node)
+{
+    while (node and node->is_tip())
+    {
+	auto parent = node->get_parent();
+	if (not parent)
+	    tree._set_root(nullptr);
+	else
+	    node->detach_this_node();
+	delete node;
+	node = parent;
+    }
+}
 
+template <typename Tree>
+void delete_subtree_and_monotypic_ancestors(Tree& tree, typename Tree::node_type* node)
+{
+    auto parent = node->get_parent();
+    tree.prune_and_delete(node);
+    if (parent and parent->is_tip())
+	delete_tip_and_monotypic_ancestors(tree, parent);
+}
+
+template <typename Tree>
+void prune_duplicate_ottids(Tree& tree)
+{
+    vector<typename Tree::node_type*> nodes;
+    for(auto node: iter_post(tree))
+	nodes.push_back(node);
+
+    map<OttId, typename Tree::node_type*> node_ptrs;
+    for(auto node: nodes)
+    {
+	if (not node->has_ott_id()) continue;
+
+	auto id = node->get_ott_id();
+	auto x = node_ptrs.find(id);
+
+	if (x == node_ptrs.end()) {
+	    node_ptrs.insert({id, node});
+	    continue;
+	}
+
+	auto node2 = x->second;
+	if (node->is_tip() and not node2->is_tip())
+	{
+	    delete_tip_and_monotypic_ancestors(tree, node);
+	    node_ptrs[id] = node2;
+	}
+	else
+	    delete_subtree_and_monotypic_ancestors(tree, node2);
+    }
+}
 
 string conflict_ws_method(const SummaryTree_t& summary,
 			  const RichTaxonomy & taxonomy,
@@ -1127,7 +1180,9 @@ string conflict_ws_method(const SummaryTree_t& summary,
             throw E;
         }
     }
-
+    LOG(WARNING)<<"pre = "<<newick_string(*query_tree);
+    prune_duplicate_ottids(*query_tree);
+    LOG(WARNING)<<"post = "<<newick_string(*query_tree);
     compute_depth(*query_tree);
     compute_tips(*query_tree);
 
