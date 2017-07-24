@@ -889,33 +889,41 @@ struct conflict_stats
 
     void add_supported_by(const cnode_type* node2, const cnode_type* node1) {
         auto result = supported_by.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+	// We can have the relationship node2 `supported_by` node1 for only one node2.
         throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_partial_path_of(const cnode_type* node2, const cnode_type* node1) {
-        auto result = partial_path_of.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
-        throw_otcerror_if_second_not_true(result, node1);
+        /* auto result = */ partial_path_of.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+	// We can have the relationship node2 `partial_path_of` node1 for multiple node2s.
+        // throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_resolved_by(const cnode_type* node2, const cnode_type* node1) {
         auto result = resolved_by.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+	// We can have the relationship node2 `resolved_by` node1 for only one node2.
         throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_resolves(const cnode_type* node2, const cnode_type* node1) {
-        auto result = resolves.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
-        throw_otcerror_if_second_not_true(result, node1);
+        /* auto result = */ resolves.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+	// We can only have the relationship (node2 `resolves` node1) one multiple node2s.
+        // throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_terminal(const cnode_type* node2, const cnode_type* node1) {
-        auto result = terminal.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
-        throw_otcerror_if_second_not_true(result, node1);
+        /* auto result = */ terminal.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+//      We can have the relationship (node2 `terminal` node1) for multiple node2s!
+//      Let's keep the FIRST one, since it will be the most tipward-one.
+//        throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_conflicts_with(const cnode_type* node2, const cnode_type* node1) {
         auto name1 = *node_name_or_ottid(node1);
         auto name2 = *node_name_or_ottid(node2);
         auto present = conflicts_with.insert({name1,{name2,node2}});
+        // We can have the relationship (node2 `terminal` node1) for multiple node2s!
+        // Let's try to keep the most rootward one.
         if (present.second) {
             const cnode_type* node2b = present.first->second.second;
             if (depth(node2) < depth(node2b)) {
