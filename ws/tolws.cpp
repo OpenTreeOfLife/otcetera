@@ -1217,7 +1217,7 @@ pair<json,json> extract_tree_nexson(const json& nexson, const string& treeid)
 
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/taxa/Nexson.java#120
 template<typename T>
-std::unique_ptr<T> treeson_get_tree(const json& tree, const json& otus)
+std::unique_ptr<T> treeson_get_tree(const json& tree, const json& otus, bool extract_ingroup)
 {
     // 1. Create objects for nodes
     auto nodes = tree["nodeById"];
@@ -1243,6 +1243,8 @@ std::unique_ptr<T> treeson_get_tree(const json& tree, const json& otus)
 		string label = otu["^ot:originalLabel"];
 		node->set_name(label);
 	    }
+	    else
+		node->set_name(x.key());
 	}
 
 	node_ptrs.insert({x.key(), node});
@@ -1263,28 +1265,36 @@ std::unique_ptr<T> treeson_get_tree(const json& tree, const json& otus)
 	}
     }
 
-    std::unique_ptr<T> the_tree(new T);
-    the_tree->_set_root(root);
+    // 3. Find root
+    auto root_node_id = lookup(tree, "^ot:rootNodeId");
+    if (root_node_id)
+    {
+	auto root2 = node_ptrs[*root_node_id];
+	if (root and root != root2)
+	    throw OTCError()<<"Node property '@root' disagrees with tree property '^ot:rootNodeId'!";
+	if (not root)
+	    root = root2;
+    }
 
-/*
+    // 4. Make tree from the root (ensure we don't leak non-ingroup nodes)
+    auto whole_tree = std::make_unique<T>(root);
     auto ingroup_node_id = lookup(tree, "^ot:inGroupClade");
-    optional<string> root_id;
-    if (ingroup_node_id)
-	root_id = ingroup_node_id;
-    else
-	root_id = lookup(tree,"^ot:rootNodeId");
-    auto edges = tree["edgeBySourceId"];
-    auto nodes = tree["nodeById"];
 
-    // If there is no root, the return a null tree
-    if (not root_id or not edges.count(*root_id)) return {};
-*/
-    return the_tree;
+    // 5. Return ingroup
+    if (extract_ingroup and ingroup_node_id)
+    {
+	auto ingroup_node = node_ptrs[*ingroup_node_id];
+	if (ingroup_node->get_parent()) ingroup_node->detach_this_node();
+	return std::make_unique<T>(ingroup_node);
+    }
+    // 6. Return whole tree
+    else
+	return whole_tree;
 }
 
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L266
 template<typename T>
-std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id)
+std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id, bool extract_ingroup)
 {
     LOG(WARNING)<<"getting phylesystem tree '"<<study_id<<"' '"<<tree_id<<"'";
 
@@ -1295,7 +1305,7 @@ std::unique_ptr<T> get_source_tree(const string& study_id, const string& tree_id
 
     pair<json,json> tree_and_otus = extract_tree_nexson(study, tree_id);
 
-    auto tree = treeson_get_tree<T>(tree_and_otus.first, tree_and_otus.second);
+    auto tree = treeson_get_tree<T>(tree_and_otus.first, tree_and_otus.second, extract_ingroup);
     tree->set_name(study_id+"@"+tree_id);
 
     return tree;
@@ -1323,7 +1333,7 @@ std::unique_ptr<T> get_phylesystem_tree(const string& study_tree)
 	throw OTCBadRequest()<<"Expected study@tree or study@tree, but got '"<<study_tree<<"'";
 
     // 3. Get the study tree from phylesystem
-    return get_source_tree<T>(parts[0], parts[1]);
+    return get_source_tree<T>(parts[0], parts[1], true);
 }
 
 string phylesystem_conflict_ws_method(const SummaryTree_t& summary,

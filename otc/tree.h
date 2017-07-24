@@ -267,6 +267,9 @@ class RootedTree {
         RootedTree<T, U>()
             :root(nullptr) {
         }
+        explicit RootedTree<T, U>(node_type* r)
+            :root(r) {
+        }
         ~RootedTree<T, U>() {
             clear();
         }
