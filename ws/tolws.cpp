@@ -934,7 +934,7 @@ struct conflict_stats
 		present.first->second = {name2, node2};
         }
     }
-    json get_json(const RichTaxonomy&) const;
+    json get_json(const ConflictTree&, const RichTaxonomy&) const;
 };
 
 using tnode_type = RTRichTaxNode;
@@ -958,7 +958,7 @@ json get_node_status(const string& witness, string status, const RichTaxonomy& T
     return j;
 }
 
-json conflict_stats::get_json(const RichTaxonomy& Tax) const {
+json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax) const {
     json nodes;
     for(auto& x: supported_by) {
         nodes[x.first] = get_node_status(x.second, "supported_by", Tax);
@@ -978,6 +978,10 @@ json conflict_stats::get_json(const RichTaxonomy& Tax) const {
     for(auto& x: resolved_by) {
         nodes[x.first] = get_node_status(x.second, "resolved_by", Tax);
     }
+    // For monotypic nodes in the query, copy annotation from child.
+    for(auto it: iter_post_const(tree))
+	if (it->is_outdegree_one_node())
+	    nodes[it->get_name()] = nodes[it->get_first_child()->get_name()];
     return nodes;
 }
 
@@ -1024,8 +1028,7 @@ void conflict_with_tree_impl(conflict_stats & stats,
                               do_nothing);
 }
 
-json conflict_with_taxonomy(const ConflictTree& query_tree,
-                            const RichTaxonomy& Tax) {
+json conflict_with_taxonomy(const ConflictTree& query_tree, const RichTaxonomy& Tax) {
     auto & taxonomy = Tax.get_tax_tree();
     conflict_stats stats;
     using cfunc = std::function<const cnode_type*(const cnode_type*,const cnode_type*)>;
@@ -1037,7 +1040,7 @@ json conflict_with_taxonomy(const ConflictTree& query_tree,
         return mrca_from_depth(n1,n2);
     };
     conflict_with_tree_impl(stats, query_tree, taxonomy, query_mrca, taxonomy_mrca);
-    return stats.get_json(Tax);
+    return stats.get_json(query_tree, Tax);
 }
 
 json conflict_with_summary(const ConflictTree& query_tree,
@@ -1051,7 +1054,7 @@ json conflict_with_summary(const ConflictTree& query_tree,
         return find_mrca_via_traversal_indices(n1,n2);
     };
     conflict_with_tree_impl(stats, query_tree, summary, query_mrca, summary_mrca);
-    return stats.get_json(Tax);
+    return stats.get_json(query_tree, Tax);
 }
 
 template<typename T>
