@@ -1053,7 +1053,7 @@ json conflict_with_summary(const ConflictTree& query_tree,
     conflict_with_tree_impl(stats, query_tree, summary, query_mrca, summary_mrca);
     return stats.get_json(Tax);
 }
-                           
+
 template<typename T>
 bool has_internal_node_names(const T& t) {
     for(const auto nd: iter_post_const(t)) {
@@ -1065,19 +1065,32 @@ bool has_internal_node_names(const T& t) {
 }
 
 template <typename Tree>
-pair<int,int> prune_unmapped_leaves(Tree& tree)
+pair<int,int> prune_unmapped_leaves(Tree& tree, const RichTaxonomy& tax)
 {
     int mapped_leaves = 0;
     int unmapped_leaves = 0;
     vector<typename Tree::node_type*> leaves;
     for(auto leaf: iter_leaf(tree))
-	if (not leaf->has_ott_id())
+    {
+	if (leaf->has_ott_id())
 	{
-	    leaves.push_back(leaf);
-	    unmapped_leaves++;
+	    auto tax_node = tax.included_taxon_from_id(leaf->get_ott_id());
+	    if (tax_node)
+	    {
+		// Handle forwards
+		auto id = tax_node->get_ott_id();
+		if (id != leaf->get_ott_id()) leaf->set_ott_id(id);
+
+		// Count as mapped
+		mapped_leaves++;
+		continue;
+	    }
 	}
-	else
-	    mapped_leaves++;
+
+	// Mark leaf for deletion
+	leaves.push_back(leaf);
+	unmapped_leaves++;
+    }
 
     for(auto leaf: leaves)
     {
@@ -1162,7 +1175,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
 			  const string& tree2s)
 {
     // 0. Remove unmapped leaves.
-    auto leaf_counts = prune_unmapped_leaves(*query_tree);
+    auto leaf_counts = prune_unmapped_leaves(*query_tree, taxonomy);
     if (leaf_counts.first < 3)
 	throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
 
