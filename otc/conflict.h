@@ -108,53 +108,39 @@ inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node) {
 // * Each non-monotypic node of T1 will equal (supported_by/partial_path_of), conflict with, or be a terminal of nodes in T2.
 // * A node of T1 can equal one node of T2 (supported_by) or several nodes of T2 (partial_path_of).
 // * A node of T1 can conflict with several nodes of T2.
-template <typename Tree1_t, typename Tree2_t>
-void perform_conflict_analysis(const Tree1_t& tree1,
-                               const std::unordered_map<OttId, const typename Tree1_t::node_type*>& ottid_to_node1,
-                               std::function<const typename Tree1_t::node_type*(const typename Tree1_t::node_type*,const typename Tree1_t::node_type*)> MRCA_of_pair1,
-                               const Tree2_t& tree2,
-                               const std::unordered_map<OttId, const typename Tree2_t::node_type*>& ottid_to_node2,
-                               std::function<const typename Tree2_t::node_type*(const typename Tree2_t::node_type*,const typename Tree2_t::node_type*)> MRCA_of_pair2,
-                               node_logger_t log_supported_by,
-                               node_logger_t log_partial_path_of,
-                               node_logger_t log_conflicts_with,
-                               node_logger_t log_resolved_by,
-                               node_logger_t log_terminal) {
-    auto induced_tree1 = get_induced_tree<Tree1_t,Tree2_t,ConflictTree>(tree1,
-                                                                        ottid_to_node1,
-                                                                        MRCA_of_pair1,
-                                                                        tree2,
-                                                                        ottid_to_node2);
-    auto induced_tree2 = get_induced_tree<Tree2_t,Tree1_t,ConflictTree>(tree2,
-                                                                        ottid_to_node2,
-                                                                        MRCA_of_pair2,
-                                                                        tree1,
-                                                                        ottid_to_node1);
 
+inline void perform_conflict_analysis(ConflictTree& induced_tree1,
+				      ConflictTree& induced_tree2,
+				      node_logger_t log_supported_by,
+				      node_logger_t log_partial_path_of,
+				      node_logger_t log_conflicts_with,
+				      node_logger_t log_resolved_by,
+				      node_logger_t log_terminal)
+{
     typedef ConflictTree::node_type node_type;
 
-    compute_depth(*induced_tree1);
-    compute_tips(*induced_tree1);
+    compute_depth(induced_tree1);
+    compute_tips(induced_tree1);
 
-    compute_depth(*induced_tree2);
-    compute_tips(*induced_tree2);
+    compute_depth(induced_tree2);
+    compute_tips(induced_tree2);
 
     std::vector<ConflictTree::node_type*> conflicts;
 
-//    auto map1 = get_ottid_to_node_map(*induced_tree1);
-    auto map2 = get_ottid_to_node_map(*induced_tree2);
+//    auto map1 = get_ottid_to_node_map(induced_tree1);
+    auto map2 = get_ottid_to_node_map(induced_tree2);
         
     // make summary_node field of induced_tree1 leaves point to leaves of induced_tree2.
-    for(auto leaf: iter_leaf(*induced_tree1)) {
+    for(auto leaf: iter_leaf(induced_tree1)) {
         auto leaf2 = map2.at(leaf->get_ott_id());
         summary_node(leaf) = leaf2;
     }
         
-    auto L = count_leaves(*induced_tree1);
-    assert(L == count_leaves(*induced_tree2));
+    auto L = count_leaves(induced_tree1);
+    assert(L == count_leaves(induced_tree2));
         
     std::vector<node_type*> tree_nodes;
-    for(auto nd: iter_post(*induced_tree1)) {
+    for(auto nd: iter_post(induced_tree1)) {
         tree_nodes.push_back(nd);
     }
 
@@ -263,7 +249,7 @@ void perform_conflict_analysis(const Tree1_t& tree1,
         }
 
 #ifdef CHECK_MARKS
-        for(const auto nd2: iter_post_const(*induced_tree2)){
+        for(const auto nd2: iter_post_const(induced_tree2)){
             assert(n_include_tips(nd2) == 0);
         }
 #endif
@@ -277,6 +263,31 @@ void perform_conflict_analysis(const Tree1_t& tree1,
     }
 }
 
+template <typename Tree1_t, typename Tree2_t>
+void perform_conflict_analysis(const Tree1_t& tree1,
+                               const std::unordered_map<OttId, const typename Tree1_t::node_type*>& ottid_to_node1,
+                               std::function<const typename Tree1_t::node_type*(const typename Tree1_t::node_type*,const typename Tree1_t::node_type*)> MRCA_of_pair1,
+                               const Tree2_t& tree2,
+                               const std::unordered_map<OttId, const typename Tree2_t::node_type*>& ottid_to_node2,
+                               std::function<const typename Tree2_t::node_type*(const typename Tree2_t::node_type*,const typename Tree2_t::node_type*)> MRCA_of_pair2,
+                               node_logger_t log_supported_by,
+                               node_logger_t log_partial_path_of,
+                               node_logger_t log_conflicts_with,
+                               node_logger_t log_resolved_by,
+                               node_logger_t log_terminal) {
+    auto induced_tree1 = get_induced_tree<Tree1_t,Tree2_t,ConflictTree>(tree1,
+                                                                        ottid_to_node1,
+                                                                        MRCA_of_pair1,
+                                                                        tree2,
+                                                                        ottid_to_node2);
+    auto induced_tree2 = get_induced_tree<Tree2_t,Tree1_t,ConflictTree>(tree2,
+                                                                        ottid_to_node2,
+                                                                        MRCA_of_pair2,
+                                                                        tree1,
+                                                                        ottid_to_node1);
+
+    return perform_conflict_analysis(*induced_tree1, *induced_tree2, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
+}
 
 } // namespace otc
 #endif
