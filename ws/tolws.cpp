@@ -985,12 +985,67 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
     return nodes;
 }
 
+// Get a list of nodes tree 2 that are leaves in tree1.
+
+template <typename Tree1_t, typename Tree2_t>
+auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2)
+{
+    auto ott_to_nodes2 = get_ottid_to_const_node_map(T2);
+
+    std::vector<const typename Tree2_t::node_type*> nodes;
+    for(auto leaf: iter_leaf_const(T1))
+    {
+	auto id = leaf->get_ott_id();
+	auto it = ott_to_nodes2.find(id);
+
+	if (it != ott_to_nodes2.end()) nodes.push_back(it->second);
+    }
+    return nodes;
+}
+
+
+// Get the subtree of T1 connecting the leaves of T1 that are also in T2.
+template <typename Tree1, typename Tree2, typename Tree_Out_t>
+pair<unique_ptr<Tree_Out_t>,unique_ptr<Tree_Out_t>>
+get_induced_trees2(const Tree1& T1,
+		  std::function<const typename Tree1::node_type*(const typename Tree1::node_type*,const typename Tree1::node_type*)> MRCA_of_pair1,
+		  const Tree2& T2,
+		  std::function<const typename Tree2::node_type*(const typename Tree2::node_type*,const typename Tree2::node_type*)> MRCA_of_pair2)
+{
+    // 1. First construct the induced tree for T2
+    auto induced_tree2 = get_induced_tree<Tree2, Tree_Out_t>(get_induced_nodes(T1, T2), MRCA_of_pair2);
+    induced_tree2->set_name(T2.get_name());
+
+    //FIXME - handle cases like (Homo sapiens, Homo) by deleting monotypic nodes at the root.
+
+    // 2. Keep only leaves from T1 that (a) have an ottid in T2 and (b) map to a leaf of induced_tree2
+    auto ottid_to_induced_tree2_node = otc::get_ottid_to_const_node_map(*induced_tree2);
+    std::vector<const typename Tree1::node_type*> induced_leaves1;
+    for(auto leaf: iter_leaf_const(T1))
+    {
+	auto it = ottid_to_induced_tree2_node.find(leaf->get_ott_id());
+	if (it == ottid_to_induced_tree2_node.end() or not it->second->is_tip())
+	    LOG(WARNING)<<"Dropping higher taxon tip "<<leaf->get_ott_id();
+	else
+	    induced_leaves1.push_back(leaf);
+    }
+
+    // 3. Construct the induced tree for T1
+    auto induced_tree1 = get_induced_tree<Tree1, Tree_Out_t>(induced_leaves1, MRCA_of_pair1);
+
+    return {std::move(induced_tree1), std::move(induced_tree2)};
+}
+
+
+
+
 template<typename QT, typename TT, typename QM, typename TM>
 void conflict_with_tree_impl(conflict_stats & stats,
                              const QT & query_tree,
                              const TT & other_tree,
                              std::function<const QM*(const QM*,const QM*)> & query_mrca,
-                             std::function<const TM*(const TM*,const TM*)> & other_mrca) {
+                             std::function<const TM*(const TM*,const TM*)> & other_mrca)
+{
     auto log_supported_by = [&stats](const QM* node2, const QM* node1) {
         stats.add_supported_by(node2, node1);
     };
@@ -1006,26 +1061,35 @@ void conflict_with_tree_impl(conflict_stats & stats,
     auto log_terminal = [&stats](const QM* node2, const QM* node1) {
         stats.add_terminal(node2, node1);
     };
-    auto ottid_to_query_node = otc::get_ottid_to_const_node_map(query_tree);
-    auto ottid_to_taxonomy_node = otc::get_ottid_to_const_node_map(other_tree);
-    perform_conflict_analysis(query_tree, ottid_to_query_node, query_mrca,
-                              other_tree, ottid_to_taxonomy_node, other_mrca,
-                              log_supported_by,
-                              log_partial_path_of,
-                              log_conflicts_with,
-                              log_resolved_by,
-                              log_terminal);
     auto log_resolves = [&stats](const QM* node1, const QM* node2) {
         stats.add_resolves(node2, node1);
     };
     auto do_nothing = [](const QM*, const QM*) {};
-    perform_conflict_analysis(other_tree, ottid_to_taxonomy_node, other_mrca,
-                              query_tree, ottid_to_query_node, query_mrca,
-                              do_nothing,
-                              do_nothing,
-                              do_nothing,
-                              log_resolves,
-                              do_nothing);
+
+    {
+	auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+
+	perform_conflict_analysis(*induced_trees.first,
+				  *induced_trees.second,
+				  log_supported_by,
+				  log_partial_path_of,
+				  log_conflicts_with,
+				  log_resolved_by,
+				  log_terminal);
+    }
+
+    // The induced trees are destructively modified, so we can't reuse them.
+    {
+	auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+
+	perform_conflict_analysis(*induced_trees.second,
+				  *induced_trees.first,
+				  do_nothing,
+				  do_nothing,
+				  do_nothing,
+				  log_resolves,
+				  do_nothing);
+    }
 }
 
 json conflict_with_taxonomy(const ConflictTree& query_tree, const RichTaxonomy& Tax) {
