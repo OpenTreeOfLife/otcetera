@@ -89,11 +89,14 @@ inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node) {
 //
 // We decompose (y displays x) into one of (y supported_by x), (y partial_path_of x) or (y terminal x).
 // If y displays x then
-// - if split(y) is non-informative in the induced trees, then (y terminal x)
+// - if split(y) is non-informative in the induced trees, then (y terminal x).
+//     We can have multiple y's that correspond to a single terminal x).
 // - else if y displays x2 and x2 != x, then
 //     (y partial_path_of x)
+//     Here, multiple y's display x in tree1.
 // - else
-//     (y supported_by x)   <- x is the unique node of tree1 that is displayed by y.
+//     (y supported_by x)
+//     Here, y is the unique node of tree2 that is displays x in tree1.
 //   
 // Multiple nodes of tree2 can conflict with a given node of tree1.
 // Multiple nodes of tree1 can conflict with a given node of tree2.
