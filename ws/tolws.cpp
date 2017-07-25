@@ -921,15 +921,17 @@ struct conflict_stats
     void add_conflicts_with(const cnode_type* node2, const cnode_type* node1) {
         auto name1 = *node_name_or_ottid(node1);
         auto name2 = *node_name_or_ottid(node2);
+
         auto present = conflicts_with.insert({name1,{name2,node2}});
         // We can have the relationship (node2 `terminal` node1) for multiple node2s!
-        // Let's try to keep the most rootward one.
-        if (present.second) {
+
+        // FIXME - Currently we keep the most rootward one.
+        //         However, we really want to take 1 (or 2 or 3) from the list of most-rootward conflicting nodes,
+        //          and, interestingly, these might NOT all have the same depth.
+        if (not present.second) {
             const cnode_type* node2b = present.first->second.second;
-            if (depth(node2) < depth(node2b)) {
-                conflicts_with.erase(present.first);
-                conflicts_with.insert({name1,{name2,node2}});
-            }
+            if (depth(node2) < depth(node2b))
+		present.first->second = {name2, node2};
         }
     }
     json get_json(const RichTaxonomy&) const;
