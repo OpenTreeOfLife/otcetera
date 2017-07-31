@@ -526,6 +526,35 @@ create_method_handler(const string& path, const std::function<std::string(const 
     };
 }
 
+json request_to_json(const Request& request)
+{
+    LOG(WARNING)<<"GET "<<request.get_path();
+    json query;
+    for(auto& key_value_pair: request.get_query_parameters())
+	query[key_value_pair.first] = key_value_pair.second;
+    return query;
+}
+
+std::function<void(const shared_ptr< Session > session)>
+create_GET_method_handler(const string& path, const std::function<std::string(const json&)> process_request)
+{
+    return [=](const shared_ptr< Session > session )
+    {
+	try
+	{
+	    const auto& request = session->get_request( );
+	    json parsedargs = request_to_json(*request);
+	    auto rbody = process_request(parsedargs);
+	    session->close( OK, rbody, request_headers(rbody) );
+	}
+	catch (OTCWebError& e)
+	{
+	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
+	    session->close( e.status_code(), rbody, request_headers(rbody) );
+	    LOG(WARNING)<<rbody;
+	}
+    };
+}
 void options_method_handler( const shared_ptr< Session > session ) {
     session->close( OK, "", options_headers() );
 }
@@ -601,6 +630,16 @@ int run_server(const po::variables_map & args) {
     // conflict
     auto r_conflict_status  = path_handler(prefix + "/conflict/conflict-status", conflict_status_method_handler );
 
+    // v2 conflict --
+    auto r_old_conflict_status = make_shared< Resource >( );
+    {
+	string path = prefix + "/conflict/old-conflict-status";
+	r_old_conflict_status->set_path( path );
+	r_old_conflict_status->set_method_handler( "GET", create_GET_method_handler(path, conflict_status_method_handler) );
+	r_old_conflict_status->set_method_handler( "OPTIONS", options_method_handler);
+    }
+
+
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
     settings->set_port( port_number );
@@ -620,6 +659,7 @@ int run_server(const po::variables_map & args) {
     service.publish( r_taxon_mrca );
     service.publish( r_taxon_subtree );
     service.publish( r_conflict_status );
+    service.publish( r_old_conflict_status );
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
     LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";
