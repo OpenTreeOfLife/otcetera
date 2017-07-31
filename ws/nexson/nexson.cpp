@@ -57,19 +57,45 @@ json get_phylesystem_study(const string& study_id)
     if (response->has_header("Transfer-Encoding"))
     {
         // https://github.com/Corvusoft/restbed/blob/master/example/transfer_encoding_request/source/example.cpp
-	LOG(WARNING)<<"got HERE 2a";
-	Http::fetch("\r\n", response);
-	const auto & data = response->get_body();
-	if (not data.empty())
+	string body;
+	for(int c=0;;c++)
 	{
+	    // 1. Read chunk size
+	    LOG(WARNING)<<"got HERE 2a1: "<<c;
+	    Http::fetch("\r\n", response);
+	    const auto & data = response->get_body();
+
+	    // 2. Quit if no data
+	    if (data.empty()) break;
+	    LOG(WARNING)<<"got HERE 2a2: "<<c;
+
+	    // 3. Quit if no end chunk
 	    const string length (data.begin(), data.end());
-	    if (length != "0\r\n")
-	    {
-		const auto chunk_size = stoul(length, nullptr, 16) + strlen("\r\n");
-		LOG(WARNING)<<"chunk size = "<<chunk_size;
-	    }
+	    if (length == "0\r\n") break;
+	    LOG(WARNING)<<"got HERE 2a3: "<<c;
+
+	    // 4. Compute chunk size
+	    const auto chunk_size = stoul(length, nullptr, 16) + strlen("\r\n");
+	    LOG(WARNING)<<"chunk size = "<<chunk_size;
+	    LOG(WARNING)<<"got HERE 2a4: "<<c;
+
+	    // 5. Read chunk
+	    response->get_body().clear();
+	    Http::fetch(chunk_size, response);
+	    LOG(WARNING)<<"got HERE 2a5: "<<c;
+
+	    // 6. Add chunk to body
+	    string chunk(response->get_body().begin(), response->get_body().end());
+	    LOG(WARNING)<<"got HERE 2a5.1: "<<c;
+	    body = body + chunk;
+	    LOG(WARNING)<<"got HERE 2a6: "<<c;
+
+	    LOG(WARNING)<<"got HERE 2a7: "<<c;
+	    LOG(WARNING)<<" --  response has length "<<response->get_body().size();
+	    LOG(WARNING)<<" --  body has length "<<body.size();
+	    LOG(WARNING)<<" --  chunk = "<<chunk;
+	    response->get_body().clear();
 	}
-	LOG(WARNING)<<"got HERE 2a.  response has length "<<response->get_body().size();
     }
     else
     {
