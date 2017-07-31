@@ -860,9 +860,8 @@ using cnode_type = ConflictTree::node_type;
 
 template <typename N>
 boost::optional<string> node_name_or_ottid(const N* node) {
-    auto result = get_source_node_name(node->get_name());
-    if (result) {
-        return result;
+    if (not node->get_name().empty()) {
+        return node->get_name();
     } else if (node->has_ott_id()) {
         return string("ott")+std::to_string(node->get_ott_id());
     } else {
