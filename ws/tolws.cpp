@@ -1002,6 +1002,16 @@ auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2)
     return nodes;
 }
 
+template <typename Tree_t>
+std::size_t n_leaves(const Tree_t& T) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    std::size_t count = 0;
+    for(auto nd: iter_leaf_const(T)){
+        count++;
+    }
+    return count;
+}
 
 // Get the subtree of T1 connecting the leaves of T1 that are also in T2.
 template <typename Tree1, typename Tree2, typename Tree_Out_t>
@@ -1015,6 +1025,8 @@ get_induced_trees2(const Tree1& T1,
     auto induced_tree2 = get_induced_tree<Tree2, Tree_Out_t>(get_induced_nodes(T1, T2), MRCA_of_pair2);
     induced_tree2->set_name(T2.get_name());
 
+    LOG(WARNING)<<"induced_tree2 #leaves = "<<n_leaves(*induced_tree2);
+    LOG(WARNING)<<"induced_tree2 = "<<newick_string(*induced_tree2);
     //FIXME - handle cases like (Homo sapiens, Homo) by deleting monotypic nodes at the root.
 
     // 2. Keep only leaves from T1 that (a) have an ottid in T2 and (b) map to a leaf of induced_tree2
@@ -1022,8 +1034,16 @@ get_induced_trees2(const Tree1& T1,
     std::vector<const typename Tree1::node_type*> induced_leaves1;
     for(auto leaf: iter_leaf_const(T1))
     {
+	if (not leaf->has_ott_id())
+	{
+	    LOG(WARNING)<<"Dropping tip: no ott id";
+	    continue;
+	}
+
 	auto it = ottid_to_induced_tree2_node.find(leaf->get_ott_id());
-	if (it == ottid_to_induced_tree2_node.end() or not it->second->is_tip())
+	if (it == ottid_to_induced_tree2_node.end())
+	    LOG(WARNING)<<"Dropping tip "<<leaf->get_ott_id()<<": not found in induced taxonomy";
+	else if (not it->second->is_tip())
 	    LOG(WARNING)<<"Dropping higher taxon tip "<<leaf->get_ott_id();
 	else
 	    induced_leaves1.push_back(leaf);
@@ -1031,6 +1051,7 @@ get_induced_trees2(const Tree1& T1,
 
     // 3. Construct the induced tree for T1
     auto induced_tree1 = get_induced_tree<Tree1, Tree_Out_t>(induced_leaves1, MRCA_of_pair1);
+    LOG(WARNING)<<"induced_tree1 = "<<newick_string(*induced_tree1);
 
     return {std::move(induced_tree1), std::move(induced_tree2)};
 }
@@ -1039,12 +1060,13 @@ get_induced_trees2(const Tree1& T1,
 
 
 template<typename QT, typename TT, typename QM, typename TM>
-void conflict_with_tree_impl(conflict_stats & stats,
-                             const QT & query_tree,
+json conflict_with_tree_impl(const QT & query_tree,
                              const TT & other_tree,
                              std::function<const QM*(const QM*,const QM*)> & query_mrca,
-                             std::function<const TM*(const TM*,const TM*)> & other_mrca)
+                             std::function<const TM*(const TM*,const TM*)> & other_mrca,
+                             const RichTaxonomy& Tax)
 {
+    conflict_stats stats;
     auto log_supported_by = [&stats](const QM* node2, const QM* node1) {
         stats.add_supported_by(node2, node1);
     };
@@ -1089,11 +1111,16 @@ void conflict_with_tree_impl(conflict_stats & stats,
 				  log_resolves,
 				  do_nothing);
     }
+
+    {
+	auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+	return stats.get_json(*induced_trees.first, Tax);
+    }
 }
 
 json conflict_with_taxonomy(const ConflictTree& query_tree, const RichTaxonomy& Tax) {
     auto & taxonomy = Tax.get_tax_tree();
-    conflict_stats stats;
+
     using cfunc = std::function<const cnode_type*(const cnode_type*,const cnode_type*)>;
     using tfunc = std::function<const tnode_type*(const tnode_type*,const tnode_type*)>;
     cfunc query_mrca = [](const cnode_type* n1, const cnode_type* n2) {
@@ -1102,22 +1129,19 @@ json conflict_with_taxonomy(const ConflictTree& query_tree, const RichTaxonomy& 
     tfunc taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {
         return mrca_from_depth(n1,n2);
     };
-    conflict_with_tree_impl(stats, query_tree, taxonomy, query_mrca, taxonomy_mrca);
-    return stats.get_json(query_tree, Tax);
+    return conflict_with_tree_impl(query_tree, taxonomy, query_mrca, taxonomy_mrca, Tax);
 }
 
 json conflict_with_summary(const ConflictTree& query_tree,
                            const SummaryTree_t& summary,
                            const RichTaxonomy& Tax) {
     using snode_type = SummaryTree_t::node_type;
-    conflict_stats stats;
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {
         return mrca_from_depth(n1,n2);};
     std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca = [](const snode_type* n1, const snode_type* n2) {
         return find_mrca_via_traversal_indices(n1,n2);
     };
-    conflict_with_tree_impl(stats, query_tree, summary, query_mrca, summary_mrca);
-    return stats.get_json(query_tree, Tax);
+    return conflict_with_tree_impl(query_tree, summary, query_mrca, summary_mrca, Tax);
 }
 
 template<typename T>
