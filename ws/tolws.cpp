@@ -858,15 +858,15 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
 
 using cnode_type = ConflictTree::node_type;
 
+// input tree node names should all be of the form node###
+// ott        node names should all be of the form ott###
+// synth tree node names should all be of the form ott###  or  mrcaott###ott###
+
 template <typename N>
-boost::optional<string> node_name_or_ottid(const N* node) {
-    if (not node->get_name().empty()) {
-        return node->get_name();
-    } else if (node->has_ott_id()) {
-        return string("ott")+std::to_string(node->get_ott_id());
-    } else {
-        return boost::none;
-    }
+string node_name(const N* node)
+{
+    assert(not node->get_name().empty());
+    return node->get_name();
 }
 
 struct conflict_stats
@@ -875,7 +875,7 @@ struct conflict_stats
     template <typename T>
     void throw_otcerror_if_second_not_true(const T & result, const cnode_type* node1) {
         if (not result.second) {
-            throw OTCError() << "key "<<*node_name_or_ottid(node1) << " occurs twice in a conflict_stats map!";
+            throw OTCError() << "key "<<node_name(node1) << " occurs twice in a conflict_stats map!";
         }    
     }
     public:
@@ -887,39 +887,39 @@ struct conflict_stats
     map<string, string> terminal;
 
     void add_supported_by(const cnode_type* node2, const cnode_type* node1) {
-        auto result = supported_by.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+        auto result = supported_by.insert({node_name(node1), node_name(node2)});
 	// We can have the relationship node2 `supported_by` node1 for only one node2.
         throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_partial_path_of(const cnode_type* node2, const cnode_type* node1) {
-        /* auto result = */ partial_path_of.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+        /* auto result = */ partial_path_of.insert({node_name(node1), node_name(node2)});
 	// We can have the relationship node2 `partial_path_of` node1 for multiple node2s.
         // throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_resolved_by(const cnode_type* node2, const cnode_type* node1) {
-        auto result = resolved_by.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+        auto result = resolved_by.insert({node_name(node1), node_name(node2)});
 	// We can have the relationship node2 `resolved_by` node1 for only one node2.
         throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_resolves(const cnode_type* node2, const cnode_type* node1) {
-        /* auto result = */ resolves.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+        /* auto result = */ resolves.insert({node_name(node1), node_name(node2)});
 	// We can only have the relationship (node2 `resolves` node1) one multiple node2s.
         // throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_terminal(const cnode_type* node2, const cnode_type* node1) {
-        /* auto result = */ terminal.insert({*node_name_or_ottid(node1), *node_name_or_ottid(node2)});
+        /* auto result = */ terminal.insert({node_name(node1), node_name(node2)});
 //      We can have the relationship (node2 `terminal` node1) for multiple node2s!
 //      Let's keep the FIRST one, since it will be the most tipward-one.
 //        throw_otcerror_if_second_not_true(result, node1);
     }
 
     void add_conflicts_with(const cnode_type* node2, const cnode_type* node1) {
-        auto name1 = *node_name_or_ottid(node1);
-        auto name2 = *node_name_or_ottid(node2);
+        auto name1 = node_name(node1);
+        auto name2 = node_name(node2);
 
         auto present = conflicts_with.insert({name1,{name2,node2}});
         // We can have the relationship (node2 `terminal` node1) for multiple node2s!
@@ -980,7 +980,7 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
     // For monotypic nodes in the query, copy annotation from child.
     for(auto it: iter_post_const(tree))
 	if (it->is_outdegree_one_node())
-	    nodes[it->get_name()] = nodes[it->get_first_child()->get_name()];
+	    nodes[it->get_name()] = nodes.at(it->get_first_child()->get_name());
     return nodes;
 }
 
@@ -1024,6 +1024,10 @@ get_induced_trees2(const Tree1& T1,
     // 1. First construct the induced tree for T2
     auto induced_tree2 = get_induced_tree<Tree2, Tree_Out_t>(get_induced_nodes(T1, T2), MRCA_of_pair2);
     induced_tree2->set_name(T2.get_name());
+    // 1.1 Rename internal nodes of taxonomy to ottXXX instead of taxon name
+    for(auto node: iter_post(*induced_tree2))
+	if (node->has_ott_id())
+	    node->set_name("ott"+std::to_string(node->get_ott_id()));
 
     LOG(WARNING)<<"induced_tree2 #leaves = "<<n_leaves(*induced_tree2);
     LOG(WARNING)<<"induced_tree2 = "<<newick_string(*induced_tree2);
@@ -1146,11 +1150,8 @@ json conflict_with_summary(const ConflictTree& query_tree,
 
 template<typename T>
 bool has_internal_node_names(const T& t) {
-    for(const auto nd: iter_post_const(t)) {
-        if (not node_name_or_ottid(nd->get_name())) {
-            return false;
-        }
-    }
+    for(const auto nd: iter_post_const(t))
+        if (not nd->get_name().empty()) return false;
     return true;
 }
 
@@ -1269,7 +1270,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
     if (leaf_counts.first < 3)
 	throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
 
-    // 1. Check that all leaves have OTT ids
+    // 1. Check that all leaves in input tree have OTT ids
     for(auto leaf: iter_leaf(*query_tree))
 	if (not leaf->has_ott_id())
 	{
@@ -1279,17 +1280,17 @@ string conflict_ws_method(const SummaryTree_t& summary,
 		throw OTCBadRequest()<<"Leaf '"<<leaf->get_name()<<"' has no OTT id!";
 	}
 
-    // 2. Check that all leaves have node names
-    for(const auto nd: iter_post_const(*query_tree)) {
-        string name = nd->get_name();
-        auto node_name = node_name_or_ottid(nd);
-        if (not node_name) {
+    // 2. Check that all leaves in input tree have node names
+    for(const auto nd: iter_post_const(*query_tree))
+    {
+        if (nd->get_name().empty())
+	{
             auto E = OTCBadRequest();
-            E << "Newick tree node with name='" << name << "'";
+            E << "Query tree has unnamed node";
             if (nd->has_ott_id()) {
-                E << " and OTT Id=" << nd->get_ott_id();
+                E << " with OTT Id=" << nd->get_ott_id();
             }
-            E << " does not have node name annotation!";
+            E << "!";
             throw E;
         }
     }
