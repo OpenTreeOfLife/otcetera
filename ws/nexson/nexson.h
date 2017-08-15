@@ -82,8 +82,12 @@ std::unique_ptr<T> treeson_get_tree(const nlohmann::json& tree, const nlohmann::
     // 5. Return ingroup
     if (extract_ingroup and ingroup_node_id)
     {
-//	LOG(WARNING)<<"ingroup node = "<<*ingroup_node_id;
 	auto ingroup_node = node_ptrs[*ingroup_node_id];
+	if (not ingroup_node)
+	{
+	    LOG(WARNING)<<"ingroup_node = NULL  ingroup_id = "<<ingroup_node_id<<"  *ingroup_id = "<<*ingroup_node_id;
+	    return whole_tree;
+	}
 	if (ingroup_node->get_parent()) ingroup_node->detach_this_node();
 	return std::make_unique<T>(ingroup_node);
     }
