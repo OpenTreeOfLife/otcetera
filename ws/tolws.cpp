@@ -1208,6 +1208,7 @@ pair<int,int> prune_unmapped_leaves(Tree& tree, const RichTaxonomy& tax)
 template <typename Tree>
 void delete_tip_and_monotypic_ancestors(Tree& tree, typename Tree::node_type* node)
 {
+    assert(node->is_tip());
     while (node and node->is_tip())
     {
 	auto parent = node->get_parent();
@@ -1232,31 +1233,23 @@ void delete_subtree_and_monotypic_ancestors(Tree& tree, typename Tree::node_type
 template <typename Tree>
 void prune_duplicate_ottids(Tree& tree)
 {
-    vector<typename Tree::node_type*> nodes;
-    for(auto node: iter_post(tree))
-	nodes.push_back(node);
+    vector<typename Tree::node_type*> leaves;
+    for(auto leaf: iter_leaf(tree))
+	leaves.push_back(leaf);
 
     map<OttId, typename Tree::node_type*> node_ptrs;
-    for(auto node: nodes)
+    for(auto leaf: leaves)
     {
-	if (not node->has_ott_id()) continue;
+	if (not leaf->has_ott_id()) continue;
 
-	auto id = node->get_ott_id();
-	auto x = node_ptrs.find(id);
+	auto id = leaf->get_ott_id();
 
-	if (x == node_ptrs.end()) {
-	    node_ptrs.insert({id, node});
-	    continue;
-	}
-
-	auto node2 = x->second;
-	if (node->is_tip() and not node2->is_tip())
-	{
-	    delete_tip_and_monotypic_ancestors(tree, node);
-	    node_ptrs[id] = node2;
-	}
+	// If the OTT id is new, then add the node as canonical representative of the OTT id
+	if (not node_ptrs.count(id))
+	    node_ptrs.insert({id, leaf});
+	// Otherwise delete the non-canonical OTT id and its ancestors
 	else
-	    delete_subtree_and_monotypic_ancestors(tree, node2);
+	    delete_tip_and_monotypic_ancestors(tree, leaf);
     }
 }
 
