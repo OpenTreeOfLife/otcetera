@@ -16,7 +16,9 @@ namespace otc {
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L285
 
 // This should probably be a parameter
-static string studybase = "https://api.opentreeoflife.org/v3/study/";
+static string studyserver = "https://api.opentreeoflife.org";
+//static string studyserver = "http://localhost:8080";
+static string studybase = studyserver + "/v3/study/";
 // reference-taxonomy also caches a single study.  We could add a use_cache argument to do the same.
 json get_phylesystem_study(const string& study_id)
 {
@@ -30,9 +32,11 @@ json get_phylesystem_study(const string& study_id)
     // 1. Construct request
     Uri uri( studybase + study_id + "?output_nexml2json=1.2.1");
     auto request = make_shared< Request >( uri );
-    request->set_header( "Accept", "*/*" );
     request->set_header( "Host", "api.opentreeoflife.org" );
+    request->set_header( "Accept", "*/*" );
     request->set_header( "User-Agent", "otc-tol-ws" );
+    request->set_method( "GET" );
+    request->set_version( 1.0 ); // why doesn't this work?
 //    request->set_query_parameter( "output_nexml2json", "1.2.1" );
 //    request->set_query_parameter( "auth_token", "ANONYMOUS" );
 
