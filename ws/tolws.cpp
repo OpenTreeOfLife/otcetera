@@ -1046,7 +1046,7 @@ get_induced_trees2(const Tree1& T1,
 
 	auto it = ottid_to_induced_tree2_node.find(leaf->get_ott_id());
 	if (it == ottid_to_induced_tree2_node.end())
-	    LOG(WARNING)<<"Dropping tip "<<leaf->get_ott_id()<<": not found in induced taxonomy";
+	    LOG(WARNING)<<"Dropping tip "<<leaf->get_ott_id()<<": not found in induced taxonomy-or-synth tree.";
 	else if (not it->second->is_tip())
 	    LOG(WARNING)<<"Dropping higher taxon tip "<<leaf->get_ott_id();
 	else
