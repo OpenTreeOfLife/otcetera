@@ -869,6 +869,13 @@ string node_name(const N* node)
     return node->get_name();
 }
 
+int min_depth(const cnode_type* node)
+{
+    while (node and node->get_parent() and node->get_parent()->is_outdegree_one_node())
+	node = node->get_parent();
+    return node->get_data().depth;
+}
+
 struct conflict_stats
 {
     protected:
@@ -881,7 +888,7 @@ struct conflict_stats
     public:
     map<string, string> supported_by;
     map<string, string> partial_path_of;
-    map<string, pair<string, const cnode_type*>> conflicts_with;
+    map<string, std::set<pair<string, int>>> conflicts_with;
     map<string, string> resolved_by;
     map<string, string> resolves;
     map<string, string> terminal;
@@ -917,21 +924,24 @@ struct conflict_stats
 //        throw_otcerror_if_second_not_true(result, node1);
     }
 
-    void add_conflicts_with(const cnode_type* node2, const cnode_type* node1) {
+    void add_conflicts_with(const cnode_type* node2, const cnode_type* node1)
+    {
         auto name1 = node_name(node1);
         auto name2 = node_name(node2);
 
-        auto present = conflicts_with.insert({name1,{name2,node2}});
-        // We can have the relationship (node2 `terminal` node1) for multiple node2s!
+	// 1. Get the (possibly empty) set of deepest nodes in tree2 conflicting with node1 in tree1.
+	set<pair<string, int>>& nodes = conflicts_with[name1];
 
-        // FIXME - Currently we keep the most rootward one.
-        //         However, we really want to take 1 (or 2 or 3) from the list of most-rootward conflicting nodes,
-        //          and, interestingly, these might NOT all have the same depth.
-        if (not present.second) {
-            const cnode_type* node2b = present.first->second.second;
-            if (depth(node2) < depth(node2b))
-		present.first->second = {name2, node2};
-        }
+	int min_depth_node2 = min_depth(node2);
+
+	// 2. If the newest node (node2) is deeper, then clear the non-minimal-depth nodes.
+	if (not nodes.empty() and (min_depth_node2 < nodes.begin()->second)) nodes.clear();
+
+	// 3. If the newest node (node2) is shallower then do nothing
+	if (not nodes.empty() and (min_depth_node2 > nodes.begin()->second)) return;
+
+	// 4. If the newest node is not shallower then add it.
+	nodes.insert(pair<string, int>({name2, min_depth_node2}));
     }
     json get_json(const ConflictTree&, const RichTaxonomy&) const;
 };
@@ -957,6 +967,56 @@ json get_node_status(const string& witness, string status, const RichTaxonomy& T
     return j;
 }
 
+json get_conflict_node_status(const set<pair<string,int>>& witnesses, string status, const RichTaxonomy& Tax) {
+    json j;
+    string first_witness = witnesses.begin()->first;
+    j["witness"] = witnesses.begin()->first;
+    j["status"] = std::move(status);
+
+    // Compute first 3 witnesses as name + name + name + ...
+    string witness_names;
+    int total = 0;
+    for(auto& witness: witnesses)
+    {
+	long raw_ott_id = long_ott_id_from_name(witness.first);
+
+	if (raw_ott_id < 0) continue;
+
+	OttId id = check_ott_id_size(raw_ott_id);
+
+	auto nd = Tax.included_taxon_from_id(id);
+
+	if (nd == nullptr) continue;
+
+	string witness_name  = nd->get_name();
+	
+	witness_name = witness_name + "[" + std::to_string(witness.second) + "]"; // record depth from root
+
+	if (total > 2)
+	{
+	    witness_names += " + ...";
+	    break;
+	}
+	else if (total == 0)
+	{
+	    witness_names = witness_name;
+	}
+	else
+	{
+	    witness_names = witness_names + " + " + witness_name;
+	}
+	total++;
+    }
+
+    if (not witness_names.empty())
+    {
+        //	witness_names  = witness_names + " (" + std::to_string(witnesses.size()) + ")"; // record number of witnesses
+	j["witness_name"] = witness_names;
+    }
+
+    return j;
+}
+
 json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax) const {
     json nodes;
     for(auto& x: supported_by) {
@@ -969,7 +1029,7 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
         nodes[x.first] = get_node_status(x.second, "terminal", Tax);
     }
     for(auto& x: conflicts_with) {
-        nodes[x.first] = get_node_status(x.second.first, "conflicts_with", Tax);
+        nodes[x.first] = get_conflict_node_status(x.second, "conflicts_with", Tax);
     }
     for(auto& x: resolves) {
         nodes[x.first] = get_node_status(x.second, "resolves", Tax);
