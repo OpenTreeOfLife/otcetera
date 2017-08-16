@@ -45,6 +45,8 @@ std::unique_ptr<T> treeson_get_tree(const nlohmann::json& tree, const nlohmann::
 	    }
 	}
 
+	assert(not x.key().empty());
+	assert(not node_ptrs.count(x.key()));
 	node_ptrs.insert({x.key(), node});
     }
 
@@ -79,21 +81,23 @@ std::unique_ptr<T> treeson_get_tree(const nlohmann::json& tree, const nlohmann::
     auto whole_tree = std::make_unique<T>(root);
     auto ingroup_node_id = lookup(tree, "^ot:inGroupClade");
 
-    // 5. Return ingroup
+    // 5. Return ingroup if smaller than whole tree.
     if (extract_ingroup and ingroup_node_id)
     {
 	auto ingroup_node = node_ptrs[*ingroup_node_id];
 	if (not ingroup_node)
 	{
 	    LOG(WARNING)<<"ingroup_node = NULL  ingroup_id = "<<ingroup_node_id<<"  *ingroup_id = "<<*ingroup_node_id;
-	    return whole_tree;
 	}
-	if (ingroup_node->get_parent()) ingroup_node->detach_this_node();
-	return std::make_unique<T>(ingroup_node);
+	if (ingroup_node and ingroup_node != root)
+	{
+	    ingroup_node->detach_this_node();
+	    return std::make_unique<T>(ingroup_node);
+	}
     }
+
     // 6. Return whole tree
-    else
-	return whole_tree;
+    return whole_tree;
 }
 
 // https://github.com/OpenTreeOfLife/reference-taxonomy/blob/master/org/opentreeoflife/server/Services.java#L266
