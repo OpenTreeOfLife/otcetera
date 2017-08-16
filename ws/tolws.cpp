@@ -1049,7 +1049,7 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
 template <typename Tree1_t, typename Tree2_t>
 auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2)
 {
-    auto ott_to_nodes2 = get_ottid_to_const_node_map(T2);
+    auto& ott_to_nodes2 = T2.get_data().id_to_node;
 
     std::vector<const typename Tree2_t::node_type*> nodes;
     for(auto leaf: iter_leaf_const(T1))
