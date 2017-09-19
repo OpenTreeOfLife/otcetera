@@ -83,6 +83,14 @@ On debian or ubuntu:
     sudo apt-get install libtool
     sudo apt-get install libboost-all-dev
 
+On a mac:
+
+   sudo brew install cmake
+   sudo brew install openssl
+   SSL=/usr/local/opt/openssl
+   export CPPFLAGS="$CPPFLAGS -I${SSL}/include"
+   export LDFLAGS="$LDFLAGS -L${SSL}/lib"
+
 then:
 
     git clone --recursive https://github.com/corvusoft/restbed.git
@@ -93,11 +101,17 @@ then:
     export CPPFLAGS="$CPPFLAGS -I$PWD/install/include "
     export LDFLAGS="$LDFLAGS -I$PWD/install/library "
 
-
 To build including restbed, you will also need to set:
 
     CPPFLAGS=-Ipath_to_restbed_include
     LDFLAGS=-Lpath_to_restbed_library
+
+On a Mac, you will need to set:
+
+    CPPFLAGS=-Ipath_to_homebrew_openssl_include -Ipath_to_restbed_include 
+    LDFLAGS=-Lpath_to_homebrew_openssl_include -Lpath_to_restbed_library
+
+These variables should be set by the lines above that begin with `export`.
 
 ## configuration + building
 
