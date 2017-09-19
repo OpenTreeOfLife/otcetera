@@ -85,11 +85,11 @@ On debian or ubuntu:
 
 On a mac:
 
-   sudo brew install cmake
-   sudo brew install openssl
-   SSL=/usr/local/opt/openssl
-   export CPPFLAGS="$CPPFLAGS -I${SSL}/include"
-   export LDFLAGS="$LDFLAGS -L${SSL}/lib"
+    sudo brew install cmake
+    sudo brew install openssl
+    SSL=/usr/local/opt/openssl
+    export CPPFLAGS="$CPPFLAGS -I${SSL}/include"
+    export LDFLAGS="$LDFLAGS -L${SSL}/lib"
 
 then:
 
