@@ -71,9 +71,6 @@ prefix); also note that the path to the libraries in the build BOOST dir is plat
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
 # restbed
 
-HEAD
-https://github.com/corvusoft/restbed is required until we make the `ws` subdirectory an optional compilation choice.
-
 We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
 
 On debian or ubuntu:
