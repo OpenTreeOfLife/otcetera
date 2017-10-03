@@ -3,6 +3,7 @@
 #include "ws/tolwsadaptors.h"
 #include "otc/conflict.h"
 #include "otc/tree_operations.h"
+#include "otc/supertree_util.h"
 #include "nexson/nexson.h"
 #include <boost/optional.hpp>
 INITIALIZE_EASYLOGGINGPP
@@ -952,9 +953,18 @@ int depth(const tnode_type* node) {
     return node->get_data().depth;
 }
 
+string extract_node_name_if_present(const string& newick_name)
+{
+    auto node_name = get_source_node_name(newick_name);
+    if (node_name)
+	return *node_name;
+    else
+	return newick_name;
+}
+
 json get_node_status(const string& witness, string status, const RichTaxonomy& Tax) {
     json j;
-    j["witness"] = witness;
+    j["witness"] = extract_node_name_if_present(witness);
     j["status"] = std::move(status);
     long raw_ott_id = long_ott_id_from_name(witness);
     if (raw_ott_id >= 0) {
@@ -970,7 +980,7 @@ json get_node_status(const string& witness, string status, const RichTaxonomy& T
 json get_conflict_node_status(const set<pair<string,int>>& witnesses, string status, const RichTaxonomy& Tax) {
     json j;
     string first_witness = witnesses.begin()->first;
-    j["witness"] = witnesses.begin()->first;
+    j["witness"] = extract_node_name_if_present(witnesses.begin()->first);
     j["status"] = std::move(status);
 
     // Compute first 3 witnesses as name + name + name + ...
@@ -1017,25 +1027,50 @@ json get_conflict_node_status(const set<pair<string,int>>& witnesses, string sta
     return j;
 }
 
+// FIXME: Conflict relations currently refer to nodes by a name string.
+//        We assume that this name string:
+//         1. Is accessed as node->get_name()
+//         2. Contains the ottid, if there is one.
+//        The curator application also assumes that
+//         3. JSON results reference the nexml node name (e.g. nodeYYY) for phylesystem trees.
+//
+//        Actual node->get_name() strings look like this:
+//         ott:   ottXXX
+//         synth: ottXXX or mrcaottWWWottZZZ
+//         (internally) phylesystem: nodeYYY
+//         newick: stuff_ottXXX for leaves, and stuff otherwise.
+//         newick from phylesystem (externally): nodeYYY (for internal nodes) or nodeYYY_ottXXX (for leaves).
+//
+//        I assume that phylesystem node names are transformed from name -> name_ottXXX for leaf nodes, when translating phylesystem trees to newick.
+//
+//        Assumptions 1-3 are met for ott, synth, and (internal) phylesystem trees.
+//
+//        For newick trees from phylesystem, we handle this situation by translating these names from
+//        stuff_nodeYYY_ottXXX -> nodeYYY before constructing the json, as below. (10/03/2017 - BDR).
+//
+//        *ALTERNATIVELY*, we could chop any _ottXXX suffix from the leaf names to get the name used in the JSON result, but this could affect non-phylesystem inputs.
+//
+
+
 json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax) const {
     json nodes;
     for(auto& x: supported_by) {
-        nodes[x.first] = get_node_status(x.second, "supported_by", Tax);
+        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "supported_by", Tax);
     }
     for(auto& x: partial_path_of) {
-        nodes[x.first] = get_node_status(x.second, "partial_path_of", Tax);
+        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "partial_path_of", Tax);
     }
     for(auto& x: terminal) {
-        nodes[x.first] = get_node_status(x.second, "terminal", Tax);
+        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "terminal", Tax);
     }
     for(auto& x: conflicts_with) {
-        nodes[x.first] = get_conflict_node_status(x.second, "conflicts_with", Tax);
+        nodes[extract_node_name_if_present(x.first)] = get_conflict_node_status(x.second, "conflicts_with", Tax);
     }
     for(auto& x: resolves) {
-        nodes[x.first] = get_node_status(x.second, "resolves", Tax);
+        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolves", Tax);
     }
     for(auto& x: resolved_by) {
-        nodes[x.first] = get_node_status(x.second, "resolved_by", Tax);
+        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolved_by", Tax);
     }
     // For monotypic nodes in the query, copy annotation from child.
     for(auto it: iter_post_const(tree))
