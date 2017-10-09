@@ -1075,7 +1075,11 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
     // For monotypic nodes in the query, copy annotation from child.
     for(auto it: iter_post_const(tree))
 	if (it->is_outdegree_one_node())
-	    nodes[it->get_name()] = nodes.at(it->get_first_child()->get_name());
+	{
+	    auto name = extract_node_name_if_present(it->get_name());
+	    auto child_name = extract_node_name_if_present(it->get_first_child()->get_name());
+	    nodes[name] = nodes.at(child_name);
+	}
     return nodes;
 }
 
