@@ -1183,7 +1183,9 @@ json conflict_with_tree_impl(const QT & query_tree,
         stats.add_resolved_by(node2, node1);
     };
     auto log_terminal = [&stats](const QM* node2, const QM* node1) {
-        stats.add_terminal(node2, node1);
+	// Node1 might have an empty name if is a fake tip.
+	if (not node1->get_name().empty())
+	    stats.add_terminal(node2, node1);
     };
     auto log_resolves = [&stats](const QM* node1, const QM* node2) {
         stats.add_resolves(node2, node1);
@@ -1352,18 +1354,9 @@ void prune_duplicate_ottids(Tree& tree)
     }
 }
 
-string conflict_ws_method(const SummaryTree_t& summary,
-			  const RichTaxonomy & taxonomy,
-			  std::unique_ptr<ConflictTree>& query_tree,
-			  const string& tree2s)
+void check_all_leaves_have_ott_ids(const ConflictTree& query_tree)
 {
-    // 0. Remove unmapped leaves.
-    auto leaf_counts = prune_unmapped_leaves(*query_tree, taxonomy);
-    if (leaf_counts.first < 3)
-	throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
-
-    // 1. Check that all leaves in input tree have OTT ids
-    for(auto leaf: iter_leaf(*query_tree))
+    for(auto leaf: iter_leaf_const(query_tree))
 	if (not leaf->has_ott_id())
 	{
 	    if (leaf->get_name().empty())
@@ -1372,8 +1365,11 @@ string conflict_ws_method(const SummaryTree_t& summary,
 		throw OTCBadRequest()<<"Leaf '"<<leaf->get_name()<<"' has no OTT id!";
 	}
 
-    // 2. Check that all leaves in input tree have node names
-    for(const auto nd: iter_post_const(*query_tree))
+}
+
+void check_all_leaves_have_node_names(const ConflictTree& query_tree)
+{
+    for(const auto nd: iter_post_const(query_tree))
     {
         if (nd->get_name().empty())
 	{
@@ -1386,9 +1382,100 @@ string conflict_ws_method(const SummaryTree_t& summary,
             throw E;
         }
     }
+}
+
+// We would be able to improve this by:
+// - following only nodes which are ancestors of synthesis leaves (i.e. unpruned leaves)
+// - following only nodes which are ancestors of input phylogeny leaves, exemplified to turn higher taxon leaves -> leaf leaves.
+vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, const RichTaxonomy& taxonomy)
+{
+    auto& id_to_node = summary.get_data().id_to_node;
+    auto& tax_id_to_node = taxonomy.get_tax_tree().get_data().id_to_node;
+
+    vector<OttId> children;
+
+    if (id_to_node.count(id)) return children;
+
+    vector<OttId> bad_parents({id});
+    for(int i=0;i<bad_parents.size();i++)
+    {
+	auto parent_id = bad_parents[i];
+	auto parent_node = taxonomy.included_taxon_from_id(parent_id);
+	auto tax_node = tax_id_to_node.at(bad_parents[i]);
+	for(auto c: iter_child_const(*tax_node))
+	{
+	    auto child_id = c->get_ott_id();
+	    auto child_node = taxonomy.included_taxon_from_id(child_id);
+
+	    std::cerr<<"Lost taxon "<<parent_node->get_name()<<" ("<<parent_id<<") -> ";
+	    std::cerr<<"taxon "<<child_node->get_name()<<" ("<<child_id<<") of degree "<<child_node->get_out_degree()<<":";
+	    if (id_to_node.count(child_id))
+	    {
+		std::cerr<<"GOOD\n";
+		children.push_back(child_id);
+	    }
+	    else
+	    {
+		std::cerr<<"BAD\n";
+		bad_parents.push_back(child_id);
+	    }
+	}
+    }
+
+    return children;
+}
+
+
+string conflict_ws_method(const SummaryTree_t& summary,
+			  const RichTaxonomy & taxonomy,
+			  std::unique_ptr<ConflictTree>& query_tree,
+			  const string& tree2s)
+{
+    // 0. Prune unmapped leaves.
+    auto leaf_counts = prune_unmapped_leaves(*query_tree, taxonomy);
+    if (leaf_counts.first < 3)
+	throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
+
+    // 1. Check that all leaves in input tree have OTT ids
+    check_all_leaves_have_ott_ids(*query_tree);
+
+    // 2. Check that all leaves in input tree have node names
+    check_all_leaves_have_node_names(*query_tree);
+
+    // 3. Prune duplicate ott ids
     LOG(WARNING)<<"pre = "<<newick_string(*query_tree);
     prune_duplicate_ottids(*query_tree);
     LOG(WARNING)<<"post = "<<newick_string(*query_tree);
+
+    // 4. Add children to higher-taxa that are not in the other tree.
+    if (tree2s == "synth")
+    {
+	map<cnode_type*,vector<OttId>> children_to_add;
+	for(auto leaf: iter_leaf(*query_tree))
+	{
+	    LOG(WARNING)<<"Considering leaf "<<leaf->get_ott_id()<<":";
+	    auto leaf_id = leaf->get_ott_id();
+	    auto c = extra_children_for_node(leaf_id, summary, taxonomy);
+	    if (not c.empty())
+	    {
+		children_to_add.insert({leaf,c});
+		LOG(WARNING)<<"ottid "<<leaf->get_ott_id()<<" has frontier ";
+		for(auto id: c)
+		    LOG(WARNING)<<"   "<<id;
+	    }
+	}
+
+	// Add nodes with the specified ottids
+	for(const auto& job: children_to_add)
+	{
+	    auto leaf = job.first;
+	    auto& child_ids = job.second;
+	    for(auto id: child_ids)
+		query_tree->create_child(leaf)->set_ott_id(id);
+	}
+    }
+
+    // 5. Compute depth and number of tips for query_tree.
     compute_depth(*query_tree);
     compute_tips(*query_tree);
 
