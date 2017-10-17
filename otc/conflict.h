@@ -139,43 +139,45 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
 {
     typedef ConflictTree::node_type node_type;
 
+    // 1. Record depth of nodes, in order to compute MRCAs.
     compute_depth(induced_tree1);
-    compute_tips(induced_tree1);
-
     compute_depth(induced_tree2);
+
+    std::function<node_type*(node_type*,node_type*)> mrca_of_pair = [](node_type* n1, node_type* n2) {return mrca_from_depth(n1,n2);};
+
+    // 2. Record the number of tips <= each node, to determine when MRCAs contain more descendants than expected.
+    compute_tips(induced_tree1);
     compute_tips(induced_tree2);
 
-    std::vector<ConflictTree::node_type*> conflicts;
+    auto L = count_leaves(induced_tree1);
+    assert(L == count_leaves(induced_tree2));
 
-//    auto map1 = get_ottid_to_node_map(induced_tree1);
+    // 3. Make summary_node field of induced_tree1 leaves point to leaves of induced_tree2.
     auto map2 = get_ottid_to_node_map(induced_tree2);
         
-    // make summary_node field of induced_tree1 leaves point to leaves of induced_tree2.
     for(auto leaf: iter_leaf(induced_tree1)) {
         auto leaf2 = map2.at(leaf->get_ott_id());
         summary_node(leaf) = leaf2;
     }
         
-    auto L = count_leaves(induced_tree1);
-    assert(L == count_leaves(induced_tree2));
-        
-    std::function<node_type*(node_type*,node_type*)> mrca_of_pair = [](node_type* n1, node_type* n2) {return mrca_from_depth(n1,n2);};
-    
-    for(auto nd: all_nodes_postorder(induced_tree1)) {
-        if (not nd->get_parent()) {
-            continue;
-        }
-        // Ignore knuckles in input trees.
-        // (Note that in general, if we've pruned this tree down to match the shared taxon set
-        //  then this could produce knuckles that were not originally there.)
-        if (nd->is_outdegree_one_node()) {
-            continue;
-        }
-        // If this node contains all tips under it, then it doesn't correspond to a split.
-        if (nd->get_data().n_tips == (int)L) {
-            continue;
-        }
-        // If this node is a tip, the mark the corresponding nodes
+    // 4. Walk the nodes of induced_tree1 postorder, mapping them onto induced_tree2
+    std::vector<ConflictTree::node_type*> conflicts;
+
+    for(auto nd: all_nodes_postorder(induced_tree1))
+    {
+        // 4.1 Quit when we get to a parent of all leaves.
+	//     (This could be the root, or a child of a monotypic root.)
+        if (nd->get_data().n_tips == (int)L) break;
+
+	// If we've gotten here, this should not be the root.
+	assert(nd->get_parent());
+
+        // 4.2 Ignore knuckles in input trees.
+        //     (Note that in general, if we've pruned this tree down to match the shared taxon set
+        //      then this could produce knuckles that were not originally there.)
+        if (nd->is_outdegree_one_node()) continue;
+
+        // 4.3 If this node is a tip, the mark the corresponding nodes
         if (nd->is_tip()) {
             auto nd2 = summary_node(nd);
             log_terminal(nd2, nd);
