@@ -81,6 +81,26 @@ inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node) {
     return node->get_data().summary_node;
 }
 
+template <typename T>
+std::vector<typename T::node_type*> all_nodes_postorder(T& tree)
+{
+    std::vector<typename T::node_type*> tree_nodes;
+    for(auto nd: iter_post(tree)) {
+        tree_nodes.push_back(nd);
+    }
+    return tree_nodes;
+}
+
+template <typename T>
+std::vector<const typename T::node_type*> all_nodes_postorder(const T& tree)
+{
+    std::vector<const typename T::node_type*> tree_nodes;
+    for(auto nd: iter_post_const(tree)) {
+        tree_nodes.push_back(nd);
+    }
+    return tree_nodes;
+}
+
 // This procedure finds examples of (y supported_by x), (y partial_path of x), (y conflicts_with x), (y resolved_by y), and (y terminal x),
 //   where y is a node of tree2 and x is a node of tree1.
 //
@@ -139,14 +159,9 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
     auto L = count_leaves(induced_tree1);
     assert(L == count_leaves(induced_tree2));
         
-    std::vector<node_type*> tree_nodes;
-    for(auto nd: iter_post(induced_tree1)) {
-        tree_nodes.push_back(nd);
-    }
-
     std::function<node_type*(node_type*,node_type*)> mrca_of_pair = [](node_type* n1, node_type* n2) {return mrca_from_depth(n1,n2);};
     
-    for(auto nd: tree_nodes) {
+    for(auto nd: all_nodes_postorder(induced_tree1)) {
         if (not nd->get_parent()) {
             continue;
         }
