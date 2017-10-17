@@ -1052,8 +1052,19 @@ json get_conflict_node_status(const set<pair<string,int>>& witnesses, string sta
 //
 
 
+// PROBLEM: It is possible to have both y1 conflicts with x (x:conflicts_with y1) and y2 resolves x (x:resolves y2)
+// PROBLEM: It is possible to have both y1 supported_by x (x:supported_by y1) and y2 resolves x (x:resolves y2)
+// PROBLEM: It is possible to have both x resolves y (x:resolved_by y1) and y2 resolves x (x:resolves y2)
+// Let's solve this situation by NOT reporting when tree2 resolves tree1.
+
 json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax) const {
     json nodes;
+//    for(auto& x: resolves) {
+//        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolves", Tax);
+//    }
+    for(auto& x: resolved_by) {
+        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolved_by", Tax);
+    }
     for(auto& x: supported_by) {
         nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "supported_by", Tax);
     }
@@ -1065,12 +1076,6 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
     }
     for(auto& x: conflicts_with) {
         nodes[extract_node_name_if_present(x.first)] = get_conflict_node_status(x.second, "conflicts_with", Tax);
-    }
-    for(auto& x: resolves) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolves", Tax);
-    }
-    for(auto& x: resolved_by) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolved_by", Tax);
     }
     // For monotypic nodes in the query, copy annotation from child.
     for(auto it: iter_post_const(tree))
@@ -1160,7 +1165,11 @@ get_induced_trees2(const Tree1& T1,
 }
 
 
-
+template <typename N>
+bool is_fake_tip(const N* n)
+{
+    return (n->get_out_degree() > 0) and (n->get_first_child()->get_name().empty());
+}
 
 template<typename QT, typename TT, typename QM, typename TM>
 json conflict_with_tree_impl(const QT & query_tree,
@@ -1171,10 +1180,16 @@ json conflict_with_tree_impl(const QT & query_tree,
 {
     conflict_stats stats;
     auto log_supported_by = [&stats](const QM* node2, const QM* node1) {
-        stats.add_supported_by(node2, node1);
+	if (is_fake_tip(node1))
+	    stats.add_terminal(node2,node1);
+	else
+	    stats.add_supported_by(node2, node1);
     };
     auto log_partial_path_of = [&stats](const QM* node2, const QM* node1) {
-        stats.add_partial_path_of(node2, node1);
+	if (is_fake_tip(node1))
+	    stats.add_terminal(node2,node1);
+	else
+	    stats.add_partial_path_of(node2, node1);
     };
     auto log_conflicts_with = [&stats](const QM* node2, const QM* node1) {
         stats.add_conflicts_with(node2, node1);
@@ -1187,10 +1202,6 @@ json conflict_with_tree_impl(const QT & query_tree,
 	if (not node1->get_name().empty())
 	    stats.add_terminal(node2, node1);
     };
-    auto log_resolves = [&stats](const QM* node1, const QM* node2) {
-        stats.add_resolves(node2, node1);
-    };
-    auto do_nothing = [](const QM*, const QM*) {};
 
     {
 	auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
@@ -1203,8 +1214,15 @@ json conflict_with_tree_impl(const QT & query_tree,
 				  log_resolved_by,
 				  log_terminal);
     }
+/*
+//  See PROBLEM notes above, on why we don't record when node2 resolves node1.
+//    auto log_resolves = [&stats](const QM* node1, const QM* node2) {
+//	if (not is_fake_tip(node1))
+//	    stats.add_resolves(node2, node1);
+//    };
+//    auto do_nothing = [](const QM*, const QM*) {};
 
-    // The induced trees are destructively modified, so we can't reuse them.
+    //The induced trees are destructively modified, so we can't reuse them.
     {
 	auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
 
@@ -1216,6 +1234,7 @@ json conflict_with_tree_impl(const QT & query_tree,
 				  log_resolves,
 				  do_nothing);
     }
+*/
 
     {
 	auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
