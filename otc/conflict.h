@@ -217,6 +217,7 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
 
         // The n_include_tips for a parent node should count the n_include_tips for this node
         if (nodes.size() > 1) {
+	    // Loop over all the nodes except the MRCA.
             for(std::size_t i=0;i<nodes.size()-1;i++) {
                 auto nd = nodes[i];
                 if (nd->is_tip()) {
