@@ -163,33 +163,33 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
     // 4. Walk the nodes of induced_tree1 postorder, mapping them onto induced_tree2
     std::vector<ConflictTree::node_type*> conflicts;
 
-    for(auto nd: all_nodes_postorder(induced_tree1))
+    for(auto nd1: all_nodes_postorder(induced_tree1))
     {
         // 4.1 Quit when we get to a parent of all leaves.
 	//     (This could be the root, or a child of a monotypic root.)
-        if (nd->get_data().n_tips == (int)L) break;
+        if (nd1->get_data().n_tips == (int)L) break;
 
 	// If we've gotten here, this should not be the root.
-	assert(nd->get_parent());
+	assert(nd1->get_parent());
 
         // 4.2 Ignore knuckles in input trees.
         //     (Note that in general, if we've pruned this tree down to match the shared taxon set
         //      then this could produce knuckles that were not originally there.)
-        if (nd->is_outdegree_one_node()) continue;
+        if (nd1->is_outdegree_one_node()) continue;
 
         // 4.3 If this node is a tip, the mark the corresponding nodes
-        if (nd->is_tip()) {
-            auto nd2 = summary_node(nd);
-            log_terminal(nd2, nd);
+        if (nd1->is_tip()) {
+            auto nd2 = summary_node(nd1);
+            log_terminal(nd2, nd1);
             nd2 = nd2->get_parent();
             for(; nd2 and nd2->is_outdegree_one_node(); nd2 = nd2->get_parent()) {
-                log_terminal(nd2, nd);
+                log_terminal(nd2, nd1);
             }
             continue;
         }
 
         // Find the list of nodes in the input tree that are below nd.
-        std::vector<const node_type*> leaves1 = leaf_nodes_below(const_cast<const node_type*>(nd));
+        std::vector<const node_type*> leaves1 = leaf_nodes_below(const_cast<const node_type*>(nd1));
 
         // Since nd is not a tip, and not monotypic, it should have at least 2 leaves below it.
         assert(leaves1.size() >= 2);
@@ -237,10 +237,10 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
         if (not conflicts_or_resolved_by) {
             assert(MRCA->get_parent());
             if (MRCA->get_parent()->get_data().n_tips > MRCA->get_data().n_tips) {
-                log_supported_by(MRCA, nd);
+                log_supported_by(MRCA, nd1);
             } else {
                 for(auto nd2 = MRCA; nd2 and nd2->get_data().n_tips == MRCA->get_data().n_tips; nd2 = nd2->get_parent()) {
-                    log_partial_path_of(nd2, nd);
+                    log_partial_path_of(nd2, nd1);
                 }
             }
         }
@@ -258,11 +258,11 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
         }
             
         for(auto conflicting_node: conflicts) {
-            log_conflicts_with(conflicting_node, nd);
+            log_conflicts_with(conflicting_node, nd1);
         }
 
         if (conflicts.empty() and conflicts_or_resolved_by) {
-            log_resolved_by(MRCA, nd);
+            log_resolved_by(MRCA, nd1);
         }
 
 #ifdef CHECK_MARKS
@@ -273,8 +273,8 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
 
         // nd -> MRCA
         if (not conflicts_or_resolved_by) {
-            summary_node(nd) = MRCA;
-            destroy_children(nd);
+            summary_node(nd1) = MRCA;
+            destroy_children(nd1);
             destroy_children(MRCA);
         }
     }
