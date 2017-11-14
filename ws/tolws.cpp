@@ -1133,8 +1133,8 @@ get_induced_trees2(const Tree1& T1,
 	if (node->has_ott_id())
 	    node->set_name("ott"+std::to_string(node->get_ott_id()));
 
-    LOG(WARNING)<<"induced_tree2 #leaves = "<<n_leaves(*induced_tree2);
-    LOG(WARNING)<<"induced_tree2 = "<<newick_string(*induced_tree2);
+//    LOG(WARNING)<<"induced_tree2 #leaves = "<<n_leaves(*induced_tree2);
+//    LOG(WARNING)<<"induced_tree2 = "<<newick_string(*induced_tree2);
     //FIXME - handle cases like (Homo sapiens, Homo) by deleting monotypic nodes at the root.
 
     // 2. Keep only leaves from T1 that (a) have an ottid in T2 and (b) map to a leaf of induced_tree2
@@ -1159,7 +1159,7 @@ get_induced_trees2(const Tree1& T1,
 
     // 3. Construct the induced tree for T1
     auto induced_tree1 = get_induced_tree<Tree1, Tree_Out_t>(induced_leaves1, MRCA_of_pair1);
-    LOG(WARNING)<<"induced_tree1 = "<<newick_string(*induced_tree1);
+//    LOG(WARNING)<<"induced_tree1 = "<<newick_string(*induced_tree1);
 
     return {std::move(induced_tree1), std::move(induced_tree2)};
 }
@@ -1462,9 +1462,9 @@ string conflict_ws_method(const SummaryTree_t& summary,
     check_all_leaves_have_node_names(*query_tree);
 
     // 3. Prune duplicate ott ids
-    LOG(WARNING)<<"pre = "<<newick_string(*query_tree);
+//    LOG(WARNING)<<"pre = "<<newick_string(*query_tree);
     prune_duplicate_ottids(*query_tree);
-    LOG(WARNING)<<"post = "<<newick_string(*query_tree);
+//    LOG(WARNING)<<"post = "<<newick_string(*query_tree);
 
     // 4. Add children to higher-taxa that are not in the other tree.
     if (tree2s == "synth")
@@ -1472,7 +1472,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
 	map<cnode_type*,vector<OttId>> children_to_add;
 	for(auto leaf: iter_leaf(*query_tree))
 	{
-	    LOG(WARNING)<<"Considering leaf "<<leaf->get_ott_id()<<":";
+//	    LOG(WARNING)<<"Considering leaf "<<leaf->get_ott_id()<<":";
 	    auto leaf_id = leaf->get_ott_id();
 	    auto c = extra_children_for_node(leaf_id, summary, taxonomy);
 	    if (not c.empty())

@@ -521,6 +521,7 @@ create_method_handler(const string& path, const std::function<std::string(const 
 		} catch (OTCWebError& e) {
 		    string rbody = string("[") + path + ("] Error: ") + e.what();
 		    session->close( e.status_code(), rbody, request_headers(rbody) );
+		    LOG(WARNING)<<rbody;
 		}
 	    });
     };
