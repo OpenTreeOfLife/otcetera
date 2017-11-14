@@ -147,6 +147,7 @@ Tested by kcranston on OS X Sierra 10.12.4. These instructions do not include bu
     $ brew install automake
     $ brew install boost
     $ brew install libtool
+    $ brew install md5sha1sum
     
 When you install libtool, you will get the following warning:
 
