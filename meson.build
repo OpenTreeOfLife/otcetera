@@ -15,7 +15,6 @@ conf_data = configuration_data()
 conf_data.set_quoted('PACKAGE_VERSION', meson.project_version())
 conf_data.set_quoted('_ARCH_', host_machine.system()+' ' + host_machine.cpu_family())
 conf_data.set_quoted('_COMPILER_', cpp.get_id() + ' ' + cpp.version()+' ' + host_machine.cpu_family())
-conf_data.set_quoted('CONFIG_FLAGS', '')
 configure_file(output : 'config.h', configuration : conf_data)
 
 # Do we need this?
