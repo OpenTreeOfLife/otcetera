@@ -1511,8 +1511,17 @@ string newick_conflict_ws_method(const SummaryTree_t& summary,
 				 const string& tree1s,
 				 const string& tree2s)
 {
-    auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
-    return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
+    try
+    {
+	LOG(WARNING)<<"newick conflict: tree1s = '"<<tree1s<<"'   tree1s = '"<<tree2s<<"'";
+	auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
+	return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
+    }
+    catch (otc::OTCParsingError& e)
+    {
+	LOG(WARNING)<<"newick conflict: error parsing newick string '"<<tree1s<<"'";
+	throw OTCBadRequest() << "Error parsing newick:  \n:"<<e.what();
+    }
 }
 
 string phylesystem_conflict_ws_method(const SummaryTree_t& summary,
