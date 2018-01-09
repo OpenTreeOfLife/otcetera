@@ -1,0 +1,2 @@
+#define GIT_MESSAGE "@git_message@"
+#define GIT_SHAID "@git_shaid@"
