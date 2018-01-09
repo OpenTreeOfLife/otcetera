@@ -56,4 +56,4 @@ foreach program : programs
   executable('otc-'+program, program + '.cpp', dependencies: [boost, libotcetera, json], include_directories: otc_inc, install: true)
 endforeach
 
-executable('version-reporter', ['version-reporter.cpp',git_version_h], dependencies: [boost, libotcetera, json], include_directories: otc_inc, install: true)
+executable('otc-version-reporter', ['version-reporter.cpp',git_version_h], dependencies: [boost, libotcetera, json], include_directories: otc_inc, install: true)
