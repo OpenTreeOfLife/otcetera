@@ -154,7 +154,7 @@ void register_taxon_in_maps(std::map<boost::string_ref, const T *> & n2n,
                             const T * ti) {
     auto nit = n2n.lower_bound(possibly_nonunique_name);
     typedef std::pair<boost::string_ref, const T *> name_map_pair;
-    if (nit->first != possibly_nonunique_name) {
+    if (nit == n2n.end() or nit->first != possibly_nonunique_name) {
         nit = n2n.insert(nit, name_map_pair(possibly_nonunique_name, ti));
     } else {
         if (nit->second != nullptr) {
@@ -683,7 +683,7 @@ void RichTaxonomy::read_synonyms() {
         auto nit = tree_data.name_to_node.lower_bound(name);
         boost::string_ref name_ref = tjs.name;
         typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
-        if (nit->first != name_ref) {
+        if (nit == tree_data.name_to_node.end() or nit->first != name_ref) {
             nit = tree_data.name_to_node.insert(nit, name_map_pair(name_ref, primary));
         } else {
             if (nit->second != nullptr) {
