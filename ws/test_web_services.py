@@ -4,7 +4,10 @@ import requests
 import json
 import time
 import logging
-from Queue import Queue
+try:
+    from Queue import Queue
+except:
+    from queue import Queue
 from threading import Thread
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
