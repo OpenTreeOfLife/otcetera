@@ -738,7 +738,7 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
                                  const SummaryTreeAnnotation * sta,
                                  const string & node_id,
                                  int height_limit) {
-    const uint NEWICK_TIP_LIMIT = 25000;
+    const uint32_t NEWICK_TIP_LIMIT = 25000;
     auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
     json response;
     response["synth_id"] = sta->synth_id;
