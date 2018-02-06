@@ -660,3 +660,8 @@ Thanks to NESCent and  Google for supporting that work.
 Many of the files used for testing were provided by Arlin Stoltzfus (see
 http://www.molevol.org/camel/projects/nexus/ for more information), the Mesquite
 package, and from TreeBase (thanks, Bill Piel!).
+
+## Docker
+See https://github.com/mtholder/dockerot for the beginnings of a 
+Docker-based build system for otcetera.
+
