@@ -307,8 +307,10 @@ bool is_ancestor_of(const Tree_t::node_type* n1, const Tree_t::node_type* n2) {
 }
 
 
-const Tree_t::node_type* find_unique_maximum(const vector<const Tree_t::node_type*>& nodes) {
-    for(int i=0;i<nodes.size();i++) {
+const Tree_t::node_type* find_unique_maximum(const vector<const Tree_t::node_type*>& nodes)
+{
+    for(int i=0;i<nodes.size();i++)
+    {
         bool is_ancestor = true;
         for(int j=0;j<nodes.size() and is_ancestor;j++) {
             if (j==i) {
@@ -341,29 +343,45 @@ void register_ottid_equivalences(const Tree_t::node_type* canonical, const vecto
 }
 
 
-/// Copy node names from taxonomy to tree based on ott ids, and copy the root name also
-//  For this function, the taxa is a list of taxa that are displayed by the tree.
-//  It is possible for different names to get assigned to the same node,Therefore, we need only 
-void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa) {
+//  Given a list of taxon nodes that are known NOT to conflict with the summary tree,
+//   * map each name to the MRCA of its include group.
+//   * copy the (i) node name and (ii) ottid to the MRCA on the summary tree.
+//
+//  If multiple names get assigned to a single node, try to handle this by
+//    making a monotypic parent assigning the rootmost name to that.
+//  Otherwise choose a name arbitrarily.
+void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& compatible_taxa)
+{
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
+
     // 1. Set the des_ids for the summary
     clear_and_fill_des_ids(summary);
-    // 2. Associate each summary node with all the taxon nodes with that map to it.
+
+    // 2. Place each taxon N at the MRCA of its include group.
     map<Tree_t::node_type*, vector<const Tree_t::node_type*>> name_groups;
-    for(auto n2: taxa) {
+    for(auto n2: compatible_taxa)
+    {
         auto mrca = find_mrca_of_desids(n2->get_data().des_ids, summaryOttIdToNode);
+
         if (not name_groups.count(mrca)) {
             name_groups[mrca] = {};
         }
         name_groups[mrca].push_back(n2);
+
+	// Any extra desids are here because an incertae sedis taxon was placed inside this node,
+	// or inside a child.
     }
+
     // 3. Handle each summary 
-    for(auto& name_group: name_groups) {
+    for(auto& name_group: name_groups)
+    {
         auto summary_node = name_group.first;
         auto& names = name_group.second;
+
         // 3.1. As long as there is a unique root-most name, put that name in a monotypic parent.
         // This can occur when a node has two children, and one of them is an incertae sedis taxon that is moved more tip-ward.
-        while (auto max = find_unique_maximum(names)) {
+        while (auto max = find_unique_maximum(names))
+	{
             if (names.size() == 1) {
                 summary_node->set_name(max->get_name());
             } else {
@@ -371,13 +389,18 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& taxa) {
                 p->set_name(max->get_name());
                 p->get_data().des_ids = p->get_first_child()->get_data().des_ids;
             }
+
+	    // Move the "removed" elements to the end and the erase them.  Weird.
             names.erase(std::remove(names.begin(), names.end(), max), names.end());
         }
+
         // 3.2. Select a canonical name from the remaining names.
-        if (not names.empty()) {
+        if (not names.empty())
+	{
             // Select a specific ottid as the canonical name for this summary node
             auto canonical = select_canonical_ottid(names);
             summary_node->set_name(canonical->get_name());
+
             // Write out the equivalence of the remaining ottids to the canonical ottid
             names.erase(std::remove(names.begin(), names.end(), canonical), names.end());
             register_ottid_equivalences(canonical, names);
@@ -471,7 +494,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             return true;
         };
     // 1. Find splits in order of input trees
-    vector<Tree_t::node_type const*> taxa;
+    vector<Tree_t::node_type const*> compatible_taxa;
     for(int i=0;i<trees.size();i++) {
         const auto& tree = trees[i];
         auto root = tree->get_root();
@@ -493,7 +516,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                     const auto descendants = remap(nd->get_data().des_ids);
                     const auto nondescendants = remap(exclude[nd]);
                     if (add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants))) {
-                        taxa.push_back(nd);
+                        compatible_taxa.push_back(nd);
                     }
                 }
             }
@@ -502,7 +525,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 if (not nd->is_tip() and nd != root) {
                     const auto descendants = remap(nd->get_data().des_ids);
                     if (add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices})) {
-                        taxa.push_back(nd);
+                        compatible_taxa.push_back(nd);
                     }
                 }
             }
@@ -524,7 +547,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
     }
     add_root_and_tip_names(*tree, *taxonomy);
-    add_names(*tree, taxa);
+    add_names(*tree, compatible_taxa);
     return tree;
 }
 
