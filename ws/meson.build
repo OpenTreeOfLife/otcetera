@@ -9,7 +9,11 @@ endif
 
 otc_tol_ws_sources = ['tolws.cpp', 'tolwsadaptors.cpp', 'tolwsbooting.cpp', 'nexson/nexson.cpp']
 ws_inc = include_directories('.')
-executable('otc-tol-ws', otc_tol_ws_sources, dependencies: [boost, libotcetera, restbed, json, ssl, curl, threads], include_directories: ws_inc, install: true)
+executable('otc-tol-ws', otc_tol_ws_sources,
+	   dependencies: [boost, libotcetera, restbed, json, ssl, curl, threads],
+	   include_directories: ws_inc,
+	   install_rpath: rpath,
+	   install: true)
 
 #check:
 #	python $(abs_top_srcdir)/ws/test_web_services.py \

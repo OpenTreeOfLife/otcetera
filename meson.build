@@ -24,6 +24,8 @@ boost = dependency('boost', modules : ['program_options','system','filesystem'],
 
 json = declare_dependency(include_directories: include_directories('otc'))
 
+rpath = '$ORIGIN/../'+get_option('libdir')
+
 # build libotcetera
 subdir('otc')
 # build tools
