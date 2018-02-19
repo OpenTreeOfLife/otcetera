@@ -276,6 +276,7 @@ Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd) {
 void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy) {
     // name root
     summary.get_root()->set_name(taxonomy.get_root()->get_name());
+    summary.get_root()->set_ott_id(taxonomy.get_root()->get_ott_id());
     // name tips
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
     for(auto nd: iter_leaf_const(taxonomy)) {
@@ -342,6 +343,56 @@ void register_ottid_equivalences(const Tree_t::node_type* canonical, const vecto
     std::cerr << "\n";
 }
 
+OttId find_ancestor_id(const Tree_t::node_type* nd)
+{
+    // Don't call this on the root node: it will abort.
+    assert(nd->get_parent());
+
+    while(auto p = nd->get_parent())
+    {
+	if (p->has_ott_id()) return p->get_ott_id();
+	nd = p;
+    }
+
+    // We should never get here if we don't call this on the root node.
+    std::abort();
+}
+
+bool is_ancestral_to(const Tree_t::node_type* anc, const Tree_t::node_type* n1)
+{
+    if (depth(n1) < depth(anc)) return false;
+
+    while(depth(n1) > depth(anc))
+    {
+	assert(n1->get_parent());
+	n1 = n1->get_parent();
+    }
+
+    assert(depth(n1) == depth(anc));
+
+    return (n1 == anc);
+}
+
+map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tree_t& summary, const Tree_t& taxonomy)
+{
+    map<const Tree_t::node_type*,const Tree_t::node_type*> placements;
+
+    auto node_from_id = get_ottid_to_const_node_map(taxonomy);
+
+    for(auto nd: iter_post_const(summary))
+	if (nd->get_parent() and nd->has_ott_id())
+	{
+	    auto id = nd->get_ott_id();
+	    auto anc_id = find_ancestor_id(nd);
+
+	    auto tax_nd = node_from_id.at(id);
+	    auto tax_anc = node_from_id.at(anc_id);
+	    if (not is_ancestral_to(tax_anc, tax_nd))
+		placements[tax_nd] = tax_anc;
+	}
+
+    return placements;
+}
 
 //  Given a list of taxon nodes that are known NOT to conflict with the summary tree,
 //   * map each name to the MRCA of its include group.
@@ -384,9 +435,11 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& compatib
 	{
             if (names.size() == 1) {
                 summary_node->set_name(max->get_name());
+                summary_node->set_ott_id(max->get_ott_id());
             } else {
                 auto p = add_monotypic_parent(summary, summary_node);
                 p->set_name(max->get_name());
+                p->set_ott_id(max->get_ott_id());
                 p->get_data().des_ids = p->get_first_child()->get_data().des_ids;
             }
 
@@ -649,6 +702,7 @@ int main(int argc, char *argv[]) {
             }
             return 0;
         }
+
         // 6. Check if trees are mapping to non-terminal taxa, and either fix the situation or die.
         for (int i = 0; i < trees.size() - 1; i++) {
             if (cladeTips) {
@@ -657,18 +711,32 @@ int main(int argc, char *argv[]) {
                 require_tips_to_be_mapped_to_terminal_taxa(*trees[i], *trees.back());
             }
         }
+
         // 7. Perform the synthesis
-        compute_depth(*trees.back());
+	auto& taxonomy = *trees.back();
+        compute_depth(taxonomy);
         auto tree = combine(trees, incertae_sedis, verbose);
+
         // 8. Set the root name (if asked)
         // FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
         if (setRootName) {
             tree->get_root()->set_name(args["root-name"].as<string>());
         }
+
         // 9. Write out the summary tree.
         write_tree_as_newick(std::cout, *tree);
         std::cout << "\n";
-        return 0;
+
+	// 10. Find placements
+	auto placements = check_placement(*tree, taxonomy);
+	for(auto& p: placements)
+	{
+	    auto nd1 = p.first;
+	    auto nd2 = p.second;
+	    LOG(INFO)<<nd1->get_name()<<" ["<<nd1->get_ott_id()<<"] placed under "<<nd2->get_name()<<" ["<<nd2->get_ott_id()<<"]";
+	}
+
+	return 0;
     } catch (std::exception& e) {
         std::cerr << "otc-solve-subproblem: Error! " << e.what() << std::endl;
         exit(1);
