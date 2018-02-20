@@ -664,6 +664,17 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     return retTree;
 }
 
+string node_name_is(const node_t* nd, const OttIdSet& incertae_sedis)
+{
+    std::ostringstream msg;
+    if (incertae_sedis.count(nd->get_ott_id())) 
+	msg<<"?";
+    msg <<nd->get_name();
+    if (nd->has_ott_id())
+	msg<<" ["<<nd->get_ott_id()<<"]";
+    return msg.str();
+}
+
 int main(int argc, char *argv[]) {
     try {
         // 1. Parse command line arguments
@@ -762,6 +773,7 @@ int main(int argc, char *argv[]) {
 		placement_path.push_back(parent);
 		parent = parent->get_parent();
 	    }
+	    placement_path.push_back(mrca);
 
 	    vector<const node_t*> is_path;
 	    while(placed != mrca)
@@ -770,19 +782,26 @@ int main(int argc, char *argv[]) {
 		is_path.push_back(placed);
 		placed = placed->get_parent();
 	    }
+	    is_path.push_back(mrca);
+
 	    std::ostringstream msg;
-	    for(auto nd: is_path)
+
+	    for(int i=0;i<is_path.size();i++)
 	    {
-		if (incertae_sedis.count(nd->get_ott_id())) 
-		    msg<<"?";
-		msg <<nd->get_name()<<" ["<<nd->get_ott_id()<<"] <- ";
+		msg <<node_name_is(is_path[i], incertae_sedis);
+		if (i != is_path.size()-1)
+		    msg <<" <- ";
 	    }
-	    msg << "(MRCA) placed under ";
-	    for(auto nd: placement_path)
+
+	    msg << " placed under ";
+
+	    for(int i=0;i<placement_path.size();i++)
 	    {
-		msg <<nd->get_name()<<" ["<<nd->get_ott_id()<<"] <- ";
+		msg <<node_name_is(placement_path[i], incertae_sedis);
+		if (i != placement_path.size()-1)
+		    msg <<" <- ";
 	    }
-	    msg << "(MRCA)";
+
 	    LOG(INFO)<<msg.str();
 	}
 
