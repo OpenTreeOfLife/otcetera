@@ -7,8 +7,11 @@
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "otc/tree_iter.h"
+#include "otc/induced_tree.h"
 #include <fstream>
+#include <sstream>
 #include <boost/filesystem.hpp>
+#include <boost/optional.hpp>
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -20,8 +23,10 @@ using std::list;
 using std::map;
 using std::string;
 using namespace otc;
+using boost::optional;
 
 typedef TreeMappedWithSplits Tree_t;
+typedef Tree_t::node_type node_t;
 
 int depth(const Tree_t::node_type* nd)
 {
@@ -276,7 +281,8 @@ Tree_t::node_type* add_monotypic_parent(Tree_t& tree, Tree_t::node_type* nd) {
 void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy) {
     // name root
     summary.get_root()->set_name(taxonomy.get_root()->get_name());
-    summary.get_root()->set_ott_id(taxonomy.get_root()->get_ott_id());
+    if (taxonomy.get_root()->has_ott_id())
+	summary.get_root()->set_ott_id(taxonomy.get_root()->get_ott_id());
     // name tips
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
     for(auto nd: iter_leaf_const(taxonomy)) {
@@ -343,7 +349,7 @@ void register_ottid_equivalences(const Tree_t::node_type* canonical, const vecto
     std::cerr << "\n";
 }
 
-OttId find_ancestor_id(const Tree_t::node_type* nd)
+optional<OttId> find_ancestor_id(const Tree_t::node_type* nd)
 {
     // Don't call this on the root node: it will abort.
     assert(nd->get_parent());
@@ -355,7 +361,7 @@ OttId find_ancestor_id(const Tree_t::node_type* nd)
     }
 
     // We should never get here if we don't call this on the root node.
-    std::abort();
+    return boost::none;
 }
 
 bool is_ancestral_to(const Tree_t::node_type* anc, const Tree_t::node_type* n1)
@@ -375,6 +381,15 @@ bool is_ancestral_to(const Tree_t::node_type* anc, const Tree_t::node_type* n1)
 
 map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tree_t& summary, const Tree_t& taxonomy)
 {
+    for(auto nd: iter_post_const(summary))
+    {
+	if (nd->get_parent() and nd->get_name().size() and not nd->has_ott_id())
+	{
+	    LOG(WARNING)<<"Named taxonomy node has no OTTID!  Not checking for incertae sedis placement.";
+	    return {};
+	}
+    }
+
     map<const Tree_t::node_type*,const Tree_t::node_type*> placements;
 
     auto node_from_id = get_ottid_to_const_node_map(taxonomy);
@@ -385,8 +400,11 @@ map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tre
 	    auto id = nd->get_ott_id();
 	    auto anc_id = find_ancestor_id(nd);
 
+	    // ancestor is the root
+	    if (not anc_id) continue;
+
 	    auto tax_nd = node_from_id.at(id);
-	    auto tax_anc = node_from_id.at(anc_id);
+	    auto tax_anc = node_from_id.at(*anc_id);
 	    if (not is_ancestral_to(tax_anc, tax_nd))
 		placements[tax_nd] = tax_anc;
 	}
@@ -435,11 +453,13 @@ void add_names(Tree_t& summary, const vector<const Tree_t::node_type*>& compatib
 	{
             if (names.size() == 1) {
                 summary_node->set_name(max->get_name());
-                summary_node->set_ott_id(max->get_ott_id());
+		if (max->has_ott_id())
+		    summary_node->set_ott_id(max->get_ott_id());
             } else {
                 auto p = add_monotypic_parent(summary, summary_node);
                 p->set_name(max->get_name());
-                p->set_ott_id(max->get_ott_id());
+		if (max->has_ott_id())
+		    p->set_ott_id(max->get_ott_id());
                 p->get_data().des_ids = p->get_first_child()->get_data().des_ids;
             }
 
@@ -731,9 +751,39 @@ int main(int argc, char *argv[]) {
 	auto placements = check_placement(*tree, taxonomy);
 	for(auto& p: placements)
 	{
-	    auto nd1 = p.first;
-	    auto nd2 = p.second;
-	    LOG(INFO)<<nd1->get_name()<<" ["<<nd1->get_ott_id()<<"] placed under "<<nd2->get_name()<<" ["<<nd2->get_ott_id()<<"]";
+	    auto placed = p.first;
+	    auto parent = p.second;
+	    auto mrca = mrca_from_depth(placed, parent);
+
+	    vector<const node_t*> placement_path;
+	    while(parent != mrca)
+	    {
+		assert(depth(parent) > depth(mrca));
+		placement_path.push_back(parent);
+		parent = parent->get_parent();
+	    }
+
+	    vector<const node_t*> is_path;
+	    while(placed != mrca)
+	    {
+		assert(depth(placed) > depth(mrca));
+		is_path.push_back(placed);
+		placed = placed->get_parent();
+	    }
+	    std::ostringstream msg;
+	    for(auto nd: is_path)
+	    {
+		if (incertae_sedis.count(nd->get_ott_id())) 
+		    msg<<"?";
+		msg <<nd->get_name()<<" ["<<nd->get_ott_id()<<"] <- ";
+	    }
+	    msg << "(MRCA) placed under ";
+	    for(auto nd: placement_path)
+	    {
+		msg <<nd->get_name()<<" ["<<nd->get_ott_id()<<"] <- ";
+	    }
+	    msg << "(MRCA)";
+	    LOG(INFO)<<msg.str();
 	}
 
 	return 0;
