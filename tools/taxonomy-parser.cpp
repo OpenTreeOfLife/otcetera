@@ -188,7 +188,7 @@ void show_taxonomy_ids(const Taxonomy& taxonomy,
         try {
             auto& rec = taxonomy.record_from_id(id);
             if (flags_match(rec.flags)) {
-                std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+                std::cout << format_with_taxonomy("No original label",format,rec,taxonomy) << "\n";
             }
         } catch (...) {
             std::cerr << "id=" << id << ": not in taxonomy!\n";
@@ -249,7 +249,7 @@ int main(int argc, char* argv[]) {
             string format=args["format"].as<string>();
             for(const auto& rec: taxonomy) {
                 if (flags_match(rec.flags)) {
-                    std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+                    std::cout << format_with_taxonomy("No original label",format,rec,taxonomy) << "\n";
                 }
             }
             return 0;
@@ -257,7 +257,7 @@ int main(int argc, char* argv[]) {
             string format=args["format"].as<string>();
             for(const auto& rec: taxonomy) {
                 if (flags_match(rec.flags)) {
-                    std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+                    std::cout << format_with_taxonomy("No original label",format,rec,taxonomy) << "\n";
                 }
             }
             return 0;

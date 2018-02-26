@@ -378,7 +378,7 @@ int main(int argc, char* argv[]) {
                     int id = nd->get_ott_id();
                     if (taxonomy) {
                         const auto& record = (*taxonomy).record_from_id(id);
-                        name = format_with_taxonomy(nd->get_name(), format_tax, record);
+                        name = format_with_taxonomy(nd->get_name(), format_tax, record, *taxonomy);
                     } else {
                         name = format_without_taxonomy(nd->get_name(), format_tax);
                     }
