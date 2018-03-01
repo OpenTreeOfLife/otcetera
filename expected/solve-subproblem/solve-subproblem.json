@@ -23,5 +23,15 @@
       "invocation" : ["otc-solve-subproblem", "-I../../../data/is-naming/is2.txt", "<INFILELIST>"],
       "infile_list": ["is-naming/tree2.tre", "is-naming/tax2.tre"],
       "expected": "is-naming2"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "-I../../../data/is-clade/is.txt", "<INFILELIST>"],
+      "infile_list": ["is-clade/tree1.tre", "is-clade/tax.tre"],
+      "expected": "is-clade-1"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "-I../../../data/is-clade/is.txt", "<INFILELIST>"],
+      "infile_list": ["is-clade/tree2.tre", "is-clade/tax.tre"],
+      "expected": "is-clade-2"
   }
 ]
