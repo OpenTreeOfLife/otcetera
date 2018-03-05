@@ -503,10 +503,41 @@ vector<typename Tree_t::node_type const*> get_siblings(typename Tree_t::node_typ
 }
 
 template<typename Tree_T>
+map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const Tree_t& tree, const set<OttId>& incertae_sedis)
+{
+    map<typename Tree_t::node_type const*, set<OttId>> include;
+
+    for(auto nd: iter_post_const(tree))
+    {
+	// 1. Initialize set for this node.
+	auto& inc = include[nd];
+
+	// 2. Add OttId for tip nodes
+	if (nd->is_tip())
+	{
+	    inc.insert(nd->get_ott_id());
+	}
+	else if (nd == tree.get_root())
+	    continue;
+
+	// 3. Add Ids of children only if they are NOT incertae sedis
+	for(auto nd2: iter_child_const(*nd))
+	{
+            if (not incertae_sedis.count(nd2->get_ott_id()))
+	    {
+                auto& inc_child = nd2->get_data().des_ids;
+                inc.insert(begin(inc_child),end(inc_child));
+            }
+        }
+    }
+    return include;
+}
+
+template<typename Tree_T>
 map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const Tree_t& tree, const set<OttId>& incertae_sedis) {
     map<typename Tree_t::node_type const*, set<OttId>> exclude;
     // Set exclude set for root node to the empty set.
-    exclude[tree.get_root()];       
+    exclude[tree.get_root()];
     for(auto nd: iter_pre_const(tree)) {
         if (nd->is_tip() || nd == tree.get_root()) {
             continue;
@@ -516,6 +547,44 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
         for(auto nd2: get_siblings<Tree_t>(nd)) {
             if (not incertae_sedis.count(nd2->get_ott_id())) {
                 auto& ex_sib = nd2->get_data().des_ids;
+                ex.insert(begin(ex_sib),end(ex_sib));
+            }
+        }
+        exclude[nd] = ex;
+    }
+    return exclude;
+}
+
+template<typename Tree_T>
+map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets2(const Tree_t& tree, const set<OttId>& incertae_sedis)
+{
+    auto include = construct_include_sets<Tree_t>(tree, incertae_sedis);
+
+    map<typename Tree_t::node_type const*, set<OttId>> exclude;
+
+    // 1. Set exclude set for root node to the empty set.
+    exclude[tree.get_root()];       
+
+    for(auto nd: iter_pre_const(tree))
+    {
+	// 2. Skip tips and the root node.
+        if (nd->is_tip() || nd == tree.get_root())
+	{
+            continue;
+        }
+
+	// 3. Start with the exclude set for the parent.  This should already exist.
+        set<OttId> ex = exclude.at(nd->get_parent());
+
+        // 4. The exclude set should ALSO include all descendants of siblings.
+        // 
+	//    In this variant, we don't exclude any descendants that are accessed through a node marked I.S.
+
+        for(auto nd2: get_siblings<Tree_t>(nd))
+	{
+            if (not incertae_sedis.count(nd2->get_ott_id()))
+	    {
+                auto& ex_sib = include[nd2];
                 ex.insert(begin(ex_sib),end(ex_sib));
             }
         }
@@ -581,7 +650,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
 #endif
         // Handle the taxonomy tree specially when it has Incertae sedis taxa.
         if (i == trees.size()-1 and not incertae_sedis.empty()) {
-            auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
+            auto exclude = construct_exclude_sets2<Tree_t>(*tree, incertae_sedis);
 
             for(auto nd: iter_post_const(*tree)) {
                 if (not nd->is_tip() and nd != root) {
