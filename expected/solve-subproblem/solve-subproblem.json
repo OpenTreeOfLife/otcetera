@@ -33,5 +33,10 @@
       "invocation" : ["otc-solve-subproblem", "-I../../../data/is-clade/is.txt", "<INFILELIST>"],
       "infile_list": ["is-clade/tree2.tre", "is-clade/tax.tre"],
       "expected": "is-clade-2"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "-I../../../data/is-nested/is.txt", "<INFILELIST>"],
+      "infile_list": ["is-nested/tree1.tre", "is-nested/tax.tre"],
+      "expected": "is-nested-1"
   }
 ]
