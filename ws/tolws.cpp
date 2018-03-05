@@ -738,7 +738,7 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
                                  const SummaryTreeAnnotation * sta,
                                  const string & node_id,
                                  int height_limit) {
-    const uint NEWICK_TIP_LIMIT = 25000;
+    const uint32_t NEWICK_TIP_LIMIT = 25000;
     auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
     json response;
     response["synth_id"] = sta->synth_id;
@@ -1511,8 +1511,17 @@ string newick_conflict_ws_method(const SummaryTree_t& summary,
 				 const string& tree1s,
 				 const string& tree2s)
 {
-    auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
-    return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
+    try
+    {
+	LOG(WARNING)<<"newick conflict: tree1s = '"<<tree1s<<"'   tree1s = '"<<tree2s<<"'";
+	auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
+	return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
+    }
+    catch (otc::OTCParsingError& e)
+    {
+	LOG(WARNING)<<"newick conflict: error parsing newick string '"<<tree1s<<"'";
+	throw OTCBadRequest() << "Error parsing newick:  \n:"<<e.what();
+    }
 }
 
 string phylesystem_conflict_ws_method(const SummaryTree_t& summary,

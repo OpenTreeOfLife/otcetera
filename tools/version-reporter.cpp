@@ -21,6 +21,8 @@ int main() {
     std::cout << "  Compiler = GCC " << __VERSION__ << std::endl;
 #endif
     std::cout << "  BOOST_LIB_VERSION = " << BOOST_LIB_VERSION << std::endl;
+#ifdef CONFIG_FLAGS
     std::cout << "  CXXFLAGS = " << CONFIG_FLAGS << std::endl;
+#endif
     return 0;
 }

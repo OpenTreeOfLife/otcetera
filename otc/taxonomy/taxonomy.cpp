@@ -154,7 +154,7 @@ void register_taxon_in_maps(std::map<boost::string_ref, const T *> & n2n,
                             const T * ti) {
     auto nit = n2n.lower_bound(possibly_nonunique_name);
     typedef std::pair<boost::string_ref, const T *> name_map_pair;
-    if (nit->first != possibly_nonunique_name) {
+    if (nit == n2n.end() or nit->first != possibly_nonunique_name) {
         nit = n2n.insert(nit, name_map_pair(possibly_nonunique_name, ti));
     } else {
         if (nit->second != nullptr) {
@@ -194,34 +194,37 @@ TaxonomyRecord::TaxonomyRecord(const string& line_)
     rank_strings.insert(string(rank));
 }
 
-const TaxonomyRecord& Taxonomy::record_from_id(OttId id) const {
+boost::optional<int> Taxonomy::maybe_index_from_id(OttId id) const
+{
     auto loc = index.find(id);
     if (loc == index.end()) {
         auto loc2 = forwards.find(id);
-        if (loc2 == forwards.end()) {
-            throw OTCError() << "ID " << id << " not in taxonomy or forwarding list";
-        }
+
+	// not in taxonomy or forwarding list";
+        if (loc2 == forwards.end()) return boost::none;
+
         OttId newid = loc2->second;
         loc = index.find(newid);
         // If id is in the forwarding table, then newid should be in the taxonomy
         assert(loc != index.end());
     }
-    return (*this)[loc->second];
+    return loc->second;
+}
+
+int Taxonomy::index_from_id(OttId id) const
+{
+    if (auto index = maybe_index_from_id(id))
+	return *index;
+    else
+	throw OTCError() << "ID " << id << " not in taxonomy or forwarding list";
+}
+
+const TaxonomyRecord& Taxonomy::record_from_id(OttId id) const {
+    return (*this)[index_from_id(id)];
 }
 
 TaxonomyRecord& Taxonomy::record_from_id(OttId id) {
-    auto loc = index.find(id);
-    if (loc == index.end()) {
-        auto loc2 = forwards.find(id);
-        if (loc2 == forwards.end()) {
-            throw OTCError() << "ID " << id <<" not in taxonomy or forwarding list";
-        }
-        OttId newid = loc2->second;
-        loc = index.find(newid);
-        // If id is in the forwarding table, then newid should be in the taxonomy
-        assert(loc != index.end());
-    }
-    return (*this)[loc->second];
+    return (*this)[index_from_id(id)];
 }
 
 OttId Taxonomy::map(OttId old_id) const {
@@ -287,6 +290,20 @@ void Taxonomy::write(const std::string& newdirname) {
         }
         ff.close();
     }
+}
+
+vector<string> Taxonomy::path_from_id(OttId I) const
+{
+    vector<string> path;
+    int i = index_from_id(I);
+    while(true)
+    {
+	auto& rec = (*this)[i];
+	path.push_back( rec.name.to_string() );
+	if (i == root_index()) break;
+	i = rec.parent_index;
+    }
+    return path;
 }
 
 
@@ -683,7 +700,7 @@ void RichTaxonomy::read_synonyms() {
         auto nit = tree_data.name_to_node.lower_bound(name);
         boost::string_ref name_ref = tjs.name;
         typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
-        if (nit->first != name_ref) {
+        if (nit == tree_data.name_to_node.end() or nit->first != name_ref) {
             nit = tree_data.name_to_node.insert(nit, name_map_pair(name_ref, primary));
         } else {
             if (nit->second != nullptr) {
@@ -713,7 +730,7 @@ void RichTaxonomy::_fill_ids_to_suppress_set() {
     }
 }
 
-string format_with_taxonomy(const string& orig, const string& format, const TaxonomyRecord& rec) {
+string format_with_taxonomy(const string& orig, const string& format, const TaxonomyRecord& rec, const Taxonomy& taxonomy) {
     string result;
     int pos = 0;
     do {
@@ -736,6 +753,14 @@ string format_with_taxonomy(const string& orig, const string& format, const Taxo
             result += rec.uniqname.to_string();
         } else if (nc == 'R') {
             result += rec.rank.to_string();
+        } else if (nc == 'P') {
+	    vector<string> path = taxonomy.path_from_id(rec.id);
+	    for(int i=0;i < path.size(); i++)
+	    {
+		result += path[i];
+		if (i != path.size()-1)
+		    result += " < ";
+	    }
         } else if (nc == 'F') {
             result += flags_to_string(rec.flags);
         } else if (format[loc] == 'S') {
@@ -768,6 +793,7 @@ char format_needs_taxonomy(const string& format) {
             || nc == 'N'
             || nc == 'U'
             || nc == 'R'
+            || nc == 'P'
             || nc == 'F'
             || nc == 'S') {
             return nc;

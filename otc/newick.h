@@ -78,7 +78,10 @@ template<typename T>
 inline std::unique_ptr<T> tree_from_newick_string(const std::string& s, const ParsingRules & Rules) {
     std::istringstream sfile(s);
     FilePosStruct pos;
-    return read_next_newick<T>(sfile, pos, Rules);
+    auto tree = read_next_newick<T>(sfile, pos, Rules);
+    if (not tree)
+	throw OTCParsingError("Newick string is empty (no tokens)");
+    return tree;
 }
 
 template<typename T>
