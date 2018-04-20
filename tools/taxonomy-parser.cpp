@@ -65,6 +65,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     output.add_options()
         ("show-root,R","Show the ottid of the root node")
         ("find,S",value<string>(),"Show taxa whose names match regex <arg>")
+        ("id,I",value<string>(),"Show taxon with OTT ID <arg>")
         ("degree,D",value<long>(),"Show out the degree of node <arg>")
         ("children,C",value<long>(),"Show the children of node <arg>")
         ("parent,P",value<OttId>(),"Show the parent taxon of node <arg>")
@@ -135,15 +136,24 @@ void show_rec(const TaxonomyRecord& rec) {
     std::cout << rec.id << "   '" << rec.uniqname << "'   '" << rec.rank << "'   depth = " << rec.depth << "   out-degree = " << rec.out_degree << "    flags = " << flags_to_string(rec.flags) << "\n";
 }
 
-vector<OttId> get_ids_from_file(const string& filename) {
+vector<OttId> get_ids_from_stream(std::istream& file)
+{
     vector<OttId> ids;
-    std::ifstream file(filename);
-    while (file) {
-        long i;
-        file >> i;
-        ids.push_back(check_ott_id_size(i));
-    }
+    long i;
+    while (file >> i)
+	ids.push_back(check_ott_id_size(i));
     return ids;
+}
+
+vector<OttId> get_ids_from_file(const string& filename)
+{
+    if (filename == "-")
+	return get_ids_from_stream(std::cin);
+    else
+    {
+	std::ifstream file(filename);
+	return get_ids_from_stream(file);
+    }
 }
 
 vector<OttId> get_ids_from_tree(const string& filename) {
@@ -244,6 +254,10 @@ int main(int argc, char* argv[]) {
         } else if (args.count("find")) {
             vector<OttId> ids = get_ids_matching_regex(taxonomy, args["find"].as<string>());
             show_taxonomy_ids(taxonomy, format, ids, flags_match);
+            return 0;
+        } else if (args.count("id")) {
+	    OttId id = args["name"].as<OttId>();
+            show_taxonomy_ids(taxonomy, format, {id}, flags_match);
             return 0;
         } else if (args.count("any-flags") or args.count("all-flags")) {
             string format=args["format"].as<string>();
