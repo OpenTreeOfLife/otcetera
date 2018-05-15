@@ -534,18 +534,30 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const 
 }
 
 template<typename Tree_T>
-map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const Tree_t& tree, const set<OttId>& incertae_sedis) {
+map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const Tree_t& tree, const set<OttId>& incertae_sedis)
+{
     map<typename Tree_t::node_type const*, set<OttId>> exclude;
-    // Set exclude set for root node to the empty set.
+
+    // 1. Set exclude set for root node to the empty set.
     exclude[tree.get_root()];
-    for(auto nd: iter_pre_const(tree)) {
-        if (nd->is_tip() || nd == tree.get_root()) {
+
+    for(auto nd: iter_pre_const(tree))
+    {
+	// 2. Skip tips and the root node.
+        if (nd->is_tip() || nd == tree.get_root())
+	{
             continue;
         }
-        // the exclude set contain the EXCLUDE set of the parent, plus the INCLUDE set of non-I.S. siblings
+	
+	// 3. Start with the exclude set for the parent.  This should already exist.
         set<OttId> ex = exclude.at(nd->get_parent());
-        for(auto nd2: get_siblings<Tree_t>(nd)) {
-            if (not incertae_sedis.count(nd2->get_ott_id())) {
+
+        // 4. The exclude set should ALSO include ALL (not just some) descendants of siblings.
+        for(auto nd2: get_siblings<Tree_t>(nd))
+	{
+            if (not incertae_sedis.count(nd2->get_ott_id()))
+	    {
+		// 5. In this variant, we DO exclude descendants that are accessed through a node marked I.S.
                 auto& ex_sib = nd2->get_data().des_ids;
                 ex.insert(begin(ex_sib),end(ex_sib));
             }
@@ -576,14 +588,12 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets2(const
 	// 3. Start with the exclude set for the parent.  This should already exist.
         set<OttId> ex = exclude.at(nd->get_parent());
 
-        // 4. The exclude set should ALSO include all descendants of siblings.
-        // 
-	//    In this variant, we don't exclude any descendants that are accessed through a node marked I.S.
-
+        // 4. The exclude set should also include SOME (not all) descendants of siblings.
         for(auto nd2: get_siblings<Tree_t>(nd))
 	{
             if (not incertae_sedis.count(nd2->get_ott_id()))
 	    {
+		// 5. In this variant, we do NOT exclude any descendants that are accessed through a node marked I.S.
                 auto& ex_sib = include[nd2];
                 ex.insert(begin(ex_sib),end(ex_sib));
             }
@@ -650,7 +660,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
 #endif
         // Handle the taxonomy tree specially when it has Incertae sedis taxa.
         if (i == trees.size()-1 and not incertae_sedis.empty()) {
-            auto exclude = construct_exclude_sets2<Tree_t>(*tree, incertae_sedis);
+            auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
 
             for(auto nd: iter_post_const(*tree)) {
                 if (not nd->is_tip() and nd != root) {
