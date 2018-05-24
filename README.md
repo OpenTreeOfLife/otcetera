@@ -69,16 +69,18 @@ prefix); also note that the path to the libraries in the build BOOST dir is plat
 # requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
+
 # restbed
 
 We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
 
 On debian or ubuntu:
 
-    sudo apt-get install g++-5
-    sudo apt-get install cmake
-    sudo apt-get install libtool
-    sudo apt-get install libboost-all-dev
+    sudo apt install g++-5
+    sudo apt install cmake
+    sudo apt install libtool
+    sudo apt install libboost-all-dev
+    sudo apt install libcurl4-openssl-dev
 
 On a mac:
 

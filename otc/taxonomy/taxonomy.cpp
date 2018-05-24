@@ -200,7 +200,7 @@ boost::optional<int> Taxonomy::maybe_index_from_id(OttId id) const
     if (loc == index.end()) {
         auto loc2 = forwards.find(id);
 
-	// not in taxonomy or forwarding list";
+        // not in taxonomy or forwarding list";
         if (loc2 == forwards.end()) return boost::none;
 
         OttId newid = loc2->second;
@@ -214,9 +214,9 @@ boost::optional<int> Taxonomy::maybe_index_from_id(OttId id) const
 int Taxonomy::index_from_id(OttId id) const
 {
     if (auto index = maybe_index_from_id(id))
-	return *index;
+        return *index;
     else
-	throw OTCError() << "ID " << id << " not in taxonomy or forwarding list";
+        throw OTCError() << "ID " << id << " not in taxonomy or forwarding list";
 }
 
 const TaxonomyRecord& Taxonomy::record_from_id(OttId id) const {
@@ -252,8 +252,8 @@ void Taxonomy::write(const std::string& newdirname) {
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
                 "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
     {
-	if (fs::exists(old_dir/name))
-	    fs::copy_file(old_dir/name,new_dir/name);
+        if (fs::exists(old_dir/name))
+            fs::copy_file(old_dir/name,new_dir/name);
     }
     // Write the new version file.
     {
@@ -298,10 +298,10 @@ vector<string> Taxonomy::path_from_id(OttId I) const
     int i = index_from_id(I);
     while(true)
     {
-	auto& rec = (*this)[i];
-	path.push_back( rec.name.to_string() );
-	if (i == root_index()) break;
-	i = rec.parent_index;
+        auto& rec = (*this)[i];
+        path.push_back( rec.name.to_string() );
+        if (i == root_index()) break;
+        i = rec.parent_index;
     }
     return path;
 }
@@ -754,13 +754,13 @@ string format_with_taxonomy(const string& orig, const string& format, const Taxo
         } else if (nc == 'R') {
             result += rec.rank.to_string();
         } else if (nc == 'P') {
-	    vector<string> path = taxonomy.path_from_id(rec.id);
-	    for(int i=0;i < path.size(); i++)
-	    {
-		result += path[i];
-		if (i != path.size()-1)
-		    result += " < ";
-	    }
+            vector<string> path = taxonomy.path_from_id(rec.id);
+            for(std::size_t i=0;i < path.size(); i++) {
+                result += path[i];
+                if (i != path.size()-1) {
+                    result += " < ";
+                }
+            }
         } else if (nc == 'F') {
             result += flags_to_string(rec.flags);
         } else if (format[loc] == 'S') {
