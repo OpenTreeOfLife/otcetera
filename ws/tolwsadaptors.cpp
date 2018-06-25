@@ -515,9 +515,12 @@ create_method_handler(const string& path, const std::function<std::string(const 
 	size_t content_length = request->get_header( "Content-Length", 0 );
 	session->fetch( content_length, [ path, process_request, request ]( const shared_ptr< Session > session, const Bytes & body ) {
 		try {
+		    LOG(WARNING)<<"request: "<<path;
 		    json parsedargs = parse_body_or_throw(body);
+		    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
 		    auto rbody = process_request(parsedargs);
 		    session->close( OK, rbody, request_headers(rbody) );
+		    LOG(WARNING)<<"request: DONE";
 		} catch (OTCWebError& e) {
 		    string rbody = string("[") + path + ("] Error: ") + e.what();
 		    session->close( e.status_code(), rbody, request_headers(rbody) );
@@ -543,10 +546,13 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
     {
 	try
 	{
+	    LOG(WARNING)<<"request: "<<path;
 	    const auto& request = session->get_request( );
 	    json parsedargs = request_to_json(*request);
+	    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
 	    auto rbody = process_request(parsedargs);
 	    session->close( OK, rbody, request_headers(rbody) );
+	    LOG(WARNING)<<"request: DONE";
 	}
 	catch (OTCWebError& e)
 	{
