@@ -1000,8 +1000,6 @@ json get_conflict_node_status(const set<pair<string,int>>& witnesses, string sta
 
         string witness_name  = nd->get_name();
         
-        witness_name = witness_name + "[" + std::to_string(witness.second) + "]"; // record depth from root
-
         if (total > 2)
         {
             witness_names += " + ...";
