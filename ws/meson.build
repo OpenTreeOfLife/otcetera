@@ -2,7 +2,7 @@ ssl  = dependency('openssl', required: false)
 curl = dependency('libcurl', required: false)
 threads = dependency('threads', required: false)
 
-restbed = cpp.find_library('restbed', dependencies: [ssl, curl, threads], required: false)
+restbed = cpp.find_library('restbed', required: false)
 if not restbed.found() or not ssl.found() or not curl.found()
   restbed = disabler()
 endif
