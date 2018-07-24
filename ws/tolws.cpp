@@ -1,6 +1,7 @@
 #include <regex>
 #include "ws/tolws.h"
 #include "ws/tolwsadaptors.h"
+#include "ws/trees_to_serve.h"
 #include "otc/conflict.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"

@@ -1,5 +1,6 @@
 #include "ws/tolws.h"
 #include "ws/tolwsadaptors.h"
+#include "ws/trees_to_serve.h"
 
 using namespace std;
 namespace fs = boost::filesystem;

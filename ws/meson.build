@@ -7,7 +7,7 @@ if not restbed.found() or not ssl.found() or not curl.found()
   restbed = disabler()
 endif
 
-otc_tol_ws_sources = ['tolws.cpp', 'tolwsadaptors.cpp', 'tolwsbooting.cpp', 'nexson/nexson.cpp']
+otc_tol_ws_sources = ['tolws.cpp', 'tolwsadaptors.cpp', 'tolwsbooting.cpp', 'nexson/nexson.cpp','trees_to_serve.cpp']
 ws_inc = include_directories('.')
 executable('otc-tol-ws', otc_tol_ws_sources,
 	   dependencies: [boost, libotcetera, restbed, json, ssl, curl, threads],

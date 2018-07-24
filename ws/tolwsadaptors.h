@@ -2,6 +2,7 @@
 #define OTC_TOLWS_ADAPTORS_H
 #include <restbed>
 #include "ws/tolws.h"
+#include "ws/trees_to_serve.h"
 #include "ws/parallelreadserialwrite.h"
 #include "otc/otc_base_includes.h"
 #include <boost/optional.hpp>
