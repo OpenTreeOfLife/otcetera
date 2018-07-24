@@ -580,7 +580,9 @@ int run_server(const po::variables_map & args) {
     time(&start_time);
     int num_threads = 4;
     int port_number = 1984;
-    string prefix = "";
+    string v3_prefix = "/v3";
+    string v4_prefix = "/v4-beta";
+
     if (args.count("num-threads")) {
         num_threads = args["num-threads"].as<int>();
     }
@@ -590,12 +592,7 @@ int run_server(const po::variables_map & args) {
     if (args.count("pidfile")) {
         pidfile = args["pidfile"].as<string>();
     }
-    if (args.count("prefix"))
-    {
-	prefix = args["prefix"].as<string>();
-	if (prefix.size() and prefix[0] != '/')
-	    prefix = string("/") + prefix;
-    }
+
     if (!args.count("tree-dir")) {
         cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
         return 1;
@@ -620,30 +617,30 @@ int run_server(const po::variables_map & args) {
         return 3;
     }
 
-    ////// ROUTES
+    ////// v3 ROUTES
     // tree web services
-    auto r_about            = path_handler(prefix + "/tree_of_life/about", about_method_handler);
-    auto r_node_info        = path_handler(prefix + "/tree_of_life/node_info", node_info_method_handler );
-    auto r_mrca             = path_handler(prefix + "/tree_of_life/mrca", mrca_method_handler );
-    auto r_subtree          = path_handler(prefix + "/tree_of_life/subtree", process_subtree);
-    auto r_induced_subtree  = path_handler(prefix + "/tree_of_life/induced_subtree", induced_subtree_method_handler );
+    auto v3_r_about            = path_handler(v3_prefix + "/tree_of_life/about", about_method_handler);
+    auto v3_r_node_info        = path_handler(v3_prefix + "/tree_of_life/node_info", node_info_method_handler );
+    auto v3_r_mrca             = path_handler(v3_prefix + "/tree_of_life/mrca", mrca_method_handler );
+    auto v3_r_subtree          = path_handler(v3_prefix + "/tree_of_life/subtree", process_subtree);
+    auto v3_r_induced_subtree  = path_handler(v3_prefix + "/tree_of_life/induced_subtree", induced_subtree_method_handler );
 
     // taxonomy web services
-    auto r_tax_about        = path_handler(prefix + "/taxonomy/about", tax_about_method_handler );
-    auto r_taxon_info       = path_handler(prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
-    auto r_taxon_mrca       = path_handler(prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
-    auto r_taxon_subtree    = path_handler(prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
+    auto v3_r_tax_about        = path_handler(v3_prefix + "/taxonomy/about", tax_about_method_handler );
+    auto v3_r_taxon_info       = path_handler(v3_prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
+    auto v3_r_taxon_mrca       = path_handler(v3_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
+    auto v3_r_taxon_subtree    = path_handler(v3_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
     // conflict
-    auto r_conflict_status  = path_handler(prefix + "/conflict/conflict-status", conflict_status_method_handler );
+    auto v3_r_conflict_status  = path_handler(v3_prefix + "/conflict/conflict-status", conflict_status_method_handler );
 
     // v2 conflict --
-    auto r_old_conflict_status = make_shared< Resource >( );
+    auto v3_r_old_conflict_status = make_shared< Resource >( );
     {
-	string path = prefix + "/conflict/old-conflict-status";
-	r_old_conflict_status->set_path( path );
-	r_old_conflict_status->set_method_handler( "GET", create_GET_method_handler(path, conflict_status_method_handler) );
-	r_old_conflict_status->set_method_handler( "OPTIONS", options_method_handler);
+	string path = v3_prefix + "/conflict/old-conflict-status";
+	v3_r_old_conflict_status->set_path( path );
+	v3_r_old_conflict_status->set_method_handler( "GET", create_GET_method_handler(path, conflict_status_method_handler) );
+	v3_r_old_conflict_status->set_method_handler( "OPTIONS", options_method_handler);
     }
 
 
@@ -656,17 +653,17 @@ int run_server(const po::variables_map & args) {
     Service service;
     global_service_ptr = &service;
     service.set_ready_handler( ready_handler );
-    service.publish( r_about );
-    service.publish( r_node_info );
-    service.publish( r_mrca );
-    service.publish( r_subtree );
-    service.publish( r_induced_subtree );
-    service.publish( r_tax_about );
-    service.publish( r_taxon_info );
-    service.publish( r_taxon_mrca );
-    service.publish( r_taxon_subtree );
-    service.publish( r_conflict_status );
-    service.publish( r_old_conflict_status );
+    service.publish( v3_r_about );
+    service.publish( v3_r_node_info );
+    service.publish( v3_r_mrca );
+    service.publish( v3_r_subtree );
+    service.publish( v3_r_induced_subtree );
+    service.publish( v3_r_tax_about );
+    service.publish( v3_r_taxon_info );
+    service.publish( v3_r_taxon_mrca );
+    service.publish( v3_r_taxon_subtree );
+    service.publish( v3_r_conflict_status );
+    service.publish( v3_r_old_conflict_status );
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
     LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";
@@ -702,7 +699,6 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
         ("port,P",value<int>(),"Port to bind to.")
         ("pidfile,p",value<string>(),"filepath for PID")
         ("num-threads,n",value<int>(),"number of threads")
-	("prefix",value<string>(),"prefix for services URL, i.e. /v3")
         ;
 
     options_description visible;
