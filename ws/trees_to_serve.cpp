@@ -5,6 +5,8 @@ namespace otc
     
 using std::map;
 using std::string;
+using std::pair;
+using std::unique_ptr;    
 
 TreesToServe::TreesToServe()
     :taxonomy_thread_safety("taxonomy")
@@ -27,8 +29,9 @@ std::uint32_t TreesToServe::get_source_node_id_index(src_node_id sni) {
     }
     return r;
 }
-const std::string * TreesToServe::get_stored_string(const std::string & k) {
-    const std::string * v = stored_strings[k];
+
+const string * TreesToServe::get_stored_string(const string & k) {
+    const string * v = stored_strings[k];
     if (v == nullptr) {
 	stored_strings_list.push_back(k);
 	v = &(stored_strings_list.back());
@@ -42,11 +45,11 @@ void TreesToServe::set_taxonomy(RichTaxonomy &taxonomy) {
     taxonomy_ptr = &taxonomy;
     taxonomy_tree = &(taxonomy.get_tax_tree());
 }
-using ReadableTaxonomy = std::pair<const RichTaxonomy &,
-				   std::unique_ptr<ReadMutexWrapper> >;
+using ReadableTaxonomy = pair<const RichTaxonomy &,
+				   unique_ptr<ReadMutexWrapper> >;
 
-using WritableTaxonomy = std::pair<RichTaxonomy &,
-				   std::unique_ptr<WriteMutexWrapper> >;
+using WritableTaxonomy = pair<RichTaxonomy &,
+				   unique_ptr<WriteMutexWrapper> >;
 
 ReadableTaxonomy TreesToServe::get_readable_taxonomy() const {
     assert(taxonomy_ptr != nullptr);
@@ -76,8 +79,8 @@ void TreesToServe::fill_ott_id_set(const std::bitset<32> & flags,
     }
 }
 
-TreesToServe::SumTreeInitPair TreesToServe::get_new_tree_and_annotations(const std::string & configfilename,
-							   const std::string & filename) {
+TreesToServe::SumTreeInitPair TreesToServe::get_new_tree_and_annotations(const string & configfilename,
+							   const string & filename) {
             
     OttIdSet ott_id_set, suppressed_id_set;
     auto cleaning_flags = cleaning_flags_from_config_file(configfilename);
@@ -92,7 +95,7 @@ TreesToServe::SumTreeInitPair TreesToServe::get_new_tree_and_annotations(const s
     parsingRules.set_ott_idForInternals = true;
     parsingRules.require_ott_ids = true;
     parsingRules.set_ott_ids = true;
-    std::unique_ptr<SummaryTree_t> nt = first_newick_tree_from_file<SummaryTree_t>(filename, parsingRules);
+    unique_ptr<SummaryTree_t> nt = first_newick_tree_from_file<SummaryTree_t>(filename, parsingRules);
 
     index_by_name_or_id(*nt);
     set_traversal_entry_exit_and_num_tips(*nt);
@@ -117,13 +120,13 @@ void TreesToServe::free_last_tree_and_annotations() {
     annotation_list.pop_back();
 }
 
-const SummaryTreeAnnotation * TreesToServe::get_annotations(std::string synth_id) const {
+const SummaryTreeAnnotation * TreesToServe::get_annotations(string synth_id) const {
     const auto & key = synth_id.empty() ? default_synth_id : synth_id;
     auto mit = id_to_annotations.find(key);
     return mit == id_to_annotations.end() ? nullptr : mit->second;
 }
 
-const SummaryTree_t * TreesToServe::get_summary_tree(std::string synth_id) const {
+const SummaryTree_t * TreesToServe::get_summary_tree(string synth_id) const {
     const auto & key = synth_id.empty() ? default_synth_id : synth_id;
     auto mit = id_to_tree.find(key);
     return mit == id_to_tree.end() ? nullptr : mit->second;
@@ -144,7 +147,7 @@ void TreesToServe::final_tree_added() {
 	nct->set_ids_suppressed_from_summary_tree_alias(&sft);
     }
 
-    std::map<src_node_id, std::uint32_t> tmpm;
+    map<src_node_id, std::uint32_t> tmpm;
     std::swap(lookup_for_node_ids_while_registering_trees, tmpm);
 }
 
