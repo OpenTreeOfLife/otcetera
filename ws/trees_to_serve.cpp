@@ -1,9 +1,11 @@
 #include "trees_to_serve.h"
+#include <regex>
 
 namespace otc
 {
     
 using std::map;
+using std::vector;
 using std::string;
 using std::pair;
 using std::unique_ptr;    
@@ -106,12 +108,51 @@ TreesToServe::SumTreeInitPair TreesToServe::get_new_tree_and_annotations(const s
     return {*(tree_list.back()), sta};
 }
 
-void TreesToServe::register_last_tree_and_annotations() {
+vector<int> synth_id_to_version(const string& id)
+{
+    static std::regex VERSION_NUMBER_RE ("(\\d+(\\.\\d+))");
+    std::smatch m;
+    if (std::regex_search(id, m, VERSION_NUMBER_RE))
+    {
+	vector<int> x;
+	for(auto & s: split_string(m[1], '.'))
+	    x.push_back(std::stoi(s));
+	return x;
+    }
+    else
+	throw OTCError()<<"Synth version '"<<id<<"' has no embedded version number";
+}
+
+int compare_versions(const vector<int>& v1, const vector<int>& v2)
+{
+    for(int i=0;i<std::min(v1.size(),v2.size());i++)
+    {
+	if (v1[i] < v2[i]) return -1;
+	if (v1[i] > v2[i]) return 1;
+    }
+    if (v1.size() < v2.size()) return -1;
+    if (v1.size() > v2.size()) return 1;
+    return 0;
+}
+
+
+int compare_synth_ids(const string& id1, const string& id2)
+{
+    auto v1 = synth_id_to_version(id1);
+    auto v2 = synth_id_to_version(id2);
+    return compare_versions(v1,v2);
+}
+
+void TreesToServe::register_last_tree_and_annotations()
+{
     const SummaryTreeAnnotation & sta = annotation_list.back();
     const SummaryTree_t & tree = *(tree_list.back());
-    default_synth_id = sta.synth_id; // @ TODO need a better system for deciding the default synth ID.
+
     id_to_tree[sta.synth_id] = &tree;
     id_to_annotations[sta.synth_id] = &sta;
+
+    if (default_synth_id.empty() or compare_synth_ids(default_synth_id,sta.synth_id) < 0)
+	default_synth_id = sta.synth_id;
 }
 
 void TreesToServe::free_last_tree_and_annotations() {
