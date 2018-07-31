@@ -171,6 +171,11 @@ const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& sy
 }
 
 
+string available_trees_method_handler(const json& parsedargs)
+{
+    return available_trees_ws_method(tts);
+}
+
 string about_method_handler(const json& parsedargs)
 {
     bool include_sources = extract_argument_or_default<bool>  (parsedargs, "include_source_list", false);
@@ -646,6 +651,7 @@ int run_server(const po::variables_map & args) {
     ////// v4 ROUTES
 
     // tree web services
+    auto v4_r_available_trees  = path_handler(v4_prefix + "/tree_of_life/available_trees", available_trees_method_handler);
     auto v4_r_about            = path_handler(v4_prefix + "/tree_of_life/about", about_method_handler);
     auto v4_r_node_info        = path_handler(v4_prefix + "/tree_of_life/node_info", node_info_method_handler );
     auto v4_r_mrca             = path_handler(v4_prefix + "/tree_of_life/mrca", mrca_method_handler );
@@ -682,6 +688,7 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_conflict_status );
     service.publish( v3_r_old_conflict_status );
 
+    service.publish( v4_r_available_trees );
     service.publish( v4_r_about );
     service.publish( v4_r_node_info );
     service.publish( v4_r_mrca );

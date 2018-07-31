@@ -4,6 +4,7 @@
 namespace otc
 {
     
+using std::set;
 using std::map;
 using std::vector;
 using std::string;
@@ -161,6 +162,19 @@ void TreesToServe::free_last_tree_and_annotations() {
     annotation_list.pop_back();
 }
 
+string TreesToServe::get_default_tree() const
+{
+    return default_synth_id;
+}
+
+set<string> TreesToServe::get_available_trees() const
+{
+    set<string> synth_ids;
+    for(auto& x: id_to_tree)
+	synth_ids.insert(x.first);
+    return synth_ids;
+}
+	
 const SummaryTreeAnnotation * TreesToServe::get_annotations(string synth_id) const {
     const auto & key = synth_id.empty() ? default_synth_id : synth_id;
     auto mit = id_to_annotations.find(key);

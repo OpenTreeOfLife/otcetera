@@ -1,6 +1,8 @@
 #ifndef TREES_TO_SERVE_H
 #define TREES_TO_SERVE_H
 
+#include <set>
+
 #include "tolws.h"
 namespace otc
 {
@@ -51,6 +53,10 @@ public:
     void register_last_tree_and_annotations();
 
     void free_last_tree_and_annotations();
+
+    std::string get_default_tree() const;
+
+    std::set<std::string> get_available_trees() const;
 
     const SummaryTreeAnnotation * get_annotations(std::string synth_id) const;
 
