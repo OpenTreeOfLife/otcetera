@@ -660,6 +660,23 @@ int run_server(const po::variables_map & args) {
 	v3_r_old_conflict_status->set_method_handler( "OPTIONS", options_method_handler);
     }
 
+    ////// v4 ROUTES
+
+    // tree web services
+    auto v4_r_about            = path_handler(v4_prefix + "/tree_of_life/about", about_method_handler);
+    auto v4_r_node_info        = path_handler(v4_prefix + "/tree_of_life/node_info", node_info_method_handler );
+    auto v4_r_mrca             = path_handler(v4_prefix + "/tree_of_life/mrca", mrca_method_handler );
+    auto v4_r_subtree          = path_handler(v4_prefix + "/tree_of_life/subtree", process_subtree);
+    auto v4_r_induced_subtree  = path_handler(v4_prefix + "/tree_of_life/induced_subtree", induced_subtree_method_handler );
+
+    // taxonomy web services
+    auto v4_r_tax_about        = path_handler(v4_prefix + "/taxonomy/about", tax_about_method_handler );
+    auto v4_r_taxon_info       = path_handler(v4_prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
+    auto v4_r_taxon_mrca       = path_handler(v4_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
+    auto v4_r_taxon_subtree    = path_handler(v4_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
+
+    // conflict
+    auto v4_r_conflict_status  = path_handler(v4_prefix + "/conflict/conflict-status", conflict_status_method_handler );
 
     /////  SETTINGS
     auto settings = make_shared< Settings >( );
@@ -681,6 +698,18 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_taxon_subtree );
     service.publish( v3_r_conflict_status );
     service.publish( v3_r_old_conflict_status );
+
+    service.publish( v4_r_about );
+    service.publish( v4_r_node_info );
+    service.publish( v4_r_mrca );
+    service.publish( v4_r_subtree );
+    service.publish( v4_r_induced_subtree );
+    service.publish( v4_r_tax_about );
+    service.publish( v4_r_taxon_info );
+    service.publish( v4_r_taxon_mrca );
+    service.publish( v4_r_taxon_subtree );
+    service.publish( v4_r_conflict_status );
+
     service.set_signal_handler( SIGINT, sigterm_handler );
     service.set_signal_handler( SIGTERM, sigterm_handler );
     LOG(INFO) << "starting service with " << num_threads << " threads on port " << port_number << "...";
