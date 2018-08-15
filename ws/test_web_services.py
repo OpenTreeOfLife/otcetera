@@ -197,7 +197,7 @@ class WebServiceTestJob(object):
 
 PIDFILE_NAME = "pidfile.txt"
 RUNNING_SERVER = None
-SERVER_PORT = 1984 # global, set by CLI. Needed by server launch and threads
+SERVER_PORT = 1985 # global, set by CLI. Needed by server launch and threads
 SERVER_OUT_ERR_FN = "test-server-stdouterr.txt"
 
 def launch_server(exe_dir, taxonomy_dir, synth_par, server_threads=4):
@@ -306,7 +306,7 @@ if __name__ == '__main__':
     parser.add_argument('--exe-dir', required=True, help='Directory that holds the otc-tol-ws executable and which will be the working directory of the server.')
     parser.add_argument('--tests-parent', required=True, help='Directory. Each subdir that holds a "method.json" file will be interpreted as a test.')
     parser.add_argument('--test-name', default=None, required=False, help='Name of a subdir of the tests-parent dir. If provided only that test will be run; otherwise all of the tests will be run.')
-    parser.add_argument('--server-port', default=1984, type=int, required=False, help='Port number for the server')
+    parser.add_argument('--server-port', default=1985, type=int, required=False, help='Port number for the server')
     parser.add_argument('--server-threads', default=4, type=int, required=False, help='Number of threads for the server')
     parser.add_argument('--test-threads', default=8, type=int, required=False, help='Number of threads launched for running tests.')
     

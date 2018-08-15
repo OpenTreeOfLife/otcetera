@@ -1,5 +1,5 @@
 {
-  "url_fragment": "tree_of_life/induced_subtree",
+  "url_fragment": "v3/tree_of_life/induced_subtree",
   "verb": "POST",
   "arguments": {
     "node_ids": ["ott1", "ott13", "ott11"],

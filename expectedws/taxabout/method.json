@@ -1,5 +1,5 @@
 {
-  "url_fragment": "taxonomy/about",
+  "url_fragment": "v3/taxonomy/about",
   "verb": "POST",
   "arguments": null
 }

@@ -60,5 +60,6 @@ public:
 
     void final_tree_added();
 };
-};
+
+}
 #endif
