@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include <algorithm> // all_of, for_each, transform
 #include <array> // array
-#include <cassert> // assert
+#include "assert.hh" // assert
 #include <cctype> // isdigit
 #include <ciso646> // and, not, or
 #include <cmath> // isfinite, ldexp, signbit

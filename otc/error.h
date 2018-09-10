@@ -3,7 +3,7 @@
 #include <string>
 #include <exception>
 #include <sstream>
-#include "otc/otc_base_includes.h"
+
 namespace otc {
 
 class OTCError : public std::exception {

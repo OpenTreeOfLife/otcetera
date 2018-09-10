@@ -1,6 +1,6 @@
 #if !defined OTCETERA_BASE_INCLUDES_H
 #define OTCETERA_BASE_INCLUDES_H
-#include <cassert>
+#include "assert.hh"
 #include <set>
 #include <functional>
 #ifdef __clang__
