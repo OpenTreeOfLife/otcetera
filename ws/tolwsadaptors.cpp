@@ -519,12 +519,16 @@ create_method_handler(const string& path, const std::function<std::string(const 
 		    json parsedargs = parse_body_or_throw(body);
 		    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
 		    auto rbody = process_request(parsedargs);
-		    session->close( OK, rbody, request_headers(rbody) );
 		    LOG(WARNING)<<"request: DONE";
+		    session->close( OK, rbody, request_headers(rbody) );
 		} catch (OTCWebError& e) {
 		    string rbody = string("[") + path + ("] Error: ") + e.what();
-		    session->close( e.status_code(), rbody, request_headers(rbody) );
 		    LOG(WARNING)<<rbody;
+		    session->close( e.status_code(), rbody, request_headers(rbody) );
+		} catch (OTCError& e) {
+		    string rbody = string("[") + path + ("] Error: ") + e.what();
+		    LOG(WARNING)<<rbody;
+		    session->close( 500, rbody, request_headers(rbody) );
 		}
 	    });
     };
@@ -551,14 +555,18 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
 	    json parsedargs = request_to_json(*request);
 	    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
 	    auto rbody = process_request(parsedargs);
-	    session->close( OK, rbody, request_headers(rbody) );
 	    LOG(WARNING)<<"request: DONE";
+	    session->close( OK, rbody, request_headers(rbody) );
 	}
 	catch (OTCWebError& e)
 	{
 	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
-	    session->close( e.status_code(), rbody, request_headers(rbody) );
 	    LOG(WARNING)<<rbody;
+	    session->close( e.status_code(), rbody, request_headers(rbody) );
+	} catch (OTCError& e) {
+	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
+	    LOG(WARNING)<<rbody;
+	    session->close( 500, rbody, request_headers(rbody) );
 	}
     };
 }
