@@ -464,7 +464,7 @@ string ctime(const chrono::system_clock::time_point& t)
     return tt;
 }
 
-multimap<string,string> request_headers(const string& rbody)
+multimap<string,string> request_headers(const string& rbody, bool content_type_is_json = true)
 {
     multimap<string,string> headers;
 
@@ -475,7 +475,14 @@ multimap<string,string> request_headers(const string& rbody)
 // Connection:Keep-Alive  -- I 
 //  We're calling 'close' so this doesn't make sense, I think...
     headers.insert({ "Content-Length", ::to_string(rbody.length())});
-    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+
+//  All of our replies are generally JSON
+    if (content_type_is_json)
+	headers.insert({ "Content-Type", "application/json;"});
+//  But when we return errors this is not the case.
+    else
+	headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+
     headers.insert({ "Date", ctime(chrono::system_clock::now())});
     headers.insert({ "Expires", ctime(chrono::system_clock::now())});
 // Keep-Alive:timeout=5, max=99
@@ -496,7 +503,9 @@ multimap<string,string> options_headers()
     headers.insert({ "Access-Control-Allow-Origin", "*" });
     headers.insert({ "Access-Control-Max-Age","86400" });
 //    headers.insert({ "Connection", "Keep-Alive"});
-    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+
+//    There is no content, to don't include a Content-Type header
+//    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
     headers.insert({ "Content-Length", "0"});
     headers.insert({ "Date", ctime(chrono::system_clock::now())});  //    Date:Mon, 22 May 2017 20:55:05 GMT
     headers.insert({ "X-Powered-By","otc-tol-ws"});  //X-Powered-By:web2py
@@ -524,11 +533,11 @@ create_method_handler(const string& path, const std::function<std::string(const 
 		} catch (OTCWebError& e) {
 		    string rbody = string("[") + path + ("] Error: ") + e.what();
 		    LOG(WARNING)<<rbody;
-		    session->close( e.status_code(), rbody, request_headers(rbody) );
+		    session->close( e.status_code(), rbody, request_headers(rbody, false) );
 		} catch (OTCError& e) {
 		    string rbody = string("[") + path + ("] Error: ") + e.what();
 		    LOG(WARNING)<<rbody;
-		    session->close( 500, rbody, request_headers(rbody) );
+		    session->close( 500, rbody, request_headers(rbody, false) );
 		}
 	    });
     };
@@ -562,11 +571,11 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
 	{
 	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
 	    LOG(WARNING)<<rbody;
-	    session->close( e.status_code(), rbody, request_headers(rbody) );
+	    session->close( e.status_code(), rbody, request_headers(rbody, false) );
 	} catch (OTCError& e) {
 	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
 	    LOG(WARNING)<<rbody;
-	    session->close( 500, rbody, request_headers(rbody) );
+	    session->close( 500, rbody, request_headers(rbody, false) );
 	}
     };
 }
