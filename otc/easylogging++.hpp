@@ -31,6 +31,7 @@
 #pragma clang diagnostic ignored  "-Wmissing-noreturn"
 #endif
 #pragma GCC diagnostic ignored  "-Wstrict-overflow"
+#pragma GCC diagnostic ignored  "-Wunused-parameter"
 
 
 // Compilers and C++0x/C++11 Evaluation
