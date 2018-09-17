@@ -9,6 +9,8 @@
 #endif
 #define ELPP_CUSTOM_COUT std::cerr
 #define OTC_UNREACHABLE assert(false);
+#define ELPP_THREAD_SAFE 1
+#define ELPP_STACKTRACE_ON_CRASH 1
 
 #include "otc/easylogging++.hpp"
 
