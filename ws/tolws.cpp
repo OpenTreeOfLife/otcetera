@@ -606,10 +606,10 @@ class NodeNamerSupportedByStasher {
 };
 
 template<typename C, typename T, typename Y>
-inline void writeVisitedNewick(std::ostream & out,
-                               const C & visited,
-                               T nd,
-                               Y & nodeNamer) {
+inline void write_visited_newick_no_semi(std::ostream & out,
+					 const C & visited,
+					 T nd,
+					 Y & nodeNamer) {
     assert(nd != nullptr);
     if (!(nd->is_tip())) {
         bool first = true;
@@ -621,7 +621,7 @@ inline void writeVisitedNewick(std::ostream & out,
                 } else {
                     out << ',';
                 }
-                writeVisitedNewick<C, T, Y>(out, visited, c, nodeNamer);
+                write_visited_newick_no_semi<C, T, Y>(out, visited, c, nodeNamer);
             }
         }
         if (!first) {
@@ -631,6 +631,15 @@ inline void writeVisitedNewick(std::ostream & out,
     write_escaped_for_newick(out, nodeNamer(nd));
 }
 
+template<typename C, typename T, typename Y>
+inline void write_visited_newick(std::ostream & out,
+				 const C & visited,
+				 T nd,
+
+				 Y & nodeNamer) {
+    write_visited_newick_no_semi<C,T,Y>(out, visited, nd, nodeNamer);
+    out<<';';
+}
 
 json get_supporting_studies(const set<const string*>& study_id_set)
 {
@@ -681,7 +690,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     const auto & taxonomy = locked_taxonomy.first;
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
-    writeVisitedNewick(out, visited, focal, nnsbs);
+    write_visited_newick(out, visited, focal, nnsbs);
 
     json response;
     response["newick"] = out.str();
@@ -1087,7 +1096,8 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
     return nodes;
 }
 
-// Get a list of nodes tree 2 that are leaves in tree1.
+// Get a list of nodes in T2 that are leaves in T1.
+// The nodes in T2 do NOT need to be leaves of T2.
 
 template <typename Tree1_t, typename Tree2_t>
 auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2)
@@ -1124,16 +1134,29 @@ get_induced_trees2(const Tree1& T1,
                   const Tree2& T2,
                   std::function<const typename Tree2::node_type*(const typename Tree2::node_type*,const typename Tree2::node_type*)> MRCA_of_pair2)
 {
-    // 1. First construct the induced tree for T2
-    auto induced_tree2 = get_induced_tree<Tree2, Tree_Out_t>(get_induced_nodes(T1, T2), MRCA_of_pair2);
-    induced_tree2->set_name(T2.get_name());
-    // 1.1 Rename internal nodes of taxonomy to ottXXX instead of taxon name
+    LOG(WARNING)<<"T1 = "<<newick_string(T1);
+    LOG(WARNING)<<"n_leaves(T1) = "<<n_leaves(T1);
+    LOG(WARNING)<<"n_leaves(T2) = "<<n_leaves(T2);
+
+    // 1. First construct the induced tree for T2.
+
+    // 1a. Find the nodes of T2 that corresponds to leaves of T1.
+    //     Note that some of these nodes could be ancestral to other ones in T2.
+    auto T2_nodes_from_T1_leaves = get_induced_nodes(T1,T2);
+    LOG(WARNING)<<T2_nodes_from_T1_leaves.size()<<" leaves of T1 are in T2";
+
+    // 1b. Actually construct the induced tree for T2.
+    //     It might have fewer leaves than in T2_nodes_from_T1_leaves, if some of the nodes are ancestral to others.
+    auto induced_tree2 = get_induced_tree<Tree2, Tree_Out_t>(T2_nodes_from_T1_leaves, MRCA_of_pair2);
+    LOG(WARNING)<<"n_leaves(induced_tree2) = "<<n_leaves(*induced_tree2);
+    LOG(WARNING)<<"induced-tree2a = "<<newick_string(*induced_tree2);
+
+    // 1c. Rename internal nodes of synth/taxonomy to ottXXX instead of taxon name
     for(auto node: iter_post(*induced_tree2))
         if (node->has_ott_id())
             node->set_name("ott"+std::to_string(node->get_ott_id()));
+    LOG(WARNING)<<"induced_tree2 = "<<newick_string(*induced_tree2);
 
-//    LOG(WARNING)<<"induced_tree2 #leaves = "<<n_leaves(*induced_tree2);
-//    LOG(WARNING)<<"induced_tree2 = "<<newick_string(*induced_tree2);
     //FIXME - handle cases like (Homo sapiens, Homo) by deleting monotypic nodes at the root.
 
     // 2. Keep only leaves from T1 that (a) have an ottid in T2 and (b) map to a leaf of induced_tree2
@@ -1155,10 +1178,14 @@ get_induced_trees2(const Tree1& T1,
         else
             induced_leaves1.push_back(leaf);
     }
+    LOG(WARNING)<<"keeping "<<induced_leaves1.size()<<" leaves from T1";
 
     // 3. Construct the induced tree for T1
     auto induced_tree1 = get_induced_tree<Tree1, Tree_Out_t>(induced_leaves1, MRCA_of_pair1);
-//    LOG(WARNING)<<"induced_tree1 = "<<newick_string(*induced_tree1);
+    LOG(WARNING)<<"n_leaves(induced_tree1) = "<<n_leaves(*induced_tree1);
+    LOG(WARNING)<<"induced_tree1 = "<<newick_string(*induced_tree1);
+
+    assert(n_leaves(*induced_tree1) == n_leaves(*induced_tree2));
 
     return {std::move(induced_tree1), std::move(induced_tree2)};
 }
@@ -1169,6 +1196,10 @@ bool is_fake_tip(const N* n)
 {
     return (n->get_out_degree() > 0) and (n->get_first_child()->get_name().empty());
 }
+
+/*
+ * other_tree is (currently) either the taxonomy tree, or the synth tree
+ */
 
 template<typename QT, typename TT, typename QM, typename TM>
 json conflict_with_tree_impl(const QT & query_tree,
@@ -1435,6 +1466,19 @@ vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, co
     return children;
 }
 
+/*
+ * OK, a general approach to normalizing two trees for comparison:
+ * 0. All tips must have OTT IDs.
+ *    The taxonomy and ids are used to assess if a tip is identical, ancestral, or descended from another tip.
+ * 1. Remove duplicate tips.
+ * 2. Remove tips that are ancestral to other tips.
+ * At this point, we COULD just add as children all OTT leaves that are descendants of each higher taxon.
+ *
+ * A possibly simpler approach would be to.
+ * 3. Remove tips that have no shared descendants with tips in the other tree.
+ * 4. For each tip, add as children tips from the other tree that are descendants.
+ */
+
 
 string conflict_ws_method(const SummaryTree_t& summary,
                           const RichTaxonomy & taxonomy,
@@ -1457,7 +1501,12 @@ string conflict_ws_method(const SummaryTree_t& summary,
     prune_duplicate_ottids(*query_tree);
 //    LOG(WARNING)<<"post = "<<newick_string(*query_tree);
 
-    // 4. Add children to higher-taxa that are not in the other tree.
+
+    // Note: At this point the query tree doesn't have any leaves with duplicate ids.
+    //       However, it could very well have leaves where one is an ancestor of another.
+    //       One way to remove such leaves is to 
+
+    // 4. Add children to higher-taxa that are not in the synth tree.
     if (tree2s == "synth")
     {
         map<cnode_type*,vector<OttId>> children_to_add;
