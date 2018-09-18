@@ -1416,7 +1416,7 @@ void check_all_leaves_have_ott_ids(const ConflictTree& query_tree)
 
 }
 
-void check_all_leaves_have_node_names(const ConflictTree& query_tree)
+void check_all_nodes_have_node_names(const ConflictTree& query_tree)
 {
     for(const auto nd: iter_post_const(query_tree))
     {
@@ -1433,31 +1433,50 @@ void check_all_leaves_have_node_names(const ConflictTree& query_tree)
     }
 }
 
-// We would be able to improve this by:
-// - following only nodes which are ancestors of synthesis leaves (i.e. unpruned leaves)
-// - following only nodes which are ancestors of input phylogeny leaves, exemplified to turn higher taxon leaves -> leaf leaves.
+// Find the smallest set C of taxa (leaf or internal) that we need to add as children of `id` so that
+// i) all descendents of id are descendants of one of these children
+// ii) all taxa in C are present in the summary tree
 vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, const RichTaxonomy& taxonomy)
 {
+    // We could maybe improve speed by:
+    // - following only nodes which are ancestors of synthesis leaves (i.e. unpruned leaves)
+    // - following only nodes which are ancestors of input phylogeny leaves, exemplified to turn higher taxon leaves -> leaf leaves.
+
     auto& id_to_node = summary.get_data().id_to_node;
     auto& tax_id_to_node = taxonomy.get_tax_tree().get_data().id_to_node;
+
+    // If the node is in synth already, then we don't need to add any children.
+    if (id_to_node.count(id)) return {};
+
+    // Growing list of descendants of `id` that are not in synth.
     vector<OttId> children;
-    if (id_to_node.count(id)) {
-        return children;
-    }
     vector<OttId> bad_parents({id});
-    for(std::size_t i=0;i<bad_parents.size();i++) {
+
+    // Walk a frontier leafward from id:
+    for(std::size_t i=0;i<bad_parents.size();i++)
+    {
         auto parent_id = bad_parents[i];
-        auto parent_node = taxonomy.included_taxon_from_id(parent_id);
         auto tax_node = tax_id_to_node.at(bad_parents[i]);
-        for(auto c: iter_child_const(*tax_node)) {
+
+        auto parent_node = taxonomy.included_taxon_from_id(parent_id);
+
+        for(auto c: iter_child_const(*tax_node))
+	{
             auto child_id = c->get_ott_id();
             auto child_node = taxonomy.included_taxon_from_id(child_id);
+
             std::cerr << "Lost taxon " << parent_node->get_name() << " ("<<parent_id<<") -> ";
             std::cerr << "taxon " << child_node->get_name() << " (" << child_id << ") of degree " << child_node->get_out_degree() << ":";
-            if (id_to_node.count(child_id)) {
-                std::cerr << "GOOD\n";
+
+            if (id_to_node.count(child_id))
+	    {
+                // In synth, we can stop expanding the frontier at this node.
+                std::cerr << "GOOD\n"; 
                 children.push_back(child_id);
-            } else {
+            }
+	    else
+	    {
+                // Not in synth, we need to consider the children of this node.
                 std::cerr << "BAD\n";
                 bad_parents.push_back(child_id);
             }
@@ -1465,6 +1484,38 @@ vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, co
     }
     return children;
 }
+
+// Remove leaves (and their monotypic ancestors) in the query tree
+// that are the ancestors of other leaves in the query tree.
+void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxonomy)
+{
+    using tfunc = std::function<const tnode_type*(const tnode_type*,const tnode_type*)>;
+    tfunc taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {
+        return mrca_from_depth(n1,n2);
+    };
+
+    auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
+    auto induced_taxonomy = get_induced_tree<RichTaxTree, ConflictTree>(taxonomy_nodes_from_query_leaves,
+									taxonomy_mrca);
+    auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);
+
+    LOG(WARNING)<<"induced taxonomy has "<<n_leaves(*induced_taxonomy)<<" leaves.";
+
+    vector<cnode_type*> nodes_to_prune;
+    for(auto leaf: iter_leaf(query_tree))
+    {
+	auto ottid = leaf->get_ott_id();
+	auto tax_node = ottid_to_induced_tax_node.at(ottid);
+	if (not tax_node->is_tip())
+	    nodes_to_prune.push_back(leaf);
+    }
+
+    for(auto node: nodes_to_prune)
+	delete_tip_and_monotypic_ancestors(query_tree, node);
+
+    LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
+}
+
 
 /*
  * OK, a general approach to normalizing two trees for comparison:
@@ -1478,7 +1529,6 @@ vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, co
  * 3. Remove tips that have no shared descendants with tips in the other tree.
  * 4. For each tip, add as children tips from the other tree that are descendants.
  */
-
 
 string conflict_ws_method(const SummaryTree_t& summary,
                           const RichTaxonomy & taxonomy,
@@ -1494,22 +1544,18 @@ string conflict_ws_method(const SummaryTree_t& summary,
     check_all_leaves_have_ott_ids(*query_tree);
 
     // 2. Check that all leaves in input tree have node names
-    check_all_leaves_have_node_names(*query_tree);
+    check_all_nodes_have_node_names(*query_tree);
 
-    // 3. Prune duplicate ott ids
-//    LOG(WARNING)<<"pre = "<<newick_string(*query_tree);
+    // 3. Prune leaves with duplicate ott ids
     prune_duplicate_ottids(*query_tree);
-//    LOG(WARNING)<<"post = "<<newick_string(*query_tree);
 
+    // 4. Prune leaves of the query that are ancestral to other query leaves
+    prune_ancestral_leaves(*query_tree, taxonomy);
 
-    // Note: At this point the query tree doesn't have any leaves with duplicate ids.
-    //       However, it could very well have leaves where one is an ancestor of another.
-    //       One way to remove such leaves is to 
-
-    // 4. Add children to higher-taxa that are not in the synth tree.
+    // 5. Add children to higher-taxon leaves of query_tree that are not in the synth tree.
     if (tree2s == "synth")
     {
-        map<cnode_type*,vector<OttId>> children_to_add;
+	map<cnode_type*,vector<OttId>> children_to_add;
         for(auto leaf: iter_leaf(*query_tree))
         {
 //          LOG(WARNING)<<"Considering leaf "<<leaf->get_ott_id()<<":";
