@@ -464,7 +464,7 @@ string ctime(const chrono::system_clock::time_point& t)
     return tt;
 }
 
-multimap<string,string> request_headers(const string& rbody, bool content_type_is_json = true)
+multimap<string,string> request_headers(const string& rbody)
 {
     multimap<string,string> headers;
 
@@ -476,12 +476,8 @@ multimap<string,string> request_headers(const string& rbody, bool content_type_i
 //  We're calling 'close' so this doesn't make sense, I think...
     headers.insert({ "Content-Length", ::to_string(rbody.length())});
 
-//  All of our replies are generally JSON
-    if (content_type_is_json)
-	headers.insert({ "Content-Type", "application/json;"});
-//  But when we return errors this is not the case.
-    else
-	headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+//  All of our replies should be JSON, so that users can unconditionally parse the response a JSON.
+    headers.insert({ "Content-Type", "application/json;"});
 
     headers.insert({ "Date", ctime(chrono::system_clock::now())});
     headers.insert({ "Expires", ctime(chrono::system_clock::now())});
@@ -516,6 +512,14 @@ multimap<string,string> options_headers()
     return headers;
 }
 
+std::string error_response(const string& path, const std::exception& e)
+{
+    string msg = string("[") + path + ("] Error: ") + e.what();
+    LOG(WARNING)<<msg;
+    json j = { {"message", msg} };
+    return j.dump(4)+"\n";
+}
+
 std::function<void(const shared_ptr< Session > session)>
 create_method_handler(const string& path, const std::function<std::string(const json&)> process_request)
 {
@@ -531,13 +535,11 @@ create_method_handler(const string& path, const std::function<std::string(const 
 		    LOG(WARNING)<<"request: DONE";
 		    session->close( OK, rbody, request_headers(rbody) );
 		} catch (OTCWebError& e) {
-		    string rbody = string("[") + path + ("] Error: ") + e.what();
-		    LOG(WARNING)<<rbody;
-		    session->close( e.status_code(), rbody, request_headers(rbody, false) );
+		    string rbody = error_response(path,e);
+		    session->close( e.status_code(), rbody, request_headers(rbody) );
 		} catch (OTCError& e) {
-		    string rbody = string("[") + path + ("] Error: ") + e.what();
-		    LOG(WARNING)<<rbody;
-		    session->close( 500, rbody, request_headers(rbody, false) );
+		    string rbody = error_response(path,e);
+		    session->close( 500, rbody, request_headers(rbody) );
 		}
 	    });
     };
@@ -569,13 +571,11 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
 	}
 	catch (OTCWebError& e)
 	{
-	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
-	    LOG(WARNING)<<rbody;
-	    session->close( e.status_code(), rbody, request_headers(rbody, false) );
+	    string rbody = error_response(path, e);
+	    session->close( e.status_code(), rbody, request_headers(rbody) );
 	} catch (OTCError& e) {
-	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
-	    LOG(WARNING)<<rbody;
-	    session->close( 500, rbody, request_headers(rbody, false) );
+	    string rbody = error_response(path, e);
+	    session->close( 500, rbody, request_headers(rbody) );
 	}
     };
 }
