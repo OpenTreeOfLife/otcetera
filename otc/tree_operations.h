@@ -778,11 +778,11 @@ inline void write_newick(std::ostream & out, const T *nd) {
 }
 
 template<typename T, typename Y>
-inline void write_newick_generic(std::ostream & out,
-                               T nd,
-                               Y & nodeNamer,
-                               bool include_all_node_labels,
-                               long height_limit) {
+inline void write_newick_generic_no_semi(std::ostream & out,
+					 T nd,
+					 Y & nodeNamer,
+					 bool include_all_node_labels,
+					 long height_limit) {
     assert(nd != nullptr);
     if (!(nd->is_tip()) && height_limit != 0) {
         out << '(';
@@ -794,7 +794,7 @@ inline void write_newick_generic(std::ostream & out,
             } else {
                 out << ',';
             }
-            write_newick_generic<T, Y>(out, c, nodeNamer, include_all_node_labels, nhl);
+            write_newick_generic_no_semi<T, Y>(out, c, nodeNamer, include_all_node_labels, nhl);
         }
         out << ')';
     }
@@ -803,6 +803,17 @@ inline void write_newick_generic(std::ostream & out,
 
     if (include_all_node_labels or nd->has_ott_id())
 	write_escaped_for_newick(out, name);
+}
+
+template<typename T, typename Y>
+inline void write_newick_generic(std::ostream & out,
+				 T nd,
+				 Y & nodeNamer,
+				 bool include_all_node_labels,
+				 long height_limit)
+{
+    write_newick_generic_no_semi<T,Y>(out, nd,  nodeNamer, include_all_node_labels, height_limit);
+    out<<';';
 }
 
 
