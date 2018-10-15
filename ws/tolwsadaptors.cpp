@@ -171,7 +171,7 @@ const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& sy
 }
 
 
-string available_trees_method_handler(const json& parsedargs)
+string available_trees_method_handler(const json&)
 {
     return available_trees_ws_method(tts);
 }
