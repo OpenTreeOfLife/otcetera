@@ -1,3 +1,3 @@
 {
-  "newick": "(Nototuexample_ott999999,((A1_ott1,A2_ott2,A3_ott3)A_ott100,(B1_ott11,B2_ott12,B3_ott13)B_ott200,(C1_ott21,C2_ott22,C3_ott23)C_ott300)ABC_ott1001)Exampleroot_ott1000000"
+  "newick": "(Nototuexample_ott999999,((A1_ott1,A2_ott2,A3_ott3)A_ott100,(B1_ott11,B2_ott12,B3_ott13)B_ott200,(C1_ott21,C2_ott22,C3_ott23)C_ott300)ABC_ott1001)Exampleroot_ott1000000;"
 }
