@@ -15,10 +15,21 @@ executable('otc-tol-ws', otc_tol_ws_sources,
 	   install_rpath: rpath,
 	   install: true)
 
-#check:
-#	python $(abs_top_srcdir)/ws/test_web_services.py \
-#        --taxonomy-dir $(abs_top_srcdir)/data/ex-tax-1 \
-#        --synthesis-parent $(abs_top_srcdir)/data/ex-synth-par \
-#        --tests-parent $(abs_top_srcdir)/expectedws \
-#        --exe-dir $(abs_builddir)
 
+test_web_services = find_program(join_paths(meson.source_root(),'ws/test_web_services.py'))
+
+tax_dir = join_paths(meson.source_root(),'data/ex-tax-1')
+synth_dir = join_paths(meson.source_root(),'data/ex-synth-par')
+expectedws_dir = join_paths(meson.source_root(),'expectedws')
+# this should be the dir of the otc-tol-ws binary before its installed.
+exe_dir = join_paths(meson.build_root(),'ws')
+
+test('web services test',
+     test_web_services,
+     timeout: 300,
+#     workdir: exe_dir,
+     args: ['--taxonomy-dir',tax_dir,
+	    '--synthesis-parent',synth_dir,
+	    '--tests-parent',expectedws_dir,
+	    '--exe-dir',exe_dir]
+    )
