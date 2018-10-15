@@ -302,10 +302,7 @@ const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTax
 	    throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
 	}
 
-	OttId foreign_id = std::stol(id_str.c_str(), &pos);
-	if (pos < id_str.length()) {
-	    throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " << id_str;
-	}
+	OttId foreign_id;
 
 	try {
 	    foreign_id = check_ott_id_size(raw_foreign_id);
