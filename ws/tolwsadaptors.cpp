@@ -279,84 +279,99 @@ string tax_about_method_handler( const json& )
     return tax_about_ws_method(taxonomy);
 }
 
-// looks for ott_id or source_id args to find a node
-const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, const RichTaxonomy & taxonomy) {
+const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTaxonomy& taxonomy)
+{
     const auto & taxonomy_tree = taxonomy.get_tax_tree();
     const auto & taxonomy_tree_data = taxonomy_tree.get_data();
 
+    auto pref_id = split_string(source_id, ':');
+    if (pref_id.size() != 2) {
+	throw OTCBadRequest() << "Expecting exactly 1 colon in a source ID string. Found: \"" << source_id << "\".";
+    }
+
+    string source_prefix = *pref_id.begin();
+    if (indexed_source_prefixes.count(source_prefix) == 0) {
+	throw OTCBadRequest() << "IDs from source " << source_prefix << " are not known or not indexed for searching.";
+    }
+
+    string id_str = *pref_id.rbegin();
+    try {
+	std::size_t pos;
+	long raw_foreign_id  = std::stol(id_str.c_str(), &pos);
+	if (pos < id_str.length()) {
+	    throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
+	}
+
+	OttId foreign_id = std::stol(id_str.c_str(), &pos);
+	if (pos < id_str.length()) {
+	    throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " << id_str;
+	}
+
+	try {
+	    foreign_id = check_ott_id_size(raw_foreign_id);
+	}
+	catch (OTCError &) {
+	    throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
+	}
+
+	try {
+#           if defined(MAP_FOREIGN_TO_POINTER)
+	        const RTRichTaxNode * in_ott = nullptr;
+#           else
+	        OttId in_ott = 0;
+#           endif
+
+	    if (source_prefix == "ncbi") {
+		in_ott = taxonomy_tree_data.ncbi_id_map.at(foreign_id);
+	    } else if (source_prefix == "gbif") {
+		in_ott = taxonomy_tree_data.gbif_id_map.at(foreign_id);
+	    } else if (source_prefix == "worms") {
+		in_ott =  taxonomy_tree_data.worms_id_map.at(foreign_id);
+	    } else if (source_prefix == "if") {
+		in_ott =  taxonomy_tree_data.if_id_map.at(foreign_id);
+	    } else if (source_prefix == "irmng") {
+		in_ott =  taxonomy_tree_data.irmng_id_map.at(foreign_id);
+	    } else {
+		assert(false); // We should catch an unknown source_prefix above
+		throw OTCBadRequest() << "Don't recognized source_prefix = '" << source_prefix << "' - but we shouldn't get here.";
+	    }
+#           if defined(MAP_FOREIGN_TO_POINTER)
+	        return in_ott;
+#           else
+	        auto taxon_node =  taxonomy.included_taxon_from_id(in_ott);
+	        if (taxon_node == nullptr) {
+		    rbody = "Foreign ID " ;
+		    rbody += supplied_source_id;
+		    rbody += " mapped to unknown OTT ID: ";
+		    rbody += to_string(ott_id);
+		    status_code = 400;
+		}
+		return taxon_node;
+#           endif
+	}
+	catch (std::out_of_range & x) {
+	    throw OTCBadRequest() << "No taxon in the taxonomy is associated with source_id of " << source_id;
+	}
+    }
+    catch (...) {
+	throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " << id_str;
+    }
+}
+
+// looks for ott_id or source_id args to find a node
+const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, const RichTaxonomy & taxonomy)
+{
     auto ott_id = extract_argument<OttId>(parsedargs, "ott_id");
     auto source_id = extract_argument<string>(parsedargs, "source_id");
 
-    if (ott_id and source_id) {
+    if (ott_id and source_id)
         throw OTCBadRequest("'ott_id' and 'source_id' arguments cannot both be supplied.");
-    } else if (not ott_id and not source_id) {
+    else if (not ott_id and not source_id)
         throw OTCBadRequest("An 'ott_id' or 'source_id' argument is required.");
-    } else if (source_id) {
-        auto pref_id = split_string(*source_id, ':');
-        if (pref_id.size() != 2) {
-            throw OTCBadRequest() << "Expecting exactly 1 colon in a source ID string. Found: \"" << *source_id << "\".";
-        }
-        string source_prefix = *pref_id.begin();
-        if (indexed_source_prefixes.count(source_prefix) == 0) {
-            throw OTCBadRequest() << "IDs from source " << source_prefix << " are not known or not indexed for searching.";
-        }
-        string id_str = *pref_id.rbegin();
-        try {
-            std::size_t pos;
-            long raw_foreign_id  = std::stol(id_str.c_str(), &pos);
-            if (pos < id_str.length()) {
-                throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
-            }
-            OttId foreign_id = std::stol(id_str.c_str(), &pos);
-            if (pos < id_str.length()) {
-                throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " << id_str;
-            }
-            try {
-                foreign_id = check_ott_id_size(raw_foreign_id);
-            } catch (OTCError &) {
-                throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
-            }
-            try {
-#               if defined(MAP_FOREIGN_TO_POINTER)
-                    const RTRichTaxNode * in_ott = nullptr;
-#               else
-                    OttId in_ott = 0;
-#               endif
 
-                if (source_prefix == "ncbi") {
-                    in_ott = taxonomy_tree_data.ncbi_id_map.at(foreign_id);
-                } else if (source_prefix == "gbif") {
-                    in_ott = taxonomy_tree_data.gbif_id_map.at(foreign_id);
-                } else if (source_prefix == "worms") {
-                    in_ott =  taxonomy_tree_data.worms_id_map.at(foreign_id);
-                } else if (source_prefix == "if") {
-                    in_ott =  taxonomy_tree_data.if_id_map.at(foreign_id);
-                } else if (source_prefix == "irmng") {
-                    in_ott =  taxonomy_tree_data.irmng_id_map.at(foreign_id);
-                } else {
-                    assert(false); // We should catch an unknown source_prefix above
-                    throw OTCBadRequest() << "Don't recognized source_prefix = '" << source_prefix << "' - but we shouldn't get here.";
-                }
-#               if defined(MAP_FOREIGN_TO_POINTER)
-                    return in_ott;
-#               else
-                    auto taxon_node =  taxonomy.included_taxon_from_id(in_ott);
-                    if (taxon_node == nullptr) {
-                        rbody = "Foreign ID " ;
-                        rbody += supplied_source_id;
-                        rbody += " mapped to unknown OTT ID: ";
-                        rbody += to_string(ott_id);
-                        status_code = 400;
-                    }
-                    return taxon_node;
-#               endif
-            } catch (std::out_of_range & x) {
-                throw OTCBadRequest() << "No taxon in the taxonomy is associated with source_id of " << source_id;
-            }
-        } catch (...) {
-            throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " << id_str;
-        }
-    } else {
+    if (source_id)
+	return taxon_from_source_id(*source_id, taxonomy);
+    else {
         assert(ott_id);
         auto taxon_node = taxonomy.included_taxon_from_id(*ott_id);
         if (taxon_node == nullptr) {
