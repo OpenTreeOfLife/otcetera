@@ -1,0 +1,26 @@
+{
+  "lineage": [],
+  "node_id": "ott1000000",
+  "num_tips": 9,
+  "source_id_map": {
+    "ott0.0draft0": {
+      "taxonomy": "ott0.0draft0"
+    }
+  },
+  "supported_by": {
+    "ott0.0draft0": "ott1000000"
+  },
+  "synth_id": "<UNKNOWN>",
+  "taxon": {
+    "name": "Exampleroot",
+    "ott_id": 1000000,
+    "rank": "no rank",
+    "tax_sources": [
+      "ncbi:10239",
+      "gbif:8"
+    ],
+    "unique_name": "Exampleroot"
+  },
+  "was_constrained": true,
+  "was_uncontested": true
+}
