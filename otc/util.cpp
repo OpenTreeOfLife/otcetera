@@ -108,37 +108,41 @@ bool char_ptr_to_long(const char *o, long *n) {
 // splits a string by whitespace and push the graphical strings to the back of r.
 //  Leading and trailing whitespace is lost ( there will be no empty strings added
 //      to the list.
-std::list<std::string> split_string(const std::string &s) {
+std::list<std::string> split_string(const std::string &s)
+{
+    // FIXME - this preserves old behavior - I don't know if we actually need this
+    if (s.empty()) return {};
+
     std::list<std::string> r;
-    std::string current;
-    for (const auto & c : s) {
-        if (isgraph(c)) {
-            current.append(1, c);
-        } else if (!current.empty()) {
-            r.push_back(current);
-            current.clear();
-        }
+    r.push_back({});
+
+    for (const auto & c : s)
+    {
+        if (isgraph(c))
+	    r.back().append(1,c);
+	// This should basically split on \s+
+	else if (not r.back().empty())
+            r.push_back({});
     }
-    if (!current.empty()) {
-        r.push_back(current);
-    }
+
     return r;
 }
 
 
-std::list<std::string> split_string(const std::string &s, const char delimiter) {
+std::list<std::string> split_string(const std::string &s, const char delimiter)
+{
+    // FIXME - this preserves old behavior - I don't know if we actually need this
+    if (s.empty()) return {};
+
     std::list<std::string> r;
-    std::string current;
-    for (const auto & c : s) {
-        if (c != delimiter) {
-            current.append(1, c);
-        } else {
-            r.push_back(current);
-            current.clear();
-        }
-    }
-    if (!current.empty()) {
-        r.push_back(current);
+    r.push_back({});
+
+    for (const auto & c : s)
+    {
+	if (c == delimiter)
+	    r.push_back({});
+	else
+	    r.back().append(1,c);
     }
     return r;
 }
