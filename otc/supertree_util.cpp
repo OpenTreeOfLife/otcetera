@@ -28,20 +28,20 @@ std::string source_from_tree_name(const std::string& name) {
 boost::optional<std::string> get_source_node_name(const std::string& name)
 {
     // Here the middle group can match ott12345, so we add ottXXX on the end to avoid this.
-    static std::regex with_ott("(.*[ _])?([a-zA-Z]+\\d+)[ _]ott.*");
+    static std::regex with_ott(".*[ _]([a-zA-Z]+\\d+)[ _]ott.*");
     // Then we need another regex to handle the case where there's no ottid.
-    static std::regex without_ott("(.*[ _])?([a-zA-Z]+\\d+)");
+    static std::regex without_ott(".*[ _]([a-zA-Z]+\\d+)[ _]?");
     std::smatch matches;
     if (std::regex_match(name, matches, with_ott))
     {
         assert(matches.size() >= 2);
-        std::string source = matches[2];
+        std::string source = matches[1];
         return source;
     }
 
     if (std::regex_match(name, matches, without_ott)) {
         assert(matches.size() >= 2);
-        std::string source = matches[2];
+        std::string source = matches[1];
         return source;
     }
     else {
