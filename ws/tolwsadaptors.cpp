@@ -238,6 +238,40 @@ auto lookup_source_id(const string& source_prefix, OttId foreign_id, const RichT
     }
 }
 
+
+// Get an OttId from a string.
+//
+// The fact that this function is so long (uses exceptions) is ridiculous.
+// + We could use std::strtol, which sets errno.
+// + c++17 has a function from_chars( ) which seems less ridiculous.
+//
+OttId id_from_string(const string& id_str)
+{
+    std::size_t pos;
+    long raw_id;
+    try
+    {
+	raw_id  = std::stol(id_str.c_str(), &pos);
+    }
+    catch(const std::out_of_range&)
+    {
+	throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
+    }
+    catch(std::invalid_argument&)
+    {
+	throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
+    }
+    if (pos < id_str.length())
+	throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
+
+    auto id = to_OttId(raw_id);
+
+    if (not id)
+	throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
+
+    return *id;
+}
+
 const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTaxonomy& taxonomy)
 {
     auto pref_id = split_string(source_id, ':');
@@ -252,17 +286,9 @@ const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTax
 
     string id_str = *pref_id.rbegin();
 
-    std::size_t pos;
-    long raw_foreign_id  = std::stol(id_str.c_str(), &pos);
-    if (pos < id_str.length())
-	throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
+    auto foreign_id = id_from_string(id_str);
 
-    auto foreign_id = to_OttId(raw_foreign_id);
-
-    if (not foreign_id)
-	throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
-
-    auto in_ott = lookup_source_id(source_prefix, *foreign_id, taxonomy, source_id);
+    auto in_ott = lookup_source_id(source_prefix, foreign_id, taxonomy, source_id);
 
 #   if defined(MAP_FOREIGN_TO_POINTER)
         return in_ott;
