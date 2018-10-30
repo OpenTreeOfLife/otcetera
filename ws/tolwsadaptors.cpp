@@ -558,7 +558,7 @@ multimap<string,string> options_headers()
 std::string error_response(const string& path, const std::exception& e)
 {
     string msg = string("[") + path + ("] Error: ") + e.what();
-    LOG(WARNING)<<msg;
+    LOG(DEBUG)<<msg;
     json j = { {"message", msg} };
     return j.dump(4)+"\n";
 }
@@ -571,11 +571,11 @@ create_method_handler(const string& path, const std::function<std::string(const 
 	size_t content_length = request->get_header( "Content-Length", 0 );
 	session->fetch( content_length, [ path, process_request, request ]( const shared_ptr< Session > session, const Bytes & body ) {
 		try {
-		    LOG(WARNING)<<"request: "<<path;
+		    LOG(DEBUG)<<"request: "<<path;
 		    json parsedargs = parse_body_or_throw(body);
-		    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
+		    LOG(DEBUG)<<"   argument "<<parsedargs.dump(1);
 		    auto rbody = process_request(parsedargs);
-		    LOG(WARNING)<<"request: DONE";
+		    LOG(DEBUG)<<"request: DONE";
 		    session->close( OK, rbody, request_headers(rbody) );
 		} catch (OTCWebError& e) {
 		    string rbody = error_response(path,e);
@@ -590,7 +590,7 @@ create_method_handler(const string& path, const std::function<std::string(const 
 
 json request_to_json(const Request& request)
 {
-    LOG(WARNING)<<"GET "<<request.get_path();
+    LOG(DEBUG)<<"GET "<<request.get_path();
     json query;
     for(auto& key_value_pair: request.get_query_parameters())
 	query[key_value_pair.first] = key_value_pair.second;
@@ -604,12 +604,12 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
     {
 	try
 	{
-	    LOG(WARNING)<<"request: "<<path;
+	    LOG(DEBUG)<<"request: "<<path;
 	    const auto& request = session->get_request( );
 	    json parsedargs = request_to_json(*request);
-	    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
+	    LOG(DEBUG)<<"   argument "<<parsedargs.dump(1);
 	    auto rbody = process_request(parsedargs);
-	    LOG(WARNING)<<"request: DONE";
+	    LOG(DEBUG)<<"request: DONE";
 	    session->close( OK, rbody, request_headers(rbody) );
 	}
 	catch (OTCWebError& e)
