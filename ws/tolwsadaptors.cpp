@@ -416,6 +416,13 @@ string taxon_info_method_handler( const json& parsedargs )
     return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
 }
 
+string taxon_flags_method_handler( const json& )
+{
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return taxonomy_flags_ws_method(taxonomy);
+}
+
 string taxon_mrca_method_handler( const json& parsedargs )
 {
     OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
@@ -688,6 +695,7 @@ int run_server(const po::variables_map & args) {
     // taxonomy web services
     auto v3_r_tax_about        = path_handler(v3_prefix + "/taxonomy/about", tax_about_method_handler );
     auto v3_r_taxon_info       = path_handler(v3_prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
+    auto v3_r_taxon_flags      = path_handler(v3_prefix + "/taxonomy/flags", taxon_flags_method_handler );
     auto v3_r_taxon_mrca       = path_handler(v3_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v3_r_taxon_subtree    = path_handler(v3_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
@@ -716,6 +724,7 @@ int run_server(const po::variables_map & args) {
     // taxonomy web services
     auto v4_r_tax_about        = path_handler(v4_prefix + "/taxonomy/about", tax_about_method_handler );
     auto v4_r_taxon_info       = path_handler(v4_prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
+    auto v4_r_taxon_flags      = path_handler(v4_prefix + "/taxonomy/flags", taxon_flags_method_handler );
     auto v4_r_taxon_mrca       = path_handler(v4_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v4_r_taxon_subtree    = path_handler(v4_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
@@ -738,6 +747,7 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_induced_subtree );
     service.publish( v3_r_tax_about );
     service.publish( v3_r_taxon_info );
+    service.publish( v3_r_taxon_flags );
     service.publish( v3_r_taxon_mrca );
     service.publish( v3_r_taxon_subtree );
     service.publish( v3_r_conflict_status );
@@ -751,6 +761,7 @@ int run_server(const po::variables_map & args) {
     service.publish( v4_r_induced_subtree );
     service.publish( v4_r_tax_about );
     service.publish( v4_r_taxon_info );
+    service.publish( v4_r_taxon_flags );
     service.publish( v4_r_taxon_mrca );
     service.publish( v4_r_taxon_subtree );
     service.publish( v4_r_conflict_status );
