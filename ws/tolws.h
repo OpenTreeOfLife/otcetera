@@ -285,6 +285,8 @@ std::string taxon_info_ws_method(const RichTaxonomy & taxonomy,
                                  bool include_children,
                                  bool include_terminal_descendants);
 
+std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy);
+
 std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                     const OttIdSet & ott_id_set);
 

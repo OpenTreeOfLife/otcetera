@@ -483,7 +483,8 @@ string node_info_ws_method(const TreesToServe & tts,
 string mrca_ws_method(const TreesToServe & tts,
                       const SummaryTree_t * tree_ptr,
                       const SummaryTreeAnnotation * sta,
-                      const vector<string> & node_id_vec) {
+                      const vector<string> & node_id_vec)
+{
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
@@ -836,6 +837,62 @@ string taxon_info_ws_method(const RichTaxonomy & taxonomy,
     return response.dump(1);
 }
 
+// flags: not_otu, environmental, environmental_inherited, viral, hidden, hidden_inherited, was_container
+//    are excluded from being returned in TNRS results.
+
+std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy)
+{
+    vector<int> flag_counts(32);
+    for(auto  node: iter_node_const(taxonomy.get_tax_tree()))
+    {
+	for(int i=0;i<32;i++)
+	    if (node->get_data().flags.test(i))
+		flag_counts[i]++;
+    }
+    json flags;
+
+    for(int i=0;i<32;i++)
+	if (flag_counts[i])
+	    flags[*string_for_flag(i)] = flag_counts[i];
+/*
+    `curl -X POST https://api.opentreeoflife.org/v3/taxonomy/flags` yields something like:
+
+    vector<string> allowed_flags = {  "environmental_inherited",
+				      "unclassified", //0
+				      "unplaced",
+				      "hidden",
+				      "extinct_inherited",
+				      "unclassified_direct", //0
+				      "extinct",
+				      "unclassified_inherited", //0
+				      "incertae_sedis",
+				      "was_container",
+				      "forced_visible", //0
+				      "hidden_inherited",
+				      "not_otu",
+				      "environmental",
+				      "major_rank_conflict",
+				      "edited", //0
+				      "incertae_sedis_direct", //0
+				      "extinct_direct", //0
+				      "unplaced_inherited",
+				      "merged",
+				      "major_rank_conflict_inherited",
+				      "major_rank_conflict_direct", //0
+				      "inconsistent",
+				      "barren",
+				      "sibling_higher",
+				      "tattered", //0
+				      "infraspecific",
+				      "hybrid",
+				      "incertae_sedis_inherited",
+				      "viral",
+				      "tattered_inherited", //0
+				      "sibling_lower", // 0
+    };
+*/
+    return flags.dump(1);
+}
 
 string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                const OttIdSet & ott_id_set) {
