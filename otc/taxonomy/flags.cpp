@@ -24,6 +24,7 @@ using namespace otc;
 using std::string;
 using std::vector;
 using std::bitset;
+using boost::optional;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
@@ -147,14 +148,18 @@ tax_flags regrafting_flags_from_config_file(const std::string& filename) {
     return u;
 }
 
-string string_for_flag(int i) {
+optional<string> string_for_flag(int i)
+{
     vector<string> matches;
     flag_symbols.for_each([&](const string& s, int j) {
                              if (i == j) {
                                  matches.push_back(s);
                              }
                          });
-    return matches[0];
+    if (matches.size())
+	return matches[0];
+    else
+	return {};
 }
 
 std::string flags_to_string(const tax_flags flags) {
@@ -162,11 +167,12 @@ std::string flags_to_string(const tax_flags flags) {
     return boost::algorithm::join(f, ", ");
 }
 
-std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags) {
+std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags)
+{
     vector<string> f;
     for(int i=0;i<32;i++) {
         if (flags.test(i)) {
-            f.push_back(string_for_flag(i));
+            f.push_back(*string_for_flag(i));
         }
     }
     return f;
