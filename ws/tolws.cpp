@@ -509,6 +509,7 @@ string mrca_ws_method(const TreesToServe & tts,
     response["synth_id"] = sta->synth_id;
     json mrcaj;
     set<string> usedSrcIds;
+    LOG(DEBUG)<<"mrca_ws_method: 2";
     add_node_support_info(tts, *focal, mrcaj, usedSrcIds);
     {
         auto locked_taxonomy = tts.get_readable_taxonomy();
