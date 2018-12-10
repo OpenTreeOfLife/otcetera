@@ -838,7 +838,6 @@ string taxon_info_ws_method(const RichTaxonomy & taxonomy,
 
 string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                const OttIdSet & ott_id_set) {
-    json response;
     const RTRichTaxNode * focal = nullptr;
     bool first = true;
     for (auto ott_id : ott_id_set) {
@@ -859,7 +858,10 @@ string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
     if (focal == nullptr) {
         throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
     }
-    tax_service_add_taxon_info(taxonomy, *focal, response);
+    json mrcaj;
+    tax_service_add_taxon_info(taxonomy, *focal, mrcaj);
+    json response;
+    response["mrca"] = mrcaj;
     return response.dump(1);
 }
 
