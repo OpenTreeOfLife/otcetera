@@ -851,46 +851,52 @@ std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy)
     }
     json flags;
 
+//    `curl -X POST https://api.opentreeoflife.org/v3/taxonomy/flags` yields something like:
+
+    vector<string> required_flags = {  "environmental_inherited",
+				       "unclassified", //0
+				       "unplaced",
+				       "hidden",
+				       "extinct_inherited",
+				       "unclassified_direct", //0
+				       "extinct",
+				       "unclassified_inherited", //0
+				       "incertae_sedis",
+				       "was_container",
+				       "forced_visible", //0
+				       "hidden_inherited",
+				       "not_otu",
+				       "environmental",
+				       "major_rank_conflict",
+				       "edited", //0
+				       "incertae_sedis_direct", //0
+				       "extinct_direct", //0
+				       "unplaced_inherited",
+				       "merged",
+				       "major_rank_conflict_inherited",
+				       "major_rank_conflict_direct", //0
+				       "inconsistent",
+				       "barren",
+				       "sibling_higher",
+				       "tattered", //0
+				       "infraspecific",
+				       "hybrid",
+				       "incertae_sedis_inherited",
+				       "viral",
+				       "tattered_inherited", //0
+				       "sibling_lower", // 0
+    };
+
+    for(auto& flag_name: required_flags)
+    {
+	flags[flag_name] = 0;
+    }
+
+    // Add the actual counts.
     for(int i=0;i<32;i++)
 	if (flag_counts[i])
 	    flags[*string_for_flag(i)] = flag_counts[i];
-/*
-    `curl -X POST https://api.opentreeoflife.org/v3/taxonomy/flags` yields something like:
 
-    vector<string> allowed_flags = {  "environmental_inherited",
-				      "unclassified", //0
-				      "unplaced",
-				      "hidden",
-				      "extinct_inherited",
-				      "unclassified_direct", //0
-				      "extinct",
-				      "unclassified_inherited", //0
-				      "incertae_sedis",
-				      "was_container",
-				      "forced_visible", //0
-				      "hidden_inherited",
-				      "not_otu",
-				      "environmental",
-				      "major_rank_conflict",
-				      "edited", //0
-				      "incertae_sedis_direct", //0
-				      "extinct_direct", //0
-				      "unplaced_inherited",
-				      "merged",
-				      "major_rank_conflict_inherited",
-				      "major_rank_conflict_direct", //0
-				      "inconsistent",
-				      "barren",
-				      "sibling_higher",
-				      "tattered", //0
-				      "infraspecific",
-				      "hybrid",
-				      "incertae_sedis_inherited",
-				      "viral",
-				      "tattered_inherited", //0
-				      "sibling_lower", // 0
-    };
-*/
     return flags.dump(1);
 }
 
