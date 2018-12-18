@@ -440,6 +440,34 @@ string taxon_subtree_method_handler( const json& parsedargs )
     return taxon_subtree_ws_method(taxonomy, taxon_node, nns);
 }
 
+string tnrs_match_names_handler( const json& parsedargs )
+{
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_match_names_ws_method(taxonomy);
+}
+
+string tnrs_autocomplete_name_handler( const json& parsedargs )
+{
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_autocomplete_name_ws_method(taxonomy);
+}
+
+string tnrs_contexts_handler( const json& parsedargs )
+{
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_contexts_ws_method(taxonomy);
+}
+
+string tnrs_infer_context_handler( const json& parsedargs )
+{
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_infer_context_ws_method(taxonomy);
+}
+
 string conflict_status_method_handler( const json& parsed_args )
 {
     auto tree1newick = extract_argument<string>(parsed_args, "tree1newick");
@@ -699,6 +727,12 @@ int run_server(const po::variables_map & args) {
     auto v3_r_taxon_mrca       = path_handler(v3_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v3_r_taxon_subtree    = path_handler(v3_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
+    // tnrs
+    auto v3_r_tnrs_match_names       = path_handler(v3_prefix + "/tnrs/match_names", tnrs_match_names_handler );
+    auto v3_r_tnrs_autocomplete_name = path_handler(v3_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
+    auto v3_r_tnrs_contexts          = path_handler(v3_prefix + "/tnrs/contexts", tnrs_contexts_handler );
+    auto v3_r_tnrs_infer_context     = path_handler(v3_prefix + "/tnrs/infer_context", tnrs_infer_context_handler );
+
     // conflict
     auto v3_r_conflict_status  = path_handler(v3_prefix + "/conflict/conflict-status", conflict_status_method_handler );
 
@@ -728,6 +762,12 @@ int run_server(const po::variables_map & args) {
     auto v4_r_taxon_mrca       = path_handler(v4_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v4_r_taxon_subtree    = path_handler(v4_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
+    // tnrs
+    auto v4_r_tnrs_match_names       = path_handler(v4_prefix + "/tnrs/match_names", tnrs_match_names_handler );
+    auto v4_r_tnrs_autocomplete_name = path_handler(v4_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
+    auto v4_r_tnrs_contexts          = path_handler(v4_prefix + "/tnrs/contexts", tnrs_contexts_handler );
+    auto v4_r_tnrs_infer_context     = path_handler(v4_prefix + "/tnrs/infer_context", tnrs_infer_context_handler );
+
     // conflict
     auto v4_r_conflict_status  = path_handler(v4_prefix + "/conflict/conflict-status", conflict_status_method_handler );
 
@@ -750,6 +790,10 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_taxon_flags );
     service.publish( v3_r_taxon_mrca );
     service.publish( v3_r_taxon_subtree );
+    service.publish( v3_r_tnrs_match_names );
+    service.publish( v3_r_tnrs_autocomplete_name );
+    service.publish( v3_r_tnrs_contexts );
+    service.publish( v3_r_tnrs_infer_context );
     service.publish( v3_r_conflict_status );
     service.publish( v3_r_old_conflict_status );
 
@@ -764,6 +808,10 @@ int run_server(const po::variables_map & args) {
     service.publish( v4_r_taxon_flags );
     service.publish( v4_r_taxon_mrca );
     service.publish( v4_r_taxon_subtree );
+    service.publish( v4_r_tnrs_match_names );
+    service.publish( v4_r_tnrs_autocomplete_name );
+    service.publish( v4_r_tnrs_contexts );
+    service.publish( v4_r_tnrs_infer_context );
     service.publish( v4_r_conflict_status );
 
     service.set_signal_handler( SIGINT, sigterm_handler );

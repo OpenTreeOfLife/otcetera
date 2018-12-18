@@ -944,6 +944,31 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
     return response.dump(1);
 }
 
+string tnrs_match_names_ws_method(const RichTaxonomy& taxonomy)
+{
+    json response;
+    return response.dump(1);
+}
+
+string tnrs_autocomplete_name_ws_method(const RichTaxonomy& taxonomy)
+{
+    json response;
+    return response.dump(1);
+}
+
+std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
+{
+    json response;
+    return response.dump(1);
+}
+
+string tnrs_infer_context_ws_method(const RichTaxonomy& taxonomy)
+{
+    json response;
+    return response.dump(1);
+}
+
+
 using cnode_type = ConflictTree::node_type;
 
 // input tree node names should all be of the form node###

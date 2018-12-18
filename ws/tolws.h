@@ -294,6 +294,12 @@ std::string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
                                     const RTRichTaxNode * taxon_node,
                                     NodeNameStyle label_format);
 
+std::string tnrs_match_names_ws_method(const RichTaxonomy& taxonomy);
+std::string tnrs_autocomplete_name_ws_method(const RichTaxonomy& taxonomy);
+std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy);
+std::string tnrs_infer_context_ws_method(const RichTaxonomy& taxonomy);
+
+
 std::string newick_conflict_ws_method(const SummaryTree_t & summary,
                                       const RichTaxonomy & taxonomy,
                                       const std::string& tree1s,
