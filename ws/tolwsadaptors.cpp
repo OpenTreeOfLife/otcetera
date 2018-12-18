@@ -440,11 +440,24 @@ string taxon_subtree_method_handler( const json& parsedargs )
     return taxon_subtree_ws_method(taxonomy, taxon_node, nns);
 }
 
+// See taxomachine/src/main/java/org/opentree/taxonomy/plugins/tnrs_v3.java
+
+// 10,000 queries at .0016 second per query = 16 seconds
+const int MAX_NONFUZZY_QUERY_STRINGS = 10000;
+// 250 queries at .3 second per query = 75 seconds
+const int MAX_FUZZY_QUERY_STRINGS = 250;
+
 string tnrs_match_names_handler( const json& parsedargs )
 {
+    auto names = extract_required_argument<vector<string>>(parsedargs, "names");
+    auto context_name = extract_argument<string>(parsedargs,"context_name");
+    bool do_approximate_matching = extract_argument_or_default(parsedargs, "do_approximate_matching", false);
+    auto ids = extract_argument<vector<string>>(parsedargs, "ids");
+    bool include_suppressed = extract_argument_or_default(parsedargs, "include_suppressed", false);
+
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    return tnrs_match_names_ws_method(taxonomy);
+    return tnrs_match_names_ws_method(names, /* context, */ do_approximate_matching, ids, include_suppressed, taxonomy);
 }
 
 string tnrs_autocomplete_name_handler( const json& parsedargs )

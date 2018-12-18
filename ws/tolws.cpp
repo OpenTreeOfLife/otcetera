@@ -944,27 +944,35 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
     return response.dump(1);
 }
 
-string tnrs_match_names_ws_method(const RichTaxonomy& taxonomy)
+std::string tnrs_match_names_ws_method(const vector<string>& names,
+				       bool do_approximate_matching,
+				       const boost::optional<vector<string>>& ids,
+				       bool include_suppressed,
+				       const RichTaxonomy& taxonomy)
 {
     json response;
+    LOG(WARNING)<<"tnrs/match_names";
     return response.dump(1);
 }
 
 string tnrs_autocomplete_name_ws_method(const RichTaxonomy& taxonomy)
 {
     json response;
+    LOG(WARNING)<<"tnrs/autocomplete_name";
     return response.dump(1);
 }
 
 std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
 {
     json response;
+    LOG(WARNING)<<"tnrs/contexts";
     return response.dump(1);
 }
 
 string tnrs_infer_context_ws_method(const RichTaxonomy& taxonomy)
 {
     json response;
+    LOG(WARNING)<<"tnrs/infer_context";
     return response.dump(1);
 }
 
