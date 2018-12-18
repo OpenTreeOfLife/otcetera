@@ -447,17 +447,30 @@ const int MAX_NONFUZZY_QUERY_STRINGS = 10000;
 // 250 queries at .3 second per query = 75 seconds
 const int MAX_FUZZY_QUERY_STRINGS = 250;
 
+static string LIFE_NODE_NAME = "life";
+
 string tnrs_match_names_handler( const json& parsedargs )
 {
-    auto names = extract_required_argument<vector<string>>(parsedargs, "names");
-    auto context_name = extract_argument<string>(parsedargs,"context_name");
+    // 1. Requred argument: "names"
+    vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
+
+    // 2. Optional argunments
+    string context_name          = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
     bool do_approximate_matching = extract_argument_or_default(parsedargs, "do_approximate_matching", false);
-    auto ids = extract_argument<vector<string>>(parsedargs, "ids");
-    bool include_suppressed = extract_argument_or_default(parsedargs, "include_suppressed", false);
+    vector<string> ids           = extract_argument_or_default(parsedargs, "ids",                     names);
+    bool include_suppressed      = extract_argument_or_default(parsedargs, "include_suppressed",      false);
+
+    // 3. Check that "ids" have the same length as "names", if supplied
+    if (ids.size() != names.size())
+    {
+	throw OTCBadRequest()<<"The number of names and ids does not match. If you provide ids, then you "
+			     <<"must provide exactly as many ids as names.";
+    }
 
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    return tnrs_match_names_ws_method(names, /* context, */ do_approximate_matching, ids, include_suppressed, taxonomy);
+
+    return tnrs_match_names_ws_method(names, context_name, do_approximate_matching, ids, include_suppressed, taxonomy);
 }
 
 string tnrs_autocomplete_name_handler( const json& parsedargs )

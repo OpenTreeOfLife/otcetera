@@ -945,10 +945,11 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
 }
 
 std::string tnrs_match_names_ws_method(const vector<string>& names,
-				       bool do_approximate_matching,
-				       const boost::optional<vector<string>>& ids,
-				       bool include_suppressed,
-				       const RichTaxonomy& taxonomy)
+                                       const string& context_name,
+                                       bool do_approximate_matching,
+                                       const boost::optional<vector<string>>& ids,
+                                       bool include_suppressed,
+                                       const RichTaxonomy& taxonomy)
 {
     json response;
     LOG(WARNING)<<"tnrs/match_names";
