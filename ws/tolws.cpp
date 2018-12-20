@@ -367,7 +367,7 @@ string available_trees_ws_method(const TreesToServe &tts)
     json response;
     json trees = json::array();
     for(auto& synth_id: tts.get_available_trees())
-	trees.push_back(synth_id);
+        trees.push_back(synth_id);
     response["synth_ids"] = trees;
     response["default"] = tts.get_default_tree();
     return response.dump(1);
@@ -620,9 +620,9 @@ class NodeNamerSupportedByStasher {
 
 template<typename C, typename T, typename Y>
 inline void write_visited_newick_no_semi(std::ostream & out,
-					 const C & visited,
-					 T nd,
-					 Y & nodeNamer) {
+                                         const C & visited,
+                                         T nd,
+                                         Y & nodeNamer) {
     assert(nd != nullptr);
     if (!(nd->is_tip())) {
         bool first = true;
@@ -646,10 +646,10 @@ inline void write_visited_newick_no_semi(std::ostream & out,
 
 template<typename C, typename T, typename Y>
 inline void write_visited_newick(std::ostream & out,
-				 const C & visited,
-				 T nd,
+                                 const C & visited,
+                                 T nd,
 
-				 Y & nodeNamer) {
+                                 Y & nodeNamer) {
     write_visited_newick_no_semi<C,T,Y>(out, visited, nd, nodeNamer);
     out<<';';
 }
@@ -845,57 +845,57 @@ std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy)
     vector<int> flag_counts(32);
     for(auto  node: iter_node_const(taxonomy.get_tax_tree()))
     {
-	for(int i=0;i<32;i++)
-	    if (node->get_data().flags.test(i))
-		flag_counts[i]++;
+        for(int i=0;i<32;i++)
+            if (node->get_data().flags.test(i))
+                flag_counts[i]++;
     }
     json flags;
 
 //    `curl -X POST https://api.opentreeoflife.org/v3/taxonomy/flags` yields something like:
 
     vector<string> required_flags = {  "environmental_inherited",
-				       "unclassified", //0
-				       "unplaced",
-				       "hidden",
-				       "extinct_inherited",
-				       "unclassified_direct", //0
-				       "extinct",
-				       "unclassified_inherited", //0
-				       "incertae_sedis",
-				       "was_container",
-				       "forced_visible", //0
-				       "hidden_inherited",
-				       "not_otu",
-				       "environmental",
-				       "major_rank_conflict",
-				       "edited", //0
-				       "incertae_sedis_direct", //0
-				       "extinct_direct", //0
-				       "unplaced_inherited",
-				       "merged",
-				       "major_rank_conflict_inherited",
-				       "major_rank_conflict_direct", //0
-				       "inconsistent",
-				       "barren",
-				       "sibling_higher",
-				       "tattered", //0
-				       "infraspecific",
-				       "hybrid",
-				       "incertae_sedis_inherited",
-				       "viral",
-				       "tattered_inherited", //0
-				       "sibling_lower", // 0
+                                       "unclassified", //0
+                                       "unplaced",
+                                       "hidden",
+                                       "extinct_inherited",
+                                       "unclassified_direct", //0
+                                       "extinct",
+                                       "unclassified_inherited", //0
+                                       "incertae_sedis",
+                                       "was_container",
+                                       "forced_visible", //0
+                                       "hidden_inherited",
+                                       "not_otu",
+                                       "environmental",
+                                       "major_rank_conflict",
+                                       "edited", //0
+                                       "incertae_sedis_direct", //0
+                                       "extinct_direct", //0
+                                       "unplaced_inherited",
+                                       "merged",
+                                       "major_rank_conflict_inherited",
+                                       "major_rank_conflict_direct", //0
+                                       "inconsistent",
+                                       "barren",
+                                       "sibling_higher",
+                                       "tattered", //0
+                                       "infraspecific",
+                                       "hybrid",
+                                       "incertae_sedis_inherited",
+                                       "viral",
+                                       "tattered_inherited", //0
+                                       "sibling_lower", // 0
     };
 
     for(auto& flag_name: required_flags)
     {
-	flags[flag_name] = 0;
+        flags[flag_name] = 0;
     }
 
     // Add the actual counts.
     for(int i=0;i<32;i++)
-	if (flag_counts[i])
-	    flags[*string_for_flag(i)] = flag_counts[i];
+        if (flag_counts[i])
+            flags[*string_for_flag(i)] = flag_counts[i];
 
     return flags.dump(1);
 }
@@ -1538,7 +1538,7 @@ vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, co
         auto parent_node = taxonomy.included_taxon_from_id(parent_id);
 
         for(auto c: iter_child_const(*tax_node))
-	{
+        {
             auto child_id = c->get_ott_id();
             auto child_node = taxonomy.included_taxon_from_id(child_id);
 
@@ -1546,13 +1546,13 @@ vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, co
             std::cerr << "taxon " << child_node->get_name() << " (" << child_id << ") of degree " << child_node->get_out_degree() << ":";
 
             if (id_to_node.count(child_id))
-	    {
+            {
                 // In synth, we can stop expanding the frontier at this node.
                 std::cerr << "GOOD\n"; 
                 children.push_back(child_id);
             }
-	    else
-	    {
+            else
+            {
                 // Not in synth, we need to consider the children of this node.
                 std::cerr << "BAD\n";
                 bad_parents.push_back(child_id);
@@ -1573,7 +1573,7 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
 
     auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
     auto induced_taxonomy = get_induced_tree<RichTaxTree, ConflictTree>(taxonomy_nodes_from_query_leaves,
-									taxonomy_mrca);
+                                                                        taxonomy_mrca);
     auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);
 
     LOG(WARNING)<<"induced taxonomy has "<<n_leaves(*induced_taxonomy)<<" leaves.";
@@ -1581,14 +1581,14 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
     vector<cnode_type*> nodes_to_prune;
     for(auto leaf: iter_leaf(query_tree))
     {
-	auto ottid = leaf->get_ott_id();
-	auto tax_node = ottid_to_induced_tax_node.at(ottid);
-	if (not tax_node->is_tip())
-	    nodes_to_prune.push_back(leaf);
+        auto ottid = leaf->get_ott_id();
+        auto tax_node = ottid_to_induced_tax_node.at(ottid);
+        if (not tax_node->is_tip())
+            nodes_to_prune.push_back(leaf);
     }
 
     for(auto node: nodes_to_prune)
-	delete_tip_and_monotypic_ancestors(query_tree, node);
+        delete_tip_and_monotypic_ancestors(query_tree, node);
 
     LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
 }
@@ -1632,7 +1632,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
     // 5. Add children to higher-taxon leaves of query_tree that are not in the synth tree.
     if (tree2s == "synth")
     {
-	map<cnode_type*,vector<OttId>> children_to_add;
+        map<cnode_type*,vector<OttId>> children_to_add;
         for(auto leaf: iter_leaf(*query_tree))
         {
 //          LOG(WARNING)<<"Considering leaf "<<leaf->get_ott_id()<<":";
