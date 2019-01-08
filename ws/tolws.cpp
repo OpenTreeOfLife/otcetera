@@ -401,7 +401,8 @@ string about_ws_method(const TreesToServe &tts,
     return response.dump(1);
 }
 
-string tax_about_ws_method(const RichTaxonomy & taxonomy) {
+json tax_about_json(const RichTaxonomy & taxonomy)
+{
     json response;
     string weburl;
     response["author"] = "open tree of life project";
@@ -411,6 +412,11 @@ string tax_about_ws_method(const RichTaxonomy & taxonomy) {
     response["source"] = string("ott") + taxonomy.get_version();
     response["version"] = taxonomy.get_version_number();
     response["weburl"] = weburl;
+    return response;
+}
+
+string tax_about_ws_method(const RichTaxonomy & taxonomy) {
+    json response = tax_about_json(taxonomy);
     return response.dump(1);
 }
 
@@ -943,7 +949,8 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
     response["newick"] = out.str();
     return response.dump(1);
 }
-
+// $ curl -X POST https://api.opentreeoflife.org/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
+// $ curl -X POST http://localhost:1984/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
 std::string tnrs_match_names_ws_method(const vector<string>& names,
                                        const string& context_name,
                                        bool do_approximate_matching,
@@ -953,27 +960,66 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
 {
     json response;
     LOG(WARNING)<<"tnrs/match_names";
+    response["governing_code"] = "string";
+    json unambiguous_names = json::array();
+    response["unambiguous_names"] = unambiguous_names;
+    json unmatched_names = json::array();
+    response["unmatched_names"] = unmatched_names;
+    json matched_names = json::array();
+    response["matched_names"] = matched_names;
+
+    response["context"] = context_name;
+    response["includes_approximage_matches"] = do_approximate_matching;
+    response["includes_deprecated_taxa"] = false;
+    response["includes_suppressed_names"] = include_suppressed;
+
+    response["taxonomy"] = tax_about_json(taxonomy);
+
+    json result;
+    result["matches"] = json::array(); // list of dict
+    result["matched_name"] = "string";
+    result["score"] = 1.0;
+    json results;
+    results["name"] = result;
+    response["results"] = results;
+
     return response.dump(1);
 }
 
+// curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
 string tnrs_autocomplete_name_ws_method(const string& name, const string& context_name, bool include_suppressed, const RichTaxonomy& taxonomy)
 {
     json response;
     LOG(WARNING)<<"tnrs/autocomplete_name";
+    json match;
+    match["ott_id"] = 0;
+    match["unique_name"] = "string";
+    match["is_suppressed"] = false;
+    match["is_higher"] = true;
+    response.push_back(match);
     return response.dump(1);
 }
 
+// curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context
 std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
 {
     json response;
     LOG(WARNING)<<"tnrs/contexts";
+    response["ANIMALS"] = json::array({"Animals", "Birds", "Tetrapods", "Mammals"});
     return response.dump(1);
 }
 
+// curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
 string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy)
 {
     json response;
     LOG(WARNING)<<"tnrs/infer_context";
+
+    response["context_name"] = "string";
+    response["context_ott_id"] = 0;
+    json ambiguous_names = json::array();
+    response["ambiguous_names"] = ambiguous_names;
+
     return response.dump(1);
 }
 
