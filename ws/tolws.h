@@ -300,9 +300,13 @@ std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
                                        const boost::optional<std::vector<std::string>>& ids,
                                        bool include_suppressed,
                                        const RichTaxonomy& taxonomy);
-std::string tnrs_autocomplete_name_ws_method(const RichTaxonomy& taxonomy);
+std::string tnrs_autocomplete_name_ws_method(const std::string& name,
+					     const std::string& context_name,
+					     bool include_suppressed,
+					     const RichTaxonomy& taxonomy);
 std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy);
-std::string tnrs_infer_context_ws_method(const RichTaxonomy& taxonomy);
+std::string tnrs_infer_context_ws_method(const std::vector<std::string>& names,
+					 const RichTaxonomy& taxonomy);
 
 
 std::string newick_conflict_ws_method(const SummaryTree_t & summary,

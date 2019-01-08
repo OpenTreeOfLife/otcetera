@@ -475,9 +475,13 @@ string tnrs_match_names_handler( const json& parsedargs )
 
 string tnrs_autocomplete_name_handler( const json& parsedargs )
 {
+    string name              = extract_required_argument<string>(parsedargs, "name");
+    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
+    bool include_suppressed  = extract_argument_or_default(parsedargs, "include_suppressed",      false);
+
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    return tnrs_autocomplete_name_ws_method(taxonomy);
+    return tnrs_autocomplete_name_ws_method(name, context_name, include_suppressed, taxonomy);
 }
 
 string tnrs_contexts_handler( const json& parsedargs )
@@ -489,9 +493,11 @@ string tnrs_contexts_handler( const json& parsedargs )
 
 string tnrs_infer_context_handler( const json& parsedargs )
 {
+    vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
+
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    return tnrs_infer_context_ws_method(taxonomy);
+    return tnrs_infer_context_ws_method(names, taxonomy);
 }
 
 string conflict_status_method_handler( const json& parsed_args )

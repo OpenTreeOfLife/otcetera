@@ -956,7 +956,7 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     return response.dump(1);
 }
 
-string tnrs_autocomplete_name_ws_method(const RichTaxonomy& taxonomy)
+string tnrs_autocomplete_name_ws_method(const string& name, const string& context_name, bool include_suppressed, const RichTaxonomy& taxonomy)
 {
     json response;
     LOG(WARNING)<<"tnrs/autocomplete_name";
@@ -970,7 +970,7 @@ std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
     return response.dump(1);
 }
 
-string tnrs_infer_context_ws_method(const RichTaxonomy& taxonomy)
+string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy)
 {
     json response;
     LOG(WARNING)<<"tnrs/infer_context";
