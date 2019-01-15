@@ -10,7 +10,9 @@ AllContexts::AllContexts(const std::initializer_list<Context>& contexts)
 }
 
 
-    /* *** NOTE: names must be unique!  TODO: use ott ids instead of names, to avoid this... */
+// NOTE: These context definitions were taken from `taxomachine/src/main/java/org/opentree/taxonomy/contexts/ContextDescription.java`
+//       on Jan 15, 2019.
+
 AllContexts all_contexts = {
     // Name             Group                         Index suffix        Node name string    ott id      Code
     {"All life",        /* ContextGroup.LIFE, */      "",                 "life",             805080L,    Nomenclature::Undefined},
