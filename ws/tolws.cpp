@@ -17,6 +17,8 @@ using json=nlohmann::json;
 
 using boost::optional;
 
+using otc::OttId;
+
 namespace otc {
 const int OK = restbed::OK;
 extern TreesToServe tts;
@@ -950,6 +952,52 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
     response["newick"] = out.str();
     return response.dump(1);
 }
+
+// Should probably rename ContextSearcher => Context, and Context=> ContextDescription
+struct ContextSearcher
+{
+    const RichTaxonomy& taxonomy;
+    const Context& context;
+    const RTRichTaxNode* context_root;
+
+    json match_name(const string& name, bool do_approximate_matching, bool include_suppressed);
+
+    ContextSearcher(const RichTaxonomy& t, const Context& c): taxonomy(t), context(c)
+    {
+	context_root = taxonomy.included_taxon_from_id(c.ott_id);
+    }
+};
+
+json get_taxon_json(const RichTaxonomy& taxonomy, const RTRichTaxNode& tax_node)
+{
+    json taxon;
+    taxon["is_suppressed"] = false;
+    taxon["synonyms"] = json::array();
+    taxon["flags"] = json::array();
+    add_taxon_info(taxonomy, tax_node, taxon);
+    return taxon;
+}
+
+json ContextSearcher::match_name(const string& name, bool do_approximate_matching, bool include_suppressed)
+{
+    json results;
+    for(auto tax_node: iter_child_const(*context_root))
+    {
+	json result;
+	result["is_synonym"] = false;  // FIXME!
+	result["score"] = 1.0;         // FIXME!
+	result["nomenclature_code"] = "code"; // FIXME!
+	result["is_approximate_match"] = false; // FIXME!
+	result["taxon"] = get_taxon_json(taxonomy, *tax_node);
+	result["matched_name"] = name; // FIXME!
+	results.push_back(result);
+    }
+    json match_results;
+    match_results["name"] = name;
+    match_results["results"] = results;
+    return match_results;
+}
+
 // $ curl -X POST https://api.opentreeoflife.org/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
 // $ curl -X POST http://localhost:1984/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
 std::string tnrs_match_names_ws_method(const vector<string>& names,
@@ -959,9 +1007,16 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
                                        bool include_suppressed,
                                        const RichTaxonomy& taxonomy)
 {
+    // ?? What do we do with the ids?
+
+    // ?? How do we get the right context?
+
+    Context context = all_contexts.at("All life");
+    ContextSearcher searcher(taxonomy,context);
+
     json response;
     LOG(WARNING)<<"tnrs/match_names";
-    response["governing_code"] = "string";
+    response["governing_code"] = context.code.name;
     json unambiguous_names = json::array();
     response["unambiguous_names"] = unambiguous_names;
     json unmatched_names = json::array();
@@ -976,12 +1031,9 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
 
     response["taxonomy"] = tax_about_json(taxonomy);
 
-    json result;
-    result["matches"] = json::array(); // list of dict
-    result["matched_name"] = "string";
-    result["score"] = 1.0;
     json results;
-    results["name"] = result;
+    for(auto& name: names)
+	results.push_back(searcher.match_name(name, do_approximate_matching, include_suppressed));
     response["results"] = results;
 
     return response.dump(1);
