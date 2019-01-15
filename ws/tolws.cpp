@@ -7,6 +7,7 @@
 #include "otc/supertree_util.h"
 #include "nexson/nexson.h"
 #include <boost/optional.hpp>
+#include "ws/tnrs/context.h"
 INITIALIZE_EASYLOGGINGPP
 
 
@@ -1000,12 +1001,18 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
     return response.dump(1);
 }
 
-// curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context
+// curl -X POST https://api.opentreeoflife.org/v3/tnrs/contexts
 std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
 {
     json response;
+    for(auto& contextp: all_contexts)
+    {
+	auto& context = contextp.second;
+	auto& name = context.name;
+	auto& group = context.group;
+	response[group].push_back(name);
+    }
     LOG(WARNING)<<"tnrs/contexts";
-    response["ANIMALS"] = json::array({"Animals", "Birds", "Tetrapods", "Mammals"});
     return response.dump(1);
 }
 

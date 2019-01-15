@@ -9,6 +9,7 @@
 struct Context
 {
     std::string name;
+    std::string group;
     std::string name_suffix;
     std::string lica_node_name;
     otc::OttId ott_id;
