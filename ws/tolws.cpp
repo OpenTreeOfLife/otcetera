@@ -1002,6 +1002,7 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
 }
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/contexts
+// curl -X POST http://localhost:1984/v3/tnrs/contexts
 std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
 {
     json response;
@@ -1017,6 +1018,7 @@ std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
 }
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
+// curl -X POST http://localhost:1984/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
 string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy)
 {
     json response;
