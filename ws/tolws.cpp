@@ -980,25 +980,47 @@ json ContextSearcher::match_name(const string& name, bool do_approximate_matchin
 {
     // What does an ambiguous match mean?
     json results;
+
     for(auto tax_node: iter_post_n_const(*context_root))
     {
-	bool is_synonym = false;
+	// Could we somehow make this get computed only if the result is needed below?
 
 	if (name == tax_node->get_data().get_nonuniqname())
 	{
-	    is_synonym = false;
+	    double score = 1.0;                     // FIXME!
+
+	    json result;
+	    result["taxon"] = get_taxon_json(taxonomy, *tax_node);
+	    result["search_string"] = name;
+	    result["score"] = 1.0;                  // FIXME!
+	    result["is_approximate_match"] = (score < 1.0);
+	    result["nomenclature_code"] = "code";   // FIXME!
+
+	    result["is_synonym"] = false;
+	    result["matched_name"] = (string)tax_node->get_data().get_nonuniqname();
+	    results.push_back(result);
 	}
 
-	json result;
-	result["is_synonym"] = false;  // FIXME!
-	result["score"] = 1.0;         // FIXME!
-	result["nomenclature_code"] = "code"; // FIXME!
-	result["is_approximate_match"] = false; // FIXME!
-	result["taxon"] = get_taxon_json(taxonomy, *tax_node);
-	result["search_string"] = name; // FIXME!
-	result["matched_name"] = name; // FIXME!
-	results.push_back(result);
+	for(auto& tjs: tax_node->get_data().junior_synonyms)
+	{
+	    if (name == tjs->get_name())
+	    {
+		double score = 1.0;                     // FIXME!
+
+		json result;
+		result["taxon"] = get_taxon_json(taxonomy, *tax_node);
+		result["search_string"] = name;
+		result["score"] = score;
+		result["is_approximate_match"] = (score < 1.0);
+		result["nomenclature_code"] = "code";   // FIXME!
+
+		result["is_synonym"] = true;
+		result["matched_name"] = tjs->get_name();
+		results.push_back(result);
+	    }
+	}
     }
+
     json match_results;
     match_results["name"] = name;
     match_results["matches"] = results;
