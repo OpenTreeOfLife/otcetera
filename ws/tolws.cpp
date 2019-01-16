@@ -995,7 +995,7 @@ json ContextSearcher::match_name(const string& name, bool do_approximate_matchin
     }
     json match_results;
     match_results["name"] = name;
-    match_results["results"] = results;
+    match_results["matches"] = results;
     return match_results;
 }
 
@@ -1021,11 +1021,11 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     json response;
     LOG(WARNING)<<"tnrs/match_names";
     response["governing_code"] = context.code.name;
-    json unambiguous_names = json::array();
+    json unambiguous_names = names; // FIXME!
     response["unambiguous_names"] = unambiguous_names;
     json unmatched_names = json::array();
     response["unmatched_names"] = unmatched_names;
-    json matched_names = json::array();
+    json matched_names = names; // FIXME!!
     response["matched_names"] = matched_names;
 
     response["context"] = context_name;
