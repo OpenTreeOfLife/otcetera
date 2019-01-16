@@ -971,24 +971,25 @@ struct ContextSearcher
 json get_taxon_json(const RichTaxonomy& taxonomy, const RTRichTaxNode& tax_node)
 {
     json taxon;
-    taxon["is_suppressed"] = false;
-    taxon["synonyms"] = json::array();
-    taxon["flags"] = json::array();
-    add_taxon_info(taxonomy, tax_node, taxon);
+    tax_service_add_taxon_info(taxonomy, tax_node, taxon);
+    // What about the "is_suppressed_from_synth" flag?  Do we want that?
     return taxon;
 }
 
 json ContextSearcher::match_name(const string& name, bool do_approximate_matching, bool include_suppressed)
 {
     json results;
-    for(auto tax_node: iter_child_const(*context_root))
+    for(auto tax_node: iter_post_n_const(*context_root))
     {
+	if (name != tax_node->get_data().get_nonuniqname()) continue;
+
 	json result;
 	result["is_synonym"] = false;  // FIXME!
 	result["score"] = 1.0;         // FIXME!
 	result["nomenclature_code"] = "code"; // FIXME!
 	result["is_approximate_match"] = false; // FIXME!
 	result["taxon"] = get_taxon_json(taxonomy, *tax_node);
+	result["search_string"] = name; // FIXME!
 	result["matched_name"] = name; // FIXME!
 	results.push_back(result);
     }
@@ -1009,9 +1010,12 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
 {
     // ?? What do we do with the ids?
 
-    // ?? How do we get the right context?
+    // ?? How do we get the right context?  Do we just assume All Life if unknown?
 
-    Context context = all_contexts.at("All life");
+    if (not all_contexts.count(context_name))
+	throw OTCError()<<"The context '"<<context_name<<"' could not be found.";
+
+    Context context = all_contexts.at(context_name);
     ContextSearcher searcher(taxonomy,context);
 
     json response;
