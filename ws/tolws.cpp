@@ -1039,7 +1039,7 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
 	results.push_back(result);
 
 	// Classify name as unmatched / matched / unambiguous
-	auto& matches = results.at("matches");
+	auto& matches = result.at("matches");
 	if (not matches.size())
 	    unmatched_names.push_back(name);
 	else
