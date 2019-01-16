@@ -978,10 +978,16 @@ json get_taxon_json(const RichTaxonomy& taxonomy, const RTRichTaxNode& tax_node)
 
 json ContextSearcher::match_name(const string& name, bool do_approximate_matching, bool include_suppressed)
 {
+    // What does an ambiguous match mean?
     json results;
     for(auto tax_node: iter_post_n_const(*context_root))
     {
-	if (name != tax_node->get_data().get_nonuniqname()) continue;
+	bool is_synonym = false;
+
+	if (name == tax_node->get_data().get_nonuniqname())
+	{
+	    is_synonym = false;
+	}
 
 	json result;
 	result["is_synonym"] = false;  // FIXME!
@@ -1018,26 +1024,49 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     Context context = all_contexts.at(context_name);
     ContextSearcher searcher(taxonomy,context);
 
-    json response;
-    LOG(WARNING)<<"tnrs/match_names";
-    response["governing_code"] = context.code.name;
-    json unambiguous_names = names; // FIXME!
-    response["unambiguous_names"] = unambiguous_names;
+    // 2. Iterate over names and fill arrays `results`, `unmatched_names`, `matched_names`, and `unambiguous_names`.
+    json results = json::array();
+    json unambiguous_names = json::array();
     json unmatched_names = json::array();
-    response["unmatched_names"] = unmatched_names;
-    json matched_names = names; // FIXME!!
-    response["matched_names"] = matched_names;
+    json matched_names = json::array();
 
+    for(auto& name: names)
+    {
+	// Do the search
+	json result = searcher.match_name(name, do_approximate_matching, include_suppressed);
+
+	// Store the result
+	results.push_back(result);
+
+	// Classify name as unmatched / matched / unambiguous
+	auto& matches = results.at("matches");
+	if (not matches.size())
+	    unmatched_names.push_back(name);
+	else
+	{
+	    matched_names.push_back(name);
+
+	    auto& first_match = matches[0];
+	    if (matches.size() == 1
+		and not first_match.at("is_synonym").get<bool>()
+		and not first_match.at("is_approximate_match").get<bool>())
+	    {
+		unambiguous_names.push_back(name);
+	    }
+	}
+    }
+
+    // 3. Construct JSON response.
+    json response;
+    response["governing_code"] = context.code.name;
     response["context"] = context_name;
     response["includes_approximage_matches"] = do_approximate_matching;
-    response["includes_deprecated_taxa"] = false;
+    response["includes_deprecated_taxa"] = false; // FIXME ??
     response["includes_suppressed_names"] = include_suppressed;
-
     response["taxonomy"] = tax_about_json(taxonomy);
-
-    json results;
-    for(auto& name: names)
-	results.push_back(searcher.match_name(name, do_approximate_matching, include_suppressed));
+    response["unambiguous_names"] = unambiguous_names;
+    response["unmatched_names"] = unmatched_names;
+    response["matched_names"] = matched_names;
     response["results"] = results;
 
     return response.dump(1);
