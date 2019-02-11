@@ -2,7 +2,7 @@ project('otcetera', ['cpp'],
 	version: '0.0.01-dev',
 	default_options: [
 	  'buildtype=release',
-	  'cpp_std=c++14'
+	  'cpp_std=c++17'
 	],
 	meson_version: '>=0.44')
 

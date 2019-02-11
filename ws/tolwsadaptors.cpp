@@ -15,12 +15,28 @@
 
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
-using namespace std;
+
+using std::vector;
+using std::map;
+using std::multimap;
+using std::shared_ptr;
+using std::pair;
+using std::set;
+using std::string;
+using std::ostringstream;
+using std::unique_ptr;
+
+using std::make_shared;
+using std::to_string;
+
+using boost::optional;
+
 namespace po = boost::program_options;
 using namespace otc;
 namespace fs = boost::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
+namespace chrono = std::chrono;
 using std::pair;
 
 
@@ -551,7 +567,7 @@ void ready_handler( Service& ) {
 #endif
     LOG(INFO) << "Service is ready. PID is " << pid;
     if (!pidfile.empty()) {
-        ofstream pstream(pidfile);
+	std::ofstream pstream(pidfile);
         if (pstream.good()) {
             pstream << pid << '\n';
             pstream.close();
@@ -721,7 +737,7 @@ int run_server(const po::variables_map & args) {
     }
 
     if (!args.count("tree-dir")) {
-        cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
+	std::cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
         return 1;
     }
     const fs::path topdir{args["tree-dir"].as<string>()};
@@ -740,7 +756,7 @@ int run_server(const po::variables_map & args) {
     time_t post_trees_time;
     time(&post_trees_time);
     if (tts.get_num_trees() == 0) {
-        cerr << "No tree to serve. Exiting...\n";
+	std::cerr << "No tree to serve. Exiting...\n";
         return 3;
     }
 

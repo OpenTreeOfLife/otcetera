@@ -11,7 +11,14 @@
 INITIALIZE_EASYLOGGINGPP
 
 
-using namespace std;
+using std::vector;
+using std::map;
+using std::pair;
+using std::set;
+using std::string;
+using std::ostringstream;
+using std::unique_ptr;
+
 using namespace boost::property_tree;
 using json=nlohmann::json;
 
