@@ -8,7 +8,7 @@ project('otcetera', ['cpp'],
 
 cpp = meson.get_compiler('cpp')
 
-add_project_arguments(['-Wall','-Wextra','-Wno-sign-compare','-Woverloaded-virtual','-Wstrict-aliasing','-Wno-unknown-pragmas'], language : 'cpp')
+add_project_arguments(['-Wall','-Wextra','-Wno-sign-compare','-Woverloaded-virtual','-Wstrict-aliasing','-Wno-unknown-pragmas','-Wno-maybe-uninitialized'], language : 'cpp')
 
 # 2. Write a 'config.h'
 conf_data = configuration_data()
