@@ -1164,6 +1164,18 @@ std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
 // curl -X POST https://api.opentreeoflife.org/v2/tnrs/infer_context -H "content-type:application/json" -d  '{"names":["Bacteria","Firmiscala"]}'
 // 
 
+template <typename T>
+bool lcase_string_equals(const string& s1, const T& s2)
+{
+    if (s1.size() != s2.size()) return false;
+
+    for(int i=0;i<s1.size();i++)
+	if (std::tolower(s1[i]) != std::tolower(s2[i]))
+	    return false;
+
+    return true;
+}
+
 vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const RTRichTaxNode* context_root, string query, bool include_suppressed)
 {
     for(auto& c: query)
@@ -1176,7 +1188,7 @@ vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, con
 	    continue;
 
 	// This needs to be a lower-case match.
-	if (query == tax_node->get_data().get_nonuniqname())
+	if (lcase_string_equals(query, tax_node->get_data().get_nonuniqname()))
 	    hits.push_back(tax_node);
     }
 
