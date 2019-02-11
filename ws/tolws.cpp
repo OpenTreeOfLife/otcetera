@@ -909,6 +909,22 @@ std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy)
     return flags.dump(1);
 }
 
+// BDR: factored this code out of taxonomy_mrca_ws_method below for use in tnrs
+const RTRichTaxNode* taxonomy_mrca(const vector<const RTRichTaxNode*>& nodes)
+{
+    if (nodes.empty()) return nullptr;
+
+    auto focal = nodes[0];
+    for(auto& node: nodes)
+    {
+	focal = find_mrca_via_traversal_indices(focal, node);
+	if (not focal) 
+	    throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
+    }
+
+    return focal;
+}
+
 string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                const OttIdSet & ott_id_set) {
     const RTRichTaxNode * focal = nullptr;
@@ -1030,21 +1046,44 @@ json ContextSearcher::match_name(const string& name, bool do_approximate_matchin
 // $ curl -X POST https://api.opentreeoflife.org/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
 // $ curl -X POST http://localhost:1984/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
 std::string tnrs_match_names_ws_method(const vector<string>& names,
-                                       const string& context_name,
+                                       const optional<string>& context_name,
                                        bool do_approximate_matching,
                                        const boost::optional<vector<string>>& ids,
                                        bool include_suppressed,
                                        const RichTaxonomy& taxonomy)
 {
+
+    // See org/opentree/taxonomy/plugins/tnrs_v3.java:
+
+    //     MultiNameContextQuery mncq = new MultiNameContextQuery(taxonomy);
+    //     TNRSResults results = mncq
+    //    		.setSearchStrings(idNameMap)
+    //    		.setContext(context)
+    //    		.setAutomaticContextInference(useAutoInference)
+    //    		.setIncludeDubious(includeSuppressed)
+    //    		.setIncludeDeprecated(includeDeprecated)
+    //    		.setDoFuzzyMatching(doFuzzyMatching)
+    //    		.runQuery()
+    //    		.getResults();
+
+
     // ?? What do we do with the ids?
 
     // ?? How do we get the right context?  Do we just assume All Life if unknown?
 
-    if (not all_contexts.count(context_name))
-	throw OTCError()<<"The context '"<<context_name<<"' could not be found.";
 
-    Context context = all_contexts.at(context_name);
-    ContextSearcher searcher(taxonomy,context);
+    // FIXME: if context not specified, do inferContextAndReturnAmbiguousNames() -- from MultiNameContextQuery
+    const Context* context;
+    if (context_name)
+    {
+	if (not name_to_context.count(*context_name))
+	    throw OTCError()<<"The context '"<<context_name<<"' could not be found.";
+	context = name_to_context.at(*context_name);
+    }
+    else
+	context = infer_context_and_ambiguous_names(taxonomy, names).first;
+
+    ContextSearcher searcher(taxonomy, *context);
 
     // 2. Iterate over names and fill arrays `results`, `unmatched_names`, `matched_names`, and `unambiguous_names`.
     json results = json::array();
@@ -1080,8 +1119,8 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
 
     // 3. Construct JSON response.
     json response;
-    response["governing_code"] = context.code.name;
-    response["context"] = context_name;
+    response["governing_code"] = context->code.name;
+    response["context"] = *context_name;
     response["includes_approximage_matches"] = do_approximate_matching;
     response["includes_deprecated_taxa"] = false; // FIXME ??
     response["includes_suppressed_names"] = include_suppressed;
@@ -1113,29 +1152,65 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
 std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
 {
     json response;
-    for(auto& contextp: all_contexts)
-    {
-	auto& context = contextp.second;
-	auto& name = context.name;
-	auto& group = context.group;
-	response[group].push_back(name);
-    }
-    LOG(WARNING)<<"tnrs/contexts";
+    for(auto& context: all_contexts)
+	response[context.group].push_back(context.name);
     return response.dump(1);
+}
+
+// It seems that infer_context is supposed to ignore synonyms:
+// * Bacteria is NOT ambiguous: it has 1 name match, and 1 synonym match.
+// * Firmiscala IS ambiguous: it has 0 name matches, and 1 synonym match.
+// * Random gibberish is reported as "ambiguous".
+// curl -X POST https://api.opentreeoflife.org/v2/tnrs/infer_context -H "content-type:application/json" -d  '{"names":["Bacteria","Firmiscala"]}'
+// 
+
+vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const RTRichTaxNode* context_root, string query, bool include_suppressed)
+{
+    for(auto& c: query)
+	c = std::tolower(c);
+
+    vector<const RTRichTaxNode*> hits;
+    for(auto tax_node: iter_post_n_const(*context_root))
+    {
+	if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(tax_node))
+	    continue;
+
+	// This needs to be a lower-case match.
+	if (query == tax_node->get_data().get_nonuniqname())
+	    hits.push_back(tax_node);
+    }
+
+    return hits;
+}
+
+vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, Context& context, const string& query, bool include_suppressed)
+{
+    auto context_root = taxonomy.included_taxon_from_id(context.ott_id);
+
+    return exact_name_search(taxonomy, context_root, query, include_suppressed);
+}
+
+vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const string& query, bool include_suppressed)
+{
+    auto context_root = taxonomy.get_tax_tree().get_root();
+
+    return exact_name_search(taxonomy, context_root, query, include_suppressed);
 }
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
 // curl -X POST http://localhost:1984/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
 string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy)
 {
+    auto results = infer_context_and_ambiguous_names(taxonomy, names);
+    auto& context = results.first;
+    auto& ambiguous_names = results.second;
+    
     json response;
-    LOG(WARNING)<<"tnrs/infer_context";
 
-    response["context_name"] = "string";
-    response["context_ott_id"] = 0;
-    json ambiguous_names = json::array();
+    response["context_name"] = results.first->name;
+    response["context_ott_id"] = results.first->ott_id;
     response["ambiguous_names"] = ambiguous_names;
-
+    
     return response.dump(1);
 }
 

@@ -17,6 +17,7 @@
 #include <boost/spirit/include/qi_symbols.hpp>
 #include <boost/utility/string_ref.hpp>
 #include <bitset>
+#include "otc/taxonomy/flags.h"
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -263,6 +264,8 @@ class TaxonomicJuniorSynonym {
     TaxonomicJuniorSynonym(const TaxonomicJuniorSynonym &) = delete;
 };
 
+constexpr const char* sup_flag_comma = "not_otu,environmental,environmental_inherited,viral,hidden,hidden_inherited,was_container";
+
 #define MAP_FOREIGN_TO_POINTER
 class RTRichTaxTreeData {
     public:
@@ -287,7 +290,8 @@ class RTRichTaxTreeData {
     std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym_to_node;
     std::map<boost::string_ref, std::vector<const TaxonomyRecord *> > homonym_to_record;
     std::map<std::string, OttIdSet> non_unique_taxon_names;
-    
+
+    std::bitset<32> suppress_flags = flags_from_string(sup_flag_comma);
 };
 
 typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;
@@ -319,6 +323,13 @@ class RichTaxonomy: public BaseTaxonomy {
     }
     void set_ids_suppressed_from_summary_tree_alias(const OttIdSet * ott_id_set_ptr) {
         is_suppressed_from_synth = ott_id_set_ptr;
+    }
+
+    bool node_is_suppressed_from_tnrs(const RTRichTaxNode* nd) const
+    {
+        auto& tree_data = tree->get_data();
+	const auto& tax_record_flags = nd->get_data().get_flags();
+	return (tree_data.suppress_flags & tax_record_flags).any();
     }
 
     const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {

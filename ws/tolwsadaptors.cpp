@@ -455,10 +455,10 @@ string tnrs_match_names_handler( const json& parsedargs )
     vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
 
     // 2. Optional argunments
-    string context_name          = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
-    bool do_approximate_matching = extract_argument_or_default(parsedargs, "do_approximate_matching", false);
-    vector<string> ids           = extract_argument_or_default(parsedargs, "ids",                     names);
-    bool include_suppressed      = extract_argument_or_default(parsedargs, "include_suppressed",      false);
+    optional<string> context_name = extract_argument<string>(parsedargs, "context_name");
+    bool do_approximate_matching  = extract_argument_or_default(parsedargs, "do_approximate_matching", false);
+    vector<string> ids            = extract_argument_or_default(parsedargs, "ids",                     names);
+    bool include_suppressed       = extract_argument_or_default(parsedargs, "include_suppressed",      false);
 
     // 3. Check that "ids" have the same length as "names", if supplied
     if (ids.size() != names.size())

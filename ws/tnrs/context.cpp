@@ -1,20 +1,21 @@
 #include "context.h"
+#include "../tolws.h"
+#include "otc/taxonomy/taxonomy.h"
+#include "otc/otc_base_includes.h" // for OttID
 
 using std::string;
 using std::map;
+using std::pair;
+using std::vector;
 
-AllContexts::AllContexts(const std::initializer_list<Context>& contexts)
+namespace otc
 {
-    for(auto& context: contexts)
-        insert({context.name,context});
-}
-
 
 // NOTE: These context definitions were taken from `taxomachine/src/main/java/org/opentree/taxonomy/contexts/ContextDescription.java`
 //       on Jan 15, 2019.
 
-AllContexts all_contexts = {
-    // Name             Group                         Index suffix        Node name string    ott id      Code
+const vector<Context> all_contexts = {
+    // Name             Group        Index suffix        Node name string    ott id      Code
     {"All life",        "LIFE",      "",                 "life",             805080L,    Nomenclature::Undefined},
 
     // MICROBES group
@@ -50,7 +51,7 @@ AllContexts all_contexts = {
     {"Fungi",           "FUNGI",     "Fungi",            "Fungi",            352914L,    Nomenclature::ICN},
     {"Basidiomycetes",  "FUNGI",     "Basidiomycetes",   "Basidiomycota",    634628L,    Nomenclature::ICN},
     {"Ascomycetes",     "FUNGI",     "Ascomycota",       "Ascomycota",       439373L,    Nomenclature::ICN},
-    
+
     // PLANTS group
     {"Land plants",     "PLANTS",    "Plants",           "Embryophyta",      5342313L,   Nomenclature::ICN},
     {"Hornworts",       "PLANTS",    "Anthocerotophyta", "Anthocerotophyta", 738980L,    Nomenclature::ICN},
@@ -72,3 +73,65 @@ AllContexts all_contexts = {
     {"Campanulaceae",   "PLANTS",    "Campanulaceae",    "Campanulaceae",    1086303L,   Nomenclature::ICN},
     {"Lobelia",         "PLANTS",    "Lobelia",          "Lobelia",          1086294L,   Nomenclature::ICN}
 };
+
+map<OttId, const Context*> make_ottid_to_context(const vector<Context>& all_contexts)
+{
+    map<OttId, const Context*> ottid_to_context;
+    for(auto& context: all_contexts)
+	ottid_to_context.insert({context.ott_id, &context});
+    return ottid_to_context;
+}
+
+map<OttId, const Context*> ottid_to_context = make_ottid_to_context(all_contexts);
+
+map<string, const Context*> make_name_to_context(const vector<Context>& all_contexts)
+{
+    map<string, const Context*> name_to_context;
+    for(auto& context: all_contexts)
+	name_to_context.insert({context.name, &context});
+    return name_to_context;
+}
+
+map<string, const Context*> name_to_context = make_name_to_context(all_contexts);
+
+// FIXME - We should return Context* or Context&.
+const Context* least_inclusive_context(const vector<const RTRichTaxNode*>& taxa)
+{
+    if (taxa.size() == 0)
+	return name_to_context.at("All life");
+
+    auto mrca = taxonomy_mrca(taxa);
+
+    while(true)
+    {
+	auto id = mrca->get_ott_id();
+	if (ottid_to_context.count(id))
+	    return ottid_to_context.at(id);
+	mrca = mrca->get_parent();
+    }
+
+    throw OTCError()<<"Can't find least inclusive context for "<<taxa.size()<<" taxa!";
+}
+
+// FIXME - technically we could try and save the exact matches to avoid work.
+// FIXME - We should return Context* or Context&.
+pair<const Context*,vector<string>> infer_context_and_ambiguous_names(const RichTaxonomy& taxonomy, const vector<string>& names)
+{
+    vector<const RTRichTaxNode*> unique_taxa;
+
+    vector<string> ambiguous_names;
+
+    for(auto& name: names)
+    {
+	// This search (i) includes suppressed/dubious/deprecated taxa and (ii) DOES (?NOT) include synonyms.
+	auto hits = exact_name_search(taxonomy, name, true);
+	if (hits.size() == 1)
+	    unique_taxa.push_back(hits.front());
+	else
+	    ambiguous_names.push_back(name);
+    }
+
+    return {least_inclusive_context(unique_taxa), ambiguous_names};
+}
+
+}

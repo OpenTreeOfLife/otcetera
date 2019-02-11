@@ -2,9 +2,13 @@
 #define CONTEXT_H
 
 #include <string>
+#include <utility>
 #include <map>
-#include "otc/otc_base_includes.h" // for OttId
+#include "otc/taxonomy/taxonomy.h"
 #include "nomenclature.h"
+
+namespace otc
+{
 
 struct Context
 {
@@ -12,14 +16,18 @@ struct Context
     std::string group;
     std::string name_suffix;
     std::string lica_node_name;
-    otc::OttId ott_id;
+    OttId ott_id;
     Nomenclature::Code code;
 };
 
-struct AllContexts: public std::map<std::string, Context>
-{
-    AllContexts(const std::initializer_list<Context>&);
-};
+extern const std::vector<Context> all_contexts;
 
-extern AllContexts all_contexts;
+extern std::map<OttId, const Context*> ottid_to_context;
+
+extern std::map<std::string, const Context*> name_to_context;
+
+std::pair<const Context*,std::vector<std::string>> infer_context_and_ambiguous_names(const RichTaxonomy& taxonomy, const std::vector<std::string>& names);
+
+const Context* least_inclusive_context(const std::vector<RTRichTaxNode*>& taxa);
+}
 #endif

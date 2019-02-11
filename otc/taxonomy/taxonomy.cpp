@@ -717,17 +717,11 @@ void RichTaxonomy::read_synonyms() {
     }
 }
 
-void RichTaxonomy::_fill_ids_to_suppress_set() {
-    const string sup_flag_comma = "not_otu,environmental,environmental_inherited,viral,hidden,hidden_inherited,was_container";
-    const auto suppress_flags = flags_from_string(sup_flag_comma);
-    for (const auto nd : iter_node_const(*tree)) {
-        const auto & tax_record_flags = nd->get_data().get_flags();
-        auto intersection = suppress_flags & tax_record_flags;
-        if (intersection.any()) {
-            const auto ott_id = nd->get_ott_id();
-            ids_to_suppress_from_tnrs.insert(ott_id);
-        }
-    }
+void RichTaxonomy::_fill_ids_to_suppress_set()
+{
+    for (const auto nd : iter_node_const(*tree))
+	if (node_is_suppressed_from_tnrs(nd))
+            ids_to_suppress_from_tnrs.insert(nd->get_ott_id());
 }
 
 string format_with_taxonomy(const string& orig, const string& format, const TaxonomyRecord& rec, const Taxonomy& taxonomy) {
