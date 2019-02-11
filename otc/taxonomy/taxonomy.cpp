@@ -36,6 +36,7 @@ using std::bitset;
 using std::ofstream;
 using std::map;
 using std::set;
+using std::optional;
 using nlohmann::json;
 using std::ifstream;
 using std::unordered_set;
@@ -194,14 +195,14 @@ TaxonomyRecord::TaxonomyRecord(const string& line_)
     rank_strings.insert(string(rank));
 }
 
-boost::optional<int> Taxonomy::maybe_index_from_id(OttId id) const
+optional<int> Taxonomy::maybe_index_from_id(OttId id) const
 {
     auto loc = index.find(id);
     if (loc == index.end()) {
         auto loc2 = forwards.find(id);
 
         // not in taxonomy or forwarding list";
-        if (loc2 == forwards.end()) return boost::none;
+        if (loc2 == forwards.end()) return {};
 
         OttId newid = loc2->second;
         loc = index.find(newid);

@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <map>
-#include <boost/optional.hpp>
+#include <optional>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
@@ -170,7 +170,7 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
     std::unordered_map<OttId, int> index;
     void read_forwards_file(std::string filepath);
 
-    boost::optional<int> maybe_index_from_id(OttId) const;
+    std::optional<int> maybe_index_from_id(OttId) const;
     int index_from_id(OttId) const;
 
 public:

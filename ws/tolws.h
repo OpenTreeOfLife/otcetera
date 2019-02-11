@@ -299,9 +299,9 @@ std::string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
                                     NodeNameStyle label_format);
 
 std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
-                                       const boost::optional<std::string>& context_name,
+                                       const std::optional<std::string>& context_name,
                                        bool do_approximate_matching,
-                                       const boost::optional<std::vector<std::string>>& ids,
+                                       const std::optional<std::vector<std::string>>& ids,
                                        bool include_suppressed,
                                        const RichTaxonomy& taxonomy);
 std::string tnrs_autocomplete_name_ws_method(const std::string& name,

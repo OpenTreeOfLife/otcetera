@@ -8,7 +8,7 @@
 #include "otc/util.h"
 #include "otc/tree_iter.h"
 #include "otc/tree_data.h"
-#include <boost/optional.hpp>
+#include <optional>
 
 namespace otc {
 std::unique_ptr<TreeMappedWithSplits> clone_tree(const TreeMappedWithSplits &);
@@ -389,7 +389,7 @@ std::string study_from_tree_name(const std::string& name);
 std::string tree_in_study_from_tree_name(const std::string& name);
 std::string string_between_chars(const std::string & s, char beforeC, char endC);
 std::string source_from_tree_name(const std::string & name);
-boost::optional<std::string> get_source_node_name(const std::string& name);
+std::optional<std::string> get_source_node_name(const std::string& name);
 
 } // namespace
 #endif

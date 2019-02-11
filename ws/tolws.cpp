@@ -6,7 +6,7 @@
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "nexson/nexson.h"
-#include <boost/optional.hpp>
+#include <optional>
 #include "ws/tnrs/context.h"
 INITIALIZE_EASYLOGGINGPP
 
@@ -16,13 +16,13 @@ using std::map;
 using std::pair;
 using std::set;
 using std::string;
+using std::optional;
 using std::ostringstream;
 using std::unique_ptr;
 
 using namespace boost::property_tree;
 using json=nlohmann::json;
 
-using boost::optional;
 
 using otc::OttId;
 
@@ -162,8 +162,8 @@ void add_support_info_vec(const char * tag,
                           const vec_src_node_ids & v,
                           json & noderepr,
                           set<string> & usedSrcIds,
-                          const optional<string>& extra_src = boost::none,
-                          const optional<string>& extra_node_id = boost::none) {
+                          const optional<string>& extra_src = {},
+                          const optional<string>& extra_node_id = {}) {
     json o;
     for (const auto & sni : v ) {
         const auto study_node_pair = tts.decode_study_node_id_index(sni);
@@ -180,8 +180,8 @@ void add_support_info_single_element(const char * tag,
                                      const vec_src_node_ids & v,
                                      json & noderepr,
                                      set<string> & usedSrcIds,
-                                     const optional<string>& extra_src = boost::none,
-                                     const optional<string>& extra_node_id = boost::none) {
+                                     const optional<string>& extra_src = {},
+                                     const optional<string>& extra_node_id = {}) {
     json o;
     for (const auto & sni : v ) {
         const auto study_node_pair = tts.decode_study_node_id_index(sni);
@@ -1055,7 +1055,7 @@ json ContextSearcher::match_name(const string& name, bool do_approximate_matchin
 std::string tnrs_match_names_ws_method(const vector<string>& names,
                                        const optional<string>& context_name,
                                        bool do_approximate_matching,
-                                       const boost::optional<vector<string>>& ids,
+                                       const optional<vector<string>>& ids,
                                        bool include_suppressed,
                                        const RichTaxonomy& taxonomy)
 {
@@ -1084,7 +1084,7 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     if (context_name)
     {
 	if (not name_to_context.count(*context_name))
-	    throw OTCError()<<"The context '"<<context_name<<"' could not be found.";
+	    throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
 	context = name_to_context.at(*context_name);
     }
     else

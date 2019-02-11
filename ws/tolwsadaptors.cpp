@@ -24,12 +24,11 @@ using std::pair;
 using std::set;
 using std::string;
 using std::ostringstream;
+using std::optional;
 using std::unique_ptr;
 
 using std::make_shared;
 using std::to_string;
-
-using boost::optional;
 
 namespace po = boost::program_options;
 using namespace otc;
@@ -58,7 +57,7 @@ optional<bool> convert_to(const json & j) {
     if (j.is_boolean()) {
         return j.get<bool>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
@@ -66,7 +65,7 @@ optional<string> convert_to(const json & j) {
     if (j.is_string()) {
         return j.get<string>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
@@ -74,18 +73,18 @@ optional<int> convert_to(const json & j) {
     if (j.is_number()) {
         return j.get<int>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
 optional<vector<string>> convert_to(const json & j) {
     if (not j.is_array()) {
-        return boost::none;
+        return {};
     }
     vector<string> v;
     for(auto& xj: j) {
         auto x = convert_to<string>(xj);
-        if (not x) return boost::none;
+        if (not x) return {};
         v.push_back(*x);
     }
     return v;
@@ -94,19 +93,19 @@ optional<vector<string>> convert_to(const json & j) {
 #if defined(LONG_OTT_ID)
 template <>
 optional<OttId> convert_to(const json & j) {
-    return (j.is_number() ? j.get<OttId>() : boost::none);
+    return (j.is_number() ? j.get<OttId>() : {});
 }
 #endif
 
 template <>
 optional<OttIdSet> convert_to(const json & j) {
     if (not j.is_array()) {
-        return boost::none;
+        return {};
     }
     OttIdSet ids;
     for(auto& jid: j) {
         auto id = convert_to<OttId>(jid);
-        if (not id) return boost::none;
+        if (not id) return {};
         ids.insert(*id);
     }
     return ids;
@@ -145,7 +144,7 @@ optional<T> extract_argument(const json & j, const std::string& opt_name, bool r
         if (required) {
             throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called \"" << opt_name << "\"\n";
         }
-        return boost::none;
+        return {};
     }
     auto arg = convert_to<T>(*opt);
     if (not arg) {
