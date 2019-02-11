@@ -355,10 +355,10 @@ class ChildIter {
         :node(n) {
     }
     child_iterator<T, isConst> begin() const {
-        return std::move(child_iterator<T, isConst>{&node});
+        return child_iterator<T, isConst>{&node};
     }
     child_iterator<T, isConst> end() const {
-        return std::move(child_iterator<T, isConst>{nullptr});
+        return child_iterator<T, isConst>{nullptr};
     }
     private:
         node_ref node;
@@ -378,10 +378,10 @@ class PreorderIter {
         clade_filter(subtree_filter) {
     }
     preorder_iterator<T, isConst> begin() const {
-        return std::move(preorder_iterator<T, isConst>{nd, exit_node, node_filter, clade_filter});
+        return preorder_iterator<T, isConst>{nd, exit_node, node_filter, clade_filter};
     }
     preorder_iterator<T, isConst> end() const {
-        return std::move(preorder_iterator<T, isConst>{nullptr, nullptr});
+        return preorder_iterator<T, isConst>{nullptr, nullptr};
     }
     private:
         node_pointer nd;
@@ -398,10 +398,10 @@ class LeafIter {
         :node(t){
     }
     postorder_iterator<T, isConst> begin() const {
-        return std::move(postorder_iterator<T, isConst>{node, is_leaf<T>});
+        return postorder_iterator<T, isConst>{node, is_leaf<T>};
     }
     postorder_iterator<T, isConst> end() const {
-        return std::move(postorder_iterator<T, isConst>{nullptr, nullptr});
+        return postorder_iterator<T, isConst>{nullptr, nullptr};
     }
     private:
         node_pointer node;
@@ -415,10 +415,10 @@ class AncIter {
         :des(n){
     }
     anc_iterator<T, isConst> begin() const {
-        return std::move(anc_iterator<T, isConst>{&des});
+        return anc_iterator<T, isConst>{&des};
     }
     anc_iterator<T, isConst> end() const {
-        return std::move(anc_iterator<T, isConst>{nullptr});
+        return anc_iterator<T, isConst>{nullptr};
     }
     private:
         node_ref des;
@@ -433,10 +433,10 @@ class PostorderIter {
         node_filter(f) {
     }
     postorder_iterator<T, isConst> begin() const {
-        return std::move(postorder_iterator<T, isConst>{node, node_filter});
+        return postorder_iterator<T, isConst>{node, node_filter};
     }
     postorder_iterator<T, isConst> end() const {
-        return std::move(postorder_iterator<T, isConst>{nullptr, nullptr});
+        return postorder_iterator<T, isConst>{nullptr, nullptr};
     }
     private:
         node_pointer node;
@@ -450,132 +450,132 @@ using NodeIter = PostorderIter<T, isConst>;
 // the public interface
 template<typename T>
 inline PostorderIter<typename T::node_type, false> iter_post(T & tree) {
-    return std::move(PostorderIter<typename T::node_type, false>(tree.get_root(), nullptr));
+    return PostorderIter<typename T::node_type, false>(tree.get_root(), nullptr);
 }
 
 template<typename T>
 inline PostorderIter<typename T::node_type, true> iter_post_const(const T & tree) {
-    return std::move(PostorderIter<typename T::node_type, true>(tree.get_root(), nullptr));
+    return PostorderIter<typename T::node_type, true>(tree.get_root(), nullptr);
 }
 template<typename T>
 inline PostorderIter<T, false> iter_post_n(T & node) {
-    return std::move(PostorderIter<T, false>(&node, nullptr));
+    return PostorderIter<T, false>(&node, nullptr);
 }
 
 template<typename T>
 inline PostorderIter<T, true> iter_post_n_const(const T & node) {
-    return std::move(PostorderIter<T, true>(&node, nullptr));
+    return PostorderIter<T, true>(&node, nullptr);
 }
 
 template<typename T>
 inline PostorderIter<typename T::node_type, false> iter_post_internal(T & tree) {
     PostorderIter<typename T::node_type, false> i{tree.get_root(), is_internal_node<typename T::node_type>};
-    return std::move(i);
+    return i;
 }
 
 template<typename T>
 inline PostorderIter<typename T::node_type, true> iter_post_internal_const(const T & tree) {
-    return std::move(PostorderIter<typename T::node_type, true>(tree.get_root(), is_internal_node<typename T::node_type>));
+    return PostorderIter<typename T::node_type, true>(tree.get_root(), is_internal_node<typename T::node_type>);
 }
 
 template<typename T>
 inline NodeIter<typename T::node_type, false> iter_node(T & tree) {
-    return std::move(NodeIter<typename T::node_type, false>(tree.get_root(), nullptr));
+    return NodeIter<typename T::node_type, false>(tree.get_root(), nullptr);
 }
 
 template<typename T>
 inline NodeIter<typename T::node_type, true> iter_node_const(const T & tree) {
-    return std::move(NodeIter<typename T::node_type, true>(tree.get_root(), nullptr));
+    return NodeIter<typename T::node_type, true>(tree.get_root(), nullptr);
 }
 
 template<typename T>
 inline NodeIter<typename T::node_type, false> iter_node_internal(T & tree) {
-    return std::move(NodeIter<typename T::node_type, false>(tree.get_root(), is_internal_node<typename T::node_type>));
+    return NodeIter<typename T::node_type, false>(tree.get_root(), is_internal_node<typename T::node_type>);
 }
 
 template<typename T>
 inline NodeIter<typename T::node_type, true> iter_node_internal_const(const T & tree) {
-    return std::move(NodeIter<typename T::node_type, true>(tree.get_root(), is_internal_node<typename T::node_type>));
+    return NodeIter<typename T::node_type, true>(tree.get_root(), is_internal_node<typename T::node_type>);
 }
 
 template<typename T>
 inline PreorderIter<typename T::node_type, false> iter_pre_internal(T & tree) {
-    return std::move(PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr));
+    return PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr);
 }
 
 template<typename T>
 inline PreorderIter<typename T::node_type, true> iter_pre_internal_const(const T & tree) {
-    return std::move(PreorderIter<typename T::node_type, true>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr));
+    return PreorderIter<typename T::node_type, true>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr);
 }
 
 template<typename T>
 inline PreorderIter<typename T::node_type, false> iter_pre(T & tree) {
-    return std::move(PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, nullptr, nullptr));
+    return PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, nullptr, nullptr);
 }
 
 template<typename T>
 inline PreorderIter<typename T::node_type, true> iter_pre_const(const T & tree) {
-    return std::move(PreorderIter<typename T::node_type, true>(tree.get_root(), nullptr, nullptr, nullptr));
+    return PreorderIter<typename T::node_type, true>(tree.get_root(), nullptr, nullptr, nullptr);
 }
 
 template<typename T>
 inline PreorderIter<T, false> iter_pre_n(T * node) {
-    return std::move(PreorderIter<T, false>(node, node, nullptr, nullptr));
+    return PreorderIter<T, false>(node, node, nullptr, nullptr);
 }
 
 template<typename T>
 inline PreorderIter<T, true> iter_pre_n_const(const T * node) {
-    return std::move(PreorderIter<T, true>(node, node, nullptr, nullptr));
+    return PreorderIter<T, true>(node, node, nullptr, nullptr);
 }
 
 template<typename T>
 inline PreorderIter<T, false> iter_pre_filter_n(T * node, std::function<bool(const T &)> f) {
-    return std::move(PreorderIter<T, false>(node, node, nullptr, f));
+    return PreorderIter<T, false>(node, node, nullptr, f);
 }
 
 template<typename T>
 inline PreorderIter<T, true> iter_pre_filter_n_const(const T * node, std::function<bool(const T &)> f) {
-    return std::move(PreorderIter<T, true>(node, node, nullptr, f));
+    return PreorderIter<T, true>(node, node, nullptr, f);
 }
 
 template<typename T>
 inline ChildIter<T, false> iter_child(T & node) {
-    return std::move(ChildIter<T, false>(node));
+    return ChildIter<T, false>(node);
 }
 
 template<typename T>
 inline ChildIter<T, true> iter_child_const(const T & node) {
-    return std::move(ChildIter<T, true>(node));
+    return ChildIter<T, true>(node);
 }
 
 template<typename T>
 inline LeafIter<typename T::node_type, false> iter_leaf(T & tree) {
-    return std::move(LeafIter<typename T::node_type, false>(tree.get_root()));
+    return LeafIter<typename T::node_type, false>(tree.get_root());
 }
 
 template<typename T>
 inline LeafIter<typename T::node_type, true> iter_leaf_const(const T & tree) {
-    return std::move(LeafIter<typename T::node_type, true>(tree.get_root()));
+    return LeafIter<typename T::node_type, true>(tree.get_root());
 }
 
 template<typename T>
 inline LeafIter<T, false> iter_leaf_n(T & node) {
-    return std::move(LeafIter<T, false>(&node));
+    return LeafIter<T, false>(&node);
 }
 
 template<typename T>
 inline LeafIter<T, true> iter_leaf_n_const(const T & node) {
-    return std::move(LeafIter<T, true>(&node));
+    return LeafIter<T, true>(&node);
 }
 
 template<typename T>
 inline AncIter<T, false> iter_anc(T & node) {
-    return std::move(AncIter<T, false>(node));
+    return AncIter<T, false>(node);
 }
 
 template<typename T>
 inline AncIter<T, true> iter_anc_const(const T & node) {
-    return std::move(AncIter<T, true>(node));
+    return AncIter<T, true>(node);
 }
 
 } // namespace otc
