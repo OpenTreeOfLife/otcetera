@@ -976,6 +976,78 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
     return response.dump(1);
 }
 
+// It seems that infer_context is supposed to ignore synonyms:
+// * Bacteria is NOT ambiguous: it has 1 name match, and 1 synonym match.
+// * Firmiscala IS ambiguous: it has 0 name matches, and 1 synonym match.
+// * Random gibberish is reported as "ambiguous".
+// curl -X POST https://api.opentreeoflife.org/v2/tnrs/infer_context -H "content-type:application/json" -d  '{"names":["Bacteria","Firmiscala"]}'
+// 
+
+template <typename T>
+bool lcase_string_equals(const string& s1, const T& s2)
+{
+    if (s1.size() != s2.size()) return false;
+
+    for(int i=0;i<s1.size();i++)
+	if (std::tolower(s1[i]) != std::tolower(s2[i]))
+	    return false;
+
+    return true;
+}
+
+vector<pair<const RTRichTaxNode*,const string&>> exact_synonym_search(const RichTaxonomy& taxonomy, const RTRichTaxNode* context_root, string query, bool include_suppressed)
+{
+    for(auto& c: query)
+	c = std::tolower(c);
+
+    vector<pair<const RTRichTaxNode*,const string&>> hits;
+    for(auto tax_node: iter_post_n_const(*context_root))
+    {
+	if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(tax_node))
+	    continue;
+
+	for(auto& tjs: tax_node->get_data().junior_synonyms)
+	    if (lcase_string_equals(query, tjs->get_name()))
+		hits.push_back({tax_node,tjs->get_name()});
+    }
+
+    return hits;
+}
+
+vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const RTRichTaxNode* context_root, string query, bool include_suppressed)
+{
+    for(auto& c: query)
+	c = std::tolower(c);
+
+    vector<const RTRichTaxNode*> hits;
+    for(auto tax_node: iter_post_n_const(*context_root))
+    {
+	if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(tax_node))
+	    continue;
+
+	if (lcase_string_equals(query, tax_node->get_data().get_nonuniqname()))
+	    hits.push_back(tax_node);
+    }
+
+    return hits;
+}
+
+vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, Context& context, const string& query, bool include_suppressed)
+{
+    auto context_root = taxonomy.included_taxon_from_id(context.ott_id);
+
+    return exact_name_search(taxonomy, context_root, query, include_suppressed);
+}
+
+vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const string& query, bool include_suppressed)
+{
+    auto context_root = taxonomy.get_tax_tree().get_root();
+
+    return exact_name_search(taxonomy, context_root, query, include_suppressed);
+}
+
+enum match_status {unmatched=0, ambiguous_match=1, unambiguous_match=2};
+
 // Should probably rename ContextSearcher => Context, and Context=> ContextDescription
 struct ContextSearcher
 {
@@ -983,7 +1055,7 @@ struct ContextSearcher
     const Context& context;
     const RTRichTaxNode* context_root;
 
-    json match_name(const string& name, bool do_approximate_matching, bool include_suppressed);
+    pair<json,match_status> match_name(string query, bool do_approximate_matching, bool include_suppressed);
 
     ContextSearcher(const RichTaxonomy& t, const Context& c): taxonomy(t), context(c)
     {
@@ -999,55 +1071,71 @@ json get_taxon_json(const RichTaxonomy& taxonomy, const RTRichTaxNode& tax_node)
     return taxon;
 }
 
-json ContextSearcher::match_name(const string& name, bool do_approximate_matching, bool include_suppressed)
+json exact_name_match_json(const string& query, const RTRichTaxNode* taxon, const RichTaxonomy& taxonomy)
 {
+    json result;
+    result["taxon"] = get_taxon_json(taxonomy, *taxon);
+    result["search_string"] = query;
+    result["score"] = 1.0;
+    result["is_approximate_match"] = false;
+    result["nomenclature_code"] = "code";   // FIXME!
+    result["is_synonym"] = false;
+    result["matched_name"] = (string)taxon->get_data().get_nonuniqname();
+    return result;
+}
+
+json exact_synonym_match_json(const string& query, const RTRichTaxNode* taxon, const string& synonym_name, const RichTaxonomy& taxonomy)
+{
+    json result;
+    result["taxon"] = get_taxon_json(taxonomy, *taxon);
+    result["search_string"] = query;
+    result["score"] = 1.0;
+    result["is_approximate_match"] = false;
+    result["nomenclature_code"] = "code";   // FIXME!
+    result["is_synonym"] = true;
+    result["matched_name"] = synonym_name;
+    return result;
+}
+
+pair<json,match_status> ContextSearcher::match_name(string query, bool do_approximate_matching, bool include_suppressed)
+{
+    for(auto& c: query)
+	c = std::tolower(c);
+
     // What does an ambiguous match mean?
     json results;
 
-    for(auto tax_node: iter_post_n_const(*context_root))
+    match_status status = unmatched;
+
+    // 1. See if we can find an exact name match
+    auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
+
+    for(auto taxon: exact_name_matches)
+	results.push_back(exact_name_match_json(query, taxon, taxonomy));
+
+    if (exact_name_matches.size() == 1)
+	status = unambiguous_match;
+
+    // 2. See if we can find an exact name match for synonyms
+    auto exact_synonym_matches = exact_synonym_search(taxonomy, context_root, query, include_suppressed);
+
+    for(auto& [ taxon, synonym_name ]: exact_synonym_matches)
+	results.push_back(exact_synonym_match_json(query, taxon, synonym_name, taxonomy));
+
+    if (status == unmatched and results.size())
+	status = ambiguous_match;
+
+    // 3. Do fuzzy matching ONLY for names that we couldn't match
+    if (do_approximate_matching and status == unmatched)
     {
-	// Could we somehow make this get computed only if the result is needed below?
-
-	if (name == tax_node->get_data().get_nonuniqname())
-	{
-	    double score = 1.0;                     // FIXME!
-
-	    json result;
-	    result["taxon"] = get_taxon_json(taxonomy, *tax_node);
-	    result["search_string"] = name;
-	    result["score"] = 1.0;                  // FIXME!
-	    result["is_approximate_match"] = (score < 1.0);
-	    result["nomenclature_code"] = "code";   // FIXME!
-
-	    result["is_synonym"] = false;
-	    result["matched_name"] = (string)tax_node->get_data().get_nonuniqname();
-	    results.push_back(result);
-	}
-
-	for(auto& tjs: tax_node->get_data().junior_synonyms)
-	{
-	    if (name == tjs->get_name())
-	    {
-		double score = 1.0;                     // FIXME!
-
-		json result;
-		result["taxon"] = get_taxon_json(taxonomy, *tax_node);
-		result["search_string"] = name;
-		result["score"] = score;
-		result["is_approximate_match"] = (score < 1.0);
-		result["nomenclature_code"] = "code";   // FIXME!
-
-		result["is_synonym"] = true;
-		result["matched_name"] = tjs->get_name();
-		results.push_back(result);
-	    }
-	}
+	// do fuzzy matching.
     }
 
     json match_results;
-    match_results["name"] = name;
+    match_results["name"] = query;
     match_results["matches"] = results;
-    return match_results;
+
+    return {match_results, status};
 }
 
 // $ curl -X POST https://api.opentreeoflife.org/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
@@ -1073,12 +1161,57 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     //    		.runQuery()
     //    		.getResults();
 
+    /*
+      exact match name -> match(taxon, name, rank, search_string, approx=false, synonym=false, nomen_code,score=perfect_score
+                       -> match against deprecated -> "
+		       add result if any matches, otherwise put in namesWithoutExactMatches
+
+      exact match synonym -> get previous match set if we already had some matches against non-synonyms
+                          -> match(taxon, synonym_name, rank, search_string, approx=false, synonym=true, nomen_code, score=perfect_score
+		      if there were any matches, then remove from namesWithoutExactMatches
+
+      fuzzy match name OR synonym -> match(taxon, matched_name, rank, search_string != matched_name, approx=true, synonym=true or false, score=score)
+                      if there were any matches, then remove from namesWithoutApproxMatches
+
+      
+     */
+    
+    // See org/opentree/tnrs/queries/MultiNameContextQuery.java:
+        
+    // // direct match unmatched names within context
+    // getExactNameMatches(namesToMatchToTaxa);
+        
+    // // direct match *all* names against synonyms
+    // getExactSynonymMatches(queriedNames);
+        
+    // // do fuzzy matching for any names we couldn't match
+    // if (doFuzzyMatching) {
+    // 	getApproxTaxnameOrSynonymMatches(namesWithoutExactMatches);
+    // }
+        
+    // // record unmatchable names to results
+    // for (Entry<Object, String> nameEntry : doFuzzyMatching ? namesWithoutApproxMatches.entrySet() : namesWithoutExactMatches.entrySet()) {
+    // 	results.addUnmatchedName(nameEntry.getKey(), nameEntry.getValue());
+    // }
+        
+    // results.setIncludesDeprecated(includeDeprecated);
+    // results.setIncludesDubious(includeDubious);
+    // results.setIncludesApproximate(doFuzzyMatching);
+    // for (Entry<String, Object> entry : taxonomy.getMetadataMap().entrySet()) {
+    // 	results.addTaxMetadataEntry(entry.getKey(), entry.getValue());
+    // }
+    // return this;
+
 
     // ?? What do we do with the ids?
 
     // ?? How do we get the right context?  Do we just assume All Life if unknown?
 
-
+    // org/neo4j/server/rest/repr/TNRSResultsRepresentation.java:
+    // getNameIdsWithDirectMatches => unambiguous_names (1 exact match to NON synonyms, just like for infer_context)
+    // getUnmatchedNameIds => unmatched_names
+    // getMatchedNamedIds => matched_names
+    
     // FIXME: if context not specified, do inferContextAndReturnAmbiguousNames() -- from MultiNameContextQuery
     const Context* context;
     if (context_name)
@@ -1101,35 +1234,29 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     for(auto& name: names)
     {
 	// Do the search
-	json result = searcher.match_name(name, do_approximate_matching, include_suppressed);
+	auto [result,status] = searcher.match_name(name, do_approximate_matching, include_suppressed);
 
 	// Store the result
 	results.push_back(result);
 
 	// Classify name as unmatched / matched / unambiguous
-	auto& matches = result.at("matches");
-	if (not matches.size())
+	if (status == unmatched)
 	    unmatched_names.push_back(name);
 	else
 	{
 	    matched_names.push_back(name);
 
-	    auto& first_match = matches[0];
-	    if (matches.size() == 1
-		and not first_match.at("is_synonym").get<bool>()
-		and not first_match.at("is_approximate_match").get<bool>())
-	    {
+	    if (status == unambiguous_match)
 		unambiguous_names.push_back(name);
-	    }
 	}
     }
 
     // 3. Construct JSON response.
     json response;
     response["governing_code"] = context->code.name;
-    response["context"] = *context_name;
+    response["context"] = context->name;
     response["includes_approximage_matches"] = do_approximate_matching;
-    response["includes_deprecated_taxa"] = false; // FIXME ??
+    response["includes_deprecated_taxa"] = false; // ?? How is this different from suppressed_names?
     response["includes_suppressed_names"] = include_suppressed;
     response["taxonomy"] = tax_about_json(taxonomy);
     response["unambiguous_names"] = unambiguous_names;
@@ -1162,58 +1289,6 @@ std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy)
     for(auto& context: all_contexts)
 	response[context.group].push_back(context.name);
     return response.dump(1);
-}
-
-// It seems that infer_context is supposed to ignore synonyms:
-// * Bacteria is NOT ambiguous: it has 1 name match, and 1 synonym match.
-// * Firmiscala IS ambiguous: it has 0 name matches, and 1 synonym match.
-// * Random gibberish is reported as "ambiguous".
-// curl -X POST https://api.opentreeoflife.org/v2/tnrs/infer_context -H "content-type:application/json" -d  '{"names":["Bacteria","Firmiscala"]}'
-// 
-
-template <typename T>
-bool lcase_string_equals(const string& s1, const T& s2)
-{
-    if (s1.size() != s2.size()) return false;
-
-    for(int i=0;i<s1.size();i++)
-	if (std::tolower(s1[i]) != std::tolower(s2[i]))
-	    return false;
-
-    return true;
-}
-
-vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const RTRichTaxNode* context_root, string query, bool include_suppressed)
-{
-    for(auto& c: query)
-	c = std::tolower(c);
-
-    vector<const RTRichTaxNode*> hits;
-    for(auto tax_node: iter_post_n_const(*context_root))
-    {
-	if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(tax_node))
-	    continue;
-
-	// This needs to be a lower-case match.
-	if (lcase_string_equals(query, tax_node->get_data().get_nonuniqname()))
-	    hits.push_back(tax_node);
-    }
-
-    return hits;
-}
-
-vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, Context& context, const string& query, bool include_suppressed)
-{
-    auto context_root = taxonomy.included_taxon_from_id(context.ott_id);
-
-    return exact_name_search(taxonomy, context_root, query, include_suppressed);
-}
-
-vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const string& query, bool include_suppressed)
-{
-    auto context_root = taxonomy.get_tax_tree().get_root();
-
-    return exact_name_search(taxonomy, context_root, query, include_suppressed);
 }
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
