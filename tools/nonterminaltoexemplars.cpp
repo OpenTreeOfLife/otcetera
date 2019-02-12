@@ -313,7 +313,7 @@ bool handleUseJustOTTID(OTCLI & , const std::string &) {
 int main(int argc, char *argv[]) {
     const char * helpMsg = "takes an -e flag specifying an export diretory and at least 2 newick file paths: " \
         "a full taxonomy tree some number of input trees. Any tip in non-taxonomic input that is mapped to " \
-        "non-terminal taoxn will be remapped such that the parent of the non-terminal tip will hold all of " \
+        "non-terminal taxon will be remapped such that the parent of the non-terminal tip will hold all of " \
         "the expanded exemplars. The exemplars will be the any tip which both (a) is contained in this non-terminal " \
         "taxon in the taxonomy and (b) occurs (or has been chosen as an exemplar), in another input tree. The modified " \
         "version of each input will be written in the export directory. Trees with no non-terminal tips should " \

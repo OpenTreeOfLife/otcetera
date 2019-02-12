@@ -173,7 +173,8 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
     int index_from_id(OttId) const;
 
 public:
-    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
+    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>,
+                                                                bool use_rich_populate=false) const;
 
     TaxonomyRecord& record_from_id(OttId id);
     
@@ -355,6 +356,10 @@ void populate_node_from_taxonomy_record(Node_t & nd,
                                     const TaxonomyRecord & line,
                                     std::function<std::string(const TaxonomyRecord&)> get_name,
                                     TREE & tree);
+template <typename Node_t, typename TREE>
+void rich_populate_node_from_taxonomy_record(Node_t & nd,
+                                    const TaxonomyRecord & line,
+                                    TREE & tree);
 
 
 // default behavior is to set ID and Name from line
@@ -367,22 +372,28 @@ inline void populate_node_from_taxonomy_record(Node_t & nd,
     nd.set_name(get_name(line));    
 }
 
-#if 0
-No longer used?
+void rich_populate_node_from_taxonomy_record_impl(RTRichTaxNode & nd,
+                                           const TaxonomyRecord & tr,
+                                          RichTaxTree & tree);
 // default behavior is to set ID and Name from line
-template <typename TREE>
-inline void populate_node_from_taxonomy_record(RootedTreeNode<RTTaxNodeData> & nd,
-                                           const TaxonomyRecord & line,
-                                           std::function<std::string(const TaxonomyRecord&)>,
-                                           TREE &) {
-    nd.set_ott_id(line.id);
-    nd.get_data().taxonomy_line = &line;    
+template <>
+inline void rich_populate_node_from_taxonomy_record(RTRichTaxNode & nd,
+                                           const TaxonomyRecord & tr,
+                                          RichTaxTree & tree) {
+    rich_populate_node_from_taxonomy_record_impl(nd, tr, tree);
 }
-#endif
 
+// default behavior is to set ID and Name from line
+template <typename Node_t, typename TREE>
+inline void rich_populate_node_from_taxonomy_record(Node_t & nd,
+                                           const TaxonomyRecord & tr,
+                                          TREE & tree) {
+    throw OTCError("Calling non-specialized rich_populate_node_from_taxonomy_record, not implemented...");
+}
 
 template <typename Tree_t>
-std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const TaxonomyRecord&)> get_name) const {
+std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const TaxonomyRecord&)> get_name,
+                                           bool use_rich_populate) const {
     const auto& taxonomy = *this;
     std::unique_ptr<Tree_t> tree(new Tree_t);
     vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
@@ -396,7 +407,11 @@ std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const Taxon
             auto parent_nd = node_ptr[line.parent_index];
             nd = tree->create_child(parent_nd);
         }
-        populate_node_from_taxonomy_record(*nd, line, get_name, *tree);
+        if (use_rich_populate) {
+            rich_populate_node_from_taxonomy_record(*nd, line, *tree);
+        } else {
+            populate_node_from_taxonomy_record(*nd, line, get_name, *tree);
+        }
         node_ptr[i] = nd;
     }
     return tree;

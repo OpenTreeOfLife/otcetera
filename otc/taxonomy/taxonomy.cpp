@@ -619,52 +619,6 @@ void process_source_info_vec(const std::vector<std::string> & vs,
 }
 
 
-// default behavior is to set ID and Name from line
-template <>
-inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
-                                           const TaxonomyRecord & tr,
-                                           std::function<std::string(const TaxonomyRecord&)>,
-                                           RichTaxTree & tree) {
-    RTRichTaxNode * this_node = &nd;
-    nd.set_ott_id(tr.id);
-    auto & data = nd.get_data();
-    auto & tree_data = tree.get_data();
-    nd.set_ott_id(tr.id);
-    tree_data.id_to_node[tr.id] = this_node;
-    this_node->set_name(string(tr.uniqname));
-    const string & uname = this_node->get_name();
-    if (tr.uniqname != tr.name) {
-        string sn = string(tr.name);
-        tree_data.non_unique_taxon_names[sn].insert(tr.id);
-        auto nit = tree_data.non_unique_taxon_names.find(sn);
-        assert(nit != tree_data.non_unique_taxon_names.end());
-        data.possibly_nonunique_name = string_ref(nit->first);
-    } else {
-        data.possibly_nonunique_name = string_ref(nd.get_name());
-    }
-    data.flags = tr.flags;
-    data.rank = rank_name_to_enum.at(string(tr.rank));
-    register_taxon_in_maps(tree_data.name_to_node,
-                           tree_data.homonym_to_node,
-                           data.possibly_nonunique_name,
-                           uname,
-                           this_node);
-    auto flags = data.get_flags();
-    // If the flag combination is new, store the JSON representation
-    if (tree_data.flags2json.count(flags) == 0) {
-        vector<string> vf = flags_to_string_vec(flags);
-        tree_data.flags2json[flags] = json();
-        auto & fj = tree_data.flags2json[flags];
-        for (auto fs : vf) {
-            fj.push_back(fs);
-        }
-    }
-    auto vs = tr.sourceinfoAsVec();
-    data.source_info = string(tr.sourceinfo);
-    process_source_info_vec(vs, tree_data, data, this_node);
-}
-
-
 
 void RichTaxonomy::read_synonyms() {
     RTRichTaxTreeData & tree_data = this->tree->get_data();
@@ -891,6 +845,52 @@ void RichTaxonomy::add_taxonomic_addition_string(const std::string &s) {
         string fake_line = boost::algorithm::join(elements, "\t|\t");
         //process_taxonomy_line(fake_line);
     }
+}
+
+void rich_populate_node_from_taxonomy_record_impl(RTRichTaxNode & nd,
+                                           const TaxonomyRecord & tr,
+                                          RichTaxTree & tree) {
+    using std::string;
+    using std::vector;
+    using boost::string_ref;
+    RTRichTaxNode * this_node = &nd;
+    nd.set_ott_id(tr.id);
+    auto & data = nd.get_data();
+    auto & tree_data = tree.get_data();
+    nd.set_ott_id(tr.id);
+    tree_data.id_to_node[tr.id] = this_node;
+    this_node->set_name(string(tr.uniqname));
+    const string & uname = this_node->get_name();
+    if (tr.uniqname != tr.name) {
+        string sn = string(tr.name);
+        tree_data.non_unique_taxon_names[sn].insert(tr.id);
+        auto nit = tree_data.non_unique_taxon_names.find(sn);
+        assert(nit != tree_data.non_unique_taxon_names.end());
+        data.possibly_nonunique_name = string_ref(nit->first);
+    } else {
+        data.possibly_nonunique_name = string_ref(nd.get_name());
+    }
+    data.flags = tr.flags;
+    data.rank = rank_name_to_enum.at(string(tr.rank));
+    register_taxon_in_maps(tree_data.name_to_node,
+                           tree_data.homonym_to_node,
+                           data.possibly_nonunique_name,
+                           uname,
+                           this_node);
+    auto flags = data.get_flags();
+    cout << "flags = " << flags << " name = " << this_node->get_name() << '\n';
+    // If the flag combination is new, store the JSON representation
+    if (tree_data.flags2json.count(flags) == 0) {
+        vector<string> vf = flags_to_string_vec(flags);
+        tree_data.flags2json[flags] = json();
+        auto & fj = tree_data.flags2json[flags];
+        for (auto fs : vf) {
+            fj.push_back(fs);
+        }
+    }
+    auto vs = tr.sourceinfoAsVec();
+    data.source_info = string(tr.sourceinfo);
+    process_source_info_vec(vs, tree_data, data, this_node);
 }
 
 } //namespace otc

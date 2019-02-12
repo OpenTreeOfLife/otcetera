@@ -8,9 +8,9 @@ uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|
 1	|	100	|	A1	|	no rank	|		|		|		|	
 2	|	100	|	A2	|	no rank	|		|		|	unclassified	|	
 3	|	100	|	A3	|	no rank	|		|		|	unclassified	|	
-11	|	200	|	B1	|	no rank	|		|		|		|	
-12	|	200	|	B2	|	no rank	|		|		|		|	
-13	|	200	|	B3	|	no rank	|		|		|		|	
+11	|	200	|	B1	|	no rank	|		|		|	extinct	|	
+12	|	200	|	B2	|	no rank	|		|		|	extinct	|	
+13	|	200	|	B3	|	no rank	|		|		|	extinct	|	
 21	|	300	|	C1	|	no rank	|		|		|		|	
 22	|	300	|	C2	|	no rank	|		|		|	unclassified	|	
 23	|	300	|	C3	|	no rank	|		|		|		|	
