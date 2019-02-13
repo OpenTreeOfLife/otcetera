@@ -194,26 +194,68 @@ bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags) {
 
 void flag_extinct_clade_as_incertae_sedis(Taxonomy & taxonomy) {
     auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};
-    auto tree = taxonomy.get_tree<RichTaxTree>(nodeNamer, true);
-    const auto exf = flags_from_string("extinct,extinct_inherited");
-    const auto incert_sed_f = flags_from_string("incertae_sedis");
-    for(auto nd: iter_post(*tree)) {
-        cout << nd->get_data().get_flags() << ' ' << nd->get_name() << '\n';
-    }
-    
+    auto tree = taxonomy.get_tree<RichTaxTree>(nodeNamer);
+    const auto extinct_f = flags_from_string("extinct,extinct_inherited");
     set<OttId> not_extinct;
     set<OttId> to_add_incert;
-    //fo
-    for(auto& rec: taxonomy) {
-        std::cout << "par_id = " << rec.parent_id << '\n';
-        if ((rec.flags & exf).any()) {
-            std::cout << flags_to_string(rec.flags) << ' ' << exf << ' ' << incert_sed_f << '\n';
+    set<OttId> to_add_extinct;
+    for (auto nd: iter_post(*tree)) {
+        bool flag_par_not_extinct = false;
+        const auto nd_id = nd->get_ott_id();
+        if (contains(not_extinct, nd_id)) {
+            flag_par_not_extinct = true;
+        } else if ((nd->get_data().get_flags() & extinct_f).any()) {
+            to_add_incert.insert(nd_id);
         } else {
-
+            if (nd->get_first_child() == nullptr) {
+                // tips not flagged as extinct are extant
+                not_extinct.insert(nd_id);
+                flag_par_not_extinct = true;
+            } else {
+                // internals will have been added to not_extinct if any child was extant
+                to_add_incert.insert(nd_id);
+                to_add_extinct.insert(nd_id);
+            }
         }
-        
+        if (flag_par_not_extinct) {
+            auto par_ptr = nd->get_parent();
+            if (par_ptr == nullptr) {
+                continue;
+            }
+            const auto par_id = par_ptr->get_ott_id();
+            not_extinct.insert(par_id);
+        }
+    }
+    
+
+    const auto just_extinct_f = flags_from_string("extinct");
+    const auto incert_sed_f = flags_from_string("incertae_sedis");
+    for (auto& rec: taxonomy) {
+        //std::cout << rec.name << "  orig = " << flags_to_string(rec.flags) << '\n';
+        if (contains(to_add_incert, rec.id)) {
+            if ((rec.flags & incert_sed_f).any()) {
+                //std::cout << "already flagged inc-sed\n" ;
+            } else {
+                //std::cout << "adding inc-sed flag\n" ;
+                rec.flags |= incert_sed_f;
+                if (contains(to_add_extinct, rec.id)) {
+                    //std::cout << "adding inc-sed flag\n" ;
+                    rec.flags |= just_extinct_f;
+                }
+            }
+        } else {
+            const auto eflags_present = rec.flags & extinct_f;
+            if (eflags_present.any()) {
+                //std::cout << "removing extinct flag\n" ;
+                rec.flags ^= eflags_present;
+            } else {
+                //std::cout << "not modifying flags\n" ;
+            }
+        }
+        //std::cout << rec.name << "  final = " << flags_to_string(rec.flags) << '\n';
     }
 }
+
 void show_taxonomy_ids(const Taxonomy& taxonomy,
                        const string& format,
                        const vector<OttId>& ids,
@@ -340,7 +382,7 @@ int main(int argc, char* argv[]) {
             std::cout << std::endl;
         }
         if (args.count("write-taxonomy")) {
-            taxonomy.write(args["write-taxonomy"].as<string>());
+            taxonomy.write(args["write-taxonomy"].as<string>(), false);
         }
         if (args.count("name")) {
             OttId id = args["name"].as<OttId>();
