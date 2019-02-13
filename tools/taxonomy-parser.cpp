@@ -239,14 +239,14 @@ void flag_extinct_clade_as_incertae_sedis(Taxonomy & taxonomy) {
                 //std::cout << "adding inc-sed flag\n" ;
                 rec.flags |= incert_sed_f;
                 if (contains(to_add_extinct, rec.id)) {
-                    //std::cout << "adding inc-sed flag\n" ;
+                    std::cerr << "adding extinct flag to id=" << rec.id << "\n" ;
                     rec.flags |= just_extinct_f;
                 }
             }
         } else {
             const auto eflags_present = rec.flags & extinct_f;
             if (eflags_present.any()) {
-                //std::cout << "removing extinct flag\n" ;
+                std::cerr << "removing extinct flag from id=" << rec.id << "\n" ;
                 rec.flags ^= eflags_present;
             } else {
                 //std::cout << "not modifying flags\n" ;
