@@ -45,6 +45,40 @@ worked for MTH on Mac on 28-Feb-2015:
     sudo make install
 
 
+### meson/ninja
+Alternatively, you can build with [meson](http://mesonbuild.com) and ninja, instead of autotools and make.
+Python 3.5 and version >= 0.49 of meson are required.
+
+The [installation instructions](https://mesonbuild.com/Getting-meson.html) describe how to install meson on
+Windows, Mac, and Linux.  However, see this brief overview.
+
+#### Mac
+To install meson on a Mac, you can run:
+
+    sudo brew install meson
+
+#### Linux
+On recent versions of Debian or Ubuntu Linux, you can run:
+
+   sudo apt-get install meson
+
+If your version of linux doesn't have version >= 0.49 of meson, run
+
+   # Install meson in a virtualenv
+   python3 -m venv meson
+   source meson/bin/activate
+   pip3 install meson
+   # Install ninja to the virtualenv bin directory
+   wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d meson/bin
+
+You can also install ninja using apt:
+
+   sudo apt-get install ninja
+
+#### Windows
+
+On windows, you can install meson using the MSI installer on the [releases page](https://github.com/mesonbuild/meson/releases).
+
 ### BOOST C++ libraries
 You also need the BOOST C++ source libraries.  You should install the BOOST libraries and
 header files using your operating system's package manager. version 1.58 of boost works; earlier versions might.
@@ -112,7 +146,7 @@ On a Mac, you will need to set:
 
 These variables should be set by the lines above that begin with `export`.
 
-## configuration + building
+## configuration + building (autoconf)
 
 To run the whole autoreconf stuff in a manner that will add missing bits as needed,
 run:
@@ -140,6 +174,18 @@ of your build directory as the prefix for the installation. So, you will need to
 add `$PWD/installed/bin` to your `PATH` environmental variable to use the version
 of the otc tools that you just installed. Depending on your platform, you may have to
 add the `$PWD/installed/lib` to your `LD_LIBRARY_PATH` variable.
+
+## configuration + building (meson)
+
+# To configure with meson to install in `$HOME/Applications/otcetera`, run:
+
+   $ meson build -Dprefix=$HOME/Applications/otcetera
+
+Then to build, run:
+
+   $ ninja -C build install
+   $ ninja -C build check
+
 
 # Short OSX instructions
 
