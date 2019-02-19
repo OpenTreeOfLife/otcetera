@@ -14,6 +14,7 @@ matrix:
           packages:
           - g++-7
           - pandoc
+	  - libboost-all-dev
     - os: linux
       dist: xenial
       env: CXX_COMPILER=g++-8
@@ -24,6 +25,7 @@ matrix:
           packages:
           - g++-8
           - pandoc
+	  - libboost-all-dev
     - os: linux
       dist: xenial
       compiler: clang++
@@ -34,6 +36,7 @@ matrix:
           packages:
           - g++-7
           - pandoc
+	  - libboost-all-dev
     - os: osx
       osx_image: xcode10.1
 
@@ -42,12 +45,6 @@ before_install:
   # We need to re-export CC and CXX here, because travis exports CXX=g++ or clang++ AFTER we set CXX.
   - if [ -n "${C_COMPILER}" ]; then export CC="${C_COMPILER}"; fi
   - if [ -n "${CXX_COMPILER}" ]; then export CXX="${CXX_COMPILER}"; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      sudo add-apt-repository -y ppa:afrank/boost;
-      sudo apt-get update -y -qq;
-      sudo apt-get autoremove libboost-all-dev;
-      sudo apt-get install -y libboost1.57-all-dev;
-    fi
 install:
     - sh travis-build-and-test.sh
 script:
