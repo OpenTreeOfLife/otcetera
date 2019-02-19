@@ -29,6 +29,8 @@ using otc::OttId;
 namespace otc {
 const int OK = restbed::OK;
 extern TreesToServe tts;
+typedef RTRichTaxNode Taxon;
+
 
 inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
     return nd_taxon.get_name();
@@ -995,51 +997,134 @@ bool lcase_string_equals(const string& s1, const T& s2)
     return true;
 }
 
-vector<pair<const RTRichTaxNode*,const string&>> exact_synonym_search(const RichTaxonomy& taxonomy, const RTRichTaxNode* context_root, string query, bool include_suppressed)
+vector<pair<const Taxon*,const string&>> exact_synonym_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
 {
     for(auto& c: query)
 	c = std::tolower(c);
 
-    vector<pair<const RTRichTaxNode*,const string&>> hits;
-    for(auto tax_node: iter_post_n_const(*context_root))
+    vector<pair<const Taxon*,const string&>> hits;
+    for(auto taxon: iter_post_n_const(*context_root))
     {
-	if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(tax_node))
-	    continue;
+	if (not ok(taxon)) continue;
 
-	for(auto& tjs: tax_node->get_data().junior_synonyms)
+	for(auto& tjs: taxon->get_data().junior_synonyms)
 	    if (lcase_string_equals(query, tjs->get_name()))
-		hits.push_back({tax_node,tjs->get_name()});
+		hits.push_back({taxon,tjs->get_name()});
     }
 
     return hits;
 }
 
-vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const RTRichTaxNode* context_root, string query, bool include_suppressed)
+vector<pair<const Taxon*,const string&>> exact_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
+{
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					       {
+						   if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+						   return true;
+					       };
+
+    return exact_synonym_search(context_root, query, ok);
+}
+
+bool is_specific(TaxonomicRank rank)
+{
+    // taxomachine includes "species", "subspecies", "variety", "varietas", "forma", "form"
+    if (rank == TaxonomicRank::RANK_SPECIES) return true;
+    if (rank == TaxonomicRank::RANK_SUBSPECIES) return true;
+    if (rank == TaxonomicRank::RANK_VARIETY) return true;
+    if (rank == TaxonomicRank::RANK_VARIETAS) return true;
+    if (rank == TaxonomicRank::RANK_FORMA) return true;
+    // There is no RANK_FORM?
+
+    return false;
+}
+
+bool taxon_is_specific(const Taxon* taxon)
+{
+    auto rank = taxon->get_data().rank;
+
+    return is_specific(rank);
+}
+
+bool taxon_is_genus(const Taxon* taxon)
+{
+    return taxon->get_data().rank == TaxonomicRank::RANK_GENUS;
+}
+
+bool taxon_is_higher(const Taxon* taxon)
+{
+    return taxon->get_data().rank < TaxonomicRank::RANK_SPECIES;
+}
+
+
+vector<const Taxon*> exact_name_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
 {
     for(auto& c: query)
 	c = std::tolower(c);
 
-    vector<const RTRichTaxNode*> hits;
-    for(auto tax_node: iter_post_n_const(*context_root))
+    vector<const Taxon*> hits;
+    for(auto taxon: iter_post_n_const(*context_root))
     {
-	if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(tax_node))
-	    continue;
+	if (not ok(taxon)) continue;
 
-	if (lcase_string_equals(query, tax_node->get_data().get_nonuniqname()))
-	    hits.push_back(tax_node);
+	if (lcase_string_equals(query, taxon->get_data().get_nonuniqname()))
+	    hits.push_back(taxon);
     }
 
     return hits;
 }
 
-vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, Context& context, const string& query, bool include_suppressed)
+vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
-    auto context_root = taxonomy.included_taxon_from_id(context.ott_id);
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					{
+					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+					    return true;
+					};
 
-    return exact_name_search(taxonomy, context_root, query, include_suppressed);
+    return exact_name_search(context_root, query, ok);
 }
 
-vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const string& query, bool include_suppressed)
+vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
+{
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					{
+					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+					    if (not taxon_is_specific(taxon)) return false;
+					    return true;
+					};
+
+    return exact_name_search(context_root, query, ok);
+    
+}
+
+vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
+{
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					{
+					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+					    if (not taxon_is_genus(taxon)) return false;
+					    return true;
+					};
+
+    return exact_name_search(context_root, query, ok);
+    
+}
+
+vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
+{
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					{
+					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+					    if (not taxon_is_higher(taxon)) return false;
+					    return true;
+					};
+
+    return exact_name_search(context_root, query, ok);
+    
+}
+
+vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const string& query, bool include_suppressed)
 {
     auto context_root = taxonomy.get_tax_tree().get_root();
 
@@ -1053,7 +1138,7 @@ struct ContextSearcher
 {
     const RichTaxonomy& taxonomy;
     const Context& context;
-    const RTRichTaxNode* context_root;
+    const Taxon* context_root;
 
     pair<json,match_status> match_name(string query, bool do_approximate_matching, bool include_suppressed);
 
@@ -1063,15 +1148,15 @@ struct ContextSearcher
     }
 };
 
-json get_taxon_json(const RichTaxonomy& taxonomy, const RTRichTaxNode& tax_node)
+json get_taxon_json(const RichTaxonomy& taxonomy, const Taxon& taxon)
 {
-    json taxon;
-    tax_service_add_taxon_info(taxonomy, tax_node, taxon);
+    json j;
+    tax_service_add_taxon_info(taxonomy, taxon, j);
     // What about the "is_suppressed_from_synth" flag?  Do we want that?
-    return taxon;
+    return j;
 }
 
-json exact_name_match_json(const string& query, const RTRichTaxNode* taxon, const RichTaxonomy& taxonomy)
+json exact_name_match_json(const string& query, const Taxon* taxon, const RichTaxonomy& taxonomy)
 {
     json result;
     result["taxon"] = get_taxon_json(taxonomy, *taxon);
@@ -1084,7 +1169,7 @@ json exact_name_match_json(const string& query, const RTRichTaxNode* taxon, cons
     return result;
 }
 
-json exact_synonym_match_json(const string& query, const RTRichTaxNode* taxon, const string& synonym_name, const RichTaxonomy& taxonomy)
+json exact_synonym_match_json(const string& query, const Taxon* taxon, const string& synonym_name, const RichTaxonomy& taxonomy)
 {
     json result;
     result["taxon"] = get_taxon_json(taxonomy, *taxon);
@@ -1138,6 +1223,38 @@ pair<json,match_status> ContextSearcher::match_name(string query, bool do_approx
     return {match_results, status};
 }
 
+const Context* determine_context_for_names(const vector<string>& names, const optional<string>& context_name, const RichTaxonomy& taxonomy)
+{
+    // 1. Determine context
+    const Context* context;
+    if (not context_name)
+	context = infer_context_and_ambiguous_names(taxonomy, names).first;
+    else
+    {
+	if (not name_to_context.count(*context_name))
+	    throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
+	context = name_to_context.at(*context_name);
+    }
+    return context;
+}
+
+const Context* determine_context(const optional<string>& context_name)
+{
+    // 1. Determine context
+    const Context* context;
+    if (not context_name)
+	context = name_to_context.at("All life");
+    else
+    {
+	if (not name_to_context.count(*context_name))
+	    throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
+	context = name_to_context.at(*context_name);
+    }
+    return context;
+}
+
+//FIXME: how is "suppressed_names" different from "deprecated_taxa"?
+
 // $ curl -X POST https://api.opentreeoflife.org/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
 // $ curl -X POST http://localhost:1984/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
 std::string tnrs_match_names_ws_method(const vector<string>& names,
@@ -1148,80 +1265,12 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
                                        const RichTaxonomy& taxonomy)
 {
 
-    // See org/opentree/taxonomy/plugins/tnrs_v3.java:
-
-    //     MultiNameContextQuery mncq = new MultiNameContextQuery(taxonomy);
-    //     TNRSResults results = mncq
-    //    		.setSearchStrings(idNameMap)
-    //    		.setContext(context)
-    //    		.setAutomaticContextInference(useAutoInference)
-    //    		.setIncludeDubious(includeSuppressed)
-    //    		.setIncludeDeprecated(includeDeprecated)
-    //    		.setDoFuzzyMatching(doFuzzyMatching)
-    //    		.runQuery()
-    //    		.getResults();
-
-    /*
-      exact match name -> match(taxon, name, rank, search_string, approx=false, synonym=false, nomen_code,score=perfect_score
-                       -> match against deprecated -> "
-		       add result if any matches, otherwise put in namesWithoutExactMatches
-
-      exact match synonym -> get previous match set if we already had some matches against non-synonyms
-                          -> match(taxon, synonym_name, rank, search_string, approx=false, synonym=true, nomen_code, score=perfect_score
-		      if there were any matches, then remove from namesWithoutExactMatches
-
-      fuzzy match name OR synonym -> match(taxon, matched_name, rank, search_string != matched_name, approx=true, synonym=true or false, score=score)
-                      if there were any matches, then remove from namesWithoutApproxMatches
-
-      
-     */
-    
-    // See org/opentree/tnrs/queries/MultiNameContextQuery.java:
+    // This corresponds to a MultiNameContextQuery in taxomachine.
+    // * See org/opentree/taxonomy/plugins/tnrs_v3.java
+    // * See org/opentree/tnrs/queries/MultiNameContextQuery.java:
         
-    // // direct match unmatched names within context
-    // getExactNameMatches(namesToMatchToTaxa);
-        
-    // // direct match *all* names against synonyms
-    // getExactSynonymMatches(queriedNames);
-        
-    // // do fuzzy matching for any names we couldn't match
-    // if (doFuzzyMatching) {
-    // 	getApproxTaxnameOrSynonymMatches(namesWithoutExactMatches);
-    // }
-        
-    // // record unmatchable names to results
-    // for (Entry<Object, String> nameEntry : doFuzzyMatching ? namesWithoutApproxMatches.entrySet() : namesWithoutExactMatches.entrySet()) {
-    // 	results.addUnmatchedName(nameEntry.getKey(), nameEntry.getValue());
-    // }
-        
-    // results.setIncludesDeprecated(includeDeprecated);
-    // results.setIncludesDubious(includeDubious);
-    // results.setIncludesApproximate(doFuzzyMatching);
-    // for (Entry<String, Object> entry : taxonomy.getMetadataMap().entrySet()) {
-    // 	results.addTaxMetadataEntry(entry.getKey(), entry.getValue());
-    // }
-    // return this;
-
-
-    // ?? What do we do with the ids?
-
-    // ?? How do we get the right context?  Do we just assume All Life if unknown?
-
-    // org/neo4j/server/rest/repr/TNRSResultsRepresentation.java:
-    // getNameIdsWithDirectMatches => unambiguous_names (1 exact match to NON synonyms, just like for infer_context)
-    // getUnmatchedNameIds => unmatched_names
-    // getMatchedNamedIds => matched_names
-    
-    // FIXME: if context not specified, do inferContextAndReturnAmbiguousNames() -- from MultiNameContextQuery
-    const Context* context;
-    if (context_name)
-    {
-	if (not name_to_context.count(*context_name))
-	    throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
-	context = name_to_context.at(*context_name);
-    }
-    else
-	context = infer_context_and_ambiguous_names(taxonomy, names).first;
+    // 1. Determine context
+    auto context = determine_context_for_names(names, context_name, taxonomy);
 
     ContextSearcher searcher(taxonomy, *context);
 
@@ -1267,9 +1316,98 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     return response.dump(1);
 }
 
+
+// return name.split("\s+",2) if the string has a space or an optional with no value otherwise.
+optional<pair<string,string>> split_genus(const string& name)
+{
+    auto first_space = name.find(' ');
+
+    // Quit if there's no space
+    if (first_space == string::npos) return {};
+
+    auto genus = name.substr(0,first_space);
+
+    auto non_space = name.find_first_not_of(' ', first_space+1);
+    if (non_space == string::npos)
+	non_space = name.size();
+
+    auto species = name.substr(non_space, name.size() - non_space);
+
+    return {{genus, species}};
+}
+
+/*
+Note from taxomachine: tnrs_v3.java:
+
+Assumes the input is a taxon name that may be incomplete (i.e. the beginning of a taxon name such as 'Ast', 
+which would match 'Astelia', 'Astilbe', 'Aster', 'Asteroidea', 'Asteraceae', 'Astrantia', etc.). If the input 
+string is an exact string match to an existing taxon name, then only the exact match will be returned, (i.e. the
+input 'Aster' will produce a single result 'Aster').
+
+If name expansion identifies a valid genus name, the results will
+not include species names from within that genus, but if a trailing space exists in the input following a valid
+genus name, then species names will be returned. For example, both 'Garcin' and 'Garcinia' will match the genus name
+'Garcinia' itself but will not match any species names within the genus, but 'Garcinia ' (note the trailing space)
+will match all the species in the genus, and 'Garcinia m' with match all species names in Garcinia with a specific
+epithet that starts with 'm'.
+
+**IMPORTANT NOTE: This service should not be used for general purpose TNRS queries.** It is optimized for and
+(obviously) intended for use *only* with autocomplete boxes on web forms. For all name matching purposes other than
+autocompleting name fields on forms, use the `match_names` service.
+*/
+
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
 string tnrs_autocomplete_name_ws_method(const string& name, const string& context_name, bool include_suppressed, const RichTaxonomy& taxonomy)
 {
+    auto query = name;
+    // This corresponds to a SingleNamePrefixQuery in taxomachine.
+    // * See org/opentree/taxonomy/plugins/tnrs_v3.java
+    // * See org/opentree/tnrs/queries/SingleNamePrefixQuery.java
+
+
+    // 0. Escape the query??
+    // lower-case the name?
+
+    // 1. Determine context
+    auto context = determine_context(context_name);
+    auto context_root = taxonomy.included_taxon_from_id(context->ott_id);
+
+    // 2. 
+
+    if (auto has_genus = split_genus(name))
+    {
+	auto species_name_hits = exact_name_search_species(taxonomy, context_root, query, include_suppressed);
+	auto synonym_hits = exact_synonym_search(taxonomy, context_root, query, include_suppressed);
+	// if no matches // no exact hit against the species index
+
+	auto [genus,species] = *has_genus;
+	if (species_name_hits.empty() and synonym_hits.empty()) // no exact hit against the species index
+	{
+	    auto genus_hits = exact_name_search_genus(taxonomy, context_root, query, include_suppressed);
+	    if (not genus_hits.empty()) // the first word was an exact match against the genus index
+	    {
+	    }
+	}
+	else
+	{
+	}
+	// exactly search genus against taxNodesByNameGenera
+	// if there are NO matches (no exact hi for first word against the genus index)
+	//   match full query string (with space) against taxNodesByNameHigher (higher taxon index)
+	//   if there's no match, prefix-math query against synonym names and higher-synonym names
+	//   if there's STILL no match, fuzzy-match against the entire index
+
+	// if there ARE matches (... this is getting complicated!
+    }
+    else
+    {
+	// search taxNodesByNameOfSynonymHigher(includeDubious)
+	// if no matches, do a prefix search on TaxNodesByNameHigher(includeDubious)
+	// if no matches, do a prefix search on TaxNodesBySynonym(includeDubious)
+	// if no matches, do a fuzzy search on taxNodesByNameOrSynonymHigher(includeDubious)
+	
+    }
+    
     json response;
     LOG(WARNING)<<"tnrs/autocomplete_name";
     json match;
