@@ -42,10 +42,15 @@ matrix:
 
 
 before_install:
+  - PATH=$HOME/local/bin:$PATH
+  - echo $PATH
   # We need to re-export CC and CXX here, because travis exports CXX=g++ or clang++ AFTER we set CXX.
   - if [ -n "${C_COMPILER}" ]; then export CC="${C_COMPILER}"; fi
   - if [ -n "${CXX_COMPILER}" ]; then export CXX="${CXX_COMPILER}"; fi
-install:
-    - sh travis-build-and-test.sh
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install meson; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d ~/bin && pyenv local 3.7 && pip3 install meson; fi
+
 script:
-    - cd buildgcc/test && make check && cd ../tools && make check
+  - meson build --prefix=$HOME/local
+  - ninja -C build install
+  - ninja -C test
