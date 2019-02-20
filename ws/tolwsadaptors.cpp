@@ -501,9 +501,7 @@ string tnrs_autocomplete_name_handler( const json& parsedargs )
 
 string tnrs_contexts_handler( const json& parsedargs )
 {
-    auto locked_taxonomy = tts.get_readable_taxonomy();
-    const auto & taxonomy = locked_taxonomy.first;
-    return tnrs_contexts_ws_method(taxonomy);
+    return tnrs_contexts_ws_method();
 }
 
 string tnrs_infer_context_handler( const json& parsedargs )
@@ -743,7 +741,7 @@ int run_server(const po::variables_map & args) {
 
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
-    RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
+    RichTaxonomy taxonomy = load_rich_taxonomy(args);
     time_t post_tax_time;
     time(&post_tax_time);
     tts.set_taxonomy(taxonomy);
