@@ -80,6 +80,7 @@ Meson's [installation instructions](https://mesonbuild.com/Getting-meson.html) g
 
 After installing prerequisites, try the following commands to build `restbed` and then `otcetera` in the directory `$HOME/Applications/OpenTree/otcetera`.
 
+    # Fetch source
     OPENTREE=$HOME/Applications/OpenTree
     mkdir -p $OPENTREE/restbed
     cd $OPENTREE/restbed
@@ -88,17 +89,27 @@ After installing prerequisites, try the following commands to build `restbed` an
     cd $OPENTREE/otcetera
     git clone https://github.com/mtholder/otcetera.git
     
+    # On Mac, check that we are using homebrew ssl in /usr/local/opt/openssl, not system ssl!
+    echo "CPPFLAGS=${CPPFLAGS}"
+    echo "LDFLAGS=${LDFLAGS}"
+
+    # Build restbed
+    alias ninja='nice -n10 ninja'
     cd $OPENTREE/restbed
     mkdir restbed/build       
     cd restbed/build        # Go to $OPENTREE/restbed/restbed/build
-    cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$OPENTREE/local" ..
-    make
-    make install
+    cmake .. -G Ninja -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$OPENTREE/local"
+    ninja install
 
+    # Make restbed library available too.
     export CPPFLAGS="-I${OPENTREE}/local/include $CPPFLAGS"
     export LDFLAGS="-L${OPENTREE}/local/library $LDFLAGS"
+    echo "CPPFLAGS=${CPPFLAGS}"
+    echo "LDFLAGS=${LDFLAGS}"
+    # Mac doesn't care about LD_LIBRARY_PATH. meh.
     export LD_LIBRARY_PATH=${OPENTREE}/local/library
     
+    # Build otcetera
     cd $OPENTREE/otcetera
     meson build otcetera --prefix=$OPENTREE/local
     ninja -C build install
