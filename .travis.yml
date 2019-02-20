@@ -47,8 +47,8 @@ before_install:
   - echo $PATH
   - if [ -n "${C_COMPILER}" ]; then export CC="${C_COMPILER}"; fi
   - if [ -n "${CXX_COMPILER}" ]; then export CXX="${CXX_COMPILER}"; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install meson; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d ~/bin && pyenv local 3.7 && pip3 install meson; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install meson && pip install requests; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d ~/bin && pyenv local 3.7 && pip3 install meson requests; fi
 
 script:
 # build restbed
@@ -58,6 +58,9 @@ script:
 # build otcetera
   - export CPPFLAGS='-I${HOME}/local/include'
   - export LDFLAGS='-L${HOME}/local/library'
+  - echo $CPPFLAGS
+  - echo $LDFLAGS
   - meson build --prefix=$HOME/local
+  - cat build/meson-logs/meson-log.txt
   - ninja -C build install
   - ninja -C build test
