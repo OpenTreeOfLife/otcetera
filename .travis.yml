@@ -53,10 +53,8 @@ before_install:
 script:
 # build restbed
   - git clone --recursive https://github.com/corvusoft/restbed.git
-  - pwd
-  - ls
-  - mkdir -p restbed/build
-  - ( cd restbed/build ; cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX=$HOME/local/ ../restbed ; make ; make install )
+  - mkdir restbed/build
+  - ( cd restbed/build ; cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
 # build otcetera
   - export CPPFLAGS='-I${HOME}/local/include'
   - export LDFLAGS='-L${HOME}/local/library'
