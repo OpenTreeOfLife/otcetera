@@ -59,7 +59,7 @@ script:
   - export CPPFLAGS="-I${HOME}/local/include"
   - export LDFLAGS="-L${HOME}/local/library"
   - meson build --prefix=$HOME/local
-  - cat build/meson-logs/meson-log.txt
   - ninja -C build install
-  - ninja -C build test
-  - cat build/meson-logs/testlog.txt
+# test otcetera
+  - export LD_LIBRARY_PATH="${HOME}/local/library"
+  - if ! ninja -C build test ; then cat build/meson-logs/testlog.txt ; fi
