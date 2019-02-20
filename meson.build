@@ -38,8 +38,6 @@ subdir('tools')
 subdir('ws')
 
 # check if python subprocess module is installed
-#if true
-#  subdir('test')  
-#else
-#  subdir('test')
-#fi
+if true
+  subdir('test')  
+endif
