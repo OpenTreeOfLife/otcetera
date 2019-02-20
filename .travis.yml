@@ -56,10 +56,8 @@ script:
   - mkdir restbed/build
   - ( cd restbed/build ; cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
 # build otcetera
-  - export CPPFLAGS='-I${HOME}/local/include'
-  - export LDFLAGS='-L${HOME}/local/library'
-  - echo $CPPFLAGS
-  - echo $LDFLAGS
+  - export CPPFLAGS="-I${HOME}/local/include"
+  - export LDFLAGS="-L${HOME}/local/library"
   - meson build --prefix=$HOME/local
   - cat build/meson-logs/meson-log.txt
   - ninja -C build install
