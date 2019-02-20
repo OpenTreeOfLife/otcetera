@@ -106,7 +106,7 @@ After installing prerequisites, try the following commands to build `restbed` an
     export LDFLAGS="-L${OPENTREE}/local/library $LDFLAGS"
     echo "CPPFLAGS=${CPPFLAGS}"
     echo "LDFLAGS=${LDFLAGS}"
-    # Mac doesn't care about LD_LIBRARY_PATH. meh.
+    # Mac ignores LD_LIBRARY_PATH and doesn't need it, but linux needs it.
     export LD_LIBRARY_PATH=${OPENTREE}/local/library
     
     # Build otcetera
