@@ -55,7 +55,7 @@ On a Mac, you can install dependencies with:
     export LDFLAGS="$LDFLAGS -L${SSL}/lib"
     pip install requests
 
-The last two lines make sure we use SSL from homebrew, and not the system SSL.
+The last `export` lines make sure we use SSL from homebrew, and not the system SSL.
 
 ### Linux
 On recent versions of Debian or Ubuntu Linux, you can run:
@@ -76,11 +76,9 @@ On windows, you can install meson using the MSI installer on the [releases page]
 
 Meson's [installation instructions](https://mesonbuild.com/Getting-meson.html) give more detail.
 
-# configuration + building
+# configuration + building: quick start
 
-After installing prerequisites and 
-
-To configure for installation `$HOME/Applications/OpenTree/otcetera`, run:
+After installing prerequisites, try the following command to build `restbed` and then `otcetera` in the directory `$HOME/Applications/OpenTree/otcetera`.
 
     OPENTREE=$HOME/Applications/OpenTree
     mkdir -p $OPENTREE/restbed
