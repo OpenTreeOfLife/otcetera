@@ -22,7 +22,7 @@ https://peerj.com/preprints/2538/ describes some of the tools that are a part of
 
 The instructions below contain all of the gory detail. There are a few quirks with OS X installation. See [Short OSX instructions](#short-osx-instructions) for an overview of the process on OS X. 
 
-## prerequisites
+## prerequisites: overview
 
 ### Compiler
 Otcetera requires a C++17 compiler.  You can use
@@ -43,6 +43,8 @@ We are using the [Restbed framework](https://github.com/corvusoft/restbed) to im
 ### Testing: requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
+
+## prerequisites: quick start
 
 ### Mac
 On a Mac, you can install dependencies with:
