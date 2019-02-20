@@ -30,21 +30,19 @@ Otcetera requires a C++17 compiler.  You can use
 * clang++ version 7 (or higher)
 * XCode version 10.1 (or higher)
 
-### meson, cmake, and ninja
+### Build tools: meson, cmake, and ninja
 To build otcetera, we need the build tools
 * [meson](http://mesonbuild.com).
 * ninja
 * cmake (to build the restbed library)
 
-### Boost C++ libraries
+### HTTP library: restbed
 
-### requests
+We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. By default, otcetera will not compile the web services if it can't find restbed.
+
+### Testing: requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
-
-### restbed
-
-We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
 
 ### Mac
 On a Mac, you can install dependencies with:
