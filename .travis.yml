@@ -51,6 +51,16 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d ~/bin && pyenv local 3.7 && pip3 install meson; fi
 
 script:
+# build restbed
+  - git clone --recursive https://github.com/corvusoft/restbed.git
+  - cd restbed/build
+  - cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX=$HOME/local/ ../restbed
+  - make
+  - make install
+# build otcetera
+  - cd
+  - export CPPFLAGS='-I${HOME}/local/include'
+  - export LDFLAGS='-L${HOME}/local/library'
   - meson build --prefix=$HOME/local
   - ninja -C build install
   - ninja -C build test
