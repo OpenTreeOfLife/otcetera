@@ -499,7 +499,7 @@ string tnrs_autocomplete_name_handler( const json& parsedargs )
     return tnrs_autocomplete_name_ws_method(name, context_name, include_suppressed, taxonomy);
 }
 
-string tnrs_contexts_handler( const json& parsedargs )
+string tnrs_contexts_handler( const json& )
 {
     return tnrs_contexts_ws_method();
 }
