@@ -78,7 +78,7 @@ Meson's [installation instructions](https://mesonbuild.com/Getting-meson.html) g
 
 # configuration + building: quick start
 
-After installing prerequisites, try the following commands to build `restbed` and then `otcetera` in the directory `$HOME/Applications/OpenTree/otcetera`.
+After installing prerequisites, try the following commands to build `restbed` and then `otcetera` under the directory `$HOME/Applications/OpenTree/`.
 
     # Fetch source
     OPENTREE=$HOME/Applications/OpenTree
