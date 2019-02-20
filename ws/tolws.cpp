@@ -1026,24 +1026,11 @@ vector<pair<const Taxon*,const string&>> exact_synonym_search(const RichTaxonomy
     return exact_synonym_search(context_root, query, ok);
 }
 
-bool is_specific(TaxonomicRank rank)
-{
-    // taxomachine includes "species", "subspecies", "variety", "varietas", "forma", "form"
-    if (rank == TaxonomicRank::RANK_SPECIES) return true;
-    if (rank == TaxonomicRank::RANK_SUBSPECIES) return true;
-    if (rank == TaxonomicRank::RANK_VARIETY) return true;
-    if (rank == TaxonomicRank::RANK_VARIETAS) return true;
-    if (rank == TaxonomicRank::RANK_FORMA) return true;
-    // There is no RANK_FORM?
-
-    return false;
-}
-
 bool taxon_is_specific(const Taxon* taxon)
 {
     auto rank = taxon->get_data().rank;
 
-    return is_specific(rank);
+    return rank_is_specific(rank);
 }
 
 bool taxon_is_genus(const Taxon* taxon)
@@ -1386,6 +1373,13 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
 	    auto genus_hits = exact_name_search_genus(taxonomy, context_root, query, include_suppressed);
 	    if (not genus_hits.empty()) // the first word was an exact match against the genus index
 	    {
+		for(auto genus: genus_hits)
+		{
+		    for(auto species: iter_post_n_const(*context_root))
+		    {
+			if (not taxon_is_specific(species)) continue;
+		    }
+		}
 	    }
 	}
 	else

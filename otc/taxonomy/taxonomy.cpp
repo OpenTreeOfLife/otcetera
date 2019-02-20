@@ -51,6 +51,19 @@ using po::variables_map;
 namespace otc
 {
 
+bool rank_is_specific(TaxonomicRank rank)
+{
+    // taxomachine includes "species", "subspecies", "variety", "varietas", "forma", "form"
+    if (rank == TaxonomicRank::RANK_SPECIES) return true;
+    if (rank == TaxonomicRank::RANK_SUBSPECIES) return true;
+    if (rank == TaxonomicRank::RANK_VARIETY) return true;
+    if (rank == TaxonomicRank::RANK_VARIETAS) return true;
+    if (rank == TaxonomicRank::RANK_FORMA) return true;
+    // There is no RANK_FORM?
+
+    return false;
+}
+
 
 const map<string, TaxonomicRank> rank_name_to_enum = 
     {   {"domain", RANK_DOMAIN},

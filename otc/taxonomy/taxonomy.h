@@ -80,6 +80,8 @@ enum TaxonomicRank {
     RANK_NO_RANK_TERMINAL
 };
 
+bool rank_is_specific(TaxonomicRank rank);
+
 extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
 extern const std::string empty_string;
 extern const std::set<std::string> indexed_source_prefixes;
