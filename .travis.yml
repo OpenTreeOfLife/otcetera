@@ -53,4 +53,4 @@ before_install:
 script:
   - meson build --prefix=$HOME/local
   - ninja -C build install
-  - ninja -C test
+  - ninja -C build test
