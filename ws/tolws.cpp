@@ -7,6 +7,7 @@
 #include "otc/supertree_util.h"
 #include "nexson/nexson.h"
 #include <optional>
+#include <string_view>
 #include "ws/tnrs/context.h"
 INITIALIZE_EASYLOGGINGPP
 
@@ -16,6 +17,7 @@ using std::map;
 using std::pair;
 using std::set;
 using std::string;
+using std::string_view;
 using std::optional;
 using std::ostringstream;
 using std::unique_ptr;
@@ -39,7 +41,7 @@ inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.get_data();
     taxonrepr["tax_sources"] = taxon_data.get_sources_json();
-    taxonrepr["name"] = string(taxon_data.get_nonuniqname());
+    taxonrepr["name"] = taxon_data.get_nonuniqname();
     taxonrepr["unique_name"] = get_taxon_unique_name(nd_taxon);
     taxonrepr["rank"] = taxon_data.get_rank();
     taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
@@ -60,7 +62,7 @@ inline string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
     return (nd.has_ott_id() ? ott_id_to_idstr(nd.get_ott_id()) : nd.get_name());
 }
 
-string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
     if (not nd.has_ott_id())
         throw OTCError()<<"Node "<<nd.get_name()<<" has no OTT id";
@@ -68,7 +70,7 @@ string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd
     auto id = nd.get_ott_id();
     auto nd_taxon = taxonomy.included_taxon_from_id(id);
     auto& taxon_data = nd_taxon->get_data();
-    return string(taxon_data.get_nonuniqname());
+    return taxon_data.get_nonuniqname();
 }
 
 // Corresponds to getNamesOfRepresentativeDescendants( ) in treemachine/src/main/java/opentree/GraphExplorer.java
@@ -986,7 +988,7 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
 // 
 
 template <typename T>
-bool lcase_string_equals(const string& s1, const T& s2)
+bool lcase_string_equals(const string_view& s1, const T& s2)
 {
     if (s1.size() != s2.size()) return false;
 
@@ -1180,7 +1182,7 @@ json exact_name_match_json(const string& query, const Taxon* taxon, const RichTa
     result["is_approximate_match"] = false;
     result["nomenclature_code"] = "code";   // FIXME!
     result["is_synonym"] = false;
-    result["matched_name"] = (string)taxon->get_data().get_nonuniqname();
+    result["matched_name"] = taxon->get_data().get_nonuniqname();
     return result;
 }
 
@@ -1333,7 +1335,7 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
 
 
 // return name.split("\s+",2) if the string has a space or an optional with no value otherwise.
-optional<pair<string,string>> split_genus(const string& name)
+optional<pair<string,string>> split_genus_species(const string& name)
 {
     auto first_space = name.find(' ');
 
@@ -1384,12 +1386,7 @@ json autocomplete_json(const RichTaxonomy& taxonomy, const Taxon* taxon)
 json autocomplete_json(const RichTaxonomy& taxonomy, const pair<const Taxon*,const string&>& p)
 {
     auto [taxon,syonym] = p;
-    json match;
-    match["ott_id"] = taxon->get_ott_id();
-    match["unique_name"] = get_taxon_unique_name(*taxon);
-    match["is_suppressed"] = taxonomy.node_is_suppressed_from_tnrs(taxon);
-    match["is_higher"] = taxon_is_higher(taxon);
-    return match;
+    return autocomplete_json(taxonomy,taxon);
 }
 
 void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<const Taxon*> taxa)
@@ -1403,7 +1400,32 @@ void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<pair<const Tax
     for(auto [taxon,synonym]:taxa)
 	j.push_back(autocomplete_json(taxonomy,taxon));
 }
-		    
+
+bool lcase_match_prefix(const string_view& s, const string_view& prefix)
+{
+    if (prefix.size() < s.size()) return false;
+
+    return lcase_string_equals(s.substr(prefix.size()), prefix);
+}
+
+// Find all species in the genus that have the given prefix
+vector<const Taxon*> prefix_search_species_in_genus(const RichTaxonomy& taxonomy, const Taxon* genus, const string_view& species_prefix)
+{
+    vector<const Taxon*> match_species;
+
+    auto genus_name = genus->get_data().get_nonuniqname();
+    for(auto species: iter_post_n_const(*genus))
+    {
+	if (not taxon_is_specific(species)) continue;
+
+	auto species_name = species->get_data().get_nonuniqname().substr(genus_name.size()+1);
+
+	if (lcase_match_prefix(species_name, species_prefix))
+	    match_species.push_back(species);
+    }
+
+    return match_species;
+}
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
 string tnrs_autocomplete_name_ws_method(const string& name, const string& context_name, bool include_suppressed, const RichTaxonomy& taxonomy)
@@ -1426,28 +1448,22 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
     auto context_root = taxonomy.included_taxon_from_id(context->ott_id);
 
     // 2. If we have a space, then assume the first part is a genus and match species names within the genus
-    if (auto has_genus = split_genus(name))
+    if (auto query_genus_species = split_genus_species(name))
     {
 	// Search against species and synonyms
-	auto species_name_hits = exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed);
-	add_hits(response, taxonomy, species_name_hits);
-	auto synonym_hits = exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed);
-	add_hits(response, taxonomy, synonym_hits);
+	add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed));
+	add_hits(response, taxonomy, exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
 	if (response.size()) return response;
 	
 	// no exact hit against the species index
-	auto [genus,species] = *has_genus;
 	auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
 
 	if (not genus_hits.empty()) // the first word was an exact match against the genus index
 	{
+	    auto [query_genus,query_species] = *query_genus_species;
+
 	    for(auto genus: genus_hits)
-	    {
-		for(auto species: iter_post_n_const(*context_root))
-		{
-		    if (not taxon_is_specific(species)) continue;
-		}
-	    }
+		add_hits(response, taxonomy, prefix_search_species_in_genus(taxonomy, genus, query_species));
 	}
 	
 	// exactly search genus against taxNodesByNameGenera
