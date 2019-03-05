@@ -997,6 +997,23 @@ bool lcase_string_equals(const string& s1, const T& s2)
     return true;
 }
 
+bool taxon_is_specific(const Taxon* taxon)
+{
+    auto rank = taxon->get_data().rank;
+
+    return rank_is_specific(rank);
+}
+
+bool taxon_is_genus(const Taxon* taxon)
+{
+    return taxon->get_data().rank == TaxonomicRank::RANK_GENUS;
+}
+
+bool taxon_is_higher(const Taxon* taxon)
+{
+    return taxon->get_data().rank < TaxonomicRank::RANK_SPECIES;
+}
+
 vector<pair<const Taxon*,const string&>> exact_synonym_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
 {
     for(auto& c: query)
@@ -1026,22 +1043,18 @@ vector<pair<const Taxon*,const string&>> exact_synonym_search(const RichTaxonomy
     return exact_synonym_search(context_root, query, ok);
 }
 
-bool taxon_is_specific(const Taxon* taxon)
+vector<pair<const Taxon*,const string&>> exact_synonym_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
-    auto rank = taxon->get_data().rank;
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					       {
+						   if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+						   if (not taxon_is_higher(taxon)) return false;
+						   return true;
+					       };
 
-    return rank_is_specific(rank);
+    return exact_synonym_search(context_root, query, ok);
 }
 
-bool taxon_is_genus(const Taxon* taxon)
-{
-    return taxon->get_data().rank == TaxonomicRank::RANK_GENUS;
-}
-
-bool taxon_is_higher(const Taxon* taxon)
-{
-    return taxon->get_data().rank < TaxonomicRank::RANK_SPECIES;
-}
 
 
 vector<const Taxon*> exact_name_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
@@ -1111,6 +1124,16 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy, cons
     
 }
 
+vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
+{
+    return {};
+}
+
+vector<const Taxon*> prefix_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
+{
+    return {};
+}
+
 vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const string& query, bool include_suppressed)
 {
     auto context_root = taxonomy.get_tax_tree().get_root();
@@ -1134,6 +1157,11 @@ struct ContextSearcher
 	context_root = taxonomy.included_taxon_from_id(c.ott_id);
     }
 };
+
+string escape_query_string(const string& name)
+{
+    return name;
+}
 
 json get_taxon_json(const RichTaxonomy& taxonomy, const Taxon& taxon)
 {
@@ -1343,10 +1371,48 @@ epithet that starts with 'm'.
 autocompleting name fields on forms, use the `match_names` service.
 */
 
+json autocomplete_json(const RichTaxonomy& taxonomy, const Taxon* taxon)
+{
+    json match;
+    match["ott_id"] = taxon->get_ott_id();
+    match["unique_name"] = get_taxon_unique_name(*taxon);
+    match["is_suppressed"] = taxonomy.node_is_suppressed_from_tnrs(taxon);
+    match["is_higher"] = taxon_is_higher(taxon);
+    return match;
+}    
+
+json autocomplete_json(const RichTaxonomy& taxonomy, const pair<const Taxon*,const string&>& p)
+{
+    auto [taxon,syonym] = p;
+    json match;
+    match["ott_id"] = taxon->get_ott_id();
+    match["unique_name"] = get_taxon_unique_name(*taxon);
+    match["is_suppressed"] = taxonomy.node_is_suppressed_from_tnrs(taxon);
+    match["is_higher"] = taxon_is_higher(taxon);
+    return match;
+}
+
+void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<const Taxon*> taxa)
+{
+    for(auto taxon:taxa)
+	j.push_back(autocomplete_json(taxonomy,taxon));
+}
+		    
+void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<pair<const Taxon*,const string&>> taxa)
+{
+    for(auto [taxon,synonym]:taxa)
+	j.push_back(autocomplete_json(taxonomy,taxon));
+}
+		    
+
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
 string tnrs_autocomplete_name_ws_method(const string& name, const string& context_name, bool include_suppressed, const RichTaxonomy& taxonomy)
 {
-    auto query = name;
+    json response;
+
+    // We need to escape the query string.
+    auto escaped_query = escape_query_string(name);
+
     // This corresponds to a SingleNamePrefixQuery in taxomachine.
     // * See org/opentree/taxonomy/plugins/tnrs_v3.java
     // * See org/opentree/tnrs/queries/SingleNamePrefixQuery.java
@@ -1359,32 +1425,31 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
     auto context = determine_context(context_name);
     auto context_root = taxonomy.included_taxon_from_id(context->ott_id);
 
-    // 2. 
-
+    // 2. If we have a space, then assume the first part is a genus and match species names within the genus
     if (auto has_genus = split_genus(name))
     {
-	auto species_name_hits = exact_name_search_species(taxonomy, context_root, query, include_suppressed);
-	auto synonym_hits = exact_synonym_search(taxonomy, context_root, query, include_suppressed);
-	// if no matches // no exact hit against the species index
-
+	// Search against species and synonyms
+	auto species_name_hits = exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed);
+	add_hits(response, taxonomy, species_name_hits);
+	auto synonym_hits = exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed);
+	add_hits(response, taxonomy, synonym_hits);
+	if (response.size()) return response;
+	
+	// no exact hit against the species index
 	auto [genus,species] = *has_genus;
-	if (species_name_hits.empty() and synonym_hits.empty()) // no exact hit against the species index
+	auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
+
+	if (not genus_hits.empty()) // the first word was an exact match against the genus index
 	{
-	    auto genus_hits = exact_name_search_genus(taxonomy, context_root, query, include_suppressed);
-	    if (not genus_hits.empty()) // the first word was an exact match against the genus index
+	    for(auto genus: genus_hits)
 	    {
-		for(auto genus: genus_hits)
+		for(auto species: iter_post_n_const(*context_root))
 		{
-		    for(auto species: iter_post_n_const(*context_root))
-		    {
-			if (not taxon_is_specific(species)) continue;
-		    }
+		    if (not taxon_is_specific(species)) continue;
 		}
 	    }
 	}
-	else
-	{
-	}
+	
 	// exactly search genus against taxNodesByNameGenera
 	// if there are NO matches (no exact hi for first word against the genus index)
 	//   match full query string (with space) against taxNodesByNameHigher (higher taxon index)
@@ -1393,23 +1458,23 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
 
 	// if there ARE matches (... this is getting complicated!
     }
-    else
+    else // does not contain a space at all
     {
-	// search taxNodesByNameOfSynonymHigher(includeDubious)
-	// if no matches, do a prefix search on TaxNodesByNameHigher(includeDubious)
-	// if no matches, do a prefix search on TaxNodesBySynonym(includeDubious)
-	// if no matches, do a fuzzy search on taxNodesByNameOrSynonymHigher(includeDubious)
+	add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+	add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+	if (not response.empty()) return response;
+
+	// Do a prefix query against the higher taxon index
+	add_hits(response, taxonomy, prefix_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+	if (not response.empty()) return response;
+
+	// Do a prefix query against the all taxa synonym index
+	add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
+	if (not response.empty()) return response;
 	
+	// fuzzy search on higher names and synonyms
     }
     
-    json response;
-    LOG(WARNING)<<"tnrs/autocomplete_name";
-    json match;
-    match["ott_id"] = 0;
-    match["unique_name"] = "string";
-    match["is_suppressed"] = false;
-    match["is_higher"] = true;
-    response.push_back(match);
     return response.dump(1);
 }
 
