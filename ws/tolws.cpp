@@ -999,6 +999,13 @@ bool lcase_string_equals(const string_view& s1, const T& s2)
     return true;
 }
 
+bool lcase_match_prefix(const string_view& s, const string_view& prefix)
+{
+    if (prefix.size() < s.size()) return false;
+
+    return lcase_string_equals(s.substr(prefix.size()), prefix);
+}
+
 bool taxon_is_specific(const Taxon* taxon)
 {
     auto rank = taxon->get_data().rank;
@@ -1123,12 +1130,32 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy, cons
 					};
 
     return exact_name_search(context_root, query, ok);
-    
+}
+
+vector<const Taxon*> prefix_name_search(const Taxon* context_root, const string& query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
+{
+    vector<const Taxon*> hits;
+    for(auto taxon: iter_post_n_const(*context_root))
+    {
+	if (not ok(taxon)) continue;
+
+	if (lcase_match_prefix(taxon->get_data().get_nonuniqname(), query))
+	    hits.push_back(taxon);
+    }
+
+    return hits;
 }
 
 vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
 {
-    return {};
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					{
+					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+					    if (not taxon_is_higher(taxon)) return false;
+					    return true;
+					};
+
+    return prefix_name_search(context_root, query, ok);
 }
 
 vector<const Taxon*> prefix_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
@@ -1399,13 +1426,6 @@ void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<pair<const Tax
 {
     for(auto [taxon,synonym]:taxa)
 	j.push_back(autocomplete_json(taxonomy,taxon));
-}
-
-bool lcase_match_prefix(const string_view& s, const string_view& prefix)
-{
-    if (prefix.size() < s.size()) return false;
-
-    return lcase_string_equals(s.substr(prefix.size()), prefix);
 }
 
 // Find all species in the genus that have the given prefix
