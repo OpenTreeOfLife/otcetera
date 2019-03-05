@@ -1025,9 +1025,6 @@ bool taxon_is_higher(const Taxon* taxon)
 
 vector<pair<const Taxon*,const string&>> exact_synonym_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
 {
-    for(auto& c: query)
-	c = std::tolower(c);
-
     vector<pair<const Taxon*,const string&>> hits;
     for(auto taxon: iter_post_n_const(*context_root))
     {
@@ -1146,6 +1143,17 @@ vector<const Taxon*> prefix_name_search(const Taxon* context_root, const string&
     return hits;
 }
 
+vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
+{
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					{
+					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+					    return true;
+					};
+
+    return prefix_name_search(context_root, query, ok);
+}
+
 vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
@@ -1158,9 +1166,30 @@ vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy, con
     return prefix_name_search(context_root, query, ok);
 }
 
-vector<const Taxon*> prefix_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
+vector<pair<const Taxon*,const string&>> prefix_synonym_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
 {
-    return {};
+    vector<pair<const Taxon*,const string&>> hits;
+    for(auto taxon: iter_post_n_const(*context_root))
+    {
+	if (not ok(taxon)) continue;
+
+	for(auto& tjs: taxon->get_data().junior_synonyms)
+	    if (lcase_match_prefix(tjs->get_name(), query))
+		hits.push_back({taxon,tjs->get_name()});
+    }
+
+    return hits;
+}
+
+vector<pair<const Taxon*,const string&>> prefix_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
+{
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
+					       {
+						   if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+						   return true;
+					       };
+
+    return prefix_synonym_search(context_root, query, ok);
 }
 
 vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const string& query, bool include_suppressed)
@@ -1304,7 +1333,7 @@ const Context* determine_context(const optional<string>& context_name)
 std::string tnrs_match_names_ws_method(const vector<string>& names,
                                        const optional<string>& context_name,
                                        bool do_approximate_matching,
-                                       const optional<vector<string>>& ids,
+                                       const optional<vector<string>>& /* ids */, // FIXME: Do we need to implement this?
                                        bool include_suppressed,
                                        const RichTaxonomy& taxonomy)
 {
@@ -1429,7 +1458,7 @@ void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<pair<const Tax
 }
 
 // Find all species in the genus that have the given prefix
-vector<const Taxon*> prefix_search_species_in_genus(const RichTaxonomy& taxonomy, const Taxon* genus, const string_view& species_prefix)
+vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus, const string_view& species_prefix)
 {
     vector<const Taxon*> match_species;
 
@@ -1483,16 +1512,22 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
 	    auto [query_genus,query_species] = *query_genus_species;
 
 	    for(auto genus: genus_hits)
-		add_hits(response, taxonomy, prefix_search_species_in_genus(taxonomy, genus, query_species));
+		add_hits(response, taxonomy, prefix_search_species_in_genus(genus, query_species));
 	}
-	
-	// exactly search genus against taxNodesByNameGenera
-	// if there are NO matches (no exact hi for first word against the genus index)
-	//   match full query string (with space) against taxNodesByNameHigher (higher taxon index)
-	//   if there's no match, prefix-math query against synonym names and higher-synonym names
-	//   if there's STILL no match, fuzzy-match against the entire index
+	if (not response.empty()) return response;
 
-	// if there ARE matches (... this is getting complicated!
+	// no exact hit for first word against the genus index
+
+        // Hit query string against the higher taxon index... not sure if this is useful, since it has a space
+	add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+	if (not response.empty()) return response;
+
+	// Prefix query against the synonyms and higher taxa
+	add_hits(response, taxonomy, prefix_name_search(taxonomy, context_root, escaped_query, include_suppressed));
+	add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
+	if (not response.empty()) return response;
+	
+	// fuzzy search on names and synonyms
     }
     else // does not contain a space at all
     {
