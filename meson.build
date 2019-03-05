@@ -35,7 +35,9 @@ subdir('otc')
 # build tools
 subdir('tools')
 # build web services
-subdir('ws')
+if get_option('webservices')
+  subdir('ws')
+endif
 
 # check if python subprocess module is installed
 if true

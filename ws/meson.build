@@ -1,11 +1,13 @@
-ssl  = dependency('openssl', required: false)
-curl = dependency('libcurl', required: false)
-threads = dependency('threads', required: false)
+ssl  = dependency('openssl')
+curl = dependency('libcurl')
+threads = dependency('threads')
 
-restbed = cpp.find_library('restbed', required: false)
-if not restbed.found() or not ssl.found() or not curl.found()
-  restbed = disabler()
-endif
+restbed = cpp.find_library('restbed')
+
+# FIXME: we could put this back if we made enabling webservices a build-if-you-can tri-state option.
+# if not restbed.found() or not ssl.found() or not curl.found()
+#  restbed = disabler()
+# endif
 
 otc_tol_ws_sources = ['tolws.cpp', 'tolwsadaptors.cpp', 'tolwsbooting.cpp', 'nexson/nexson.cpp','trees_to_serve.cpp',
 		      'tnrs/nomenclature.cpp', 'tnrs/context.cpp']
