@@ -46,9 +46,9 @@ script:
   - ( cd restbed/build ; cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
 # build otcetera
   - export CPPFLAGS="-I${HOME}/local/include"
-  - export LDFLAGS="-L${HOME}/local/library"
+  - export LDFLAGS="-L${HOME}/local/lib:-L${HOME}/local/library"
   - if ! meson build --prefix=$HOME/local ; then cat build/meson-logs/meson-log.txt ; exit 1 ; fi
   - ninja -C build install
 # test otcetera
-  - export LD_LIBRARY_PATH="${HOME}/local/library"
+  - export LD_LIBRARY_PATH="${HOME}/local/lib:${HOME}/local/library"
   - if ! ninja -C build test ; then cat build/meson-logs/testlog.txt ; exit 1 ; fi
