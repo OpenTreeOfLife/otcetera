@@ -22,6 +22,7 @@ programs = [
   ['displayedstats',  'displayed-stats'],
   ['subproblemstats',  'subproblem-stats'],
   ['nonterminaltoexemplars',   'nonterminals-to-exemplars'],
+  ['moveextincthighertoavoidcontestingtaxa',   'move-extinct-higher-to-avoid-contesting-taxa '],
   ['setofids',  'set-of-ids'],
   ['suppressmonotypic',   'suppress-monotypic'],
   ['assertinvariants',   'assert-invariants'],
