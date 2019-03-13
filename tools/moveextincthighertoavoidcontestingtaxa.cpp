@@ -7,7 +7,7 @@ using json = nlohmann::json;
 
 
 
-struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
+struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
     int numErrors;
     bool useStdOut;
     bool useCmdLine;
@@ -17,11 +17,12 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     std::istream * extinctInStream;
     std::ostream * jsonOutStream;
     std::set<OttId> extinctIDSet;
+    std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
+    //std::vector<TreeMappedWithSplits *> treePtrByIndex;
+    std::size_t phylogeniesProcessed = 0;
     /*
     std::set<const RootedTreeNodeNoData *> includedNodes;
-    std::map<std::unique_ptr<TreeMappedEmptyNodes>, std::size_t> inputTreesToIndex;
-    std::vector<TreeMappedEmptyNodes *> treePtrByIndex;
-    using TreeNdPair = std::pair<TreeMappedEmptyNodes *, RootedTreeNodeNoData *>;
+    using TreeNdPair = std::pair<TreeMappedWithSplits *, RootedTreeNodeNoData *>;
     using ListTreeNdPair = std::list<TreeNdPair>;
     std::map<RootedTreeNodeNoData *, ListTreeNdPair> nonTermToMappedPhylo;
     std::string exportTreeFile;
@@ -50,6 +51,17 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         if (j.type() == json::value_t::null) {
             //pass
         } else if (j.type() == json::value_t::array) {
+            unsigned index = 0;
+            for (auto i : j) {
+                auto itype = i.type();
+                if (itype != json::value_t::number_integer && itype != json::value_t::number_unsigned) {
+                    LOG(ERROR) << "Could not parse all elements of input list of as integer:\n" << i ;
+                    return false;
+                }
+                unsigned val = i.get<OttId>();
+                std::cout << "Element[" << index++ << "] = " << val << '\n';
+                extinctIDSet.insert(val);
+            }
 
         } else {
             LOG(ERROR) << "Expecting an array of integers as the JSON content.";
@@ -87,9 +99,13 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     }
     
     bool process_taxonomy_tree(OTCLI & otCLI) override {
-        bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::process_taxonomy_tree(otCLI);
+        bool r = TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
         otCLI.get_parsing_rules().set_ott_idForInternals = false;
+
+        for (auto nd : iter_pre(*taxonomy)) {
+            std::cout << "nd id = " << nd->get_ott_id() << '\n';
+        }
         return r;
     }
     /*
@@ -133,7 +149,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                 exemplificationsForJSONLog[nid] = exemplarIDs;
             }
             for (auto treeNdPair : treeNdPairList) {
-                TreeMappedEmptyNodes * treeP = treeNdPair.first;
+                TreeMappedWithSplits * treeP = treeNdPair.first;
                 RootedTreeNodeNoData * nodeP = treeNdPair.second;
                 replaceTipWithSet(*treeP, nodeP, exemplarIDs);
             }
@@ -187,14 +203,30 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     }
  
 
-    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedEmptyNodes> treeup) override {
+    bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> treeup) override {
+        std::size_t treeIndex = phylogeniesProcessed;
+        TreeMappedWithSplits * raw = treeup.get();
+        
+        std::set<const TreeMappedWithSplits::node_type *> extinctTips; 
+        for (auto nd : iter_leaf(*raw)) {
+            auto ottId = nd->get_ott_id();
+            if (contains(extinctIDSet, ottId)) {
+                extinctTips.insert(nd);
+                LOG(INFO) << "Tree " << treeIndex << " has extinct tip with ID=" << ottId << ".\n";
+            }
+        }
+        if (extinctTips.empty()) {
+            LOG(INFO) << "Tree " << treeIndex << " contains no extinct tips. flushing...\n";
+        } else {
+            inputTreesToIndex[std::move(treeup)] = treeIndex;
+        }
         /*
         assert(treeup != nullptr);
         assert(taxonomy != nullptr);
         // Store the tree pointer with a map to its index, and an alias for fast index->tree.
         std::size_t treeIndex = inputTreesToIndex.size();
         assert(treeIndex == treePtrByIndex.size());
-        TreeMappedEmptyNodes * raw = treeup.get();
+        TreeMappedWithSplits * raw = treeup.get();
         inputTreesToIndex[std::move(treeup)] = treeIndex;
         treePtrByIndex.push_back(raw);
         // Store the tree's filename
@@ -302,5 +334,5 @@ int main(int argc, char *argv[]) {
                   "exinct OTT IDs as JSON argument, not the filepath to JSON",
                   handleExtinctJSONInline,
                   true);
-    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, false);
+    return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, true);
 }
