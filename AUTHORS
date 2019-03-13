@@ -4,7 +4,7 @@ otcetera has been written by:
 
 otceteraincludes: http://github.com/easylogging
 
-otcetera depends on https://github.com/miloyip/rapidjson
+otcetera depends on https://github.com/nlohmann/json
 
 otcetera has borrowed many ideas/snippets from NCL (see author list for NCL below)
 
