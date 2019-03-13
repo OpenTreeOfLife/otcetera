@@ -32,6 +32,6 @@ int main(int argc, char *argv[]) {
                  "takes a filepath to a newick file and reports the number of nodes of each out-degree",
                  {"some.tre"});
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wdd = writeDegreeDistribution<Tree_t>;
-    return tree_processing_main<Tree_t>(otCLI, argc, argv, wdd, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, wdd, nullptr, nullptr, 1);
 }
 

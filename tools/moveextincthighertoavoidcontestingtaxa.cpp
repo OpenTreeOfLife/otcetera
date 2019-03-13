@@ -1,6 +1,7 @@
 #include "otc/otcli.h"
 #include "otc/supertree_util.h"
 #include "json.hpp"
+#include <sstream>
 using namespace otc;
 using json = nlohmann::json;
 
@@ -9,7 +10,7 @@ using json = nlohmann::json;
 struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
     int numErrors;
     bool useStdOut;
-    bool useStdIn;
+    bool useCmdLine;
     std::string extinctInputJSONFilepath;
     std::string extinctInputJSONInline;
     std::string outputJSONLogFile;
@@ -36,7 +37,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     MoveExtinctHigherState()
         :numErrors(0),
         useStdOut(false),
-        useStdIn(false) {
+        useCmdLine(false) {
     }
     bool readExtinctIDsFromStream(OTCLI & otCLI, std::istream &inp) {
         json j;
@@ -46,21 +47,29 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             LOG(ERROR) << "Could not parse input JSON list of IDs.:\n" << x.what() << " at byte " << x.byte ;
             return false;
         }
-        std::cerr << "Object type is " << j.type() << '\n';
+        if (j.type() == json::value_t::null) {
+            //pass
+        } else if (j.type() == json::value_t::array) {
+
+        } else {
+            LOG(ERROR) << "Expecting an array of integers as the JSON content.";
+        }
         return true;
     }
 
     bool readExtinctIDs(OTCLI & otCLI) {
-        ifstream extinctJSONStreamLocal;
-        if (useStdIn) {
+        std::ifstream extinctJSONStreamLocal;
+        std::istringstream extinctJSONStringWrapper;
+        if (useCmdLine) {
             if (!extinctInputJSONFilepath.empty()) {
-                LOG(ERROR) << "Cannot use standard input and input JSON file options at the same time!";
+                LOG(ERROR) << "Cannot use command line JSON and input JSON file options at the same time!";
                 return false;
             }
-            extinctInStream = &std::cin;
+            extinctJSONStringWrapper.str(extinctInputJSONInline);
+            extinctInStream = &extinctJSONStringWrapper;
         } else {
             if (extinctInputJSONFilepath.empty()) {
-                LOG(ERROR) << "Must use either the standard input or input JSON file options!";
+                LOG(ERROR) << "Must use either the command line JSON or input JSON file options!";
                 return false;
             }
             extinctJSONStreamLocal.open(extinctInputJSONFilepath);
@@ -73,10 +82,11 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         return readExtinctIDsFromStream(otCLI, *extinctInStream);
     }
 
+    bool pretree_read_hook(OTCLI & otCLI) override {
+        return readExtinctIDs(otCLI);
+    }
+    
     bool process_taxonomy_tree(OTCLI & otCLI) override {
-        if (!readExtinctIDs(otCLI)) {
-            return false;
-        }
         bool r = TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes>::process_taxonomy_tree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
         otCLI.get_parsing_rules().set_ott_idForInternals = false;
@@ -237,7 +247,6 @@ bool handleJSONOutput(OTCLI & otCLI, const std::string & narg) {
         throw OTCError("Expecting filepath of output JSON after the -j argument.");
     }
     proc->outputJSONLogFile = narg;
-    proc->storeLogInfo = true;
     return true;
 }
 
@@ -259,6 +268,7 @@ bool handleExtinctJSONInline(OTCLI & otCLI, const std::string & narg) {
         throw OTCError("Expecting JSON content inline after the -i argument.");
     }
     proc->extinctInputJSONInline = narg;
+    proc->useCmdLine = true;
     return true;
 }
 

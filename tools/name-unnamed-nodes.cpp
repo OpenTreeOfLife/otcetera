@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     if (argc < 2) {
         throw OTCError("No trees provided!");
     }
-    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)) {
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, nullptr, 1)) {
         return 1;
     }
     if (trees.empty()) {

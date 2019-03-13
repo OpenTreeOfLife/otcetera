@@ -47,6 +47,6 @@ int main(int argc, char *argv[]) {
                  {"some.tre"});
     otCLI.get_parsing_rules().set_ott_idForInternals = false;
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wdd = suppressMonotypicAndWrite<Tree_t>;
-    return tree_processing_main<Tree_t>(otCLI, argc, argv, wdd, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, wdd, nullptr, nullptr, 1);
 }
 
