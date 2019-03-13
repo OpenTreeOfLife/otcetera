@@ -621,7 +621,7 @@ and the directories that describe the expected behavior are in the `expected` su
 
 ## ACKNOWLEDGEMENTS
 See comments above about usage of [easyloggingpp](https://github.com/easylogging/)
-and [rapidjson](https://github.com/miloyip/rapidjson)
+and [nlohmann::json](https://github.com/nlohmann/json)
 
 To acknowledge the contributions of the NCL code and ideas, a snapshot of the
 NCL credits taken from the version of NCL used to jump start otcetera is:
