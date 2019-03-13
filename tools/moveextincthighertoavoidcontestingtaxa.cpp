@@ -98,7 +98,7 @@ void writeJSONLogForExemplifications(const std::string & outfilename,
     outstream << document.dump(1) << std::endl;
 }
 
-struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
+struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMappedEmptyNodes> {
     int numErrors;
     bool useStdOut;
     std::set<const RootedTreeNodeNoData *> includedNodes;
@@ -107,16 +107,18 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     using TreeNdPair = std::pair<TreeMappedEmptyNodes *, RootedTreeNodeNoData *>;
     using ListTreeNdPair = std::list<TreeNdPair>;
     std::map<RootedTreeNodeNoData *, ListTreeNdPair> nonTermToMappedPhylo;
-    std::string exportDir;
+    std::string exportTreeFile;
     std::ofstream nonEmptyFileStream;
     std::string outputNonEmptyTreeOutput;
     std::string outputJSONLogFile;
+    std::string extinctInputJSON;
+    std::string extinctInputJSONInline;
     bool storeLogInfo = false;
     std::map<OttId, OttIdSet> exemplificationsForJSONLog;
     std::map<OttId, std::list<std::string> > exemplifedTaxonToTreeNamesForJSONLog;
 
-    virtual ~NonTerminalsToExemplarsState(){}
-    NonTerminalsToExemplarsState()
+    virtual ~MoveExtinctHigherState(){}
+    MoveExtinctHigherState()
         :numErrors(0),
         useStdOut(false) {
     }
@@ -183,12 +185,12 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     }
 
     bool summarize(OTCLI &otCLI) override {
-        if ((!useStdOut) && exportDir.empty()) {
+        if ((!useStdOut) && exportTreeFile.empty()) {
             otCLI.err << "Either the -e flag to specify and export directory or the -o flag mandatory\n";
             return false;
         }
-        if ((!useStdOut) && exportDir[exportDir.length() - 1] != '/') {
-            exportDir += '/';
+        if ((!useStdOut) && exportTreeFile[exportTreeFile.length() - 1] != '/') {
+            exportTreeFile += '/';
         }
         // replace non-terminal tips with their expansion
         exemplifyNonterminals();
@@ -196,12 +198,12 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
         pruneTaxonomyToIncludedLeaves();
         // write the output
         const std::string tn = "taxonomy.tre";
-        auto tp = exportDir + tn;
+        auto tp = exportTreeFile + tn;
         if (!writeTreeOrDie(otCLI, tp, *taxonomy, useStdOut)) {
             return false;
         }
         for (auto treePtr : treePtrByIndex) {
-            auto pp = exportDir + treePtr->get_name();
+            auto pp = exportTreeFile + treePtr->get_name();
             if (!writeTreeOrDie(otCLI, pp, *treePtr, useStdOut)) {
                 return false;
             }
@@ -261,42 +263,36 @@ struct NonTerminalsToExemplarsState : public TaxonomyDependentTreeProcessor<Tree
     }
 };
 
-bool handleNonemptyTreeOutput(OTCLI & otCLI, const std::string &narg);
-bool handleExportModified(OTCLI & otCLI, const std::string &narg);
+
+bool handleExport(OTCLI & otCLI, const std::string &narg);
 bool handleStdout(OTCLI & otCLI, const std::string &narg);
+bool handleJSONOutput(OTCLI & otCLI, const std::string &narg);
+bool handleExtinctJSON(OTCLI & , const std::string &);
+bool handleExtinctJSONInline(OTCLI & , const std::string &) ;
 
 bool handleStdout(OTCLI & otCLI, const std::string &) {
-    NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
+    MoveExtinctHigherState * proc = static_cast<MoveExtinctHigherState *>(otCLI.blob);
     assert(proc != nullptr);
     proc->useStdOut = true;
     return true;
 }
 
-bool handleExportModified(OTCLI & otCLI, const std::string &narg) {
-    NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
+bool handleExport(OTCLI & otCLI, const std::string & narg) {
+    MoveExtinctHigherState * proc = static_cast<MoveExtinctHigherState *>(otCLI.blob);
     assert(proc != nullptr);
     if (narg.empty()) {
-        throw OTCError("Expecting a list of IDs after the -e argument.");
+        throw OTCError("output filepath after the -e argument.");
     }
-    proc->exportDir = narg;
+    proc->exportTreeFile = narg;
     return true;
 }
 
-bool handleNonemptyTreeOutput(OTCLI & otCLI, const std::string &narg) {
-    NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
-    assert(proc != nullptr);
-    if (narg.empty()) {
-        throw OTCError("Expecting a list of IDs after the -n argument.");
-    }
-    proc->outputNonEmptyTreeOutput = narg;
-    return true;
-}
 
-bool handleJSONOutput(OTCLI & otCLI, const std::string &narg) {
-    NonTerminalsToExemplarsState * proc = static_cast<NonTerminalsToExemplarsState *>(otCLI.blob);
+bool handleJSONOutput(OTCLI & otCLI, const std::string & narg) {
+    MoveExtinctHigherState * proc = static_cast<MoveExtinctHigherState *>(otCLI.blob);
     assert(proc != nullptr);
     if (narg.empty()) {
-        throw OTCError("Expecting a list of IDs after the -j argument.");
+        throw OTCError("Expecting filepath of output JSON after the -j argument.");
     }
     proc->outputJSONLogFile = narg;
     proc->storeLogInfo = true;
@@ -304,44 +300,55 @@ bool handleJSONOutput(OTCLI & otCLI, const std::string &narg) {
 }
 
 
-bool handleUseJustOTTID(OTCLI & , const std::string &) {
-    transferNodeNameToExemplars = false;
+bool handleExtinctJSON(OTCLI & otCLI, const std::string & narg) {
+    MoveExtinctHigherState * proc = static_cast<MoveExtinctHigherState *>(otCLI.blob);
+    assert(proc != nullptr);
+    if (narg.empty()) {
+        throw OTCError("Expecting filepath to the exinction ID JSON file  the -t argument.");
+    }
+    proc->extinctInputJSON = narg;
+    return true;
+}
+
+bool handleExtinctJSONInline(OTCLI & otCLI, const std::string & narg) {
+    MoveExtinctHigherState * proc = static_cast<MoveExtinctHigherState *>(otCLI.blob);
+    assert(proc != nullptr);
+    if (narg.empty()) {
+        throw OTCError("Expecting JSON content inline after the -i argument.");
+    }
+    proc->extinctInputJSONInline = narg;
     return true;
 }
 
 
 int main(int argc, char *argv[]) {
-    const char * helpMsg = "takes an -e flag specifying an export diretory and at least 2 newick file paths: " \
-        "a full taxonomy tree some number of input trees. Any tip in non-taxonomic input that is mapped to " \
-        "non-terminal taxon will be remapped such that the parent of the non-terminal tip will hold all of " \
-        "the expanded exemplars. The exemplars will be the any tip which both (a) is contained in this non-terminal " \
-        "taxon in the taxonomy and (b) occurs (or has been chosen as an exemplar), in another input tree. The modified " \
-        "version of each input will be written in the export directory. Trees with no non-terminal tips should " \
-        "be unaltered. The taxonomy written out will be the taxonomy restricted to the set of leaves that are " \
-        "leaves of the exported trees";
-    OTCLI otCLI("otc-nonterminals-to-exemplars",
+    const char * helpMsg =  "This tool treats the fossil taxa in the input taxonomic tree as poorly placed. " \
+        "It will produce a set of edits (encoded as JSON) that can be applied to the taxonomy. If these " \
+        "edits were applied to the taxonomy, the none of the fossil taxa included in the phylogenetic trees " \
+        "would increase the set of taxa that are contested by input trees.\n" \
+        "Input is a full taxonomy tree some number of input trees, and a (JSON-formatted) list of taxon IDs that are extinct.\n" \
+        "Extinct taxon info can be given as a file name (-t flag) or on the command-line (-i flag)\n" \
+        "The output JSON can be specified as stdout (-o flag) or as filename (-j flag)\n";
+        
+    OTCLI otCLI("otc-move-extinct-higher-to-avoid-contesting-taxa",
                 helpMsg,
-                "-estep_5 taxonomy.tre inp1.tre inp2.tre");
-    NonTerminalsToExemplarsState proc;
-    otCLI.add_flag('e',
-                  "ARG should be the name of a directory. A .tre file will be written to this directory for each input tree",
-                  handleExportModified,
-                  true);
+                "-jedits.json -textinct.json taxonomy.tre inp1.tre inp2.tre");
+    MoveExtinctHigherState proc;
     otCLI.add_flag('o',
                   " requests that standard output stream, rather than the export directory, be used for all output.",
                   handleStdout,
                   false);
-    otCLI.add_flag('n',
-                  "ARG is and output file that will list the filename for each input tree that was not empty",
-                  handleNonemptyTreeOutput,
-                  true);
     otCLI.add_flag('j',
                   "Name of an output JSON file that summarizes the set of IDs used to exemplify each taxon.",
                   handleJSONOutput,
                   true);
     otCLI.add_flag('t',
-                  "Label exemplified taxa with just OTT ID. If omitted, they are labelled with nodeID_ottID",
-                  handleUseJustOTTID,
-                  false);
+                  "Name of input JSON file listing the exinct OTT IDs",
+                  handleExtinctJSON,
+                  true);
+    otCLI.add_flag('i',
+                  "exinct OTT IDs as JSON argument, not the filepath to JSON",
+                  handleExtinctJSONInline,
+                  true);
     return tax_dependent_tree_processing_main(otCLI, argc, argv, proc, 2, false);
 }
