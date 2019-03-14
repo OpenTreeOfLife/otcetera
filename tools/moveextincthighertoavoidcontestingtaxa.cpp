@@ -16,10 +16,12 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     std::string outputJSONLogFile;
     std::istream * extinctInStream;
     std::ostream * jsonOutStream;
+    std::ofstream jsonOutFileIfUsed;
     std::set<OttId> extinctIDSet;
     std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
     //std::vector<TreeMappedWithSplits *> treePtrByIndex;
     std::size_t phylogeniesProcessed = 0;
+    std::vector<std::string> namesOfTreesWithoutExtinct;
     /*
     std::set<const RootedTreeNodeNoData *> includedNodes;
     using TreeNdPair = std::pair<TreeMappedWithSplits *, RootedTreeNodeNoData *>;
@@ -37,7 +39,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     virtual ~MoveExtinctHigherState(){}
     MoveExtinctHigherState()
         :numErrors(0),
-        useStdOut(false),
+        useStdOut(true),
         useCmdLine(false) {
     }
     bool readExtinctIDsFromStream(OTCLI & otCLI, std::istream &inp) {
@@ -59,7 +61,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                     return false;
                 }
                 unsigned val = i.get<OttId>();
-                std::cout << "Element[" << index++ << "] = " << val << '\n';
+                std::cerr << "Element[" << index++ << "] = " << val << '\n';
                 extinctIDSet.insert(val);
             }
 
@@ -91,6 +93,17 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             }
             extinctInStream = &extinctJSONStreamLocal;
         }
+        if (useStdOut) {
+            jsonOutStream = &std::cout;
+        } else {
+            jsonOutFileIfUsed.open(outputJSONLogFile);
+            if (!jsonOutFileIfUsed.good()) {
+                jsonOutFileIfUsed.close();
+                LOG(ERROR) << "Could not open JSON output path at \"" << outputJSONLogFile << "\"";
+                return false;
+            }
+            jsonOutStream = &jsonOutFileIfUsed;
+        }
         return readExtinctIDsFromStream(otCLI, *extinctInStream);
     }
 
@@ -104,7 +117,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         otCLI.get_parsing_rules().set_ott_idForInternals = false;
 
         for (auto nd : iter_pre(*taxonomy)) {
-            std::cout << "nd id = " << nd->get_ott_id() << '\n';
+            std::cerr << "nd id = " << nd->get_ott_id() << '\n';
         }
         return r;
     }
@@ -171,55 +184,42 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     */
     
     bool summarize(OTCLI &otCLI) override {
-        /*
-        if ((!useStdOut) && exportTreeFile.empty()) {
-            otCLI.err << "Either the -e flag to specify and export directory or the -o flag mandatory\n";
-            return false;
+        json document;
+        json jTreesWoExt = json::array(); 
+        for (auto i : namesOfTreesWithoutExtinct) {
+            jTreesWoExt.push_back(i);
         }
-        if ((!useStdOut) && exportTreeFile[exportTreeFile.length() - 1] != '/') {
-            exportTreeFile += '/';
+        document["trees_with_no_extinct_tips"] = jTreesWoExt;
+        assert(jsonOutStream != nullptr);
+        *jsonOutStream << document << std::endl;
+        if (jsonOutStream == & jsonOutFileIfUsed) {
+            jsonOutFileIfUsed.close();
+            jsonOutStream = nullptr;  
         }
-        // replace non-terminal tips with their expansion
-        exemplifyNonterminals();
-        // prune down the taxonomy to the set of used leaves
-        pruneTaxonomyToIncludedLeaves();
-        // write the output
-        const std::string tn = "taxonomy.tre";
-        auto tp = exportTreeFile + tn;
-        if (!writeTreeOrDie(otCLI, tp, *taxonomy, useStdOut)) {
-            return false;
-        }
-        for (auto treePtr : treePtrByIndex) {
-            auto pp = exportTreeFile + treePtr->get_name();
-            if (!writeTreeOrDie(otCLI, pp, *treePtr, useStdOut)) {
-                return false;
-            }
-        }
-        nonEmptyFileStream.close();
-        if (storeLogInfo) {
-            writeJSONLogForExemplifications(outputJSONLogFile, exemplificationsForJSONLog, exemplifedTaxonToTreeNamesForJSONLog);
-        }*/
         return true;
     }
  
 
     bool process_source_tree(OTCLI & otCLI, std::unique_ptr<TreeMappedWithSplits> treeup) override {
-        std::size_t treeIndex = phylogeniesProcessed;
+        std::size_t treeIndex = phylogeniesProcessed++;
         TreeMappedWithSplits * raw = treeup.get();
-        
+        raw->set_name(otCLI.currentFilename);
         std::set<const TreeMappedWithSplits::node_type *> extinctTips; 
         for (auto nd : iter_leaf(*raw)) {
             auto ottId = nd->get_ott_id();
             if (contains(extinctIDSet, ottId)) {
                 extinctTips.insert(nd);
-                LOG(INFO) << "Tree " << treeIndex << " has extinct tip with ID=" << ottId << ".\n";
+                LOG(INFO) << "Tree " << treeIndex << " name=" <<  raw->get_name() << " has extinct tip with ID=" << ottId << ".\n";
             }
         }
         if (extinctTips.empty()) {
-            LOG(INFO) << "Tree " << treeIndex << " contains no extinct tips. flushing...\n";
-        } else {
-            inputTreesToIndex[std::move(treeup)] = treeIndex;
+            LOG(INFO) << "Tree " << treeIndex << " name=" <<  raw->get_name() << " contains no extinct tips. flushing...\n";
+            namesOfTreesWithoutExtinct.push_back(raw->get_name());
+            return true;
         }
+        inputTreesToIndex[std::move(treeup)] = treeIndex;
+        
+
         /*
         assert(treeup != nullptr);
         assert(taxonomy != nullptr);
@@ -260,17 +260,10 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
 };
 
 
-bool handleStdout(OTCLI & otCLI, const std::string &narg);
 bool handleJSONOutput(OTCLI & otCLI, const std::string &narg);
 bool handleExtinctJSON(OTCLI & , const std::string &);
 bool handleExtinctJSONInline(OTCLI & , const std::string &) ;
 
-bool handleStdout(OTCLI & otCLI, const std::string &) {
-    MoveExtinctHigherState * proc = static_cast<MoveExtinctHigherState *>(otCLI.blob);
-    assert(proc != nullptr);
-    proc->useStdOut = true;
-    return true;
-}
 
 bool handleJSONOutput(OTCLI & otCLI, const std::string & narg) {
     MoveExtinctHigherState * proc = static_cast<MoveExtinctHigherState *>(otCLI.blob);
@@ -279,6 +272,7 @@ bool handleJSONOutput(OTCLI & otCLI, const std::string & narg) {
         throw OTCError("Expecting filepath of output JSON after the -j argument.");
     }
     proc->outputJSONLogFile = narg;
+    proc->useStdOut = false;
     return true;
 }
 
@@ -312,16 +306,12 @@ int main(int argc, char *argv[]) {
         "would increase the set of taxa that are contested by input trees.\n" \
         "Input is a full taxonomy tree some number of input trees, and a (JSON-formatted) list of taxon IDs that are extinct.\n" \
         "Extinct taxon info can be given as a file name (-t flag) or on the command-line (-i flag)\n" \
-        "The output JSON can be specified as stdout (-o flag) or as filename (-j flag)\n";
+        "The output JSON can be specified as stdout (default) or as filename (-j flag)\n";
         
     OTCLI otCLI("otc-move-extinct-higher-to-avoid-contesting-taxa",
                 helpMsg,
                 "-jedits.json -textinct.json taxonomy.tre inp1.tre inp2.tre");
     MoveExtinctHigherState proc;
-    otCLI.add_flag('o',
-                  " requests that standard output stream, rather than the export directory, be used for all output.",
-                  handleStdout,
-                  false);
     otCLI.add_flag('j',
                   "Name of an output JSON file that summarizes the set of IDs used to exemplify each taxon.",
                   handleJSONOutput,

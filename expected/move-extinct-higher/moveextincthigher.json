@@ -1,7 +1,7 @@
 [
   {
-    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i[11]", "-o"],
-    "infile_list": ["3genus-taxonomy.tre", "3genus-subsamplehigher.tre"],
-    "expected": "bump11"
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i[1]"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre"],
+    "expected": "noextinct"
   }
 ]
