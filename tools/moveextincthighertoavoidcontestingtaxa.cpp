@@ -136,7 +136,6 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         TreeMappedWithSplits * raw = treeup.get();
         raw->set_name(otCLI.currentFilename);
         std::set<const TreeMappedWithSplits::node_type *> extinctTips;
-
         for (auto nd : iter_leaf(*raw)) {
             auto ottId = nd->get_ott_id();
             if (contains(extinctIDSet, ottId)) {
@@ -150,15 +149,51 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             namesOfTreesWithoutExtinct.push_back(raw->get_name());
             return true;
         }
+        auto rc = evalate_exinct_taxa(otCLI, treeIndex, *raw, extinctTips);
+        return rc;
+    }
+
+    using Phylo2Taxo = std::map<const TreeMappedWithSplits::node_type *, const TreeMappedWithSplits::node_type *>;
+    using TaxoNd2IndParIDset = std::map<const TreeMappedWithSplits::node_type *, std::pair<const TreeMappedWithSplits::node_type *, OttIdSet> > ;
+    bool evalate_exinct_taxa(OTCLI & otCLI,
+                             std::size_t treeIndex,
+                             const TreeMappedWithSplits & tree,
+                             const std::set<const TreeMappedWithSplits::node_type *>  & extinctTips) {
         RTreeOttIDMapping<RTSplits> & taxdata = taxonomy->get_data();
-        auto phylo_root = raw->get_root();
+        auto phylo_root = tree.get_root();
         const RTSplits & phylo_root_data = phylo_root->get_data();
         const auto & phylo_tip_ids = phylo_root_data.des_ids;
+        OttIdSet fossil_ids;
+        std::set<const TreeMappedWithSplits::node_type *> nonExtinctTips;
+        OttIdSet non_fossil_ids;
         db_write_ott_id_set("phylo root des_ids", phylo_tip_ids);
-        for (auto nd : iter_leaf(*raw)) {
+        Phylo2Taxo phylo2taxo;
+        _fill_initial_mapping(tree, extinctTips, phylo_tip_ids, fossil_ids, nonExtinctTips, non_fossil_ids, phylo2taxo);
+
+        auto taxo_induced_tree = gen_taxo_induced_tree(phylo_tip_ids, phylo2taxo);
+        return true;
+    }
+
+    TaxoNd2IndParIDset gen_taxo_induced_tree(const OttIdSet & phylo_tip_ids, const Phylo2Taxo & phylo2taxo) {
+        TaxoNd2IndParIDset to_induced_mapping;
+        return to_induced_mapping;
+    }
+
+    // fills fossil_ids, nonExtinctTips, non_fossil_ids, and phylo2taxo
+    void _fill_initial_mapping(const TreeMappedWithSplits & tree,
+                               const std::set<const TreeMappedWithSplits::node_type *>  & extinctTips,
+                               const OttIdSet & phylo_tip_ids,
+                               OttIdSet & fossil_ids, 
+                               std::set<const TreeMappedWithSplits::node_type *> & nonExtinctTips,
+                               OttIdSet & non_fossil_ids, 
+                               Phylo2Taxo & phylo2taxo
+                               ) {
+        RTreeOttIDMapping<RTSplits> & taxdata = taxonomy->get_data();
+        for (auto nd : iter_leaf_const(tree)) {
             auto ottId = nd->get_ott_id();
             auto & nd_des_ids = nd->get_data().des_ids;
             auto tax_nd_for_tip = taxdata.ott_id_to_node.at(ottId);
+            phylo2taxo[nd] = tax_nd_for_tip;
             auto & tax_nd_des_ids = tax_nd_for_tip->get_data().des_ids;
             auto tax_tip_des_overlap = set_intersection_as_set(tax_nd_des_ids, phylo_tip_ids);
             if (tax_tip_des_overlap.size() != 1) {
@@ -166,15 +201,15 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                 LOG(ERROR) << "Node \"" << nd->get_name() << "\" has taxonomic descendants that overlap with other tips in the tree.\n";
                 throw OTCError("Non disjunct taxa as tips of tree");
             }
-            if (contains(extinctIDSet, ottId)) {
-                extinctTips.insert(nd);
-                const RTSplits & d = nd->get_data();
-                LOG(INFO) << "Tree " << treeIndex << " name=" <<  raw->get_name() << " has extinct tip with ID=" << ottId << ".\n";
+            if (contains(extinctTips, nd)) {
+                fossil_ids.insert(ottId);
+            } else {
+                non_fossil_ids.insert(ottId);
+                nonExtinctTips.insert(nd);
             }
         }
-        
-        return true;
     }
+        
 };
 
 
