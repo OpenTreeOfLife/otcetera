@@ -18,24 +18,9 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     std::ostream * jsonOutStream;
     std::ofstream jsonOutFileIfUsed;
     std::set<OttId> extinctIDSet;
-    std::map<std::unique_ptr<TreeMappedWithSplits>, std::size_t> inputTreesToIndex;
-    //std::vector<TreeMappedWithSplits *> treePtrByIndex;
     std::size_t phylogeniesProcessed = 0;
     std::vector<std::string> namesOfTreesWithoutExtinct;
-    /*
-    std::set<const RootedTreeNodeNoData *> includedNodes;
-    using TreeNdPair = std::pair<TreeMappedWithSplits *, RootedTreeNodeNoData *>;
-    using ListTreeNdPair = std::list<TreeNdPair>;
-    std::map<RootedTreeNodeNoData *, ListTreeNdPair> nonTermToMappedPhylo;
-    std::string exportTreeFile;
-    std::ofstream nonEmptyFileStream;
-    std::string outputNonEmptyTreeOutput;
-    std::string outputJSONLogFile;
-    std::string extinctInputJSONInline;
-    bool storeLogInfo = false;
-    std::map<OttId, OttIdSet> exemplificationsForJSONLog;
-    std::map<OttId, std::list<std::string> > exemplifedTaxonToTreeNamesForJSONLog;
-    */
+    
     virtual ~MoveExtinctHigherState(){}
     MoveExtinctHigherState()
         :numErrors(0),
@@ -115,73 +100,19 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         bool r = TaxonomyDependentTreeProcessor<TreeMappedWithSplits>::process_taxonomy_tree(otCLI);
         // we can ignore the internal node labels for the non-taxonomic trees
         otCLI.get_parsing_rules().set_ott_idForInternals = false;
-
         for (auto nd : iter_pre(*taxonomy)) {
-            std::cerr << "nd id = " << nd->get_ott_id() << '\n';
+            RTSplits & d = nd->get_data();
+            auto p = nd->get_parent();
+            if (p == nullptr) {
+                d.depth = 0;
+            } else {
+                d.depth = 1 + p->get_data().depth;
+            }
+            //db_write_ott_id_set(nd->get_name().c_str(), d.des_ids);
+            std::cerr << "nd id = " << nd->get_ott_id() << " depth = " << d.depth << '\n';
         }
         return r;
     }
-    /*
-    // here we walk through the taxonomy in postorder in case we have tips like:
-    //  tree 1: Homo
-    //  tree 2: Hominidae
-    // and no other tree with a tip that is under either Homo or Hominidae.
-    // In such cases, we want to expand both 'Homo' and 'Hominidae' to the same terminal taxon.
-    // this is not hard to do if we are walking in post order
-    void exemplifyNonterminals() {
-        for (auto nd : iter_post(*taxonomy)) {
-            auto mappedPhyloListIt = nonTermToMappedPhylo.find(nd);
-            if (mappedPhyloListIt == nonTermToMappedPhylo.end()) {
-                continue;
-            }
-            const ListTreeNdPair & treeNdPairList{mappedPhyloListIt->second};
-            assert(!nd->is_tip());
-            bool hasIncludedDes = false;
-            for (auto c : iter_child(*nd)) {
-                if (contains(includedNodes, c)) {
-                    hasIncludedDes = true;
-                    break;
-                }
-            }
-            const auto nid = nd->get_ott_id();
-            
-            OttIdSet exemplarIDs;
-            if (hasIncludedDes) {
-                exemplarIDs = findIncludedTipIds(*nd, includedNodes);
-            } else {
-                const RootedTreeNodeNoData * n = find_leftmost_in_subtree(nd);
-                includedNodes.insert(n);
-                insert_ancestors_to_paraphyletic_set(n, includedNodes);
-                exemplarIDs.insert(n->get_ott_id());
-            }
-            LOG(INFO) << "Exemplifying OTT-ID" << nid << " with:";
-            for (auto rid : exemplarIDs) {
-                LOG(INFO) << "    " << rid;
-            }
-            if (storeLogInfo) {
-                exemplificationsForJSONLog[nid] = exemplarIDs;
-            }
-            for (auto treeNdPair : treeNdPairList) {
-                TreeMappedWithSplits * treeP = treeNdPair.first;
-                RootedTreeNodeNoData * nodeP = treeNdPair.second;
-                replaceTipWithSet(*treeP, nodeP, exemplarIDs);
-            }
-        }
-    }
-    void pruneTaxonomyToIncludedLeaves() {
-        assert(taxonomy != nullptr && !includedNodes.empty());
-        std::set<RootedTreeNodeNoData *> toPrune;
-        for (auto nd : iter_node(*taxonomy)) {
-            const RootedTreeNodeNoData *  c = const_cast<const RootedTreeNodeNoData *>(nd);
-            if ((!contains(includedNodes, c)) && contains(includedNodes, c->get_parent())) {
-                toPrune.insert(nd);
-            }
-        }
-        for (auto nd : toPrune) {
-            prune_and_delete(*taxonomy, nd);
-        }
-    }
-    */
     
     bool summarize(OTCLI &otCLI) override {
         json document;
@@ -204,11 +135,13 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         std::size_t treeIndex = phylogeniesProcessed++;
         TreeMappedWithSplits * raw = treeup.get();
         raw->set_name(otCLI.currentFilename);
-        std::set<const TreeMappedWithSplits::node_type *> extinctTips; 
+        std::set<const TreeMappedWithSplits::node_type *> extinctTips;
+
         for (auto nd : iter_leaf(*raw)) {
             auto ottId = nd->get_ott_id();
             if (contains(extinctIDSet, ottId)) {
                 extinctTips.insert(nd);
+                const RTSplits & d = nd->get_data();
                 LOG(INFO) << "Tree " << treeIndex << " name=" <<  raw->get_name() << " has extinct tip with ID=" << ottId << ".\n";
             }
         }
@@ -217,44 +150,29 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             namesOfTreesWithoutExtinct.push_back(raw->get_name());
             return true;
         }
-        inputTreesToIndex[std::move(treeup)] = treeIndex;
-        
-
-        /*
-        assert(treeup != nullptr);
-        assert(taxonomy != nullptr);
-        // Store the tree pointer with a map to its index, and an alias for fast index->tree.
-        std::size_t treeIndex = inputTreesToIndex.size();
-        assert(treeIndex == treePtrByIndex.size());
-        TreeMappedWithSplits * raw = treeup.get();
-        inputTreesToIndex[std::move(treeup)] = treeIndex;
-        treePtrByIndex.push_back(raw);
-        // Store the tree's filename
-        raw->set_name(otCLI.currentFilename);
-        std::map<const RootedTreeNodeNoData *, OttIdSet > prunedDesId;
-        auto nleaves = 0;
+        RTreeOttIDMapping<RTSplits> & taxdata = taxonomy->get_data();
+        auto phylo_root = raw->get_root();
+        const RTSplits & phylo_root_data = phylo_root->get_data();
+        const auto & phylo_tip_ids = phylo_root_data.des_ids;
+        db_write_ott_id_set("phylo root des_ids", phylo_tip_ids);
         for (auto nd : iter_leaf(*raw)) {
-            nleaves += 1;
             auto ottId = nd->get_ott_id();
-            auto taxoNode = taxonomy->get_data().get_node_by_ott_id(ottId);
-            assert(taxoNode != nullptr);
-            if (!contains(includedNodes, taxoNode)) {
-                includedNodes.insert(taxoNode);
-                insert_ancestors_to_paraphyletic_set(taxoNode, includedNodes);
+            auto & nd_des_ids = nd->get_data().des_ids;
+            auto tax_nd_for_tip = taxdata.ott_id_to_node.at(ottId);
+            auto & tax_nd_des_ids = tax_nd_for_tip->get_data().des_ids;
+            auto tax_tip_des_overlap = set_intersection_as_set(tax_nd_des_ids, phylo_tip_ids);
+            if (tax_tip_des_overlap.size() != 1) {
+                db_write_ott_id_set("evidence of overlapping Ids: ", tax_tip_des_overlap);
+                LOG(ERROR) << "Node \"" << nd->get_name() << "\" has taxonomic descendants that overlap with other tips in the tree.\n";
+                throw OTCError("Non disjunct taxa as tips of tree");
             }
-            if (!taxoNode->is_tip()) {
-                if (storeLogInfo) {
-                    exemplifedTaxonToTreeNamesForJSONLog[ottId].push_back(raw->get_name());
-                }
-                TreeNdPair tnp{raw, nd};
-                nonTermToMappedPhylo[taxoNode].push_back(tnp);
+            if (contains(extinctIDSet, ottId)) {
+                extinctTips.insert(nd);
+                const RTSplits & d = nd->get_data();
+                LOG(INFO) << "Tree " << treeIndex << " name=" <<  raw->get_name() << " has extinct tip with ID=" << ottId << ".\n";
             }
         }
-        if (!outputNonEmptyTreeOutput.empty()) {
-            nonEmptyFileStream << otCLI.currentFilename << '\n';
-            nonEmptyFileStream.flush();
-        }
-        */
+        
         return true;
     }
 };
