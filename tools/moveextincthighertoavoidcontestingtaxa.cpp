@@ -158,6 +158,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     using InducedParAndIds = std::pair<ConstNdPtr, OttIdSet>;
     using TaxoNd2IndParIDset = std::map<ConstNdPtr,  InducedParAndIds> ;
     using ConstNdPtrSet = std::set<ConstNdPtr>;
+    using ConstNdPtrPair = std::pair<ConstNdPtr, ConstNdPtr> ;
 
     bool evalate_exinct_taxa(OTCLI & otCLI,
                              std::size_t treeIndex,
@@ -195,7 +196,59 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                                        non_fossil_ids, contestedByExtant, phyloNodesChecked);
         }
         LOG(DEBUG) << "contestedByExtant.size() = " << contestedByExtant.size() << '\n';
+
+        std::vector<ConstNdPtrPair> raw_moves;
+        for (auto extinctTip : extinctTips) {
+            auto dtax = _check_path_to_root_extinct(extinctTip, phylo2taxo, taxo_induced_tree, contestedByExtant);
+            if (dtax != nullptr) {
+                raw_moves.push_back(ConstNdPtrPair(phylo2taxo.at(extinctTip), dtax))
+            }
+        }
         return true;
+    }
+    ConstNdPtr _check_path_to_root_extinct(ConstNdPtr phyloTip,
+                                    const Phylo2Taxo & phylo2taxo,
+                                    const TaxoNd2IndParIDset & taxo_induced_tree,
+                                    ConstNdPtrSet & contestedByExtant) {
+        auto next_phylo = phyloTip->get_parent();
+        assert(next_phylo != nullptr);
+        if (next_phylo == nullptr) {
+            return nullptr;
+        }
+        auto curr_taxo = phylo2taxo.at(phyloTip);
+        const auto & x = taxo_induced_tree.at(curr_taxo);
+        auto next_taxo = x.first;
+        next_taxo = _next_uncontested(contestedByExtant, taxo_induced_tree, next_taxo);
+        if (next_taxo = nullptr) {
+            return nullptr;
+        }
+        ConstNdPtr deepestFixableConflicted = nullptr;
+        OttIdSet phyloDes = next_phylo->get_data().des_ids;
+        OttIdSet taxoDes = x.second;
+        for (;;) {
+            OttIdSet overlap = set_intersection_as_set(phyloDes, taxoDes);
+            if (overlap == phyloDes) {
+                next_phylo = next_phylo->get_parent();
+                if (next_phylo == nullptr || next_phylo->get_parent() == nullptr) {
+                    return deepestFixableConflicted;
+                }
+                phyloDes = next_phylo->get_data();
+            } else {
+                if (overlap != taxoDes) {
+                    // partial overlap
+                    deepestFixableConflicted = next_taxo;
+                }
+                if (!contains(taxo_induced_tree, next_taxo)) {
+                    return deepestFixableConflicted;
+                }
+                const auto & ntp = taxo_induced_tree.at(next_taxo);
+                next_taxo = _next_uncontested(contestedByExtant, taxo_induced_tree, ntp.first);
+                if (next_taxo == nullptr) {
+                    return deepestFixableConflicted;
+                }
+                taxoDes = ntp.second;
+            }
+        }
     }
 
     void _check_path_to_root_extant(ConstNdPtr phyloTip,
@@ -205,6 +258,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                                     ConstNdPtrSet & contestedByExtant,
                                     ConstNdPtrSet & phyloNodesChecked) {
         auto next_phylo = phyloTip->get_parent();
+        assert(next_phylo != nullptr);
         if (next_phylo == nullptr) {
             return;
         }
@@ -217,11 +271,11 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         }
         OttIdSet phyloDes = set_intersection_as_set(non_fossil_ids, next_phylo->get_data().des_ids);
         OttIdSet taxoDes = set_intersection_as_set(non_fossil_ids, x.second);
-       for (;;) {
+        for (;;) {
             OttIdSet overlap = set_intersection_as_set(phyloDes, taxoDes);
             if (overlap == phyloDes) {
                 phyloNodesChecked.insert(next_phylo);
-                next_phylo = phyloTip->get_parent();
+                next_phylo = next_phylo->get_parent();
                 if (next_phylo == nullptr || contains(phyloNodesChecked, next_phylo)) {
                     return;
                 }
