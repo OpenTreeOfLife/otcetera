@@ -135,7 +135,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         std::size_t treeIndex = phylogeniesProcessed++;
         TreeMappedWithSplits * raw = treeup.get();
         raw->set_name(otCLI.currentFilename);
-        std::set<const TreeMappedWithSplits::node_type *> extinctTips;
+        ConstNdPtrSet extinctTips;
         for (auto nd : iter_leaf(*raw)) {
             auto ottId = nd->get_ott_id();
             if (contains(extinctIDSet, ottId)) {
@@ -153,38 +153,150 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         return rc;
     }
 
-    using Phylo2Taxo = std::map<const TreeMappedWithSplits::node_type *, const TreeMappedWithSplits::node_type *>;
-    using TaxoNd2IndParIDset = std::map<const TreeMappedWithSplits::node_type *, std::pair<const TreeMappedWithSplits::node_type *, OttIdSet> > ;
+    using ConstNdPtr = const TreeMappedWithSplits::node_type *;
+    using Phylo2Taxo = std::map<ConstNdPtr, ConstNdPtr>;
+    using InducedParAndIds = std::pair<ConstNdPtr, OttIdSet>;
+    using TaxoNd2IndParIDset = std::map<ConstNdPtr,  InducedParAndIds> ;
+    using ConstNdPtrSet = std::set<ConstNdPtr>;
+
     bool evalate_exinct_taxa(OTCLI & otCLI,
                              std::size_t treeIndex,
                              const TreeMappedWithSplits & tree,
-                             const std::set<const TreeMappedWithSplits::node_type *>  & extinctTips) {
+                             const ConstNdPtrSet  & extinctTips) {
         RTreeOttIDMapping<RTSplits> & taxdata = taxonomy->get_data();
         auto phylo_root = tree.get_root();
         const RTSplits & phylo_root_data = phylo_root->get_data();
         const auto & phylo_tip_ids = phylo_root_data.des_ids;
         OttIdSet fossil_ids;
-        std::set<const TreeMappedWithSplits::node_type *> nonExtinctTips;
+        ConstNdPtrSet nonExtinctTips;
         OttIdSet non_fossil_ids;
         db_write_ott_id_set("phylo root des_ids", phylo_tip_ids);
         Phylo2Taxo phylo2taxo;
         _fill_initial_mapping(tree, extinctTips, phylo_tip_ids, fossil_ids, nonExtinctTips, non_fossil_ids, phylo2taxo);
+        ConstNdPtrSet taxoTips;
+        for (auto i : phylo2taxo) {
+            taxoTips.insert(i.second);
+        }
 
         auto taxo_induced_tree = gen_taxo_induced_tree(phylo_tip_ids, phylo2taxo);
+        const std::size_t num_extinct_tips = extinctTips.size();
+        const std::size_t num_extant_tips = nonExtinctTips.size();
+        const std::size_t total_num_tips = num_extinct_tips + num_extant_tips;
+        if (taxo_induced_tree.size() == total_num_tips) {
+            LOG(DEBUG) << "taxo_induced_tree.size() == total_num_tips EARLY EXIT\n";
+            // if all if there is no structure in the induced tree, there cannot be any taxa contested..
+            return true;
+        }
+        LOG(DEBUG) << "taxo_induced_tree.size() = " << taxo_induced_tree.size() << '\n';
+        ConstNdPtrSet contestedByExtant;
+        ConstNdPtrSet phyloNodesChecked;
+        for (auto extantTip : nonExtinctTips) {
+            _check_path_to_root_extant(extantTip, phylo2taxo, taxo_induced_tree,
+                                       non_fossil_ids, contestedByExtant, phyloNodesChecked);
+        }
+        LOG(DEBUG) << "contestedByExtant.size() = " << contestedByExtant.size() << '\n';
         return true;
+    }
+
+    void _check_path_to_root_extant(ConstNdPtr phyloTip,
+                                    const Phylo2Taxo & phylo2taxo,
+                                    const TaxoNd2IndParIDset & taxo_induced_tree,
+                                    const OttIdSet & non_fossil_ids,
+                                    ConstNdPtrSet & contestedByExtant,
+                                    ConstNdPtrSet & phyloNodesChecked) {
+        auto next_phylo = phyloTip->get_parent();
+        if (next_phylo == nullptr) {
+            return;
+        }
+        auto curr_taxo = phylo2taxo.at(phyloTip);
+        const auto & x = taxo_induced_tree.at(curr_taxo);
+        auto next_taxo = x.first;
+        next_taxo = _next_uncontested(contestedByExtant, taxo_induced_tree, next_taxo);
+        if (next_taxo = nullptr) {
+            return;
+        }
+        OttIdSet phyloDes = set_intersection_as_set(non_fossil_ids, next_phylo->get_data().des_ids);
+        OttIdSet taxoDes = set_intersection_as_set(non_fossil_ids, x.second);
+       for (;;) {
+            OttIdSet overlap = set_intersection_as_set(phyloDes, taxoDes);
+            if (overlap == phyloDes) {
+                phyloNodesChecked.insert(next_phylo);
+                next_phylo = phyloTip->get_parent();
+                if (next_phylo == nullptr || contains(phyloNodesChecked, next_phylo)) {
+                    return;
+                }
+                phyloDes = set_intersection_as_set(non_fossil_ids, next_phylo->get_data().des_ids);
+            } else {
+                if (overlap != taxoDes) {
+                    // partial overlap
+                    contestedByExtant.insert(next_taxo);
+                }
+                if (!contains(taxo_induced_tree, next_taxo)) {
+                    return;
+                }
+                const auto & ntp = taxo_induced_tree.at(next_taxo);
+                next_taxo = _next_uncontested(contestedByExtant, taxo_induced_tree, ntp.first);
+                if (next_taxo == nullptr) {
+                    return;
+                }
+                taxoDes = set_intersection_as_set(non_fossil_ids, ntp.second);
+            }
+        }
+    }
+
+    ConstNdPtr _next_uncontested(const ConstNdPtrSet & contestedByExtant,
+                                 const TaxoNd2IndParIDset & taxo_induced_tree,
+                                 ConstNdPtr n) {
+        while (contains(contestedByExtant, n)) {
+            auto t_in_t_it = taxo_induced_tree.find(n);
+            if (t_in_t_it == taxo_induced_tree.end()) {
+                return nullptr;
+            }
+            n = t_in_t_it->second.first;
+        }
     }
 
     TaxoNd2IndParIDset gen_taxo_induced_tree(const OttIdSet & phylo_tip_ids, const Phylo2Taxo & phylo2taxo) {
         TaxoNd2IndParIDset to_induced_mapping;
+        for (auto pt : phylo2taxo) {
+            LOG(DEBUG) << "currPhylo = " << pt.first->get_name() << "\n";
+            auto currTaxo = pt.second;
+            assert(currTaxo != nullptr);
+            OttIdSet currTaxoDes = set_intersection_as_set(phylo_tip_ids, currTaxo->get_data().des_ids);
+            auto nextTaxo = currTaxo;
+            OttIdSet nextTaxoDes;
+            while (true) {
+                nextTaxo = nextTaxo->get_parent();
+                LOG(DEBUG) << "curr = " << currTaxo->get_name() << " next = " << nextTaxo->get_name();
+                assert(nextTaxo != nullptr);
+                nextTaxoDes = set_intersection_as_set(phylo_tip_ids, nextTaxo->get_data().des_ids);
+                if (nextTaxoDes == currTaxoDes) {
+                    LOG(DEBUG) << "...non-forking on induced";
+                    continue;
+                }
+                LOG(DEBUG) << "...storing " << currTaxo->get_name() << " -> " << nextTaxo->get_name();
+                to_induced_mapping[currTaxo] = InducedParAndIds(nextTaxo, nextTaxoDes);
+                if (nextTaxoDes == phylo_tip_ids) {
+                    LOG(DEBUG) << "...at root";
+                    break;
+                }
+                currTaxo = nextTaxo;
+                if (contains(to_induced_mapping, currTaxo)) {
+                    LOG(DEBUG) << "...Already added";
+                    break;
+                }
+                currTaxoDes = nextTaxoDes;
+            }
+        }
         return to_induced_mapping;
     }
 
     // fills fossil_ids, nonExtinctTips, non_fossil_ids, and phylo2taxo
     void _fill_initial_mapping(const TreeMappedWithSplits & tree,
-                               const std::set<const TreeMappedWithSplits::node_type *>  & extinctTips,
+                               const ConstNdPtrSet  & extinctTips,
                                const OttIdSet & phylo_tip_ids,
                                OttIdSet & fossil_ids, 
-                               std::set<const TreeMappedWithSplits::node_type *> & nonExtinctTips,
+                               ConstNdPtrSet & nonExtinctTips,
                                OttIdSet & non_fossil_ids, 
                                Phylo2Taxo & phylo2taxo
                                ) {
