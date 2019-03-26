@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <exception>
 #include <vector>
@@ -91,14 +92,15 @@ OttId get_ott_id_from_string(const string& s) {
     return check_ott_id_size(std::stol(s.substr(3)));
 }
 
-void add_name_and_rank(json& broken_taxa, const Taxonomy& taxonomy) {
-    auto& non_monophyletic_taxa = broken_taxa["non_monophyletic_taxa"];
-    for(auto& broken_taxon: json::iterator_wrapper(non_monophyletic_taxa)) {
-        auto ott_id = get_ott_id_from_string( broken_taxon.key() );
+void add_name_and_rank(json& broken_taxa, const Taxonomy& taxonomy)
+{
+    for(auto& [ott_id_string, tax]: broken_taxa["non_monophyletic_taxa"].items())
+    {
+        auto ott_id = get_ott_id_from_string( ott_id_string );
         auto& record = taxonomy.record_from_id(ott_id);
-        broken_taxon.value()["name"] = string(record.name);
-        broken_taxon.value()["rank"] = string(record.rank);
-        broken_taxon.value()["depth"] = record.depth;
+        tax["name"] = record.name;
+        tax["rank"] = record.rank;
+        tax["depth"] = record.depth;
     }
 }
 

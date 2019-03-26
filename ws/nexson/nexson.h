@@ -87,7 +87,7 @@ std::unique_ptr<T> treeson_get_tree(const nlohmann::json& tree, const nlohmann::
 	auto ingroup_node = node_ptrs[*ingroup_node_id];
 	if (not ingroup_node)
 	{
-	    LOG(WARNING)<<"ingroup_node = NULL  ingroup_id = "<<ingroup_node_id<<"  *ingroup_id = "<<*ingroup_node_id;
+	    LOG(WARNING)<<"ingroup_node = NULL  ingroup_id = "<<*ingroup_node_id<<"  *ingroup_id = "<<*ingroup_node_id;
 	}
 	if (ingroup_node and ingroup_node != root)
 	{

@@ -300,7 +300,7 @@ int main(int argc, char* argv[]) {
         }
         string format_tax = args["format-tax"].as<string>();
         string format_unknown = args["format-unknown"].as<string>();
-        boost::optional<Taxonomy> taxonomy = boost::none;
+	std::optional<Taxonomy> taxonomy;
         const bool do_prune_flags = args.count("prune-flags");
         const bool do_filter_flags = args.count("filter-flags");
         const bool do_prune_higher = args.count("del-higher-taxon-tips");

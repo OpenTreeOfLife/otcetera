@@ -11,7 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <boost/filesystem.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -22,8 +22,8 @@ using std::set;
 using std::list;
 using std::map;
 using std::string;
+using std::optional;
 using namespace otc;
-using boost::optional;
 
 typedef TreeMappedWithSplits Tree_t;
 typedef Tree_t::node_type node_t;
@@ -361,7 +361,7 @@ optional<OttId> find_ancestor_id(const Tree_t::node_type* nd)
     }
 
     // We should never get here if we don't call this on the root node.
-    return boost::none;
+    return {};
 }
 
 bool is_ancestral_to(const Tree_t::node_type* anc, const Tree_t::node_type* n1)

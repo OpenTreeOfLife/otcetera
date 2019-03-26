@@ -287,12 +287,31 @@ std::string taxon_info_ws_method(const RichTaxonomy & taxonomy,
 
 std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy);
 
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const std::string& query, bool include_suppressed);
+
+const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes);
+
 std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                     const OttIdSet & ott_id_set);
 
 std::string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
                                     const RTRichTaxNode * taxon_node,
                                     NodeNameStyle label_format);
+
+std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
+                                       const std::optional<std::string>& context_name,
+                                       bool do_approximate_matching,
+                                       const std::optional<std::vector<std::string>>& ids,
+                                       bool include_suppressed,
+                                       const RichTaxonomy& taxonomy);
+std::string tnrs_autocomplete_name_ws_method(const std::string& name,
+					     const std::string& context_name,
+					     bool include_suppressed,
+					     const RichTaxonomy& taxonomy);
+std::string tnrs_contexts_ws_method();
+std::string tnrs_infer_context_ws_method(const std::vector<std::string>& names,
+					 const RichTaxonomy& taxonomy);
+
 
 std::string newick_conflict_ws_method(const SummaryTree_t & summary,
                                       const RichTaxonomy & taxonomy,

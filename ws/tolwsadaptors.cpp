@@ -15,12 +15,27 @@
 
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
-using namespace std;
+
+using std::vector;
+using std::map;
+using std::multimap;
+using std::shared_ptr;
+using std::pair;
+using std::set;
+using std::string;
+using std::ostringstream;
+using std::optional;
+using std::unique_ptr;
+
+using std::make_shared;
+using std::to_string;
+
 namespace po = boost::program_options;
 using namespace otc;
 namespace fs = boost::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
+namespace chrono = std::chrono;
 using std::pair;
 
 
@@ -42,7 +57,7 @@ optional<bool> convert_to(const json & j) {
     if (j.is_boolean()) {
         return j.get<bool>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
@@ -50,7 +65,7 @@ optional<string> convert_to(const json & j) {
     if (j.is_string()) {
         return j.get<string>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
@@ -58,18 +73,18 @@ optional<int> convert_to(const json & j) {
     if (j.is_number()) {
         return j.get<int>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
 optional<vector<string>> convert_to(const json & j) {
     if (not j.is_array()) {
-        return boost::none;
+        return {};
     }
     vector<string> v;
     for(auto& xj: j) {
         auto x = convert_to<string>(xj);
-        if (not x) return boost::none;
+        if (not x) return {};
         v.push_back(*x);
     }
     return v;
@@ -78,19 +93,19 @@ optional<vector<string>> convert_to(const json & j) {
 #if defined(LONG_OTT_ID)
 template <>
 optional<OttId> convert_to(const json & j) {
-    return (j.is_number() ? j.get<OttId>() : boost::none);
+    return (j.is_number() ? j.get<OttId>() : {});
 }
 #endif
 
 template <>
 optional<OttIdSet> convert_to(const json & j) {
     if (not j.is_array()) {
-        return boost::none;
+        return {};
     }
     OttIdSet ids;
     for(auto& jid: j) {
         auto id = convert_to<OttId>(jid);
-        if (not id) return boost::none;
+        if (not id) return {};
         ids.insert(*id);
     }
     return ids;
@@ -129,7 +144,7 @@ optional<T> extract_argument(const json & j, const std::string& opt_name, bool r
         if (required) {
             throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called \"" << opt_name << "\"\n";
         }
-        return boost::none;
+        return {};
     }
     auto arg = convert_to<T>(*opt);
     if (not arg) {
@@ -440,6 +455,64 @@ string taxon_subtree_method_handler( const json& parsedargs )
     return taxon_subtree_ws_method(taxonomy, taxon_node, nns);
 }
 
+// See taxomachine/src/main/java/org/opentree/taxonomy/plugins/tnrs_v3.java
+
+// 10,000 queries at .0016 second per query = 16 seconds
+const int MAX_NONFUZZY_QUERY_STRINGS = 10000;
+// 250 queries at .3 second per query = 75 seconds
+const int MAX_FUZZY_QUERY_STRINGS = 250;
+
+static string LIFE_NODE_NAME = "life";
+
+string tnrs_match_names_handler( const json& parsedargs )
+{
+    // 1. Requred argument: "names"
+    vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
+
+    // 2. Optional argunments
+    optional<string> context_name = extract_argument<string>(parsedargs, "context_name");
+    bool do_approximate_matching  = extract_argument_or_default(parsedargs, "do_approximate_matching", false);
+    vector<string> ids            = extract_argument_or_default(parsedargs, "ids",                     names);
+    bool include_suppressed       = extract_argument_or_default(parsedargs, "include_suppressed",      false);
+
+    // 3. Check that "ids" have the same length as "names", if supplied
+    if (ids.size() != names.size())
+    {
+	throw OTCBadRequest()<<"The number of names and ids does not match. If you provide ids, then you "
+			     <<"must provide exactly as many ids as names.";
+    }
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+
+    return tnrs_match_names_ws_method(names, context_name, do_approximate_matching, ids, include_suppressed, taxonomy);
+}
+
+string tnrs_autocomplete_name_handler( const json& parsedargs )
+{
+    string name              = extract_required_argument<string>(parsedargs, "name");
+    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
+    bool include_suppressed  = extract_argument_or_default(parsedargs, "include_suppressed",      false);
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_autocomplete_name_ws_method(name, context_name, include_suppressed, taxonomy);
+}
+
+string tnrs_contexts_handler( const json& )
+{
+    return tnrs_contexts_ws_method();
+}
+
+string tnrs_infer_context_handler( const json& parsedargs )
+{
+    vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_infer_context_ws_method(names, taxonomy);
+}
+
 string conflict_status_method_handler( const json& parsed_args )
 {
     auto tree1newick = extract_argument<string>(parsed_args, "tree1newick");
@@ -491,7 +564,7 @@ void ready_handler( Service& ) {
 #endif
     LOG(INFO) << "Service is ready. PID is " << pid;
     if (!pidfile.empty()) {
-        ofstream pstream(pidfile);
+	std::ofstream pstream(pidfile);
         if (pstream.good()) {
             pstream << pid << '\n';
             pstream.close();
@@ -661,14 +734,14 @@ int run_server(const po::variables_map & args) {
     }
 
     if (!args.count("tree-dir")) {
-        cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
+	std::cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
         return 1;
     }
     const fs::path topdir{args["tree-dir"].as<string>()};
 
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
-    RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
+    RichTaxonomy taxonomy = load_rich_taxonomy(args);
     time_t post_tax_time;
     time(&post_tax_time);
     tts.set_taxonomy(taxonomy);
@@ -680,7 +753,7 @@ int run_server(const po::variables_map & args) {
     time_t post_trees_time;
     time(&post_trees_time);
     if (tts.get_num_trees() == 0) {
-        cerr << "No tree to serve. Exiting...\n";
+	std::cerr << "No tree to serve. Exiting...\n";
         return 3;
     }
 
@@ -698,6 +771,12 @@ int run_server(const po::variables_map & args) {
     auto v3_r_taxon_flags      = path_handler(v3_prefix + "/taxonomy/flags", taxon_flags_method_handler );
     auto v3_r_taxon_mrca       = path_handler(v3_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v3_r_taxon_subtree    = path_handler(v3_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
+
+    // tnrs
+    auto v3_r_tnrs_match_names       = path_handler(v3_prefix + "/tnrs/match_names", tnrs_match_names_handler );
+    auto v3_r_tnrs_autocomplete_name = path_handler(v3_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
+    auto v3_r_tnrs_contexts          = path_handler(v3_prefix + "/tnrs/contexts", tnrs_contexts_handler );
+    auto v3_r_tnrs_infer_context     = path_handler(v3_prefix + "/tnrs/infer_context", tnrs_infer_context_handler );
 
     // conflict
     auto v3_r_conflict_status  = path_handler(v3_prefix + "/conflict/conflict-status", conflict_status_method_handler );
@@ -728,6 +807,12 @@ int run_server(const po::variables_map & args) {
     auto v4_r_taxon_mrca       = path_handler(v4_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v4_r_taxon_subtree    = path_handler(v4_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
+    // tnrs
+    auto v4_r_tnrs_match_names       = path_handler(v4_prefix + "/tnrs/match_names", tnrs_match_names_handler );
+    auto v4_r_tnrs_autocomplete_name = path_handler(v4_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
+    auto v4_r_tnrs_contexts          = path_handler(v4_prefix + "/tnrs/contexts", tnrs_contexts_handler );
+    auto v4_r_tnrs_infer_context     = path_handler(v4_prefix + "/tnrs/infer_context", tnrs_infer_context_handler );
+
     // conflict
     auto v4_r_conflict_status  = path_handler(v4_prefix + "/conflict/conflict-status", conflict_status_method_handler );
 
@@ -750,6 +835,10 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_taxon_flags );
     service.publish( v3_r_taxon_mrca );
     service.publish( v3_r_taxon_subtree );
+    service.publish( v3_r_tnrs_match_names );
+    service.publish( v3_r_tnrs_autocomplete_name );
+    service.publish( v3_r_tnrs_contexts );
+    service.publish( v3_r_tnrs_infer_context );
     service.publish( v3_r_conflict_status );
     service.publish( v3_r_old_conflict_status );
 
@@ -764,6 +853,10 @@ int run_server(const po::variables_map & args) {
     service.publish( v4_r_taxon_flags );
     service.publish( v4_r_taxon_mrca );
     service.publish( v4_r_taxon_subtree );
+    service.publish( v4_r_tnrs_match_names );
+    service.publish( v4_r_tnrs_autocomplete_name );
+    service.publish( v4_r_tnrs_contexts );
+    service.publish( v4_r_tnrs_infer_context );
     service.publish( v4_r_conflict_status );
 
     service.set_signal_handler( SIGINT, sigterm_handler );

@@ -1,15 +1,9 @@
 *~
 #*#
 .#*
-config.h.in
-configure
-autom4te.cache
-aclocal.m4
-*Makefile.in
 build*
 COPYING
 INSTALL
 *gmon.out
 *.o
-*.lo
 logs
