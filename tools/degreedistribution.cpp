@@ -30,7 +30,7 @@ inline bool writeDegreeDistribution(OTCLI & otCLI, std::unique_ptr<T> tree) {
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-degree-distribution",
                  "takes a filepath to a newick file and reports the number of nodes of each out-degree",
-                 {"some.tre"});
+                 "some.tre");
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wdd = writeDegreeDistribution<Tree_t>;
     return tree_processing_main<Tree_t>(otCLI, argc, argv, wdd, nullptr, nullptr, 1);
 }

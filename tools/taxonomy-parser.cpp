@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <boost/program_options.hpp>
-#include <boost/optional.hpp>
 #include <bitset>
 #include <regex>
 

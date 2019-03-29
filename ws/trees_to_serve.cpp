@@ -57,13 +57,13 @@ using WritableTaxonomy = pair<RichTaxonomy &,
 ReadableTaxonomy TreesToServe::get_readable_taxonomy() const {
     assert(taxonomy_ptr != nullptr);
     return {*taxonomy_ptr,
-            std::move(std::make_unique<ReadMutexWrapper>(taxonomy_thread_safety))};
+            std::make_unique<ReadMutexWrapper>(taxonomy_thread_safety)};
 }
 
 WritableTaxonomy TreesToServe::get_writable_taxonomy() {
     assert(taxonomy_ptr != nullptr);
     return {*taxonomy_ptr,
-            std::move(std::make_unique<WriteMutexWrapper>(taxonomy_thread_safety))};
+            std::make_unique<WriteMutexWrapper>(taxonomy_thread_safety)};
 }
 
 void TreesToServe::fill_ott_id_set(const std::bitset<32> & flags,

@@ -4,12 +4,12 @@
 #include <bitset>
 #include <string>
 #include <vector>
-#include <boost/optional.hpp>
+#include <optional>
 
 namespace otc {
 
 typedef std::bitset<32> tax_flags;
-boost::optional<std::string> string_for_flag(int i);
+std::optional<std::string> string_for_flag(int i);
 int flag_from_string(const char* start, const char* end);
 int flag_from_string(const std::string&);
 tax_flags flags_from_string(const char* start, const char* end);

@@ -1,5 +1,9 @@
 #include "otc/supertree_util.h"
 #include <regex>
+
+using std::optional;
+using std::string;
+
 namespace otc {
 
 std::string string_between_chars(const std::string & s, char beforeC, char endC) {
@@ -25,7 +29,7 @@ std::string source_from_tree_name(const std::string& name) {
     return string_between_chars(name, ' ', '.');
 }
 
-boost::optional<std::string> get_source_node_name(const std::string& name)
+optional<string> get_source_node_name(const std::string& name)
 {
     // Here the middle group can match ott12345, so we add ottXXX on the end to avoid this.
     static std::regex with_ott(".*[ _]([a-zA-Z]+\\d+)[ _]ott.*");
@@ -45,7 +49,7 @@ boost::optional<std::string> get_source_node_name(const std::string& name)
         return source;
     }
     else {
-        return boost::none;
+        return {};
     }
 }
 

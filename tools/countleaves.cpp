@@ -65,7 +65,7 @@ bool handleListNameTips(OTCLI & , const std::string &) {
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-count-leaves",
                  "takes a filepath to a newick file and reports the number of leaves",
-                 {"some.tre"});
+                 "some.tre");
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnl = writeNumLeaves<Tree_t>;
     otCLI.add_flag('l',
                   "If present, list the tip OTT IDs rather than counting them",

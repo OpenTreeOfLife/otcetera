@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
                  "\ninstance of a problematic character in a name with space." \
                  "\nThe problematic characters are considered to be:\n" \
                  "   , ( ) : ; [ ] { } ' <TAB> <NEWLINE>",
-                 {"some.tre"});
+                 "some.tre");
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnl = cleanNamesAndWrite<Tree_t>;
     return tree_processing_main<Tree_t>(otCLI, argc, argv, wnl, nullptr, nullptr, 1);
 }

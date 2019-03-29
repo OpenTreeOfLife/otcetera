@@ -12,7 +12,7 @@
 #define ELPP_STACKTRACE_ON_CRASH 1
 
 #include "otc/easylogging++.hpp"
-#include <boost/optional.hpp>
+#include <optional>
 
 #define OTC_UNREACHABLE {LOG(ERROR)<<"Unreachable code reached!"; std::abort();}
 
@@ -27,10 +27,10 @@ extern bool debugging_output_enabled;
 #endif
 
 // The compiler should be able to optimize this away if OttId = long
-inline boost::optional<OttId> to_OttId(long raw_ott_id)
+inline std::optional<OttId> to_OttId(long raw_ott_id)
 {
     if (raw_ott_id > std::numeric_limits<OttId>::max())
-	return boost::none;
+	return {};
     else
 	return static_cast<OttId>(raw_ott_id);
 }

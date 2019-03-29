@@ -5,6 +5,26 @@
 using namespace otc;
 using json = nlohmann::json;
 
+bool read_json_array(json & j, std::set<OttId> & set_ints);
+
+
+bool read_json_array(json & j, std::set<OttId> & set_ints) {
+    if (j.type() != json::value_t::array) {
+        throw OTCError("Expecting array in json");
+    }
+    unsigned index = 0;
+    for (auto i : j) {
+        auto itype = i.type();
+        if (itype != json::value_t::number_integer && itype != json::value_t::number_unsigned) {
+            LOG(ERROR) << "Could not parse all elements of input list of as integer:\n" << i ;
+        return false;
+        }
+        unsigned val = i.get<OttId>();
+        //std::cerr << "Element[" << index++ << "] = " << val << '\n';
+        set_ints.insert(val);
+    }
+    return true;
+}
 
 
 struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
@@ -18,9 +38,15 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     std::ostream * jsonOutStream;
     std::ofstream jsonOutFileIfUsed;
     std::set<OttId> extinctIDSet;
+    std::set<OttId> incertSedisIDSet;
     std::size_t phylogeniesProcessed = 0;
     std::vector<std::string> namesOfTreesWithoutExtinct;
-    
+    using NeedsMoveTipmostTaxonPair = std::pair<bool, const NodeWithSplits *>;
+    using TreeIDToPlacement = std::map<std::string, NeedsMoveTipmostTaxonPair>;
+    using ExtinctTaxonToPlacementSummary = std::map<const NodeWithSplits *, TreeIDToPlacement>;
+    ExtinctTaxonToPlacementSummary unjoinedExtinctTaxonToPlacementSummary; 
+    ExtinctTaxonToPlacementSummary joinedExtinctTaxonToPlacementSummary; 
+
     virtual ~MoveExtinctHigherState(){}
     MoveExtinctHigherState()
         :numErrors(0),
@@ -35,24 +61,27 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             LOG(ERROR) << "Could not parse input JSON list of IDs.:\n" << x.what() << " at byte " << x.byte ;
             return false;
         }
-        if (j.type() == json::value_t::null) {
-            //pass
-        } else if (j.type() == json::value_t::array) {
-            unsigned index = 0;
-            for (auto i : j) {
-                auto itype = i.type();
-                if (itype != json::value_t::number_integer && itype != json::value_t::number_unsigned) {
-                    LOG(ERROR) << "Could not parse all elements of input list of as integer:\n" << i ;
+        if (j.type() == json::value_t::object) {
+            try {
+                json earr = j.at("extinct");
+                if (!read_json_array(earr, extinctIDSet)) {
                     return false;
                 }
-                unsigned val = i.get<OttId>();
-                std::cerr << "Element[" << index++ << "] = " << val << '\n';
-                extinctIDSet.insert(val);
+            } catch (json::out_of_range & ) {
             }
-
-        } else {
-            LOG(ERROR) << "Expecting an array of integers as the JSON content.";
+            try {
+                auto isarr = j.at("incertae_sedis");
+                if (!read_json_array(isarr, incertSedisIDSet)) {
+                    return false;
+                }
+            } catch (json::out_of_range & ) {
+            }
         }
+        if (extinctIDSet.empty()) {
+            LOG(ERROR) << "Expecting an object with an array of \"extinct\" OTT Ids as the JSON content.";
+            return false;
+        }
+        
         return true;
     }
 
@@ -74,7 +103,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             extinctJSONStreamLocal.open(extinctInputJSONFilepath);
             if (!extinctJSONStreamLocal.good()) {
                 LOG(ERROR) << "Could not open input extinct JSON file \"" << extinctInputJSONFilepath << "\"";
-                return false;    
+                return false;
             }
             extinctInStream = &extinctJSONStreamLocal;
         }
@@ -136,12 +165,18 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         TreeMappedWithSplits * raw = treeup.get();
         raw->set_name(otCLI.currentFilename);
         ConstNdPtrSet extinctTips;
+        OttIdSet relExtinctIDs;
+        OttIdSet relIncSedIDs;
+
         for (auto nd : iter_leaf(*raw)) {
             auto ottId = nd->get_ott_id();
             if (contains(extinctIDSet, ottId)) {
+                relExtinctIDs.insert(ottId);
                 extinctTips.insert(nd);
                 const RTSplits & d = nd->get_data();
                 LOG(INFO) << "Tree " << treeIndex << " name=" <<  raw->get_name() << " has extinct tip with ID=" << ottId << ".\n";
+            } else if (contains(incertSedisIDSet, ottId)) {
+                relIncSedIDs.insert(ottId);
             }
         }
         if (extinctTips.empty()) {
@@ -149,47 +184,74 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             namesOfTreesWithoutExtinct.push_back(raw->get_name());
             return true;
         }
-        auto rc = evalate_exinct_taxa(otCLI, treeIndex, *raw, extinctTips);
+        bool rc = true;
+        rc = evalate_exinct_taxa(otCLI, treeIndex, *raw, extinctTips, relExtinctIDs, relIncSedIDs);
         return rc;
     }
-
     using ConstNdPtr = const TreeMappedWithSplits::node_type *;
     using Phylo2Taxo = std::map<ConstNdPtr, ConstNdPtr>;
     using InducedParAndIds = std::pair<ConstNdPtr, OttIdSet>;
     using TaxoNd2IndParIDset = std::map<ConstNdPtr,  InducedParAndIds> ;
+    using TaxoNd2RestrictedIDSet = std::map<ConstNdPtr, OttIdSet>;
     using ConstNdPtrSet = std::set<ConstNdPtr>;
     using ConstNdPtrPair = std::pair<ConstNdPtr, ConstNdPtr> ;
 
     bool evalate_exinct_taxa(OTCLI & otCLI,
                              std::size_t treeIndex,
                              const TreeMappedWithSplits & tree,
-                             const ConstNdPtrSet  & extinctTips) {
+                             const ConstNdPtrSet  & extinctTips,
+                             const OttIdSet & relevantExtinctIDs,
+                             const OttIdSet & relevantIncSedIDs) {
         RTreeOttIDMapping<RTSplits> & taxdata = taxonomy->get_data();
         auto phylo_root = tree.get_root();
         const RTSplits & phylo_root_data = phylo_root->get_data();
         const auto & phylo_tip_ids = phylo_root_data.des_ids;
         OttIdSet fossil_ids;
-        ConstNdPtrSet nonExtinctTips;
+        ConstNdPtrSet nonExtinctPhyloTips;
         OttIdSet non_fossil_ids;
         db_write_ott_id_set("phylo root des_ids", phylo_tip_ids);
         Phylo2Taxo phylo2taxo;
-        _fill_initial_mapping(tree, extinctTips, phylo_tip_ids, fossil_ids, nonExtinctTips, non_fossil_ids, phylo2taxo);
+        _fill_initial_mapping(tree, extinctTips, phylo_tip_ids, fossil_ids, nonExtinctPhyloTips, non_fossil_ids, phylo2taxo);
         ConstNdPtrSet taxoTips;
         for (auto i : phylo2taxo) {
             taxoTips.insert(i.second);
         }
-
         auto taxo_induced_tree = gen_taxo_induced_tree(phylo_tip_ids, phylo2taxo);
         const std::size_t num_extinct_tips = extinctTips.size();
-        const std::size_t num_extant_tips = nonExtinctTips.size();
+        const std::size_t num_extant_tips = nonExtinctPhyloTips.size();
         const std::size_t total_num_tips = num_extinct_tips + num_extant_tips;
         if (taxo_induced_tree.size() == total_num_tips) {
             LOG(DEBUG) << "taxo_induced_tree.size() == total_num_tips EARLY EXIT\n";
             // if all if there is no structure in the induced tree, there cannot be any taxa contested..
             return true;
         }
-        LOG(DEBUG) << "taxo_induced_tree.size() = " << taxo_induced_tree.size() << '\n';
+        ConstNdPtrSet nonExtinctTaxoTips;
+        for (auto extantPhyloTip : nonExtinctPhyloTips) {
+            nonExtinctTaxoTips.insert(phylo2taxo.at(extantPhyloTip));
+        }
+        TaxoNd2RestrictedIDSet taxo_internal2id_set;
+        for (auto taxoIndNdIt : taxo_induced_tree) {
+            if (!contains(taxo_internal2id_set, taxoIndNdIt.second.first)) {
+                taxo_internal2id_set[taxoIndNdIt.second.first] = taxoIndNdIt.second.second; 
+            }
+        }
         ConstNdPtrSet contestedByExtant;
+        ConstNdPtrSet uncontestedByExtant;
+        const OttIdSet extant_ids = set_difference_as_set(phylo_tip_ids, relevantExtinctIDs);
+        for (auto tax2id_set_it : taxo_internal2id_set) {
+            if (taxon_extant_conflicts_with_tree(tree, tax2id_set_it.second, extant_ids, relevantIncSedIDs)) {
+                contestedByExtant.insert(tax2id_set_it.first);
+            } else {
+                uncontestedByExtant.insert(tax2id_set_it.first);
+            }
+        }
+        std::string tree_id = tree.get_name();
+        for (auto extinctTip : extinctTips) {
+            TreeIDToPlacement & treeIDtoPlacement = unjoinedExtinctTaxonToPlacementSummary[extinctTip];
+            treeIDtoPlacement[tree_id] = evaluate_extinct_leaf_placement(tree, extinctTip, extant_ids, relevantIncSedIDs);
+        }
+        /*
+        LOG(DEBUG) << "taxo_induced_tree.size() = " << taxo_induced_tree.size() << '\n';
         ConstNdPtrSet phyloNodesChecked;
         for (auto extantTip : nonExtinctTips) {
             _check_path_to_root_extant(extantTip, phylo2taxo, taxo_induced_tree,
@@ -203,9 +265,38 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             if (dtax != nullptr) {
                 raw_moves.push_back(ConstNdPtrPair(phylo2taxo.at(extinctTip), dtax))
             }
-        }
+        }*/
         return true;
     }
+
+    NeedsMoveTipmostTaxonPair evaluate_extint_leaf_placement()
+
+    bool taxon_extant_conflicts_with_tree(const TreeMappedWithSplits & tree,
+                                          const OttIdSet & include_set,
+                                          const OttIdSet & extant_ids,
+                                          const OttIdSet & inc_sed_ids) {
+        db_write_ott_id_set("taxon_extant_conflicts_with_tree", include_set);
+        const OttIdSet extant_include = set_intersection_as_set(include_set, extant_ids);
+        if (extant_include.size() < 2) {
+            LOG(DEBUG) << "no/trivial include set....skipping";
+        }
+        const OttIdSet extant_exclude = set_difference_as_set(extant_ids, extant_include);
+        const OttIdSet filtered_exclude = set_difference_as_set(extant_exclude, inc_sed_ids);
+        if (filtered_exclude.empty()) {
+            LOG(DEBUG) << "no exclude set....skipping";
+        }
+        for (auto phylo_internal : iter_node_internal_const(tree)) {
+            const auto & phylo_inc_set = phylo_internal->get_data().des_ids;
+            if (are_disjoint(phylo_inc_set, extant_include) || is_subset(extant_include, phylo_inc_set)) {
+                continue;
+            }
+            if (have_intersection(phylo_inc_set, filtered_exclude)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    /*
     ConstNdPtr _check_path_to_root_extinct(ConstNdPtr phyloTip,
                                     const Phylo2Taxo & phylo2taxo,
                                     const TaxoNd2IndParIDset & taxo_induced_tree,
@@ -309,7 +400,8 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             n = t_in_t_it->second.first;
         }
     }
-
+    */
+    
     TaxoNd2IndParIDset gen_taxo_induced_tree(const OttIdSet & phylo_tip_ids, const Phylo2Taxo & phylo2taxo) {
         TaxoNd2IndParIDset to_induced_mapping;
         for (auto pt : phylo2taxo) {
@@ -344,7 +436,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         }
         return to_induced_mapping;
     }
-
+    
     // fills fossil_ids, nonExtinctTips, non_fossil_ids, and phylo2taxo
     void _fill_initial_mapping(const TreeMappedWithSplits & tree,
                                const ConstNdPtrSet  & extinctTips,
@@ -375,7 +467,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             }
         }
     }
-        
+    
 };
 
 

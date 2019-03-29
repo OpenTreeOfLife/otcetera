@@ -24,7 +24,7 @@ using namespace otc;
 using std::string;
 using std::vector;
 using std::bitset;
-using boost::optional;
+using std::optional;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
