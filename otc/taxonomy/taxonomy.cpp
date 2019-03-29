@@ -161,29 +161,6 @@ const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irm
 std::set<std::string> rank_strings;
 
 
-template<typename T>
-void register_taxon_in_maps(std::map<string_view, const T *> & n2n,
-                            std::map<string_view, std::vector<const T *> > & homonym_map,
-                            string_view possibly_nonunique_name,
-                            string_view uname,
-                            const T * ti) {
-    auto nit = n2n.lower_bound(possibly_nonunique_name);
-    typedef std::pair<string_view, const T *> name_map_pair;
-    if (nit == n2n.end() or nit->first != possibly_nonunique_name) {
-        nit = n2n.insert(nit, name_map_pair(possibly_nonunique_name, ti));
-    } else {
-        if (nit->second != nullptr) {
-            homonym_map[possibly_nonunique_name].push_back(nit->second);
-            nit->second = nullptr;
-        }
-       homonym_map[possibly_nonunique_name].push_back(ti);
-    }
-    if (uname != possibly_nonunique_name) {
-        auto r2 = n2n.insert(name_map_pair(uname, ti));
-        assert(r2.second); // should be uniq.
-    }
-}
-
 TaxonomyRecord::TaxonomyRecord(const string& line_)
     :line(line_) {
     // parse the line
@@ -600,103 +577,6 @@ RichTaxonomy load_rich_taxonomy(const variables_map& args) {
         cleaning_flags = flags_from_string(args["clean"].as<string>());
     }
     return {taxonomy_dir, cleaning_flags, keep_root};
-}
-
-template<typename T>
-void process_source_info_vec(const std::vector<std::string> & vs,
-                             RTRichTaxTreeData & tree_data,
-                             T & ,
-                             const RTRichTaxNode * this_node) {
-    for (auto src_entry : vs) {
-        auto pref_id = split_string(src_entry, ':');
-        if (pref_id.size() != 2) {
-            throw OTCError() << "Expecting exactly 1 colon in a source ID string. Found: \"" << src_entry << "\".";
-        }
-        const string & prefix = *pref_id.begin();
-        if (indexed_source_prefixes.count(prefix) == 0) {
-            continue;
-        }
-        const string & id_str = *pref_id.rbegin();
-        //data.sources.push_back(src_entry);
-        std::size_t pos;
-        //LOG(INFO) << src_entry;
-        try {
-            long raw_foreign_id  = std::stoul(id_str.c_str(), &pos);
-            if (pos < id_str.length() || raw_foreign_id < 0) {
-                throw OTCError() << "Could not convert ID to unsigned long \"" << src_entry << "\"";
-            }
-            OttId foreign_id = check_ott_id_size(raw_foreign_id);
-#           if defined(MAP_FOREIGN_TO_POINTER)
-                auto to_map_to = this_node;
-#           else
-                auto to_map_to = this_node->get_ott_id();
-#           endif
-
-            if (prefix == "ncbi") {
-                tree_data.ncbi_id_map[foreign_id] = to_map_to;
-            } else if (prefix == "gbif") {
-                tree_data.gbif_id_map[foreign_id] = to_map_to;
-            } else if (prefix == "worms") {
-                tree_data.worms_id_map[foreign_id] = to_map_to;
-            } else if (prefix == "if") {
-                tree_data.if_id_map[foreign_id] = to_map_to;
-            } else if (prefix == "irmng") {
-                tree_data.irmng_id_map[foreign_id] = to_map_to;
-            } else {
-                assert(false);
-            }
-        } catch (OTCError & x) {
-            throw;
-        } catch (...) {
-            LOG(WARNING) << "Could not convert ID to unsigned long \"" << src_entry << "\"";
-        }
-    }
-}
-
-
-// default behavior is to set ID and Name from line
-template <>
-inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
-                                           const TaxonomyRecord & tr,
-                                           std::function<std::string(const TaxonomyRecord&)>,
-                                           RichTaxTree & tree) {
-    RTRichTaxNode * this_node = &nd;
-    nd.set_ott_id(tr.id);
-    auto & data = nd.get_data();
-    auto & tree_data = tree.get_data();
-    nd.set_ott_id(tr.id);
-    tree_data.id_to_node[tr.id] = this_node;
-    this_node->set_name(string(tr.uniqname));
-    const string & uname = this_node->get_name();
-    if (tr.uniqname != tr.name) {
-        string sn = string(tr.name);
-        tree_data.non_unique_taxon_names[sn].insert(tr.id);
-        auto nit = tree_data.non_unique_taxon_names.find(sn);
-        assert(nit != tree_data.non_unique_taxon_names.end());
-        data.possibly_nonunique_name = string_view(nit->first);
-    } else {
-        data.possibly_nonunique_name = string_view(nd.get_name());
-    }
-    data.flags = tr.flags;
-    data.rank = rank_name_to_enum.at(string(tr.rank));
-    register_taxon_in_maps(tree_data.name_to_node,
-                           tree_data.homonym_to_node,
-                           data.possibly_nonunique_name,
-                           uname,
-                           this_node);
-    auto flags = data.get_flags();
-    // If the flag combination is new, store the JSON representation
-    if (tree_data.flags2json.count(flags) == 0) {
-        vector<string> vf = flags_to_string_vec(flags);
-        tree_data.flags2json[flags] = json();
-        auto & fj = tree_data.flags2json[flags];
-        for (auto fs : vf) {
-            fj.push_back(fs);
-        }
-    }
-    auto vs = tr.sourceinfoAsVec();
-    data.source_info = string(tr.sourceinfo);
-    process_source_info_vec(vs, tree_data, data, this_node);
 }
 
 

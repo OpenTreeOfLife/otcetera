@@ -248,7 +248,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         std::string tree_id = tree.get_name();
         for (auto extinctTip : extinctTips) {
             TreeIDToPlacement & treeIDtoPlacement = unjoinedExtinctTaxonToPlacementSummary[extinctTip];
-            treeIDtoPlacement[tree_id] = evaluate_extinct_leaf_placement(tree, extinctTip, extant_ids, relevantIncSedIDs);
+        //    treeIDtoPlacement[tree_id] = evaluate_extinct_leaf_placement(tree, extinctTip, extant_ids, relevantIncSedIDs);
         }
         /*
         LOG(DEBUG) << "taxo_induced_tree.size() = " << taxo_induced_tree.size() << '\n';
@@ -269,7 +269,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         return true;
     }
 
-    NeedsMoveTipmostTaxonPair evaluate_extint_leaf_placement()
+    NeedsMoveTipmostTaxonPair evaluate_extinct_leaf_placement();
 
     bool taxon_extant_conflicts_with_tree(const TreeMappedWithSplits & tree,
                                           const OttIdSet & include_set,

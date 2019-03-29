@@ -385,13 +385,13 @@ extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
 extern const std::map<std::string, TaxonomicRank> rank_name_to_enum;
 
 template<typename T>
-inline void register_taxon_in_maps(std::map<boost::string_ref, const T *> & n2n,
-                            std::map<boost::string_ref, std::vector<const T *> > & homonym_map,
-                            boost::string_ref possibly_nonunique_name,
-                            boost::string_ref uname,
+inline void register_taxon_in_maps(std::map<std::string_view, const T *> & n2n,
+                            std::map<std::string_view, std::vector<const T *> > & homonym_map,
+                            std::string_view possibly_nonunique_name,
+                            std::string_view uname,
                             const T * ti) {
     auto nit = n2n.lower_bound(possibly_nonunique_name);
-    typedef std::pair<boost::string_ref, const T *> name_map_pair;
+    typedef std::pair<std::string_view, const T *> name_map_pair;
     if (nit == n2n.end() or nit->first != possibly_nonunique_name) {
         nit = n2n.insert(nit, name_map_pair(possibly_nonunique_name, ti));
     } else {
@@ -473,7 +473,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
                                                RichTaxTree & tree) {
     using std::string;
     using std::vector;
-    using boost::string_ref;
+    using std::string_view;
     using nlohmann::json;
     RTRichTaxNode * this_node = &nd;
     nd.set_ott_id(tr.id);
@@ -488,9 +488,9 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
         tree_data.non_unique_taxon_names[sn].insert(tr.id);
         auto nit = tree_data.non_unique_taxon_names.find(sn);
         assert(nit != tree_data.non_unique_taxon_names.end());
-        data.possibly_nonunique_name = string_ref(nit->first);
+        data.possibly_nonunique_name = string_view(nit->first);
     } else {
-        data.possibly_nonunique_name = string_ref(nd.get_name());
+        data.possibly_nonunique_name = string_view(nd.get_name());
     }
     data.flags = tr.flags;
     data.rank = rank_name_to_enum.at(string(tr.rank));
