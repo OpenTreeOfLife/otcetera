@@ -731,15 +731,33 @@ json get_supporting_studies(const set<const string*>& study_id_set)
 string induced_subtree_ws_method(const TreesToServe & tts,
                  const SummaryTree_t * tree_ptr,
                  const vector<string> & node_id_vec,
-                 NodeNameStyle label_format) {
+                 NodeNameStyle label_format)
+{
     assert(tree_ptr != nullptr);
-    bool was_broken = false;
     const SumTreeNode_t * focal = nullptr;
-    bool first = true;
+
+    // Check if any of the tip nodes are either (i) broken or (ii) not found.
     set<const SumTreeNode_t *> tip_nodes;
-    for (auto node_id : node_id_vec) {
-        const SumTreeNode_t * n = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
-        tip_nodes.insert(n);
+    json not_found;
+    for (auto node_id : node_id_vec)
+    {
+        bool was_broken = false;
+        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+        if (not n)
+            not_found[node_id] = "unknown";
+        else if (was_broken)
+            not_found[node_id] = "broken";
+        else
+            tip_nodes.insert(n);
+    }
+
+    if (not_found.size())
+        throw OTCWebError()<<"Nodes not found!"<<json{ {"not_found", not_found} };
+
+    // Find the mrca
+    bool first = true;
+    for (auto n: tip_nodes)
+    {
         if (first) {
             first = false;
             focal = n;
@@ -750,10 +768,12 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             }
         }
     }
-    bool is_broken = false;
+
     if (focal == nullptr) {
         throw OTCBadRequest() << "MRCA of taxa was not found.\n";
     }
+
+    // Visit some nodes beween tip_nodes and the mrca
     set<const SumTreeNode_t *> visited;
     visited.insert(focal);
     for (auto tni : tip_nodes) {
