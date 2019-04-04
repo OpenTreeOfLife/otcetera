@@ -738,21 +738,25 @@ string induced_subtree_ws_method(const TreesToServe & tts,
 
     // Check if any of the tip nodes are either (i) broken or (ii) not found.
     set<const SumTreeNode_t *> tip_nodes;
-    json not_found;
+    set<string> unknown;
+    json broken = json::object();
     for (auto node_id : node_id_vec)
     {
         bool was_broken = false;
         const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+
         if (not n)
-            not_found[node_id] = "unknown";
+            unknown.insert(node_id);
         else if (was_broken)
-            not_found[node_id] = "broken";
-        else
+            broken[node_id] = node_id_for_summary_tree_node(*n);
+
+        // Current default strategy means that we include MRCAs for broken taxa.
+        if (n)
             tip_nodes.insert(n);
     }
 
-    if (not_found.size())
-        throw OTCWebError()<<"Nodes not found!"<<json{ {"not_found", not_found} };
+    if (unknown.size())
+        throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", json(unknown)} };
 
     // Find the mrca
     bool first = true;
@@ -793,6 +797,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     json response;
     response["newick"] = out.str();
     response["supporting_studies"] = get_supporting_studies(nnsbs.study_id_set);
+    response["broken"] = broken;
     return response.dump(1);
 }
 
