@@ -635,12 +635,27 @@ multimap<string,string> options_headers()
     return headers;
 }
 
+// OK, so I want to make something like OTCWebError, but add the ability to pass back
+// some JSON along with the error.
+
+// The difficult thing is how to generically (polymorphically) use the same interface
+// for this error and other stuff.
+
 std::string error_response(const string& path, const std::exception& e)
 {
     string msg = string("[") + path + ("] Error: ") + e.what();
     LOG(DEBUG)<<msg;
     json j = { {"message", msg} };
     return j.dump(4)+"\n";
+}
+
+std::string error_response(const string& path, const OTCWebError& e1)
+{
+    OTCWebError e2 = e1;
+    e2.prepend(string("[") + path + ("] Error: "));
+
+    LOG(DEBUG)<<e2.what();
+    return e2.json().dump(4)+"\n";
 }
 
 std::function<void(const shared_ptr< Session > session)>
