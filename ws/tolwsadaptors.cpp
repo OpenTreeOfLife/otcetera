@@ -324,7 +324,7 @@ string node_info_method_handler( const json& parsed_args)
     if (node_id and source_id)
         throw OTCBadRequest("'node_id' and 'source_id' arguments cannot both be supplied.");
     else if (not node_id and not source_id)
-        throw OTCBadRequest("An 'node_id' or 'source_id' argument is required.");
+        throw OTCBadRequest("A 'node_id' or 'source_id' argument is required.");
 
     if (source_id)
     {
