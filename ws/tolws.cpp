@@ -767,26 +767,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     const SumTreeNode_t * focal = nullptr;
 
     // Check if any of the tip nodes are either (i) broken or (ii) not found.
-    set<const SumTreeNode_t *> tip_nodes;
-    set<string> unknown;
-    json broken = json::object();
-    for (auto node_id : node_id_vec)
-    {
-        bool was_broken = false;
-        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
-
-        if (not n)
-            unknown.insert(node_id);
-        else if (was_broken)
-            broken[node_id] = node_id_for_summary_tree_node(*n);
-
-        // Current default strategy means that we include MRCAs for broken taxa.
-        if (n)
-            tip_nodes.insert(n);
-    }
-
-    if (unknown.size())
-        throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", json(unknown)} };
+    auto [tip_nodes, broken] = find_nodes_for_id_strings(tree_ptr, node_id_vec);
 
     // Find the mrca
     bool first = true;
