@@ -61,6 +61,8 @@ public:
 
     void prepend(const std::string& s);
 
+    void append(const std::string& s);
+
     nlohmann::json& json() {return data;}
 
     OTCWebError() noexcept;
@@ -72,14 +74,17 @@ public:
     template <typename T>
     OTCWebError& OTCWebError::operator<<(const T& t)
     {
-        std::ostringstream oss(data["message"].get<std::string>());
+        std::ostringstream oss;
         oss << t;
-        data["message"] = oss.str();
+        append(oss.str());
         return *this;
     }
 
     template <>
     OTCWebError& OTCWebError::operator<<(const nlohmann::json& j);
+
+    template <>
+    OTCWebError& OTCWebError::operator<<(const std::string& j);
 
 inline OTCWebError OTCBadRequest() {return OTCWebError(400);}
 inline OTCWebError OTCBadRequest(const std::string& m) {return OTCWebError(400,m);}

@@ -42,8 +42,21 @@ namespace otc {
         }
         else
         {
-            auto tmp = data["message"].get<std::string>();
+            string tmp = data["message"];
             data["message"] = s + tmp;
+        }
+    }
+
+    void OTCWebError::append(const std::string& s)
+    {
+        if (not data.count("message"))
+        {
+                 data["message"] = s;
+        }
+        else
+        {
+            string tmp = data["message"];
+            data["message"] = tmp + s;
         }
     }
 
@@ -70,6 +83,13 @@ namespace otc {
     {
         for(auto& [key,value]: j.items())
             data[key] = value;
+        return *this;
+    }
+
+    template <>
+    OTCWebError& OTCWebError::operator<<(const std::string& j)
+    {
+        append(j);
         return *this;
     }
 
