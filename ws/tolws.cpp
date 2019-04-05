@@ -759,9 +759,9 @@ json get_supporting_studies(const set<const string*>& study_id_set)
 }
 
 string induced_subtree_ws_method(const TreesToServe & tts,
-                 const SummaryTree_t * tree_ptr,
-                 const vector<string> & node_id_vec,
-                 NodeNameStyle label_format)
+                                 const SummaryTree_t * tree_ptr,
+                                 const vector<string> & node_id_vec,
+                                 NodeNameStyle label_format)
 {
     assert(tree_ptr != nullptr);
     const SumTreeNode_t * focal = nullptr;
