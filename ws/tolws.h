@@ -270,6 +270,12 @@ std::string node_info_ws_method(const TreesToServe & tts,
                                 const std::string & node_id,
                                 bool include_lineage);
 
+std::string nodes_info_ws_method(const TreesToServe & tts,
+                                 const SummaryTree_t * tree_ptr,
+                                 const SummaryTreeAnnotation * sta,
+                                 const std::vector<std::string> & node_id,
+                                 bool include_lineage);
+
 std::string mrca_ws_method(const TreesToServe & tts,
                            const SummaryTree_t * tree_ptr,
                            const SummaryTreeAnnotation * sta,

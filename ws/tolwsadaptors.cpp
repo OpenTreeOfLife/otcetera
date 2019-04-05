@@ -320,11 +320,15 @@ string node_info_method_handler( const json& parsed_args)
     string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
     auto node_id = extract_argument<string>(parsed_args,"node_id");
     auto source_id = extract_argument<string>(parsed_args,"source_id");
+    auto node_ids = extract_argument<vector<string>>(parsed_args,"node_ids");
 
-    if (node_id and source_id)
-        throw OTCBadRequest("'node_id' and 'source_id' arguments cannot both be supplied.");
-    else if (not node_id and not source_id)
-        throw OTCBadRequest("A 'node_id' or 'source_id' argument is required.");
+    int count =0;
+    count += bool(node_id)?1:0;
+    count += bool(node_ids)?1:0;
+    count += bool(source_id)?1:0;
+
+    if (count != 1)
+        throw OTCBadRequest("Must supply exactly one of 'node_id', 'node_ids', or 'source_id'.");
 
     if (source_id)
     {
@@ -338,7 +342,10 @@ string node_info_method_handler( const json& parsed_args)
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
-    return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
+    if (node_id)
+        return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
+    else
+        return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
 }
 
 string mrca_method_handler( const json& parsedargs)

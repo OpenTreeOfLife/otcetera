@@ -549,15 +549,14 @@ inline void add_source_id_map(json & j,
     j["source_id_map"] = sim;
 }
 
-string node_info_ws_method(const TreesToServe & tts,
-                           const SummaryTree_t * tree_ptr,
-                           const SummaryTreeAnnotation * sta,
-                           const string & node_id,
-                           bool include_lineage) {
-    assert(tree_ptr != nullptr);
+json node_info_json(const TreesToServe & tts,
+                    const SummaryTreeAnnotation * sta,
+                    const SumTreeNode_t* focal,
+                    bool include_lineage)
+{
+    assert(focal != nullptr);
     assert(sta != nullptr);
     bool was_broken = false;
-    const SumTreeNode_t * focal = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
 
     json response;
     response["synth_id"] = sta->synth_id;
@@ -575,15 +574,29 @@ string node_info_ws_method(const TreesToServe & tts,
     if (was_broken) {
         response["response_for_mrca_of_broken_taxon"] = true; //@TODO: discuss and document
     }
-    return response.dump(1);
+    return response;
 }
 
-pair<set<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
+string node_info_ws_method(const TreesToServe & tts,
+                           const SummaryTree_t * tree_ptr,
+                           const SummaryTreeAnnotation * sta,
+                           const string & node_id,
+                           bool include_lineage)
+{
+    LOG(DEBUG)<<"Got to node_info_ws_method( )";
+    bool was_broken = false;
+
+    auto node = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
+
+    return node_info_json(tts, sta, node, include_lineage).dump(1);
+}
+
+pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
                                                                const SummaryTree_t* tree_ptr,
                                                                const vector<string>& node_ids,
                                                                bool fail_broken = false)
 {
-    set<const SumTreeNode_t *> tip_nodes;
+    vector<const SumTreeNode_t *> nodes;
     json unknown;
     json broken = json::object();
     for (auto node_id : node_ids)
@@ -597,34 +610,57 @@ pair<set<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonom
             //  - invalid    (never minted id)
             //  - pruned     (valid but not in synth)
             //  - deprecated (previously valid, not forwarded)
+            string reason = "unknown_id";
+
             if (n and was_broken)
-                unknown[node_id] = "broken";
+                reason = "broken";
             else if (auto id = is_ott_id(node_id))
             {
                 auto taxon = taxonomy.included_taxon_from_id(*id);
+//                // Not currently implemented...
 //                if (id == -2)
-//                    unknown[node_id] = "deprecated";
+//                    reason = "deprecated";
                 if (not taxon)
-                    unknown[node_id] = "invalid_ott_id";
+                    reason = "invalid_ott_id";
                 else
-                    unknown[node_id] = "pruned_ott_id";
+                    reason = "pruned_ott_id";
             }
-            else
-                unknown[node_id] = "unknown_id";
+
+            unknown[node_id] = reason;
         }
 
         if (was_broken)
             broken[node_id] = node_id_for_summary_tree_node(*n);
 
         // Current default strategy means that we include MRCAs for broken taxa.
-        if (n)
-            tip_nodes.insert(n);
+        nodes.push_back(n);
     }
 
     if (unknown.size())
         throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", unknown} };
 
-    return {tip_nodes, broken};
+    return {nodes, broken};
+}
+
+string nodes_info_ws_method(const TreesToServe & tts,
+                            const SummaryTree_t * tree_ptr,
+                            const SummaryTreeAnnotation * sta,
+                            const vector<string> & node_ids,
+                            bool include_lineage)
+{
+    auto [taxonomy,_] = tts.get_readable_taxonomy();
+
+    auto [nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_ids);
+
+    json response;
+    for(int i=0;i<nodes.size();i++)
+    {
+        auto j = node_info_json(tts, sta, nodes[i], include_lineage);
+        j["query"] = node_ids[i];
+        response.push_back(j);
+    }
+
+    return response.dump(1);
 }
 
 string mrca_ws_method(const TreesToServe & tts,
