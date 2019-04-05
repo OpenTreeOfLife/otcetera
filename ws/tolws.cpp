@@ -350,8 +350,21 @@ N * find_mrca_via_traversal_indices(N *f, N *s) {
     return f;
 }
 
-const std::regex mrca_id_pattern("^mrca(ott\\d+)(ott\\d+)$");
 const std::regex ott_id_pattern("^ott(\\d+)$");
+
+optional<OttId> is_ott_id(const string& node_id)
+{
+    std::smatch matches;
+    if (std::regex_match(node_id, matches, ott_id_pattern))
+    {
+        long raw_ott_id = long_ott_id_from_name(node_id);
+        if (raw_ott_id >= 0)
+            return to_OttId(raw_ott_id);
+    }
+    return {};
+}
+
+const std::regex mrca_id_pattern("^mrca(ott\\d+)(ott\\d+)$");
 
 const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           const string & node_id,
@@ -545,19 +558,42 @@ string node_info_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
-pair<set<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const SummaryTree_t* tree_ptr, const vector<string>& node_ids)
+pair<set<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
+                                                               const SummaryTree_t* tree_ptr,
+                                                               const vector<string>& node_ids,
+                                                               bool fail_broken = false)
 {
     set<const SumTreeNode_t *> tip_nodes;
-    set<string> unknown;
+    json unknown;
     json broken = json::object();
     for (auto node_id : node_ids)
     {
         bool was_broken = false;
         const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
 
-        if (not n)
-            unknown.insert(node_id);
-        else if (was_broken)
+        if (not n or (was_broken and fail_broken))
+        {
+            // Possible statuses:
+            //  - invalid    (never minted id)
+            //  - pruned     (valid but not in synth)
+            //  - deprecated (previously valid, not forwarded)
+            if (n and was_broken)
+                unknown[node_id] = "broken";
+            else if (auto id = is_ott_id(node_id))
+            {
+                auto taxon = taxonomy.included_taxon_from_id(*id);
+//                if (id == -2)
+//                    unknown[node_id] = "deprecated";
+                if (not taxon)
+                    unknown[node_id] = "invalid_ott_id";
+                else
+                    unknown[node_id] = "pruned_ott_id";
+            }
+            else
+                unknown[node_id] = "unknown_id";
+        }
+
+        if (was_broken)
             broken[node_id] = node_id_for_summary_tree_node(*n);
 
         // Current default strategy means that we include MRCAs for broken taxa.
@@ -566,7 +602,7 @@ pair<set<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const SummaryTree
     }
 
     if (unknown.size())
-        throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", json(unknown)} };
+        throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", unknown} };
 
     return {tip_nodes, broken};
 }
@@ -579,7 +615,9 @@ string mrca_ws_method(const TreesToServe & tts,
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
 
-    auto [tip_nodes, broken] = find_nodes_for_id_strings(tree_ptr, node_id_vec);
+    auto [taxonomy,_] = tts.get_readable_taxonomy();
+
+    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
 
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
@@ -766,8 +804,10 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     assert(tree_ptr != nullptr);
     const SumTreeNode_t * focal = nullptr;
 
+    auto [taxonomy,_] = tts.get_readable_taxonomy();
+
     // Check if any of the tip nodes are either (i) broken or (ii) not found.
-    auto [tip_nodes, broken] = find_nodes_for_id_strings(tree_ptr, node_id_vec);
+    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
 
     // Find the mrca
     bool first = true;
@@ -799,8 +839,6 @@ string induced_subtree_ws_method(const TreesToServe & tts,
         } 
     }
 
-    auto locked_taxonomy = tts.get_readable_taxonomy();
-    const auto & taxonomy = locked_taxonomy.first;
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
     ostringstream out;
     write_visited_newick(out, visited, focal, nnsbs);
