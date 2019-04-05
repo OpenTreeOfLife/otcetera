@@ -545,6 +545,32 @@ string node_info_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
+pair<set<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const SummaryTree_t* tree_ptr, const vector<string>& node_ids)
+{
+    set<const SumTreeNode_t *> tip_nodes;
+    set<string> unknown;
+    json broken = json::object();
+    for (auto node_id : node_ids)
+    {
+        bool was_broken = false;
+        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+
+        if (not n)
+            unknown.insert(node_id);
+        else if (was_broken)
+            broken[node_id] = node_id_for_summary_tree_node(*n);
+
+        // Current default strategy means that we include MRCAs for broken taxa.
+        if (n)
+            tip_nodes.insert(n);
+    }
+
+    if (unknown.size())
+        throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", json(unknown)} };
+
+    return {tip_nodes, broken};
+}
+
 string mrca_ws_method(const TreesToServe & tts,
                       const SummaryTree_t * tree_ptr,
                       const SummaryTreeAnnotation * sta,
@@ -552,16 +578,20 @@ string mrca_ws_method(const TreesToServe & tts,
 {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
-    bool was_broken = false;
+
+    auto [tip_nodes, broken] = find_nodes_for_id_strings(tree_ptr, node_id_vec);
+
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
-    for (auto node_id : node_id_vec) {
-        const SumTreeNode_t * n = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
-
-        if (first) {
+    for (auto n : tip_nodes)
+    {
+        if (first)
+        {
             first = false;
             focal = n;
-        } else {
+        }
+        else
+        {
             focal = find_mrca_via_traversal_indices(focal, n);
             if (focal == nullptr) {
                 break;
