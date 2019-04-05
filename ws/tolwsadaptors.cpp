@@ -142,13 +142,13 @@ optional<T> extract_argument(const json & j, const std::string& opt_name, bool r
     auto opt = j.find(opt_name);
     if (opt == j.end()) {
         if (required) {
-            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called \"" << opt_name << "\"\n";
+            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called '" << opt_name << "'\n";
         }
         return {};
     }
     auto arg = convert_to<T>(*opt);
     if (not arg) {
-        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found \"" << *opt << "\"\n";
+        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found '" << opt->dump() << "'\n";
     }
     return arg;
 }
