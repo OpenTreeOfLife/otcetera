@@ -588,7 +588,9 @@ string node_info_ws_method(const TreesToServe & tts,
 
     auto node = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
 
-    return node_info_json(tts, sta, node, include_lineage).dump(1);
+    auto response = node_info_json(tts, sta, node, include_lineage);
+    response["query"] = node_id;
+    return response.dump(1);
 }
 
 pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
