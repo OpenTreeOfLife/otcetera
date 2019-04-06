@@ -639,7 +639,7 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
     }
 
     if (unknown.size())
-        throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", unknown} };
+        throw OTCBadRequest()<<"Nodes not found!"<<json{ {"unknown", unknown} };
 
     return {nodes, broken};
 }
