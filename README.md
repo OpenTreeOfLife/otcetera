@@ -49,10 +49,8 @@ The python requests package is need for running the `make check` target because 
 ### Mac
 On a Mac, you can install dependencies with:
 
-    sudo brew install meson cmake ninja boost openssl
+    sudo brew install meson cmake ninja boost
     pip install requests
-
-The last `export` lines make sure we use SSL from homebrew, and not the system SSL.
 
 ### Linux
 On recent versions of Debian or Ubuntu Linux, you can run:
