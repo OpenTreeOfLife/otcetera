@@ -665,6 +665,29 @@ string nodes_info_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
+void add_nearest_taxon(const RichTaxonomy& taxonomy, const SumTreeNode_t& node, json& j)
+{
+    if (node.has_ott_id()) return;
+
+    auto anc = node.get_parent();
+    assert(anc != nullptr);
+    while (!anc->has_ott_id()) {
+        anc = anc->get_parent();
+        if (anc == nullptr) {
+            throw OTCWebError("No ancestors were taxa. That is odd.\n");
+        }
+    }
+
+    const RTRichTaxNode * anc_taxon = taxonomy.included_taxon_from_id(anc->get_ott_id());
+    if (anc_taxon == nullptr) {
+        throw OTCWebError() << "Anc OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
+    }
+
+    json nt;
+    add_taxon_info(taxonomy, *anc_taxon, nt);
+    j["nearest_taxon"] = nt;
+}
+
 string mrca_ws_method(const TreesToServe & tts,
                       const SummaryTree_t * tree_ptr,
                       const SummaryTreeAnnotation * sta,
@@ -702,29 +725,9 @@ string mrca_ws_method(const TreesToServe & tts,
     json mrcaj;
     set<string> usedSrcIds;
     add_node_support_info(tts, *focal, mrcaj, usedSrcIds);
-    {
-        auto locked_taxonomy = tts.get_readable_taxonomy();
-        const auto & taxonomy = locked_taxonomy.first;
-        add_basic_node_info(taxonomy, *focal, mrcaj);
-        if (!focal->has_ott_id()) {
-            auto anc = focal->get_parent();
-            assert(anc != nullptr);
-            while (!anc->has_ott_id()) {
-                anc = anc->get_parent();
-                if (anc == nullptr) {
-                    throw OTCWebError("No ancestors were taxa. That is odd.\n");
-                }
-            }
-            json nt;
-            const RTRichTaxNode * anc_taxon = taxonomy.included_taxon_from_id(anc->get_ott_id());
-            if (anc_taxon == nullptr) {
-                throw OTCWebError() << "Ancd OTT Id " << anc->get_ott_id() << " not found in taxonomy! Please report this bug";
-            }
-            add_taxon_info(taxonomy, *anc_taxon, nt);
-            response["nearest_taxon"] = nt;
-        }
-        add_source_id_map(response, usedSrcIds, taxonomy, sta);
-    }
+    add_basic_node_info(taxonomy, *focal, mrcaj);
+    add_nearest_taxon(taxonomy, *focal, response);
+    add_source_id_map(response, usedSrcIds, taxonomy, sta);
     response["mrca"] = mrcaj;
     return response.dump(1);
 }
