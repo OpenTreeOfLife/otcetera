@@ -350,9 +350,7 @@ string node_info_method_handler( const json& parsed_args)
 
 string mrca_method_handler( const json& parsedargs)
 {
-    string synth_id;
-    vector<string> node_id_vec;
-    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
     return mrca_ws_method(tts, treeptr, sta, node_id_vec);
@@ -364,9 +362,7 @@ std::string process_subtree(const json& parsedargs)
     //        argument.  Unless this is explicitly set to true, we are supposed to not write node labels
     //        for non-ottids.  At least in Newick.
 
-    string synth_id;
-    string node_id;
-    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+    auto [synth_id, node_id] = get_synth_and_node_id(parsedargs);
     auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
     if (format != "newick" && format != "arguson") {
 	throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
@@ -387,9 +383,7 @@ std::string process_subtree(const json& parsedargs)
 
 string induced_subtree_method_handler( const json& parsedargs )
 {
-    string synth_id;
-    vector<string> node_id_vec;
-    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     NodeNameStyle nns = get_label_format(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
