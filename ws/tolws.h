@@ -279,7 +279,9 @@ std::string nodes_info_ws_method(const TreesToServe & tts,
 std::string mrca_ws_method(const TreesToServe & tts,
                            const SummaryTree_t * tree_ptr,
                            const SummaryTreeAnnotation * sta,
-                           const std::vector<std::string> & node_id_vec);
+                           const std::vector<std::string> & node_id_vec,
+                           const std::vector<std::string> & soft_exclude_ids,
+                           const std::vector<std::string> & hard_exclude_ids);
 
 std::string induced_subtree_ws_method(const TreesToServe & tts,
                                       const SummaryTree_t * tree_ptr,
