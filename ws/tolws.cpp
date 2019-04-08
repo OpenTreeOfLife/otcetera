@@ -594,9 +594,9 @@ string node_info_ws_method(const TreesToServe & tts,
 }
 
 pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
-                                                               const SummaryTree_t* tree_ptr,
-                                                               const vector<string>& node_ids,
-                                                               bool fail_broken = false)
+                                                                  const SummaryTree_t* tree_ptr,
+                                                                  const vector<string>& node_ids,
+                                                                  bool fail_broken = false)
 {
     vector<const SumTreeNode_t *> nodes;
     json unknown;
