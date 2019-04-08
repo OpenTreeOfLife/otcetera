@@ -688,21 +688,11 @@ void add_nearest_taxon(const RichTaxonomy& taxonomy, const SumTreeNode_t& node, 
     j["nearest_taxon"] = nt;
 }
 
-string mrca_ws_method(const TreesToServe & tts,
-                      const SummaryTree_t * tree_ptr,
-                      const SummaryTreeAnnotation * sta,
-                      const vector<string> & node_id_vec)
+const SumTreeNode_t* mrca(auto& nodes)
 {
-    assert(tree_ptr != nullptr);
-    assert(sta != nullptr);
-
-    auto [taxonomy,_] = tts.get_readable_taxonomy();
-
-    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
-
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
-    for (auto n : tip_nodes)
+    for (auto n : nodes)
     {
         if (first)
         {
@@ -717,9 +707,25 @@ string mrca_ws_method(const TreesToServe & tts,
             }
         }
     }
-    if (not focal) {
-        throw OTCBadRequest("MRCA of taxa was not found.\n");
-    }
+    return focal;
+}
+
+string mrca_ws_method(const TreesToServe & tts,
+                      const SummaryTree_t * tree_ptr,
+                      const SummaryTreeAnnotation * sta,
+                      const vector<string> & node_id_vec)
+{
+    assert(tree_ptr != nullptr);
+    assert(sta != nullptr);
+
+    auto [taxonomy,_] = tts.get_readable_taxonomy();
+
+    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
+
+    auto focal = mrca(tip_nodes);
+
+    if (not focal) throw OTCBadRequest("MRCA of taxa was not found.\n");
+
     json response;
     response["synth_id"] = sta->synth_id;
     json mrcaj;
