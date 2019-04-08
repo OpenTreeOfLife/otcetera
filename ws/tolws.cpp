@@ -688,7 +688,8 @@ void add_nearest_taxon(const RichTaxonomy& taxonomy, const SumTreeNode_t& node, 
     j["nearest_taxon"] = nt;
 }
 
-const SumTreeNode_t* mrca(auto& nodes)
+template <typename T>
+const SumTreeNode_t* mrca(const T& nodes)
 {
     const SumTreeNode_t * focal = nullptr;
     bool first = true;
