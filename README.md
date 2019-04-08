@@ -49,7 +49,7 @@ The python requests package is need for running the `make check` target because 
 ### Mac
 On a Mac, you can install dependencies with:
 
-    sudo brew install meson cmake ninja boost
+    brew install meson cmake ninja boost
     pip install requests
 
 ### Linux
