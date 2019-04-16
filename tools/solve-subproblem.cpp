@@ -9,6 +9,7 @@
 #include "otc/tree_iter.h"
 #include "otc/induced_tree.h"
 #include <fstream>
+#include <queue>
 #include <sstream>
 #include <boost/filesystem.hpp>
 #include <optional>
@@ -21,10 +22,13 @@ using std::unique_ptr;
 using std::set;
 using std::list;
 using std::map;
+using std::pair;
 using std::string;
 using std::optional;
 using namespace otc;
 
+// FIXME: I think we want to STOP constructing desids when we read the tree.
+//        Maybe we want to record a mapping from each tree node to an integer index...
 typedef TreeMappedWithSplits Tree_t;
 typedef Tree_t::node_type node_t;
 
@@ -140,6 +144,37 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
         }
     }
     return true;
+}
+
+typedef vector<const node_t*> position_t;
+
+// Reference: Fast Compatibility Testing for Rooted Phylogenetic Trees
+//            Yun Deng, David Fernandex-Baca, Algorithmica (2018) 80:2543-2477
+//            See Algorith 3: BuildST_n(P)
+//
+// Construct a tree that is compatible with all the trees in the profile, and return a null pointer if this is not possible
+unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
+{
+    position_t U_init = profile;
+    std::queue<pair<position_t,const node_t*>> Q;
+
+// L1. Construct display graph H_P(U_init)
+
+// L2. ENQUEUE(Q, (U_init, null) )
+    Q.push({U_init, nullptr});
+
+// L3. while Q is not empty do
+    while(not Q.empty())
+    {
+// L4.
+        auto [U,pred] = std::move(Q.back()); Q.pop();
+
+// L5.  Create a node r_U and set parent(r_U) = pred
+
+    }
+
+// L23. return the tree with root r_{U_unit}
+    return {};
 }
 
 static vector<int> indices;
