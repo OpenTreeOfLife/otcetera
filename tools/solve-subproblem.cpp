@@ -12,7 +12,15 @@
 #include <queue>
 #include <sstream>
 #include <boost/filesystem.hpp>
+
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+
 #include <optional>
+
+typedef boost::adjacency_list< boost::vecS, boost::vecS, boost::bidirectionalS> Graph; 
+typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
+typedef boost::graph_traits<Graph>::edge_descriptor Edge;
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -159,6 +167,44 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     std::queue<pair<position_t,const node_t*>> Q;
 
 // L1. Construct display graph H_P(U_init)
+    Graph H;
+    map<OttId,Vertex> tips;
+    map<Vertex,const node_t*> vertex_to_node;
+    map<const node_t*,Vertex> node_to_vertex;
+
+    for(auto root: profile)
+    {
+        // Walk nodes below root in pre-order (parent before child) so that we can connect children to parents.
+        for(auto nd: iter_pre_n_const(root))
+        {
+            // Add vertex for child node.
+            auto v = add_vertex(H);
+            vertex_to_node.insert({v,nd});
+            node_to_vertex.insert({nd,v});
+
+            // Add edge from parent node to child node
+            if (nd->get_parent())
+            {
+                auto u = node_to_vertex.at(nd->get_parent());
+                boost::add_edge(u,v,H);
+            }
+
+            // Add an edge from the node for the label to the tip
+            if (nd->is_tip())
+            {
+                assert(nd->has_ott_id());
+                auto id = nd->get_ott_id();
+
+                if (not tips.count(id))
+                {
+                    auto label = add_vertex(H);
+                    tips.insert({id,label});
+                }
+
+                boost::add_edge(tips.at(id), v, H);
+            }
+        }
+    }
 
 // L2. ENQUEUE(Q, (U_init, null) )
     Q.push({U_init, nullptr});
