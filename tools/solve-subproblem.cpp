@@ -165,6 +165,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 {
     position_t U_init = profile;
     std::queue<pair<position_t,node_t*>> Q;
+    node_t* r_U_init = nullptr;
 
 // L1. Construct display graph H_P(U_init)
     Graph H;
@@ -212,11 +213,13 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L3.  while Q is not empty do
     while(not Q.empty())
     {
-// L4.
+// L4.  | (U, pred) = DEQUEUE(Q)
         auto [U,pred] = std::move(Q.back()); Q.pop();
 
 // L5.  | Create a node r_U and set parent(r_U) = pred
         auto r_U = new node_t(pred);
+
+        if (not pred) r_U_init = r_U; // Do we really have to do this?
 
 // L6.  | if |L(U)| = 1 then
         if (true)
@@ -273,7 +276,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     }
 
 // L23. return the tree with root r_{U_unit}
-    return {};
+    return unique_ptr<Tree_t>{new Tree_t(r_U_init)};
 }
 
 static vector<int> indices;
