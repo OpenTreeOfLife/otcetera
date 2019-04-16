@@ -164,7 +164,7 @@ typedef vector<const node_t*> position_t;
 unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 {
     position_t U_init = profile;
-    std::queue<pair<position_t,const node_t*>> Q;
+    std::queue<pair<position_t,node_t*>> Q;
 
 // L1. Construct display graph H_P(U_init)
     Graph H;
@@ -206,17 +206,70 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         }
     }
 
-// L2. ENQUEUE(Q, (U_init, null) )
+// L2.  ENQUEUE(Q, (U_init, null) )
     Q.push({U_init, nullptr});
 
-// L3. while Q is not empty do
+// L3.  while Q is not empty do
     while(not Q.empty())
     {
 // L4.
         auto [U,pred] = std::move(Q.back()); Q.pop();
 
-// L5.  Create a node r_U and set parent(r_U) = pred
+// L5.  | Create a node r_U and set parent(r_U) = pred
+        auto r_U = new node_t(pred);
 
+// L6.  | if |L(U)| = 1 then
+        if (true)
+        {
+// L7.  | | let l be the label in L(U)
+            OttId l; // FIXME
+// L8.  | | label r_U with l
+            r_U->set_ott_id(l);
+// L9.  | | continue
+            continue;
+        }
+// L10. | if |L(U)| = 2 then
+        if (true)
+        {
+// L11. | | Let l_1, l_2 be the two labels
+            OttId l1, l2; // FIXME
+// L12. | | foreach j \in [2] do            
+            for(auto l: {l1,l2})
+            {
+// L13. | | | Create a node r_j, labelled l_j
+// L14. | | | Set parent(r_j) = r_J                
+                auto r = new node_t(r_U);
+                r->set_ott_id(l);
+            }
+// L15. | | continue
+            continue;
+        }
+
+//      /* Compute the successor of U. */
+// L16. | foreach semi-universal node v \in U do
+        for(auto v: U)
+        {
+            if (true)
+            {
+// L17. | U = (U \ {v}) \cup Ch(v)
+
+                // remove v from U and add all the children of v to U.
+                // I think we also remove all the edges from v->child(v) from the graph, and then remove v from the graph.
+                // We then need to update the connected components.
+            }
+        }
+// L18. Let W_1, W_2, ... W_p be the connected components of H_P(U)
+// L19. | if p = 1 then
+        if (true)
+// L20. | | return incompatible
+            return {};
+// L21. | foreach j \in |p| do
+        for(auto& j: {1,2})
+        {            
+            position_t W;
+// L22. | | ENQUEUE(Q,(W_j, r_U))
+            Q.push({W,r_U});
+        }
     }
 
 // L23. return the tree with root r_{U_unit}
