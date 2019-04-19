@@ -756,7 +756,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     }
 
     if (unknown.size())
-        throw OTCWebError()<<"Nodes not found!"<<json{ {"unknown", json(unknown)} };
+        throw OTCBadRequest()<<"Nodes not found!"<<json{ {"unknown", json(unknown)} };
 
     // Find the mrca
     bool first = true;
