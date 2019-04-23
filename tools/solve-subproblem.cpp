@@ -154,23 +154,56 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     return true;
 }
 
+struct vertex_info_t
+{
+    // Which tree (0..k-1) is this vertex in?
+    // If the vertex corresponds to a label, then it is not in a tree, and the index is unset.
+    // (This differs from the paper, which uses 1..k for trees, and k+1 for no tree.)
+    optional<int> tree_index;
+
+    // This is true for vertices corresponding to tree nodes that have no parent.
+    bool mark = false;
+};
+
+struct connected_component_t
+{
+    // Y.count: the cardinality of Y \cap X_P
+    // That is, the number of tip labels in the component.
+    int count = -1;
+
+    // Y.map: {(i,L[i])| i is a tree index, and L[i] is not empty}
+    //        where L[i] is the set of marked vertices in tree T[i].
+    map<int,set<Vertex>> marked_vertices_for_tree;
+
+    // Y.semiU: the indices i for trees where Y.map[i] is defined
+    //          (i.e. L[i] is not empty) AND |Y.map[i]| == 1, AND
+    //          the single element of Y.map[i] is an internal node in T[i].
+    set<int> semiU;
+};
+
 typedef vector<const node_t*> position_t;
 
 // Reference: Fast Compatibility Testing for Rooted Phylogenetic Trees
 //            Yun Deng, David Fernandex-Baca, Algorithmica (2018) 80:2543-2477
-//            See Algorith 3: BuildST_n(P)
+//
+//            The overall layout comes from Algorithm 3: BuildST_n(P), lines L1-L23.
+//
+//            However, in order to implement the steps, we need to
+//            initialize (5.2) and maintain (5.3) the data structures mentioned in
+//            section (5.1).
 //
 // Construct a tree that is compatible with all the trees in the profile, and return a null pointer if this is not possible
 unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 {
+
     position_t U_init = profile;
     std::queue<pair<position_t,node_t*>> Q;
     node_t* r_U_init = nullptr;
 
 // L1. Construct display graph H_P(U_init)
     Graph H;
-    map<OttId,Vertex> tips;
-    map<Vertex,const node_t*> vertex_to_node;
+    map<OttId,Vertex> Labels;
+    map<Vertex,vertex_info_t> info_for_vertex;
     map<const node_t*,Vertex> node_to_vertex;
 
     for(auto root: profile)
@@ -180,7 +213,6 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         {
             // Add vertex for child node.
             auto v = add_vertex(H);
-            vertex_to_node.insert({v,nd});
             node_to_vertex.insert({nd,v});
 
             // Add edge from parent node to child node
@@ -196,16 +228,50 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
                 assert(nd->has_ott_id());
                 auto id = nd->get_ott_id();
 
-                if (not tips.count(id))
+                if (not Labels.count(id))
                 {
                     auto label = add_vertex(H);
-                    tips.insert({id,label});
+                    Labels.insert({id,label});
                 }
 
-                boost::add_edge(tips.at(id), v, H);
+                boost::add_edge(Labels.at(id), v, H);
             }
         }
     }
+
+    //----------- 5.2 -------------
+    for(int i=0;i<profile.size();i++)
+    {
+        auto root = profile[i];
+
+        auto v = node_to_vertex[root];
+        info_for_vertex[v].mark = true;
+
+        for(auto nd: iter_pre_n_const(root))
+        {
+            auto v = node_to_vertex[nd];
+            info_for_vertex[v].tree_index = i;
+        }
+    }
+
+    vector<connected_component_t> components(1);
+
+    auto& Y_init = components[0];
+    // * Y_init.count = |L(P)|
+    Y_init.count = Labels.size();
+
+    // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [0..k-1]
+    for(int i=0;i<profile.size();i++)
+    {
+        auto root = profile[i];
+        Y_init.marked_vertices_for_tree.insert({i,{node_to_vertex[root]}});
+    }
+
+    // Y_init.semiU = [0..k-1]
+    for(int i=0;i<profile.size();i++)
+        Y_init.semiU.insert(i);
+
+
 
 // L2.  ENQUEUE(Q, (U_init, null) )
     Q.push({U_init, nullptr});
@@ -219,7 +285,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L5.  | Create a node r_U and set parent(r_U) = pred
         auto r_U = new node_t(pred);
 
-        if (not pred) r_U_init = r_U; // Do we really have to do this?
+        if (not pred) r_U_init = r_U; // Is there a more elegant way to save r_U_init?
 
 // L6.  | if |L(U)| = 1 then
         if (true)
