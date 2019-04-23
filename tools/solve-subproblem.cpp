@@ -29,6 +29,7 @@ using std::vector;
 using std::unique_ptr;
 using std::set;
 using std::list;
+using std::tuple;
 using std::map;
 using std::pair;
 using std::string;
@@ -183,27 +184,70 @@ struct connected_component_t
 
 typedef vector<const node_t*> position_t;
 
-// Reference: Fast Compatibility Testing for Rooted Phylogenetic Trees
-//            Yun Deng, David Fernandex-Baca, Algorithmica (2018) 80:2543-2477
-//
-//            The overall layout comes from Algorithm 3: BuildST_n(P), lines L1-L23.
-//
-//            However, in order to implement the steps, we need to
-//            initialize (5.2) and maintain (5.3) the data structures mentioned in
-//            section (5.1).
-//
-// Construct a tree that is compatible with all the trees in the profile, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
+
+
+/*
+class dynamic_graph
 {
+    Graph G;
 
-    position_t U_init = profile;
-    std::queue<pair<position_t,node_t*>> Q;
-    node_t* r_U_init = nullptr;
+    map<int,list<Vertex>> vertices_for_component;
 
-// L1. Construct display graph H_P(U_init)
+    // This should really be encoded ON the vertex
+    map<Vertex,int> component_for_vertex_;
+    
+public:    
+    int n_components() const {return vertices_for_component.size();}
+    
+    int component_for_vertex(Vertex v) const {return component_for_vertex.at(v);}
+
+    const list<Vertex>& vertices_for_component(int i) const {return vertices_for_component.at(c);}
+
+    int size_of_component(int c) const {return vertices_for_component(c).size();}
+
+    Vertex add_vertex()
+    {
+        auto v = add_vertex(G);
+        int c = n_components();
+        vertices_for_component.insert({c,{v}});
+        return v;
+    }
+        
+    void add_edge(Vertex u, Vertex v)
+    {
+        boost::add_edge(u,v,G);
+
+        int cu = component_for_vertex.at(u);
+        int cv = component_for_vertex.at(v);
+        if (cu != cv)
+        {
+            if (size_of_component(cu) > size_of_component(cv)) std::swap(cu,cv);
+            // Now cu is smaller, or equal.
+            auto& lu = vertices_for_component[cu];
+            auto& lv = vertices_for_component[cv];
+            for(auto uu: lu)
+                component_for_vertex_[uu] = cv;
+            lv.splice(lv.end(), lu);
+            vertices_for_component.erase(cu);
+        }
+    }
+
+    void remove_edge(Vertex u, Vertex v)
+    {
+        //
+        boost::remove_edge(u,v,G);
+    }
+}
+
+*/
+    
+
+
+tuple<Graph, map<OttId,Vertex>, map<const node_t*, Vertex>>
+display_graph_from_profile(const vector<const node_t*>& profile)
+{
     Graph H;
     map<OttId,Vertex> Labels;
-    map<Vertex,vertex_info_t> info_for_vertex;
     map<const node_t*,Vertex> node_to_vertex;
 
     for(auto root: profile)
@@ -238,6 +282,55 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             }
         }
     }
+
+    return {H, Labels, node_to_vertex};
+}
+
+// There will always initially be one component containing all vertices...?
+// The paper says this.
+// But what if there are only two trees, and they have non-overlapping leaf sets?
+
+// Question: How do we get from the positions U to the connected components Y?
+// Answer:   According to Lemma 4, the connected components of a G_P(U) *are* positions AND valid positions.
+//           U is just a set of nodes on the profile, and G_P(u) connects vertices u and v
+//           if cluster(u) intersects cluster(v).
+//
+
+// Question: How about for H_P(U)?
+// Answer:   H_P(U) is the subgraph induced by keeping only descendants of nodes v \in U.
+//           Roots of H_P(U) correspond to nodes in U.
+//
+//           From section 4.4, the connected components W[i] of G_P(U) can be put into a 1-1
+//           correspondence with the connected components Y[i] of H_P(U) so that
+//              W[i] = Y[i] \cap U.
+//           Thus H_P(U) offers the same connectivity information as G_P(U).  
+//           ...
+///          U consists of those nodes in Y \ X_P that have no parent in Y.
+
+// Question: Should we implement the graph using directed edges?
+// Answer:   I think yes, although the connectivity ignores the direction.
+
+
+// Reference: Fast Compatibility Testing for Rooted Phylogenetic Trees
+//            Yun Deng, David Fernandex-Baca, Algorithmica (2018) 80:2543-2477
+//
+//            The overall layout comes from Algorithm 3: BuildST_n(P), lines L1-L23.
+//
+//            However, in order to implement the steps, we need to
+//            initialize (5.2) and maintain (5.3) the data structures mentioned in
+//            section (5.1).
+//
+// Construct a tree that is compatible with all the trees in the profile, and return a null pointer if this is not possible
+unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
+{
+
+    position_t U_init = profile;
+    std::queue<tuple<position_t,connected_component_t,node_t*>> Q;
+    node_t* r_U_init = nullptr;
+
+// L1. Construct display graph H_P(U_init)
+    auto [H, Labels, node_to_vertex] = display_graph_from_profile(profile);
+    map<Vertex,vertex_info_t> info_for_vertex;
 
     //----------- 5.2 -------------
     for(int i=0;i<profile.size();i++)
@@ -274,13 +367,13 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 
 
 // L2.  ENQUEUE(Q, (U_init, null) )
-    Q.push({U_init, nullptr});
+    Q.push({U_init, Y_init, nullptr});
 
 // L3.  while Q is not empty do
     while(not Q.empty())
     {
 // L4.  | (U, pred) = DEQUEUE(Q)
-        auto [U,pred] = std::move(Q.back()); Q.pop();
+        auto [U,Y,pred] = std::move(Q.back()); Q.pop();
 
 // L5.  | Create a node r_U and set parent(r_U) = pred
         auto r_U = new node_t(pred);
@@ -288,7 +381,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         if (not pred) r_U_init = r_U; // Is there a more elegant way to save r_U_init?
 
 // L6.  | if |L(U)| = 1 then
-        if (true)
+        if (Y.count == 1)
         {
 // L7.  | | let l be the label in L(U)
             OttId l; // FIXME
@@ -336,8 +429,9 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         for(auto& j: {1,2})
         {            
             position_t W;
+            connected_component_t O;
 // L22. | | ENQUEUE(Q,(W_j, r_U))
-            Q.push({W,r_U});
+            Q.push({W,O,r_U});
         }
     }
 
