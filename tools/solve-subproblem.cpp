@@ -162,6 +162,8 @@ struct vertex_info_t
     // (This differs from the paper, which uses 1..k for trees, and k+1 for no tree.)
     optional<int> tree_index;
 
+    optional<OttId> label;
+
     // This is true for vertices corresponding to tree nodes that have no parent.
     bool mark = false;
 };
@@ -180,6 +182,27 @@ struct connected_component_t
     //          (i.e. L[i] is not empty) AND |Y.map[i]| == 1, AND
     //          the single element of Y.map[i] is an internal node in T[i].
     set<int> semiU;
+
+    vector<Vertex> semi_universal_nodes_for_position() const
+    {
+        vector<Vertex> SU;
+        for(int index: semiU)
+            for(Vertex v: marked_vertices_for_tree.at(index))
+                SU.push_back(v);
+        return SU;
+    }
+
+    vector<Vertex> vertices_in_component() const
+    {
+        vector<Vertex> vertices;
+        return vertices;
+    }
+
+    vector<OttId> labels_for_component() const
+    {
+        vector<OttId> labels;
+        return labels;
+    }
 };
 
 typedef vector<const node_t*> position_t;
@@ -243,21 +266,28 @@ public:
     
 
 
-tuple<Graph, map<OttId,Vertex>, map<const node_t*, Vertex>>
+tuple<Graph, map<OttId,Vertex>, map<const node_t*, Vertex>, map<Vertex, vertex_info_t>>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
     Graph H;
     map<OttId,Vertex> Labels;
     map<const node_t*,Vertex> node_to_vertex;
+    map<Vertex,vertex_info_t> info_for_vertex;
 
-    for(auto root: profile)
+    for(int i=0; i< profile.size(); i++)
     {
+        auto root = profile[i];
+
+        //----------- 5.2 -------------//
+        info_for_vertex[node_to_vertex[root]].mark = true;
+
         // Walk nodes below root in pre-order (parent before child) so that we can connect children to parents.
         for(auto nd: iter_pre_n_const(root))
         {
             // Add vertex for child node.
             auto v = add_vertex(H);
             node_to_vertex.insert({nd,v});
+            info_for_vertex[v].tree_index = i;
 
             // Add edge from parent node to child node
             if (nd->get_parent())
@@ -276,6 +306,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
                 {
                     auto label = add_vertex(H);
                     Labels.insert({id,label});
+                    info_for_vertex[label].label = id;
                 }
 
                 boost::add_edge(Labels.at(id), v, H);
@@ -283,7 +314,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         }
     }
 
-    return {H, Labels, node_to_vertex};
+    return {H, Labels, node_to_vertex, info_for_vertex};
 }
 
 // There will always initially be one component containing all vertices...?
@@ -308,8 +339,12 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 ///          U consists of those nodes in Y \ X_P that have no parent in Y.
 
 // Question: Should we implement the graph using directed edges?
-// Answer:   I think yes, although the connectivity ignores the direction.
+// Answer:   Not sure.  The connectivity problem does not use directed edges.
+//           But it would be easier to check if a node was a root without looking back at the tree
+//           if the graph itself has directed edges.  Possibly we could use the 'mark' info instead.
 
+
+// Question: How do we find the single label for a connected component of size 1?
 
 // Reference: Fast Compatibility Testing for Rooted Phylogenetic Trees
 //            Yun Deng, David Fernandex-Baca, Algorithmica (2018) 80:2543-2477
@@ -329,23 +364,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     node_t* r_U_init = nullptr;
 
 // L1. Construct display graph H_P(U_init)
-    auto [H, Labels, node_to_vertex] = display_graph_from_profile(profile);
-    map<Vertex,vertex_info_t> info_for_vertex;
-
-    //----------- 5.2 -------------
-    for(int i=0;i<profile.size();i++)
-    {
-        auto root = profile[i];
-
-        auto v = node_to_vertex[root];
-        info_for_vertex[v].mark = true;
-
-        for(auto nd: iter_pre_n_const(root))
-        {
-            auto v = node_to_vertex[nd];
-            info_for_vertex[v].tree_index = i;
-        }
-    }
+    auto [H, Labels, node_to_vertex, info_for_vertex] = display_graph_from_profile(profile);
 
     vector<connected_component_t> components(1);
 
@@ -353,14 +372,14 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     // * Y_init.count = |L(P)|
     Y_init.count = Labels.size();
 
-    // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [0..k-1]
+    // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
     for(int i=0;i<profile.size();i++)
     {
         auto root = profile[i];
         Y_init.marked_vertices_for_tree.insert({i,{node_to_vertex[root]}});
     }
 
-    // Y_init.semiU = [0..k-1]
+    // Y_init.semiU = [k] ([0..k-1] for our purposes)
     for(int i=0;i<profile.size();i++)
         Y_init.semiU.insert(i);
 
@@ -391,17 +410,17 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             continue;
         }
 // L10. | if |L(U)| = 2 then
-        if (true)
+        if (Y.count == 2)
         {
 // L11. | | Let l_1, l_2 be the two labels
             OttId l1, l2; // FIXME
 // L12. | | foreach j \in [2] do            
-            for(auto l: {l1,l2})
+            for(auto label: {l1,l2})
             {
 // L13. | | | Create a node r_j, labelled l_j
 // L14. | | | Set parent(r_j) = r_J                
                 auto r = new node_t(r_U);
-                r->set_ott_id(l);
+                r->set_ott_id(label);
             }
 // L15. | | continue
             continue;
@@ -409,16 +428,13 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 
 //      /* Compute the successor of U. */
 // L16. | foreach semi-universal node v \in U do
-        for(auto v: U)
+        for(auto v: Y.semi_universal_nodes_for_position())
         {
-            if (true)
-            {
 // L17. | U = (U \ {v}) \cup Ch(v)
 
                 // remove v from U and add all the children of v to U.
                 // I think we also remove all the edges from v->child(v) from the graph, and then remove v from the graph.
                 // We then need to update the connected components.
-            }
         }
 // L18. Let W_1, W_2, ... W_p be the connected components of H_P(U)
 // L19. | if p = 1 then
