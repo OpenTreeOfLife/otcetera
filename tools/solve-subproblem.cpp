@@ -18,6 +18,7 @@
 
 #include <optional>
 
+// bidirectionalS indicates a DIRECTED graph where we can iterate over both in_edges and out_edges
 typedef boost::adjacency_list< boost::vecS, boost::vecS, boost::bidirectionalS> Graph; 
 typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
 typedef boost::graph_traits<Graph>::edge_descriptor Edge;
@@ -192,15 +193,51 @@ struct connected_component_t
         return SU;
     }
 
-    vector<Vertex> vertices_in_component() const
+    vector<Vertex> vertices_in_component(const Graph& G) const
     {
         vector<Vertex> vertices;
+        set<Vertex> visited;
+
+        // Add initial vertices
+        for(auto& [index,vs]: marked_vertices_for_tree)
+            for(auto& v: vs)
+            {
+                vertices.push_back(v);
+                visited.insert(v);
+            }
+
+        for(int i=0;i<vertices.size();i++)
+        {
+            for(auto [e, e_end] = in_edges(vertices[i],G); e != e_end; e++)
+            {
+                auto v = boost::source( *e, G );
+                if (not visited.count(v))
+                {
+                    visited.insert(v);
+                    vertices.push_back(v);
+                }
+            }
+            for(auto [e, e_end] = out_edges(vertices[i],G); e != e_end; e++)
+            {
+                auto v = boost::target( *e, G );
+                if (not visited.count(v))
+                {
+                    visited.insert(v);
+                    vertices.push_back(v);
+                }
+            }
+        }
+
         return vertices;
     }
 
-    vector<OttId> labels_for_component() const
+    vector<OttId> labels_for_component(const Graph& G, const map<Vertex,vertex_info_t>& info_for_vertex) const
     {
         vector<OttId> labels;
+        auto vs = vertices_in_component(G);
+        for(auto v: vs)
+            if (auto l = info_for_vertex.at(v).label)
+                labels.push_back(*l);
         return labels;
     }
 };
@@ -309,7 +346,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
                     info_for_vertex[label].label = id;
                 }
 
-                boost::add_edge(Labels.at(id), v, H);
+                boost::add_edge(v,Labels.at(id), H);
             }
         }
     }
@@ -359,8 +396,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 {
 
-    position_t U_init = profile;
-    std::queue<tuple<position_t,connected_component_t,node_t*>> Q;
+    std::queue<tuple<connected_component_t,node_t*>> Q;
     node_t* r_U_init = nullptr;
 
 // L1. Construct display graph H_P(U_init)
@@ -386,13 +422,13 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 
 
 // L2.  ENQUEUE(Q, (U_init, null) )
-    Q.push({U_init, Y_init, nullptr});
+    Q.push({Y_init, nullptr});
 
 // L3.  while Q is not empty do
     while(not Q.empty())
     {
 // L4.  | (U, pred) = DEQUEUE(Q)
-        auto [U,Y,pred] = std::move(Q.back()); Q.pop();
+        auto [Y,pred] = std::move(Q.back()); Q.pop();
 
 // L5.  | Create a node r_U and set parent(r_U) = pred
         auto r_U = new node_t(pred);
@@ -403,9 +439,10 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         if (Y.count == 1)
         {
 // L7.  | | let l be the label in L(U)
-            OttId l; // FIXME
+            auto labels = Y.labels_for_component(H, info_for_vertex);
+            assert(labels.size() == 1);
 // L8.  | | label r_U with l
-            r_U->set_ott_id(l);
+            r_U->set_ott_id(labels[0]);
 // L9.  | | continue
             continue;
         }
@@ -413,9 +450,10 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         if (Y.count == 2)
         {
 // L11. | | Let l_1, l_2 be the two labels
-            OttId l1, l2; // FIXME
+            auto labels = Y.labels_for_component(H, info_for_vertex);
+            assert(labels.size() == 2);
 // L12. | | foreach j \in [2] do            
-            for(auto label: {l1,l2})
+            for(auto label: labels)
             {
 // L13. | | | Create a node r_j, labelled l_j
 // L14. | | | Set parent(r_j) = r_J                
@@ -425,29 +463,54 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L15. | | continue
             continue;
         }
+        vector<connected_component_t> Ws;
 
 //      /* Compute the successor of U. */
 // L16. | foreach semi-universal node v \in U do
-        for(auto v: Y.semi_universal_nodes_for_position())
+
+        auto SU = Y.semi_universal_nodes_for_position();
+        Y.semiU = {};
+        for(auto v: SU)
         {
 // L17. | U = (U \ {v}) \cup Ch(v)
 
-                // remove v from U and add all the children of v to U.
-                // I think we also remove all the edges from v->child(v) from the graph, and then remove v from the graph.
-                // We then need to update the connected components.
+            // PROBLEM! How do we know WHICH connected Y component contains v?
+
+            int i = *info_for_vertex[v].tree_index;
+            auto it = Y.marked_vertices_for_tree.find(i);
+            assert(it != Y.marked_vertices_for_tree.end());
+            assert(it->second.size() == 1);
+
+            assert(info_for_vertex[v].mark);
+            info_for_vertex[v].mark = false;
+            Y.marked_vertices_for_tree.erase(i);
+            set<Vertex> children_of_v;
+            for(auto [e,e_end]=  out_edges(v,H); e != e_end; e++)
+            {
+                auto u = boost::target( *e, H );
+                children_of_v.insert(u);
+                info_for_vertex[u].mark = true;
+            }
+            Y.marked_vertices_for_tree.insert({i,children_of_v});
+
+            for(auto u: children_of_v)
+            {
+                // remove (v,u) and update connected components Ws.
+            }
         }
 // L18. Let W_1, W_2, ... W_p be the connected components of H_P(U)
+
 // L19. | if p = 1 then
-        if (true)
+        assert(Ws.size() > 0);
+        if (Ws.size() == 1)
 // L20. | | return incompatible
             return {};
+
 // L21. | foreach j \in |p| do
-        for(auto& j: {1,2})
+        for(auto& W: Ws)
         {            
-            position_t W;
-            connected_component_t O;
 // L22. | | ENQUEUE(Q,(W_j, r_U))
-            Q.push({W,O,r_U});
+            Q.push({W,r_U});
         }
     }
 
