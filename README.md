@@ -49,13 +49,8 @@ The python requests package is need for running the `make check` target because 
 ### Mac
 On a Mac, you can install dependencies with:
 
-    sudo brew install meson cmake ninja boost openssl
-    SSL=/usr/local/opt/openssl
-    export CPPFLAGS="$CPPFLAGS -I${SSL}/include"
-    export LDFLAGS="$LDFLAGS -L${SSL}/lib"
+    brew install meson cmake ninja boost
     pip install requests
-
-The last `export` lines make sure we use SSL from homebrew, and not the system SSL.
 
 ### Linux
 On recent versions of Debian or Ubuntu Linux, you can run:
@@ -103,11 +98,11 @@ After installing prerequisites, try the following commands to build `restbed` an
 
     # Make restbed library available too.
     export CPPFLAGS="-I${OPENTREE}/local/include $CPPFLAGS"
-    export LDFLAGS="-L${OPENTREE}/local/library $LDFLAGS"
+    export LDFLAGS="-L${OPENTREE}/local/lib $LDFLAGS"
     echo "CPPFLAGS=${CPPFLAGS}"
     echo "LDFLAGS=${LDFLAGS}"
     # Mac ignores LD_LIBRARY_PATH and doesn't need it, but linux needs it.
-    export LD_LIBRARY_PATH=${OPENTREE}/local/library
+    export LD_LIBRARY_PATH=${OPENTREE}/local/lib
     
     # Build otcetera
     cd $OPENTREE/otcetera

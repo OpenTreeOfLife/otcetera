@@ -29,14 +29,53 @@ using json=nlohmann::json;
 using otc::OttId;
 
 namespace otc {
-const int OK = restbed::OK;
-extern TreesToServe tts;
-typedef RTRichTaxNode Taxon;
+    const int OK = restbed::OK;
 
+    extern TreesToServe tts;
+    typedef RTRichTaxNode Taxon;
 
-inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
-    return nd_taxon.get_name();
-}
+    void OTCWebError::prepend(const std::string& s)
+    {
+        if (not data.count("message"))
+        {
+                 data["message"] = s;
+        }
+        else
+        {
+            auto tmp = data["message"].get<std::string>();
+            data["message"] = s + tmp;
+        }
+    }
+
+    OTCWebError::OTCWebError() noexcept
+        : OTCWebError(500,"")
+    {}
+
+    OTCWebError::OTCWebError(int c) noexcept
+        :OTCWebError(c, "")
+    {}
+
+    OTCWebError::OTCWebError(const std::string & msg) noexcept
+        :OTCWebError(500,msg)
+    { }
+
+    OTCWebError::OTCWebError(int c, const std::string & msg) noexcept
+        :status_code_(c)
+    {
+        prepend(msg);
+    }
+
+    template<>
+    OTCWebError& OTCWebError::operator<<(const nlohmann::json& j)
+    {
+        for(auto& [key,value]: j.items())
+            data[key] = value;
+        return *this;
+    }
+
+    inline const string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
+        return nd_taxon.get_name();
+    }
 
 void add_taxon_info(const RichTaxonomy & , const RTRichTaxNode & nd_taxon, json & taxonrepr) {
     const auto & taxon_data = nd_taxon.get_data();
@@ -319,13 +358,14 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           bool & was_broken) {
     was_broken = false;
     const auto & tree_data = tree.get_data();
-    //auto n2nit = tree_data.name_to_node.find(node_id);
-    //if (n2nit != tree_data.name_to_node.end()) {
-    //    return n2nit->second;
-    //}
+
     std::smatch matches;
-    if (std::regex_match(node_id, matches, ott_id_pattern)) {
+    if (std::regex_match(node_id, matches, ott_id_pattern))
+    {
+        // Get the OTT ID
         long raw_ott_id = long_ott_id_from_name(node_id);
+
+        // Try to find the OTT ID in the summary tree.
         if (raw_ott_id >= 0) {
             OttId ott_id = check_ott_id_size(raw_ott_id);
             auto i2nit = tree_data.id_to_node.find(ott_id);
@@ -334,15 +374,20 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
             }
             LOG(WARNING) << "not finding " << ott_id << " extracted from " << node_id;
         }
-        auto bt_it = tree_data.broken_taxa.find(node_id);
-        if (bt_it == tree_data.broken_taxa.end()) {
-            return nullptr;
+
+        // We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
+        if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
+        {
+            // if found we return the MRCA pointer in the first slot of the pair.
+            was_broken = true;
+            return bt_it->second.first;
         }
-        // if found we return the MRCA pointer in the first slot of the pair.
-        was_broken = true;
-        return bt_it->second.first;
+        else
+            return nullptr;
     }
-    if (std::regex_match(node_id, matches, mrca_id_pattern)) {
+
+    if (std::regex_match(node_id, matches, mrca_id_pattern))
+    {
         auto n2nit = tree_data.broken_name_to_node.find(node_id);
         if (n2nit != tree_data.broken_name_to_node.end()) {
             return n2nit->second;
@@ -686,15 +731,37 @@ json get_supporting_studies(const set<const string*>& study_id_set)
 string induced_subtree_ws_method(const TreesToServe & tts,
                  const SummaryTree_t * tree_ptr,
                  const vector<string> & node_id_vec,
-                 NodeNameStyle label_format) {
+                 NodeNameStyle label_format)
+{
     assert(tree_ptr != nullptr);
-    bool was_broken = false;
     const SumTreeNode_t * focal = nullptr;
-    bool first = true;
+
+    // Check if any of the tip nodes are either (i) broken or (ii) not found.
     set<const SumTreeNode_t *> tip_nodes;
-    for (auto node_id : node_id_vec) {
-        const SumTreeNode_t * n = find_required_node_by_id_str(*tree_ptr, node_id, was_broken);
-        tip_nodes.insert(n);
+    set<string> unknown;
+    json broken = json::object();
+    for (auto node_id : node_id_vec)
+    {
+        bool was_broken = false;
+        const SumTreeNode_t * n = find_node_by_id_str(*tree_ptr, node_id, was_broken);
+
+        if (not n)
+            unknown.insert(node_id);
+        else if (was_broken)
+            broken[node_id] = node_id_for_summary_tree_node(*n);
+
+        // Current default strategy means that we include MRCAs for broken taxa.
+        if (n)
+            tip_nodes.insert(n);
+    }
+
+    if (unknown.size())
+        throw OTCBadRequest()<<"Nodes not found!"<<json{ {"unknown", json(unknown)} };
+
+    // Find the mrca
+    bool first = true;
+    for (auto n: tip_nodes)
+    {
         if (first) {
             first = false;
             focal = n;
@@ -705,10 +772,12 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             }
         }
     }
-    bool is_broken = false;
+
     if (focal == nullptr) {
         throw OTCBadRequest() << "MRCA of taxa was not found.\n";
     }
+
+    // Visit some nodes beween tip_nodes and the mrca
     set<const SumTreeNode_t *> visited;
     visited.insert(focal);
     for (auto tni : tip_nodes) {
@@ -728,6 +797,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     json response;
     response["newick"] = out.str();
     response["supporting_studies"] = get_supporting_studies(nnsbs.study_id_set);
+    response["broken"] = broken;
     return response.dump(1);
 }
 
