@@ -998,9 +998,9 @@ const RTRichTaxNode* taxonomy_mrca(const vector<const RTRichTaxNode*>& nodes)
     auto focal = nodes[0];
     for(auto& node: nodes)
     {
-	focal = find_mrca_via_traversal_indices(focal, node);
-	if (not focal) 
-	    throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
+        focal = find_mrca_via_traversal_indices(focal, node);
+        if (not focal) 
+            throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
     }
 
     return focal;
@@ -1058,76 +1058,81 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
 // 
 
 template <typename T>
-bool lcase_string_equals(const string_view& s1, const T& s2)
-{
-    if (s1.size() != s2.size()) return false;
-
-    for(int i=0;i<s1.size();i++)
-	if (std::tolower(s1[i]) != std::tolower(s2[i]))
-	    return false;
-
+bool lcase_string_equals(const string_view& s1, const T& s2) {
+    if (s1.size() != s2.size()) {
+        return false;
+    }
+    for(std::size_t i = 0; i < s1.size(); i++) {
+        if (std::tolower(s1[i]) != std::tolower(s2[i])){
+            return false;
+        }
+    }
     return true;
 }
 
-bool lcase_match_prefix(const string_view& s, const string_view& prefix)
-{
-    if (prefix.size() < s.size()) return false;
-
+bool lcase_match_prefix(const string_view& s, const string_view& prefix) {
+    if (prefix.size() < s.size()) {
+        return false;
+    }
     return lcase_string_equals(s.substr(prefix.size()), prefix);
 }
 
-bool taxon_is_specific(const Taxon* taxon)
-{
+bool taxon_is_specific(const Taxon* taxon) {
     auto rank = taxon->get_data().rank;
-
     return rank_is_specific(rank);
 }
 
-bool taxon_is_genus(const Taxon* taxon)
-{
+bool taxon_is_genus(const Taxon* taxon) {
     return taxon->get_data().rank == TaxonomicRank::RANK_GENUS;
 }
 
-bool taxon_is_higher(const Taxon* taxon)
-{
+bool taxon_is_higher(const Taxon* taxon) {
     return taxon->get_data().rank < TaxonomicRank::RANK_SPECIES;
 }
 
-vector<pair<const Taxon*,const string&>> exact_synonym_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
-{
+using vec_tax_ptr_string_ref = vector<pair<const Taxon*,const string&> > ;
+vec_tax_ptr_string_ref exact_synonym_search(const Taxon* context_root,
+                                            string query,
+                                            std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;}) {
     vector<pair<const Taxon*,const string&>> hits;
-    for(auto taxon: iter_post_n_const(*context_root))
-    {
-	if (not ok(taxon)) continue;
-
-	for(auto& tjs: taxon->get_data().junior_synonyms)
-	    if (lcase_string_equals(query, tjs->get_name()))
-		hits.push_back({taxon,tjs->get_name()});
+    for(auto taxon: iter_post_n_const(*context_root)) {
+        if (not ok(taxon)) {
+            continue;
+        }
+        for(auto& tjs: taxon->get_data().junior_synonyms) {
+            if (lcase_string_equals(query, tjs->get_name())) {
+                hits.push_back({taxon,tjs->get_name()});
+            }
+        }
     }
-
     return hits;
 }
 
-vector<pair<const Taxon*,const string&>> exact_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
+vec_tax_ptr_string_ref exact_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					       {
-						   if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-						   return true;
-					       };
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+       if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
+           return false;
+       }
+       return true;
+   };
 
     return exact_synonym_search(context_root, query, ok);
 }
 
-vector<pair<const Taxon*,const string&>> exact_synonym_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
-{
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					       {
-						   if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-						   if (not taxon_is_higher(taxon)) return false;
-						   return true;
-					       };
-
+vec_tax_ptr_string_ref exact_synonym_search_higher(const RichTaxonomy& taxonomy,
+                                                   const Taxon* context_root,
+                                                   string query,
+                                                   bool include_suppressed) {
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+        if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
+            return false;
+        }
+        if (not taxon_is_higher(taxon)) {
+            return false;
+        }
+        return true;
+    };
     return exact_synonym_search(context_root, query, ok);
 }
 
@@ -1136,15 +1141,15 @@ vector<pair<const Taxon*,const string&>> exact_synonym_search_higher(const RichT
 vector<const Taxon*> exact_name_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
 {
     for(auto& c: query)
-	c = std::tolower(c);
+        c = std::tolower(c);
 
     vector<const Taxon*> hits;
     for(auto taxon: iter_post_n_const(*context_root))
     {
-	if (not ok(taxon)) continue;
+        if (not ok(taxon)) continue;
 
-	if (lcase_string_equals(query, taxon->get_data().get_nonuniqname()))
-	    hits.push_back(taxon);
+        if (lcase_string_equals(query, taxon->get_data().get_nonuniqname()))
+            hits.push_back(taxon);
     }
 
     return hits;
@@ -1153,10 +1158,10 @@ vector<const Taxon*> exact_name_search(const Taxon* context_root, string query, 
 vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    return true;
-					};
+                                        {
+                                            if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+                                            return true;
+                                        };
 
     return exact_name_search(context_root, query, ok);
 }
@@ -1164,11 +1169,11 @@ vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const Taxon
 vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    if (not taxon_is_specific(taxon)) return false;
-					    return true;
-					};
+                                        {
+                                            if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+                                            if (not taxon_is_specific(taxon)) return false;
+                                            return true;
+                                        };
 
     return exact_name_search(context_root, query, ok);
     
@@ -1177,11 +1182,11 @@ vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy, con
 vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    if (not taxon_is_genus(taxon)) return false;
-					    return true;
-					};
+                                        {
+                                            if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+                                            if (not taxon_is_genus(taxon)) return false;
+                                            return true;
+                                        };
 
     return exact_name_search(context_root, query, ok);
     
@@ -1190,11 +1195,11 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy, const
 vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    if (not taxon_is_higher(taxon)) return false;
-					    return true;
-					};
+                                        {
+                                            if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+                                            if (not taxon_is_higher(taxon)) return false;
+                                            return true;
+                                        };
 
     return exact_name_search(context_root, query, ok);
 }
@@ -1204,10 +1209,10 @@ vector<const Taxon*> prefix_name_search(const Taxon* context_root, const string&
     vector<const Taxon*> hits;
     for(auto taxon: iter_post_n_const(*context_root))
     {
-	if (not ok(taxon)) continue;
+        if (not ok(taxon)) continue;
 
-	if (lcase_match_prefix(taxon->get_data().get_nonuniqname(), query))
-	    hits.push_back(taxon);
+        if (lcase_match_prefix(taxon->get_data().get_nonuniqname(), query))
+            hits.push_back(taxon);
     }
 
     return hits;
@@ -1216,10 +1221,10 @@ vector<const Taxon*> prefix_name_search(const Taxon* context_root, const string&
 vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    return true;
-					};
+                                        {
+                                            if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+                                            return true;
+                                        };
 
     return prefix_name_search(context_root, query, ok);
 }
@@ -1227,11 +1232,11 @@ vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy, const Taxo
 vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy, const Taxon* context_root, const string& query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    if (not taxon_is_higher(taxon)) return false;
-					    return true;
-					};
+                                        {
+                                            if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+                                            if (not taxon_is_higher(taxon)) return false;
+                                            return true;
+                                        };
 
     return prefix_name_search(context_root, query, ok);
 }
@@ -1241,11 +1246,11 @@ vector<pair<const Taxon*,const string&>> prefix_synonym_search(const Taxon* cont
     vector<pair<const Taxon*,const string&>> hits;
     for(auto taxon: iter_post_n_const(*context_root))
     {
-	if (not ok(taxon)) continue;
+        if (not ok(taxon)) continue;
 
-	for(auto& tjs: taxon->get_data().junior_synonyms)
-	    if (lcase_match_prefix(tjs->get_name(), query))
-		hits.push_back({taxon,tjs->get_name()});
+        for(auto& tjs: taxon->get_data().junior_synonyms)
+            if (lcase_match_prefix(tjs->get_name(), query))
+                hits.push_back({taxon,tjs->get_name()});
     }
 
     return hits;
@@ -1254,10 +1259,10 @@ vector<pair<const Taxon*,const string&>> prefix_synonym_search(const Taxon* cont
 vector<pair<const Taxon*,const string&>> prefix_synonym_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
 {
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					       {
-						   if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-						   return true;
-					       };
+                                               {
+                                                   if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
+                                                   return true;
+                                               };
 
     return prefix_synonym_search(context_root, query, ok);
 }
@@ -1282,7 +1287,7 @@ struct ContextSearcher
 
     ContextSearcher(const RichTaxonomy& t, const Context& c): taxonomy(t), context(c)
     {
-	context_root = taxonomy.included_taxon_from_id(c.ott_id);
+        context_root = taxonomy.included_taxon_from_id(c.ott_id);
     }
 };
 
@@ -1328,7 +1333,7 @@ json exact_synonym_match_json(const string& query, const Taxon* taxon, const str
 pair<json,match_status> ContextSearcher::match_name(string query, bool do_approximate_matching, bool include_suppressed)
 {
     for(auto& c: query)
-	c = std::tolower(c);
+        c = std::tolower(c);
 
     // What does an ambiguous match mean?
     json results;
@@ -1339,24 +1344,24 @@ pair<json,match_status> ContextSearcher::match_name(string query, bool do_approx
     auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
 
     for(auto taxon: exact_name_matches)
-	results.push_back(exact_name_match_json(query, taxon, taxonomy));
+        results.push_back(exact_name_match_json(query, taxon, taxonomy));
 
     if (exact_name_matches.size() == 1)
-	status = unambiguous_match;
+        status = unambiguous_match;
 
     // 2. See if we can find an exact name match for synonyms
     auto exact_synonym_matches = exact_synonym_search(taxonomy, context_root, query, include_suppressed);
 
     for(auto& [ taxon, synonym_name ]: exact_synonym_matches)
-	results.push_back(exact_synonym_match_json(query, taxon, synonym_name, taxonomy));
+        results.push_back(exact_synonym_match_json(query, taxon, synonym_name, taxonomy));
 
     if (status == unmatched and results.size())
-	status = ambiguous_match;
+        status = ambiguous_match;
 
     // 3. Do fuzzy matching ONLY for names that we couldn't match
     if (do_approximate_matching and status == unmatched)
     {
-	// do fuzzy matching.
+        // do fuzzy matching.
     }
 
     json match_results;
@@ -1371,12 +1376,12 @@ const Context* determine_context_for_names(const vector<string>& names, const op
     // 1. Determine context
     const Context* context;
     if (not context_name)
-	context = infer_context_and_ambiguous_names(taxonomy, names).first;
+        context = infer_context_and_ambiguous_names(taxonomy, names).first;
     else
     {
-	if (not name_to_context.count(*context_name))
-	    throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
-	context = name_to_context.at(*context_name);
+        if (not name_to_context.count(*context_name))
+            throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
+        context = name_to_context.at(*context_name);
     }
     return context;
 }
@@ -1386,12 +1391,12 @@ const Context* determine_context(const optional<string>& context_name)
     // 1. Determine context
     const Context* context;
     if (not context_name)
-	context = name_to_context.at("All life");
+        context = name_to_context.at("All life");
     else
     {
-	if (not name_to_context.count(*context_name))
-	    throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
-	context = name_to_context.at(*context_name);
+        if (not name_to_context.count(*context_name))
+            throw OTCError()<<"The context '"<<*context_name<<"' could not be found.";
+        context = name_to_context.at(*context_name);
     }
     return context;
 }
@@ -1425,22 +1430,22 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
 
     for(auto& name: names)
     {
-	// Do the search
-	auto [result,status] = searcher.match_name(name, do_approximate_matching, include_suppressed);
+        // Do the search
+        auto [result,status] = searcher.match_name(name, do_approximate_matching, include_suppressed);
 
-	// Store the result
-	results.push_back(result);
+        // Store the result
+        results.push_back(result);
 
-	// Classify name as unmatched / matched / unambiguous
-	if (status == unmatched)
-	    unmatched_names.push_back(name);
-	else
-	{
-	    matched_names.push_back(name);
+        // Classify name as unmatched / matched / unambiguous
+        if (status == unmatched)
+            unmatched_names.push_back(name);
+        else
+        {
+            matched_names.push_back(name);
 
-	    if (status == unambiguous_match)
-		unambiguous_names.push_back(name);
-	}
+            if (status == unambiguous_match)
+                unambiguous_names.push_back(name);
+        }
     }
 
     // 3. Construct JSON response.
@@ -1472,7 +1477,7 @@ optional<pair<string,string>> split_genus_species(const string& name)
 
     auto non_space = name.find_first_not_of(' ', first_space+1);
     if (non_space == string::npos)
-	non_space = name.size();
+        non_space = name.size();
 
     auto species = name.substr(non_space, name.size() - non_space);
 
@@ -1518,13 +1523,13 @@ json autocomplete_json(const RichTaxonomy& taxonomy, const pair<const Taxon*,con
 void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<const Taxon*> taxa)
 {
     for(auto taxon:taxa)
-	j.push_back(autocomplete_json(taxonomy,taxon));
+        j.push_back(autocomplete_json(taxonomy,taxon));
 }
-		    
+                    
 void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<pair<const Taxon*,const string&>> taxa)
 {
     for(auto [taxon,synonym]:taxa)
-	j.push_back(autocomplete_json(taxonomy,taxon));
+        j.push_back(autocomplete_json(taxonomy,taxon));
 }
 
 // Find all species in the genus that have the given prefix
@@ -1535,12 +1540,12 @@ vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus, const st
     auto genus_name = genus->get_data().get_nonuniqname();
     for(auto species: iter_post_n_const(*genus))
     {
-	if (not taxon_is_specific(species)) continue;
+        if (not taxon_is_specific(species)) continue;
 
-	auto species_name = species->get_data().get_nonuniqname().substr(genus_name.size()+1);
+        auto species_name = species->get_data().get_nonuniqname().substr(genus_name.size()+1);
 
-	if (lcase_match_prefix(species_name, species_prefix))
-	    match_species.push_back(species);
+        if (lcase_match_prefix(species_name, species_prefix))
+            match_species.push_back(species);
     }
 
     return match_species;
@@ -1569,51 +1574,51 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
     // 2. If we have a space, then assume the first part is a genus and match species names within the genus
     if (auto query_genus_species = split_genus_species(name))
     {
-	// Search against species and synonyms
-	add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed));
-	add_hits(response, taxonomy, exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
-	if (response.size()) return response;
-	
-	// no exact hit against the species index
-	auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
+        // Search against species and synonyms
+        add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed));
+        add_hits(response, taxonomy, exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
+        if (response.size()) return response;
+        
+        // no exact hit against the species index
+        auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
 
-	if (not genus_hits.empty()) // the first word was an exact match against the genus index
-	{
-	    auto [query_genus,query_species] = *query_genus_species;
+        if (not genus_hits.empty()) // the first word was an exact match against the genus index
+        {
+            auto [query_genus,query_species] = *query_genus_species;
 
-	    for(auto genus: genus_hits)
-		add_hits(response, taxonomy, prefix_search_species_in_genus(genus, query_species));
-	}
-	if (not response.empty()) return response;
+            for(auto genus: genus_hits)
+                add_hits(response, taxonomy, prefix_search_species_in_genus(genus, query_species));
+        }
+        if (not response.empty()) return response;
 
-	// no exact hit for first word against the genus index
+        // no exact hit for first word against the genus index
 
         // Hit query string against the higher taxon index... not sure if this is useful, since it has a space
-	add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+        add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+        if (not response.empty()) return response;
 
-	// Prefix query against the synonyms and higher taxa
-	add_hits(response, taxonomy, prefix_name_search(taxonomy, context_root, escaped_query, include_suppressed));
-	add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
-	
-	// fuzzy search on names and synonyms
+        // Prefix query against the synonyms and higher taxa
+        add_hits(response, taxonomy, prefix_name_search(taxonomy, context_root, escaped_query, include_suppressed));
+        add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
+        if (not response.empty()) return response;
+        
+        // fuzzy search on names and synonyms
     }
     else // does not contain a space at all
     {
-	add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
-	add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+        add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+        add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+        if (not response.empty()) return response;
 
-	// Do a prefix query against the higher taxon index
-	add_hits(response, taxonomy, prefix_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+        // Do a prefix query against the higher taxon index
+        add_hits(response, taxonomy, prefix_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+        if (not response.empty()) return response;
 
-	// Do a prefix query against the all taxa synonym index
-	add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
-	
-	// fuzzy search on higher names and synonyms
+        // Do a prefix query against the all taxa synonym index
+        add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
+        if (not response.empty()) return response;
+        
+        // fuzzy search on higher names and synonyms
     }
     
     return response.dump(1);
@@ -1625,7 +1630,7 @@ std::string tnrs_contexts_ws_method()
 {
     json response;
     for(auto& context: all_contexts)
-	response[context.group].push_back(context.name);
+        response[context.group].push_back(context.name);
     return response.dump(1);
 }
 
