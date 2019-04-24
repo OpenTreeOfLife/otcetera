@@ -29,10 +29,10 @@ extern bool debugging_output_enabled;
 // The compiler should be able to optimize this away if OttId = long
 inline std::optional<OttId> to_OttId(long raw_ott_id)
 {
-    if (raw_ott_id > std::numeric_limits<OttId>::max())
-	return {};
-    else
-	return static_cast<OttId>(raw_ott_id);
+    if (raw_ott_id > std::numeric_limits<OttId>::max()) {
+        return std::nullopt; // avoiding return {} to suppress maybe-uninitialized warning
+    }
+    return static_cast<OttId>(raw_ott_id);
 }
 
 void throw_ott_id_type_too_small_exception(long);
@@ -40,8 +40,9 @@ void throw_ott_id_type_too_small_exception(long);
 inline OttId check_ott_id_size(long raw_ott_id)
 {
     auto id = to_OttId(raw_ott_id);
-    if (not id)
-	throw_ott_id_type_too_small_exception(raw_ott_id);
+    if (not id) {
+        throw_ott_id_type_too_small_exception(raw_ott_id);
+    }
     return *id;
 }
 
