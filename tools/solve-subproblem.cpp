@@ -147,7 +147,8 @@ int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>
     return static_cast<int>(c1);
 }
 
-bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
+bool empty_intersection(const set<int>& xs, const vector<int>& ys)
+{
     for (int y: ys){
         if (xs.count(y)) {
             return false;
@@ -156,8 +157,16 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     return true;
 }
 
-struct vertex_info_t
+struct connected_component_t;
+
+class vertex_info_t
 {
+    // This is true for vertices corresponding to tree nodes that have no parent.
+    // The marked vertices are the vertices of the connected component Y (of the display graph)
+    //   that are in the corresponding position U (of the cluster graph).
+
+    bool mark = false;
+public:
     // Which tree (0..k-1) is this vertex in?
     // If the vertex corresponds to a label, then it is not in a tree, and the index is unset.
     // (This differs from the paper, which uses 1..k for trees, and k+1 for no tree.)
@@ -165,8 +174,13 @@ struct vertex_info_t
 
     optional<OttId> label;
 
-    // This is true for vertices corresponding to tree nodes that have no parent.
-    bool mark = false;
+    bool is_marked() const {return mark;}
+    void unmark_node() {mark = false;}
+    void mark_node() {mark = true;}
+
+    // We should be able to specify the components only for the MARKED nodes.
+    // Perhaps we can set a pointer to the component when we mark the node.
+    connected_component_t* component;
 };
 
 struct connected_component_t
@@ -316,7 +330,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         auto root = profile[i];
 
         //----------- 5.2 -------------//
-        info_for_vertex[node_to_vertex[root]].mark = true;
+        info_for_vertex[node_to_vertex[root]].mark_node();
 
         // Walk nodes below root in pre-order (parent before child) so that we can connect children to parents.
         for(auto nd: iter_pre_n_const(root))
@@ -395,34 +409,32 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 // Construct a tree that is compatible with all the trees in the profile, and return a null pointer if this is not possible
 unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 {
-
-    std::queue<tuple<connected_component_t,node_t*>> Q;
+    std::queue<tuple<unique_ptr<connected_component_t>,node_t*>> Q;
     node_t* r_U_init = nullptr;
 
 // L1. Construct display graph H_P(U_init)
     auto [H, Labels, node_to_vertex, info_for_vertex] = display_graph_from_profile(profile);
 
-    vector<connected_component_t> components(1);
+    unique_ptr<connected_component_t> Y_init(new connected_component_t);
 
-    auto& Y_init = components[0];
     // * Y_init.count = |L(P)|
-    Y_init.count = Labels.size();
+    Y_init->count = Labels.size();
 
     // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
     for(int i=0;i<profile.size();i++)
     {
         auto root = profile[i];
-        Y_init.marked_vertices_for_tree.insert({i,{node_to_vertex[root]}});
+        Y_init->marked_vertices_for_tree.insert({i,{node_to_vertex[root]}});
     }
 
     // Y_init.semiU = [k] ([0..k-1] for our purposes)
     for(int i=0;i<profile.size();i++)
-        Y_init.semiU.insert(i);
+        Y_init->semiU.insert(i);
 
 
 
 // L2.  ENQUEUE(Q, (U_init, null) )
-    Q.push({Y_init, nullptr});
+    Q.push({std::move(Y_init), nullptr});
 
 // L3.  while Q is not empty do
     while(not Q.empty())
@@ -436,10 +448,10 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         if (not pred) r_U_init = r_U; // Is there a more elegant way to save r_U_init?
 
 // L6.  | if |L(U)| = 1 then
-        if (Y.count == 1)
+        if (Y->count == 1)
         {
 // L7.  | | let l be the label in L(U)
-            auto labels = Y.labels_for_component(H, info_for_vertex);
+            auto labels = Y->labels_for_component(H, info_for_vertex);
             assert(labels.size() == 1);
 // L8.  | | label r_U with l
             r_U->set_ott_id(labels[0]);
@@ -447,10 +459,10 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             continue;
         }
 // L10. | if |L(U)| = 2 then
-        if (Y.count == 2)
+        if (Y->count == 2)
         {
 // L11. | | Let l_1, l_2 be the two labels
-            auto labels = Y.labels_for_component(H, info_for_vertex);
+            auto labels = Y->labels_for_component(H, info_for_vertex);
             assert(labels.size() == 2);
 // L12. | | foreach j \in [2] do            
             for(auto label: labels)
@@ -463,13 +475,19 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L15. | | continue
             continue;
         }
-        vector<connected_component_t> Ws;
+
+        auto SU = Y->semi_universal_nodes_for_position();
+        // I presume that we clear this because we are about to remove all these nodes anyway.
+        Y->semiU = {};
+
+        // BDR: If we only over split components, then we never need to find
+        //      old components to remove them from the list.
+        vector<unique_ptr<connected_component_t>> Ws;
+        Ws.push_back(std::move(Y));
 
 //      /* Compute the successor of U. */
 // L16. | foreach semi-universal node v \in U do
 
-        auto SU = Y.semi_universal_nodes_for_position();
-        Y.semiU = {};
         for(auto v: SU)
         {
 // L17. | U = (U \ {v}) \cup Ch(v)
@@ -477,21 +495,21 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             // PROBLEM! How do we know WHICH connected Y component contains v?
 
             int i = *info_for_vertex[v].tree_index;
-            auto it = Y.marked_vertices_for_tree.find(i);
-            assert(it != Y.marked_vertices_for_tree.end());
+            auto it = Y->marked_vertices_for_tree.find(i);
+            assert(it != Y->marked_vertices_for_tree.end());
             assert(it->second.size() == 1);
 
-            assert(info_for_vertex[v].mark);
-            info_for_vertex[v].mark = false;
-            Y.marked_vertices_for_tree.erase(i);
+            assert(info_for_vertex[v].is_marked());
+            info_for_vertex[v].unmark_node();
+            Y->marked_vertices_for_tree.erase(i);
             set<Vertex> children_of_v;
             for(auto [e,e_end]=  out_edges(v,H); e != e_end; e++)
             {
                 auto u = boost::target( *e, H );
                 children_of_v.insert(u);
-                info_for_vertex[u].mark = true;
+                info_for_vertex[u].mark_node();
             }
-            Y.marked_vertices_for_tree.insert({i,children_of_v});
+            Y->marked_vertices_for_tree.insert({i,children_of_v});
 
             for(auto u: children_of_v)
             {
@@ -510,7 +528,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         for(auto& W: Ws)
         {            
 // L22. | | ENQUEUE(Q,(W_j, r_U))
-            Q.push({W,r_U});
+            Q.push({std::move(W),r_U});
         }
     }
 
