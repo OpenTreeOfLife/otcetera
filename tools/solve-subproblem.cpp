@@ -371,22 +371,26 @@ struct connected_component_t
 
     void erase_marked_vertex_for_tree(Vertex v, int i)
     {
+        assert(G->vertex_info(v).is_marked());
         auto& nodes = marked_vertices_for_tree.at(i);
         if (semi_universal_position(*G, nodes))
             semiU.erase(i);
         nodes.erase(v);
         if (semi_universal_position(*G, nodes))
             semiU.insert(i);
+        G->vertex_info(v).unmark_node();
     }
 
     void insert_marked_vertex_for_tree(Vertex v, int i)
     {
+        assert(not G->vertex_info(v).is_marked());
         auto& nodes = marked_vertices_for_tree.at(i);
         if (semi_universal_position(*G, nodes))
             semiU.erase(i);
         nodes.insert(v);
         if (semi_universal_position(*G, nodes))
             semiU.insert(i);
+        G->vertex_info(v).mark_node(this);
     }
 
     // Y.semiU: the indices i for trees where Y.map[i] is defined
@@ -543,9 +547,7 @@ void split_component(connected_component_t* Y1, connected_component_t* Y2, Verte
         if (info.is_marked())
         {
             Y2->erase_marked_vertex_for_tree(uu, i);
-
             Y1->insert_marked_vertex_for_tree(uu, i);
-            info.mark_node(Y1);
         }
     }
 }
