@@ -348,6 +348,10 @@ bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
 
 struct connected_component_t
 {
+    dynamic_graph* G;
+
+    dynamic_graph* get_graph() {return G;}
+
     // Y.count: the cardinality of Y \cap X_P
     // That is, the number of tip labels in the component.
     int count = -1;
@@ -356,23 +360,23 @@ struct connected_component_t
     //        where L[i] is the set of marked vertices in tree T[i].
     map<int,set<Vertex>> marked_vertices_for_tree;
 
-    void erase_marked_vertex_for_tree(const dynamic_graph& G, Vertex v, int i)
+    void erase_marked_vertex_for_tree(Vertex v, int i)
     {
         auto& nodes = marked_vertices_for_tree.at(i);
-        if (semi_universal_position(G, nodes))
+        if (semi_universal_position(*G, nodes))
             semiU.erase(i);
         nodes.erase(v);
-        if (semi_universal_position(G, nodes))
+        if (semi_universal_position(*G, nodes))
             semiU.insert(i);
     }
 
-    void insert_marked_vertex_for_tree(const dynamic_graph& G, Vertex v, int i)
+    void insert_marked_vertex_for_tree(Vertex v, int i)
     {
         auto& nodes = marked_vertices_for_tree.at(i);
-        if (semi_universal_position(G, nodes))
+        if (semi_universal_position(*G, nodes))
             semiU.erase(i);
         nodes.insert(v);
-        if (semi_universal_position(G, nodes))
+        if (semi_universal_position(*G, nodes))
             semiU.insert(i);
     }
 
@@ -390,7 +394,7 @@ struct connected_component_t
         return SU;
     }
 
-    vector<Vertex> vertices_in_component(const dynamic_graph& G) const
+    vector<Vertex> vertices_in_component() const
     {
         vector<Vertex> vertices;
         set<Vertex> visited;
@@ -405,18 +409,18 @@ struct connected_component_t
 
         for(int i=0;i<vertices.size();i++)
         {
-            for(auto [e, e_end] = G.in_edges(vertices[i]); e != e_end; e++)
+            for(auto [e, e_end] = G->in_edges(vertices[i]); e != e_end; e++)
             {
-                auto v = G.source( *e );
+                auto v = G->source( *e );
                 if (not visited.count(v))
                 {
                     visited.insert(v);
                     vertices.push_back(v);
                 }
             }
-            for(auto [e, e_end] = G.out_edges(vertices[i]); e != e_end; e++)
+            for(auto [e, e_end] = G->out_edges(vertices[i]); e != e_end; e++)
             {
-                auto v = G.target( *e );
+                auto v = G->target( *e );
                 if (not visited.count(v))
                 {
                     visited.insert(v);
@@ -428,29 +432,31 @@ struct connected_component_t
         return vertices;
     }
 
-    vector<OttId> labels_for_component(const dynamic_graph& G, const map<Vertex,vertex_info_t>& info_for_vertex) const
+    vector<OttId> labels_for_component(const map<Vertex,vertex_info_t>& info_for_vertex) const
     {
         vector<OttId> labels;
-        auto vs = vertices_in_component(G);
+        auto vs = vertices_in_component();
         for(auto v: vs)
             if (auto l = info_for_vertex.at(v).label)
                 labels.push_back(*l);
         return labels;
     }
+
+    connected_component_t(dynamic_graph* g):G(g) {}
 };
 
 typedef vector<const node_t*> position_t;
 
 
 
-tuple<dynamic_graph, map<Vertex, vertex_info_t>,unique_ptr<connected_component_t>>
+tuple<unique_ptr<dynamic_graph>, map<Vertex, vertex_info_t>,unique_ptr<connected_component_t>>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
-    dynamic_graph H;
+    unique_ptr<dynamic_graph> H;
     map<OttId,Vertex> Labels;
     map<const node_t*,Vertex> node_to_vertex;
     map<Vertex,vertex_info_t> info_for_vertex;
-    unique_ptr<connected_component_t> Y_init(new connected_component_t);
+    unique_ptr<connected_component_t> Y_init(new connected_component_t(H.get()));
 
     for(int i=0; i< profile.size(); i++)
     {
@@ -463,7 +469,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         for(auto nd: iter_pre_n_const(root))
         {
             // Add vertex for child node.
-            auto v = H.add_vertex();
+            auto v = H->add_vertex();
             node_to_vertex.insert({nd,v});
             info_for_vertex[v].tree_index = i;
 
@@ -471,7 +477,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
             if (nd->get_parent())
             {
                 auto u = node_to_vertex.at(nd->get_parent());
-                H.add_edge(u,v);
+                H->add_edge(u,v);
             }
 
             // Add an edge from the node for the label to the tip
@@ -482,12 +488,12 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
                 if (not Labels.count(id))
                 {
-                    auto label = H.add_vertex();
+                    auto label = H->add_vertex();
                     Labels.insert({id,label});
                     info_for_vertex[label].label = id;
                 }
 
-                H.add_edge(v,Labels.at(id));
+                H->add_edge(v,Labels.at(id));
             }
         }
     }
@@ -506,7 +512,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     for(int i=0;i<profile.size();i++)
         Y_init->semiU.insert(i);
 
-    return {H, info_for_vertex, std::move(Y_init)};
+    return {std::move(H), info_for_vertex, std::move(Y_init)};
 }
 
 
@@ -527,9 +533,9 @@ void split_component(dynamic_graph& H, map<Vertex,vertex_info_t>& info_for_verte
         int i = *info.tree_index;
         if (info.is_marked())
         {
-            Y2->erase_marked_vertex_for_tree(H, uu, i);
+            Y2->erase_marked_vertex_for_tree(uu, i);
 
-            Y1->insert_marked_vertex_for_tree(H, uu, i);
+            Y1->insert_marked_vertex_for_tree(uu, i);
             info.mark_node(Y1);
         }
     }
@@ -538,7 +544,7 @@ void split_component(dynamic_graph& H, map<Vertex,vertex_info_t>& info_for_verte
 // We need to return a new component corresponding to the second vertex u
 unique_ptr<connected_component_t> split_component(dynamic_graph& H, map<Vertex,vertex_info_t>& info_for_vertex, connected_component_t* Y1, Vertex v, Vertex u)
 {
-    unique_ptr<connected_component_t> W(new connected_component_t);
+    unique_ptr<connected_component_t> W(new connected_component_t(&H));
     auto Y2 = W.get();
 
     int cv = H.component_for_vertex(v);
@@ -619,7 +625,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         if (Y->count == 1)
         {
 // L7.  | | let l be the label in L(U)
-            auto labels = Y->labels_for_component(H, info_for_vertex);
+            auto labels = Y->labels_for_component(info_for_vertex);
             assert(labels.size() == 1);
 // L8.  | | label r_U with l
             r_U->set_ott_id(labels[0]);
@@ -631,7 +637,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         if (Y->count == 2)
         {
 // L11. | | Let l_1, l_2 be the two labels
-            auto labels = Y->labels_for_component(H, info_for_vertex);
+            auto labels = Y->labels_for_component(info_for_vertex);
             assert(labels.size() == 2);
 // L12. | | foreach j \in [2] do            
             for(auto label: labels)
@@ -675,9 +681,9 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L17. | U = (U \ {v}) \cup Ch(v)
             U_i.clear();
             info_for_vertex[v].unmark_node();
-            for(auto [e,e_end]=  H.out_edges(v); e != e_end; e++)
+            for(auto [e,e_end]=  H->out_edges(v); e != e_end; e++)
             {
-                auto u = H.target( *e );
+                auto u = H->target( *e );
                 U_i.insert(u);
                 info_for_vertex[u].mark_node(Y1);
             }
@@ -689,8 +695,8 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 
             // Remove the edges (v,u), creating new components, and updating mark, map, and semiU
             for(auto u: U_i)
-                if (H.remove_edge(v,u))
-                    Ws.push_back(split_component(H, info_for_vertex, Y1, v, u));
+                if (H->remove_edge(v,u))
+                    Ws.push_back(split_component(*H, info_for_vertex, Y1, v, u));
         }
 // L18. Let W_1, W_2, ... W_p be the connected components of H_P(U)
 
