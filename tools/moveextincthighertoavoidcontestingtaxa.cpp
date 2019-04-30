@@ -57,7 +57,42 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     std::size_t phylogeniesProcessed = 0;
     std::vector<std::string> namesOfTreesWithoutExtinct;
     ExtinctTaxonToPlacementSummary unjoinedExtinctTaxonToPlacementSummary; 
-    ExtinctTaxonToPlacementSummary joinedExtinctTaxonToPlacementSummary; 
+    //ExtinctTaxonToPlacementSummary joinedExtinctTaxonToPlacementSummary;
+
+    using AttachNameJSONPair = std::pair<std::string, json>;
+    AttachNameJSONPair gen_json_edit_doc_for_taxon(const TreeIDToPlacement & edits) {
+        std::set<std::string> tree_names;
+        std::string attach_nd_id;
+        int lowest_depth = 0;
+        for (auto tree_pref_pair: edits) {
+            auto needs_move_taxon = tree_pref_pair.second;
+            if (needs_move_taxon.first) {
+                bool lowest = false;
+                auto attach_nd = needs_move_taxon.second;
+                const RTSplits & an_data = attach_nd->get_data();
+                auto an_depth = an_data.depth;
+                if (tree_names.empty() || an_depth < lowest_depth) {
+                    lowest = true;
+                    lowest_depth = an_depth;
+                    tree_names.clear();
+                    attach_nd_id = "ott" + std::to_string(attach_nd->get_ott_id());
+                }
+                if (lowest_depth == an_depth) {
+                    tree_names.insert(tree_pref_pair.first);
+                }
+            }
+        }
+
+        json empty;
+        if (!tree_names.empty()) {
+            json jtree_names = json::array();
+            for (auto i : tree_names) {
+                jtree_names.push_back(i);
+            }
+            return AttachNameJSONPair(attach_nd_id, jtree_names);
+        }
+        return AttachNameJSONPair(std::string(), empty);
+    }
 
     virtual ~MoveExtinctHigherState(){}
     MoveExtinctHigherState()
@@ -150,13 +185,29 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                 d.depth = 1 + p->get_data().depth;
             }
             //db_write_ott_id_set(nd->get_name().c_str(), d.des_ids);
-            std::cerr << "nd id = " << nd->get_ott_id() << " depth = " << d.depth << '\n';
+            //std::cerr << "nd id = " << nd->get_ott_id() << " depth = " << d.depth << '\n';
         }
         return r;
     }
     
     bool summarize(OTCLI &otCLI) override {
         json document;
+        json taxon_edits;
+        std::cerr << "unjoinedExtinctTaxonToPlacementSummary.size() = " << unjoinedExtinctTaxonToPlacementSummary.size() << '\n';
+        for (auto tax_id_to_edit : unjoinedExtinctTaxonToPlacementSummary) {
+            const auto taxon_ptr = tax_id_to_edit.first;
+            const auto edits = tax_id_to_edit.second;
+            std::string key = "ott" + std::to_string(taxon_ptr->get_ott_id());
+            auto obj = gen_json_edit_doc_for_taxon(edits);
+            const auto & att_nd_id = obj.first;
+            if (!att_nd_id.empty()) {
+                json new_attach;
+                new_attach["new_parent"] = att_nd_id;
+                new_attach["according_to"] = obj.second;
+                taxon_edits[key] =  new_attach; 
+            }
+        }
+        document["edits"] = taxon_edits;
         json jTreesWoExt = json::array(); 
         for (auto i : namesOfTreesWithoutExtinct) {
             jTreesWoExt.push_back(i);
