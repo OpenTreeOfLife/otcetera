@@ -180,7 +180,7 @@ public:
     void unmark_node() {component = nullptr;}
     void mark_node(connected_component_t* c) {component = c;}
 
-    connected_component_t* get_component() const {return component;}
+    connected_component_t* get_component() const {assert(component); return component;}
 };
 
 struct connected_component_t
@@ -457,6 +457,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L9.  | | continue
             continue;
         }
+
 // L10. | if |L(U)| = 2 then
         if (Y->count == 2)
         {
@@ -475,8 +476,13 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             continue;
         }
 
+        // The list of semi-universal nodes in U (which corresponds to Y)
         auto SU = Y->semi_universal_nodes_for_position();
-        // I presume that we clear this because we are about to remove all these nodes anyway.
+
+        // See Lemma 7.
+        //  After replacing each semi-universal node in U with its children,
+        //  (i.e. computing the successor of ), there are no semi-universal
+        //  nodes in left in U.
         Y->semiU = {};
 
         // BDR: If we only over split components, then we never need to find
@@ -486,32 +492,42 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 
 //      /* Compute the successor of U. */
 // L16. | foreach semi-universal node v \in U do
-
         for(auto v: SU)
         {
-// L17. | U = (U \ {v}) \cup Ch(v)
-
-            // PROBLEM! How do we know WHICH connected Y component contains v?
+            // Look at recorded component for this vertex.
             auto Y1 = info_for_vertex[v].get_component();
-            int i = *info_for_vertex[v].tree_index;
-            auto it = Y1->marked_vertices_for_tree.find(i);
-            assert(it != Y1->marked_vertices_for_tree.end());
-            assert(it->second.size() == 1);
 
-            assert(info_for_vertex[v].is_marked());
+            int i = *info_for_vertex[v].tree_index;
+
+            // This is the position U restricted to tree i = U \cap L(i).
+            auto& U_i = Y1->marked_vertices_for_tree.at(i);
+            assert(U_i.size() == 1);
+
+// L17. | U = (U \ {v}) \cup Ch(v)
+            U_i.clear();
             info_for_vertex[v].unmark_node();
-            Y1->marked_vertices_for_tree.erase(i);
-            set<Vertex> children_of_v;
             for(auto [e,e_end]=  out_edges(v,H); e != e_end; e++)
             {
                 auto u = boost::target( *e, H );
-                children_of_v.insert(u);
+                U_i.insert(u);
                 info_for_vertex[u].mark_node(Y1);
             }
-            Y1->marked_vertices_for_tree.insert({i,children_of_v});
 
-            for(auto u: children_of_v)
+            // By Lemma 7, each semi-universal node always has more than 1
+            // child, and so we don't create any new semi-universal nodes.
+            // Therefore we do not need to update Y1->semiU.
+            assert(U_i.size() > 1);
+
+            // Remove the edges (v,u), creating new components, and updating mark, map, and semiU
+            for(auto u: U_i)
             {
+                remove_edge(v,u,H);
+
+                if (false)
+                {
+                    Ws.push_back(unique_ptr<connected_component_t>(new connected_component_t));
+                    auto Y2 = Ws.back().get();
+                }
                 // remove (v,u) and update connected components Ws.
             }
         }
