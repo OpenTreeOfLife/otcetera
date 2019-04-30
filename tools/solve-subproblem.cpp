@@ -157,6 +157,145 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys)
     return true;
 }
 
+class dynamic_graph
+{
+    Graph G;
+
+    map<int,list<Vertex>> vertices_for_component_;
+
+    // This should really be encoded ON the vertex
+    map<Vertex,int> component_for_vertex_;
+
+public:
+    int n_components() const {return vertices_for_component_.size();}
+
+    int component_for_vertex(Vertex v) const {return component_for_vertex_.at(v);}
+
+    const list<Vertex>& vertices_for_component(int c) const {return vertices_for_component_.at(c);}
+
+          list<Vertex>& vertices_for_component(int c)       {return vertices_for_component_.at(c);}
+
+    int size_of_component(int c) const {return vertices_for_component(c).size();}
+
+    auto in_edges(Vertex v) const {return boost::in_edges(v,G);}
+
+    auto out_edges(Vertex v) const {return boost::out_edges(v,G);}
+
+    Vertex source(Edge e) const {return boost::source(e,G);}
+
+    Vertex target(Edge e) const {return boost::target(e,G);}
+
+    Vertex add_vertex()
+    {
+        auto v = boost::add_vertex(G);
+        int c = n_components();
+        vertices_for_component_.insert({c,{v}});
+        return v;
+    }
+
+    auto add_edge(Vertex u, Vertex v)
+    {
+        auto e = boost::add_edge(u,v,G);
+
+        int cu = component_for_vertex(u);
+        int cv = component_for_vertex(v);
+
+        if (cu != cv)
+        {
+            if (size_of_component(cu) > size_of_component(cv)) std::swap(cu,cv);
+
+            // Now cu is smaller, or equal.
+            auto& lu = vertices_for_component(cu);
+            auto& lv = vertices_for_component(cv);
+            for(auto uu: lu)
+                component_for_vertex_[uu] = cv;
+            lv.splice(lv.end(), lu);
+            vertices_for_component_.erase(cu);
+        }
+        return e;
+    }
+
+    bool remove_edge(Vertex u, Vertex v)
+    {
+        int c1 = component_for_vertex(u);
+        boost::remove_edge(u,v,G);
+        vector<Vertex> from_u;
+        vector<Vertex> from_v;
+        map<Vertex,int> seen;
+
+        auto try_add_u = [&](Vertex uu)
+                             {
+                                 auto u_it = seen.find(uu);
+                                 if (u_it == seen.end())
+                                 {
+                                     seen[uu] = 0;
+                                     from_u.push_back(uu);
+                                     return false;
+                                 }
+                                 else if (u_it->second == 1)
+                                     return true;
+                                 else
+                                     return false;
+                             };
+
+        auto try_add_v = [&](Vertex vv)
+                             {
+                                 auto v_it = seen.find(vv);
+                                 if (v_it == seen.end())
+                                 {
+                                     seen[vv] = 1;
+                                     from_v.push_back(vv);
+                                     return false;
+                                 }
+                                 else if (v_it->second == 0)
+                                     return true;
+                                 else
+                                     return false;
+                             };
+
+        try_add_u(u);
+        try_add_v(v);
+
+        int i=0,j=0;
+        while(i < from_u.size() and j < from_v.size())
+        {
+            // Check 1 entry from u
+            auto uu = from_u[i++];
+            for(auto [e, e_end] = in_edges(uu); e != e_end; e++)
+                if (try_add_u( source( *e ) )) return false;
+            for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
+                if (try_add_u( target( *e ) )) return false;
+
+            // Check 1 entry from v
+            auto vv = from_v[j++];
+            for(auto [e, e_end] = in_edges(vv); e != e_end; e++)
+                if (try_add_v( source( *e ) )) return false;
+            for(auto [e, e_end] = out_edges(vv); e != e_end; e++)
+                if (try_add_v( target( *e ) )) return false;
+        }
+
+        if (i >= from_u.size())
+            std::swap(from_u, from_v);
+
+        int c2 = n_components();
+        for(auto uu: from_u)
+            component_for_vertex_[uu] = c2;
+        auto& nodes1 = vertices_for_component(c1);
+        list<Vertex> nodes2;
+        for(auto it = nodes1.begin(); it != nodes1.end();)
+        {
+            auto next = it; next++;
+            if (component_for_vertex_[*it] == c2)
+                nodes2.splice(nodes2.end(), nodes1, it, next);
+            it = next;
+        }
+        vertices_for_component_[c2] = std::move(nodes2);
+
+        return true;
+    }
+};
+
+
 struct connected_component_t;
 
 class vertex_info_t
@@ -207,7 +346,7 @@ struct connected_component_t
         return SU;
     }
 
-    vector<Vertex> vertices_in_component(const Graph& G) const
+    vector<Vertex> vertices_in_component(const dynamic_graph& G) const
     {
         vector<Vertex> vertices;
         set<Vertex> visited;
@@ -222,18 +361,18 @@ struct connected_component_t
 
         for(int i=0;i<vertices.size();i++)
         {
-            for(auto [e, e_end] = in_edges(vertices[i],G); e != e_end; e++)
+            for(auto [e, e_end] = G.in_edges(vertices[i]); e != e_end; e++)
             {
-                auto v = boost::source( *e, G );
+                auto v = G.source( *e );
                 if (not visited.count(v))
                 {
                     visited.insert(v);
                     vertices.push_back(v);
                 }
             }
-            for(auto [e, e_end] = out_edges(vertices[i],G); e != e_end; e++)
+            for(auto [e, e_end] = G.out_edges(vertices[i]); e != e_end; e++)
             {
-                auto v = boost::target( *e, G );
+                auto v = G.target( *e );
                 if (not visited.count(v))
                 {
                     visited.insert(v);
@@ -245,7 +384,7 @@ struct connected_component_t
         return vertices;
     }
 
-    vector<OttId> labels_for_component(const Graph& G, const map<Vertex,vertex_info_t>& info_for_vertex) const
+    vector<OttId> labels_for_component(const dynamic_graph& G, const map<Vertex,vertex_info_t>& info_for_vertex) const
     {
         vector<OttId> labels;
         auto vs = vertices_in_component(G);
@@ -260,67 +399,10 @@ typedef vector<const node_t*> position_t;
 
 
 
-/*
-class dynamic_graph
-{
-    Graph G;
-
-    map<int,list<Vertex>> vertices_for_component;
-
-    // This should really be encoded ON the vertex
-    map<Vertex,int> component_for_vertex_;
-    
-public:    
-    int n_components() const {return vertices_for_component.size();}
-    
-    int component_for_vertex(Vertex v) const {return component_for_vertex.at(v);}
-
-    const list<Vertex>& vertices_for_component(int i) const {return vertices_for_component.at(c);}
-
-    int size_of_component(int c) const {return vertices_for_component(c).size();}
-
-    Vertex add_vertex()
-    {
-        auto v = add_vertex(G);
-        int c = n_components();
-        vertices_for_component.insert({c,{v}});
-        return v;
-    }
-        
-    void add_edge(Vertex u, Vertex v)
-    {
-        boost::add_edge(u,v,G);
-
-        int cu = component_for_vertex.at(u);
-        int cv = component_for_vertex.at(v);
-        if (cu != cv)
-        {
-            if (size_of_component(cu) > size_of_component(cv)) std::swap(cu,cv);
-            // Now cu is smaller, or equal.
-            auto& lu = vertices_for_component[cu];
-            auto& lv = vertices_for_component[cv];
-            for(auto uu: lu)
-                component_for_vertex_[uu] = cv;
-            lv.splice(lv.end(), lu);
-            vertices_for_component.erase(cu);
-        }
-    }
-
-    void remove_edge(Vertex u, Vertex v)
-    {
-        //
-        boost::remove_edge(u,v,G);
-    }
-}
-
-*/
-    
-
-
-tuple<Graph, map<Vertex, vertex_info_t>,unique_ptr<connected_component_t>>
+tuple<dynamic_graph, map<Vertex, vertex_info_t>,unique_ptr<connected_component_t>>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
-    Graph H;
+    dynamic_graph H;
     map<OttId,Vertex> Labels;
     map<const node_t*,Vertex> node_to_vertex;
     map<Vertex,vertex_info_t> info_for_vertex;
@@ -337,7 +419,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         for(auto nd: iter_pre_n_const(root))
         {
             // Add vertex for child node.
-            auto v = add_vertex(H);
+            auto v = H.add_vertex();
             node_to_vertex.insert({nd,v});
             info_for_vertex[v].tree_index = i;
 
@@ -345,7 +427,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
             if (nd->get_parent())
             {
                 auto u = node_to_vertex.at(nd->get_parent());
-                boost::add_edge(u,v,H);
+                H.add_edge(u,v);
             }
 
             // Add an edge from the node for the label to the tip
@@ -356,12 +438,12 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
                 if (not Labels.count(id))
                 {
-                    auto label = add_vertex(H);
+                    auto label = H.add_vertex();
                     Labels.insert({id,label});
                     info_for_vertex[label].label = id;
                 }
 
-                boost::add_edge(v,Labels.at(id), H);
+                H.add_edge(v,Labels.at(id));
             }
         }
     }
@@ -439,7 +521,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     while(not Q.empty())
     {
 // L4.  | (U, pred) = DEQUEUE(Q)
-        auto [Y,pred] = std::move(Q.back()); Q.pop();
+        auto [Y,pred] = std::move(Q.front()); Q.pop();
 
 // L5.  | Create a node r_U and set parent(r_U) = pred
         auto r_U = new node_t(pred);
@@ -506,9 +588,9 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L17. | U = (U \ {v}) \cup Ch(v)
             U_i.clear();
             info_for_vertex[v].unmark_node();
-            for(auto [e,e_end]=  out_edges(v,H); e != e_end; e++)
+            for(auto [e,e_end]=  H.out_edges(v); e != e_end; e++)
             {
-                auto u = boost::target( *e, H );
+                auto u = H.target( *e );
                 U_i.insert(u);
                 info_for_vertex[u].mark_node(Y1);
             }
@@ -521,7 +603,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             // Remove the edges (v,u), creating new components, and updating mark, map, and semiU
             for(auto u: U_i)
             {
-                remove_edge(v,u,H);
+                H.remove_edge(v,u);
 
                 if (false)
                 {
