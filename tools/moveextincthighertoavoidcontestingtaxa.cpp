@@ -30,7 +30,7 @@ bool read_json_array(json & j, std::set<OttId> & set_ints) {
 struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMappedWithSplits> {
     using NeedsMoveTipmostTaxonPair = std::pair<bool, const NodeWithSplits *>;
     using TreeIDToPlacement = std::map<std::string, NeedsMoveTipmostTaxonPair>;
-    using ExtinctTaxonToPlacementSummary = std::map<const NodeWithSplits *, TreeIDToPlacement>;
+    using ExtinctTaxonToPlacementSummary = std::map<OttId, TreeIDToPlacement>;
     using ConstNdPtr = const TreeMappedWithSplits::node_type *;
     using Phylo2Taxo = std::map<ConstNdPtr, ConstNdPtr>;
     
@@ -41,7 +41,8 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     using TaxoNd2RestrictedIDSet = std::map<ConstNdPtr, OttIdSet>;
     using ConstNdPtrSet = std::set<ConstNdPtr>;
     using ConstNdPtrPair = std::pair<ConstNdPtr, ConstNdPtr> ;
-    
+    using DeepestAttachmentPointAndTreeIDs = std::pair<const NodeWithSplits *, std::set<std::string> >;
+    using ExtinctToDeepest = std::map<const NodeWithSplits *, DeepestAttachmentPointAndTreeIDs>;
 
     int numErrors;
     bool useStdOut;
@@ -57,12 +58,25 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     std::size_t phylogeniesProcessed = 0;
     std::vector<std::string> namesOfTreesWithoutExtinct;
     ExtinctTaxonToPlacementSummary unjoinedExtinctTaxonToPlacementSummary; 
-    //ExtinctTaxonToPlacementSummary joinedExtinctTaxonToPlacementSummary;
+    ExtinctToDeepest joinedExtinctTaxonToPlacementSummary;
 
-    using AttachNameJSONPair = std::pair<std::string, json>;
-    AttachNameJSONPair gen_json_edit_doc_for_taxon(const TreeIDToPlacement & edits) {
+    const NodeWithSplits * find_shallowest_fossil_only(const NodeWithSplits *q) {
+        const NodeWithSplits * curr = q;
+        if (!contains(extinctIDSet, q->get_ott_id())) {
+            throw OTCError() << "Called find_shallowest_fossil_only with non extinct node, with OTT ID = " << q->get_ott_id();
+        }
+        for (;;) {
+            const NodeWithSplits * next_nd = curr->get_parent();
+            if (next_nd == nullptr || !contains(extinctIDSet, next_nd->get_ott_id())) {
+                return curr;
+            }
+            curr = next_nd;
+        }
+    }
+
+    DeepestAttachmentPointAndTreeIDs find_deepest_attachment(const TreeIDToPlacement & edits) {
         std::set<std::string> tree_names;
-        std::string attach_nd_id;
+        const NodeWithSplits * deepest_attach_nd = nullptr;
         int lowest_depth = 0;
         for (auto tree_pref_pair: edits) {
             auto needs_move_taxon = tree_pref_pair.second;
@@ -75,16 +89,72 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                     lowest = true;
                     lowest_depth = an_depth;
                     tree_names.clear();
-                    attach_nd_id = "ott" + std::to_string(attach_nd->get_ott_id());
+                    deepest_attach_nd = attach_nd;
                 }
                 if (lowest_depth == an_depth) {
                     tree_names.insert(tree_pref_pair.first);
                 }
             }
         }
+        return DeepestAttachmentPointAndTreeIDs{deepest_attach_nd, tree_names};
+    }
 
+    void joinPlacements() {
+        const RTreeOttIDMapping<RTSplits> & taxdata = taxonomy->get_data();
+        // unjoinedButDeepest will map all nodes that need to be moved to their new 
+        //    attachment points (and keep list of tree names)
+        ExtinctToDeepest unjoinedButDeepest;
+        for (auto tax_id_to_edit : unjoinedExtinctTaxonToPlacementSummary) {
+            const auto edits = tax_id_to_edit.second;
+            auto deepest_and_prov = find_deepest_attachment(edits);
+            if (deepest_and_prov.first == nullptr) {
+                continue;
+            }
+            const auto moving_ott_id = tax_id_to_edit.first;
+            const auto taxon_ptr = taxdata.ott_id_to_node.at(moving_ott_id);
+            unjoinedButDeepest[taxon_ptr] = deepest_and_prov;
+        }
+
+        // keys of obs_to_fossil_anc will be the most inclusive fossil ancestors that need to move
+        // values will be the set of keys in unjoinedButDeepest
+        std::map<const NodeWithSplits *, std::set<const NodeWithSplits *> > obs_to_fossil_anc;
+        for (auto fnd : unjoinedButDeepest) {
+            auto obs_node = fnd.first;
+            auto af_node = find_shallowest_fossil_only(obs_node);
+            obs_to_fossil_anc[af_node].insert(obs_node);
+        }
+
+        // Now for each fossil taxon that is moving, choose the deepest attachament point
+        joinedExtinctTaxonToPlacementSummary.clear();
+        for (auto otfa_it : obs_to_fossil_anc) {
+            auto moving_nd = otfa_it.first;
+            const std::set<const NodeWithSplits *> & obs_set = otfa_it.second;
+            int ld = 0;
+            DeepestAttachmentPointAndTreeIDs dapati;
+            dapati.first = nullptr;
+            for (auto obs : obs_set) {
+                const auto & deepest_for_obs = unjoinedButDeepest.at(obs);
+                auto attach_nd = deepest_for_obs.first;
+                const RTSplits & an_data = attach_nd->get_data();
+                auto an_depth = an_data.depth;
+                if (dapati.first == nullptr || an_depth < ld) {
+                    dapati = deepest_for_obs;
+                    ld = an_depth;
+                } else if (an_depth < ld) {
+                    const std::set<std::string> & new_tree_names = deepest_for_obs.second;
+                    dapati.second.insert(begin(new_tree_names), end(new_tree_names));
+                }
+            }
+            joinedExtinctTaxonToPlacementSummary[moving_nd] = dapati;
+        }
+        unjoinedExtinctTaxonToPlacementSummary.clear();
+    }
+  
+    /*
+
+            std::set<std::string> 
         json empty;
-        if (!tree_names.empty()) {
+        if (!(tree_names.empty()) {
             json jtree_names = json::array();
             for (auto i : tree_names) {
                 jtree_names.push_back(i);
@@ -92,7 +162,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             return AttachNameJSONPair(attach_nd_id, jtree_names);
         }
         return AttachNameJSONPair(std::string(), empty);
-    }
+    }*/
 
     virtual ~MoveExtinctHigherState(){}
     MoveExtinctHigherState()
@@ -189,12 +259,14 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         }
         return r;
     }
-    
+
+  
     bool summarize(OTCLI &otCLI) override {
+        joinPlacements();
         json document;
         json taxon_edits;
         std::cerr << "unjoinedExtinctTaxonToPlacementSummary.size() = " << unjoinedExtinctTaxonToPlacementSummary.size() << '\n';
-        for (auto tax_id_to_edit : unjoinedExtinctTaxonToPlacementSummary) {
+        /*for (auto tax_id_to_edit : unjoinedExtinctTaxonToPlacementSummary) {
             const auto taxon_ptr = tax_id_to_edit.first;
             const auto edits = tax_id_to_edit.second;
             std::string key = "ott" + std::to_string(taxon_ptr->get_ott_id());
@@ -206,7 +278,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                 new_attach["according_to"] = obj.second;
                 taxon_edits[key] =  new_attach; 
             }
-        }
+        }*/
         document["edits"] = taxon_edits;
         json jTreesWoExt = json::array(); 
         for (auto i : namesOfTreesWithoutExtinct) {
@@ -306,28 +378,12 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         }
         std::string tree_id = tree.get_name();
         for (auto extinct_tip : extinct_tips) {
-            TreeIDToPlacement & treeIDtoPlacement = unjoinedExtinctTaxonToPlacementSummary[extinct_tip];
+            TreeIDToPlacement & treeIDtoPlacement = unjoinedExtinctTaxonToPlacementSummary[extinct_tip->get_ott_id()];
             auto tree_name = tree.get_name();
             treeIDtoPlacement[tree_name] = evaluate_extinct_leaf_placement(tree, extinct_tip, extant_ids,
                                                                            relevantIncSedIDs, phylo2taxo, taxo_induced_tree,
                                                                            contestedByExtant, taxo_root);
         }
-        /*
-        LOG(DEBUG) << "taxo_induced_tree.size() = " << taxo_induced_tree.size() << '\n';
-        ConstNdPtrSet phyloNodesChecked;
-        for (auto extantTip : nonextinct_tips) {
-            _check_path_to_root_extant(extantTip, phylo2taxo, taxo_induced_tree,
-                                       non_fossil_ids, contestedByExtant, phyloNodesChecked);
-        }
-        LOG(DEBUG) << "contestedByExtant.size() = " << contestedByExtant.size() << '\n';
-
-        std::vector<ConstNdPtrPair> raw_moves;
-        for (auto extinct_tip : extinct_tips) {
-            auto dtax = _check_path_to_root_extinct(extinct_tip, phylo2taxo, taxo_induced_tree, contestedByExtant);
-            if (dtax != nullptr) {
-                raw_moves.push_back(ConstNdPtrPair(phylo2taxo.at(extinct_tip), dtax))
-            }
-        }*/
         return true;
     }
 
