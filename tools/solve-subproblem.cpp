@@ -185,6 +185,20 @@ public:
 
     Vertex target(Edge e) const {return boost::target(e,G);}
 
+    int out_degree(Vertex v) const
+    {
+        int count = 0;
+        for(auto [e, e_end] = out_edges(v); e != e_end; e++)
+            count++;
+        return count;
+    }
+
+    bool is_internal_node(Vertex v) const
+    {
+        auto [e, e_end] = out_edges(v);
+        return (e != e_end);
+    }
+
     Vertex add_vertex()
     {
         auto v = boost::add_vertex(G);
@@ -322,6 +336,16 @@ public:
     connected_component_t* get_component() const {assert(component); return component;}
 };
 
+bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
+{
+    if (vs.size() == 1)
+    {
+        auto v = *vs.begin();
+        if (G.is_internal_node(v)) return true;
+    }
+    return false;
+}
+
 struct connected_component_t
 {
     // Y.count: the cardinality of Y \cap X_P
@@ -331,6 +355,26 @@ struct connected_component_t
     // Y.map: {(i,L[i])| i is a tree index, and L[i] is not empty}
     //        where L[i] is the set of marked vertices in tree T[i].
     map<int,set<Vertex>> marked_vertices_for_tree;
+
+    void erase_marked_vertex_for_tree(const dynamic_graph& G, Vertex v, int i)
+    {
+        auto& nodes = marked_vertices_for_tree.at(i);
+        if (semi_universal_position(G, nodes))
+            semiU.erase(i);
+        nodes.erase(v);
+        if (semi_universal_position(G, nodes))
+            semiU.insert(i);
+    }
+
+    void insert_marked_vertex_for_tree(const dynamic_graph& G, Vertex v, int i)
+    {
+        auto& nodes = marked_vertices_for_tree.at(i);
+        if (semi_universal_position(G, nodes))
+            semiU.erase(i);
+        nodes.insert(v);
+        if (semi_universal_position(G, nodes))
+            semiU.insert(i);
+    }
 
     // Y.semiU: the indices i for trees where Y.map[i] is defined
     //          (i.e. L[i] is not empty) AND |Y.map[i]| == 1, AND
@@ -463,6 +507,49 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         Y_init->semiU.insert(i);
 
     return {H, info_for_vertex, std::move(Y_init)};
+}
+
+
+// Walk the component Y2 containing u and move marked nodes from Y1 to Y2
+void split_component(dynamic_graph& H, map<Vertex,vertex_info_t>& info_for_vertex, connected_component_t* Y1, connected_component_t* Y2, Vertex u)
+{
+    int cu = H.component_for_vertex(u);
+
+    for(auto uu: H.vertices_for_component(cu))
+    {
+        auto& info = info_for_vertex[uu];
+        if (not info.tree_index)
+        {
+            Y1->count--;
+            Y2->count++;
+            continue;
+        }
+        int i = *info.tree_index;
+        if (info.is_marked())
+        {
+            Y2->erase_marked_vertex_for_tree(H, uu, i);
+
+            Y1->insert_marked_vertex_for_tree(H, uu, i);
+            info.mark_node(Y1);
+        }
+    }
+}
+
+// We need to return a new component corresponding to the second vertex u
+unique_ptr<connected_component_t> split_component(dynamic_graph& H, map<Vertex,vertex_info_t>& info_for_vertex, connected_component_t* Y1, Vertex v, Vertex u)
+{
+    unique_ptr<connected_component_t> W(new connected_component_t);
+    auto Y2 = W.get();
+
+    int cv = H.component_for_vertex(v);
+    int cu = H.component_for_vertex(u);
+
+    if (H.size_of_component(cu) > H.size_of_component(cv))
+        split_component(H, info_for_vertex, Y2, Y1, v);
+    else
+        split_component(H, info_for_vertex, Y1, Y2, u);
+
+    return W;
 }
 
 // There will always initially be one component containing all vertices...?
@@ -602,42 +689,8 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 
             // Remove the edges (v,u), creating new components, and updating mark, map, and semiU
             for(auto u: U_i)
-            {
                 if (H.remove_edge(v,u))
-                {
-                    Ws.push_back(unique_ptr<connected_component_t>(new connected_component_t));
-                    auto Y2 = Ws.back().get();
-
-                    for(auto uu: H.vertices_for_component(H.component_for_vertex(u)))
-                    {
-                        auto& info = info_for_vertex[uu];
-                        if (not info.tree_index)
-                        {
-                            Y1->count--;
-                            Y2->count++;
-                            continue;
-                        }
-                        int i = *info.tree_index;
-                        if (info.is_marked())
-                        {
-                            Y2->marked_vertices_for_tree[i].erase(uu);
-                            if (Y2->marked_vertices_for_tree[i].size() == 1 and false /* the node is an internal node */)
-                                Y2->semiU.insert(i);
-                            else if (Y2->marked_vertices_for_tree[i].size() == 0 and false /* the previous node was internal */)
-                                Y2->semiU.erase(i);
-
-                            Y1->marked_vertices_for_tree[i].insert(uu);
-                            info.mark_node(Y1);
-                            if (Y1->marked_vertices_for_tree[i].size() == 1 and false /* the node is an internal node */)
-                                Y1->semiU.insert(i);
-                            else if (Y1->marked_vertices_for_tree[i].size() == 2 and false /* the node is an internal node */)
-                                Y1->semiU.erase(i);
-
-                            // FIXME!
-                        }
-                    }
-                }
-            }
+                    Ws.push_back(split_component(H, info_for_vertex, Y1, v, u));
         }
 // L18. Let W_1, W_2, ... W_p be the connected components of H_P(U)
 
