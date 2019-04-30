@@ -317,7 +317,7 @@ public:
     
 
 
-tuple<Graph, map<OttId,Vertex>, map<const node_t*, Vertex>, map<Vertex, vertex_info_t>,unique_ptr<connected_component_t>>
+tuple<Graph, map<Vertex, vertex_info_t>,unique_ptr<connected_component_t>>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
     Graph H;
@@ -366,7 +366,21 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         }
     }
 
-    return {H, Labels, node_to_vertex, info_for_vertex, std::move(Y_init)};
+    // * Y_init.count = |L(P)|
+    Y_init->count = Labels.size();
+
+    // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
+    for(int i=0;i<profile.size();i++)
+    {
+        auto root = profile[i];
+        Y_init->marked_vertices_for_tree.insert({i,{node_to_vertex[root]}});
+    }
+
+    // Y_init.semiU = [k] ([0..k-1] for our purposes)
+    for(int i=0;i<profile.size();i++)
+        Y_init->semiU.insert(i);
+
+    return {H, info_for_vertex, std::move(Y_init)};
 }
 
 // There will always initially be one component containing all vertices...?
@@ -413,24 +427,10 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     std::queue<tuple<unique_ptr<connected_component_t>,node_t*>> Q;
     node_t* r_U_init = nullptr;
 
+//FIXME: info_for_vertex should be replaced with O(1)-lookup vertex attributes.
+
 // L1. Construct display graph H_P(U_init)
-    auto [H, Labels, node_to_vertex, info_for_vertex, Y_init] = display_graph_from_profile(profile);
-
-    // * Y_init.count = |L(P)|
-    Y_init->count = Labels.size();
-
-    // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
-    for(int i=0;i<profile.size();i++)
-    {
-        auto root = profile[i];
-        Y_init->marked_vertices_for_tree.insert({i,{node_to_vertex[root]}});
-    }
-
-    // Y_init.semiU = [k] ([0..k-1] for our purposes)
-    for(int i=0;i<profile.size();i++)
-        Y_init->semiU.insert(i);
-
-
+    auto [H, info_for_vertex, Y_init] = display_graph_from_profile(profile);
 
 // L2.  ENQUEUE(Q, (U_init, null) )
     Q.push({std::move(Y_init), nullptr});
