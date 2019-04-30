@@ -603,14 +603,40 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             // Remove the edges (v,u), creating new components, and updating mark, map, and semiU
             for(auto u: U_i)
             {
-                H.remove_edge(v,u);
-
-                if (false)
+                if (H.remove_edge(v,u))
                 {
                     Ws.push_back(unique_ptr<connected_component_t>(new connected_component_t));
                     auto Y2 = Ws.back().get();
+
+                    for(auto uu: H.vertices_for_component(H.component_for_vertex(u)))
+                    {
+                        auto& info = info_for_vertex[uu];
+                        if (not info.tree_index)
+                        {
+                            Y1->count--;
+                            Y2->count++;
+                            continue;
+                        }
+                        int i = *info.tree_index;
+                        if (info.is_marked())
+                        {
+                            Y2->marked_vertices_for_tree[i].erase(uu);
+                            if (Y2->marked_vertices_for_tree[i].size() == 1 and false /* the node is an internal node */)
+                                Y2->semiU.insert(i);
+                            else if (Y2->marked_vertices_for_tree[i].size() == 0 and false /* the previous node was internal */)
+                                Y2->semiU.erase(i);
+
+                            Y1->marked_vertices_for_tree[i].insert(uu);
+                            info.mark_node(Y1);
+                            if (Y1->marked_vertices_for_tree[i].size() == 1 and false /* the node is an internal node */)
+                                Y1->semiU.insert(i);
+                            else if (Y1->marked_vertices_for_tree[i].size() == 2 and false /* the node is an internal node */)
+                                Y1->semiU.erase(i);
+
+                            // FIXME!
+                        }
+                    }
                 }
-                // remove (v,u) and update connected components Ws.
             }
         }
 // L18. Let W_1, W_2, ... W_p be the connected components of H_P(U)
