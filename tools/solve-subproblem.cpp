@@ -161,11 +161,13 @@ struct connected_component_t;
 
 class vertex_info_t
 {
-    // This is true for vertices corresponding to tree nodes that have no parent.
-    // The marked vertices are the vertices of the connected component Y (of the display graph)
-    //   that are in the corresponding position U (of the cluster graph).
+    // We store a pointer to the component for every marked node.
+    //   To test if a node is marked, we test if the pointer is non-null.
+    // Nodes are marked if the have no parent.  Such nodes are precisely the
+    //   nodes in the in a connected component Y (of the display graph)
+    //   that make up the corresponding "position" U (of the cluster graph).
+    connected_component_t* component;
 
-    bool mark = false;
 public:
     // Which tree (0..k-1) is this vertex in?
     // If the vertex corresponds to a label, then it is not in a tree, and the index is unset.
@@ -174,13 +176,11 @@ public:
 
     optional<OttId> label;
 
-    bool is_marked() const {return mark;}
-    void unmark_node() {mark = false;}
-    void mark_node() {mark = true;}
+    bool is_marked() const {return component;}
+    void unmark_node() {component = nullptr;}
+    void mark_node(connected_component_t* c) {component = c;}
 
-    // We should be able to specify the components only for the MARKED nodes.
-    // Perhaps we can set a pointer to the component when we mark the node.
-    connected_component_t* component;
+    connected_component_t* get_component() const {return component;}
 };
 
 struct connected_component_t
@@ -317,20 +317,21 @@ public:
     
 
 
-tuple<Graph, map<OttId,Vertex>, map<const node_t*, Vertex>, map<Vertex, vertex_info_t>>
+tuple<Graph, map<OttId,Vertex>, map<const node_t*, Vertex>, map<Vertex, vertex_info_t>,unique_ptr<connected_component_t>>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
     Graph H;
     map<OttId,Vertex> Labels;
     map<const node_t*,Vertex> node_to_vertex;
     map<Vertex,vertex_info_t> info_for_vertex;
+    unique_ptr<connected_component_t> Y_init(new connected_component_t);
 
     for(int i=0; i< profile.size(); i++)
     {
         auto root = profile[i];
 
         //----------- 5.2 -------------//
-        info_for_vertex[node_to_vertex[root]].mark_node();
+        info_for_vertex[node_to_vertex[root]].mark_node(Y_init.get());
 
         // Walk nodes below root in pre-order (parent before child) so that we can connect children to parents.
         for(auto nd: iter_pre_n_const(root))
@@ -365,7 +366,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         }
     }
 
-    return {H, Labels, node_to_vertex, info_for_vertex};
+    return {H, Labels, node_to_vertex, info_for_vertex, std::move(Y_init)};
 }
 
 // There will always initially be one component containing all vertices...?
@@ -413,9 +414,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     node_t* r_U_init = nullptr;
 
 // L1. Construct display graph H_P(U_init)
-    auto [H, Labels, node_to_vertex, info_for_vertex] = display_graph_from_profile(profile);
-
-    unique_ptr<connected_component_t> Y_init(new connected_component_t);
+    auto [H, Labels, node_to_vertex, info_for_vertex, Y_init] = display_graph_from_profile(profile);
 
     // * Y_init.count = |L(P)|
     Y_init->count = Labels.size();
@@ -493,23 +492,23 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L17. | U = (U \ {v}) \cup Ch(v)
 
             // PROBLEM! How do we know WHICH connected Y component contains v?
-
+            auto Y1 = info_for_vertex[v].get_component();
             int i = *info_for_vertex[v].tree_index;
-            auto it = Y->marked_vertices_for_tree.find(i);
-            assert(it != Y->marked_vertices_for_tree.end());
+            auto it = Y1->marked_vertices_for_tree.find(i);
+            assert(it != Y1->marked_vertices_for_tree.end());
             assert(it->second.size() == 1);
 
             assert(info_for_vertex[v].is_marked());
             info_for_vertex[v].unmark_node();
-            Y->marked_vertices_for_tree.erase(i);
+            Y1->marked_vertices_for_tree.erase(i);
             set<Vertex> children_of_v;
             for(auto [e,e_end]=  out_edges(v,H); e != e_end; e++)
             {
                 auto u = boost::target( *e, H );
                 children_of_v.insert(u);
-                info_for_vertex[u].mark_node();
+                info_for_vertex[u].mark_node(Y1);
             }
-            Y->marked_vertices_for_tree.insert({i,children_of_v});
+            Y1->marked_vertices_for_tree.insert({i,children_of_v});
 
             for(auto u: children_of_v)
             {
