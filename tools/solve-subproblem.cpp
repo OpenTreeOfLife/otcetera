@@ -370,8 +370,10 @@ struct connected_component_t
     //        where L[i] is the set of marked vertices in tree T[i].
     map<int,set<Vertex>> marked_vertices_for_tree;
 
-    void erase_marked_vertex_for_tree(Vertex v, int i)
+    void erase_marked_vertex(Vertex v)
     {
+        assert(G->vertex_info(v).tree_index);
+        int i = *G->vertex_info(v).tree_index;
         assert(G->vertex_info(v).is_marked());
         auto& nodes = marked_vertices_for_tree.at(i);
         if (semi_universal_position(*G, nodes))
@@ -380,12 +382,18 @@ struct connected_component_t
         if (semi_universal_position(*G, nodes))
             semiU.insert(i);
         G->vertex_info(v).unmark_node();
+
+        // If there are no marked vertices left, then erase the record.
+        if (nodes.size() == 0)
+            marked_vertices_for_tree.erase(i);
     }
 
-    void insert_marked_vertex_for_tree(Vertex v, int i)
+    void insert_marked_vertex(Vertex v)
     {
+        assert(G->vertex_info(v).tree_index);
+        int i = *G->vertex_info(v).tree_index;
         assert(not G->vertex_info(v).is_marked());
-        auto& nodes = marked_vertices_for_tree.at(i);
+        auto& nodes = marked_vertices_for_tree[i];
         if (semi_universal_position(*G, nodes))
             semiU.erase(i);
         nodes.insert(v);
@@ -475,9 +483,6 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     {
         auto root = profile[i];
 
-        //----------- 5.2 -------------//
-        H->vertex_info(node_to_vertex[root]).mark_node(Y_init.get());
-
         // Walk nodes below root in pre-order (parent before child) so that we can connect children to parents.
         for(auto nd: iter_pre_n_const(root))
         {
@@ -518,12 +523,9 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     for(int i=0;i<profile.size();i++)
     {
         auto root = profile[i];
-        Y_init->marked_vertices_for_tree.insert({i,{node_to_vertex[root]}});
+        // This automatically (i) marks the node, and (ii) updates semiU
+        Y_init->insert_marked_vertex(node_to_vertex[root]);
     }
-
-    // Y_init.semiU = [k] ([0..k-1] for our purposes)
-    for(int i=0;i<profile.size();i++)
-        Y_init->semiU.insert(i);
 
     return {std::move(H), std::move(Y_init)};
 }
@@ -547,8 +549,8 @@ void split_component(connected_component_t* Y1, connected_component_t* Y2, Verte
         int i = *info.tree_index;
         if (info.is_marked())
         {
-            Y2->erase_marked_vertex_for_tree(uu, i);
-            Y1->insert_marked_vertex_for_tree(uu, i);
+            Y2->erase_marked_vertex(uu);
+            Y1->insert_marked_vertex(uu);
         }
     }
 }
