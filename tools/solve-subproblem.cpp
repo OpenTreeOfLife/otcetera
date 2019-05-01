@@ -212,7 +212,8 @@ public:
         auto v = boost::add_vertex(G);
         info_for_vertex[v];
         int c = n_components();
-        vertices_for_component_.insert({c,{v}});
+        component_for_vertex_[v] = c;
+        vertices_for_component_[c] = {v};
         return v;
     }
 
