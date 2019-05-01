@@ -1112,6 +1112,12 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
     return exclude;
 }
 
+// % otc-solve-subproblem ott596112.tre
+// % otc-solve-subproblem ott5553749.tre
+// % otc-solve-subproblem ott5551466.tre
+//
+// What's the really bad subproblem?
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
@@ -1139,7 +1145,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     }
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<RSplit> consistent;
-    auto add_split_if_consistent = [&all_leaves_indices,verbose,&consistent](auto nd, RSplit&& split) {
+    auto add_split_if_consistent = [&](auto nd, RSplit&& split) {
             consistent.push_back(std::move(split));
 
             auto result = BUILD(all_leaves_indices, consistent);
@@ -1154,6 +1160,17 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             }
             return true;
         };
+    vector<const node_t*> consistent_trees;
+    auto remove_split_if_inconsistent = [&](auto nd) {
+                                            consistent_trees.push_back(nd);
+                                            auto tree = BUILD_ST(consistent_trees);
+                                            consistent_trees.pop_back();
+                                            if (not tree)
+                                            {
+                                                collapse_split_and_del_node(nd);
+                                            }
+                                            return tree;
+                                        };
     // 1. Find splits in order of input trees
     vector<Tree_t::node_type const*> compatible_taxa;
     for(int i=0;i<trees.size();i++) {
@@ -1191,12 +1208,18 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 }
             }
         } else {
-            for(auto nd: iter_post_const(*tree)) {
+            int consistent_count = 0;
+            for(auto nd: iter_post(*tree)) {
                 if (not nd->is_tip() and nd != root) {
                     const auto descendants = remap(nd->get_data().des_ids);
-                    add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
+                    bool is_consistent = add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
+                    bool is_consistent2 = (bool)remove_split_if_inconsistent(nd);
+                    assert(is_consistent == is_consistent2);
+                    if (is_consistent) consistent_count++;
                 }
             }
+            if (consistent_count > 0)
+                consistent_trees.push_back(tree->get_root());
         }
     }
     // 2. Construct final tree and add names
