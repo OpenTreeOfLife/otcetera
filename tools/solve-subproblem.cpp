@@ -466,7 +466,7 @@ typedef vector<const node_t*> position_t;
 tuple<unique_ptr<dynamic_graph>, unique_ptr<connected_component_t>>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
-    unique_ptr<dynamic_graph> H;
+    unique_ptr<dynamic_graph> H(new dynamic_graph);
     map<OttId,Vertex> Labels;
     map<const node_t*,Vertex> node_to_vertex;
     unique_ptr<connected_component_t> Y_init(new connected_component_t(H.get()));
