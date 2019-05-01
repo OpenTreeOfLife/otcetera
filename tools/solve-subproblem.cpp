@@ -507,6 +507,10 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     {
         auto root = profile[i];
 
+        // FIXME!  We need to make a root node and make a child node for each tip and label.
+        //         Then we need to refine this tree using the subtree below profile[i].  Or something like that...
+        // FIXME!  How do we handle incertae sedis taxa?
+
         // Walk nodes below root in pre-order (parent before child) so that we can connect children to parents.
         for(auto nd: iter_pre_n_const(root))
         {
