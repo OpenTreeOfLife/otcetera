@@ -487,7 +487,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
             H->vertex_info(v).tree_index = i;
 
             // Add edge from parent node to child node
-            if (nd->get_parent())
+            if (nd != root)
             {
                 auto u = node_to_vertex.at(nd->get_parent());
                 H->add_edge(u,v);
