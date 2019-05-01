@@ -601,6 +601,9 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
     vector<const SumTreeNode_t *> nodes;
     json unknown;
     json broken = json::object();
+
+    optional<string> bad_node_id;
+
     for (auto node_id : node_ids)
     {
         bool was_broken = false;
@@ -629,6 +632,7 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
             }
 
             unknown[node_id] = reason;
+            bad_node_id = node_id;
         }
 
         if (was_broken)
@@ -639,7 +643,7 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
     }
 
     if (unknown.size())
-        throw OTCBadRequest()<<"Nodes not found!"<<json{ {"unknown", unknown} };
+        throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown} };
 
     return {nodes, broken};
 }
