@@ -168,12 +168,16 @@ class dynamic_graph
     // This should really be encoded ON the vertex
     map<Vertex,int> component_for_vertex_;
 
+    int next_component = 0;
+
     map<Vertex, vertex_info_t> info_for_vertex;
 
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex.at(v);}
 
           vertex_info_t& vertex_info(Vertex v)       {return info_for_vertex.at(v);}
+
+    int new_component() {return next_component++;}
 
     int n_components() const {return vertices_for_component_.size();}
 
@@ -201,17 +205,18 @@ public:
         return count;
     }
 
+    bool is_tip_node(Vertex v) const;
+
     bool is_internal_node(Vertex v) const
     {
-        auto [e, e_end] = out_edges(v);
-        return (e != e_end);
+        return not is_tip_node(v);
     }
 
     Vertex add_vertex()
     {
         auto v = boost::add_vertex(G);
         info_for_vertex[v];
-        int c = n_components();
+        int c = new_component();
         component_for_vertex_[v] = c;
         vertices_for_component_[c] = {v};
         return v;
@@ -298,10 +303,10 @@ public:
                 if (try_add_v( target( *e ) )) return false;
         }
 
-        if (i >= from_u.size())
+        if (i < from_u.size())
             std::swap(from_u, from_v);
 
-        int c2 = n_components();
+        int c2 = new_component();
         for(auto uu: from_u)
             component_for_vertex_[uu] = c2;
         auto& nodes1 = vertices_for_component(c1);
@@ -356,15 +361,34 @@ bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
     return false;
 }
 
+bool dynamic_graph::is_tip_node(Vertex v) const
+{
+    assert(vertex_info(v).tree_index);
+    auto [e, e_end] = out_edges(v);
+    
+    // We shouldn't have any out-degree-0 nodes.
+    assert(e != e_end);
+    auto f = e;
+    f++;
+    if (f == e_end)
+    {
+        // Degree-1 node
+        assert(vertex_info(boost::target(*e,G)).label);
+        return true;
+    }
+    else
+        return false;
+}
+
 struct connected_component_t
 {
-    dynamic_graph* G;
+    dynamic_graph* G = nullptr;
 
     dynamic_graph* get_graph() {return G;}
 
     // Y.count: the cardinality of Y \cap X_P
     // That is, the number of tip labels in the component.
-    int count = -1;
+    int count = 0;
 
     // Y.map: {(i,L[i])| i is a tree index, and L[i] is not empty}
     //        where L[i] is the set of marked vertices in tree T[i].
@@ -537,6 +561,9 @@ void split_component(connected_component_t* Y1, connected_component_t* Y2, Verte
     auto G = Y1->get_graph();
     int cu = G->component_for_vertex(u);
 
+    assert(Y1->count >  0);
+    assert(Y2->count == 0);
+    
     for(auto uu: G->vertices_for_component(cu))
     {
         auto& info = G->vertex_info(uu);
@@ -544,13 +571,14 @@ void split_component(connected_component_t* Y1, connected_component_t* Y2, Verte
         {
             Y1->count--;
             Y2->count++;
+            assert(Y1->count > 0);
             continue;
         }
         int i = *info.tree_index;
         if (info.is_marked())
         {
-            Y2->erase_marked_vertex(uu);
-            Y1->insert_marked_vertex(uu);
+            Y1->erase_marked_vertex(uu);
+            Y2->insert_marked_vertex(uu);
         }
     }
 }
@@ -566,11 +594,22 @@ unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Ver
     int cu = G->component_for_vertex(u);
 
     if (G->size_of_component(cu) > G->size_of_component(cv))
-        split_component(Y2, Y1, v);
+        split_component(Y1, Y2, v);
     else
-        split_component(Y1, Y2, u);
+    {
+        std::swap(*Y1, *Y2);
+        split_component(Y2, Y1, u);
+    }
 
-    return W;
+    // If we have a component for a previous root, we don't want to treat that as a component.
+    // It shouldn't have any children connected to it.
+    if (Y1->count == 0)
+        std::swap(*Y1,*Y2);
+
+    if (W->count > 0)
+        return W;
+    else
+        return {};
 }
 
 // There will always initially be one component containing all vertices...?
@@ -673,7 +712,8 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         //  After replacing each semi-universal node in U with its children,
         //  (i.e. computing the successor of ), there are no semi-universal
         //  nodes in left in U.
-        Y->semiU = {};
+        //  BDR: This should get cleared as we modify Y.map(i)
+        //    Y->semiU = {};
 
         // BDR: If we only over split components, then we never need to find
         //      old components to remove them from the list.
@@ -694,24 +734,27 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             assert(U_i.size() == 1);
 
 // L17. | U = (U \ {v}) \cup Ch(v)
-            U_i.clear();
-            H->vertex_info(v).unmark_node();
             for(auto [e,e_end]=  H->out_edges(v); e != e_end; e++)
             {
                 auto u = H->target( *e );
-                U_i.insert(u);
-                H->vertex_info(u).mark_node(Y1);
+                Y1->insert_marked_vertex(u);
             }
+            Y1->erase_marked_vertex(v);
 
             // By Lemma 7, each semi-universal node always has more than 1
             // child, and so we don't create any new semi-universal nodes.
             // Therefore we do not need to update Y1->semiU.
+            auto U_i_tmp = U_i;
             assert(U_i.size() > 1);
 
             // Remove the edges (v,u), creating new components, and updating mark, map, and semiU
-            for(auto u: U_i)
+            for(auto u: U_i_tmp)
                 if (H->remove_edge(v,u))
-                    Ws.push_back(split_component(Y1, v, u));
+                {
+                    auto Y2 = split_component(Y1, v, u);
+                    if (Y2)
+                        Ws.push_back(std::move(Y2));
+                }
         }
 // L18. Let W_1, W_2, ... W_p be the connected components of H_P(U)
 
