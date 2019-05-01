@@ -542,6 +542,12 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
     // * Y_init.count = |L(P)|
     Y_init->count = Labels.size();
+    LOG(WARNING)<<"Labels";
+    for(auto [id,_]: Labels)
+    {
+        LOG(WARNING)<<"   "<<id;
+    }
+    LOG(WARNING)<<"";
 
     // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
     for(int i=0;i<profile.size();i++)
@@ -555,18 +561,18 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 }
 
 
-// Walk the component Y2 containing u and move marked nodes from Y1 to Y2
-void split_component(connected_component_t* Y1, connected_component_t* Y2, Vertex u)
+// Walk the component Y2 containing node. Move marked nodes from Y1 to Y2.
+void split_component(connected_component_t* Y1, connected_component_t* Y2, Vertex node1)
 {
     auto G = Y1->get_graph();
-    int cu = G->component_for_vertex(u);
+    int cnode1 = G->component_for_vertex(node1);
 
     assert(Y1->count >  0);
     assert(Y2->count == 0);
     
-    for(auto uu: G->vertices_for_component(cu))
+    for(auto node2: G->vertices_for_component(cnode1))
     {
-        auto& info = G->vertex_info(uu);
+        auto& info = G->vertex_info(node2);
         if (not info.tree_index)
         {
             Y1->count--;
@@ -577,34 +583,42 @@ void split_component(connected_component_t* Y1, connected_component_t* Y2, Verte
         int i = *info.tree_index;
         if (info.is_marked())
         {
-            Y1->erase_marked_vertex(uu);
-            Y2->insert_marked_vertex(uu);
+            Y1->erase_marked_vertex(node2);
+            Y2->insert_marked_vertex(node2);
         }
     }
 }
 
 // We need to return a new component corresponding to the second vertex u
-unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Vertex v, Vertex u)
+unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Vertex parent, Vertex child)
 {
     auto G = Y1->get_graph();
+    assert(not G->vertex_info(parent).is_marked());
+    assert(G->vertex_info(child).get_component() == Y1);
+
     unique_ptr<connected_component_t> W(new connected_component_t(Y1->get_graph()));
     auto Y2 = W.get();
 
-    int cv = G->component_for_vertex(v);
-    int cu = G->component_for_vertex(u);
+    assert(Y1->count == Y1->labels_for_component().size());
+    int cparent = G->component_for_vertex(parent);
+    int cchild = G->component_for_vertex(child);
 
-    if (G->size_of_component(cu) > G->size_of_component(cv))
-        split_component(Y1, Y2, v);
+    if (G->size_of_component(cchild) > G->size_of_component(cparent))
+        // Move marked nodes connected to parent (parent) to Y2
+        split_component(Y1, Y2, parent);
     else
-    {
-        std::swap(*Y1, *Y2);
-        split_component(Y2, Y1, u);
-    }
+        // Move marked nodes connected to child (child) to Y2
+        split_component(Y1, Y2, child);
 
-    // If we have a component for a previous root, we don't want to treat that as a component.
-    // It shouldn't have any children connected to it.
-    if (Y1->count == 0)
-        std::swap(*Y1,*Y2);
+    assert(Y1->count == Y1->labels_for_component().size());
+    assert(Y2->count == Y2->labels_for_component().size());
+
+    // If we are disconnecting a parent from its last child, then Y2
+    // could be a component containing only the parent node and no labels.
+    //
+    // However, in that case, we should be able to keep Y1 as representing
+    // the child.
+    assert(Y1->count != 0);
 
     if (W->count > 0)
         return W;
@@ -670,6 +684,8 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L4.  | (U, pred) = DEQUEUE(Q)
         auto [Y,pred] = std::move(Q.front()); Q.pop();
 
+        assert(Y->count == Y->labels_for_component().size());
+
 // L5.  | Create a node r_U and set parent(r_U) = pred
         auto r_U = new node_t(pred);
 
@@ -722,24 +738,24 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 
 //      /* Compute the successor of U. */
 // L16. | foreach semi-universal node v \in U do
-        for(auto v: SU)
+        for(auto parent: SU)
         {
             // Look at recorded component for this vertex.
-            auto Y1 = H->vertex_info(v).get_component();
+            auto Y1 = H->vertex_info(parent).get_component();
 
-            int i = *H->vertex_info(v).tree_index;
+            int i = *H->vertex_info(parent).tree_index;
 
             // This is the position U restricted to tree i = U \cap L(i).
             auto& U_i = Y1->marked_vertices_for_tree.at(i);
             assert(U_i.size() == 1);
 
 // L17. | U = (U \ {v}) \cup Ch(v)
-            for(auto [e,e_end]=  H->out_edges(v); e != e_end; e++)
+            for(auto [e,e_end]=  H->out_edges(parent); e != e_end; e++)
             {
-                auto u = H->target( *e );
-                Y1->insert_marked_vertex(u);
+                auto child = H->target( *e );
+                Y1->insert_marked_vertex(child);
             }
-            Y1->erase_marked_vertex(v);
+            Y1->erase_marked_vertex(parent);
 
             // By Lemma 7, each semi-universal node always has more than 1
             // child, and so we don't create any new semi-universal nodes.
@@ -747,11 +763,13 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             auto U_i_tmp = U_i;
             assert(U_i.size() > 1);
 
-            // Remove the edges (v,u), creating new components, and updating mark, map, and semiU
-            for(auto u: U_i_tmp)
-                if (H->remove_edge(v,u))
+            // Remove the edges (parent, child), creating new components, and updating mark, map, and semiU
+            for(auto child: U_i_tmp)
+                if (H->remove_edge(parent,child))
                 {
-                    auto Y2 = split_component(Y1, v, u);
+                    assert(H->vertex_info(child).is_marked());
+                    auto Y1 = H->vertex_info(child).get_component();
+                    auto Y2 = split_component(Y1, parent, child);
                     if (Y2)
                         Ws.push_back(std::move(Y2));
                 }
@@ -1256,6 +1274,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 if (not nd->is_tip() and nd != root) {
                     const auto descendants = remap(nd->get_data().des_ids);
                     bool is_consistent = add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
+                    LOG(WARNING)<<"Trying partition "<<nd<<" in tree "<<i<<": "<<is_consistent;
                     bool is_consistent2 = (bool)remove_split_if_inconsistent(nd);
                     assert(is_consistent == is_consistent2);
                     if (is_consistent) consistent_count++;
