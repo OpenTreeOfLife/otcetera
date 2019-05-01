@@ -262,25 +262,24 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
 
   
     bool summarize(OTCLI &otCLI) override {
-        std::cerr << "unjoinedExtinctTaxonToPlacementSummary.size() = " << unjoinedExtinctTaxonToPlacementSummary.size() << '\n';
         joinPlacements();
-        std::cerr << "unjoinedExtinctTaxonToPlacementSummary.size() after = " << unjoinedExtinctTaxonToPlacementSummary.size() << '\n';
         json document;
-        json taxon_edits;
-        std::cerr << "joinedExtinctTaxonToPlacementSummary.size() = " << joinedExtinctTaxonToPlacementSummary.size() << '\n';
-        for (auto tax_id_to_edit : joinedExtinctTaxonToPlacementSummary) {
-            const auto taxon_ptr = tax_id_to_edit.first;
-            const DeepestAttachmentPointAndTreeIDs & edits = tax_id_to_edit.second;
-            const auto & att_nd_id = edits.first;
-            const auto & tree_set = edits.second;
-            json new_attach;
-            std::string par_key = "ott" + std::to_string(att_nd_id->get_ott_id());
-            new_attach["new_parent"] = par_key;
-            new_attach["according_to"] = tree_set;
-            std::string key = "ott" + std::to_string(taxon_ptr->get_ott_id());
-            taxon_edits[key] =  new_attach;
+        if (!joinedExtinctTaxonToPlacementSummary.empty()) {
+            json taxon_edits;
+            for (auto tax_id_to_edit : joinedExtinctTaxonToPlacementSummary) {
+                const auto taxon_ptr = tax_id_to_edit.first;
+                const DeepestAttachmentPointAndTreeIDs & edits = tax_id_to_edit.second;
+                const auto & att_nd_id = edits.first;
+                const auto & tree_set = edits.second;
+                json new_attach;
+                std::string par_key = "ott" + std::to_string(att_nd_id->get_ott_id());
+                new_attach["new_parent"] = par_key;
+                new_attach["according_to"] = tree_set;
+                std::string key = "ott" + std::to_string(taxon_ptr->get_ott_id());
+                taxon_edits[key] =  new_attach;
+            }
+            document["edits"] = taxon_edits;
         }
-        document["edits"] = taxon_edits;
         json jTreesWoExt = json::array(); 
         for (auto i : namesOfTreesWithoutExtinct) {
             jTreesWoExt.push_back(i);
