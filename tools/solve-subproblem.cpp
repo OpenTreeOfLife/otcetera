@@ -1115,8 +1115,8 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 // % otc-solve-subproblem ott596112.tre
 // % otc-solve-subproblem ott5553749.tre
 // % otc-solve-subproblem ott5551466.tre
-//
-// What's the really bad subproblem?
+// % otc-solve-subproblem ott56610.tre
+// % otc-solve-subproblem ott1041547.tre
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
