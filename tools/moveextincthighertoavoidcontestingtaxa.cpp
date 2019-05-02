@@ -486,7 +486,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         TaxoNd2IndParIDset to_induced_mapping;
         ConstNdPtr root = nullptr;
         for (auto pt : phylo2taxo) {
-            LOG(DEBUG) << "currPhylo = " << pt.first->get_name() << "\n";
+            // LOG(DEBUG) << "currPhylo = " << pt.first->get_name() << "\n";
             auto currTaxo = pt.second;
             assert(currTaxo != nullptr);
             OttIdSet currTaxoDes = set_intersection_as_set(phylo_tip_ids, currTaxo->get_data().des_ids);
@@ -494,24 +494,24 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             OttIdSet nextTaxoDes;
             while (true) {
                 nextTaxo = nextTaxo->get_parent();
-                LOG(DEBUG) << "curr = " << currTaxo->get_name() << " next = " << nextTaxo->get_name();
+                // LOG(DEBUG) << "curr = " << currTaxo->get_name() << " next = " << nextTaxo->get_name();
                 assert(nextTaxo != nullptr);
                 nextTaxoDes = set_intersection_as_set(phylo_tip_ids, nextTaxo->get_data().des_ids);
                 if (nextTaxoDes == currTaxoDes) {
-                    LOG(DEBUG) << "...non-forking on induced";
+                    // LOG(DEBUG) << "...non-forking on induced";
                     continue;
                 }
-                LOG(DEBUG) << "...storing " << currTaxo->get_name() << " -> " << nextTaxo->get_name();
+                // LOG(DEBUG) << "...storing " << currTaxo->get_name() << " -> " << nextTaxo->get_name();
                 to_induced_mapping[currTaxo] = InducedParAndIds(nextTaxo, nextTaxoDes);
                 if (nextTaxoDes == phylo_tip_ids) {
                     assert(root == nullptr || root == nextTaxo);
                     root = nextTaxo;
-                    LOG(DEBUG) << "...at root";
+                    // LOG(DEBUG) << "...at root";
                     break;
                 }
                 currTaxo = nextTaxo;
                 if (contains(to_induced_mapping, currTaxo)) {
-                    LOG(DEBUG) << "...Already added";
+                    // LOG(DEBUG) << "...Already added";
                     break;
                 }
                 currTaxoDes = nextTaxoDes;
