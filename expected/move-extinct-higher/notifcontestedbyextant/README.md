@@ -1,0 +1,1 @@
+If a extant backbone in the same tree already contests the intervening groups, don't bump the fossil taxa
