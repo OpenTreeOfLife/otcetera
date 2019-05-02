@@ -67,7 +67,12 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         }
         for (;;) {
             const NodeWithSplits * next_nd = curr->get_parent();
-            if (next_nd == nullptr || !contains(extinctIDSet, next_nd->get_ott_id())) {
+            if (next_nd == nullptr) {
+                return curr;
+            }
+            auto noid =  next_nd->get_ott_id();
+            // LOG(DEBUG) << "will check for " << noid << " in find_shallowest_fossil_only.";
+            if (!contains(extinctIDSet, noid)) {
                 return curr;
             }
             curr = next_nd;
@@ -170,7 +175,8 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         useStdOut(true),
         useCmdLine(false) {
     }
-    bool readExtinctIDsFromStream(OTCLI & otCLI, std::istream &inp) {
+    bool readExtinctIDsFromStream(OTCLI & ,
+                                  std::istream &inp) {
         json j;
         try {
             inp >> j;
@@ -261,7 +267,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     }
 
   
-    bool summarize(OTCLI &otCLI) override {
+    bool summarize(OTCLI &) override {
         joinPlacements();
         json document;
         if (!joinedExtinctTaxonToPlacementSummary.empty()) {
@@ -325,8 +331,8 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
     }
 
 
-    bool evalate_extinct_taxa(OTCLI & otCLI,
-                             std::size_t treeIndex,
+    bool evalate_extinct_taxa(OTCLI & ,
+                             std::size_t , //treeIndex,
                              const TreeMappedWithSplits & tree,
                              const ConstNdPtrSet  & extinct_tips,
                              const OttIdSet & relevantExtinctIDs,
@@ -387,10 +393,10 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         return true;
     }
 
-    NeedsMoveTipmostTaxonPair evaluate_extinct_leaf_placement(const TreeMappedWithSplits & tree,
+    NeedsMoveTipmostTaxonPair evaluate_extinct_leaf_placement(const TreeMappedWithSplits & , //tree,
                                                               ConstNdPtr extinct_tip,
                                                               const OttIdSet & extant_ids,
-                                                              const OttIdSet & relevantIncSedIDs,
+                                                              const OttIdSet & , //relevantIncSedIDs,
                                                               const Phylo2Taxo & phylo2taxo,
                                                               const TaxoNd2IndParIDset taxo_induced_tree,
                                                               const ConstNdPtrSet & contestedByExtant,
