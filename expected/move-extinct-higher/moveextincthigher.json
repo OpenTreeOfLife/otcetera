@@ -23,5 +23,15 @@
     "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1]}"],
     "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A1EvB.tre", "6genus-A1DvB.tre"],
     "expected": "deepestbump"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1,2,3]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A2EvB.tre", "6genus-A1DvB.tre"],
+    "expected": "move2"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1,2,4,3]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A2EvB.tre", "6genus-A1DvB.tre"],
+    "expected": "movebydeepest"
   }
 ]
