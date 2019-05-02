@@ -404,15 +404,11 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         // A bit tricky here... as we move from the extinct tip rootward in each tree, we know
         //    that the one extinct tip we are analyzing is in each node's des_ids. So we don't bother
         //    adding it.
-        const bool DOTRACE = tree.get_name() == std::string("pg_2926@tree6757.tre");
         NeedsMoveTipmostTaxonPair nmttp = {false, nullptr};
         OttId curr_id = extinct_tip->get_ott_id();
         ConstNdPtr rel_forking_phylo_anc = extinct_tip;
         OttIdSet rfpa_des = set_intersection_as_set(extant_ids, rel_forking_phylo_anc->get_data().des_ids);
 
-        if (DOTRACE) {db_write_ott_id_set(" initial rel_forking_phylo_anc->get_data().des_ids", rel_forking_phylo_anc->get_data().des_ids);}
-        if (DOTRACE) {db_write_ott_id_set(" initial rfpa_des", rfpa_des);}
-        
         while (rfpa_des.size() < 1) {
             rel_forking_phylo_anc = rel_forking_phylo_anc->get_parent();
             if (rel_forking_phylo_anc == nullptr) {
@@ -420,8 +416,6 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             }
             const auto & np_des_ids = rel_forking_phylo_anc->get_data().des_ids;
             rfpa_des = set_intersection_as_set(extant_ids, np_des_ids);
-            if (DOTRACE) {db_write_ott_id_set(" initial rel_forking_phylo_anc->get_data().des_ids", rel_forking_phylo_anc->get_data().des_ids);}
-            if (DOTRACE) {db_write_ott_id_set(" in while rfpa_des", rfpa_des);}
         }
         if (rfpa_des == extant_ids) {
             return nmttp;
@@ -432,44 +426,27 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         ConstNdPtr curr_taxo_nd = tax_par_and_id_set->first;
         while (true) {
             while (contains(contestedByExtant, curr_taxo_nd)){
-                if (DOTRACE) {LOG(DEBUG) << "taxon contested = " << curr_taxo_nd->get_ott_id();}
                 tax_par_and_id_set = &(taxo_induced_tree.at(curr_taxo_nd));
                 curr_taxo_nd = tax_par_and_id_set->first;
             }
-            if (DOTRACE) {LOG(DEBUG) << "taxon not contested = " << curr_taxo_nd->get_ott_id();}
-                
             if (curr_taxo_nd == taxo_root) {
-                if (DOTRACE) {LOG(DEBUG) << "at root";}
-                
                 break;
             }
             tax_forking_anc_des_ids = set_intersection_as_set(tax_par_and_id_set->second, extant_ids);
-            if (DOTRACE) {db_write_ott_id_set("tax_forking_anc_des_ids =", tax_forking_anc_des_ids);}
             if (tax_forking_anc_des_ids.size() >= rfpa_des.size()) {
                 if (is_subset(rfpa_des, tax_forking_anc_des_ids)) {
-                    if (DOTRACE) {LOG(DEBUG) << "is_subset";}
                     break;
                 } else {
                     nmttp.first = true;
                     tax_par_and_id_set = &(taxo_induced_tree.at(curr_taxo_nd));
                     curr_taxo_nd = tax_par_and_id_set->first;
-                    if (DOTRACE) {LOG(DEBUG) << ">= moving deeper to " << curr_taxo_nd->get_ott_id();}
                 }
             } else {
                 if (!is_subset(tax_forking_anc_des_ids, rfpa_des)) {
-                    //LOG(ERROR) << "Bout to trip an assert with tree " << tree.get_name() ;
-                    if (DOTRACE) {
-                        db_write_ott_id_set("extant_ids =", extant_ids);
-                        db_write_ott_id_set("tax_par_and_id_set->second =", tax_par_and_id_set->second);
-                        db_write_ott_id_set("tax_forking_anc_des_ids =", tax_forking_anc_des_ids);
-                        db_write_ott_id_set("rfpa_des = ", rfpa_des);
-                    }
                     nmttp.first = true;
                 }
                 tax_par_and_id_set = &(taxo_induced_tree.at(curr_taxo_nd));
                 curr_taxo_nd = tax_par_and_id_set->first;
-                if (DOTRACE) {LOG(DEBUG) << "<  moving deeper to " << curr_taxo_nd->get_ott_id();}
-                
             }
         }
         if (nmttp.first) {
