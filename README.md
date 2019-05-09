@@ -148,9 +148,11 @@ OTT id is used to associate labels in different trees)
 
 ## Config file
 
-### The `~/.opentree` file
-You may optionally initialize the global config file `~/.opentree` to specify
-the location of the OpenTree Taxonomy (OTT).  Currently the only use of this
+You may optionally initialize the global config file.
+The filepath for the config file can be set using the OTC_CONFIG environmental variable.
+If that is not set, the default path is `~/.opentree` for the config file.
+The config can hold the location of the OpenTree Taxonomy (OTT).
+Currently the only use of this
 file in otcetera is to avoid specifying the taxonomy argument on the command-line
 to a few commands.
 
