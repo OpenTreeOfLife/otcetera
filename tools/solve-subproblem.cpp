@@ -552,11 +552,12 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     {
         auto root = profile[i];
 
-        // FIXME!  We need to make a root node and make a child node for each tip and label.
-        //         Then we need to refine this tree using the subtree below profile[i].  Or something like that...
-        // FIXME!  How do we handle incertae sedis taxa?
+        // FIXME!  How should we handle incertae sedis taxa?
 
-        // Walk nodes below root in pre-order (parent before child) so that we can connect children to parents.
+        /* If profile[i] is not actually the root of the tree, then the nodes below it do not include
+         * all the leaves.
+         */
+        // Walk nodes in the subtree below profile[i] in pre-order (parent before child) so that we can connect children to parents.
         for(auto nd: iter_pre_n_const(root))
         {
             // Add vertex for child node.
@@ -578,6 +579,14 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
         auto root_vertex = node_to_vertex.at(root);
 
+
+        /* If profile[i] is not actually the root of the tree, then the nodes below it do not include
+         * all the leaves.
+         *
+         * In order to propertly represent exclude sets, we need to create vertices for tips that are NOT
+         * within the subtree of profile[i], and then connect all the tips AND the root of the subtree to 
+         * a fake root node.
+         */
         auto other_leaves = leaves_not_under(root);
         if (not other_leaves.empty())
         {
