@@ -493,6 +493,36 @@ struct connected_component_t
 
 typedef vector<const node_t*> position_t;
 
+void append_leaves_not_under(const node_t* start, const node_t* avoid, vector<const node_t*>& leaves)
+{
+    // 1. Don't consider the node we are avoiding
+    if (start == avoid) return;
+
+    // 2. If this is a tip, then count it.
+    if (start->is_tip())
+    {
+        leaves.push_back(start);
+        return;
+    }
+
+    // 3. If this is NOT a tip, consider all of its children
+    for(auto node = start->get_first_child(); node ; node = node->get_next_sib())
+        append_leaves_not_under(node, avoid, leaves);
+}
+
+vector<const node_t*> leaves_not_under(const node_t* avoid)
+{
+    // 1. Find the true root.
+    auto root = avoid;
+    while(root->get_parent())
+        root = root->get_parent();
+
+    // 2. Find leaves under the root that are not under avoid.
+    vector<const node_t*> leaves;
+    append_leaves_not_under(root, avoid, leaves);
+
+    return leaves;
+}
 
 
 tuple<unique_ptr<dynamic_graph>, unique_ptr<connected_component_t>>
@@ -502,6 +532,21 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     map<OttId,Vertex> Labels;
     map<const node_t*,Vertex> node_to_vertex;
     unique_ptr<connected_component_t> Y_init(new connected_component_t(H.get()));
+
+    auto vertex_for_label = [&](const node_t* nd)
+                                {
+                                    assert(nd->has_ott_id());
+                                    auto id = nd->get_ott_id();
+
+                                    if (not Labels.count(id))
+                                    {
+                                        auto label = H->add_vertex();
+                                        Labels.insert({id,label});
+                                        H->vertex_info(label).label = id;
+                                    }
+
+                                    return Labels.at(id);
+                                };
 
     for(int i=0; i< profile.size(); i++)
     {
@@ -528,20 +573,37 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
             // Add an edge from the node for the label to the tip
             if (nd->is_tip())
-            {
-                assert(nd->has_ott_id());
-                auto id = nd->get_ott_id();
-
-                if (not Labels.count(id))
-                {
-                    auto label = H->add_vertex();
-                    Labels.insert({id,label});
-                    H->vertex_info(label).label = id;
-                }
-
-                H->add_edge(v,Labels.at(id));
-            }
+                H->add_edge(v, vertex_for_label(nd));
         }
+
+        auto root_vertex = node_to_vertex.at(root);
+
+        auto other_leaves = leaves_not_under(root);
+        if (not other_leaves.empty())
+        {
+            auto fake_root = H->add_vertex();
+            H->vertex_info(fake_root).tree_index = i;
+
+            for(auto leaf_node: other_leaves)
+            {
+                // Create a vertex for the leaf
+                auto leaf_vertex = H->add_vertex();
+                H->vertex_info(leaf_vertex).tree_index = i;
+
+                // Mark the vertex as part of tree i
+                H->add_edge(fake_root, leaf_vertex);
+
+                // Connect the leaf to the vertex for its label
+                H->add_edge(leaf_vertex, vertex_for_label(leaf_node));
+            }
+
+            H->add_edge(fake_root, root_vertex);
+            root_vertex = fake_root;
+        }
+
+        // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
+        // This automatically (i) marks the node, and (ii) updates semiU
+        Y_init->insert_marked_vertex(root_vertex);
     }
 
     // * Y_init.count = |L(P)|
@@ -552,14 +614,6 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         LOG(WARNING)<<"   "<<id;
     }
     LOG(WARNING)<<"";
-
-    // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
-    for(int i=0;i<profile.size();i++)
-    {
-        auto root = profile[i];
-        // This automatically (i) marks the node, and (ii) updates semiU
-        Y_init->insert_marked_vertex(node_to_vertex[root]);
-    }
 
     return {std::move(H), std::move(Y_init)};
 }
@@ -668,7 +722,13 @@ unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Ver
 //            initialize (5.2) and maintain (5.3) the data structures mentioned in
 //            section (5.1).
 //
-// Construct a tree that is compatible with all the trees in the profile, and return a null pointer if this is not possible
+
+// Construct a tree that is compatible with all the trees in the profile, and return a null pointer if this is not possible.
+//
+// Instead of an entire tree, we pass in an internal node from each tree, which is interpreted as a tree where all internal nodes
+//   outside of the subtree for that node have been collapsed.  This allows us to avoid creating a new copy of the tree with
+//   collapsed nodes.
+
 unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 {
     std::queue<tuple<unique_ptr<connected_component_t>,node_t*>> Q;
