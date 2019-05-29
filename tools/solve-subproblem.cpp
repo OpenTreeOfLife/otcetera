@@ -1252,6 +1252,21 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 // % otc-solve-subproblem ott56610.tre
 // % otc-solve-subproblem ott1041547.tre
 
+/*
+Find test-cases that are not too large:
+for i in $(<files-by-size.txt) ; do echo $i ; if ! otc-solve-subproblem $i ; then echo $i >> bad ; fi ; done
+ott347609.tre
+ott842365.tre
+ott5846387.tre
+ott117569.tre
+ott363891.tre
+ott85739.tre
+ott437768.tre
+ott494364.tre
+ott693616.tre
+...
+*/
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
