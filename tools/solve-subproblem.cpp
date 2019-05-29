@@ -1358,15 +1358,21 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             }
         } else {
             int consistent_count = 0;
-            for(auto nd: iter_post(*tree)) {
-                if (not nd->is_tip() and nd != root) {
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    bool is_consistent = add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
-                    LOG(WARNING)<<"Trying partition "<<nd<<" in tree "<<i<<": "<<is_consistent;
-                    bool is_consistent2 = (bool)remove_split_if_inconsistent(nd);
-                    assert(is_consistent == is_consistent2);
-                    if (is_consistent) consistent_count++;
-                }
+            vector<node_t*> nodes_to_check;
+            for(auto nd: iter_post(*tree))
+                if (not nd->is_tip() and nd != root)
+                    nodes_to_check.push_back(nd);
+
+            for(auto nd: nodes_to_check)
+            {
+                const auto descendants = remap(nd->get_data().des_ids);
+                bool is_consistent = add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
+                LOG(WARNING)<<"Trying partition "<<nd<<" in tree "<<i<<": "<<is_consistent;
+                for(auto d: descendants)
+                    LOG(WARNING)<<"    "<<ids[d]<<"  ("<<d<<")";
+                bool is_consistent2 = (bool)remove_split_if_inconsistent(nd);
+                assert(is_consistent == is_consistent2);
+                if (is_consistent) consistent_count++;
             }
             if (consistent_count > 0)
                 consistent_trees.push_back(tree->get_root());
