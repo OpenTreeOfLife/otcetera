@@ -1303,14 +1303,8 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 Find test-cases that are not too large:
 for i in $(<files-by-size.txt) ; do echo $i ; if ! otc-solve-subproblem $i ; then echo $i >> bad ; fi ; done
 ott497126.tre
-ott50860.tre
 ott791895.tre
 ott216628.tre
-ott1020133.tre
-ott580066.tre
-ott309271.tre
-ott5557278.tre
-
 ...
 */
 
