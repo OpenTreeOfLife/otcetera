@@ -1303,6 +1303,8 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 Find test-cases that are not too large:
 for i in $(<files-by-size.txt) ; do echo $i ; if ! otc-solve-subproblem $i ; then echo $i >> bad ; fi ; done
 ott497126.tre
+ - OK, the problem comes from going through the tree a node at a time.
+ - if have ((a1,a2)a,(b1,b2)b), the we test {stuff,a} and keep a, and then {stuff,b} BUT WITHOUT 'a'.
 ott791895.tre
 ott216628.tre
 ...
