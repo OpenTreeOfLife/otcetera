@@ -183,6 +183,10 @@ public:
 
     int component_for_vertex(Vertex v) const {return component_for_vertex_.at(v);}
 
+    const map<int,list<Vertex>>& vertices_for_components() const {return vertices_for_component_;}
+
+          map<int,list<Vertex>>& vertices_for_components()       {return vertices_for_component_;}
+
     const list<Vertex>& vertices_for_component(int c) const {return vertices_for_component_.at(c);}
 
           list<Vertex>& vertices_for_component(int c)       {return vertices_for_component_.at(c);}
@@ -196,6 +200,14 @@ public:
     Vertex source(Edge e) const {return boost::source(e,G);}
 
     Vertex target(Edge e) const {return boost::target(e,G);}
+
+    int in_degree(Vertex v) const
+    {
+        int count = 0;
+        for(auto [e, e_end] = in_edges(v); e != e_end; e++)
+            count++;
+        return count;
+    }
 
     int out_degree(Vertex v) const
     {
@@ -525,13 +537,12 @@ vector<const node_t*> leaves_not_under(const node_t* avoid)
 }
 
 
-tuple<unique_ptr<dynamic_graph>, unique_ptr<connected_component_t>>
+unique_ptr<dynamic_graph>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
     unique_ptr<dynamic_graph> H(new dynamic_graph);
     map<OttId,Vertex> Labels;
     map<const node_t*,Vertex> node_to_vertex;
-    unique_ptr<connected_component_t> Y_init(new connected_component_t(H.get()));
 
     auto vertex_for_label = [&](const node_t* nd)
                                 {
@@ -610,13 +621,8 @@ display_graph_from_profile(const vector<const node_t*>& profile)
             root_vertex = fake_root;
         }
 
-        // * Y_init.map consists of all pairs (i, {r(T[i])}), for each i \in [k] ([0..k-1] for our purposes)
-        // This automatically (i) marks the node, and (ii) updates semiU
-        Y_init->insert_marked_vertex(root_vertex);
     }
 
-    // * Y_init.count = |L(P)|
-    Y_init->count = Labels.size();
     LOG(WARNING)<<"Labels";
     for(auto [id,_]: Labels)
     {
@@ -624,7 +630,35 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     }
     LOG(WARNING)<<"";
 
-    return {std::move(H), std::move(Y_init)};
+    return H;
+}
+
+vector<unique_ptr<connected_component_t>> get_connected_components(dynamic_graph& H)
+{
+    // The paper says that there is initially only one connected component, but
+    // actually there could be more.
+    vector<unique_ptr<connected_component_t>> Y_inits;
+
+    for(auto& [c, vertices]: H.vertices_for_components())
+    {
+        unique_ptr<connected_component_t> Y_init(new connected_component_t(&H));
+
+        for(auto v: vertices)
+        {
+            if (H.in_degree(v) == 0)
+                Y_init->insert_marked_vertex(v);
+            if (H.out_degree(v) == 0)
+            {
+                assert(H.vertex_info(v).label);
+                Y_init->count++;
+            }
+        }
+
+        // Find the number of labels in this component
+        Y_inits.push_back(std::move(Y_init));
+    }
+
+    return Y_inits;
 }
 
 
@@ -741,15 +775,18 @@ unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Ver
 unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 {
     std::queue<tuple<unique_ptr<connected_component_t>,node_t*>> Q;
-    node_t* r_U_init = nullptr;
+
+    node_t* root = new node_t(nullptr);
 
 //FIXME: info_for_vertex should be replaced with O(1)-lookup vertex attributes.
 
 // L1. Construct display graph H_P(U_init)
-    auto [H, Y_init] = display_graph_from_profile(profile);
+    auto H = display_graph_from_profile(profile);
+    auto Y_inits = get_connected_components(*H);
 
 // L2.  ENQUEUE(Q, (U_init, null) )
-    Q.push({std::move(Y_init), nullptr});
+    for(auto& Y_init: Y_inits)
+        Q.push({std::move(Y_init), nullptr});
 
 // L3.  while Q is not empty do
     while(not Q.empty())
@@ -760,9 +797,19 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         assert(Y->count == Y->labels_for_component().size());
 
 // L5.  | Create a node r_U and set parent(r_U) = pred
-        auto r_U = new node_t(pred);
+        node_t* r_U = nullptr;
+        if (pred)
+        {
+            // Create a new node pointing to a higher-level problem.
+            r_U = new node_t(pred);
+        }
+        else
+        {
+            // This is one of the highest-level problems.
+            // Share the root among all the different problems.
+            r_U = root;
+        }
 
-        if (not pred) r_U_init = r_U; // Is there a more elegant way to save r_U_init?
 
 // L6.  | if |L(U)| = 1 then
         if (Y->count == 1)
@@ -864,7 +911,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     }
 
 // L23. return the tree with root r_{U_unit}
-    return unique_ptr<Tree_t>{new Tree_t(r_U_init)};
+    return unique_ptr<Tree_t>{new Tree_t(root)};
 }
 
 static vector<int> indices;
@@ -1255,17 +1302,25 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 /*
 Find test-cases that are not too large:
 for i in $(<files-by-size.txt) ; do echo $i ; if ! otc-solve-subproblem $i ; then echo $i >> bad ; fi ; done
-ott347609.tre
-ott842365.tre
-ott5846387.tre
-ott117569.tre
-ott363891.tre
-ott85739.tre
-ott437768.tre
-ott494364.tre
-ott693616.tre
+ott497126.tre
+ott50860.tre
+ott791895.tre
+ott216628.tre
+ott1020133.tre
+ott580066.tre
+ott309271.tre
+ott5557278.tre
+
 ...
 */
+
+/*
+ ott50860.tre
+
+ OK, so we start out with a component with root nodes 0, 17, 34, 48.
+ They are in components 1, 18, 18, and 49. (So we start out with three different components.)
+ - 0: We replace 0 with its children {1,6} in the frontier.
+ */
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
