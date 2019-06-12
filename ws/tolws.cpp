@@ -1253,43 +1253,45 @@ vector<pair<const Taxon*,const string&>> exact_synonym_search_higher(const RichT
 
 
 
-vector<const Taxon*> exact_name_search(const Taxon* context_root, string query, std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
-{
-    for(auto& c: query)
-	c = std::tolower(c);
-
-    vector<const Taxon*> hits;
-    for(auto taxon: iter_post_n_const(*context_root))
-    {
-	if (not ok(taxon)) continue;
-
-	if (lcase_string_equals(query, taxon->get_data().get_nonuniqname()))
-	    hits.push_back(taxon);
+vector<const Taxon*> exact_name_search(const Taxon* context_root,
+                                       string query,
+                                       std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;}) {
+    for (auto& c: query) {
+        c = std::tolower(c);
     }
-
+    vector<const Taxon*> hits;
+    for(auto taxon: iter_post_n_const(*context_root)) {
+        if (not ok(taxon)) {
+            continue;
+        }
+        if (lcase_string_equals(query, taxon->get_data().get_nonuniqname())) {
+            hits.push_back(taxon);
+        }
+    }
     return hits;
 }
 
-vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
-{
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    return true;
-					};
-
+vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed) {
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+        if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
+            return false;
+        } else {
+            return true;
+        }
+	};
     return exact_name_search(context_root, query, ok);
 }
 
-vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed)
-{
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon)
-					{
-					    if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) return false;
-					    if (not taxon_is_specific(taxon)) return false;
-					    return true;
-					};
-
+vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy, const Taxon* context_root, string query, bool include_suppressed) {
+    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+        if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
+            return false;
+        }
+        if (not taxon_is_specific(taxon)) {
+            return false;
+        }
+	    return true;
+	};
     return exact_name_search(context_root, query, ok);
     
 }
@@ -1447,42 +1449,35 @@ json exact_synonym_match_json(const string& query, const Taxon* taxon, const str
 
 pair<json,match_status> ContextSearcher::match_name(string query, bool do_approximate_matching, bool include_suppressed)
 {
-    for(auto& c: query)
-	c = std::tolower(c);
-
+    for(auto& c: query) {
+        c = std::tolower(c);
+    }
     // What does an ambiguous match mean?
     json results;
-
     match_status status = unmatched;
-
     // 1. See if we can find an exact name match
     auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
-
-    for(auto taxon: exact_name_matches)
-	results.push_back(exact_name_match_json(query, taxon, taxonomy));
-
-    if (exact_name_matches.size() == 1)
-	status = unambiguous_match;
-
+    for(auto taxon: exact_name_matches) {
+        results.push_back(exact_name_match_json(query, taxon, taxonomy));
+    }
+    if (exact_name_matches.size() == 1) {
+        status = unambiguous_match;
+    }
     // 2. See if we can find an exact name match for synonyms
     auto exact_synonym_matches = exact_synonym_search(taxonomy, context_root, query, include_suppressed);
-
-    for(auto& [ taxon, synonym_name ]: exact_synonym_matches)
-	results.push_back(exact_synonym_match_json(query, taxon, synonym_name, taxonomy));
-
-    if (status == unmatched and results.size())
-	status = ambiguous_match;
-
-    // 3. Do fuzzy matching ONLY for names that we couldn't match
-    if (do_approximate_matching and status == unmatched)
-    {
-	// do fuzzy matching.
+    for(auto& [ taxon, synonym_name ]: exact_synonym_matches) {
+        results.push_back(exact_synonym_match_json(query, taxon, synonym_name, taxonomy));
     }
-
+    if (status == unmatched and results.size()) {
+        status = ambiguous_match;
+    }
+    // 3. Do fuzzy matching ONLY for names that we couldn't match
+    if (do_approximate_matching and status == unmatched) {
+        // do fuzzy matching.
+    }
     json match_results;
     match_results["name"] = query;
     match_results["matches"] = results;
-
     return {match_results, status};
 }
 
