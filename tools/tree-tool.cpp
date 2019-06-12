@@ -88,15 +88,6 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     return vm;
 }
 
-std::size_t n_nodes(const Tree_t& T) {
-#pragma clang diagnostic ignored  "-Wunused-variable"
-#pragma GCC diagnostic ignored  "-Wunused-variable"
-    std::size_t count = 0;
-    for(auto nd: iter_post_const(T)){
-        count++;
-    }
-    return count;
-}
 
 void show_nodes(const Tree_t& T) {
     for(auto nd: iter_post_const(T)) {

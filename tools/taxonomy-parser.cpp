@@ -96,16 +96,6 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     return vm;
 }
 
-std::size_t n_nodes(const Tree_t& T) {
-#pragma clang diagnostic ignored  "-Wunused-variable"
-#pragma GCC diagnostic ignored  "-Wunused-variable"
-    std::size_t count = 0;
-    for(auto nd: iter_post_const(T)){
-        count++;
-    }
-    return count;
-}
-
 void report_lost_taxa(const Taxonomy& taxonomy, const string& filename) {
     vector<unique_ptr<Tree_t>> trees;
     std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
