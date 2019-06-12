@@ -171,6 +171,11 @@ class CTrie2Node {
 };
 
 using ctrie_init_set_t = std::set<stored_str_t>;
+struct CTrieCtorHelper {
+    stored_str_t prefix;
+    std::size_t node_index;
+    ctrie_init_set_t::const_iterator lower;
+};
 
 template <typename T>
 class CompressedTrie {
@@ -178,7 +183,12 @@ class CompressedTrie {
     CompressedTrie() {}
     private:
     void init(const ctrie_init_set_t & keys, const stored_str_t & letter_var);
-    
+    void _process_prefix(const stored_str_t & curr_pref,
+                         std::stack<CTrieCtorHelper> & todo_q,
+                         const stored_str_t & rev_letters,
+                         const ctrie_init_set_t & keys,
+                         T & par_node);
+
     T & get_node(std::size_t ind) {
         if (ind >= nodes.size()) {
             nodes.resize(ind + 1);
@@ -197,16 +207,41 @@ class CompressedTrie {
 
 };
 
-struct CTrieCtorHelper {
-    stored_str_t prefix;
-    std::size_t par_index;
-    std::size_t node_index;
-    ctrie_init_set_t::const_iterator lower;
-    ctrie_init_set_t::const_iterator upper;
-};
 
 inline bool starts_with(const stored_str_t & full, const stored_str_t & pref) {
+    if (full.length() < pref.length()) {
+        return false;
+    }
+    std::cerr << "starts_with(" << to_char_str(full) << ", " << to_char_str(pref) << ")\n";
     return 0 == full.compare(0, pref.length(), pref);
+}
+
+template <typename T>
+void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
+                                        std::stack<CTrieCtorHelper> & todo_q,
+                                        const stored_str_t & rev_letters,
+                                        const ctrie_init_set_t & keys,
+                                        T & par_node) {
+    stored_str_t next_pref;
+    CTrieCtorHelper ctch;
+    unsigned int curr_letter_index = rev_letters.length();
+    for (auto letter : rev_letters) {
+        curr_letter_index--;
+        next_pref = curr_pref;
+        next_pref.push_back(letter);
+        ctch.lower = keys.lower_bound(next_pref);
+        if (ctch.lower == keys.end()) {
+            continue;
+        }
+        if (starts_with(*ctch.lower, next_pref)) {
+            ctch.prefix = next_pref;
+            ctch.node_index = this->nodes.size();
+            this->get_node(ctch.node_index);
+            todo_q.push(ctch);
+            std::cerr << " pref \"" << to_char_str(next_pref) << "\" found.\n";
+            par_node.flag_letter(curr_letter_index);
+        }
+    }
 }
 
 template <typename T>
@@ -223,34 +258,14 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         throw OTCError() << "# of letters (" << this->letters.length() << ") exceeds size of CompressedTrie node type";
     }
 
-    std::size_t par_index = 0;
-    T & root_node = this->get_node(par_index);
     std::stack<CTrieCtorHelper> todo_q;
     stored_str_t curr_pref;
-    stored_str_t next_pref;
-    CTrieCtorHelper ctch;
-    ctrie_init_set_t::const_iterator next_upper = keys.end();
-    unsigned int curr_letter_index = rev_letters.length();
-    for (auto letter : rev_letters) {
-        curr_letter_index--;
-        next_pref = curr_pref;
-        next_pref.push_back(letter);
-        ctch.lower = keys.lower_bound(next_pref);
-        if (ctch.lower == keys.end()) {
-            continue;
-        }
-        if (starts_with(*ctch.lower, next_pref)) {
-            ctch.upper = next_upper;
-            next_upper = ctch.lower;
-            ctch.prefix = next_pref;
-            ctch.par_index = par_index;
-            ctch.node_index = this->nodes.size();
-            this->get_node(ctch.node_index);
-            todo_q.push(ctch);
-            std::cerr << " pref \"" << to_char_str(next_pref) << "\" found.\n";
-            root_node.flag_letter(curr_letter_index);
-        }
-    }
+    
+
+    T & root_node = this->get_node(0);
+    _process_prefix(curr_pref, todo_q, rev_letters, keys, root_node);
+    
+    
     CTrieCtorHelper curr_ctch;
     while (!todo_q.empty()) {
         curr_ctch = todo_q.top();
@@ -260,7 +275,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         bool done_with_curr = false;
         if (*curr_ctch.lower == curr_pref) {
             curr_ctch.lower++;
-            if (starts_with(*curr_ctch.lower, curr_pref)) {
+            if (curr_ctch.lower != keys.end() && starts_with(*curr_ctch.lower, curr_pref)) {
                 curr_node.flag_as_key_terminating();
             } else {
                 done_with_curr = true;
@@ -268,35 +283,9 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
             }
         }
         if (!done_with_curr) {
-            /* CODE HERE!
-            stored_str_t next_key_base = *curr_ctch.lower;
-            curr_letter_index = rev_letters.length();
-            for (auto letter : rev_letters) {
-                curr_letter_index--;
-                next_pref = curr_pref;
-                next_pref.push_back(letter);
-                ctch.lower = keys.lower_bound(next_pref);
-                if (ctch.lower == keys.end()) {
-                    continue;
-                }
-                if (starts_with(*ctch.lower, next_pref)) {
-                    ctch.upper = keys.lower_bound(next_pref);
-                    ctch.prefix = next_pref;
-                    ctch.par_index = par_index;
-                    ctch.node_index = this->nodes.size();
-                    this->get_node(ctch.node_index);
-                    todo_q.push(ctch);
-                    std::cerr << " pref \"" << to_char_str(next_pref) << "\" found.\n";
-                    root_node.flag_letter(curr_letter_index);
-                }
-            }
-            curr_ctch.lower++;
-            */
+            _process_prefix(curr_pref, todo_q, rev_letters, keys, curr_node);
         }
-
     }
-    
-
 }
 
 using CTrie3_t = CompressedTrie<CTrie3Node>;
