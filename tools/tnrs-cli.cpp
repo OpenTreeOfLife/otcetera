@@ -14,6 +14,7 @@
 #include <codecvt>
 #include <algorithm>
 #include <queue>
+#include <map>
 #include <stack>
 
 #include "otc/error.h"
@@ -105,39 +106,61 @@ inline std::string to_char_str(const stored_char_t & undecoded) {
 const std::size_t num_index_bits = 50;
 
 // top:
-//      highest bit: is internal node
-//      If that is 1:
+//      highest bit: is terminal node
+//      If that is 0:
 //          second highest bit: has key that terminates with this node
 //          bits 0 - 61 letter codes
 
+const uint64_t ZERO_64 = 0;
 const uint64_t ONE_64 = 1;
 const uint64_t HIGHEST_BIT = ONE_64 << 63;
 const uint64_t SECOND_HIGHEST_BIT = ONE_64 << 62;
+const uint64_t INDEX_MASK = (ONE_64 << num_index_bits) - 1;
 
+#define DO_NODE_OPS 0
 class CTrie3Node {
     uint64_t top, mid, bot;
     public:
-    CTrie3Node() :top(0), mid(0), bot(0) {
+    CTrie3Node() :top{ZERO_64}, mid{ZERO_64}, bot{ZERO_64} {
+        log_state();
+    }
+    void log_state() {
+       std::cerr << " CTrie3Node( top = " << bitset<64>{top} << " mid = " << bitset<64>{mid} << " bot = " << bitset<64>{bot} << ")\n";
     }
     void flag_letter(unsigned int i) {
         uint64_t bit = 1;
+        log_state();
         if (i < 62) {
-            bit <<= (61 - i);
-            top |= bit;
-        } else if (i < 126) {
+            const uint64_t shifted = (bit << (61 - i));
+            this->top += shifted;
+            std::cerr << " flag_letter( " << i << ") top shifted = " << bitset<64>{shifted} << " top = " << bitset<64>{top} << '\n';
+            log_state();
+        } 
+#   if DO_NODE_OPS
+         else if (i < 126) {
             bit <<= (125 - i);
             mid |= bit;
-        } else {
+        }
+        else {
             assert(i < 140);
             bit <<= (139 - i);
             bot |= bit;
         }
+#   endif
     }
     void flag_as_key_terminating() {
         top |= SECOND_HIGHEST_BIT;
     }
     void flag_as_terminal() {
         top |= HIGHEST_BIT;
+    }
+    void flag_as_suffix(std::size_t pos) {
+        flag_as_terminal();
+        uint64_t ind = pos;
+        if ((ind & INDEX_MASK) != ind) {
+            throw OTCError() << "not enough index field to hold pos = " << pos;
+        }
+        bot = ind;
     }
     const static std::size_t max_num_letters = 3*64 - num_index_bits;
   
@@ -148,6 +171,10 @@ class CTrie2Node {
     public:
     CTrie2Node() :top(0),  bot(0) {
     }
+    void log_state() {
+       std::cerr << " CTrie2Node( top = " << bitset<64>{top} << " bot = " << bitset<64>{bot} << ")\n";
+    }
+    
     void flag_letter(unsigned int i) {
         uint64_t bit = 1;
         if (i < 62) {
@@ -165,15 +192,25 @@ class CTrie2Node {
     void flag_as_terminal() {
         top |= HIGHEST_BIT;
     }
+    void flag_as_suffix(std::size_t pos) {
+        flag_as_terminal();
+        uint64_t ind = pos;
+        if ((ind & INDEX_MASK) != ind) {
+            throw OTCError() << "not enough index field to hold pos = " << pos;
+        }
+        bot = ind;
+    }
     
     const static std::size_t max_num_letters = 2*64 - num_index_bits; 
 
 };
 
 using ctrie_init_set_t = std::set<stored_str_t>;
-struct CTrieCtorHelper {
+template <typename T>
+class CTrieCtorHelperTemp {
+    public:
     stored_str_t prefix;
-    std::size_t node_index;
+    T * node_ptr;
     ctrie_init_set_t::const_iterator lower;
 };
 
@@ -182,27 +219,35 @@ class CompressedTrie {
     public:
     CompressedTrie() {}
     private:
+    using CTrieCtorHelper = CTrieCtorHelperTemp<T>;
     void init(const ctrie_init_set_t & keys, const stored_str_t & letter_var);
     void _process_prefix(const stored_str_t & curr_pref,
                          std::stack<CTrieCtorHelper> & todo_q,
                          const stored_str_t & rev_letters,
                          const ctrie_init_set_t & keys,
-                         T & par_node);
+                         T & par_node,
+                         std::map<std::string, std::size_t> & suffix2index);
+    
+    void _store_suffix_node(T & curr_node,
+                            const stored_str_t & curr_str,
+                            const stored_str_t & handled,
+                            std::map<std::string, std::size_t> & suffix2index);
 
-    T & get_node(std::size_t ind) {
-        if (ind >= nodes.size()) {
-            nodes.resize(ind + 1);
-        }
-        return nodes[ind];
+    T & append_node() {
+        T empty;
+        nodes.push_back(empty);
+        return *(nodes.rbegin());
     }
     
     void clear() {
         this->letters.clear();
         this->nodes.clear();
+        this->concat_suff.clear();
     }
-
     stored_str_t letters;
-    std::vector<T> nodes;
+    std::list<T> nodes;
+    std::vector<std::string> concat_suff;
+
     friend class CompressedTrieBasedDB;
 
 };
@@ -212,7 +257,7 @@ inline bool starts_with(const stored_str_t & full, const stored_str_t & pref) {
     if (full.length() < pref.length()) {
         return false;
     }
-    std::cerr << "starts_with(" << to_char_str(full) << ", " << to_char_str(pref) << ")\n";
+    //std::cerr << "starts_with(" << to_char_str(full) << ", " << to_char_str(pref) << ")\n";
     return 0 == full.compare(0, pref.length(), pref);
 }
 
@@ -221,26 +266,72 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
                                         std::stack<CTrieCtorHelper> & todo_q,
                                         const stored_str_t & rev_letters,
                                         const ctrie_init_set_t & keys,
-                                        T & par_node) {
+                                        T & par_node,
+                                        std::map<std::string, std::size_t> & suffix2index) {
     stored_str_t next_pref;
     CTrieCtorHelper ctch;
-    unsigned int curr_letter_index = rev_letters.length();
+    unsigned int curr_letter_index = 0;
+    std::list<CTrieCtorHelper> to_queue;
+    ctrie_init_set_t::const_iterator lb;
     for (auto letter : rev_letters) {
-        curr_letter_index--;
         next_pref = curr_pref;
         next_pref.push_back(letter);
-        ctch.lower = keys.lower_bound(next_pref);
-        if (ctch.lower == keys.end()) {
-            continue;
+        lb = keys.lower_bound(next_pref);
+        if (lb == keys.end()) {
+            break;
         }
-        if (starts_with(*ctch.lower, next_pref)) {
-            ctch.prefix = next_pref;
-            ctch.node_index = this->nodes.size();
-            this->get_node(ctch.node_index);
-            todo_q.push(ctch);
-            std::cerr << " pref \"" << to_char_str(next_pref) << "\" found.\n";
+        if (starts_with(*lb, next_pref)) {
+            auto advit = lb;
+            T & next_node = this->append_node();
+            ctch.node_ptr = &next_node;
+            std::cerr << "next_node: "; next_node.log_state();
+            advit++;
+            if (advit != keys.end() && starts_with(*advit, next_pref)) {
+                std::cerr << " pref \"" << to_char_str(next_pref) 
+                          << "\" found in key \"" << to_char_str(*lb) << "\"\n";
+                ctch.prefix = next_pref;
+                ctch.lower = lb;
+                todo_q.push(ctch);
+            } else {
+                _store_suffix_node(next_node, *lb, curr_pref, suffix2index);
+            }
             par_node.flag_letter(curr_letter_index);
         }
+        curr_letter_index++;
+    }
+}
+
+
+template <typename T>
+void CompressedTrie<T>::_store_suffix_node(T & curr_node,
+                        const stored_str_t & curr_str,
+                        const stored_str_t & handled,
+                        std::map<std::string, std::size_t> & suffix2index) {
+    const stored_str_t suffix = curr_str.substr(handled.length());
+    const std::string suff_as_char = to_char_str(suffix);
+    std::cerr << " handled \"" << to_char_str(handled) << "\" suffix = \"" << suff_as_char << "\"\n";
+    auto mit = suffix2index.find(suff_as_char);
+    if (mit != suffix2index.end()) {
+        curr_node.flag_as_suffix(mit->second);
+    } else {
+        std::size_t pos = this->concat_suff.size();
+        this->concat_suff.push_back(suff_as_char);
+        //this->concat_suff.append(1, '\0');
+        curr_node.flag_as_suffix(pos);
+        suffix2index[suff_as_char] = pos;
+        /* 
+        std::size_t suff_pref = 0;
+        while (suff_pref < suff_as_char.length()) {
+            std::string tmp = suff_as_char.substr(suff_pref);
+            std::cerr << " tmp \"" << tmp << "\" pos + suff_pref = " << pos + suff_pref << "\n";
+            if (suffix2index.find(tmp) != suffix2index.end()) {
+                break;
+            }
+            suffix2index[tmp] = pos + suff_pref;
+            suff_pref++;
+            break;
+        }
+        */
     }
 }
 
@@ -261,17 +352,19 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     std::stack<CTrieCtorHelper> todo_q;
     stored_str_t curr_pref;
     
-
-    T & root_node = this->get_node(0);
-    _process_prefix(curr_pref, todo_q, rev_letters, keys, root_node);
-    
+    std::map<std::string, std::size_t> suffix2index;
+    std::string mt; 
+    this->concat_suff.push_back(mt);
+    suffix2index[mt] = 0;
+    T & root_node = this->append_node();
+    _process_prefix(curr_pref, todo_q, this->letters, keys, root_node, suffix2index);
     
     CTrieCtorHelper curr_ctch;
     while (!todo_q.empty()) {
         curr_ctch = todo_q.top();
         todo_q.pop();
         curr_pref = curr_ctch.prefix;
-        T & curr_node = this->nodes.at(curr_ctch.node_index);
+        T & curr_node = *(curr_ctch.node_ptr);
         bool done_with_curr = false;
         if (*curr_ctch.lower == curr_pref) {
             curr_ctch.lower++;
@@ -283,13 +376,14 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
             }
         }
         if (!done_with_curr) {
-            _process_prefix(curr_pref, todo_q, rev_letters, keys, curr_node);
+            _process_prefix(curr_pref, todo_q, this->letters, keys, curr_node, suffix2index);
         }
     }
 }
 
 using CTrie3_t = CompressedTrie<CTrie3Node>;
 using CTrie2_t = CompressedTrie<CTrie2Node>;
+
 class CompressedTrieBasedDB {
     public:
     CompressedTrieBasedDB(const std::set<std::string_view> & keys);
@@ -335,7 +429,7 @@ CompressedTrieBasedDB::CompressedTrieBasedDB(const std::set<std::string_view> & 
         }
     }
     fat_trie.init(for_fat, letters);
-    thin_trie.init(for_thin, letters);
+    //thin_trie.init(for_thin, letters);
 }
 
 
