@@ -117,36 +117,31 @@ const uint64_t HIGHEST_BIT = ONE_64 << 63;
 const uint64_t SECOND_HIGHEST_BIT = ONE_64 << 62;
 const uint64_t INDEX_MASK = (ONE_64 << num_index_bits) - 1;
 
-#define DO_NODE_OPS 0
 class CTrie3Node {
     uint64_t top, mid, bot;
     public:
     CTrie3Node() :top{ZERO_64}, mid{ZERO_64}, bot{ZERO_64} {
-        log_state();
+        //log_state();
     }
     void log_state() {
        std::cerr << " CTrie3Node( top = " << bitset<64>{top} << " mid = " << bitset<64>{mid} << " bot = " << bitset<64>{bot} << ")\n";
     }
     void flag_letter(unsigned int i) {
         uint64_t bit = 1;
-        log_state();
+        //log_state();
         if (i < 62) {
             const uint64_t shifted = (bit << (61 - i));
-            this->top += shifted;
-            std::cerr << " flag_letter( " << i << ") top shifted = " << bitset<64>{shifted} << " top = " << bitset<64>{top} << '\n';
-            log_state();
-        } 
-#   if DO_NODE_OPS
-         else if (i < 126) {
+            this->top |= shifted;
+            //std::cerr << " flag_letter( " << i << ") top shifted = " << bitset<64>{shifted} << " top = " << bitset<64>{top} << '\n';
+            //log_state();
+        } else if (i < 126) {
             bit <<= (125 - i);
             mid |= bit;
-        }
-        else {
+        } else {
             assert(i < 140);
             bit <<= (139 - i);
             bot |= bit;
         }
-#   endif
     }
     void flag_as_key_terminating() {
         top |= SECOND_HIGHEST_BIT;
@@ -284,7 +279,7 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
             auto advit = lb;
             T & next_node = this->append_node();
             ctch.node_ptr = &next_node;
-            std::cerr << "next_node: "; next_node.log_state();
+            //std::cerr << "next_node: "; next_node.log_state();
             advit++;
             if (advit != keys.end() && starts_with(*advit, next_pref)) {
                 std::cerr << " pref \"" << to_char_str(next_pref) 
