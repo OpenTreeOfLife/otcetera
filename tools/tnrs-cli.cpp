@@ -221,6 +221,19 @@ class CTrieCtorHelperTemp {
     ctrie_init_set_t::const_iterator lower;
 };
 
+class FuzzyQueryResult {
+    public:
+    std::string match;
+    unsigned int distance;
+    float score;
+    FuzzyQueryResult(): distance(0), score(0.0) {
+    }
+
+};
+
+template<typename T>
+std::list<FuzzyQueryResult> fuzzy_matches(const T & trie, const stored_str_t & query_str, unsigned int max_dist);
+
 template <typename T>
 class CompressedTrie {
     public:
@@ -258,6 +271,8 @@ class CompressedTrie {
     std::vector<T> node_vec;
 
     friend class CompressedTrieBasedDB;
+    template <typename U>
+    friend std::list<FuzzyQueryResult> fuzzy_matches(const U & trie, const stored_str_t & query_str, unsigned int max_dist);
 
 };
 
@@ -416,14 +431,43 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
 using CTrie3_t = CompressedTrie<CTrie3Node>;
 using CTrie2_t = CompressedTrie<CTrie2Node>;
 
+
 class CompressedTrieBasedDB {
     public:
     CompressedTrieBasedDB(const std::set<std::string_view> & keys);
+    std::list<FuzzyQueryResult> fuzzy_query(const std::string & query_str);
     private:
     CTrie3_t fat_trie;
     CTrie2_t thin_trie;
 };
 
+template<typename T>
+std::list<FuzzyQueryResult> fuzzy_matches(const T & trie, const stored_str_t & query_str, unsigned int max_dist) {
+    std::list<FuzzyQueryResult> results;
+    return results;
+}
+
+
+std::list<FuzzyQueryResult> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) {
+    auto conv_query = to_u32string(query_str);
+    unsigned int max_dist;
+    // defaults taken from taxomachine...
+    const unsigned int SHORT_NAME_LENGTH = 9;
+    const unsigned int MEDIUM_NAME_LENGTH = 14;
+    const unsigned int LONG_NAME_LENGTH = 19;
+    std::size_t iql = conv_query.length();
+    if (iql < SHORT_NAME_LENGTH) {
+        max_dist = 1;
+    } else if (iql < MEDIUM_NAME_LENGTH) {
+        max_dist = 2;
+    } else {
+        max_dist = (iql < LONG_NAME_LENGTH ? 3 : 4);
+    }
+    auto from_thin = fuzzy_matches(thin_trie, conv_query, max_dist);
+    auto from_full = fuzzy_matches(fat_trie, conv_query, max_dist);
+    from_thin.insert(std::end(from_thin), std::begin(from_full), std::end(from_full));
+    return from_thin;
+}
 
 inline std::u32string to_u32string_ci(const std::string_view & uncap_mod) {
     std::string undecoded{uncap_mod};
@@ -539,6 +583,11 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
     std::string query;
     while (std::getline(std::cin, query)) {
         std::cout << "query =\"" << query << "\"\n";
+        auto results = ct.fuzzy_query(query);
+        std::cout << results.size() << " matches:\n:";
+        for (auto res : results) {
+            std::cout << "res.match = \"" << res.match << "\", distance = " << res.distance << " score = " << res.score << "\n";
+        }
         std::cout << "Enter a query and hit return:\n";
     }
     std::cerr << "EOF\n";
