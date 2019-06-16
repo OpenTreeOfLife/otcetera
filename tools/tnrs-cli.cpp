@@ -53,6 +53,7 @@ using namespace boost::property_tree;
 
 
 const std::ctype<char> * glob_facet;
+using stored_index_t = unsigned char;
 
 #define ENCODE_AS_CHAR 0
 #if ENCODE_AS_CHAR
@@ -140,7 +141,7 @@ constexpr uint64_t ONE_64 = 1;
 constexpr uint64_t HIGHEST_BIT = ONE_64 << 63;
 constexpr uint64_t SECOND_HIGHEST_BIT = ONE_64 << 62;
 constexpr uint64_t INDEX_MASK = (ONE_64 << num_index_bits) - 1;
-constexpr unsigned char NO_MATCHING_CHAR_CODE = 255;
+constexpr stored_index_t NO_MATCHING_CHAR_CODE = 255;
 
 //std::size_t max_node_index = 0;
 
@@ -159,6 +160,19 @@ template<typename T>
 inline void flag_as_terminal(T & node) {
     node.top |= HIGHEST_BIT;
 }
+
+template<typename T>
+inline bool is_terminal(const T & node) {
+    return node.top & HIGHEST_BIT;
+}
+
+
+template<typename T>
+uint64_t get_index(const T & node) {
+    uint64_t masked = node.bot & INDEX_MASK;
+    return masked;
+}
+
 
 template<typename T>
 inline void set_index(T& node, std::size_t index) {
@@ -184,7 +198,27 @@ inline void set_first_child_index(T& node, std::size_t index) {
     set_index(node, index);
 }
 
+using ind_pair_t = std::pair<stored_index_t, uint64_t>;
+using vec_ind_pair_t = std::vector<ind_pair_t>;
+
+inline void fill_letter_and_node_indices(unsigned char curr_byte, stored_index_t offset, vec_ind_pair_t & ret, uint64_t node_index) {
+    unsigned char curr_bit = 1 << 7;
+    for (unsigned char i = 0; i < 8; ++i) {
+        if (curr_byte & curr_bit) {
+            ret.push_back(ind_pair_t{i + offset, node_index + i + offset});
+        }
+        curr_bit >>= 1;
+    }
+}
+
+
+constexpr unsigned char top_first_byte = 0x03F; // 64 and 128 bit used for top 2 flags
+constexpr unsigned char full_byte = 0x0FF;
+constexpr unsigned char bot_last_byte = 0x0FC; // bits for 1 and 2 used for upper bits of index;
+
 class CTrie3Node {
+
+    
     public:
     uint64_t top, mid, bot;
     CTrie3Node() :top{ZERO_64}, mid{ZERO_64}, bot{ZERO_64} {
@@ -210,6 +244,37 @@ class CTrie3Node {
             bot |= bit;
         }
     }
+
+    vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const {
+        assert(!is_terminal(*this));
+        vec_ind_pair_t ret;
+        ret.reserve(62 + 64 + 14);
+        auto node_index = get_index(*this);
+        unsigned char curr_byte = (top >> 24) & top_first_byte;
+        fill_letter_and_node_indices(curr_byte, 0, ret, node_index);
+        curr_byte = (top >> 16) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 6, ret, node_index);
+        curr_byte = (top >> 8) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 14, ret, node_index);
+        curr_byte = top & full_byte;
+        fill_letter_and_node_indices(curr_byte, 22, ret, node_index);
+
+        curr_byte = (mid >> 24) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 30, ret, node_index);
+        curr_byte = (mid >> 16) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 38, ret, node_index);
+        curr_byte = (mid >> 8) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 46, ret, node_index);
+        curr_byte = mid & full_byte;
+        fill_letter_and_node_indices(curr_byte, 54, ret, node_index);
+
+        curr_byte = (bot >> 24) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 62, ret, node_index);
+        curr_byte = (bot >> 16) & bot_last_byte;
+        fill_letter_and_node_indices(curr_byte, 70, ret, node_index);
+        return ret;
+    }
+
     const static std::size_t max_num_letters = 3*64 - num_index_bits;
 };
 
@@ -234,6 +299,28 @@ class CTrie2Node {
             bot |= bit;
         }
     } 
+
+    vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const {
+        assert(!is_terminal(*this));
+        vec_ind_pair_t ret;
+        ret.reserve(62 + 64 + 14);
+        auto node_index = get_index(*this);
+        unsigned char curr_byte = (top >> 24) & top_first_byte;
+        fill_letter_and_node_indices(curr_byte, 0, ret, node_index);
+        curr_byte = (top >> 16) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 6, ret, node_index);
+        curr_byte = (top >> 8) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 14, ret, node_index);
+        curr_byte = top & full_byte;
+        fill_letter_and_node_indices(curr_byte, 22, ret, node_index);
+
+        curr_byte = (bot >> 24) & full_byte;
+        fill_letter_and_node_indices(curr_byte, 30, ret, node_index);
+        curr_byte = (bot >> 16) & bot_last_byte;
+        fill_letter_and_node_indices(curr_byte, 38, ret, node_index);
+        return ret;
+    }
+
     const static std::size_t max_num_letters = 2*64 - num_index_bits; 
 };
 
@@ -255,16 +342,23 @@ class FuzzyQueryResult {
     }
 };
 
+template <typename T>
 class PartialMatch {
     public:
-    PartialMatch(const stored_str_t &q, std::size_t pos) :query(q), qpos(pos), distance(0) {
+    PartialMatch(const stored_str_t &q, std::size_t pos, const T *nextn)
+        :query(q),
+        qpos(pos),
+        distance(0),
+        next_node(nextn),
+        prev_mismatch(NO_MATCHING_CHAR_CODE){
     }
     const stored_str_t & query;
     
     std::size_t qpos;
     const stored_str_t growing_match;
     unsigned int distance;
-    stored_char_t prev_mismatch{'\0'};
+    const T * next_node;
+    stored_index_t prev_mismatch{'\0'};
 };
 
 template<typename T>
@@ -293,7 +387,10 @@ class CompressedTrie {
         T empty;
         node_list.push_back(empty);
         return *(node_list.rbegin());
+        
+
     }
+
     
     void clear() {
         letters.clear();
@@ -305,7 +402,7 @@ class CompressedTrie {
     }
     std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str, unsigned int max_dist) const;
 
-    unsigned char get_index_for_letter(const stored_char_t & c) const {
+    stored_index_t get_index_for_letter(const stored_char_t & c) const {
         auto ltiit = letter_to_ind.find(c);
         if (ltiit == letter_to_ind.end()) {
             return NO_MATCHING_CHAR_CODE;
@@ -313,16 +410,16 @@ class CompressedTrie {
         return ltiit->second;
     }
 
-    std::vector<unsigned char> encode_as_indices(const stored_str_t & query_str) const {
-        std::vector<unsigned char> ret;
+    std::vector<stored_index_t> encode_as_indices(const stored_str_t & query_str) const {
+        std::vector<stored_index_t> ret;
         ret.reserve(query_str.length());
         for (auto c: query_str) {
             ret.push_back(get_index_for_letter(c));
         }
         return ret;
     }
-    std::unordered_map<stored_char_t, unsigned char> letter_to_ind;
-    std::vector<unsigned char> equivalent_letter;
+    std::unordered_map<stored_char_t, stored_index_t> letter_to_ind;
+    std::vector<stored_index_t> equivalent_letter;
     stored_str_t letters;
     std::list<T> node_list;
     std::vector<char> concat_suff;
@@ -335,14 +432,28 @@ template<typename T>
 std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
                                                              unsigned int max_dist) const {
     std::list<FuzzyQueryResult> results;
-    std::list<PartialMatch> alive;
-    const std::vector<unsigned char> query_as_indices = encode_as_indices(query_str);
-    const T & nd = node_vec.at(0);
-    for (std::size_t i = 0; i < max_dist; ++i) {
-        PartialMatch ini_pm{query_str, i};
-        ini_pm.distance = i;
+    if (query_str.length() == 0) {
+        return results;
     }
-
+    std::list<PartialMatch<T> > alive;
+    const std::vector<stored_index_t> query_as_indices = encode_as_indices(query_str);
+    const T * nd = &(node_vec.at(0));
+    std::size_t max_skip = std::min(std::size_t {max_dist}, query_as_indices.size());
+    for (std::size_t i = 0; i < max_skip; ++i) {
+        auto inds_on = nd->get_letter_and_node_indices_for_on_bits();
+        auto qi = query_as_indices[i];
+        auto altqi = equivalent_letter[qi];
+        for (auto x : inds_on) {
+            auto prefchar = x.first;
+            auto next_ind = x.second;
+            const T * next_nd = &(node_vec[next_ind]); 
+            if (prefchar == qi || prefchar == altqi) {
+                alive.push_back(PartialMatch<T>{query_str, i, next_nd});
+            } else if (i + 1 < max_dist) {
+                alive.push_back(PartialMatch<T>{query_str, i + 1, next_nd});
+            }
+        }
+    }
     return results;
 }
 
@@ -450,7 +561,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     if (letters.length() > 253) {
         throw OTCError() << "# of letters (" << letters.length() << ") exceeds 253, so letter_to_ind value type needs to be changed.";
     }
-    unsigned char curr_ind = 0;
+    stored_index_t curr_ind = 0;
     for (auto nl : letters) {
         letter_to_ind[nl] = curr_ind++;
     }
@@ -459,7 +570,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     for (auto nl : letters) {
         std::string uncov = to_char_str(nl);
         std::string lccov = lower_case_version(uncov);
-        unsigned char char_ind = NO_MATCHING_CHAR_CODE;
+        stored_index_t char_ind = NO_MATCHING_CHAR_CODE;
         if (lccov != uncov) {
             auto alt = to_u32string(lccov);
             if (alt.length() != 1) {
