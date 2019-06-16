@@ -56,52 +56,76 @@ const std::ctype<char> * glob_facet;
 
 #define ENCODE_AS_CHAR 0
 #if ENCODE_AS_CHAR
-using stored_char_t = char;
-using stored_str_t = std::string;
-inline std::string_view to_u32string(const std::string_view & undecoded) {
-    return undecoded;
-}
+    using stored_char_t = char;
+    using stored_str_t = std::string;
+    inline std::string_view to_u32string(const std::string_view & undecoded) {
+        return undecoded;
+    }
 
-std::string to_char_str(const stored_str_t & undecoded);
-std::string to_char_str(const stored_char_t & undecoded);
+    std::string to_char_str(const stored_str_t & undecoded);
+    std::string to_char_str(const stored_char_t & undecoded);
 
-inline std::string to_char_str(const stored_str_t & undecoded) {
-    return undecoded;
-}
+    inline std::string to_char_str(const stored_str_t & undecoded) {
+        return undecoded;
+    }
 
-inline std::string to_char_str(const stored_char_t & undecoded) {
-    return std::string{undecoded};
-}
-
+    inline std::string to_char_str(const stored_char_t & undecoded) {
+        return std::string{undecoded};
+    }
 #else
-//conversion from https://en.cppreference.com/w/cpp/locale/codecvt
-// utility wrapper to adapt locale-bound facets for wstring/wbuffer convert
-template<class Facet>
-struct deletable_facet : Facet {
-    template<class ...Args>
-    deletable_facet(Args&& ...args) : Facet(std::forward<Args>(args)...) {}
-    ~deletable_facet() {}
-};
-std::wstring_convert<deletable_facet<std::codecvt<char32_t, char, std::mbstate_t>>, char32_t> glob_conv32;
-std::wstring_convert<std::codecvt_utf8_utf16<char32_t>, char32_t> glob_conv8;
-using stored_str_t = std::u32string;
-using stored_char_t = char32_t;
-inline std::u32string to_u32string(const std::string_view & undecoded) {
-    return glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
-}
+    //conversion from https://en.cppreference.com/w/cpp/locale/codecvt
+    // utility wrapper to adapt locale-bound facets for wstring/wbuffer convert
+    template<class Facet>
+    struct deletable_facet : Facet {
+        template<class ...Args>
+        deletable_facet(Args&& ...args) : Facet(std::forward<Args>(args)...) {}
+        ~deletable_facet() {}
+    };
+    std::wstring_convert<deletable_facet<std::codecvt<char32_t, char, std::mbstate_t>>, char32_t> glob_conv32;
+    std::wstring_convert<std::codecvt_utf8_utf16<char32_t>, char32_t> glob_conv8;
+    using stored_str_t = std::u32string;
+    using stored_char_t = char32_t;
+    inline std::u32string to_u32string(const std::string_view & undecoded) {
+        return glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    }
 
-std::string to_char_str(const stored_str_t & undecoded);
-std::string to_char_str(const stored_char_t & undecoded);
+    inline std::u32string to_u32string(const std::string & undecoded) {
+        return glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    }
 
-inline std::string to_char_str(const stored_str_t & undecoded) {
-    return glob_conv8.to_bytes(undecoded);
-}
+    std::string to_char_str(const stored_str_t & undecoded);
+    std::string to_char_str(const stored_char_t & undecoded);
 
-inline std::string to_char_str(const stored_char_t & undecoded) {
-    return glob_conv8.to_bytes(undecoded);
-}
+    inline std::string to_char_str(const stored_str_t & undecoded) {
+        return glob_conv8.to_bytes(undecoded);
+    }
+
+    inline std::string to_char_str(const stored_char_t & undecoded) {
+        return glob_conv8.to_bytes(undecoded);
+    }
 
 #endif
+
+
+inline std::u32string to_u32string_ci(const std::string_view & uncap_mod) {
+    std::string undecoded{uncap_mod};
+    glob_facet->tolower(&undecoded[0], &undecoded[0] + undecoded.size());
+    std::u32string ret = glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    return ret;
+}
+
+inline std::string lower_case_version(const std::string & arg) {
+    std::string undecoded{arg};
+    glob_facet->tolower(&undecoded[0], &undecoded[0] + undecoded.size());
+    return undecoded;
+}
+
+inline std::string upper_case_version(const std::string & arg) {
+    std::string undecoded{arg};
+    glob_facet->toupper(&undecoded[0], &undecoded[0] + undecoded.size());
+    return undecoded;
+}
+
 
 constexpr std::size_t num_index_bits = 50;
 
@@ -116,6 +140,7 @@ constexpr uint64_t ONE_64 = 1;
 constexpr uint64_t HIGHEST_BIT = ONE_64 << 63;
 constexpr uint64_t SECOND_HIGHEST_BIT = ONE_64 << 62;
 constexpr uint64_t INDEX_MASK = (ONE_64 << num_index_bits) - 1;
+constexpr unsigned char NO_MATCHING_CHAR_CODE = 255;
 
 //std::size_t max_node_index = 0;
 
@@ -228,7 +253,18 @@ class FuzzyQueryResult {
     float score;
     FuzzyQueryResult(): distance(0), score(0.0) {
     }
+};
 
+class PartialMatch {
+    public:
+    PartialMatch(const stored_str_t &q, std::size_t pos) :query(q), qpos(pos), distance(0) {
+    }
+    const stored_str_t & query;
+    
+    std::size_t qpos;
+    const stored_str_t growing_match;
+    unsigned int distance;
+    stored_char_t prev_mismatch{'\0'};
 };
 
 template<typename T>
@@ -264,17 +300,51 @@ class CompressedTrie {
         node_list.clear();
         concat_suff.clear();
         node_vec.clear();
+        letter_to_ind.clear();
+        equivalent_letter.clear();
     }
+    std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str, unsigned int max_dist) const;
+
+    unsigned char get_index_for_letter(const stored_char_t & c) const {
+        auto ltiit = letter_to_ind.find(c);
+        if (ltiit == letter_to_ind.end()) {
+            return NO_MATCHING_CHAR_CODE;
+        }
+        return ltiit->second;
+    }
+
+    std::vector<unsigned char> encode_as_indices(const stored_str_t & query_str) const {
+        std::vector<unsigned char> ret;
+        ret.reserve(query_str.length());
+        for (auto c: query_str) {
+            ret.push_back(get_index_for_letter(c));
+        }
+        return ret;
+    }
+    std::unordered_map<stored_char_t, unsigned char> letter_to_ind;
+    std::vector<unsigned char> equivalent_letter;
     stored_str_t letters;
     std::list<T> node_list;
     std::vector<char> concat_suff;
     std::vector<T> node_vec;
 
     friend class CompressedTrieBasedDB;
-    template <typename U>
-    friend std::list<FuzzyQueryResult> fuzzy_matches(const U & trie, const stored_str_t & query_str, unsigned int max_dist);
-
 };
+
+template<typename T>
+std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
+                                                             unsigned int max_dist) const {
+    std::list<FuzzyQueryResult> results;
+    std::list<PartialMatch> alive;
+    const std::vector<unsigned char> query_as_indices = encode_as_indices(query_str);
+    const T & nd = node_vec.at(0);
+    for (std::size_t i = 0; i < max_dist; ++i) {
+        PartialMatch ini_pm{query_str, i};
+        ini_pm.distance = i;
+    }
+
+    return results;
+}
 
 
 inline bool starts_with(const stored_str_t & full, const stored_str_t & pref) {
@@ -377,6 +447,47 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     if (letters.length() > T::max_num_letters) {
         throw OTCError() << "# of letters (" << letters.length() << ") exceeds size of CompressedTrie node type";
     }
+    if (letters.length() > 253) {
+        throw OTCError() << "# of letters (" << letters.length() << ") exceeds 253, so letter_to_ind value type needs to be changed.";
+    }
+    unsigned char curr_ind = 0;
+    for (auto nl : letters) {
+        letter_to_ind[nl] = curr_ind++;
+    }
+    equivalent_letter.reserve(letters.length());
+    equivalent_letter.clear();
+    for (auto nl : letters) {
+        std::string uncov = to_char_str(nl);
+        std::string lccov = lower_case_version(uncov);
+        unsigned char char_ind = NO_MATCHING_CHAR_CODE;
+        if (lccov != uncov) {
+            auto alt = to_u32string(lccov);
+            if (alt.length() != 1) {
+                throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << lccov << "\"\n";
+            }
+            char_ind = get_index_for_letter(alt[0]);
+        } else {
+            std::string uccov = upper_case_version(uncov);
+            if (uccov != uncov) {
+                auto alt = to_u32string(uccov);
+                if (alt.length() != 1) {
+                    throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << uccov << "\"\n";
+                }
+                char_ind = get_index_for_letter(alt[0]);
+            }
+        }
+        equivalent_letter.push_back(char_ind);
+    }
+    
+    for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
+        if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
+            std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
+        } else {
+            std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
+        }
+    }
+
+
     std::stack<CTrieCtorHelper> todo_q;
     stored_str_t curr_pref;
     std::map<std::string, std::size_t> suffix2index;
@@ -441,11 +552,6 @@ class CompressedTrieBasedDB {
     CTrie2_t thin_trie;
 };
 
-template<typename T>
-std::list<FuzzyQueryResult> fuzzy_matches(const T & trie, const stored_str_t & query_str, unsigned int max_dist) {
-    std::list<FuzzyQueryResult> results;
-    return results;
-}
 
 
 std::list<FuzzyQueryResult> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) {
@@ -463,18 +569,13 @@ std::list<FuzzyQueryResult> CompressedTrieBasedDB::fuzzy_query(const std::string
     } else {
         max_dist = (iql < LONG_NAME_LENGTH ? 3 : 4);
     }
-    auto from_thin = fuzzy_matches(thin_trie, conv_query, max_dist);
-    auto from_full = fuzzy_matches(fat_trie, conv_query, max_dist);
+    auto from_thin = thin_trie.fuzzy_matches(conv_query, max_dist);
+    auto from_full = fat_trie.fuzzy_matches(conv_query, max_dist);
     from_thin.insert(std::end(from_thin), std::begin(from_full), std::end(from_full));
     return from_thin;
 }
 
-inline std::u32string to_u32string_ci(const std::string_view & uncap_mod) {
-    std::string undecoded{uncap_mod};
-    glob_facet->tolower(&undecoded[0], &undecoded[0] + undecoded.size());
-    std::u32string ret = glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
-    return ret;
-}
+
 
 
 CompressedTrieBasedDB::CompressedTrieBasedDB(const std::set<std::string_view> & keys) {
