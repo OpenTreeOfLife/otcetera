@@ -202,7 +202,37 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys)
     return true;
 }
 
-struct vertex_info_t;
+struct connected_component_t;
+
+class vertex_info_t
+{
+    // We store a pointer to the component for every marked node.
+    //   To test if a node is marked, we test if the pointer is non-null.
+    // Nodes are marked if the have no parent.  Such nodes are precisely the
+    //   nodes in the in a connected component Y (of the display graph)
+    //   that make up the corresponding "position" U (of the cluster graph).
+    connected_component_t* component;
+
+public:
+    // Which tree (0..k-1) is this vertex in?
+    // If the vertex corresponds to a label, then it is not in a tree, and the index is unset.
+    // (This differs from the paper, which uses 1..k for trees, and k+1 for no tree.)
+    optional<int> tree_index;
+
+    optional<OttId> label;
+
+    char flags;
+
+    int component_index;
+
+    std::list<int>::iterator list_entry;
+
+    bool is_marked() const {return component;}
+    void unmark_node() {component = nullptr;}
+    void mark_node(connected_component_t* c) {component = c;}
+
+    connected_component_t* get_component() const {assert(component); return component;}
+};
 
 class dynamic_graph
 {
@@ -210,14 +240,9 @@ class dynamic_graph
 
     map<int,list<Vertex>> vertices_for_component_;
 
-    // This should really be encoded ON the vertex
-    vector<int> component_for_vertex_;
-
     int next_component = 0;
 
     vector<vertex_info_t> info_for_vertex;
-
-    vector<char> flags;
 
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
@@ -226,9 +251,14 @@ public:
 
     int new_component() {return next_component++;}
 
+    char& flags(Vertex v)       {return vertex_info(v).flags;}
+    char  flags(Vertex v) const {return vertex_info(v).flags;}
+
     int n_components() const {return vertices_for_component_.size();}
 
-    int component_for_vertex(Vertex v) const {return component_for_vertex_[v];}
+    int& component_for_vertex(Vertex v)       {return vertex_info(v).component_index;}
+
+    int  component_for_vertex(Vertex v) const {return vertex_info(v).component_index;}
 
     const map<int,list<Vertex>>& vertices_for_components() const {return vertices_for_component_;}
 
@@ -243,6 +273,10 @@ public:
     auto in_edges(Vertex v) const {return boost::in_edges(v,G);}
 
     auto out_edges(Vertex v) const {return boost::out_edges(v,G);}
+
+    int num_vertices() const {return boost::num_vertices(G);}
+
+    int num_edges() const {return boost::num_edges(G);}
 
     Vertex source(Edge e) const {return boost::source(e,G);}
 
@@ -288,7 +322,7 @@ public:
             auto& lu = vertices_for_component(cu);
             auto& lv = vertices_for_component(cv);
             for(auto uu: lu)
-                component_for_vertex_[uu] = cv;
+                component_for_vertex(uu) = cv;
             lv.splice(lv.end(), lu);
             vertices_for_component_.erase(cu);
         }
@@ -305,13 +339,13 @@ public:
         // Return true if vertices are in the same component
         auto try_add_u = [&](Vertex uu)
                              {
-                                 if (not flags[uu])
+                                 if (not flags(uu))
                                  {
-                                     flags[uu] = 1;
+                                     flags(uu) = 1;
                                      from_u.push_back(uu);
                                      return false;
                                  }
-                                 else if (flags[uu] != 1)
+                                 else if (flags(uu) != 1)
                                      return true;
                                  else
                                      return false;
@@ -319,13 +353,13 @@ public:
 
         auto try_add_v = [&](Vertex vv)
                              {
-                                 if (not flags[vv])
+                                 if (not flags(vv))
                                  {
-                                     flags[vv] = 2;
+                                     flags(vv) = 2;
                                      from_v.push_back(vv);
                                      return false;
                                  }
-                                 else if (flags[vv] != 2)
+                                 else if (flags(vv) != 2)
                                      return true;
                                  else
                                      return false;
@@ -373,13 +407,13 @@ public:
 
         // Clear the seen flags
         for(auto u: from_u)
-            flags[u] = 0;
+            flags(u) = 0;
 
         for(auto v: from_v)
-            flags[v] = 0;
+            flags(v) = 0;
 
-        for(auto f: flags)
-            assert(f == 0);
+        for(int v = 0; v < num_vertices(); v++)
+            assert(flags(v) == 0);
 
         // Quit here if we didn't split a component
         if (same_component)
@@ -391,13 +425,13 @@ public:
 
         int c2 = new_component();
         for(auto uu: from_u)
-            component_for_vertex_[uu] = c2;
+            component_for_vertex(uu) = c2;
         auto& nodes1 = vertices_for_component(c1);
         list<Vertex> nodes2;
         for(auto it = nodes1.begin(); it != nodes1.end();)
         {
             auto next = it; next++;
-            if (component_for_vertex_[*it] == c2)
+            if (component_for_vertex(*it) == c2)
                 nodes2.splice(nodes2.end(), nodes1, it, next);
             it = next;
         }
@@ -407,32 +441,6 @@ public:
     }
 };
 
-
-struct connected_component_t;
-
-class vertex_info_t
-{
-    // We store a pointer to the component for every marked node.
-    //   To test if a node is marked, we test if the pointer is non-null.
-    // Nodes are marked if the have no parent.  Such nodes are precisely the
-    //   nodes in the in a connected component Y (of the display graph)
-    //   that make up the corresponding "position" U (of the cluster graph).
-    connected_component_t* component;
-
-public:
-    // Which tree (0..k-1) is this vertex in?
-    // If the vertex corresponds to a label, then it is not in a tree, and the index is unset.
-    // (This differs from the paper, which uses 1..k for trees, and k+1 for no tree.)
-    optional<int> tree_index;
-
-    optional<OttId> label;
-
-    bool is_marked() const {return component;}
-    void unmark_node() {component = nullptr;}
-    void mark_node(connected_component_t* c) {component = c;}
-
-    connected_component_t* get_component() const {assert(component); return component;}
-};
 
 bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
 {
@@ -468,13 +476,12 @@ Vertex dynamic_graph::add_vertex()
     auto v = boost::add_vertex(G);
     info_for_vertex.push_back({});
     int c = new_component();
-    assert(component_for_vertex_.size() == v);
-    // I should store BOTH the component AND the pointer to the list node inside it.
-    component_for_vertex_.push_back(c);
-    assert(component_for_vertex_[v] == c);
+    component_for_vertex(v) = c;
     vertices_for_component_[c] = {v};
+    assert(component_for_vertex(v) == c);
 
-    flags.push_back(0);
+    assert(info_for_vertex.size() == num_vertices());
+
     return v;
 }
 
