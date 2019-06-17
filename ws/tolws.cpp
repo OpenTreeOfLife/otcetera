@@ -1191,9 +1191,13 @@ bool lcase_string_equals(const string_view& s1, const T& s2)
 
 bool lcase_match_prefix(const string_view& s, const string_view& prefix)
 {
-    if (prefix.size() < s.size()) return false;
+    if (prefix.size() > s.size()) return false;
 
-    return lcase_string_equals(s.substr(prefix.size()), prefix);
+    for(int i=0;i<prefix.size();i++)
+	if (std::tolower(s[i]) != std::tolower(prefix[i]))
+	    return false;
+
+    return true;
 }
 
 bool taxon_is_specific(const Taxon* taxon)
