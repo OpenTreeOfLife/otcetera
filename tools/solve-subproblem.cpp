@@ -1318,6 +1318,11 @@ ott216628.tre
  - 0: We replace 0 with its children {1,6} in the frontier.
  */
 
+/*
+ * This one is slow: ott1020133.tre
+ */
+
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
