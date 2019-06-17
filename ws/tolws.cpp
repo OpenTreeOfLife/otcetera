@@ -867,6 +867,11 @@ json get_supporting_studies(const set<const string*>& study_id_set)
     return ss_arr;
 }
 
+// Test checking unknown or pruned taxa.
+// curl -X POST https://api.opentreeoflife.org/v3/tree_of_life/induced_subtree -H "content-type:application/json" -d '{"node_ids":[ "ott292466", "ott267845", "ott666104", "ott316878", "ott102710", "ott1234567", "ott7654321"]}'
+
+// Test mentioning broken taxa and what they map to.
+// curl -X POST https://api.opentreeoflife.org/v3/tree_of_life/induced_subtree -H "content-type:application/json" -d '{"node_ids":[  "ott316878", "ott102710", "ott770315" ,"ott603783"]}'
 string induced_subtree_ws_method(const TreesToServe & tts,
                                  const SummaryTree_t * tree_ptr,
                                  const vector<string> & node_id_vec,
