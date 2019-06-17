@@ -36,7 +36,12 @@
  * S2. dynamic_graph::remove_edge takes 18% of the time.
  *
  * Problems:
- * P1. Problem 1: perf record --call-graph=dwarf is giving an error:
+ *
+ * P1. We don't actually have an implementation of the "fully dynamic graph connectivity"
+ *     problem that can quickly delete an edge and determine if this creates a new component!
+ *     See dynamic_graph::remove_edge( ) for a completely naive algorithm.
+ *
+ * P2. Problem 1: perf record --call-graph=dwarf is giving an error:
  *     "failed to process sample... failed to process type: 68"
  *     when I run `perf report`.
  *
