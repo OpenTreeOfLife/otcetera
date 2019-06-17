@@ -47,6 +47,8 @@
  *     Supposedly (1981) https://doi.org/10.1145/322234.322235 implements an O(q + V*E) algorithm.
  *     This approach leads to O(V*E/q) updates and O(1) queries?
  *     See dynamic_graph::remove_edge( ) for an algorithm implementing "process A".
+ *     ... except that we are walking the WHOLE computing to remove the smaller piece in lines 415-421.  Not good.
+ *     ... also component_for_vertex
  *
  *     Frederickson (1985) https://pdfs.semanticscholar.org/57e3/21514281882ecfa45cc6fc73645e8eecdbbe.pdf
  *     Implements a procedure with O(sqrt(e)) updates and O(1) queries.
@@ -209,7 +211,7 @@ class dynamic_graph
     map<int,list<Vertex>> vertices_for_component_;
 
     // This should really be encoded ON the vertex
-    map<Vertex,int> component_for_vertex_;
+    vector<int> component_for_vertex_;
 
     int next_component = 0;
 
@@ -226,7 +228,7 @@ public:
 
     int n_components() const {return vertices_for_component_.size();}
 
-    int component_for_vertex(Vertex v) const {return component_for_vertex_.at(v);}
+    int component_for_vertex(Vertex v) const {return component_for_vertex_[v];}
 
     const map<int,list<Vertex>>& vertices_for_components() const {return vertices_for_component_;}
 
@@ -274,7 +276,10 @@ public:
         auto v = boost::add_vertex(G);
         info_for_vertex[v];
         int c = new_component();
-        component_for_vertex_[v] = c;
+        assert(component_for_vertex_.size() == v);
+        // I should store BOTH the component AND the pointer to the list node inside it.
+        component_for_vertex_.push_back(c);
+        assert(component_for_vertex_[v] == c);
         vertices_for_component_[c] = {v};
 
         flags.push_back(0);
