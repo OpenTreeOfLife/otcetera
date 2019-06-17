@@ -908,7 +908,7 @@ template<typename T>
 inline std::string newick_string(const T& Tree) {
     std::ostringstream s;
     write_tree_as_newick(s, Tree);
-    return std::move(s.str());
+    return s.str();
 }
 
 template<typename T>

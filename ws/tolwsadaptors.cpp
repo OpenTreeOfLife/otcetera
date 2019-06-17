@@ -142,13 +142,13 @@ optional<T> extract_argument(const json & j, const std::string& opt_name, bool r
     auto opt = j.find(opt_name);
     if (opt == j.end()) {
         if (required) {
-            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called \"" << opt_name << "\"\n";
+            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called '" << opt_name << "'\n";
         }
         return {};
     }
     auto arg = convert_to<T>(*opt);
     if (not arg) {
-        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found \"" << *opt << "\"\n";
+        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found '" << opt->dump() << "'\n";
     }
     return arg;
 }
@@ -320,11 +320,15 @@ string node_info_method_handler( const json& parsed_args)
     string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
     auto node_id = extract_argument<string>(parsed_args,"node_id");
     auto source_id = extract_argument<string>(parsed_args,"source_id");
+    auto node_ids = extract_argument<vector<string>>(parsed_args,"node_ids");
 
-    if (node_id and source_id)
-        throw OTCBadRequest("'node_id' and 'source_id' arguments cannot both be supplied.");
-    else if (not node_id and not source_id)
-        throw OTCBadRequest("An 'node_id' or 'source_id' argument is required.");
+    int count =0;
+    count += bool(node_id)?1:0;
+    count += bool(node_ids)?1:0;
+    count += bool(source_id)?1:0;
+
+    if (count != 1)
+        throw OTCBadRequest("Must supply exactly one of 'node_id', 'node_ids', or 'source_id'.");
 
     if (source_id)
     {
@@ -338,14 +342,15 @@ string node_info_method_handler( const json& parsed_args)
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
-    return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
+    if (node_id)
+        return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
+    else
+        return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
 }
 
 string mrca_method_handler( const json& parsedargs)
 {
-    string synth_id;
-    vector<string> node_id_vec;
-    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
     return mrca_ws_method(tts, treeptr, sta, node_id_vec);
@@ -357,9 +362,7 @@ std::string process_subtree(const json& parsedargs)
     //        argument.  Unless this is explicitly set to true, we are supposed to not write node labels
     //        for non-ottids.  At least in Newick.
 
-    string synth_id;
-    string node_id;
-    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+    auto [synth_id, node_id] = get_synth_and_node_id(parsedargs);
     auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
     if (format != "newick" && format != "arguson") {
 	throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
@@ -380,9 +383,7 @@ std::string process_subtree(const json& parsedargs)
 
 string induced_subtree_method_handler( const json& parsedargs )
 {
-    string synth_id;
-    vector<string> node_id_vec;
-    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     NodeNameStyle nns = get_label_format(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
@@ -499,11 +500,9 @@ string tnrs_autocomplete_name_handler( const json& parsedargs )
     return tnrs_autocomplete_name_ws_method(name, context_name, include_suppressed, taxonomy);
 }
 
-string tnrs_contexts_handler( const json& parsedargs )
+string tnrs_contexts_handler( const json& )
 {
-    auto locked_taxonomy = tts.get_readable_taxonomy();
-    const auto & taxonomy = locked_taxonomy.first;
-    return tnrs_contexts_ws_method(taxonomy);
+    return tnrs_contexts_ws_method();
 }
 
 string tnrs_infer_context_handler( const json& parsedargs )
@@ -637,12 +636,27 @@ multimap<string,string> options_headers()
     return headers;
 }
 
+// OK, so I want to make something like OTCWebError, but add the ability to pass back
+// some JSON along with the error.
+
+// The difficult thing is how to generically (polymorphically) use the same interface
+// for this error and other stuff.
+
 std::string error_response(const string& path, const std::exception& e)
 {
     string msg = string("[") + path + ("] Error: ") + e.what();
     LOG(DEBUG)<<msg;
     json j = { {"message", msg} };
     return j.dump(4)+"\n";
+}
+
+std::string error_response(const string& path, const OTCWebError& e1)
+{
+    OTCWebError e2 = e1;
+    e2.prepend(string("[") + path + ("] Error: "));
+
+    LOG(DEBUG)<<e2.what();
+    return e2.json().dump(4)+"\n";
 }
 
 std::function<void(const shared_ptr< Session > session)>
@@ -743,7 +757,7 @@ int run_server(const po::variables_map & args) {
 
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
-    RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
+    RichTaxonomy taxonomy = load_rich_taxonomy(args);
     time_t post_tax_time;
     time(&post_tax_time);
     tts.set_taxonomy(taxonomy);

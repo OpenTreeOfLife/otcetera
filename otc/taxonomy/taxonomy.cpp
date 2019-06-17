@@ -41,7 +41,7 @@ using nlohmann::json;
 using std::ifstream;
 using std::unordered_set;
 
-using boost::string_ref;
+using std::string_view;
 
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
@@ -50,6 +50,19 @@ using po::variables_map;
 
 namespace otc
 {
+
+bool rank_is_specific(TaxonomicRank rank)
+{
+    // taxomachine includes "species", "subspecies", "variety", "varietas", "forma", "form"
+    if (rank == TaxonomicRank::RANK_SPECIES) return true;
+    if (rank == TaxonomicRank::RANK_SUBSPECIES) return true;
+    if (rank == TaxonomicRank::RANK_VARIETY) return true;
+    if (rank == TaxonomicRank::RANK_VARIETAS) return true;
+    if (rank == TaxonomicRank::RANK_FORMA) return true;
+    // There is no RANK_FORM?
+
+    return false;
+}
 
 
 const map<string, TaxonomicRank> rank_name_to_enum = 
@@ -148,13 +161,13 @@ const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irm
 std::set<std::string> rank_strings;
 
 template<typename T>
-void register_taxon_in_maps(std::map<boost::string_ref, const T *> & n2n,
-                            std::map<boost::string_ref, std::vector<const T *> > & homonym_map,
-                            boost::string_ref possibly_nonunique_name,
-                            boost::string_ref uname,
+void register_taxon_in_maps(std::map<string_view, const T *> & n2n,
+                            std::map<string_view, std::vector<const T *> > & homonym_map,
+                            string_view possibly_nonunique_name,
+                            string_view uname,
                             const T * ti) {
     auto nit = n2n.lower_bound(possibly_nonunique_name);
-    typedef std::pair<boost::string_ref, const T *> name_map_pair;
+    typedef std::pair<string_view, const T *> name_map_pair;
     if (nit == n2n.end() or nit->first != possibly_nonunique_name) {
         nit = n2n.insert(nit, name_map_pair(possibly_nonunique_name, ti));
     } else {
@@ -184,10 +197,10 @@ TaxonomyRecord::TaxonomyRecord(const string& line_)
     char *temp;
     id = std::strtoul(start[0], &temp, 10);
     parent_id = std::strtoul(start[1], &temp, 10);
-    name = string_ref(start[2], end[2] - start[2]);
-    rank = string_ref(start[3], end[3] - start[3]);
-    sourceinfo = string_ref(start[4], end[4] - start[4]);
-    uniqname = string_ref(start[5], end[5] - start[5]);
+    name = string_view(start[2], end[2] - start[2]);
+    rank = string_view(start[3], end[3] - start[3]);
+    sourceinfo = string_view(start[4], end[4] - start[4]);
+    uniqname = string_view(start[5], end[5] - start[5]);
     flags = flags_from_string(start[6], end[6]);
     if (not uniqname.size()) {
         uniqname = name;
@@ -300,7 +313,7 @@ vector<string> Taxonomy::path_from_id(OttId I) const
     while(true)
     {
         auto& rec = (*this)[i];
-        path.push_back( rec.name.to_string() );
+        path.push_back( (string)rec.name );
         if (i == root_index()) break;
         i = rec.parent_index;
     }
@@ -639,9 +652,9 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
         tree_data.non_unique_taxon_names[sn].insert(tr.id);
         auto nit = tree_data.non_unique_taxon_names.find(sn);
         assert(nit != tree_data.non_unique_taxon_names.end());
-        data.possibly_nonunique_name = string_ref(nit->first);
+        data.possibly_nonunique_name = string_view(nit->first);
     } else {
-        data.possibly_nonunique_name = string_ref(nd.get_name());
+        data.possibly_nonunique_name = string_view(nd.get_name());
     }
     data.flags = tr.flags;
     data.rank = rank_name_to_enum.at(string(tr.rank));
@@ -699,8 +712,8 @@ void RichTaxonomy::read_synonyms() {
         this->synonyms.emplace_back(name, primary, sourceinfo);
         TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
         auto nit = tree_data.name_to_node.lower_bound(name);
-        boost::string_ref name_ref = tjs.name;
-        typedef std::pair<boost::string_ref, const RTRichTaxNode *> name_map_pair;
+        string_view name_ref = tjs.name;
+        typedef std::pair<string_view, const RTRichTaxNode *> name_map_pair;
         if (nit == tree_data.name_to_node.end() or nit->first != name_ref) {
             nit = tree_data.name_to_node.insert(nit, name_map_pair(name_ref, primary));
         } else {
@@ -743,11 +756,11 @@ string format_with_taxonomy(const string& orig, const string& format, const Taxo
         if (nc == 'I') {
             result += std::to_string(rec.id);
         } else if (nc == 'N') {
-            result += rec.name.to_string();
+            result += rec.name;
         } else if (nc == 'U') {
-            result += rec.uniqname.to_string();
+            result += rec.uniqname;
         } else if (nc == 'R') {
-            result += rec.rank.to_string();
+            result += rec.rank;
         } else if (nc == 'P') {
             vector<string> path = taxonomy.path_from_id(rec.id);
             for(std::size_t i=0;i < path.size(); i++) {
@@ -759,7 +772,7 @@ string format_with_taxonomy(const string& orig, const string& format, const Taxo
         } else if (nc == 'F') {
             result += flags_to_string(rec.flags);
         } else if (format[loc] == 'S') {
-            result += rec.sourceinfo.to_string();
+            result += rec.sourceinfo;
         } else if (format[loc] == 'L') {
             result += orig;
         } else if (format[loc] == '%') {

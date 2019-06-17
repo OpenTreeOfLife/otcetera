@@ -45,32 +45,46 @@ typedef std::vector<src_node_id> vec_src_node_id_mapper;
     typedef std::vector<std::uint32_t> vec_src_node_ids;
 #endif
 
-class OTCWebError : public std::exception {
+class OTCWebError : public std::exception
+{
 protected:
     int status_code_ = 500;
-    std::string message;
+    nlohmann::json data;
 public:
     int status_code() const {return status_code_;}
+
     const char * what() const noexcept {
-        return message.c_str();
+        return data["message"].get<std::string>().c_str();
     }
+
     template <typename T> OTCWebError& operator<<(const T&);
-    void prepend(const std::string& s) {
-        message = s + message;
-    }
-    OTCWebError() noexcept {}
-    OTCWebError(int c) noexcept :status_code_(c) {}
-    OTCWebError(const std::string & msg) noexcept :message(msg) {}
-    OTCWebError(int c, const std::string & msg) noexcept :status_code_(c), message(msg) {}
+
+    void prepend(const std::string& s);
+
+    void append(const std::string& s);
+
+    nlohmann::json& json() {return data;}
+
+    OTCWebError() noexcept;
+    OTCWebError(int c) noexcept;
+    OTCWebError(const std::string & msg) noexcept;
+    OTCWebError(int c, const std::string & msg) noexcept;
 };
 
-template <typename T>
-OTCWebError& OTCWebError::operator<<(const T& t) {
-  std::ostringstream oss;
-  oss << message << t;
-  message = oss.str();
-  return *this;
-}
+    template <typename T>
+    OTCWebError& OTCWebError::operator<<(const T& t)
+    {
+        std::ostringstream oss;
+        oss << t;
+        append(oss.str());
+        return *this;
+    }
+
+    template <>
+    OTCWebError& OTCWebError::operator<<(const nlohmann::json& j);
+
+    template <>
+    OTCWebError& OTCWebError::operator<<(const std::string& j);
 
 inline OTCWebError OTCBadRequest() {return OTCWebError(400);}
 inline OTCWebError OTCBadRequest(const std::string& m) {return OTCWebError(400,m);}
@@ -256,6 +270,12 @@ std::string node_info_ws_method(const TreesToServe & tts,
                                 const std::string & node_id,
                                 bool include_lineage);
 
+std::string nodes_info_ws_method(const TreesToServe & tts,
+                                 const SummaryTree_t * tree_ptr,
+                                 const SummaryTreeAnnotation * sta,
+                                 const std::vector<std::string> & node_id,
+                                 bool include_lineage);
+
 std::string mrca_ws_method(const TreesToServe & tts,
                            const SummaryTree_t * tree_ptr,
                            const SummaryTreeAnnotation * sta,
@@ -308,7 +328,7 @@ std::string tnrs_autocomplete_name_ws_method(const std::string& name,
 					     const std::string& context_name,
 					     bool include_suppressed,
 					     const RichTaxonomy& taxonomy);
-std::string tnrs_contexts_ws_method(const RichTaxonomy& taxonomy);
+std::string tnrs_contexts_ws_method();
 std::string tnrs_infer_context_ws_method(const std::vector<std::string>& names,
 					 const RichTaxonomy& taxonomy);
 

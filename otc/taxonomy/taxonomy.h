@@ -15,7 +15,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/utility/string_ref.hpp>
+#include <string_view>
 #include <bitset>
 #include "otc/taxonomy/flags.h"
 
@@ -80,6 +80,8 @@ enum TaxonomicRank {
     RANK_NO_RANK_TERMINAL
 };
 
+bool rank_is_specific(TaxonomicRank rank);
+
 extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
 extern const std::string empty_string;
 extern const std::set<std::string> indexed_source_prefixes;
@@ -118,10 +120,10 @@ struct TaxonomyRecord {
     OttId id = 0;
     OttId parent_id = 0;
     int parent_index = 0;
-    boost::string_ref name;
-    boost::string_ref rank;
-    boost::string_ref sourceinfo;
-    boost::string_ref uniqname; // will point to name field, if empty in .tsv
+    std::string_view name;
+    std::string_view rank;
+    std::string_view sourceinfo;
+    std::string_view uniqname; // will point to name field, if empty in .tsv
     std::bitset<32> flags;
     int depth = 0;
     int out_degree = 0;
@@ -222,9 +224,9 @@ class RTRichTaxNodeData {
     TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
     std::bitset<32> flags;
     std::string source_info;
-    boost::string_ref possibly_nonunique_name;
+    std::string_view possibly_nonunique_name;
     uint32_t depth;
-    boost::string_ref get_nonuniqname() const {
+    std::string_view get_nonuniqname() const {
         return possibly_nonunique_name;
     }
     const std::string & get_rank() const {
@@ -259,7 +261,7 @@ class TaxonomicJuniorSynonym {
     const std::string & get_name() const {
         return name;
     }
-    // deleting copy ctor because we are using string_refs, so it is important
+    // deleting copy ctor because we are using string_views, so it is important
     //    that the object not be copied.
     TaxonomicJuniorSynonym(const TaxonomicJuniorSynonym &) = delete;
 };
@@ -283,12 +285,12 @@ class RTRichTaxTreeData {
     std::unordered_map<OttId, OttId> irmng_id_map;
 #endif
     std::unordered_map<std::bitset<32>, nlohmann::json> flags2json;
-    std::map<boost::string_ref, const RTRichTaxNode *> name_to_node; // null if homonym, then check homonym2node
-    std::map<boost::string_ref, const TaxonomyRecord *> name_to_record; // for filtered
+    std::map<std::string_view, const RTRichTaxNode *> name_to_node; // null if homonym, then check homonym2node
+    std::map<std::string_view, const TaxonomyRecord *> name_to_record; // for filtered
     std::unordered_map<OttId, const RTRichTaxNode *> id_to_node;
     std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
-    std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym_to_node;
-    std::map<boost::string_ref, std::vector<const TaxonomyRecord *> > homonym_to_record;
+    std::map<std::string_view, std::vector<const RTRichTaxNode *> > homonym_to_node;
+    std::map<std::string_view, std::vector<const TaxonomyRecord *> > homonym_to_record;
     std::map<std::string, OttIdSet> non_unique_taxon_names;
 
     std::bitset<32> suppress_flags = flags_from_string(sup_flag_comma);
