@@ -1669,7 +1669,7 @@ vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus, const st
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
 string tnrs_autocomplete_name_ws_method(const string& name, const string& context_name, bool include_suppressed, const RichTaxonomy& taxonomy)
 {
-    json response;
+    json response = json::array();
 
     // We need to escape the query string.
     auto escaped_query = escape_query_string(name);
@@ -1682,6 +1682,7 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
     // 0. Escape the query??
     // lower-case the name?
 
+    LOG(DEBUG)<<"tnrs_autocomplete_name_ws_method: name = '"<<name<<"'  context = '"<<context_name<<"' include_suppressed = "<<include_suppressed;
     // 1. Determine context
     auto context = determine_context(context_name);
     auto context_root = taxonomy.included_taxon_from_id(context->ott_id);
@@ -1692,7 +1693,7 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
 	// Search against species and synonyms
 	add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed));
 	add_hits(response, taxonomy, exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
-	if (response.size()) return response;
+	if (not response.empty()) return response.dump(1);
 	
 	// no exact hit against the species index
 	auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
@@ -1704,18 +1705,18 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
 	    for(auto genus: genus_hits)
 		add_hits(response, taxonomy, prefix_search_species_in_genus(genus, query_species));
 	}
-	if (not response.empty()) return response;
+	if (not response.empty()) return response.dump(1);
 
 	// no exact hit for first word against the genus index
 
         // Hit query string against the higher taxon index... not sure if this is useful, since it has a space
 	add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+	if (not response.empty()) return response.dump(1);
 
 	// Prefix query against the synonyms and higher taxa
 	add_hits(response, taxonomy, prefix_name_search(taxonomy, context_root, escaped_query, include_suppressed));
 	add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+	if (not response.empty()) return response.dump(1);
 	
 	// fuzzy search on names and synonyms
     }
@@ -1723,15 +1724,15 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
     {
 	add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
 	add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+	if (not response.empty()) return response.dump(1);
 
 	// Do a prefix query against the higher taxon index
 	add_hits(response, taxonomy, prefix_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+	if (not response.empty()) return response.dump(1);
 
 	// Do a prefix query against the all taxa synonym index
 	add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
-	if (not response.empty()) return response;
+	if (not response.empty()) return response.dump(1);
 	
 	// fuzzy search on higher names and synonyms
     }
