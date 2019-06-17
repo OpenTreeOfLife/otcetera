@@ -18,6 +18,34 @@
 
 #include <optional>
 
+/* TODO:
+ *
+ * Correctness:
+ * C1. We need to walk the tree from the root toward the tips,
+ *       and after we clean out a subtree, include it in the list when
+ *       we check sibling subtrees.
+ *
+ * Speed:
+ * S1. We need to avoid the time costs associated with std::map:
+ *     - map<int, list<Vertex>> vertices_for_component_
+ *     - map<Vertex,int> component_for_vertex_;
+ *     - map<Vertex, vertex_info_t> info_for_vertex;
+ *     We're spending 30% time in map::operator[], and probably more in allocation/deletion.
+ *     A Vertex is really an integer.
+ *
+ * S2. dynamic_graph::remove_edge takes 18% of the time.
+ *
+ * Problems:
+ * P1. Problem 1: perf record --call-graph=dwarf is giving an error:
+ *     "failed to process sample... failed to process type: 68"
+ *     when I run `perf report`.
+ *
+ * See https://lkml.org/lkml/2016/10/8/189
+ *     https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=906728
+ */
+
+
+
 // bidirectionalS indicates a DIRECTED graph where we can iterate over both in_edges and out_edges
 typedef boost::adjacency_list< boost::vecS, boost::vecS, boost::bidirectionalS> Graph; 
 typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
