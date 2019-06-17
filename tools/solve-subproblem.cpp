@@ -215,14 +215,14 @@ class dynamic_graph
 
     int next_component = 0;
 
-    map<Vertex, vertex_info_t> info_for_vertex;
+    vector<vertex_info_t> info_for_vertex;
 
     vector<char> flags;
 
 public:
-    const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex.at(v);}
+    const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
 
-          vertex_info_t& vertex_info(Vertex v)       {return info_for_vertex.at(v);}
+          vertex_info_t& vertex_info(Vertex v)       {return info_for_vertex[v];}
 
     int new_component() {return next_component++;}
 
@@ -271,20 +271,7 @@ public:
         return not is_tip_node(v);
     }
 
-    Vertex add_vertex()
-    {
-        auto v = boost::add_vertex(G);
-        info_for_vertex[v];
-        int c = new_component();
-        assert(component_for_vertex_.size() == v);
-        // I should store BOTH the component AND the pointer to the list node inside it.
-        component_for_vertex_.push_back(c);
-        assert(component_for_vertex_[v] == c);
-        vertices_for_component_[c] = {v};
-
-        flags.push_back(0);
-        return v;
-    }
+    Vertex add_vertex();
 
     auto add_edge(Vertex u, Vertex v)
     {
@@ -474,6 +461,21 @@ bool dynamic_graph::is_tip_node(Vertex v) const
     }
     else
         return false;
+}
+
+Vertex dynamic_graph::add_vertex()
+{
+    auto v = boost::add_vertex(G);
+    info_for_vertex.push_back({});
+    int c = new_component();
+    assert(component_for_vertex_.size() == v);
+    // I should store BOTH the component AND the pointer to the list node inside it.
+    component_for_vertex_.push_back(c);
+    assert(component_for_vertex_[v] == c);
+    vertices_for_component_[c] = {v};
+
+    flags.push_back(0);
+    return v;
 }
 
 struct connected_component_t
