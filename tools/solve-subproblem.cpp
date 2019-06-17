@@ -225,7 +225,7 @@ public:
 
     int component_index;
 
-    std::list<int>::iterator list_entry;
+    std::list<Vertex>::iterator list_entry;
 
     bool is_marked() const {return component;}
     void unmark_node() {component = nullptr;}
@@ -424,16 +424,13 @@ public:
             std::swap(from_u, from_v);
 
         int c2 = new_component();
-        for(auto uu: from_u)
-            component_for_vertex(uu) = c2;
         auto& nodes1 = vertices_for_component(c1);
         list<Vertex> nodes2;
-        for(auto it = nodes1.begin(); it != nodes1.end();)
+        for(auto uu: from_u)
         {
-            auto next = it; next++;
-            if (component_for_vertex(*it) == c2)
-                nodes2.splice(nodes2.end(), nodes1, it, next);
-            it = next;
+            component_for_vertex(uu) = c2;
+            auto it = vertex_info(uu).list_entry;
+            nodes2.splice(nodes2.end(), nodes1, it);
         }
         vertices_for_component_[c2] = std::move(nodes2);
 
@@ -480,6 +477,9 @@ Vertex dynamic_graph::add_vertex()
     vertices_for_component_[c] = {v};
     assert(component_for_vertex(v) == c);
 
+    vertex_info(v).list_entry = vertices_for_component_[c].begin();
+
+    assert(*vertex_info(v).list_entry == v);
     assert(info_for_vertex.size() == num_vertices());
 
     return v;
