@@ -1399,6 +1399,8 @@ ott216628.tre
 
 /*
  * This one is slow: ott1020133.tre
+ * This one seems not to terminate: ott1041547.tre
+ * - debugging it by gdb/^C/back-trace seems like it could be effective.
  */
 
 
