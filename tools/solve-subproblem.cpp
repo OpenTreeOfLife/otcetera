@@ -39,7 +39,17 @@
  *
  * P1. We don't actually have an implementation of the "fully dynamic graph connectivity"
  *     problem that can quickly delete an edge and determine if this creates a new component!
- *     See dynamic_graph::remove_edge( ) for a completely naive algorithm.
+ *     The HDT approach leads to O(log^2(n)) updates and O(log n/log log) queries.
+ *     See: https://people.csail.mit.edu/rahul/papers/dyncon-jea2001.pdf
+ *          http://web.stanford.edu/class/archive/cs/cs166/cs166.1166/lectures/17/Small17.pdf
+ *
+ *     We actually only delete edges, which is the "decremental connectivity" problem, not the "fully dynamic" problem.
+ *     Supposedly (1981) https://doi.org/10.1145/322234.322235 implements an O(q + V*E) algorithm.
+ *     This approach leads to O(V*E/q) updates and O(1) queries?
+ *     See dynamic_graph::remove_edge( ) for an algorithm implementing "process A".
+ *
+ *     Frederickson (1985) https://pdfs.semanticscholar.org/57e3/21514281882ecfa45cc6fc73645e8eecdbbe.pdf
+ *     Implements a procedure with O(sqrt(e)) updates and O(1) queries.
  *
  * P2. Problem 1: perf record --call-graph=dwarf is giving an error:
  *     "failed to process sample... failed to process type: 68"
