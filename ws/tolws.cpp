@@ -1694,18 +1694,18 @@ string tnrs_autocomplete_name_ws_method(const string& name, const string& contex
     // 2. If we have a space, then assume the first part is a genus and match species names within the genus
     if (auto query_genus_species = split_genus_species(name))
     {
+        auto [query_genus,query_species] = *query_genus_species;
+
 	// Search against species and synonyms
 	add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed));
 	add_hits(response, taxonomy, exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
 	if (not response.empty()) return response.dump(1);
 	
 	// no exact hit against the species index
-	auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
+	auto genus_hits = exact_name_search_genus(taxonomy, context_root, query_genus, include_suppressed);
 
 	if (not genus_hits.empty()) // the first word was an exact match against the genus index
 	{
-	    auto [query_genus,query_species] = *query_genus_species;
-
 	    for(auto genus: genus_hits)
 		add_hits(response, taxonomy, prefix_search_species_in_genus(genus, query_species));
 	}
