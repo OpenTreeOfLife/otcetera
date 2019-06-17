@@ -651,12 +651,12 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
     }
 
-    LOG(WARNING)<<"Labels";
+    LOG(DEBUG)<<"Labels";
     for(auto [id,_]: Labels)
     {
-        LOG(WARNING)<<"   "<<id;
+        LOG(DEBUG)<<"   "<<id;
     }
-    LOG(WARNING)<<"";
+    LOG(DEBUG)<<"";
 
     return H;
 }
@@ -1453,7 +1453,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 bool is_consistent = add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
                 LOG(WARNING)<<"Trying partition "<<nd<<" in tree "<<i<<": "<<is_consistent;
                 for(auto d: descendants)
-                    LOG(WARNING)<<"    "<<ids[d]<<"  ("<<d<<")";
+                    LOG(DEBUG)<<"    "<<ids[d]<<"  ("<<d<<")";
                 bool is_consistent2 = (bool)remove_split_if_inconsistent(nd);
                 assert(is_consistent == is_consistent2);
                 if (is_consistent) consistent_count++;
