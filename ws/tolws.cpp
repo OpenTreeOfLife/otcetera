@@ -1265,10 +1265,10 @@ vector<const Taxon*> exact_name_search(const Taxon* context_root, string query, 
     vector<const Taxon*> hits;
     for(auto taxon: iter_post_n_const(*context_root))
     {
-	if (not ok(taxon)) continue;
+	if (not lcase_string_equals(query, taxon->get_data().get_nonuniqname()))
+	    continue;
 
-	if (lcase_string_equals(query, taxon->get_data().get_nonuniqname()))
-	    hits.push_back(taxon);
+	if (ok(taxon)) hits.push_back(taxon);
     }
 
     return hits;
