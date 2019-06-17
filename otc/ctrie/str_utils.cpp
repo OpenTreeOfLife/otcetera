@@ -9,7 +9,6 @@ std::wstring_convert<std::codecvt_utf8_utf16<char32_t>, char32_t> glob_conv8;
 std::locale global_locale;
 
 int set_global_conv_facet() {
-
     try {
         global_locale = std::locale("en_US.utf8");
     } catch (const std::exception &) {

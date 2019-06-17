@@ -42,6 +42,11 @@ inline std::u32string to_u32string(const std::string & undecoded) {
 }
 
 
+inline std::string to_char_str(const stored_char_t * undecoded) {
+    return glob_conv8.to_bytes(undecoded);
+}
+
+
 inline std::string to_char_str(const stored_str_t & undecoded) {
     return glob_conv8.to_bytes(undecoded);
 }

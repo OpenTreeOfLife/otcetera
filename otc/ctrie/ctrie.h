@@ -88,6 +88,13 @@ template <typename T>
 class CompressedTrie {
     public:
     CompressedTrie() {}
+    std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str,
+                                              unsigned int max_dist) const;
+    void db_write(std::ostream & out) const;
+    void db_write_node(std::ostream & out, const T & nd) const;
+    const stored_char_t * get_suffix(std::size_t suff_ind) const {
+        return &(concat_suff.at(suff_ind));
+    }
     private:
     using CTrieCtorHelper = CTrieCtorHelperTemp<T>;
     void init(const ctrie_init_set_t & keys, const stored_str_t & letter_var);
@@ -107,11 +114,8 @@ class CompressedTrie {
         T empty;
         node_list.push_back(empty);
         return *(node_list.rbegin());
-        
-
     }
 
-    
     void clear() {
         letters.clear();
         node_list.clear();
@@ -120,7 +124,6 @@ class CompressedTrie {
         letter_to_ind.clear();
         equivalent_letter.clear();
     }
-    std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str, unsigned int max_dist) const;
     void extend_partial_match(const PartialMatch<T> &pm,
                               const FQuery & query,
                               unsigned int max_dist,
@@ -343,7 +346,7 @@ void CompressedTrie<T>::_store_suffix_node(T & curr_node,
                         const stored_str_t & curr_str,
                         const stored_str_t & handled,
                         std::map<stored_str_t, std::size_t> & suffix2index) {
-    const stored_str_t suffix = curr_str.substr(handled.length());
+    const stored_str_t suffix = curr_str.substr(handled.length() + 1);
     //const std::string suff_as_char = to_char_str(suffix);
     // std::cerr << " handled \"" << to_char_str(handled) << "\" suffix = \"" << suff_as_char << "\"\n";
     auto mit = suffix2index.find(suffix);
@@ -475,6 +478,42 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     */
 }
 
+
+
+template <typename T>
+void CompressedTrie<T>::db_write_node(std::ostream & out, const T & nd) const {
+    if (ctrien_is_terminal(nd)) {
+        auto suff_index = ctrien_get_index(nd);
+        auto suff = get_suffix(suff_index);
+        auto suff_str = to_char_str(suff);
+        out << "TerminalNode suffix_ind=" << suff_index 
+            << " suffix=" << suff 
+            << " char_str=\"" << suff_str << "\"\n";
+    } else {
+        out << "InternalNode" << (ctrien_is_key_terminating(nd) ? "* " : " ");
+        out << "  offset = " << ctrien_get_index(nd) << "\n";
+        //out << "  letterbits = ";
+        //nd.db_write_state(out);
+        //out << "\n";
+        auto vipt = nd.get_letter_and_node_indices_for_on_bits();
+        for (auto & ind_pair : vipt) {
+            out << "  " << to_char_str(letters[ind_pair.first]);
+            out << " => node[" << std::dec << ind_pair.second << "]\n";
+        }
+    }
+}
+
+template <typename T>
+void CompressedTrie<T>::db_write(std::ostream & out) const {
+    out << "CompressedTrie<with " << sizeof(T) << " byte> nodes. Letters = \"" << to_char_str(letters) << "\"\n";
+    out << "  " << node_vec.size() << " nodes:\n";
+    std::size_t i = 0;
+    for (auto nd : node_vec) {
+        out << "node_vec[" << i++ << "] = ";
+        db_write_node(out, nd); 
+
+    }
+}
 
 
 } // namespace otc
