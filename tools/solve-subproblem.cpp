@@ -786,7 +786,7 @@ unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Ver
     unique_ptr<connected_component_t> W(new connected_component_t(Y1->get_graph()));
     auto Y2 = W.get();
 
-    assert(Y1->count == Y1->labels_for_component().size());
+//    assert(Y1->count == Y1->labels_for_component().size());
     int cparent = G->component_for_vertex(parent);
     int cchild = G->component_for_vertex(child);
 
@@ -797,8 +797,8 @@ unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Ver
         // Move marked nodes connected to child (child) to Y2
         split_component(Y1, Y2, child);
 
-    assert(Y1->count == Y1->labels_for_component().size());
-    assert(Y2->count == Y2->labels_for_component().size());
+//    assert(Y1->count == Y1->labels_for_component().size());
+//    assert(Y2->count == Y2->labels_for_component().size());
 
     // If we are disconnecting a parent from its last child, then Y2
     // could be a component containing only the parent node and no labels.
@@ -880,7 +880,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L4.  | (U, pred) = DEQUEUE(Q)
         auto [Y,pred] = std::move(Q.front()); Q.pop();
 
-        assert(Y->count == Y->labels_for_component().size());
+//        assert(Y->count == Y->labels_for_component().size());
 
 // L5.  | Create a node r_U and set parent(r_U) = pred
         node_t* r_U = nullptr;
