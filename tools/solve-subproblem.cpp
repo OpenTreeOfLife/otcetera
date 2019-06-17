@@ -200,6 +200,8 @@ class dynamic_graph
 
     map<Vertex, vertex_info_t> info_for_vertex;
 
+    vector<char> flags;
+
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex.at(v);}
 
@@ -259,6 +261,8 @@ public:
         int c = new_component();
         component_for_vertex_[v] = c;
         vertices_for_component_[c] = {v};
+
+        flags.push_back(0);
         return v;
     }
 
@@ -290,18 +294,17 @@ public:
         boost::remove_edge(u,v,G);
         vector<Vertex> from_u;
         vector<Vertex> from_v;
-        map<Vertex,int> seen;
 
+        // Return true if vertices are in the same component
         auto try_add_u = [&](Vertex uu)
                              {
-                                 auto u_it = seen.find(uu);
-                                 if (u_it == seen.end())
+                                 if (not flags[uu])
                                  {
-                                     seen[uu] = 0;
+                                     flags[uu] = 1;
                                      from_u.push_back(uu);
                                      return false;
                                  }
-                                 else if (u_it->second == 1)
+                                 else if (flags[uu] != 1)
                                      return true;
                                  else
                                      return false;
@@ -309,14 +312,13 @@ public:
 
         auto try_add_v = [&](Vertex vv)
                              {
-                                 auto v_it = seen.find(vv);
-                                 if (v_it == seen.end())
+                                 if (not flags[vv])
                                  {
-                                     seen[vv] = 1;
+                                     flags[vv] = 2;
                                      from_v.push_back(vv);
                                      return false;
                                  }
-                                 else if (v_it->second == 0)
+                                 else if (flags[vv] != 2)
                                      return true;
                                  else
                                      return false;
@@ -326,23 +328,57 @@ public:
         try_add_v(v);
 
         int i=0,j=0;
+
+        bool same_component = false;
+
         while(i < from_u.size() and j < from_v.size())
         {
             // Check 1 entry from u
             auto uu = from_u[i++];
             for(auto [e, e_end] = in_edges(uu); e != e_end; e++)
-                if (try_add_u( source( *e ) )) return false;
+                if (try_add_u( source( *e ) ))
+                {
+                    same_component = true;
+                    break;
+                }
             for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
-                if (try_add_u( target( *e ) )) return false;
+                if (try_add_u( target( *e ) ))
+                {
+                    same_component = true;
+                    break;
+                }
 
             // Check 1 entry from v
             auto vv = from_v[j++];
             for(auto [e, e_end] = in_edges(vv); e != e_end; e++)
-                if (try_add_v( source( *e ) )) return false;
+                if (try_add_v( source( *e ) ))
+                {
+                    same_component = true;
+                    break;
+                }
             for(auto [e, e_end] = out_edges(vv); e != e_end; e++)
-                if (try_add_v( target( *e ) )) return false;
+                if (try_add_v( target( *e ) ))
+                {
+                    same_component = true;
+                    break;
+                }
         }
 
+        // Clear the seen flags
+        for(auto u: from_u)
+            flags[u] = 0;
+
+        for(auto v: from_v)
+            flags[v] = 0;
+
+        for(auto f: flags)
+            assert(f == 0);
+
+        // Quit here if we didn't split a component
+        if (same_component)
+            return false;
+
+        // Move vertices from the smaller group to a new component
         if (i < from_u.size())
             std::swap(from_u, from_v);
 
