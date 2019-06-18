@@ -94,7 +94,15 @@ class CompressedTrie {
     void db_write(std::ostream & out) const;
     void db_write_words(std::ostream & out) const;
     void db_write_node(std::ostream & out, const T & nd) const;
-    const stored_char_t * get_suffix(std::size_t suff_ind) const {
+    stored_str_t get_suffix(std::size_t suff_ind) const {
+        auto sip = get_suffix_as_indices(suff_ind);
+        stored_str_t ret;
+        while (*sip != null_char_index) {
+            ret.push_back(letters[*sip++]);
+        }
+        return ret;
+    } 
+    const stored_index_t * get_suffix_as_indices(std::size_t suff_ind) const {
         return &(concat_suff.at(suff_ind));
     }
     private:
@@ -140,11 +148,15 @@ class CompressedTrie {
         return ltiit->second;
     }
 
-    std::vector<stored_index_t> encode_as_indices(const stored_str_t & query_str) const {
+    std::vector<stored_index_t> encode_as_indices(const stored_str_t & query_str,
+                                                  bool null_terminate=false) const {
         std::vector<stored_index_t> ret;
-        ret.reserve(query_str.length());
+        ret.reserve(query_str.length() + (null_terminate ? 1 : 0));
         for (auto c: query_str) {
             ret.push_back(ctrien_get_index_for_letter(c));
+        }
+        if (null_terminate) {
+            ret.push_back(null_char_index);
         }
         return ret;
     }
@@ -152,8 +164,9 @@ class CompressedTrie {
     std::vector<stored_index_t> equivalent_letter;
     stored_str_t letters;
     std::list<T> node_list;
-    std::vector<stored_char_t> concat_suff;
+    std::vector<stored_index_t> concat_suff;
     std::vector<T> node_vec;
+    stored_index_t null_char_index;
 
     friend class CompressedTrieBasedDB;
 };
@@ -310,6 +323,10 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
     ctrie_init_set_t::const_iterator lb;
     bool has_indexed_par = false;
     for (auto letter : rev_letters) {
+        if (letter == '\0') {
+            assert(curr_letter_index == rev_letters.length() - 1);
+            break;
+        }
         next_pref = curr_pref;
         next_pref.push_back(letter);
         lb = keys.lower_bound(next_pref);
@@ -349,6 +366,7 @@ void CompressedTrie<T>::_store_suffix_node(T & curr_node,
                         const stored_str_t & handled,
                         std::map<stored_str_t, std::size_t> & suffix2index) {
     const stored_str_t suffix = curr_str.substr(handled.length() + 1);
+    auto suff_as_inds = encode_as_indices(suffix, true);
     //const std::string suff_as_char = to_char_str(suffix);
     // std::cerr << " handled \"" << to_char_str(handled) << "\" suffix = \"" << suff_as_char << "\"\n";
     auto mit = suffix2index.find(suffix);
@@ -356,8 +374,8 @@ void CompressedTrie<T>::_store_suffix_node(T & curr_node,
         ctrien_flag_as_suffix(curr_node, mit->second);
     } else {
         std::size_t pos = concat_suff.size();
-        concat_suff.insert(std::end(concat_suff), std::begin(suffix), std::end(suffix));
-        concat_suff.push_back(0);
+        concat_suff.insert(std::end(concat_suff), std::begin(suff_as_inds), std::end(suff_as_inds));
+        concat_suff.push_back(null_char_index);
         ctrien_flag_as_suffix(curr_node, pos);
         suffix2index[suffix] = pos;
         std::size_t suff_pref = 1;
@@ -427,13 +445,14 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
             std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
         }
     }
-
+    null_char_index = letters.length();
+    letters.append(1, '\0');
 
     std::stack<CTrieCtorHelper> todo_q;
     stored_str_t curr_pref;
     std::map<stored_str_t, std::size_t> suffix2index;
     stored_str_t mt; 
-    concat_suff.push_back('\0');
+    concat_suff.push_back(null_char_index);
     suffix2index[mt] = 0;
     T & root_node = append_node();
     _process_prefix(curr_pref, todo_q, letters, keys, root_node, suffix2index);
