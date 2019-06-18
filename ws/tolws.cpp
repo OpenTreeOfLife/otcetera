@@ -1676,6 +1676,8 @@ vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus, const st
 }
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
+// curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla ","context_name":"All life"}'
+
 string tnrs_autocomplete_name_ws_method(const string& name, const string& context_name, bool include_suppressed, const RichTaxonomy& taxonomy)
 {
     json response = json::array();
