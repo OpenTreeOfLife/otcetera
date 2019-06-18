@@ -32,14 +32,19 @@ class FuzzyQueryResult {
     std::string match;
     unsigned int distance;
     float score;
-    const std::vector<stored_index_t> match_coded;
+    std::vector<stored_index_t> match_coded;
     const stored_str_t match_suffix;
-    FuzzyQueryResult(const std::vector<stored_index_t> & mc, unsigned int d):
-        distance(d),
-        score(0.0), 
-        match_coded(mc),
-        match_suffix() {
+    FuzzyQueryResult(const std::vector<stored_index_t> & mc,
+                     const stored_index_t * trie_suff,
+                     std::size_t suff_len,
+                     unsigned int d)
+      :distance(d),
+      score(0.0), 
+      match_coded(mc),
+      match_suffix() {
+        match_coded.insert(std::begin(match_coded), trie_suff, trie_suff + suff_len);
     }
+    /* 
     FuzzyQueryResult(const std::vector<stored_index_t> & mc,
                      const stored_str_t & ms,
                      unsigned int d):
@@ -47,55 +52,104 @@ class FuzzyQueryResult {
         score(0.0), 
         match_coded(mc),
         match_suffix(ms) {
+        }*/
+};
+
+class FQuery {
+    public: 
+    FQuery(const stored_str_t & q,
+           const std::vector<stored_index_t> as_inds,
+           unsigned int max_d)
+        :fat_str(q),
+        as_indices(as_inds),
+        max_dist(max_d) {
+        suffixes.resize(q.length() + 1);
     }
+
+    const stored_str_t & fat_str;
+    const std::vector<stored_index_t> as_indices;
+    unsigned int max_dist;
+    std::vector<stored_str_t> suffixes;
 };
 
 template <typename T>
 class PartialMatch {
     public:
-    PartialMatch(std::size_t max_match_len, std::size_t pos, unsigned int dist, stored_index_t match_char_code, const T *nextn)
-        :qpos(pos),
-         distance(dist),
+    PartialMatch(const FQuery & q,
+                 const T *nextn)
+        :query(q),
+         qpos(0),
+         distance(0),
          next_node(nextn),
          prev_mismatched_q(NO_MATCHING_CHAR_CODE) {
+        auto max_match_len = q.max_dist + q.as_indices.size();
         match_coded.reserve(max_match_len);
-        if (match_char_code != NO_MATCHING_CHAR_CODE) {
-            match_coded.push_back(match_char_code);
-        }
     }
     
+    const T * get_next_node() const {
+        return next_node;
+    }
+    
+    std::size_t num_q_char_left() const {
+        return query.as_indices.size() - qpos;
+    }
+
+    unsigned int curr_distance() const {
+        return distance;
+    }
+
+    unsigned int max_distance() const {
+        return query.max_dist;
+    }
+
+    const std::vector<stored_index_t> & get_prev_match_coded() const {
+        return match_coded;
+    }
+
+    const stored_index_t * query_data() const {
+        return &(query.as_indices[0]);
+    }
+
+    const std::size_t query_len() const {
+        return query.as_indices.size();
+    }
+
+    std::size_t query_pos() const {
+        return qpos;
+    }
+
+    stored_index_t get_prev_mismatched_q() const {
+        return prev_mismatched_q;
+    }
+
+    private:
+    const FQuery & query;
     std::size_t qpos;
-    const stored_str_t growing_match;
+    stored_str_t growing_match;
     unsigned int distance;
     const T * next_node;
     stored_index_t prev_mismatched_q;
     std::vector<stored_index_t> match_coded;
 };
 
-class FQuery {
-    public: 
-    FQuery(const stored_str_t & q, const std::vector<stored_index_t> as_inds)
-        :fat_str(q),
-        as_indices(as_inds) {
-        suffixes.resize(q.length() + 1);
-    }
-
-    const stored_str_t & fat_str;
-    const std::vector<stored_index_t> as_indices;
-    std::vector<stored_str_t> suffixes;
-};
 
 using suff_map_t = std::map<std::vector<stored_index_t> , std::size_t>;
 template <typename T>
 class CompressedTrie {
     public:
      
-    CompressedTrie() {}
+    CompressedTrie() {
+    }
+
     std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str,
                                               unsigned int max_dist) const;
+    
     void db_write(std::ostream & out) const;
+    
     void db_write_words(std::ostream & out) const;
+    
     void db_write_node(std::ostream & out, const T & nd) const;
+    
     stored_str_t get_suffix(std::size_t suff_ind) const {
         auto sip = get_suffix_as_indices(suff_ind);
         stored_str_t ret;
@@ -103,13 +157,27 @@ class CompressedTrie {
             ret.push_back(letters[*sip++]);
         }
         return ret;
-    } 
+    }
+
+    std::size_t count_suff_len(const stored_index_t *c) const {
+        std::size_t i = 0;
+        while (*c != null_char_index) {
+            assert(*c != NO_MATCHING_CHAR_CODE);
+            c++;
+            i++;
+        }
+        return i;
+    }
+    
     const stored_index_t * get_suffix_as_indices(std::size_t suff_ind) const {
         return &(concat_suff.at(suff_ind));
     }
+    
     private:
     using CTrieCtorHelper = CTrieCtorHelperTemp<T>;
+    
     void init(const ctrie_init_set_t & keys, const stored_str_t & letter_var);
+
     void _process_prefix(const stored_str_t & curr_pref,
                          std::stack<CTrieCtorHelper> & todo_q,
                          const stored_str_t & rev_letters,
@@ -136,11 +204,14 @@ class CompressedTrie {
         letter_to_ind.clear();
         equivalent_letter.clear();
     }
+
     void extend_partial_match(const PartialMatch<T> &pm,
-                              const FQuery & query,
-                              unsigned int max_dist,
                               std::list<FuzzyQueryResult> & results,
                               std::list<PartialMatch<T> > & next_alive) const;
+
+    void _check_suffix_for_match(const PartialMatch<T> &pm,
+                                 const stored_index_t * suffix,
+                                 std::list<FuzzyQueryResult> & results) const;
 
     stored_index_t ctrien_get_index_for_letter(const stored_char_t & c) const {
         auto ltiit = letter_to_ind.find(c);
@@ -173,7 +244,7 @@ class CompressedTrie {
     friend class CompressedTrieBasedDB;
 };
 
-
+/* 
 
 unsigned int calc_damerau_levenshtein(const stored_char_t * s1,
                                       std::size_t s1len,
@@ -182,7 +253,6 @@ unsigned int calc_damerau_levenshtein(const stored_char_t * s1,
                                       unsigned int max_dist) {
     // return distance if <= max_dist or max_dist + 1;
     throw OTCError() << "calc_dist not implemented";
-    /* 
     code here, this is a mess...
     assert(s1len > 0);
     assert(s2len > 0);
@@ -207,20 +277,132 @@ unsigned int calc_damerau_levenshtein(const stored_char_t * s1,
         }
         return 2;
     }
-    */
-
+}
+*/
+template<typename T>
+void CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
+                                 const stored_index_t * trie_suff,
+                                 std::list<FuzzyQueryResult> & results) const {
+    auto num_tr_left = count_suff_len(trie_suff);
+    auto num_q_left = pm.num_q_char_left();
+    std::size_t abs_len_diff = (num_tr_left > num_q_left ? num_tr_left - num_q_left : num_q_left - num_tr_left);
+    if (abs_len_diff + pm.curr_distance() > pm.max_distance()) {
+        return;
+    }
+    if (num_q_left == 0 || num_tr_left == 0) {
+        results.push_back(FuzzyQueryResult{pm.get_prev_match_coded(), trie_suff, num_tr_left, abs_len_diff + pm.curr_distance()});
+        return;
+    }
+    const unsigned int md = pm.max_distance();
+    std::vector<unsigned int> prev_row;
+    std::pair<std::size_t, std::size_t> prev_lt_coord{pm.query_pos(), 0};
+    prev_row.reserve(1 + 2*md);
+    unsigned int cd = pm.curr_distance();
+    while (cd < md) {
+        prev_row.push_back(cd++);
+    }
+    const stored_index_t * q_suff = pm.query_data();
+    
+    std::vector<unsigned int> curr_row;
+    std::pair<std::size_t, std::size_t> curr_lt_coord{pm.query_pos(), 1};
+    curr_row.reserve(1 + 2*md);
+    auto q_size = pm.query_len();
+    unsigned int leftside_cost = cd + 1;
+    stored_index_t prev_trie_match_char = pm.get_prev_mismatched_q();
+    for (;;) {
+        curr_row.clear();
+        curr_lt_coord = prev_lt_coord;
+        curr_lt_coord.second += 1; // moving 1 down in the trie_suff
+        if (curr_lt_coord.second > num_tr_left) {
+            // ran out of trie characters. Add as many gap costs as needed to each el in prev_row
+            unsigned int gd = num_q_left - curr_lt_coord.first;
+            unsigned int d = md;
+            for (auto psc : prev_row) {
+                unsigned int elc = psc + gd;
+                assert(gd > 0);
+                gd--;
+                if (elc < d) {
+                    d = elc;
+                }
+            }
+            if (d < md) {
+                results.push_back(FuzzyQueryResult{pm.get_prev_match_coded(), trie_suff, num_tr_left, d});
+            }
+            return;
+        }
+        for (std::size_t qp_ind = 0;; ++qp_ind) {
+            if (leftside_cost <= md) {
+                curr_row.push_back(leftside_cost++);
+            } else {
+                std::size_t x_shift = 0;
+                for (;;) {
+                    if (x_shift >= prev_row.size()) {
+                        return ; // ran out of possible matches
+                    }
+                    if (prev_row[x_shift] < md) {
+                        curr_row.push_back(prev_row[0] + 1);
+                        break;
+                    } else {
+                        // bump over the coordinate of the leftmost-topmost point we'll consider
+                        curr_lt_coord.first += 1;
+                    }
+                    ++x_shift;
+                }
+            }
+            assert(curr_row.size() == 1);
+            // we have now filled in the first cell of costs in this row (or exited w/o a match)
+            // grow curr_row while costs are still under the min and we have characters left in the query...
+            std::size_t match_prev_index = curr_lt_coord.first - prev_lt_coord.first;
+            std::size_t match_q_suff_pos = curr_lt_coord.first;
+            stored_index_t trie_match_char = trie_suff[prev_lt_coord.second];
+            if (match_q_suff_pos >= q_size) {
+                // ran out of query characters. Add as many gap costs as needed to each el in prev_row
+                assert(prev_row.size() == 1);
+                unsigned int gd = num_tr_left - prev_lt_coord.second;
+                unsigned int d = gd + prev_row[0];
+                if (d < md) {
+                    results.push_back(FuzzyQueryResult{pm.get_prev_match_coded(), trie_suff, num_tr_left, d});
+                }
+                return;
+            }
+            for (;;) {
+                unsigned int cell_left_cost = *curr_row.rbegin();
+                unsigned int cell_match_cost, cell_top_cost;
+                stored_index_t q_match_char = q_suff[match_q_suff_pos];
+                cell_match_cost = (match_prev_index >= prev_row.size() ? md : prev_row[match_prev_index]);
+                if (q_match_char != trie_match_char) {
+                    if (prev_trie_match_char == NO_MATCHING_CHAR_CODE) {
+                        cell_match_cost += 1;
+                    } else if (prev_trie_match_char == q_match_char && trie_match_char == q_suff[match_q_suff_pos - 1]) {
+                        // transposition of 2 characters. Already penalized, don't add another ...
+                    } else {
+                        cell_match_cost += 1;
+                    }
+                }
+                cell_top_cost = 1 + (match_prev_index + 1 >= prev_row.size() ? md : prev_row[match_prev_index + 1]);
+                auto min_cost = std::min(cell_left_cost, std::min(cell_match_cost, cell_top_cost));
+                if (min_cost > md) {
+                    break;
+                }
+                match_q_suff_pos++;
+                match_prev_index++;
+            }
+            prev_trie_match_char = trie_match_char;
+        }
+        std::swap(prev_row, curr_row);
+        prev_lt_coord = curr_lt_coord;
+    }
 }
 
 template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
-                                             const FQuery & query,
-                                             unsigned int max_dist,
                                              std::list<FuzzyQueryResult> & results,
                                              std::list<PartialMatch<T> > & next_alive) const {
-    const T * trienode = pm.next_node;
-    std::size_t num_unchecked = query.as_indices.size() - pm.qpos;
+    const T * trienode = pm.get_next_node();
     if (ctrien_is_terminal(*trienode)) {
         auto suffix_index = ctrien_get_index(*trienode);
+        _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
+        return;
         /* 
         const stored_char_t * trie_suff = this->concat_suff[suffix_index];
         std::size_t triesuff_len = strlen(trie_suff);
@@ -258,12 +440,13 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
             } 
         }
         */
-        throw OTCError() << "terminal ctrie node node imple";
-        return;
+        
     }
+    /*
     if (pm.distance + num_unchecked <= max_dist && ctrien_is_key_terminating(*pm.next_node)) {
         results.push_back(FuzzyQueryResult{pm.match_coded, pm.distance + num_unchecked});
     }
+    */
 
 }
 
@@ -274,10 +457,11 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
     if (query_str.length() == 0) {
         return results;
     }
-    FQuery query{query_str, encode_as_indices(query_str)};
-    std::list<PartialMatch<T> > alive;
-    const std::size_t max_match_len = query.as_indices.size() + 5;
+    const FQuery query{query_str, encode_as_indices(query_str), max_dist};
     const T * root_nd = &(node_vec.at(0));
+    std::list<PartialMatch<T> > alive;
+    /*
+    const std::size_t max_match_len = query.as_indices.size() + max_dist;
     std::size_t max_skip = std::min(std::size_t {max_dist}, query.as_indices.size());
     for (std::size_t i = 0; i < max_skip; ++i) {
         auto inds_on = root_nd->get_letter_and_node_indices_for_on_bits();
@@ -297,11 +481,12 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
         }
     }
     // might be sufficient for full alive list?
-    alive.push_back(PartialMatch<T>{max_match_len, 0, 0, NO_MATCHING_CHAR_CODE, root_nd});
+    */
+    alive.push_back(PartialMatch<T>{query, root_nd});
     while (!alive.empty()) {
         std::list<PartialMatch<T> > next_alive;
         for (const auto & pm : alive) {
-            extend_partial_match(pm, query, max_dist, results, next_alive);
+            extend_partial_match(pm, results, next_alive);
         }
         std::swap(alive, next_alive);
     }    
