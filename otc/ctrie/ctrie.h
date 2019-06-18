@@ -85,9 +85,11 @@ class FQuery {
     std::vector<stored_str_t> suffixes;
 };
 
+using suff_map_t = std::map<std::vector<stored_index_t> , std::size_t>;
 template <typename T>
 class CompressedTrie {
     public:
+     
     CompressedTrie() {}
     std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str,
                                               unsigned int max_dist) const;
@@ -113,12 +115,12 @@ class CompressedTrie {
                          const stored_str_t & rev_letters,
                          const ctrie_init_set_t & keys,
                          T & par_node,
-                         std::map<stored_str_t, std::size_t> & suffix2index);
+                         suff_map_t& suffix2index);
     
     void _store_suffix_node(T & curr_node,
                             const stored_str_t & curr_str,
                             const stored_str_t & handled,
-                            std::map<stored_str_t, std::size_t> & suffix2index);
+                            suff_map_t & suffix2index);
 
     T & append_node() {
         T empty;
@@ -315,7 +317,7 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
                                         const stored_str_t & rev_letters,
                                         const ctrie_init_set_t & keys,
                                         T & par_node,
-                                        std::map<stored_str_t, std::size_t> & suffix2index) {
+                                        suff_map_t & suffix2index) {
     stored_str_t next_pref;
     CTrieCtorHelper ctch;
     unsigned int curr_letter_index = 0;
@@ -364,12 +366,12 @@ template <typename T>
 void CompressedTrie<T>::_store_suffix_node(T & curr_node,
                         const stored_str_t & curr_str,
                         const stored_str_t & handled,
-                        std::map<stored_str_t, std::size_t> & suffix2index) {
+                        suff_map_t & suffix2index) {
     const stored_str_t suffix = curr_str.substr(handled.length() + 1);
     auto suff_as_inds = encode_as_indices(suffix, true);
     //const std::string suff_as_char = to_char_str(suffix);
     // std::cerr << " handled \"" << to_char_str(handled) << "\" suffix = \"" << suff_as_char << "\"\n";
-    auto mit = suffix2index.find(suffix);
+    auto mit = suffix2index.find(suff_as_inds);
     if (mit != suffix2index.end()) {
         ctrien_flag_as_suffix(curr_node, mit->second);
     } else {
@@ -377,10 +379,12 @@ void CompressedTrie<T>::_store_suffix_node(T & curr_node,
         concat_suff.insert(std::end(concat_suff), std::begin(suff_as_inds), std::end(suff_as_inds));
         concat_suff.push_back(null_char_index);
         ctrien_flag_as_suffix(curr_node, pos);
-        suffix2index[suffix] = pos;
+        suffix2index[suff_as_inds] = pos;
         std::size_t suff_pref = 1;
-        while (suff_pref < suffix.length()) {
-            auto tmp = suffix.substr(suff_pref);
+        auto sai_it = suff_as_inds.begin();
+        sai_it++;
+        while (suff_pref < suff_as_inds.size() - 1) {
+            std::vector<stored_index_t> tmp{sai_it, suff_as_inds.end()};
             if (suffix2index.find(tmp) != suffix2index.end()) {
                 // std::cerr << " found tmp \"" << tmp << "\"\n";
                 break;
@@ -388,6 +392,7 @@ void CompressedTrie<T>::_store_suffix_node(T & curr_node,
             // std::cerr << " adding tmp \"" << tmp << "\" pos + suff_pref = " << pos + suff_pref << "\n";
             suffix2index[tmp] = pos + suff_pref;
             suff_pref++;
+            sai_it++;
         }
     }
 }
@@ -450,9 +455,9 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
 
     std::stack<CTrieCtorHelper> todo_q;
     stored_str_t curr_pref;
-    std::map<stored_str_t, std::size_t> suffix2index;
-    stored_str_t mt; 
+    suff_map_t suffix2index;
     concat_suff.push_back(null_char_index);
+    std::vector<stored_index_t> mt{1, null_char_index};
     suffix2index[mt] = 0;
     T & root_node = append_node();
     _process_prefix(curr_pref, todo_q, letters, keys, root_node, suffix2index);
