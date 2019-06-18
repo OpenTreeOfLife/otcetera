@@ -81,10 +81,59 @@ class PartialMatch {
          qpos(0),
          distance(0),
          next_node(nextn),
-         prev_mismatched_q(NO_MATCHING_CHAR_CODE) {
+         prev_mismatched_trie(NO_MATCHING_CHAR_CODE) {
         auto max_match_len = q.max_dist + q.as_indices.size();
         match_coded.reserve(max_match_len);
     }
+    // create a partial match previous match and a char match
+    PartialMatch(const PartialMatch & prevpm,
+                 stored_index_t match_char,
+                 unsigned int start_dist,
+                 const T *nextn,
+                 bool was_match)
+        :query(prevpm.query),
+         qpos(prevpm.qpos + 1),
+         distance(start_dist),
+         next_node(nextn),
+         prev_mismatched_trie(NO_MATCHING_CHAR_CODE) {
+        match_coded.reserve(prevpm.match_coded.capacity());
+        match_coded = prevpm.match_coded;
+        match_coded.push_back(match_char);
+        if (!was_match) {
+            prev_mismatched_trie = match_char;
+        }
+        assert(nextn != prevpm.next_node);
+    }
+    // create a partial match from a gap, moving through query but not trie
+    PartialMatch(const PartialMatch & prevpm,
+                 unsigned int start_dist,
+                 const T *nextn)
+        :query(prevpm.query),
+         qpos(prevpm.qpos + 1),
+         distance(start_dist),
+         next_node(nextn),
+         prev_mismatched_trie(NO_MATCHING_CHAR_CODE) {
+        match_coded.reserve(prevpm.match_coded.capacity());
+        match_coded = prevpm.match_coded;
+        assert(nextn == prevpm.next_node);
+
+    }
+    // create a partial match from a gap, moving through trie but not query
+    PartialMatch(const PartialMatch & prevpm,
+                 unsigned int start_dist,
+                 const T *nextn, 
+                 stored_index_t match_char)
+        :query(prevpm.query),
+         qpos(prevpm.qpos),
+         distance(start_dist),
+         next_node(nextn),
+         prev_mismatched_trie(NO_MATCHING_CHAR_CODE) {
+        match_coded.reserve(prevpm.match_coded.capacity());
+        match_coded = prevpm.match_coded;
+        match_coded.push_back(match_char);
+        assert(nextn != prevpm.next_node);
+    }
+
     
     const T * get_next_node() const {
         return next_node;
@@ -110,7 +159,11 @@ class PartialMatch {
         return &(query.as_indices[0]);
     }
 
-    const std::size_t query_len() const {
+    stored_index_t query_char() const {
+        return query.as_indices[qpos];
+    }
+
+    std::size_t query_len() const {
         return query.as_indices.size();
     }
 
@@ -118,8 +171,8 @@ class PartialMatch {
         return qpos;
     }
 
-    stored_index_t get_prev_mismatched_q() const {
-        return prev_mismatched_q;
+    stored_index_t get_prev_mismatched_trie() const {
+        return prev_mismatched_trie;
     }
 
     private:
@@ -128,7 +181,7 @@ class PartialMatch {
     stored_str_t growing_match;
     unsigned int distance;
     const T * next_node;
-    stored_index_t prev_mismatched_q;
+    stored_index_t prev_mismatched_trie;
     std::vector<stored_index_t> match_coded;
 };
 
@@ -244,41 +297,6 @@ class CompressedTrie {
     friend class CompressedTrieBasedDB;
 };
 
-/* 
-
-unsigned int calc_damerau_levenshtein(const stored_char_t * s1,
-                                      std::size_t s1len,
-                                      const stored_char_t * s2,
-                                      std::size_t s2len,
-                                      unsigned int max_dist) {
-    // return distance if <= max_dist or max_dist + 1;
-    throw OTCError() << "calc_dist not implemented";
-    code here, this is a mess...
-    assert(s1len > 0);
-    assert(s2len > 0);
-    if (s1[0] == s2[0]) {
-        std::size_t ns1len = s1len - 1;
-        std::size_t ns2len = s2len - 1;
-        if (ns1len == 0) {
-            return ns2len;
-        }
-        if (ns2len == 0) {
-            return ns1len;
-        }
-        return calc_damerau_levenshtein(&s1[1], ns1len, &s2[1], ns2len, max_dist)
-    }
-    // first pos mismatch
-    if (s1len == 1 || s2len == 1) {
-        if (s1len != s2len) {
-            return 2; // mismatch and length diff
-        }
-        if (s1[1] == s2[1] || s1[1] == s2[0] || s1[0] == s2[1]) {
-            return 1; // total of 1 subst or transposition
-        }
-        return 2;
-    }
-}
-*/
 template<typename T>
 void CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
                                  const stored_index_t * trie_suff,
@@ -308,7 +326,7 @@ void CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
     curr_row.reserve(1 + 2*md);
     auto q_size = pm.query_len();
     unsigned int leftside_cost = cd + 1;
-    stored_index_t prev_trie_match_char = pm.get_prev_mismatched_q();
+    stored_index_t prev_trie_match_char = pm.get_prev_mismatched_trie();
     for (;;) {
         curr_row.clear();
         curr_lt_coord = prev_lt_coord;
@@ -403,51 +421,28 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
         auto suffix_index = ctrien_get_index(*trienode);
         _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
         return;
-        /* 
-        const stored_char_t * trie_suff = this->concat_suff[suffix_index];
-        std::size_t triesuff_len = strlen(trie_suff);
-        // check if the first char of the suffix is part of a 2-letter inversion
-        bool is_inv = false;
-        if (triesuff_len > 0 && pm.prev_mismatched_q != NO_MATCHING_CHAR_CODE) {
-            if (trie_suff[0] == letters[pm.prev_mismatched_q]) {
-                is_inv = true;
-            } else {
-                auto eli = equivalent_letter[pm.prev_mismatched_q];
-                if (eli != NO_MATCHING_CHAR_CODE && trie_suff[0] == letters[eli]) {
-                    is_inv = true;
-                }
-            }
-        }
-        if (is_inv) {
-            trie_suff++;
-            triesuff_len -= 1;
-        }
-
-        const stored_char_t * qsuff = &(query.fat_str[pm.qpos]);
-        std::size_t abs_len_diff = (num_unchecked > triesuff_len ? num_unchecked - triesuff_len : triesuff_len - num_unchecked);
-        if (pm.distance + abs_len_diff <= max_dist) {
-            if (triefuff_len > 0 && num_unchecked > 0) {
-                auto suff_dist = calc_damerau_levenshtein(qsuff,
-                                                        num_unchecked,
-                                                        trie_suff,
-                                                        triesuff_len,
-                                                        max_dist - pm.distance);
-                if (suff_dist + pm.distance <= max_dist) {
-                    results.push_back(FuzzyQueryResult{pm.match_coded,
-                                                    stored_str_t{trie_suff, triesuff_len},
-                                                    pm.distance + num_unchecked});
-                }
-            } 
-        }
-        */
-        
     }
-    /*
-    if (pm.distance + num_unchecked <= max_dist && ctrien_is_key_terminating(*pm.next_node)) {
-        results.push_back(FuzzyQueryResult{pm.match_coded, pm.distance + num_unchecked});
+    const unsigned int max_dist = pm.max_distance();
+    auto cd = pm.curr_distance();
+    auto qc = pm.query_char();
+    auto altqc = equivalent_letter[qc];
+    auto inds_on = trienode->get_letter_and_node_indices_for_on_bits();
+    for (auto x : inds_on) {
+        auto trie_char = x.first;
+        auto next_ind = x.second;
+        const T * next_nd = &(node_vec[next_ind]);
+        if (trie_char == qc || trie_char == altqc) {
+            next_alive.push_back(PartialMatch<T>{pm, trie_char, cd, next_nd, false});
+        } else if (cd + 1 < max_dist) {
+            next_alive.push_back(PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
+            next_alive.push_back(PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
+        }
     }
-    */
-
+    // frameshift
+    if (cd + 1 < max_dist) {
+        next_alive.push_back(PartialMatch<T>{pm, cd + 1, trienode}); //downshift
+    }
+ 
 }
 
 template<typename T>
@@ -460,28 +455,6 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
     const FQuery query{query_str, encode_as_indices(query_str), max_dist};
     const T * root_nd = &(node_vec.at(0));
     std::list<PartialMatch<T> > alive;
-    /*
-    const std::size_t max_match_len = query.as_indices.size() + max_dist;
-    std::size_t max_skip = std::min(std::size_t {max_dist}, query.as_indices.size());
-    for (std::size_t i = 0; i < max_skip; ++i) {
-        auto inds_on = root_nd->get_letter_and_node_indices_for_on_bits();
-        auto qi = query.as_indices[i];
-        auto altqi = equivalent_letter[qi];
-        for (auto x : inds_on) {
-            auto prefchar = x.first;
-            auto next_ind = x.second;
-            const T * next_nd = &(node_vec[next_ind]); 
-            if (prefchar == qi || prefchar == altqi) {
-                alive.push_back(PartialMatch<T>{max_match_len, 1, i, x.first, next_nd});
-            } else if (i + 1 < max_dist) {
-                PartialMatch<T> pm{max_match_len, 1, i + 1, x.first, next_nd};
-                pm.prev_mismatched_q = qi;
-                alive.push_back(pm);
-            }
-        }
-    }
-    // might be sufficient for full alive list?
-    */
     alive.push_back(PartialMatch<T>{query, root_nd});
     while (!alive.empty()) {
         std::list<PartialMatch<T> > next_alive;
