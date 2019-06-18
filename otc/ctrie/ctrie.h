@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 #include <stack>
+#include <deque>
 #include "otc/otc_base_includes.h"
 #include "otc/ctrie/ctrie_node.h"
 #include "otc/ctrie/str_utils.h"
@@ -91,6 +92,7 @@ class CompressedTrie {
     std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str,
                                               unsigned int max_dist) const;
     void db_write(std::ostream & out) const;
+    void db_write_words(std::ostream & out) const;
     void db_write_node(std::ostream & out, const T & nd) const;
     const stored_char_t * get_suffix(std::size_t suff_ind) const {
         return &(concat_suff.at(suff_ind));
@@ -512,6 +514,33 @@ void CompressedTrie<T>::db_write(std::ostream & out) const {
         out << "node_vec[" << i++ << "] = ";
         db_write_node(out, nd); 
 
+    }
+
+}
+template <typename T>
+void CompressedTrie<T>::db_write_words(std::ostream & out) const {
+    using nd_pref_pair = std::pair<const T *, stored_str_t>;
+    std::deque<nd_pref_pair> todo;
+    stored_str_t mt;
+    todo.push_back(nd_pref_pair{&(node_vec[0]), mt});
+    std::size_t i = 0;
+    while (!todo.empty()) {
+        auto curr_nd_pref = todo.front();
+        todo.pop_front();
+        auto nd_ptr = curr_nd_pref.first;
+        if (ctrien_is_terminal(*nd_ptr)) {
+            auto suff_index = ctrien_get_index(*nd_ptr);
+            auto suff = get_suffix(suff_index);
+            auto full = curr_nd_pref.second + suff;
+            out << i++ << " = " << to_char_str(full) << '\n';
+        } else {
+            auto vipt = nd_ptr->get_letter_and_node_indices_for_on_bits();
+            for (auto vipirit = vipt.rbegin(); vipirit != vipt.rend(); vipirit++) {
+                const T * nn = &(node_vec[vipirit->second]);
+                stored_str_t np = curr_nd_pref.second + letters[vipirit->first];
+                todo.push_front(nd_pref_pair{nn, np});
+            }
+        }
     }
 }
 

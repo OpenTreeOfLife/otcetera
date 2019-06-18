@@ -97,7 +97,9 @@ inline void fill_letter_and_node_indices(unsigned char curr_byte,
                                          int offset,
                                          vec_ind_pair_t & ret,
                                          uint64_t & node_index) {
-                                 
+    if (curr_byte == 0) {
+        return;
+    }                             
     unsigned char curr_bit = 1 << 7;
     for (unsigned char i = 0; i < 8; ++i) {
         //std::cerr << "fill_letter_and_node_indices byte=" << std::hex << (unsigned int)curr_byte << " bit=" << std::hex << (unsigned int)curr_bit << '\n' << std::dec;
@@ -150,30 +152,34 @@ class CTrie3Node {
         assert(!ctrien_is_terminal(*this));
         vec_ind_pair_t ret;
         ret.reserve(62 + 64 + 14);
-        auto node_index = ctrien_get_index(*this);
-        throw OTCError() << "not implemented\n";
-        unsigned char curr_byte = (top >> 24) & top_first_byte;
-        fill_letter_and_node_indices(curr_byte, -2, ret, node_index);
-        curr_byte = (top >> 16) & full_byte;
-        fill_letter_and_node_indices(curr_byte, 6, ret, node_index);
-        curr_byte = (top >> 8) & full_byte;
-        fill_letter_and_node_indices(curr_byte, 14, ret, node_index);
-        curr_byte = top & full_byte;
-        fill_letter_and_node_indices(curr_byte, 22, ret, node_index);
-
-        curr_byte = (mid >> 24) & full_byte;
-        fill_letter_and_node_indices(curr_byte, 30, ret, node_index);
-        curr_byte = (mid >> 16) & full_byte;
-        fill_letter_and_node_indices(curr_byte, 38, ret, node_index);
-        curr_byte = (mid >> 8) & full_byte;
-        fill_letter_and_node_indices(curr_byte, 46, ret, node_index);
-        curr_byte = mid & full_byte;
-        fill_letter_and_node_indices(curr_byte, 54, ret, node_index);
-
-        curr_byte = (bot >> 24) & full_byte;
-        fill_letter_and_node_indices(curr_byte, 62, ret, node_index);
-        curr_byte = (bot >> 16) & bot_last_byte;
-        fill_letter_and_node_indices(curr_byte, 70, ret, node_index);
+        uint64_t node_index = ctrien_get_index(*this);
+        int offset = -2;
+        int bitshift = 56;
+        unsigned char curr_byte = (top >> bitshift) & top_first_byte;
+        fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
+        for (int i = 0; i < 7; ++i) {
+            bitshift -= 8;
+            offset += 8;
+            curr_byte = (top >> bitshift) & full_byte;
+            fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
+        }
+        // 1 and part of a byte in "bot"
+        bitshift = 56;
+        for (int i = 0; i < 8; ++i) {
+            curr_byte = (mid >> bitshift) & full_byte;
+            bitshift -= 8;
+            offset += 8;
+            fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
+        }
+        // 1 and part of a byte in "bot"
+        bitshift = 56;
+        curr_byte = (bot >> bitshift) & full_byte;
+        offset += 8;
+        fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
+        bitshift -= 8;
+        curr_byte = (bot >> bitshift) & bot_last_byte;
+        offset += 8;
+        fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
         return ret;
     }
 

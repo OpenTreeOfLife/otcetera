@@ -96,7 +96,9 @@ CompressedTrieBasedDB::CompressedTrieBasedDB(const std::set<std::string_view> & 
     std::cerr << "set size = " << (sizeof(std::string *) + sizeof(char *) + 8)*keys.size() + mem_str << "bytes\n";
     fat_trie.init(for_fat, fat_letters);
     thin_trie.init(for_thin, thin_letters);
-    thin_trie.db_write(std::cerr);
+    
+    fat_trie.db_write_words(std::cerr);
+    thin_trie.db_write_words(std::cerr);
 }
 
 
