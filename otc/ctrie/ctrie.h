@@ -202,6 +202,15 @@ class CompressedTrie {
     void db_write_words(std::ostream & out) const;
     
     void db_write_node(std::ostream & out, const T & nd) const;
+
+    std::string to_char_from_inds(const stored_index_t * p, std::size_t len) const {
+        std::string ret;
+        for (std::size_t i = 0; i < len; ++i) {
+            auto nl = letters[p[i]];
+            ret += to_char_str(nl);
+        }
+        return ret;
+    }
     
     stored_str_t get_suffix(std::size_t suff_ind) const {
         auto sip = get_suffix_as_indices(suff_ind);
@@ -261,6 +270,7 @@ class CompressedTrie {
     void extend_partial_match(const PartialMatch<T> &pm,
                               std::list<FuzzyQueryResult> & results,
                               std::list<PartialMatch<T> > & next_alive) const;
+    void db_write_pm(const char *, const PartialMatch<T> &pm) const;
 
     void _check_suffix_for_match(const PartialMatch<T> &pm,
                                  const stored_index_t * suffix,
@@ -413,9 +423,27 @@ void CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
 }
 
 template<typename T>
+void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> &pm) const {
+    auto & out = std::cerr;
+    if (context != nullptr) {
+        out << context << " ";
+    }
+    out << "PartialMatch<T>(query=\"" << to_char_from_inds(pm.query_data(), pm.query_len()) << "\"";
+    out << ", qpos=" << pm.query_pos();
+    const auto & mc = pm.get_prev_match_coded();
+    if (mc.empty()) {
+        out << ", no matches to trie";
+    } else {
+        out << ", matched to tree=\"" << to_char_from_inds(&(mc[0]), mc.size()) << "\"";
+    }
+    out << ")\n";
+}
+
+template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                                              std::list<FuzzyQueryResult> & results,
                                              std::list<PartialMatch<T> > & next_alive) const {
+    db_write_pm("extend_partial_match_top", pm);
     const T * trienode = pm.get_next_node();
     if (ctrien_is_terminal(*trienode)) {
         auto suffix_index = ctrien_get_index(*trienode);
@@ -442,13 +470,19 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     if (cd + 1 < max_dist) {
         next_alive.push_back(PartialMatch<T>{pm, cd + 1, trienode}); //downshift
     }
- 
+    if (ctrien_is_key_terminating(*trienode)) {
+        auto d = pm.num_q_char_left() + pm.curr_distance();
+        if (d <= max_dist) {
+            results.push_back(FuzzyQueryResult{pm.get_prev_match_coded(), nullptr, 0, d});
+        }
+    }
 }
 
 template<typename T>
 std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
                                                              unsigned int max_dist) const {
     std::list<FuzzyQueryResult> results;
+    std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";
     if (query_str.length() == 0) {
         return results;
     }
@@ -457,6 +491,7 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
     std::list<PartialMatch<T> > alive;
     alive.push_back(PartialMatch<T>{query, root_nd});
     while (!alive.empty()) {
+        std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\n";
         std::list<PartialMatch<T> > next_alive;
         for (const auto & pm : alive) {
             extend_partial_match(pm, results, next_alive);
