@@ -71,7 +71,12 @@ class FQuery {
     const std::vector<stored_index_t> as_indices;
     unsigned int max_dist;
     std::vector<stored_str_t> suffixes;
-    mutable std::set<ptr_pair> already_matched;
+
+    mutable std::set<ptr_pair> already_matched; // threading issue if we parallelize traversal of trie on same query.
+    
+    void store_result_ptrs(const void * node_ptr, const stored_index_t * trie_suff) const {
+        already_matched.insert(ptr_pair{node_ptr, trie_suff});
+    }
 
     bool has_matched_suffix(const void * node_ptr, const stored_index_t * trie_suff) const {
         ptr_pair check{node_ptr, trie_suff};
@@ -148,7 +153,7 @@ class PartialMatch {
                       const stored_index_t * trie_suff,
                       std::size_t suff_len,
                       unsigned int distance) const {
-        // todo store pointer pair 
+        query.store_result_ptrs(next_node, trie_suff);
         results.push_back(FuzzyQueryResult{get_prev_match_coded(), trie_suff, suff_len, distance});
         return true;
     }
@@ -368,8 +373,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
         curr_row.clear();
         curr_lt_coord = prev_lt_coord;
         curr_lt_coord.second += 1; // moving 1 down in the trie_suff
-        assert(curr_lt_coord.first < q_size);
-
+        
         std::cerr << "rowchar = " << to_char_str(letters[trie_suff[prev_lt_coord.second]]) ;
         std::cerr << " prev_row  (" << prev_lt_coord.first << ", " << prev_lt_coord.second << ") " ; 
         for (auto pr : prev_row) {std::cerr << pr << ' ';}   std::cerr << "\"\n";
