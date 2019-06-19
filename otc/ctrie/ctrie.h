@@ -518,6 +518,16 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
         return results;
     }
     const FQuery query{query_str, encode_as_indices(query_str), max_dist};
+    unsigned int num_missing_in_letters = 0;
+    for (auto qai : query.as_indices) {
+        if (qai == NO_MATCHING_CHAR_CODE) {
+            num_missing_in_letters++;
+            if (num_missing_in_letters > max_dist) {
+                std::cerr << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";
+                return results;
+            }
+        }
+    }
     const T * root_nd = &(node_vec.at(0));
     std::list<PartialMatch<T> > alive;
     alive.push_back(PartialMatch<T>{query, root_nd});
