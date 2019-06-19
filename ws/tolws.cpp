@@ -743,7 +743,6 @@ string mrca_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
-
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            const string & node_id, 
                                            int height_limit,
