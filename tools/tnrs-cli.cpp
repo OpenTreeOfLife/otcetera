@@ -171,9 +171,11 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
     while (std::getline(std::cin, query)) {
         std::cout << "query =\"" << query << "\"\n";
         auto results = ct.fuzzy_query(query);
-        std::cout << results.size() << " matches:\n:";
+        std::cout << results.size() << " matches:\n";
         for (auto res : results) {
-            std::cout << "res.match = \"" << res.match << "\", distance = " << res.distance << " score = " << res.score << "\n";
+            std::cout << "res.match = \"" << res.match()
+                      << "\", distance = " << res.distance 
+                      << " score = " << res.score << "\n";
         }
         std::cout << "Enter a query and hit return:\n";
     }

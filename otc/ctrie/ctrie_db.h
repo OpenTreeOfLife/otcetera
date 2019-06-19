@@ -12,7 +12,7 @@ using CTrie2_t = CompressedTrie<CTrie2Node>;
 class CompressedTrieBasedDB {
     public:
     CompressedTrieBasedDB(const std::set<std::string_view> & keys);
-    std::list<FuzzyQueryResult> fuzzy_query(const std::string & query_str);
+    std::set<FuzzyQueryResult, SortQueryResByScore>  fuzzy_query(const std::string & query_str);
     private:
     CTrie3_t fat_trie;
     CTrie2_t thin_trie;
@@ -20,7 +20,7 @@ class CompressedTrieBasedDB {
 
 
 
-std::list<FuzzyQueryResult> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) {
+std::set<FuzzyQueryResult, SortQueryResByScore> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) {
     auto conv_query = to_u32string(query_str);
     unsigned int max_dist;
     // defaults taken from taxomachine...
@@ -37,8 +37,11 @@ std::list<FuzzyQueryResult> CompressedTrieBasedDB::fuzzy_query(const std::string
     }
     auto from_thin = thin_trie.fuzzy_matches(conv_query, max_dist);
     auto from_full = fat_trie.fuzzy_matches(conv_query, max_dist);
-    from_thin.insert(std::end(from_thin), std::begin(from_full), std::end(from_full));
-    return from_thin;
+    
+    std::set<FuzzyQueryResult, SortQueryResByScore> sorted;
+    sorted.insert(std::begin(from_thin), std::end(from_thin));
+    sorted.insert(std::begin(from_full), std::end(from_full));
+    return sorted;
 }
 
 

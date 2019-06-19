@@ -13,7 +13,7 @@
 #include "otc/ctrie/str_utils.h"
 
 namespace otc {
-
+constexpr bool DB_FUZZY_MATCH = false;
 /* Compressed Trie
   based on, but not identical to structure by Maly 1976
 */
@@ -29,31 +29,39 @@ class CTrieCtorHelperTemp {
 
 class FuzzyQueryResult {
     public:
-    std::string match;
+    std::string match() const {
+        return to_char_str(match_wide_char);
+    }
+
+    stored_str_t match_wide_char;
     unsigned int distance;
     float score;
     std::vector<stored_index_t> match_coded;
-    const stored_str_t match_suffix;
     FuzzyQueryResult(const std::vector<stored_index_t> & mc,
                      const stored_index_t * trie_suff,
                      std::size_t suff_len,
                      unsigned int d)
       :distance(d),
       score(0.0), 
-      match_coded(mc),
-      match_suffix() {
-        match_coded.insert(std::begin(match_coded), trie_suff, trie_suff + suff_len);
+      match_coded() {
+        match_coded.reserve(mc.size() + suff_len);
+        match_coded = mc;
+        auto ip = std::begin(match_coded);
+        ip++;
+        match_coded.insert(ip, trie_suff, trie_suff + suff_len);
     }
 
-    /* 
-    FuzzyQueryResult(const std::vector<stored_index_t> & mc,
-                     const stored_str_t & ms,
-                     unsigned int d):
-        distance(d),
-        score(0.0), 
-        match_coded(mc),
-        match_suffix(ms) {
-        }*/
+};
+
+struct SortQueryResByScore {
+    bool operator() (const FuzzyQueryResult & lhs, const FuzzyQueryResult & rhs) const {
+        if (lhs.score < rhs.score) {
+            return true;
+        } else if (rhs.score < lhs.score) {
+            return false;
+        }
+        return rhs.match_wide_char < rhs.match_wide_char;
+    }
 };
 
 class FQuery {
@@ -274,7 +282,9 @@ class CompressedTrie {
                             const stored_str_t & curr_str,
                             const stored_str_t & handled,
                             suff_map_t & suffix2index);
-
+   
+    void _finish_query_result(FuzzyQueryResult & res) const;
+   
     T & append_node() {
         T empty;
         node_list.push_back(empty);
@@ -337,17 +347,18 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
     if (pm.has_matched_suffix(trie_suff)) {
         return false;
     }
-    db_write_pm("_check_suffix", pm);
+    //db_write_pm("_check_suffix", pm);
     auto num_tr_left = count_suff_len(trie_suff);
-    std::cerr << "    trie  suffix =\"" << to_char_from_inds(trie_suff, num_tr_left) << "\"\n";
+    if (DB_FUZZY_MATCH) {std::cerr << "    trie  suffix =\"" << to_char_from_inds(trie_suff, num_tr_left) << "\"\n";}
+    
     const auto num_q_left_ini = pm.num_q_char_left();
     std::size_t abs_len_diff = (num_tr_left > num_q_left_ini ? num_tr_left - num_q_left_ini : num_q_left_ini - num_tr_left);
     if (abs_len_diff + pm.curr_distance() > pm.max_distance()) {
-        std::cerr << "    bailing out because abs_len_diff = " << abs_len_diff << '\n';
+        if (DB_FUZZY_MATCH) {std::cerr << "    bailing out because abs_len_diff = " << abs_len_diff << '\n';}
         return false;
     }
     if (num_q_left_ini == 0 || num_tr_left == 0) {
-        std::cerr << "    Match via running out of trie \n";
+        if (DB_FUZZY_MATCH) {std::cerr << "    Match via running out of trie \n";}
         return pm.store_result(results, trie_suff, num_tr_left, abs_len_diff + pm.curr_distance());
     }
     const unsigned int md = pm.max_distance();
@@ -360,7 +371,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
     }
     const stored_index_t * q_suff = pm.query_data();
 
-    std::cerr << "    query suffix =\"" << to_char_from_inds(q_suff + pm.query_pos() , num_q_left_ini) << "\"\n";
+    if (DB_FUZZY_MATCH) {std::cerr << "    query suffix =\"" << to_char_from_inds(q_suff + pm.query_pos() , num_q_left_ini) << "\"\n";}
     
     
     std::vector<unsigned int> curr_row;
@@ -374,10 +385,11 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
         curr_lt_coord = prev_lt_coord;
         curr_lt_coord.second += 1; // moving 1 down in the trie_suff
         
-        std::cerr << "rowchar = " << to_char_str(letters[trie_suff[prev_lt_coord.second]]) ;
-        std::cerr << " prev_row  (" << prev_lt_coord.first << ", " << prev_lt_coord.second << ") " ; 
-        for (auto pr : prev_row) {std::cerr << pr << ' ';}   std::cerr << "\"\n";
-    
+        if (DB_FUZZY_MATCH) { 
+            std::cerr << "rowchar = " << to_char_str(letters[trie_suff[prev_lt_coord.second]]) ;
+            std::cerr << " prev_row  (" << prev_lt_coord.first << ", " << prev_lt_coord.second << ") " ; 
+            for (auto pr : prev_row) {std::cerr << pr << ' ';}   std::cerr << "\"\n";
+        }
         if (curr_lt_coord.second > num_tr_left) {
             int num_q_left = q_size - curr_lt_coord.first;
             if (num_q_left < 0) {
@@ -385,7 +397,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
             }
             // add 1 because we'll decrement in the loop below, before we use it.
             unsigned int gd = 1 + num_q_left;
-            std::cerr << "no more trie at gd=" << gd << '\n';
+            if (DB_FUZZY_MATCH) {std::cerr << "no more trie at gd=" << gd << '\n';}
             unsigned int d = md;
             for (auto psc : prev_row) {
                 assert(gd > 0);
@@ -396,13 +408,13 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
                 }
             }
             if (d <= md) {
-                std::cerr << "match at d=" << d << '\n';
+                if (DB_FUZZY_MATCH) {std::cerr << "match at d=" << d << '\n';}
                 return pm.store_result(results, trie_suff, num_tr_left, d);
             }
             return false;
         }
         if (leftside_cost <= md) {
-            std::cerr << "leftside_cost = " << leftside_cost << '\n';
+            if (DB_FUZZY_MATCH) {std::cerr << "leftside_cost = " << leftside_cost << '\n';}
             curr_row.push_back(leftside_cost++);
         } else {
             std::size_t x_shift = 0;
@@ -432,10 +444,10 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
             // ran out of query characters. Add as many gap costs as needed to each el in prev_row
             assert(prev_row.size() == 1);
             unsigned int gd = num_tr_left - prev_lt_coord.second;
-            std::cerr << "no more query at gd=" << gd << '\n';
+            if (DB_FUZZY_MATCH) {std::cerr << "no more query at gd=" << gd << '\n';}
             unsigned int d = gd + prev_row[0];
             if (d < md) {
-                std::cerr << "match at d=" << d << '\n';
+                if (DB_FUZZY_MATCH) {std::cerr << "match at d=" << d << '\n';}
                 return pm.store_result(results, trie_suff, num_tr_left, d);
             }
             return true;
@@ -444,7 +456,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
             unsigned int cell_left_cost = 1 + *curr_row.rbegin();
             unsigned int cell_match_cost, cell_top_cost;
             stored_index_t q_match_char = q_suff[match_q_suff_pos];
-            std::cerr << " q_match_char = " << to_char_str(letters[q_match_char]) << ' ';
+            if (DB_FUZZY_MATCH) {std::cerr << " q_match_char = " << to_char_str(letters[q_match_char]) << ' ';}
         
             cell_match_cost = (match_prev_index >= prev_row.size() ? md : prev_row[match_prev_index]);
             if (q_match_char != trie_match_char) {
@@ -457,7 +469,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
                 }
             }
             cell_top_cost = 1 + (match_prev_index + 1 >= prev_row.size() ? md : prev_row[match_prev_index + 1]);
-            std::cerr << "cell costs: (l = " << cell_left_cost << ", m = " << cell_match_cost << ", t = "  << cell_top_cost << ")\n";
+            if (DB_FUZZY_MATCH) {std::cerr << "cell costs: (l = " << cell_left_cost << ", m = " << cell_match_cost << ", t = "  << cell_top_cost << ")\n";}
             auto min_cost = std::min(cell_left_cost, std::min(cell_match_cost, cell_top_cost));
             if (min_cost > md) {
                 break;
@@ -473,11 +485,11 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
             match_prev_index++;
         }
         if (min_in_curr_row > md) {
-            std::cerr << "exceeded match threshold dist\n";
+            if (DB_FUZZY_MATCH) {std::cerr << "exceeded match threshold dist\n";}
             return false;
         }
         prev_trie_match_char = trie_match_char;
-        std::cerr << "curr_row = "; for (auto pr : curr_row) {std::cerr << pr << ' ';}   std::cerr << "\n";
+        if (DB_FUZZY_MATCH) {std::cerr << "curr_row = "; for (auto pr : curr_row) {std::cerr << pr << ' ';}   std::cerr << "\n";}
         prev_lt_coord = curr_lt_coord;
         if (curr_row[0] > md) {
             prev_row.clear();
@@ -513,7 +525,7 @@ template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                                              std::list<FuzzyQueryResult> & results,
                                              std::list<PartialMatch<T> > & next_alive) const {
-    db_write_pm("extend", pm);
+    //db_write_pm("extend", pm);
     const T * trienode = pm.get_next_node();
     if (ctrien_is_terminal(*trienode)) {
         auto suffix_index = ctrien_get_index(*trienode);
@@ -525,12 +537,12 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     auto qc = pm.query_char();
     auto altqc = equivalent_letter[qc];
     auto inds_on = trienode->get_letter_and_node_indices_for_on_bits();
-    for (auto x : inds_on) {
+    for (auto & x : inds_on) {
         auto trie_char = x.first;
         auto next_ind = x.second;
         const T * next_nd = &(node_vec[next_ind]);
         if (trie_char == qc || trie_char == altqc) {
-            std::cerr << "matched in pre adding extende pm.\n";
+            if (DB_FUZZY_MATCH) {std::cerr << "matched in pre adding extende pm.\n";}
             next_alive.push_back(PartialMatch<T>{pm, trie_char, cd, next_nd, false});
         } else if (cd + 1 <= max_dist) {
             next_alive.push_back(PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
@@ -549,13 +561,28 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     }
 }
 
+
+
+template<typename T>
+inline void CompressedTrie<T>::_finish_query_result(FuzzyQueryResult & res) const {
+    res.match_wide_char.clear();
+    for (auto ind : res.match_coded) {
+        assert(ind != NO_MATCHING_CHAR_CODE);
+        res.match_wide_char.push_back(letters[ind]);
+    }
+    float sl = res.match_wide_char.length();
+    res.score = ((sl - (float)res.distance)/sl);
+    if (DB_FUZZY_MATCH) {std::cerr << "res.score = " << res.score << " res.match: " << res.match() << '\n';}
+}
+   
+
+
 template<typename T>
 std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
                                                              unsigned int max_dist) const {
-    std::list<FuzzyQueryResult> results;
-    std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";
+    if (DB_FUZZY_MATCH) {std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";}
     if (query_str.length() == 0) {
-        return results;
+        return std::list<FuzzyQueryResult>{};
     }
     const FQuery query{query_str, encode_as_indices(query_str), max_dist};
     unsigned int num_missing_in_letters = 0;
@@ -563,24 +590,29 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
         if (qai == NO_MATCHING_CHAR_CODE) {
             num_missing_in_letters++;
             if (num_missing_in_letters > max_dist) {
-                std::cerr << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";
-                return results;
+                if (DB_FUZZY_MATCH) {std::cerr << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";}
+                return std::list<FuzzyQueryResult>{};
             }
         }
     }
+    // non-trivial case
+    std::list<FuzzyQueryResult> results;
     const T * root_nd = &(node_vec.at(0));
     std::list<PartialMatch<T> > alive;
     alive.push_back(PartialMatch<T>{query, root_nd});
     while (!alive.empty()) {
-        std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\n";
+        if (DB_FUZZY_MATCH) {std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\n";}
         std::list<PartialMatch<T> > next_alive;
         for (const auto & pm : alive) {
             auto prevnalen = next_alive.size();
             extend_partial_match(pm, results, next_alive);
-            if (next_alive.size() != prevnalen) {std::cerr << "added " << next_alive.size() - prevnalen << " PMs.\n"; }
+            if (DB_FUZZY_MATCH) {if (next_alive.size() != prevnalen) {std::cerr << "added " << next_alive.size() - prevnalen << " PMs.\n"; }}
         }
         std::swap(alive, next_alive);
-    }    
+    }
+    for (auto & r : results) {
+        _finish_query_result(r);
+    }
     return results;
 }
 
@@ -719,13 +751,13 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         equivalent_letter.push_back(char_ind);
     }
     
-    for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
-        if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
-            std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
-        } else {
-            std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
-        }
-    }
+    // for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
+    //     if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
+    //         std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
+    //     } else {
+    //         std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
+    //     }
+    // }
     null_char_index = letters.length();
     letters.append(1, '\0');
 
@@ -763,9 +795,9 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     node_list.clear();
     auto nvs = sizeof(T)*node_vec.size();
     auto suffs = concat_suff.size();
-    std::cerr << "vecsize = " << nvs << " bytes\n";
-    std::cerr << "concat_suff length = " << suffs << " bytes\n";
-    std::cerr << "compressed tree size = " << 4*letters.size() + nvs + suffs << " bytes\n";
+    // std::cerr << "vecsize = " << nvs << " bytes\n";
+    // std::cerr << "concat_suff length = " << suffs << " bytes\n";
+    // std::cerr << "compressed tree size = " << 4*letters.size() + nvs + suffs << " bytes\n";
     // std::cerr << "max_node_index = " << max_node_index << "\n";
     /* 
     std::cerr << "concat_suff = \"";
