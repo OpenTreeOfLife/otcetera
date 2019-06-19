@@ -340,13 +340,13 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
     db_write_pm("_check_suffix", pm);
     auto num_tr_left = count_suff_len(trie_suff);
     std::cerr << "    trie  suffix =\"" << to_char_from_inds(trie_suff, num_tr_left) << "\"\n";
-    auto num_q_left = pm.num_q_char_left();
-    std::size_t abs_len_diff = (num_tr_left > num_q_left ? num_tr_left - num_q_left : num_q_left - num_tr_left);
+    const auto num_q_left_ini = pm.num_q_char_left();
+    std::size_t abs_len_diff = (num_tr_left > num_q_left_ini ? num_tr_left - num_q_left_ini : num_q_left_ini - num_tr_left);
     if (abs_len_diff + pm.curr_distance() > pm.max_distance()) {
         std::cerr << "    bailing out because abs_len_diff = " << abs_len_diff << '\n';
         return false;
     }
-    if (num_q_left == 0 || num_tr_left == 0) {
+    if (num_q_left_ini == 0 || num_tr_left == 0) {
         std::cerr << "    Match via running out of trie \n";
         return pm.store_result(results, trie_suff, num_tr_left, abs_len_diff + pm.curr_distance());
     }
@@ -360,7 +360,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
     }
     const stored_index_t * q_suff = pm.query_data();
 
-    std::cerr << "    query suffix =\"" << to_char_from_inds(q_suff + pm.query_pos() , num_q_left) << "\"\n";
+    std::cerr << "    query suffix =\"" << to_char_from_inds(q_suff + pm.query_pos() , num_q_left_ini) << "\"\n";
     
     
     std::vector<unsigned int> curr_row;
@@ -379,10 +379,12 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
         for (auto pr : prev_row) {std::cerr << pr << ' ';}   std::cerr << "\"\n";
     
         if (curr_lt_coord.second > num_tr_left) {
-            // ran out of trie characters. Add as many gap costs as needed to each el in prev_row
-            // add 2 to the gap dist to account for (1) off-by one of indexing vs size,
-            //      and (2) the fact that we'll decrement in the loop below, before we use it.
-            unsigned int gd = 2 + num_q_left - curr_lt_coord.first;
+            int num_q_left = q_size - curr_lt_coord.first;
+            if (num_q_left < 0) {
+                num_q_left = 0;
+            }
+            // add 1 because we'll decrement in the loop below, before we use it.
+            unsigned int gd = 1 + num_q_left;
             std::cerr << "no more trie at gd=" << gd << '\n';
             unsigned int d = md;
             for (auto psc : prev_row) {
@@ -393,7 +395,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
                     d = elc;
                 }
             }
-            if (d < md) {
+            if (d <= md) {
                 std::cerr << "match at d=" << d << '\n';
                 return pm.store_result(results, trie_suff, num_tr_left, d);
             }
