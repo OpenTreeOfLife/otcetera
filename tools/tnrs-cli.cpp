@@ -138,7 +138,7 @@ void analyze_case_sensitivity(const RTRichTaxTreeData & rt_data,
 }
 
 void interactive_tests() {
-    const CTrie3_t testtrie{"abcdefghijklmnopqrstuvwxyz"};
+    const CTrie3_t testtrie{"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
     const std::string p1 = "Enter a query:\n";
     const std::string p2 = "Enter a trie:\n";
     const std::string p3 = "max distance:\n";
