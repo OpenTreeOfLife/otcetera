@@ -659,13 +659,11 @@ string nodes_info_ws_method(const TreesToServe & tts,
     auto [nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_ids);
 
     json response;
-    for(int i=0;i<nodes.size();i++)
-    {
+    for(auto i = 0U; i < nodes.size(); i++) {
         auto j = node_info_json(tts, sta, nodes[i], include_lineage);
         j["query"] = node_ids[i];
         response.push_back(j);
     }
-
     return response.dump(1);
 }
 
@@ -1181,7 +1179,7 @@ bool lcase_string_equals(const string_view& s1, const T& s2) {
     if (s1.size() != s2.size()) {
         return false;
     }
-    for(int i=0;i<s1.size();i++) {
+    for(auto i = 0U; i < s1.size(); i++) {
         if (std::tolower(s1[i]) != std::tolower(s2[i])) {
             return false;
         }
