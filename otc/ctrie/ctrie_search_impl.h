@@ -30,7 +30,7 @@ inline unsigned CompressedTrie<T>::_calc_dist_impl(const PartialMatch<T> &pm,
     }
     auto d = _calc_dist_prim_impl(prev_query_char,
                                   quer_suff + pm.query_pos(),
-                                  pm.query_len(),
+                                  pm.query_len() - pm.query_pos(),
                                   trie_suff,
                                   trie_len,
                                   dist_threshold,
@@ -131,6 +131,13 @@ inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_q
                                                             const std::size_t trie_len,
                                                             const unsigned int dist_threshold,
                                                             stored_index_t prev_trie_match_char) const {
+    if (DB_FUZZY_MATCH) {
+        std::cerr << "_calc_dist_prim_impl(pqc=\"" << (prev_quer_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_quer_char])) << ", \"";
+        for (auto i=0U; i < quer_len; ++i) {std::cerr << (quer_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[quer_suff[i]]));}
+        std::cerr << "\", " << quer_len << ", \"";
+        for (auto i=0U; i < trie_len; ++i) {std::cerr << (trie_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[trie_suff[i]]));}
+        std::cerr << "\", " << trie_len << ", " << dist_threshold << ", ptc=\"" << (prev_trie_match_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_trie_match_char])) << "\")\n";
+    }
     if (dist_threshold == 0) {
         if (_are_equivalent(prev_quer_char, quer_suff, quer_len, trie_suff, trie_len, prev_trie_match_char)) {
             return 0;
@@ -324,7 +331,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
     const auto trie_len = count_suff_len(trie_suff);
     const auto num_q_left_ini = pm.num_q_char_left();
     
-    if (DB_FUZZY_MATCH) {std::cerr << "    trie  suffix =\"" << to_char_from_inds(trie_suff, trie_len) << "\"\n";}
+    if (DB_FUZZY_MATCH) {std::cerr << "    trie suffix =\"" << to_char_from_inds(trie_suff, trie_len) << "\"\n";}
     
     std::size_t abs_len_diff = (trie_len > num_q_left_ini ? trie_len - num_q_left_ini : num_q_left_ini - trie_len);
     if (abs_len_diff + pm.curr_distance() > pm.max_distance()) {
@@ -367,7 +374,7 @@ template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                                              std::list<FuzzyQueryResult> & results,
                                              std::list<PartialMatch<T> > & next_alive) const {
-    //db_write_pm("extend", pm);
+    db_write_pm("extend", pm);
     const T * trienode = pm.get_next_node();
     if (ctrien_is_terminal(*trienode)) {
         auto suffix_index = ctrien_get_index(*trienode);
