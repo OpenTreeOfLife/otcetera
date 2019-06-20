@@ -386,6 +386,13 @@ class CompressedTrie {
                         const stored_index_t * trie_suff,
                         const std::size_t trie_len,
                         stored_index_t prev_t) const;
+    unsigned int _dp_calc_dist_prim_impl(stored_char_t prev_query_c,
+                                        const stored_index_t *quer_suff,
+                                        const std::size_t quer_len,
+                                        const stored_index_t * trie_suff,
+                                        const std::size_t trie_len,
+                                        const unsigned int dist_threshold,
+                                        stored_index_t prev_trie_match_char) const;
     void extend_partial_match(const PartialMatch<T> &pm,
                               std::list<FuzzyQueryResult> & results,
                               std::list<PartialMatch<T> > & next_alive) const;
@@ -397,6 +404,8 @@ class CompressedTrie {
                                                 stored_char_t q_match_char,
                                                 stored_char_t prev_trie_match_char,
                                                 stored_char_t trie_match_char) const;
+    unsigned int _match_cost_no_transp(stored_char_t q_match_char,
+                                       stored_char_t trie_match_char) const;
     bool _check_suffix_for_match(const PartialMatch<T> &pm,
                                  const stored_index_t * suffix,
                                  std::list<FuzzyQueryResult> & results) const;
@@ -481,6 +490,9 @@ inline unsigned int CompressedTrie<T>::_match_cost(stored_char_t prev_q_match_ch
                                                    stored_char_t q_match_char,
                                                    stored_char_t prev_trie_match_char,
                                                    stored_char_t trie_match_char) const {
+    if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
+        return 1;
+    }
     if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
         return 0;
     }
@@ -491,6 +503,18 @@ inline unsigned int CompressedTrie<T>::_match_cost(stored_char_t prev_q_match_ch
     if ((prev_q_match_char == trie_match_char || prev_q_match_char == equivalent_letter[trie_match_char])
         && (q_match_char == prev_trie_match_char || q_match_char == equivalent_letter[prev_trie_match_char])) {
         // transpostion, don't double penalize
+        return 0;
+    }
+    return 1;
+}
+
+template<typename T>
+inline unsigned int CompressedTrie<T>::_match_cost_no_transp(stored_char_t q_match_char,
+                                                             stored_char_t trie_match_char) const {
+    if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
+        return 1;
+    }
+    if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
         return 0;
     }
     return 1;
@@ -508,15 +532,21 @@ inline bool CompressedTrie<T>::_are_equivalent(stored_char_t prev_q,
     if (quer_len != trie_len) {
         return false;
     }
-    for (std::size_t i = 0; i < trie_len; ++i) {
-        if (_match_cost(prev_q, quer_suff[i], prev_t, trie_suff[i]) > 0) {
+    if (trie_len == 0) {
+        return true;
+    }
+    if (_match_cost(prev_q, quer_suff[0], prev_t, trie_suff[0]) > 0) {
+        return false;
+    }
+    for (std::size_t i = 1; i < trie_len; ++i) {
+        if (_match_cost_no_transp(quer_suff[i], trie_suff[i]) > 0) {
             return false;
         }
-        prev_t = prev_t= NO_MATCHING_CHAR_CODE;
     }
     return true;
 }
 
+// checks for some easy optimizations, and calls dynamic programming version if needed.
 template<typename T>
 inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_quer_char,
                                                             const stored_index_t * quer_suff,
@@ -537,6 +567,80 @@ inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_q
     if (quer_len == 0) {
         return trie_len;
     }
+    std::size_t eff_quer_len = quer_len;
+    std::size_t eff_trie_len = trie_len;
+    // strip identical pref
+    if (0 == _match_cost(prev_quer_char, quer_suff[0], prev_trie_match_char, trie_suff[0])) {
+        --eff_quer_len;
+        --eff_trie_len;
+        quer_suff++;
+        trie_suff++;
+        prev_trie_match_char = NO_MATCHING_CHAR_CODE;
+        prev_quer_char = NO_MATCHING_CHAR_CODE;
+        for (;;) {
+            if (eff_quer_len == 0) {
+                return eff_trie_len;
+            }
+            if (eff_trie_len == 0) {
+                return eff_quer_len;
+            }
+            if (0 < _match_cost_no_transp(*quer_suff, *trie_suff)) {
+                break;
+            }
+            --eff_quer_len;
+            --eff_trie_len;
+            quer_suff++;
+            trie_suff++;
+        }
+    }
+    // trim off matches at the end...
+    while (0 == _match_cost_no_transp(quer_suff[eff_quer_len - 1], trie_suff[eff_trie_len - 1])) {
+        --eff_quer_len;
+        --eff_trie_len;
+        if (eff_quer_len == 0) {
+            return eff_trie_len;
+        }
+        if (eff_trie_len == 0) {
+            return eff_quer_len;
+        }
+    }
+    if (eff_quer_len == 1 || eff_trie_len == 1) {
+        const unsigned int ldc = (eff_quer_len > eff_trie_len ? eff_quer_len - eff_trie_len : eff_quer_len - eff_trie_len);
+        
+        if (0 == _match_cost(prev_quer_char, quer_suff[0], prev_trie_match_char, trie_suff[0])) {
+            return ldc;
+        }
+        if (eff_quer_len == 1) {
+            if (eff_trie_len == 1) {
+                return 1; // mismatch in only place to check...
+            }
+            for (auto tp = 1; tp < eff_trie_len; ++tp) {
+                if (0 == _match_cost_no_transp(quer_suff[0], trie_suff[tp])) {
+                    return ldc;
+                }
+            }
+        } else {
+            for (auto tp = 1; tp < eff_quer_len; ++tp) {
+                if (0 == _match_cost_no_transp(quer_suff[tp], trie_suff[0])) {
+                    return ldc;
+                }
+            }
+        }
+        return 1 + ldc;
+    }
+    return _dp_calc_dist_prim_impl(prev_quer_char, quer_suff, eff_quer_len, 
+                                                   trie_suff, eff_trie_len, dist_threshold, prev_trie_match_char);
+}
+
+// called after preprocessing by _calc_dist_prim_impl
+template<typename T>
+inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t prev_quer_char,
+                                                               const stored_index_t * quer_suff,
+                                                               const std::size_t quer_len,
+                                                               const stored_index_t * trie_suff,
+                                                               const std::size_t trie_len,
+                                                               const unsigned int dist_threshold,
+                                                               stored_index_t prev_trie_match_char) const {
     std::size_t prev_quer_ind = 0;
     std::size_t trie_ind = 0;
     std::vector<unsigned int> prev_row = _init_prev_row(dist_threshold);

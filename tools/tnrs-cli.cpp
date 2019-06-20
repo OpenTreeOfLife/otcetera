@@ -236,9 +236,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     std::ios::sync_with_stdio(false);
-    interactive_tests();
-    return 0;
-    
+    if (argc == 1) {
+        interactive_tests();
+        return 0;
+    }
     try {
         auto args = parse_cmd_line(argc, argv);
         auto taxonomy = load_rich_taxonomy(args);
