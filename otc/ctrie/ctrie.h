@@ -244,6 +244,57 @@ class CompressedTrie {
     CompressedTrie() {
     }
 
+    // test
+    CompressedTrie(const std::string &inp_letters) {
+        std::set<char> ils{std::begin(inp_letters), std::end(inp_letters)};
+        std::string uniq{std::begin(ils), std::end(ils)};
+        letters = to_u32string(uniq);
+        equivalent_letter.assign(letters.size(), NO_MATCHING_CHAR_CODE);
+        null_char_index = letters.size();
+    }
+
+    std::vector<stored_index_t> using_letter_order_to_encode(const stored_str_t & query_str,
+                                                  bool null_terminate=false) const {
+        std::vector<stored_index_t> ret;
+        ret.reserve(query_str.length() + (null_terminate ? 1 : 0));
+        for (auto c: query_str) {
+            auto li = letters.find(c);
+            if (li == std::string::npos) {
+                ret.push_back(NO_MATCHING_CHAR_CODE);
+            } else {
+                ret.push_back((stored_char_t) li);
+            }
+        }
+        if (null_terminate) {
+            ret.push_back(null_char_index);
+        }
+        return ret;
+    }
+    
+
+
+    std::vector<stored_index_t> encode_as_indices(const stored_str_t & query_str,
+                                                  bool null_terminate=false) const {
+        std::vector<stored_index_t> ret;
+        ret.reserve(query_str.length() + (null_terminate ? 1 : 0));
+        for (auto c: query_str) {
+            ret.push_back(ctrien_get_index_for_letter(c));
+        }
+        if (null_terminate) {
+            ret.push_back(null_char_index);
+        }
+        return ret;
+    }
+    
+
+    unsigned int _calc_dist_prim_impl(stored_char_t prev_query_c,
+                                      const stored_index_t *quer_suff,
+                                      const std::size_t quer_len,
+                                      const stored_index_t * trie_suff,
+                                      const std::size_t trie_len,
+                                      const unsigned int dist_threshold,
+                                      stored_index_t prev_trie_match_char) const;
+    
     std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str,
                                               unsigned int max_dist) const;
     
@@ -256,8 +307,19 @@ class CompressedTrie {
     std::string to_char_from_inds(const stored_index_t * p, std::size_t len) const {
         std::string ret;
         for (std::size_t i = 0; i < len; ++i) {
-            auto nl = letters[p[i]];
-            ret += to_char_str(nl);
+            auto let_ind = p[i];
+            if (let_ind == NO_MATCHING_CHAR_CODE) {
+                ret += "?";
+            } else if (let_ind == null_char_index) {
+            } else {
+                auto nl = letters[let_ind];
+                try {
+                    ret += to_char_str(nl);
+                } catch (...) {
+                    std::cerr << "error translating p[" << i << "] = "<< int(p[i]) << " where letters = \"" << to_char_str(letters) << "\"\n";
+                    throw;
+                }
+            }
         }
         return ret;
     }
@@ -318,7 +380,12 @@ class CompressedTrie {
         letter_to_ind.clear();
         equivalent_letter.clear();
     }
-
+    bool _are_equivalent(stored_char_t prev_q,
+                        const stored_index_t * quer_suff,
+                        const std::size_t quer_len,
+                        const stored_index_t * trie_suff,
+                        const std::size_t trie_len,
+                        stored_index_t prev_t) const;
     void extend_partial_match(const PartialMatch<T> &pm,
                               std::list<FuzzyQueryResult> & results,
                               std::list<PartialMatch<T> > & next_alive) const;
@@ -326,13 +393,6 @@ class CompressedTrie {
     unsigned int _calc_dist_impl(const PartialMatch<T> &pm,
                                  const stored_index_t * suffix,
                                  const std::size_t trie_len) const;
-    unsigned int _calc_dist_prim_impl(stored_char_t prev_query_c,
-                                      const stored_index_t *quer_suff,
-                                      const std::size_t quer_len,
-                                      const stored_index_t * trie_suff,
-                                      const std::size_t trie_len,
-                                      const unsigned int dist_threshold,
-                                      stored_index_t prev_trie_match_char) const;
     unsigned int _match_cost(stored_char_t prev_q_match_char,
                                                 stored_char_t q_match_char,
                                                 stored_char_t prev_trie_match_char,
@@ -349,18 +409,6 @@ class CompressedTrie {
         return ltiit->second;
     }
 
-    std::vector<stored_index_t> encode_as_indices(const stored_str_t & query_str,
-                                                  bool null_terminate=false) const {
-        std::vector<stored_index_t> ret;
-        ret.reserve(query_str.length() + (null_terminate ? 1 : 0));
-        for (auto c: query_str) {
-            ret.push_back(ctrien_get_index_for_letter(c));
-        }
-        if (null_terminate) {
-            ret.push_back(null_char_index);
-        }
-        return ret;
-    }
     std::unordered_map<stored_char_t, stored_index_t> letter_to_ind;
     std::vector<stored_index_t> equivalent_letter;
     stored_str_t letters;
@@ -448,20 +496,54 @@ inline unsigned int CompressedTrie<T>::_match_cost(stored_char_t prev_q_match_ch
     return 1;
 }
 
+
+
+template<typename T>
+inline bool CompressedTrie<T>::_are_equivalent(stored_char_t prev_q,
+                                               const stored_index_t * quer_suff,
+                                               const std::size_t quer_len,
+                                               const stored_index_t * trie_suff,
+                                               const std::size_t trie_len,
+                                               stored_index_t prev_t) const {
+    if (quer_len != trie_len) {
+        return false;
+    }
+    for (std::size_t i = 0; i < trie_len; ++i) {
+        if (_match_cost(prev_q, quer_suff[i], prev_t, trie_suff[i]) > 0) {
+            return false;
+        }
+        prev_t = prev_t= NO_MATCHING_CHAR_CODE;
+    }
+    return true;
+}
+
 template<typename T>
 inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_quer_char,
-                                                            const stored_index_t *quer_suff,
+                                                            const stored_index_t * quer_suff,
                                                             const std::size_t quer_len,
                                                             const stored_index_t * trie_suff,
                                                             const std::size_t trie_len,
                                                             const unsigned int dist_threshold,
                                                             stored_index_t prev_trie_match_char) const {
+    if (dist_threshold == 0) {
+        if (_are_equivalent(prev_quer_char, quer_suff, quer_len, trie_suff, trie_len, prev_trie_match_char)) {
+            return 0;
+        }
+        return 1;
+    }
+    if (trie_len == 0) {
+        return quer_len;
+    }
+    if (quer_len == 0) {
+        return trie_len;
+    }
     std::size_t prev_quer_ind = 0;
     std::size_t trie_ind = 0;
     std::vector<unsigned int> prev_row = _init_prev_row(dist_threshold);
     std::vector<unsigned int> next_row;
     next_row.reserve(prev_row.capacity());
 
+    if (DB_FUZZY_MATCH) {std::cerr << "    quer_len = " << quer_len << "\"\n";}
     if (DB_FUZZY_MATCH) {std::cerr << "    query suffix =\"" << to_char_from_inds(quer_suff, quer_len) << "\"\n";}
     
     unsigned int leftside_cost = 1;
@@ -519,7 +601,7 @@ inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_q
                 break;
             }
             match_prev_index++;
-            if (match_prev_index > prev_row.size()) {
+            if (match_prev_index >= prev_row.size()) {
                 break;
             }
             prev_q_match_char = q_match_char;
@@ -752,9 +834,9 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
 
 template <typename T>
 void CompressedTrie<T>::_store_suffix_node(T & curr_node,
-                        const stored_str_t & curr_str,
-                        const stored_str_t & handled,
-                        suff_map_t & suffix2index) {
+                                           const stored_str_t & curr_str,
+                                           const stored_str_t & handled,
+                                           suff_map_t & suffix2index) {
     const stored_str_t suffix = curr_str.substr(handled.length() + 1);
     auto suff_as_inds = encode_as_indices(suffix, true);
     //const std::string suff_as_char = to_char_str(suffix);
