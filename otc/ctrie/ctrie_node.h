@@ -134,7 +134,6 @@ class CTrie3Node {
         } else {
             assert(i < END_LETTER_INDEX);
             bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD -1 - i);
-            bit <<= NUM_INDEX_BITS; // now shift to avoid clashing with index
             bot |= bit;
         }
     }
@@ -182,7 +181,6 @@ class CTrie2Node {
         }  else {
             assert(i < END_LETTER_INDEX);
             bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-            bit <<= NUM_INDEX_BITS; // now shift to avoid clashing with index
             bot |= bit;
         }
     } 
@@ -227,7 +225,6 @@ class CTrie1Node {
         uint64_t bit = ONE_64;
         assert(i < END_LETTER_INDEX);
         bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-        bit <<= NUM_INDEX_BITS; // now shift to avoid clashing with index
         top |= bit;
     } 
 
