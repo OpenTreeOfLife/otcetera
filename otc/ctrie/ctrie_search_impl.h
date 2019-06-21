@@ -376,7 +376,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                                              std::list<PartialMatch<T> > & next_alive) const {
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
     const T * trienode = pm.get_next_node();
-    if (ctrien_is_terminal(*trienode)) {
+    if (trienode->is_terminal()) {
         auto suffix_index = trienode->get_index();
         _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
         return;
@@ -406,7 +406,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     if (cd + 1 <= max_dist && pm.can_downshift()) {
         next_alive.push_back(PartialMatch<T>{pm, cd + 1, trienode}); //downshift
     }
-    if (ctrien_is_key_terminating(*trienode)) {
+    if (trienode->is_key_terminating()) {
         auto d = pm.num_q_char_left() + pm.curr_distance();
         if (d <= max_dist) {
             pm.store_result(results, nullptr, 0, d);

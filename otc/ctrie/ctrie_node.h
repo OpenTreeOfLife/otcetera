@@ -12,7 +12,14 @@ namespace otc {
 
 using stored_index_t = unsigned char;
 
-
+// The CTrieXNode classes are the elements stored in a vector by the CTrie class.
+// To allow for random access into the vector, each node is the same size for 
+//  a type, despite the fact that there are 2 distinct types of nodes:
+//      1. Terminal nodes just hold an index to the suffix for the trie.
+//      2. Internal nodes hold flags for what letters are next in the trie and
+//           the index of the first daughter.
+// The first bit in the data field indicates whether or not the node is a terminal.
+//
 // highest bit: is terminal node
 //  If the top bit is is 0:
 //      second highest bit: has key that terminates with this node
@@ -39,18 +46,90 @@ constexpr stored_index_t NO_MATCHING_CHAR_CODE = 255;
 constexpr unsigned char top_first_byte = 0x03F; // 64 and 128 bit used for top 2 flags
 constexpr unsigned char FULL_BYTE = 0x0FF;
 constexpr unsigned char FIRST_BIT_OF_BYTE = 0x080;
+constexpr int LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD = -2; // 2 bits for flags
+constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD;
+constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD;
 
-template<typename T> void ctrien_set_first_child_index(T& node, std::size_t index);
-template<typename T> void ctrien_flag_as_key_terminating(T & node);
-template<typename T> void ctrien_flag_as_terminal(T & node);
-template<typename T> void ctrien_flag_as_suffix(T & node, std::size_t pos);
-template<typename T> void ctrien_set_index(T& node, std::size_t index);
-template<typename T> bool ctrien_is_key_terminating(const T & node);
-template<typename T> bool ctrien_is_terminal(const T & node);
+class CTrie3NodeData {
+    public:
+    uint64_t top, mid, bot;
+    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD + 64 - NUM_INDEX_BITS;
 
-class CTrie3Node;
-class CTrie2Node;
-class CTrie1Node;
+    CTrie3NodeData() :top{ZERO_64}, mid{ZERO_64}, bot{ZERO_64} {
+    }
+    uint64_t & get_flag_word() {
+        return top;
+    }
+    const uint64_t & get_flag_word_const() const {
+        return top;
+    }
+    uint64_t & get_middle_word() {
+        return mid;
+    }
+    const uint64_t & get_middle_word_const() const {
+        return mid;
+    }
+    uint64_t & get_index_word() {
+        return bot;
+    }
+    const uint64_t & get_index_word_const() const {
+        return bot;
+    }
+
+    void db_write_state(std::ostream &out) const {
+       out << "top=" << std::bitset<64>{top} << " mid=" << std::bitset<64>{mid}  << " bot=" << std::bitset<64>{bot} ;
+    }
+};
+
+class CTrie2NodeData {
+    public:
+    uint64_t top, bot;
+    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD - NUM_INDEX_BITS;
+    
+    CTrie2NodeData() :top{ZERO_64}, bot{ZERO_64} {
+    }
+    uint64_t & get_flag_word() {
+        return top;
+    }
+    const uint64_t & get_flag_word_const() const {
+        return top;
+    }
+    uint64_t & get_index_word() {
+        return bot;
+    }
+    const uint64_t & get_index_word_const() const {
+        return bot;
+    }
+
+    void db_write_state(std::ostream &out) const {
+       out << "top=" << std::bitset<64>{top} << " bot=" << std::bitset<64>{bot} ;
+    }
+};
+
+class CTrie1NodeData {
+    public:
+    uint64_t top;
+    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - NUM_INDEX_BITS;
+    
+    CTrie1NodeData() :top{ZERO_64} {
+    }
+    uint64_t & get_flag_word() {
+        return top;
+    }
+    const uint64_t & get_flag_word_const() const {
+        return top;
+    }
+    uint64_t & get_index_word() {
+        return top;
+    }
+    const uint64_t & get_index_word_const() const {
+        return top;
+    }
+
+    void db_write_state(std::ostream &out) const {
+       out << "top=" << std::bitset<64>{top}  ;
+    }
+};
 
 using ind_pair_t = std::pair<stored_index_t, uint64_t>;
 using vec_ind_pair_t = std::vector<ind_pair_t>;
@@ -96,205 +175,151 @@ inline void fill_letter_and_node_indices_64(uint64_t masked_workspace,
     }
 }
 
-constexpr int LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD = -2; // 2 bits for flags
-constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD;
-constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD;
-
-
-class CTrie3Node {
+template <typename T>
+class CTrieNode {
+    private:
+    T data;
     public:
-    uint64_t top, mid, bot;
-    CTrie3Node() :top{ZERO_64}, mid{ZERO_64}, bot{ZERO_64} {
-        //log_state();
+    using DATA_TYPE = T;
+    CTrieNode() {
     }
 
     uint64_t get_index() const {
-        return bot & INDEX_MASK;
+        return INDEX_MASK & data.get_index_word_const();
     }
     
     void log_state() const {
-       std::cerr << " CTrie3Node( "; db_write_state(std::cerr); std::cerr << ")\n";
+       std::cerr << " CTrieNode( "; data.db_write_state(std::cerr); std::cerr << ")\n";
     }
 
-    void db_write_state(std::ostream &out) const {
-       out << "top=" << std::bitset<64>{top} << " mid=" << std::bitset<64>{mid}  << " bot=" << std::bitset<64>{bot} ;
+    void flag_as_key_terminating() {
+        data.get_flag_word() |= SECOND_HIGHEST_BIT;
     }
 
-    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD + 64 - NUM_INDEX_BITS;
-        
-    void flag_letter(unsigned int i) {
-        uint64_t bit = ONE_64;
-        //log_state();
-        if (i < LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD) {
-            const uint64_t shifted = (bit << (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i));
-            top |= shifted;
-        } else if (i < LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD) {
-            bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-            mid |= bit;
-        } else {
-            assert(i < END_LETTER_INDEX);
-            bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD -1 - i);
-            bot |= bit;
+    bool is_key_terminating() const {
+        return data.get_flag_word_const() & SECOND_HIGHEST_BIT;
+    }
+
+    void flag_as_terminal() {
+        data.get_flag_word()  |= HIGHEST_BIT;
+    }
+
+    bool is_terminal() const {
+        return data.get_flag_word_const() & HIGHEST_BIT;
+    }
+    
+    void set_index(std::size_t index) {
+        uint64_t ind = index;
+        ind &= INDEX_MASK;
+        if (ind != (uint64_t)index) {
+            throw OTCError() << "not enough index field to hold pos = " << index;
         }
+        auto & word = data.get_index_word();
+        word &= COMP_INDEX_MASK; // sets to 0 any bits for the index
+        word |= ind;
     }
 
-    vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const {
-        assert(!ctrien_is_terminal(*this));
-        vec_ind_pair_t ret;
-        ret.reserve(END_LETTER_INDEX);
-        uint64_t node_index = get_index();
-        uint64_t masked = top & TOP_LETTER_MASK;
-        fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
-        masked = mid;
-        fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD, ret, node_index);
-        masked = bot & BOTTOM_LETTER_MASK;
-        fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD, ret, node_index);
-        return ret;
+    void flag_as_suffix(std::size_t pos) {
+        flag_as_terminal();
+        set_index(pos);
     }
 
+    void set_first_child_index(std::size_t index) {
+        assert(!is_terminal());
+        set_index(index);
+    }
+
+
+    void flag_letter(unsigned int i);
+    vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const;
 };
 
 
-class CTrie2Node {
-    public:
-    uint64_t top, bot;
-    CTrie2Node() :top(0),  bot(0) {
-    }
-    uint64_t get_index() const {
-        return bot & INDEX_MASK;
-    }
-
-    void log_state() const {
-       std::cerr << " " << this << " CTrie2Node( "; db_write_state(std::cerr); std::cerr << ")\n";
-    }
-    void db_write_state(std::ostream &out) const {
-        out << "top=" << std::bitset<64>{top} << " bot=" << std::bitset<64>{bot};
-    }
-
-    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD - NUM_INDEX_BITS;
-    
-    void flag_letter(unsigned int i) {
-        uint64_t bit = ONE_64;
-        if (i < LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD) {
-            bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-            top |= bit;
-        }  else {
-            assert(i < END_LETTER_INDEX);
-            bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-            bot |= bit;
-        }
-    } 
-
-    vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const {
-        //std::cerr << "get_letter_and_node_indices_for_on_bits top="
-        //          << std::hex << top << " bot=" << std::hex << bot << std::dec << '\n';
-        assert(!ctrien_is_terminal(*this));
-        vec_ind_pair_t ret;
-        ret.reserve(END_LETTER_INDEX);
-        u_int64_t node_index = get_index();
-        uint64_t masked = top & TOP_LETTER_MASK;
-        fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
-        masked = bot & BOTTOM_LETTER_MASK;
-        fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD, ret, node_index);
-        return ret;
-    }
-};
-
-
-class CTrie1Node {
-    public:
-    uint64_t top;
-    CTrie1Node() :top(0) {
-    }
-
-    uint64_t get_index() const {
-        return top & INDEX_MASK;
-    }
-
-
-    void log_state() const {
-       std::cerr << " " << this << " CTrie1Node( "; db_write_state(std::cerr); std::cerr << ")\n";
-    }
-    void db_write_state(std::ostream &out) const {
-        out << "top=" << std::bitset<64>{top};
-    }
-    
-    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - NUM_INDEX_BITS;
-    
-    void flag_letter(unsigned int i) {
-        uint64_t bit = ONE_64;
-        assert(i < END_LETTER_INDEX);
+template <>
+inline void CTrieNode<CTrie3NodeData>::flag_letter(unsigned int i) {
+    uint64_t bit = ONE_64;
+    //log_state();
+    if (i < LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD) {
+        const uint64_t shifted = (bit << (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i));
+        data.top |= shifted;
+    } else if (i < LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD) {
         bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-        top |= bit;
-    } 
-
-    vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const {
-        //std::cerr << "get_letter_and_node_indices_for_on_bits top="
-        //          << std::hex << top << " bot=" << std::hex << bot << std::dec << '\n';
-        assert(!ctrien_is_terminal(*this));
-        vec_ind_pair_t ret;
-        ret.reserve(END_LETTER_INDEX);
-        u_int64_t node_index = get_index();
-        uint64_t masked = top & TOP_LETTER_MASK;
-        fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
-        return ret;
+        data.mid |= bit;
+    } else {
+        assert(i < DATA_TYPE::END_LETTER_INDEX);
+        bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD -1 - i);
+        data.bot |= bit;
     }
-};
-
-
-template<typename T>
-inline void ctrien_flag_as_key_terminating(T & node) {
-    node.top |= SECOND_HIGHEST_BIT;
 }
 
-template<typename T>
-inline bool ctrien_is_key_terminating(const T & node) {
-    return node.top & SECOND_HIGHEST_BIT;
+template <>
+inline vec_ind_pair_t CTrieNode<CTrie3NodeData>::get_letter_and_node_indices_for_on_bits() const {
+    assert(!is_terminal());
+    vec_ind_pair_t ret;
+    ret.reserve(DATA_TYPE::END_LETTER_INDEX);
+    uint64_t node_index = get_index();
+    uint64_t masked = data.top & TOP_LETTER_MASK;
+    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
+    masked = data.mid;
+    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD, ret, node_index);
+    masked = data.bot & BOTTOM_LETTER_MASK;
+    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD, ret, node_index);
+    return ret;
 }
 
-template<typename T>
-inline void ctrien_flag_as_terminal(T & node) {
-    node.top |= HIGHEST_BIT;
-}
-
-template<typename T>
-inline bool ctrien_is_terminal(const T & node) {
-    return node.top & HIGHEST_BIT;
-}
-
-template<typename T>
-inline void ctrien_set_index(T& node, std::size_t index) {
-    uint64_t ind = index;
-    ind &= INDEX_MASK;
-    if (ind != (uint64_t)index) {
-        throw OTCError() << "not enough index field to hold pos = " << index;
+template <>
+inline void CTrieNode<CTrie2NodeData>::flag_letter(unsigned int i) {
+    uint64_t bit = ONE_64;
+    if (i < LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD) {
+        bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
+        data.top |= bit;
+    }  else {
+        assert(i < DATA_TYPE::END_LETTER_INDEX);
+        bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
+        data.bot |= bit;
     }
-    node.bot &= COMP_INDEX_MASK; // sets to 0 any bits for the index
-    node.bot |= ind;
 }
 
-template<>
-inline void ctrien_set_index<CTrie1Node>(CTrie1Node& node, std::size_t index) {
-    uint64_t ind = index;
-    ind &= INDEX_MASK;
-    if (ind != (uint64_t)index) {
-        throw OTCError() << "not enough index field to hold pos = " << index;
-    }
-    node.top &= COMP_INDEX_MASK; // sets to 0 any bits for the index
-    node.top |= ind;
+template <>
+inline vec_ind_pair_t CTrieNode<CTrie2NodeData>::get_letter_and_node_indices_for_on_bits() const {
+    //std::cerr << "get_letter_and_node_indices_for_on_bits top="
+    //          << std::hex << top << " bot=" << std::hex << bot << std::dec << '\n';
+    assert(!is_terminal());
+    vec_ind_pair_t ret;
+    ret.reserve(DATA_TYPE::END_LETTER_INDEX);
+    u_int64_t node_index = get_index();
+    uint64_t masked = data.top & TOP_LETTER_MASK;
+    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
+    masked = data.bot & BOTTOM_LETTER_MASK;
+    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD, ret, node_index);
+    return ret;
 }
 
-template<typename T>
-inline void ctrien_flag_as_suffix(T & node, std::size_t pos) {
-    ctrien_flag_as_terminal(node);
-    ctrien_set_index(node, pos);
+
+template <>
+inline void CTrieNode<CTrie1NodeData>::flag_letter(unsigned int i) {
+    uint64_t bit = ONE_64;
+    assert(i < DATA_TYPE::END_LETTER_INDEX);
+    bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
+    data.top |= bit;
+} 
+
+template <>
+inline vec_ind_pair_t CTrieNode<CTrie1NodeData>::get_letter_and_node_indices_for_on_bits() const {
+    //std::cerr << "get_letter_and_node_indices_for_on_bits top="
+    //          << std::hex << top << " bot=" << std::hex << bot << std::dec << '\n';
+    assert(!is_terminal());
+    vec_ind_pair_t ret;
+    ret.reserve(DATA_TYPE::END_LETTER_INDEX);
+    u_int64_t node_index = get_index();
+    uint64_t masked = data.top & TOP_LETTER_MASK;
+    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
+    return ret;
 }
 
-template<typename T>
-inline void ctrien_set_first_child_index(T& node, std::size_t index) {
-    assert(!ctrien_is_terminal(node));
-    ctrien_set_index(node, index);
-}
+using CTrie3Node = CTrieNode<CTrie3NodeData>;
+using CTrie2Node = CTrieNode<CTrie2NodeData>;
+using CTrie1Node = CTrieNode<CTrie1NodeData>;
 
 } // namespace otc
 #endif

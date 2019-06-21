@@ -69,7 +69,7 @@ class CompressedTrie {
         std::vector<stored_index_t> ret;
         ret.reserve(query_str.length() + (null_terminate ? 1 : 0));
         for (auto c: query_str) {
-            ret.push_back(ctrien_get_index_for_letter(c));
+            ret.push_back(ctrie_get_index_for_letter(c));
         }
         if (null_terminate) {
             ret.push_back(null_char_index);
@@ -201,7 +201,7 @@ class CompressedTrie {
                                  const stored_index_t * suffix,
                                  std::list<FuzzyQueryResult> & results) const;
 
-    stored_index_t ctrien_get_index_for_letter(const stored_char_t & c) const {
+    stored_index_t ctrie_get_index_for_letter(const stored_char_t & c) const {
         auto ltiit = letter_to_ind.find(c);
         if (ltiit == letter_to_ind.end()) {
             return NO_MATCHING_CHAR_CODE;
@@ -269,7 +269,7 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
                 }
                 par_node.flag_letter(curr_letter_index);
                 if (!has_indexed_par) {
-                    ctrien_set_first_child_index(par_node, node_list.size() - 1);
+                    par_node.set_first_child_index(node_list.size() - 1);
                     has_indexed_par = true;
                 }
             } else {
@@ -296,12 +296,12 @@ void CompressedTrie<T>::_store_suffix_node(T & curr_node,
     // std::cerr << " handled \"" << to_char_str(handled) << "\" suffix = \"" << suff_as_char << "\"\n";
     auto mit = suffix2index.find(suff_as_inds);
     if (mit != suffix2index.end()) {
-        ctrien_flag_as_suffix(curr_node, mit->second);
+        curr_node.flag_as_suffix(mit->second);
     } else {
         std::size_t pos = concat_suff.size();
         concat_suff.insert(std::end(concat_suff), std::begin(suff_as_inds), std::end(suff_as_inds));
         concat_suff.push_back(null_char_index);
-        ctrien_flag_as_suffix(curr_node, pos);
+        curr_node.flag_as_suffix(pos);
         suffix2index[suff_as_inds] = pos;
         std::size_t suff_pref = 1;
         auto sai_it = suff_as_inds.begin();
@@ -333,7 +333,7 @@ void CompressedTrie<T>::fill_equivalent_letter_array() {
             if (alt.length() != 1) {
                 throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << lccov << "\"\n";
             }
-            char_ind = ctrien_get_index_for_letter(alt[0]);
+            char_ind = ctrie_get_index_for_letter(alt[0]);
         } else {
             std::string uccov = upper_case_version(uncov);
             if (uccov != uncov) {
@@ -341,7 +341,7 @@ void CompressedTrie<T>::fill_equivalent_letter_array() {
                 if (alt.length() != 1) {
                     throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << uccov << "\"\n";
                 }
-                char_ind = ctrien_get_index_for_letter(alt[0]);
+                char_ind = ctrie_get_index_for_letter(alt[0]);
             }
         }
         equivalent_letter.push_back(char_ind);
@@ -359,7 +359,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     std::set<stored_char_t> let_set{letter_var.begin(), letter_var.end()};
     letters = stored_str_t{let_set.begin(), let_set.end()};
     stored_str_t rev_letters = stored_str_t{letters.rbegin(), letters.rend()};
-    if (letters.length() >= T::END_LETTER_INDEX) {
+    if (letters.length() >= T::DATA_TYPE::END_LETTER_INDEX) {
         throw OTCError() << "# of letters (" << letters.length() << ") exceeds size of CompressedTrie node type";
     }
     if (letters.length() > 253) {
@@ -397,10 +397,10 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         if (*curr_ctch.lower == curr_pref) {
             curr_ctch.lower++;
             if (curr_ctch.lower != keys.end() && starts_with(*curr_ctch.lower, curr_pref)) {
-                ctrien_flag_as_key_terminating(curr_node);
+                curr_node.flag_as_key_terminating();
             } else {
                 done_with_curr = true;
-                ctrien_flag_as_terminal(curr_node);
+                curr_node.flag_as_terminal();
             }
         }
         if (!done_with_curr) {
@@ -482,16 +482,16 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
 
 template <typename T>
 void CompressedTrie<T>::db_write_node(std::ostream & out, const T & nd) const {
-    if (ctrien_is_terminal(nd)) {
-        auto suff_index = ctrien_get_index(nd);
+    if (nd.is_terminal()) {
+        auto suff_index = nd.get_index();
         auto suff = get_suffix(suff_index);
         auto suff_str = to_char_str(suff);
         out << "TerminalNode suffix_ind=" << suff_index 
             << " suffix=" << suff 
             << " char_str=\"" << suff_str << "\"\n";
     } else {
-        out << "InternalNode" << (ctrien_is_key_terminating(nd) ? "* " : " ");
-        out << "  offset = " << ctrien_get_index(nd) << "\n";
+        out << "InternalNode" << (nd.is_key_terminating() ? "* " : " ");
+        out << "  offset = " << nd.get_index() << "\n";
         //out << "  letterbits = ";
         //nd.db_write_state(out);
         //out << "\n";
@@ -526,8 +526,8 @@ void CompressedTrie<T>::db_write_words(std::ostream & out) const {
         auto curr_nd_pref = todo.front();
         todo.pop_front();
         auto nd_ptr = curr_nd_pref.first;
-        if (ctrien_is_terminal(*nd_ptr)) {
-            auto suff_index = ctrien_get_index(*nd_ptr);
+        if (nd_ptr->is_terminal()) {
+            auto suff_index = nd_ptr->get_index();
             auto suff = get_suffix(suff_index);
             auto full = curr_nd_pref.second + suff;
             out << i++ << " = " << to_char_str(full) << '\n';
