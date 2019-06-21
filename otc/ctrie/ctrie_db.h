@@ -40,8 +40,9 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_
     auto from_thin = thin_trie.fuzzy_matches(conv_query, max_dist);
     sorted.insert(std::begin(from_thin), std::end(from_thin));
 
-    auto from_full = wide_trie.fuzzy_matches(conv_query, max_dist);
-    sorted.insert(std::begin(from_full), std::end(from_full));
+    std::cerr <<"TEMP skipping wide trie\n";
+    // auto from_full = wide_trie.fuzzy_matches(conv_query, max_dist);
+    // sorted.insert(std::begin(from_full), std::end(from_full));
     return sorted;
 }
 
@@ -89,20 +90,14 @@ CompressedTrieBasedDB::CompressedTrieBasedDB(const std::set<std::string_view> & 
         wide_letters.push_back(lcp.first);
         by_count[lcp.second].push_back(lcp.first);
     }
-    /* 
-    int i = 0;
-    for (auto bcit = by_count.rbegin(); bcit != by_count.rend(); ++bcit) {
-        for (auto curr_let : bcit->second) {
-            out << i++ << " \"" << to_char_str(curr_let) <<  "\" " << bcit->first << '\n';
-        }
-    }
-    */
     std::cerr << "set size = " << (sizeof(std::string *) + sizeof(char *) + 8)*keys.size() + mem_str << "bytes\n";
     wide_trie.init(for_wide, wide_letters);
     thin_trie.init(for_thin, thin_letters);
-    
+
+    /*
     wide_trie.db_write_words(std::cerr);
     thin_trie.db_write_words(std::cerr);
+    */
 }
 
 

@@ -24,7 +24,8 @@ constexpr uint64_t ZERO_64 = 0;
 constexpr uint64_t ONE_64 = 1;
 constexpr uint64_t HIGHEST_BIT = ONE_64 << 63;
 constexpr uint64_t SECOND_HIGHEST_BIT = ONE_64 << 62;
-constexpr uint64_t INDEX_MASK = (ONE_64 << num_index_bits) - 1;
+constexpr uint64_t INDEX_MASK = (ONE_64 << num_index_bits) - ONE_64;
+constexpr uint64_t COMP_INDEX_MASK = ~INDEX_MASK;
 constexpr stored_index_t NO_MATCHING_CHAR_CODE = 255;
 
 //std::size_t max_node_index = 0;
@@ -33,7 +34,7 @@ template<typename T> void ctrien_set_first_child_index(T& node, std::size_t inde
 template<typename T> void ctrien_flag_as_key_terminating(T & node);
 template<typename T> void ctrien_flag_as_terminal(T & node);
 template<typename T> void ctrien_flag_as_suffix(T & node, std::size_t pos);
-template<typename T> void ctrien_ctrien_set_index(T& node, std::size_t index);
+template<typename T> void ctrien_set_index(T& node, std::size_t index);
 template<typename T> bool ctrien_is_key_terminating(const T & node);
 template<typename T> bool ctrien_is_terminal(const T & node);
 template<typename T> uint64_t ctrien_get_index(const T & node);
@@ -72,10 +73,9 @@ inline void ctrien_set_index(T& node, std::size_t index) {
     if ((ind & INDEX_MASK) != ind) {
         throw OTCError() << "not enough index field to hold pos = " << index;
     }
-    // if (index > max_node_index) {
-    //     max_node_index = index;
-    // }
-    node.bot = ind;
+    ind &= INDEX_MASK;
+    node.bot &= COMP_INDEX_MASK;
+    node.bot |= ind;
 }
 
 template<typename T>
@@ -122,7 +122,7 @@ class CTrie3Node {
         //log_state();
     }
     void log_state() const {
-       std::cerr << " CTrie2Node( ";
+       std::cerr << " CTrie3Node( ";
        db_write_state(std::cerr);
        std::cerr << ")\n";
     }
@@ -144,6 +144,7 @@ class CTrie3Node {
         } else {
             assert(i < 140);
             bit <<= (139 - i);
+            bit <<= num_index_bits;
             bot |= bit;
         }
     }
@@ -163,7 +164,7 @@ class CTrie3Node {
             curr_byte = (top >> bitshift) & full_byte;
             fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
         }
-        // 1 and part of a byte in "bot"
+        // 1 and part of a byte in "mid"
         bitshift = 56;
         for (int i = 0; i < 8; ++i) {
             curr_byte = (mid >> bitshift) & full_byte;
@@ -173,11 +174,19 @@ class CTrie3Node {
         }
         // 1 and part of a byte in "bot"
         bitshift = 56;
-        curr_byte = (bot >> bitshift) & full_byte;
-        offset += 8;
-        fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
-        bitshift -= 8;
-        curr_byte = (bot >> bitshift) & bot_last_byte;
+        uint64_t bm = bot & COMP_INDEX_MASK;
+        uint64_t workingbot = bm >> bitshift;
+        this is wrong!
+        code here 
+        def wrong for 2trienode version
+        while (workingbot != 0) {
+            curr_byte = (workingbot) & full_byte;
+            offset += 8;
+            fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
+            bitshift -= 8;
+            workingbot = bm >> bitshift;
+        }
+        curr_byte = (bm >> bitshift) & full_byte;
         offset += 8;
         fill_letter_and_node_indices(curr_byte, offset, ret, node_index);
         return ret;
@@ -193,7 +202,7 @@ class CTrie2Node {
     CTrie2Node() :top(0),  bot(0) {
     }
     void log_state() const {
-       std::cerr << " CTrie2Node( ";
+       std::cerr << " " << this << " CTrie2Node( ";
        db_write_state(std::cerr);
        std::cerr << ")\n";
     }
@@ -210,6 +219,7 @@ class CTrie2Node {
         }  else {
             assert(i < 76);
             bit <<= (75 - i);
+            bit <<= num_index_bits;
             bot |= bit;
         }
     } 

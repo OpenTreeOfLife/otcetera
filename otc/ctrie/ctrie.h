@@ -234,6 +234,11 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
     std::list<CTrieCtorHelper> to_queue;
     ctrie_init_set_t::const_iterator lb;
     bool has_indexed_par = false;
+    static const std::string TARGET_THIN_STR{"A"};
+    static const stored_str_t TARGET_STR = to_u32string(TARGET_THIN_STR);
+    bool had_target_pref = false;
+    bool do_debug_out = (curr_pref == TARGET_STR);
+    std::size_t ini_node_list_size = node_list.size();
     for (auto letter : rev_letters) {
         if (letter == '\0') {
             assert(curr_letter_index == rev_letters.length() - 1);
@@ -241,34 +246,42 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
         }
         next_pref = curr_pref;
         next_pref.push_back(letter);
+        if (do_debug_out || had_target_pref) {std::cerr << "checking for...\"" << to_char_str(next_pref) <<  "\"";} 
         lb = keys.lower_bound(next_pref);
         if (lb == keys.end()) {
-            break;
+            if (do_debug_out || had_target_pref) {std::cerr << "lb was end.\n";} 
         }
-        if (starts_with(*lb, next_pref)) {
-            auto advit = lb;
-            T & next_node = append_node();
-            ctch.node_ptr = &next_node;
-            //std::cerr << "next_node: "; next_node.log_state();
-            advit++;
-            if (advit != keys.end() && starts_with(*advit, next_pref)) {
-                // std::cerr << " pref \"" << to_char_str(next_pref) 
-                //          << "\" found in key \"" << to_char_str(*lb) << "\"\n";
-                ctch.prefix = next_pref;
-                ctch.lower = lb;
-                todo_q.push(ctch);
+        else {
+            if (starts_with(*lb, next_pref)) {
+                auto advit = lb;
+                T & next_node = append_node();
+                ctch.node_ptr = &next_node;
+                if (do_debug_out || had_target_pref) {std::cerr << "TARGET pref \"" << to_char_str(next_pref) <<  "\" found in key \"" << to_char_str(*lb) << "\"\n";}
+                advit++;
+                if (advit != keys.end() && starts_with(*advit, next_pref)) {
+                    if (do_debug_out || had_target_pref) {std::cerr << "next key \"" << to_char_str(*advit) <<  "\"matches target, so trie node\n";} 
+                    ctch.prefix = next_pref;
+                    ctch.lower = lb;
+                    todo_q.push(ctch);
+                } else {
+                    if (do_debug_out || had_target_pref) {std::cerr << "next key \"" << to_char_str(*advit) <<  "\" does not matches target, so suffix node\n";} 
+                    _store_suffix_node(next_node, *lb, curr_pref, suffix2index);
+                }
+                par_node.flag_letter(curr_letter_index);
+                if (!has_indexed_par) {
+                    ctrien_set_first_child_index(par_node, node_list.size() - 1);
+                    has_indexed_par = true;
+                }
             } else {
-                _store_suffix_node(next_node, *lb, curr_pref, suffix2index);
-            }
-            par_node.flag_letter(curr_letter_index);
-            if (!has_indexed_par) {
-                ctrien_set_first_child_index(par_node, node_list.size() - 1);
-                has_indexed_par = true;
+                if (do_debug_out || had_target_pref) {std::cerr << "*lb was \"" << to_char_str(*lb) << "\" so no match for targee....\n";} 
             }
         }
         curr_letter_index++;
     }
     assert(has_indexed_par);
+    if (do_debug_out) {
+        std::cerr << "TARGET PARENT: " << &par_node << " "; par_node.log_state();
+    }
 }
 
 
@@ -357,13 +370,6 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         letter_to_ind[nl] = curr_ind++;
     }
     fill_equivalent_letter_array();
-    // for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
-    //     if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
-    //         std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
-    //     } else {
-    //         std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
-    //     }
-    // }
     null_char_index = letters.length();
     letters.append(1, '\0');
 
@@ -374,7 +380,13 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     std::vector<stored_index_t> mt{1, null_char_index};
     suffix2index[mt] = 0;
     T & root_node = append_node();
+    static const std::string TARGET_THIN_STR{"A"};
+    static const stored_str_t TARGET_STR = to_u32string(TARGET_THIN_STR);
+    unsigned int target_ind = UINT_MAX;
+    assert(node_list.size() == 1);
+    std::cerr << "ROOT before any children:"; root_node.log_state();
     _process_prefix(curr_pref, todo_q, letters, keys, root_node, suffix2index);
+    std::cerr << "ROOT after first _process_prefix:"; root_node.log_state();
     CTrieCtorHelper curr_ctch;
     while (!todo_q.empty()) {
         curr_ctch = todo_q.top();
@@ -394,17 +406,65 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         if (!done_with_curr) {
             _process_prefix(curr_pref, todo_q, letters, keys, curr_node, suffix2index);
         }
+        if (curr_pref == TARGET_STR) {
+            std::cerr << "MATCH TARGET: "; curr_node.log_state();
+            std::size_t i = 0;
+            for (const auto & nd : node_list) {
+                if (&(nd) == &curr_node) {
+                    target_ind = i;
+                    break;
+                }
+                i++;
+            }
+            std::cerr << "MATCH TARGET at node " << target_ind << "\n";
+        }
     }
+
+    if (target_ind != UINT_MAX) {
+        std::size_t i = 0;
+        for (const auto & nd : node_list) {
+            if (i++ == target_ind) {
+                std::cerr << "MATCH TARGET from node list spot " << target_ind << " = ";
+                nd.log_state();
+            }
+        }
+    }
+            
     // move to vector...
     node_vec.clear();
     node_vec.insert(node_vec.begin(), node_list.begin(), node_list.end());
     node_list.clear();
+
+    if (target_ind != UINT_MAX) {
+        std::cerr << "MATCH TARGET from node vector spot " << target_ind << " = ";
+        node_vec[target_ind].log_state();
+    }
+    
+    if (DB_FUZZY_MATCH) {node_vec[0].log_state();}
+    auto inds_on = node_vec[0].get_letter_and_node_indices_for_on_bits();
+    std::cerr << "ROOT:"; node_vec[0].log_state();
+    
+    for (auto & x : inds_on) {
+        auto trie_char = x.first;
+        auto next_ind = x.second;
+        const T * next_nd = &(node_vec[next_ind]);
+        std::cerr << "ROOT child for \"" << to_char_str(letters[trie_char]) <<  "\" "; next_nd->log_state();
+    }
+    
+    for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
+        if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
+            std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
+        } else {
+            std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
+        }
+    }
     auto nvs = sizeof(T)*node_vec.size();
     auto suffs = concat_suff.size();
-    // std::cerr << "vecsize = " << nvs << " bytes\n";
-    // std::cerr << "concat_suff length = " << suffs << " bytes\n";
-    // std::cerr << "compressed tree size = " << 4*letters.size() + nvs + suffs << " bytes\n";
-    // std::cerr << "max_node_index = " << max_node_index << "\n";
+    std::cerr << "vecsize = " << nvs << " bytes\n";
+    std::cerr << "concat_suff length = " << suffs << " bytes\n";
+    std::cerr << "compressed tree size = " << 4*letters.size() + nvs + suffs << " bytes\n";
+    std::cerr << "max_node_index = " << node_vec.size() << "\n";
+    
     /* 
     std::cerr << "concat_suff = \"";
     for (auto c : concat_suff) {

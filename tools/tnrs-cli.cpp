@@ -14,6 +14,7 @@
 #include <queue>
 #include <map>
 #include <stack>
+#include <chrono>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -212,12 +213,21 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
     
 
     CompressedTrieBasedDB ct{all_names};
+    using time_diff_t = std::chrono::duration<double, std::milli>;
+    time_diff_t total_time;
+    auto num_q = 0;
     
     std::cout << "Enter a query and hit return:\n";
     std::string query;
     while (std::getline(std::cin, query)) {
         std::cout << "query =\"" << query << "\"\n";
+        auto start_time = std::chrono::steady_clock::now();
         auto results = ct.fuzzy_query(query);
+        auto end_time = std::chrono::steady_clock::now();
+        num_q++;
+        time_diff_t time_diff = end_time - start_time;
+        std::cerr << "took: " << time_diff.count() << " milliseconds.\n";
+        total_time += time_diff;
         std::cout << results.size() << " matches:\n";
         for (auto res : results) {
             std::cout << "res.match = \"" << res.match()
@@ -227,6 +237,7 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
         std::cout << "Enter a query and hit return:\n";
     }
     std::cerr << "EOF\n";
+	std::cerr << num_q << " queries " << total_time.count() << " milliseconds\n";
 }
 
 

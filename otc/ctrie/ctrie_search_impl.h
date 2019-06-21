@@ -374,7 +374,7 @@ template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                                              std::list<FuzzyQueryResult> & results,
                                              std::list<PartialMatch<T> > & next_alive) const {
-    db_write_pm("extend", pm);
+    if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
     const T * trienode = pm.get_next_node();
     if (ctrien_is_terminal(*trienode)) {
         auto suffix_index = ctrien_get_index(*trienode);
@@ -385,17 +385,19 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     auto cd = pm.curr_distance();
     auto qc = pm.query_char();
     auto altqc = equivalent_letter[qc];
+    if (DB_FUZZY_MATCH) {trienode->log_state();}
     auto inds_on = trienode->get_letter_and_node_indices_for_on_bits();
     for (auto & x : inds_on) {
         auto trie_char = x.first;
         auto next_ind = x.second;
         const T * next_nd = &(node_vec[next_ind]);
         if (trie_char == qc || trie_char == altqc) {
-            if (DB_FUZZY_MATCH) {std::cerr << "matched in pre adding extended pm.\n";}
+            if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
             next_alive.push_back(PartialMatch<T>{pm, trie_char, cd, next_nd, false});
         } else if (cd + 1 <= max_dist) {
+            if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
             next_alive.push_back(PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
-            if (pm.can_downshift()) {
+            if (pm.can_rightshift()) {
                 next_alive.push_back(PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
             }
         }
