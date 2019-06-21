@@ -295,7 +295,7 @@ inline void ctrien_flag_as_suffix(T & node, std::size_t pos) {
 
 template<typename T>
 inline void ctrien_set_first_child_index(T& node, std::size_t index) {
-    assert(ctrien_is_terminal(node));
+    assert(!ctrien_is_terminal(node));
     ctrien_set_index(node, index);
 }
 
