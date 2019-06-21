@@ -377,7 +377,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
     const T * trienode = pm.get_next_node();
     if (ctrien_is_terminal(*trienode)) {
-        auto suffix_index = ctrien_get_index(*trienode);
+        auto suffix_index = trienode->get_index();
         _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
         return;
     }
