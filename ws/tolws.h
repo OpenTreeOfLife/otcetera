@@ -307,10 +307,6 @@ std::string taxon_info_ws_method(const RichTaxonomy & taxonomy,
 
 std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy);
 
-std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const std::string& query, bool include_suppressed);
-
-const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes);
-
 std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                     const OttIdSet & ott_id_set);
 

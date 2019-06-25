@@ -8,7 +8,7 @@
 #include "nexson/nexson.h"
 #include <optional>
 #include <string_view>
-#include "ws/tnrs/context.h"
+#include "otc/tnrs/context.h"
 INITIALIZE_EASYLOGGINGPP
 
 
@@ -355,20 +355,6 @@ void add_node_support_info(const TreesToServe & tts,
     }
 }
 
-template<typename N>
-N * find_mrca_via_traversal_indices(N *f, N *s) {
-    const auto * fdata = &(f->get_data());
-    const auto sec_ind = s->get_data().trav_enter;
-    while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
-        f = f->get_parent();
-        if (f == nullptr) {
-            assert(false); 
-            return nullptr;
-        }
-        fdata = &(f->get_data());
-    }
-    return f;
-}
 
 const std::regex ott_id_pattern("^ott(\\d+)$");
 
@@ -1107,21 +1093,6 @@ std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy)
     return flags.dump(1);
 }
 
-// BDR: factored this code out of taxonomy_mrca_ws_method below for use in tnrs
-const RTRichTaxNode* taxonomy_mrca(const vector<const RTRichTaxNode*>& nodes)
-{
-    if (nodes.empty()) {
-        return nullptr;
-    }
-    auto focal = nodes[0];
-    for(auto& node: nodes) {
-        focal = find_mrca_via_traversal_indices(focal, node);
-        if (not focal) {
-            throw OTCWebError(400, "MRCA of taxa was not found. Please report this bug!\n");
-        }
-    }
-    return focal;
-}
 
 string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                const OttIdSet & ott_id_set) {
@@ -1174,25 +1145,6 @@ string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
 // curl -X POST https://api.opentreeoflife.org/v2/tnrs/infer_context -H "content-type:application/json" -d  '{"names":["Bacteria","Firmiscala"]}'
 // 
 
-template <typename T>
-bool lcase_string_equals(const string_view& s1, const T& s2) {
-    if (s1.size() != s2.size()) {
-        return false;
-    }
-    for(auto i = 0U; i < s1.size(); i++) {
-        if (std::tolower(s1[i]) != std::tolower(s2[i])) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool lcase_match_prefix(const string_view& s, const string_view& prefix) {
-    if (prefix.size() < s.size()) {
-        return false;
-    }
-    return lcase_string_equals(s.substr(prefix.size()), prefix);
-}
 
 bool taxon_is_specific(const Taxon* taxon) {
     auto rank = taxon->get_data().rank;
@@ -1251,34 +1203,6 @@ vec_tax_str_pair_t exact_synonym_search_higher(const RichTaxonomy& taxonomy,
         return taxon_is_higher(taxon);
     };
     return exact_synonym_search(context_root, query, ok);
-}
-
-vector<const Taxon*> exact_name_search(const Taxon* context_root,
-                                       string query,
-                                       std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;}) {
-    for (auto& c: query) {
-        c = std::tolower(c);
-    }
-    vector<const Taxon*> hits;
-    for(auto taxon: iter_post_n_const(*context_root)) {
-        if (not ok(taxon)) {
-            continue;
-        }
-        if (lcase_string_equals(query, taxon->get_data().get_nonuniqname())) {
-            hits.push_back(taxon);
-        }
-    }
-    return hits;
-}
-
-vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy,
-                                       const Taxon* context_root,
-                                       string query,
-                                       bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
-        return not (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon));
-    };
-    return exact_name_search(context_root, query, ok);
 }
 
 vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
@@ -1387,12 +1311,6 @@ vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
     return prefix_synonym_search(context_root, query, ok);
 }
 
-vector<const Taxon*> exact_name_search(const RichTaxonomy& taxonomy,
-                                       const string& query,
-                                       bool include_suppressed) {
-    auto context_root = taxonomy.get_tax_tree().get_root();
-    return exact_name_search(taxonomy, context_root, query, include_suppressed);
-}
 
 enum match_status {unmatched=0,
                    ambiguous_match=1,

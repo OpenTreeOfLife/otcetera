@@ -8,6 +8,7 @@
 #include "otc/otc_base_includes.h"
 #include "otc/ctrie/str_utils.h"
 #include "otc/ctrie/ctrie_node.h"
+#include "otc/util.h"
 
 namespace otc {
 

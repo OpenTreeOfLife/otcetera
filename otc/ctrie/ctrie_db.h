@@ -12,7 +12,7 @@ using CTrie2_t = CompressedTrie<CTrie2Node>;
 class CompressedTrieBasedDB {
     public:
     CompressedTrieBasedDB(const std::set<std::string_view> & keys);
-    std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str);
+    std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     private:
     CTrie3_t wide_trie;
     CTrie2_t thin_trie;
@@ -20,7 +20,7 @@ class CompressedTrieBasedDB {
 
 
 
-std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) {
+std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
     auto conv_query = to_u32string(query_str);
     unsigned int max_dist;
     // defaults taken from taxomachine...
@@ -41,8 +41,8 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_
     sorted.insert(std::begin(from_thin), std::end(from_thin));
 
     std::cerr <<"TEMP skipping wide trie\n";
-    // auto from_full = wide_trie.fuzzy_matches(conv_query, max_dist);
-    // sorted.insert(std::begin(from_full), std::end(from_full));
+    auto from_full = wide_trie.fuzzy_matches(conv_query, max_dist);
+    sorted.insert(std::begin(from_full), std::end(from_full));
     return sorted;
 }
 

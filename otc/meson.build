@@ -14,7 +14,9 @@ libotcetera_sources = [
   'write_dot.cpp',
   'taxonomy/taxonomy.cpp',
   'taxonomy/flags.cpp',
-  'config_file.cpp']
+  'config_file.cpp',
+  'tnrs/nomenclature.cpp',
+  'tnrs/context.cpp']
 
 otc_inc = include_directories('..')
 otc_lib = shared_library('otcetera', libotcetera_sources, include_directories: otc_inc, dependencies: boost, install: true)

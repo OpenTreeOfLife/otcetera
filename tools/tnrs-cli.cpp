@@ -16,6 +16,10 @@
 #include <stack>
 #include <chrono>
 
+
+
+#include "otc/ctrie/context_ctrie_db.cpp"
+
 #include "otc/error.h"
 #include "otc/tree.h"
 #include "otc/otcli.h"
