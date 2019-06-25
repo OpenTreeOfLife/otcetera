@@ -20,7 +20,6 @@ inline unsigned CompressedTrie<T>::_calc_dist_impl(const PartialMatch<T> &pm,
                                                    const stored_index_t * trie_suff,
                                                    const std::size_t trie_len) const {
     const stored_index_t * quer_suff = pm.query_data();
-    auto q_size = pm.query_len();
     const unsigned int dist_threshold = pm.max_distance() - pm.curr_distance();
     stored_index_t prev_trie_match_char = pm.get_prev_mismatched_trie();
     stored_index_t prev_query_char = NO_MATCHING_CHAR_CODE;

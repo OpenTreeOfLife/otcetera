@@ -16,10 +16,6 @@
 #include <stack>
 #include <chrono>
 
-
-
-#include "otc/ctrie/context_ctrie_db.cpp"
-
 #include "otc/error.h"
 #include "otc/tree.h"
 #include "otc/otcli.h"
@@ -28,8 +24,9 @@
 #include "otc/taxonomy/flags.h"
 #include "otc/config_file.h"
 #include "otc/ctrie/str_utils.h"
-#include "otc/ctrie/str_utils.cpp"
 #include "otc/ctrie/ctrie_db.h"
+#include "otc/ctrie/context_ctrie_db.h"
+#include "otc/tnrs/context.h"
 
 
 INITIALIZE_EASYLOGGINGPP

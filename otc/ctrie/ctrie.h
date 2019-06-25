@@ -8,6 +8,7 @@
 #include <vector>
 #include <stack>
 #include <deque>
+#include <climits>
 #include "otc/otc_base_includes.h"
 #include "otc/ctrie/search_data_models.h"
 
@@ -238,7 +239,6 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
     static const stored_str_t TARGET_STR = to_u32string(TARGET_THIN_STR);
     bool had_target_pref = false;
     bool do_debug_out = (curr_pref == TARGET_STR);
-    std::size_t ini_node_list_size = node_list.size();
     for (auto letter : rev_letters) {
         if (letter == '\0') {
             assert(curr_letter_index == rev_letters.length() - 1);
