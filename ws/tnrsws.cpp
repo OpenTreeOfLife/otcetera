@@ -28,8 +28,8 @@ using otc::OttId;
 
 namespace otc {
 
+using tax_pred_t = std::function<bool(const Taxon*)>;
 json get_taxon_json(const RichTaxonomy& taxonomy, const Taxon& taxon);
-
 
 enum match_status {unmatched=0,
                    ambiguous_match=1,
@@ -76,7 +76,7 @@ bool taxon_is_higher(const Taxon* taxon) {
 using vec_tax_str_pair_t = vector<pair<const Taxon*, const string&> >;
 vec_tax_str_pair_t exact_synonym_search(const Taxon* context_root,
                                         string query, 
-                                        std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
+                                        tax_pred_t ok = [](const Taxon*){return true;})
 {
     vec_tax_str_pair_t hits;
     for(auto taxon: iter_post_n_const(*context_root)) {
@@ -96,7 +96,7 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
                                         const Taxon* context_root,
                                         string query,
                                         bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+    tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         } else {
@@ -110,7 +110,7 @@ vec_tax_str_pair_t exact_synonym_search_higher(const RichTaxonomy& taxonomy,
                                                const Taxon* context_root,
                                                string query,
                                                bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+    tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
@@ -123,7 +123,7 @@ vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
                                               const Taxon* context_root,
                                               string query,
                                               bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+    tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
@@ -137,7 +137,7 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
                                              const Taxon* context_root,
                                              string query,
                                              bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+    tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
@@ -150,7 +150,7 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
                                               const Taxon* context_root,
                                               string query,
                                               bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+    tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
@@ -161,7 +161,7 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
 
 vector<const Taxon*> prefix_name_search(const Taxon* context_root,
                                         const string& query,
-                                        std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;}) {
+                                        tax_pred_t ok = [](const Taxon*){return true;}) {
     vector<const Taxon*> hits;
     for(auto taxon: iter_post_n_const(*context_root)) {
         if (not ok(taxon)) {
@@ -178,7 +178,7 @@ vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy,
                                         const Taxon* context_root,
                                         const string& query,
                                         bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+    tax_pred_t ok = [&](const Taxon* taxon) {
         return include_suppressed or not taxonomy.node_is_suppressed_from_tnrs(taxon);
     };
     return prefix_name_search(context_root, query, ok);
@@ -188,7 +188,7 @@ vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy,
                                                const Taxon* context_root,
                                                const string& query,
                                                bool include_suppressed) {
-    std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
+    tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
@@ -199,7 +199,7 @@ vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy,
 
 vec_tax_str_pair_t prefix_synonym_search(const Taxon* context_root,
                                          string query,
-                                         std::function<bool(const Taxon*)> ok = [](const Taxon*){return true;})
+                                         tax_pred_t ok = [](const Taxon*){return true;})
 {
     vec_tax_str_pair_t hits;
     for(auto taxon: iter_post_n_const(*context_root)) {
