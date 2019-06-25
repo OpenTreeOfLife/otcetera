@@ -11,13 +11,12 @@ using CTrie2_t = CompressedTrie<CTrie2Node>;
 
 class CompressedTrieBasedDB {
     public:
-    CompressedTrieBasedDB(const std::set<std::string_view> & keys);
+    void initialize(const std::set<std::string_view> & keys);
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     private:
     CTrie3_t wide_trie;
     CTrie2_t thin_trie;
 };
-
 
 
 std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
@@ -47,9 +46,7 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_
 }
 
 
-
-
-CompressedTrieBasedDB::CompressedTrieBasedDB(const std::set<std::string_view> & keys) {
+void CompressedTrieBasedDB::initialize(const std::set<std::string_view> & keys) {
     ctrie_init_set_t for_wide;
     ctrie_init_set_t for_thin;
     // could fit a couple more non-funky, if we want <- 76, I think...

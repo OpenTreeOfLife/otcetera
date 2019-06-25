@@ -1402,12 +1402,7 @@ pair<json,match_status> ContextSearcher::match_name(string query,
     return {match_results, status};
 }
 
-inline const Context* get_context_by_name(const std::string & context_name) {
-    if (not name_to_context.count(context_name)) {
-        throw OTCError() << "The context '" << context_name << "' could not be found.";
-    }
-    return name_to_context.at( context_name);
-}
+
 const Context* determine_context_for_names(const vector<string>& names,
                                            const optional<string>& context_name,
                                            const RichTaxonomy& taxonomy) {
@@ -1417,12 +1412,6 @@ const Context* determine_context_for_names(const vector<string>& names,
     return get_context_by_name(*context_name);
 }
 
-const Context* determine_context(const optional<string>& context_name) {
-    if (not context_name) {
-        return name_to_context.at("All life");
-    }
-    return get_context_by_name(*context_name);
-}
 
 //FIXME: how is "suppressed_names" different from "deprecated_taxa"?
 

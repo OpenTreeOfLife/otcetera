@@ -191,32 +191,12 @@ void interactive_tests() {
 }
 
 void process_taxonomy(const RichTaxonomy & taxonomy) {
-    const auto & rich_tax_tree = taxonomy.get_tax_tree();
-    const auto & rt_data = rich_tax_tree.get_data();
-    std::set<std::string_view> all_names;
-    auto insert_hint = all_names.begin();
-    for (auto const & name2nd : rt_data.name_to_node) {
-        insert_hint = all_names.insert(insert_hint, name2nd.first);
+    const Context * c = determine_context({});
+    if (c == nullptr) {
+        throw OTCError() << "no context found for entire taxonomy";
     }
-    insert_hint = all_names.begin();
-    for (auto name2ndvec : rt_data.homonym_to_node) {
-        insert_hint = all_names.insert(insert_hint, name2ndvec.first);
-    }
-    // filtered
-    insert_hint = all_names.begin();
-    for (auto name2rec : rt_data.name_to_record) {
-        insert_hint = all_names.insert(insert_hint, name2rec.first);
-    }
-    insert_hint = all_names.begin();
-    for (auto name2recvec : rt_data.homonym_to_record) {
-        insert_hint = all_names.insert(insert_hint, name2recvec.first);
-    }
-    for (const auto & tjs : taxonomy.get_synonyms_list()) {
-        all_names.insert(std::string_view{tjs.name});
-    }
-    
+    ContextAwareCTrieBasedDB ct{*c, taxonomy};
 
-    CompressedTrieBasedDB ct{all_names};
     using time_diff_t = std::chrono::duration<double, std::milli>;
     time_diff_t total_time;
     auto num_q = 0;

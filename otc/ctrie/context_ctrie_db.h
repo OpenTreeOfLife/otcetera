@@ -18,6 +18,7 @@ class ContextAwareCTrieBasedDB {
     private:
     const Context & context;
     std::vector<const ContextAwareCTrieBasedDB *> children;
+    CompressedTrieBasedDB trie;
 };
 
 

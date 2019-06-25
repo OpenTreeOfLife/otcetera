@@ -3,6 +3,7 @@
 
 #include <string>
 #include <utility>
+#include <optional>
 #include <map>
 #include "otc/taxonomy/taxonomy.h"
 #include "nomenclature.h"
@@ -44,6 +45,23 @@ extern const std::vector<Context> all_contexts;
 extern std::map<OttId, const Context*> ottid_to_context;
 
 extern std::map<std::string, const Context*> name_to_context;
+
+const Context * determine_context(const std::optional<std::string> & context_name);
+const Context * get_context_by_name(const std::string & context_name);
+
+inline const Context* get_context_by_name(const std::string & context_name) {
+    if (not name_to_context.count(context_name)) {
+        throw OTCError() << "The context '" << context_name << "' could not be found.";
+    }
+    return name_to_context.at(context_name);
+}
+
+inline const Context* determine_context(const std::optional<std::string> & context_name) {
+    if (not context_name) {
+        return name_to_context.at("All life");
+    }
+    return get_context_by_name(*context_name);
+}
 
 std::pair<const Context*,std::vector<std::string>> infer_context_and_ambiguous_names(const RichTaxonomy& taxonomy, const std::vector<std::string>& names);
 
