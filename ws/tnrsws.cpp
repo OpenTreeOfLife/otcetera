@@ -96,12 +96,11 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
                                         const Taxon* context_root,
                                         string query,
                                         bool include_suppressed) {
+    if (include_suppressed) {
+        return exact_synonym_search(context_root, query);
+    }
     tax_pred_t ok = [&](const Taxon* taxon) {
-        if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
-            return false;
-        } else {
-            return true;
-        }
+        return not taxonomy.node_is_suppressed_from_tnrs(taxon);
     };
     return exact_synonym_search(context_root, query, ok);
 }
@@ -224,8 +223,6 @@ vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
     };
     return prefix_synonym_search(context_root, query, ok);
 }
-
-
 
 json exact_name_match_json(const string& query, const Taxon* taxon, const RichTaxonomy& taxonomy) {
     json result;
