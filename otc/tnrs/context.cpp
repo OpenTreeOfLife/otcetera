@@ -154,7 +154,7 @@ const Context* least_inclusive_context(const vector<const RTRichTaxNode*> & taxa
         }
         mrca = mrca->get_parent();
     }
-    throw OTCError()<<"Can't find least inclusive context for "<<taxa.size()<<" taxa!";
+    throw OTCError() << "Can't find least inclusive context for " << taxa.size() << " taxa!";
 }
 
 // FIXME - technically we could try and save the exact matches to avoid work.
@@ -174,5 +174,6 @@ pair<const Context*, vector<string>> infer_context_and_ambiguous_names(const Ric
     }
     return {least_inclusive_context(unique_taxa), ambiguous_names};
 }
+
 
 }

@@ -16,6 +16,7 @@
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
 #include "ws/parallelreadserialwrite.h"
+#include "ws/otc_web_error.h"
 #include "json.hpp"
 
 #define REPORT_MEMORY_USAGE 1
@@ -28,6 +29,8 @@ namespace otc {
 
 typedef std::pair<const std::string *, const std::string *> src_node_id;
 typedef std::vector<src_node_id> vec_src_node_id_mapper;
+
+typedef RTRichTaxNode Taxon;
 
 #define JOINT_MAPPING_VEC
 
@@ -44,50 +47,6 @@ typedef std::vector<src_node_id> vec_src_node_id_mapper;
 #else
     typedef std::vector<std::uint32_t> vec_src_node_ids;
 #endif
-
-class OTCWebError : public std::exception
-{
-protected:
-    int status_code_ = 500;
-    nlohmann::json data;
-public:
-    int status_code() const {return status_code_;}
-
-    const char * what() const noexcept {
-        return data["message"].get<std::string>().c_str();
-    }
-
-    template <typename T> OTCWebError& operator<<(const T&);
-
-    void prepend(const std::string& s);
-
-    void append(const std::string& s);
-
-    nlohmann::json& json() {return data;}
-
-    OTCWebError() noexcept;
-    OTCWebError(int c) noexcept;
-    OTCWebError(const std::string & msg) noexcept;
-    OTCWebError(int c, const std::string & msg) noexcept;
-};
-
-    template <typename T>
-    OTCWebError& OTCWebError::operator<<(const T& t)
-    {
-        std::ostringstream oss;
-        oss << t;
-        append(oss.str());
-        return *this;
-    }
-
-    template <>
-    OTCWebError& OTCWebError::operator<<(const nlohmann::json& j);
-
-    template <>
-    OTCWebError& OTCWebError::operator<<(const std::string& j);
-
-inline OTCWebError OTCBadRequest() {return OTCWebError(400);}
-inline OTCWebError OTCBadRequest(const std::string& m) {return OTCWebError(400,m);}
 
 class SumTreeNodeData {
     public:
@@ -228,6 +187,20 @@ struct SummaryTreeAnnotation {
         }
 };
 
+inline std::string ott_id_to_idstr(OttId ott_id) {
+    std::string ret;
+    ret.reserve(12);
+    ret = "ott";
+    ret += std::to_string(ott_id);
+    return ret;
+}
+
+enum NodeNameStyle {
+    NNS_NAME_ONLY = 0,
+    NNS_ID_ONLY = 1,
+    NNS_NAME_AND_ID = 2
+};
+
 template<typename T>
 void index_by_name_or_id(T & tree) {
     const std::string empty_string;
@@ -249,11 +222,7 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           bool & was_broken);
 class TreesToServe;
 
-enum NodeNameStyle {
-    NNS_NAME_ONLY = 0,
-    NNS_ID_ONLY = 1,
-    NNS_NAME_AND_ID = 2
-};
+
 
 std::string available_trees_ws_method(const TreesToServe &tts);
 
@@ -381,6 +350,24 @@ inline void from_json(const nlohmann::json &j, SourceTreeId & sti) {
     sti.git_sha = extract_string(j, "git_sha");
     sti.study_id = extract_string(j, "study_id");
     sti.tree_id = extract_string(j, "tree_id");
+}
+
+nlohmann::json tax_about_json(const RichTaxonomy & taxonomy);
+void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, nlohmann::json & taxonrepr);
+
+inline const std::string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
+    return nd_taxon.get_name();
+}
+
+inline void add_taxon_info(const RichTaxonomy & ,
+                           const RTRichTaxNode & nd_taxon,
+                           nlohmann::json & taxonrepr) {
+    const auto & taxon_data = nd_taxon.get_data();
+    taxonrepr["tax_sources"] = taxon_data.get_sources_json();
+    taxonrepr["name"] = taxon_data.get_nonuniqname();
+    taxonrepr["unique_name"] = get_taxon_unique_name(nd_taxon);
+    taxonrepr["rank"] = taxon_data.get_rank();
+    taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
 }
 
 
