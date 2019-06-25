@@ -48,11 +48,7 @@ void TreesToServe::set_taxonomy(RichTaxonomy &taxonomy) {
     taxonomy_ptr = &taxonomy;
     taxonomy_tree = &(taxonomy.get_tax_tree());
 }
-using ReadableTaxonomy = pair<const RichTaxonomy &,
-                              unique_ptr<ReadMutexWrapper> >;
 
-using WritableTaxonomy = pair<RichTaxonomy &,
-                              unique_ptr<WriteMutexWrapper> >;
 
 ReadableTaxonomy TreesToServe::get_readable_taxonomy() const {
     assert(taxonomy_ptr != nullptr);

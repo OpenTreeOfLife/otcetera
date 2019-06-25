@@ -2,13 +2,16 @@
 #define TREES_TO_SERVE_H
 
 #include <set>
-
+#include <thread>
 #include "tolws.h"
 namespace otc
 {
-
-class TreesToServe
-{
+using ReadableTaxonomy = std::pair<const RichTaxonomy &,
+                                   std::unique_ptr<ReadMutexWrapper> >;
+using WritableTaxonomy = std::pair<RichTaxonomy &,
+                                   std::unique_ptr<WriteMutexWrapper> >;
+                                   
+class TreesToServe {
     std::list< SummaryTreeAnnotation> annotation_list;
     std::list<std::unique_ptr<SummaryTree_t> > tree_list;
     std::map<std::string, const SummaryTree_t *> id_to_tree;
@@ -67,5 +70,7 @@ public:
     void final_tree_added();
 };
 
-}
+
+
+} // namespace otc
 #endif

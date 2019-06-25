@@ -13,7 +13,8 @@ restbed = declare_dependency(dependencies: restbed_deps)
 #  restbed = disabler()
 # endif
 
-otc_tol_ws_sources = ['taxonomyws.cpp',
+otc_tol_ws_sources = ['conflictws.cpp',
+					  'taxonomyws.cpp',
 	                  'tnrsws.cpp',
 					  'tolws.cpp',
 					  'tolwsadaptors.cpp',
