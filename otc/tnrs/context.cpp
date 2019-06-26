@@ -147,7 +147,7 @@ const Context* least_inclusive_context(const vector<const RTRichTaxNode*> & taxa
         return name_to_context.at("All life");
     }
     auto mrca = taxonomy_mrca(taxa);
-    while(true) {
+    while (mrca) {
         auto id = mrca->get_ott_id();
         if (ottid_to_context.count(id)) {
             return ottid_to_context.at(id);
