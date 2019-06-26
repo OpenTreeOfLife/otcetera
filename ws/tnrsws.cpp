@@ -398,20 +398,19 @@ json autocomplete_json(const RichTaxonomy& taxonomy, const Taxon* taxon) {
     return match;
 }    
 
-json autocomplete_json(const RichTaxonomy& taxonomy, const pair<const Taxon*,const string&>& p) {
-    auto [taxon,syonym] = p;
-    return autocomplete_json(taxonomy,taxon);
+inline json autocomplete_json(const RichTaxonomy& taxonomy, const pair<const Taxon*,const string&>& p) {
+    return autocomplete_json(taxonomy, p.first);
 }
 
-void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<const Taxon*> taxa) {
-    for(auto taxon:taxa) {
-        j.push_back(autocomplete_json(taxonomy,taxon));
+inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<const Taxon*> taxa) {
+    for(auto taxon: taxa) {
+        j.push_back(autocomplete_json(taxonomy, taxon));
     }
 }
     
-void add_hits(json& j, const RichTaxonomy& taxonomy, const vec_tax_str_pair_t taxa) {
-    for(auto [taxon,synonym]:taxa) {
-        j.push_back(autocomplete_json(taxonomy,taxon));
+inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vec_tax_str_pair_t taxa) {
+    for(auto [taxon, synonym]: taxa) {
+        j.push_back(autocomplete_json(taxonomy, taxon));
     }
 }
 
@@ -462,7 +461,7 @@ string tnrs_autocomplete_name_ws_method(const string& name,
         add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed));
         add_hits(response, taxonomy, exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
         if (response.size()) {
-            return response;
+            return response.dump(1);
         }
         // no exact hit against the species index
         auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
@@ -473,36 +472,36 @@ string tnrs_autocomplete_name_ws_method(const string& name,
             }
         }
         if (not response.empty()) {
-            return response;
+            return response.dump(1);
         }
         // no exact hit for first word against the genus index
         // Hit query string against the higher taxon index... not sure if this is useful, since it has a space
         add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
         if (not response.empty()) {
-            return response;
+            return response.dump(1);
         }
         // Prefix query against the synonyms and higher taxa
         add_hits(response, taxonomy, prefix_name_search(taxonomy, context_root, escaped_query, include_suppressed));
         add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
         if (not response.empty()) {
-            return response;
+            return response.dump(1);
         }
         // fuzzy search on names and synonyms
     } else { // does not contain a space at all
         add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
         add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
         if (not response.empty()) {
-            return response;
+            return response.dump(1);
         }
         // Do a prefix query against the higher taxon index
         add_hits(response, taxonomy, prefix_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
         if (not response.empty()) {
-            return response;
+            return response.dump(1);
         }
         // Do a prefix query against the all taxa synonym index
         add_hits(response, taxonomy, prefix_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
         if (not response.empty()) {
-            return response;
+            return response.dump(1);
         }
         // fuzzy search on higher names and synonyms
     }

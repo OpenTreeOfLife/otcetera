@@ -783,14 +783,6 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
-
-template<typename T>
-bool has_internal_node_names(const T& t) {
-    for(const auto nd: iter_post_const(t))
-        if (not nd->get_name().empty()) return false;
-    return true;
-}
-
 template <typename Tree>
 void delete_subtree_and_monotypic_ancestors(Tree& tree, typename Tree::node_type* node)
 {

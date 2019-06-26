@@ -125,24 +125,21 @@ void show_rec(const TaxonomyRecord& rec) {
     std::cout << rec.id << "   '" << rec.uniqname << "'   '" << rec.rank << "'   depth = " << rec.depth << "   out-degree = " << rec.out_degree << "    flags = " << flags_to_string(rec.flags) << "\n";
 }
 
-vector<OttId> get_ids_from_stream(std::istream& file)
-{
+vector<OttId> get_ids_from_stream(std::istream& file) {
     vector<OttId> ids;
     long i;
-    while (file >> i)
-	ids.push_back(check_ott_id_size(i));
+    while (file >> i) {
+        ids.push_back(check_ott_id_size(i));
+    }
     return ids;
 }
 
-vector<OttId> get_ids_from_file(const string& filename)
-{
-    if (filename == "-")
-	return get_ids_from_stream(std::cin);
-    else
-    {
-	std::ifstream file(filename);
-	return get_ids_from_stream(file);
+vector<OttId> get_ids_from_file(const string& filename) {
+    if (filename == "-") {
+        return get_ids_from_stream(std::cin);
     }
+    std::ifstream file(filename);
+    return get_ids_from_stream(file);
 }
 
 vector<OttId> get_ids_from_tree(const string& filename) {
@@ -245,7 +242,7 @@ int main(int argc, char* argv[]) {
             show_taxonomy_ids(taxonomy, format, ids, flags_match);
             return 0;
         } else if (args.count("id")) {
-	    OttId id = args["name"].as<OttId>();
+            OttId id = args["name"].as<OttId>();
             show_taxonomy_ids(taxonomy, format, {id}, flags_match);
             return 0;
         } else if (args.count("any-flags") or args.count("all-flags")) {
