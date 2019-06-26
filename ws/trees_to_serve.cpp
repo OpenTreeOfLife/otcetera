@@ -168,11 +168,12 @@ string TreesToServe::get_default_tree() const
 set<string> TreesToServe::get_available_trees() const
 {
     set<string> synth_ids;
-    for(auto& x: id_to_tree)
-	synth_ids.insert(x.first);
+    for(auto& x: id_to_tree) {
+        synth_ids.insert(x.first);
+    }
     return synth_ids;
 }
-	
+
 const SummaryTreeAnnotation * TreesToServe::get_annotations(string synth_id) const {
     const auto & key = synth_id.empty() ? default_synth_id : synth_id;
     auto mit = id_to_annotations.find(key);

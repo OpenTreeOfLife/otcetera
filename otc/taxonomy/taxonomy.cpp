@@ -731,18 +731,19 @@ void RichTaxonomy::read_synonyms() {
     }
 }
 
-void RichTaxonomy::_fill_ids_to_suppress_set()
-{
-    for (const auto nd : iter_node_const(*tree))
-	if (node_is_suppressed_from_tnrs(nd))
+void RichTaxonomy::_fill_ids_to_suppress_set() {
+    for (const auto nd : iter_node_const(*tree)) {
+        if (node_is_suppressed_from_tnrs(nd)) {
             ids_to_suppress_from_tnrs.insert(nd->get_ott_id());
+        }
+    }
 }
 
 string format_with_taxonomy(const string& orig, const string& format, const TaxonomyRecord& rec, const Taxonomy& taxonomy) {
     string result;
     int pos = 0;
     do {
-        auto loc = format.find('%',pos);
+        auto loc = format.find('%', pos);
         if (loc == string::npos) {
             result += format.substr(pos);
             break;

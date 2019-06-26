@@ -237,7 +237,7 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
         std::cout << "Enter a query and hit return:\n";
     }
     std::cerr << "EOF\n";
-	std::cerr << num_q << " queries " << total_time.count() << " milliseconds\n";
+    std::cerr << num_q << " queries " << total_time.count() << " milliseconds\n";
 }
 
 

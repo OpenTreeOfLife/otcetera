@@ -79,8 +79,9 @@ inline std::unique_ptr<T> tree_from_newick_string(const std::string& s, const Pa
     std::istringstream sfile(s);
     FilePosStruct pos;
     auto tree = read_next_newick<T>(sfile, pos, Rules);
-    if (not tree)
-	throw OTCParsingError("Newick string is empty (no tokens)");
+    if (not tree) {
+        throw OTCParsingError("Newick string is empty (no tokens)");
+    }
     return tree;
 }
 
@@ -96,7 +97,7 @@ inline std::unique_ptr<T> first_newick_tree_from_file(const std::string& filenam
 {
     std::ifstream inp;
     if (!open_utf8_file(filename, inp)) {
-	throw OTCError()<<"Could not open \""<<filename<<"\"";
+        throw OTCError()<<"Could not open \""<<filename<<"\"";
     }
     LOG(INFO) << "reading \"" << filename << "\"...";
     ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
