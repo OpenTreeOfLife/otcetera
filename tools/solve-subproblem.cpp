@@ -350,8 +350,7 @@ void register_ottid_equivalences(const Tree_t::node_type* canonical, const vecto
     std::cerr << "\n";
 }
 
-optional<OttId> find_ancestor_id(const Tree_t::node_type* nd)
-{
+optional<OttId> find_ancestor_id(const Tree_t::node_type* nd) {
     // Don't call this on the root node: it will abort.
     assert(nd->get_parent());
     while (auto p = nd->get_parent()) {
