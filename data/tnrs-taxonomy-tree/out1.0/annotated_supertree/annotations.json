@@ -1,5 +1,5 @@
 {
- "date_completed": "2019-06-27 15:40:20",
+ "date_completed": "2019-06-27 18:12:00",
  "filtered_flags": "major_rank_conflict,major_rank_conflict_inherited,environmental,viral,barren,not_otu,hidden,was_container,inconsistent,hybrid,merged",
  "generated_by": [
   {
@@ -274,12 +274,12 @@
  "root_taxon_name": "",
  "source_id_map": {
   "xx_1@1": {
-   "git_sha": 0,
+   "git_sha": "unknown",
    "study_id": "xx_1",
    "tree_id": "1"
   },
   "xx_2@1": {
-   "git_sha": 0,
+   "git_sha": "unknown",
    "study_id": "xx_2",
    "tree_id": "1"
   }
