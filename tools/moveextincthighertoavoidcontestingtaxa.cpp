@@ -199,8 +199,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
             }
         }
         if (extinctIDSet.empty()) {
-            LOG(ERROR) << "Expecting an object with an array of \"extinct\" OTT Ids as the JSON content.";
-            return false;
+            LOG(WARNING) << "Expecting an object with an array of \"extinct\" OTT Ids as the JSON content. No extinct IDs found.";
         }
         
         return true;
