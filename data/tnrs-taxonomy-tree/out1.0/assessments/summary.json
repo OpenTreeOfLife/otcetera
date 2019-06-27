@@ -1,0 +1,34 @@
+{
+  "lost_taxa": {
+    "data": [
+      0
+    ],
+    "description": "Check that otcetera's tc-taxonomy-parser and otc-unprune-solution-and-name-unnamed-nodes tools agree about the number of taxa that are not present in the solution",
+    "result": "OK"
+  },
+  "lost_taxa_included_in_tree": {
+    "data": [],
+    "description": "Check that none of the taxa listed as \"lost\" are in the annotations file",
+    "result": "OK"
+  },
+  "monophyly": {
+    "data": [
+      4,
+      18,
+      0,
+      []
+    ],
+    "description": "Check that the taxa from the monophyly tests listed in https://github.com/OpenTreeOfLife/germinator/blob/master/taxa/monophyly.csv are monophyletic in the tree.",
+    "result": "OK"
+  },
+  "num_tips": {
+    "data": 32,
+    "description": "Check that the cleaned version of the taxonomy and the supertree have the same number of leaves",
+    "result": "OK"
+  },
+  "unsupported_nodes": {
+    "data": {},
+    "description": "Check that none of the nodes listed in the annotations file are completely unsuported",
+    "result": "OK"
+  }
+}

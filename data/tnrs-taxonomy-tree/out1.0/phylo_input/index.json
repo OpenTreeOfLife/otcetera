@@ -1,0 +1,12 @@
+{
+  "phylo_input": {
+    "directory": "/home/mholder/opentree/cruft/fninp/out/phylo_input",
+    "study_id_tree_id_pairs": [
+      [
+        "xx_1",
+        "1"
+      ]
+    ],
+    "study_tree_pair_file": "/home/mholder/opentree/cruft/fninp/out/phylo_input/study_tree_pairs.txt"
+  }
+}

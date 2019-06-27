@@ -1,0 +1,56 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://opentreeoflife.github.io/css/main.css">
+<style>
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+</style>
+
+    <div></div>
+</head>
+<body>
+    <div>
+<p>Propinquity output documentation. The top-level docs are <a href="../index.html">here</a>.</p>
+<p>The <em>exemplified_phylo</em> directory holds the results of the last step
+of the input preprocessing for the supertree pipeline.
+All of the leaves in these trees are mapped to terminal taxa in the taxonomy.
+This is accomplished by taking the cleaned input trees (see
+<a href="../cleaned_phylo/index.html">../cleaned_phylo/index.html</a> and
+<a href="../cleaned_ott/index.html">../cleaned_ott/index.html</a>) and choosing
+exemplar taxa to represent at for each tip that is mapped to a non-terminal taxon.
+See <a href="https://github.com/OpenTreeOfLife/propinquity/blob/master/exemplified_phylo/README.md" target="_blank"> for details on the procedure</a>.
+</p>
+
+<strong>Next step: </strong>Decomposition of inputs into subproblems. See
+<a href="../subproblems/index.html">../subproblems/index.html</a> for details.
+
+<p><strong>Results: </strong>Below you will find tabular or itemized listings of:</p>
+<ul>
+    <li><a href="#exemptreefiles">Exemplified tree files</a>
+    <li><a href="#treetoidsreplaces">Map of tree to OTT IDs in that tree that were exemplified</a>
+    <li><a href="#ottidtoexemplified">Map of exemplified OTT ID to the IDs used to exemplify it</a>
+</ul>
+<a name="exemptreefiles"><p>Exemplified tree files:</p></a>
+<ul>
+    <li><a href="./taxonomy.tre">taxonomy.tre</a> -- the version of the taxonomy pruned down to
+    only contain the exemplar taxa. This taxonomy has 3 leaves.</li>
+    <li><a href="./xx_1@1.tre">xx_1@1.tre</a></li>
+</ul>
+
+<a name="treetoidsreplaces"><p>The following source input trees were affected by the exemplar step:</p></a>
+<table>
+    <tr><th>study_id + tree_id key</th><th>OTT IDs exemplified</th></tr>
+    
+</table>
+
+<a name="ottidtoexemplified"><p>The following table shows the exemplars for each of the 0 OTT Ids that were exemplified:</p></a>
+<table>
+    <tr><th>higher taxon OTT ID</th><th>exemplars used</th></tr>
+    
+</table>
+</div>
+</body>
+</html>
+

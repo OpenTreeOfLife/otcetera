@@ -1,0 +1,210 @@
+{
+  "nodes": {
+    "ott1007062": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott1007992": {
+      "partial_path_of": {
+        "xx_1@1": "node18"
+      }
+    },
+    "ott10210": {
+      "partial_path_of": {
+        "xx_1@1": "node18"
+      }
+    },
+    "ott10218": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott1058517": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott117569": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott166292": {
+      "terminal": {
+        "xx_1@1": "node19"
+      }
+    },
+    "ott189832": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott200683": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott212701": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott258473": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott267867": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott302925": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott332573": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott361838": {
+      "partial_path_of": {
+        "xx_1@1": "node18"
+      }
+    },
+    "ott4671782": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott4671788": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott5092163": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott5246131": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott5268475": {
+      "partial_path_of": {
+        "xx_1@1": "node18"
+      },
+      "was_constrained": true,
+      "was_uncontested": true
+    },
+    "ott5298374": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott5308424": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott557124": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott56610": {
+      "partial_path_of": {
+        "xx_1@1": "node18"
+      }
+    },
+    "ott5764812": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott611099": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott632176": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott632179": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott641038": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott655592": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    },
+    "ott691846": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott737016": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott737019": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott805080": {
+      "was_constrained": true,
+      "was_uncontested": true
+    },
+    "ott816442": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott916750": {
+      "partial_path_of": {
+        "xx_1@1": "node18"
+      }
+    },
+    "ott941215": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott985906": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott985907": {
+      "terminal": {
+        "xx_1@1": "node47"
+      }
+    },
+    "ott99252": {
+      "terminal": {
+        "xx_1@1": "node21"
+      }
+    }
+  },
+  "num_tips": 32,
+  "root_ott_id": 93302,
+  "sources": [
+    "xx_1@1"
+  ]
+}
