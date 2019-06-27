@@ -75,12 +75,12 @@ uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|
 244265	|	229560	|	Mammalia	|	class	|	ncbi:40674,worms:1837,gbif:359,irmng:1310	|		|		|	
 639642	|	229560	|	Sauropsida	|	no rank	|	ncbi:8457	|		|		|	
 329823	|	639642	|	Sauria	|	order	|	ncbi:32561,worms:342632	|	Sauria (order in Opisthokonta)	|	sibling_higher	|	
-90223	|	90215	|	Saurischia	|	order	|	ncbi:436489,irmng:10565	|		|		|	
 4947372	|	329823	|	Archelosauria	|	no rank	|	ncbi:1329799	|		|		|	
 335588	|	4947372	|	Archosauria	|	no rank	|	ncbi:8492	|		|		|	
 90215	|	335588	|	Dinosauria	|	no rank	|	ncbi:436486	|		|		|	
+90223	|	90215	|	Saurischia	|	order	|	ncbi:436489,irmng:10565	|		|		|	
 664350	|	90223	|	Theropoda	|	no rank	|	ncbi:436491	|		|		|	
-64351	|	664350	|	Coelurosauria	|	no rank	|	ncbi:436492	|		|		|	
+664351	|	664350	|	Coelurosauria	|	no rank	|	ncbi:436492	|		|		|	
 81461	|	664351	|	Aves	|	class	|	ncbi:8782,worms:1836,gbif:212,irmng:1142	|		|		|	
 189832	|	117569	|	Protostomia	|	no rank	|	ncbi:33317	|		|		|	
 611099	|	189832	|	Ecdysozoa	|	no rank	|	ncbi:1206794	|		|		|	
@@ -112,9 +112,11 @@ uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|
 302925	|	941215	|	Lysianassoidea	|	superfamily	|	worms:176788,ncbi:44330	|		|		|	
 5092163	|	302925	|	Amaryllididae	|	family	|	worms:236743,gbif:3254520,irmng:107356	|		|		|	
 5764812	|	5092163	|	Amaryllidinae	|	subfamily	|	worms:244453	|		|		|	
+4671782	|	5764812	|	Amaryllis	|	genus	|	worms:101588,gbif:2218379,irmng:1299907	|	Amaryllis (genus in Opisthokonta)	|		|	
 4671788	|	4671782	|	Amaryllis carrascoi	|	species	|	worms:244458,gbif:5717265,irmng:10523254	|		|		|	
 5308424	|	1058517	|	Petrosaviidae	|	no rank	|	ncbi:1437197	|		|		|	
 557124	|	5308424	|	Asparagales	|	order	|	ncbi:73496,worms:414699,gbif:1169,irmng:10928	|		|	sibling_higher	|	
 258473	|	557124	|	Amaryllidaceae	|	family	|	ncbi:4668,worms:414755,gbif:7682,irmng:119252	|		|		|	
 267867	|	258473	|	Amaryllidoideae	|	subfamily	|	ncbi:703251	|		|		|	
+655592	|	267867	|	Amaryllis	|	genus	|	ncbi:51431,gbif:2741678,irmng:1299908	|	Amaryllis (genus in kingdom Archaeplastida)	|		|	
 200683	|	655592	|	Amaryllis paradisicola	|	species	|	ncbi:180130,gbif:5326211	|		|		|	
