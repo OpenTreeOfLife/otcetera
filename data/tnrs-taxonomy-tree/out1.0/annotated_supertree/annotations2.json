@@ -1,9 +1,9 @@
 {
- "date_completed": "2019-06-27 15:02:07",
+ "date_completed": "2019-06-27 15:40:20",
  "filtered_flags": "major_rank_conflict,major_rank_conflict_inherited,environmental,viral,barren,not_otu,hidden,was_container,inconsistent,hybrid,merged",
  "generated_by": [
   {
-   "git_sha": "5c44ee138918a911932364c7c51db21162fae2f9",
+   "git_sha": "56259e16abe7deffb10da3df4f4715b81bc3c91d",
    "invocation": "cmd",
    "name": "propinquity",
    "url": "https://github.com/OpenTreeOfLife/propinquity",
@@ -25,13 +25,18 @@
   }
  ],
  "num_leaves_in_exemplified_taxonomy": 3,
- "num_source_studies": 1,
- "num_source_trees": 1,
+ "num_source_studies": 2,
+ "num_source_trees": 2,
  "root_taxon_name": "",
  "source_id_map": {
   "xx_1@1": {
    "git_sha": 0,
    "study_id": "xx_1",
+   "tree_id": "1"
+  },
+  "xx_2@1": {
+   "git_sha": 0,
+   "study_id": "xx_2",
    "tree_id": "1"
   }
  },

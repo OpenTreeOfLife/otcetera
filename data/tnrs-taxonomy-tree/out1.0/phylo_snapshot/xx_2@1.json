@@ -113,7 +113,7 @@
 "^ot:ottId": 641033,
 "^ot:ottTaxonName": "Cnidaria ott641033"
 },
-"otu38": {
+"otu37": {
 "^ot:originalLabel": "Amphibia ott544595",
 "^ot:ottId": 544595,
 "^ot:ottTaxonName": "Amphibia ott544595"
@@ -158,17 +158,17 @@
 "^ot:ottId": 941620,
 "^ot:ottTaxonName": "Annelida ott941620"
 },
-"otu52": {
+"otu53": {
 "^ot:originalLabel": "Platyhelminthes ott555379",
 "^ot:ottId": 555379,
 "^ot:ottTaxonName": "Platyhelminthes ott555379"
 },
-"otu54": {
+"otu55": {
 "^ot:originalLabel": "Mollusca ott6802117",
 "^ot:ottId": 6802117,
 "^ot:ottTaxonName": "Mollusca ott6802117"
 },
-"otu55": {
+"otu56": {
 "^ot:originalLabel": "Camerella volborthi ott6329558",
 "^ot:ottId": 6329558,
 "^ot:ottTaxonName": "Camerella volborthi ott6329558"
@@ -328,19 +328,19 @@
 "@source": "node36",
 "@target": "node37"
 },
-"edge40": {
+"edge38": {
 "@source": "node36",
-"@target": "node40"
+"@target": "node38"
 }
 },
-"node37": {
-"edge38": {
-"@source": "node37",
-"@target": "node38"
-},
+"node38": {
 "edge39": {
-"@source": "node37",
+"@source": "node38",
 "@target": "node39"
+},
+"edge40": {
+"@source": "node38",
+"@target": "node40"
 }
 },
 "node4": {
@@ -421,10 +421,6 @@
 "edge50": {
 "@source": "node49",
 "@target": "node50"
-},
-"edge53": {
-"@source": "node49",
-"@target": "node53"
 }
 },
 "node50": {
@@ -437,14 +433,24 @@
 "@target": "node52"
 }
 },
-"node53": {
-"edge54": {
-"@source": "node53",
-"@target": "node54"
+"node52": {
+"edge53": {
+"@source": "node52",
+"@target": "node53"
 },
+"edge54": {
+"@source": "node52",
+"@target": "node54"
+}
+},
+"node54": {
 "edge55": {
-"@source": "node53",
+"@source": "node54",
 "@target": "node55"
+},
+"edge56": {
+"@source": "node54",
+"@target": "node56"
 }
 },
 "node8": {
@@ -531,10 +537,10 @@
 },
 "node35": {},
 "node36": {},
-"node37": {},
-"node38": {
-"@otu": "otu38"
+"node37": {
+"@otu": "otu37"
 },
+"node38": {},
 "node39": {
 "@otu": "otu39"
 },
@@ -566,15 +572,16 @@
 "node51": {
 "@otu": "otu51"
 },
-"node52": {
-"@otu": "otu52"
+"node52": {},
+"node53": {
+"@otu": "otu53"
 },
-"node53": {},
-"node54": {
-"@otu": "otu54"
-},
+"node54": {},
 "node55": {
 "@otu": "otu55"
+},
+"node56": {
+"@otu": "otu56"
 },
 "node6": {
 "@otu": "otu6"
