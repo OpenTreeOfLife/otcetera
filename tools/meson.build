@@ -50,7 +50,8 @@ programs = [
   ['relabel-tree',  'relabel-tree'],
   ['tree-tool',  'tree-tool'],
   ['broken-taxa',  'broken-taxa'],
-  ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes']
+  ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],
+  ['tnrs-cli', 'tnrs-cli']
   ]
 
 foreach program : programs

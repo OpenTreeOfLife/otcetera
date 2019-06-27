@@ -7,9 +7,9 @@ namespace Nomenclature
 {
     struct Code
     {
-	std::string name;
-	std::string description;
-	Code(const std::string&, const std::string&);
+        std::string name;
+        std::string description;
+        Code(const std::string&, const std::string&);
     };
     
     extern Code ICN;

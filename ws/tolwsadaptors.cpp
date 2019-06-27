@@ -142,13 +142,13 @@ optional<T> extract_argument(const json & j, const std::string& opt_name, bool r
     auto opt = j.find(opt_name);
     if (opt == j.end()) {
         if (required) {
-            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called \"" << opt_name << "\"\n";
+            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called '" << opt_name << "'\n";
         }
         return {};
     }
     auto arg = convert_to<T>(*opt);
     if (not arg) {
-        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found \"" << *opt << "\"\n";
+        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found '" << opt->dump() << "'\n";
     }
     return arg;
 }
@@ -307,6 +307,8 @@ string node_info_method_handler( const json& parsed_args) {
     string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
     auto node_id = extract_argument<string>(parsed_args,"node_id");
     auto source_id = extract_argument<string>(parsed_args,"source_id");
+    auto node_ids = extract_argument<vector<string>>(parsed_args,"node_ids");
+
 
     if (node_id and source_id){
         throw OTCBadRequest("'node_id' and 'source_id' arguments cannot both be supplied.");
@@ -315,6 +317,13 @@ string node_info_method_handler( const json& parsed_args) {
     }
 
     if (source_id) {
+        int count =0;
+        count += bool(node_id) ? 1: 0;
+        count += bool(node_ids) ? 1: 0;
+        count += bool(source_id) ? 1: 0;
+        if (count != 1) {
+            throw OTCBadRequest("Must supply exactly one of 'node_id', 'node_ids', or 'source_id'.");
+        }
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
         auto tax_node = taxon_from_source_id(*source_id, taxonomy);
@@ -325,7 +334,11 @@ string node_info_method_handler( const json& parsed_args) {
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
 
-    return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
+    if (node_id) {
+        return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
+    } else {
+        return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
+    }
 }
 
 string mrca_method_handler( const json& parsedargs) {
@@ -342,9 +355,7 @@ std::string process_subtree(const json& parsedargs) {
     //        argument.  Unless this is explicitly set to true, we are supposed to not write node labels
     //        for non-ottids.  At least in Newick.
 
-    string synth_id;
-    string node_id;
-    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+    auto [synth_id, node_id] = get_synth_and_node_id(parsedargs);
     auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
     if (format != "newick" && format != "arguson") {
         throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");

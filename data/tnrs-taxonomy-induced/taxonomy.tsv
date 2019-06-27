@@ -1,0 +1,120 @@
+uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|	
+805080	|		|	life	|	no rank	|	silva:0,ncbi:1,worms:1,gbif:0,irmng:0	|		|		|	
+93302	|	805080	|	cellular organisms	|	no rank	|	ncbi:131567	|		|		|	
+844192	|	93302	|	Bacteria	|	domain	|	silva:A16379/#1,ncbi:2,worms:6,gbif:3,irmng:13	|		|		|	
+996421	|	93302	|	Archaea	|	domain	|	silva:D37982/#1,ncbi:2157,worms:8,gbif:2,irmng:12	|	Archaea (domain silva:D37982/#1)	|		|	
+304358	|	93302	|	Eukaryota	|	domain	|	silva:D11377/#1,ncbi:2759	|		|		|	
+1064655	|	304358	|	Amoebozoa	|	phylum	|	silva:D28490/#2,ncbi:554915,worms:391848,gbif:7509337,irmng:125	|		|	sibling_higher	|	
+151014	|	304358	|	Haptophyta	|	phylum	|	silva:L34669/#2,ncbi:2830,worms:369190,gbif:70,irmng:243	|		|	sibling_higher	|	
+2927065	|	304358	|	Excavata	|	infrakingdom	|	silva:L35076/#2,worms:536210	|		|	sibling_higher	|	
+5246039	|	304358	|	SAR	|	subkingdom	|	silva:E17133/#2,worms:582419	|		|	sibling_higher	|	
+266745	|	5246039	|	Stramenopiles	|	infrakingdom	|	silva:E17133/#3,ncbi:33634,worms:368898,irmng:118	|		|		|	
+5342311	|	266745	|	Bacillariophyta	|	phylum	|	silva:M87325/#4,ncbi:2836,gbif:7947184	|		|		|	
+266751	|	5246039	|	Alveolata	|	infrakingdom	|	silva:L02366/#3,ncbi:33630,worms:536209	|		|		|	
+302424	|	266751	|	Ciliophora	|	phylum	|	silva:L26446/#4,ncbi:5878,worms:11,gbif:7765738,irmng:239	|	Ciliophora (phylum in subkingdom SAR)	|		|	
+6929	|	5246039	|	Rhizaria	|	infrakingdom	|	silva:U03275/#3,ncbi:543769,worms:582420	|		|		|	
+4972641	|	6929	|	Retaria	|	no rank	|	silva:X86094/#4	|		|		|	
+936399	|	4972641	|	Foraminifera	|	phylum	|	silva:X86094/#5,ncbi:29178,worms:1410,gbif:8376456,irmng:257	|		|		|	
+671092	|	304358	|	Apusozoa	|	phylum	|	ncbi:554296,worms:582162,irmng:129	|		|	sibling_higher,inconsistent,barren	|	
+755852	|	304358	|	Centrohelida	|	order	|	silva:AB505554/#2,ncbi:193537,worms:341275,gbif:929,irmng:11213	|		|	sibling_higher	|	
+5268475	|	304358	|	Archaeplastida	|	kingdom	|	silva:D13324/#2,worms:3,gbif:6,irmng:15	|		|		|	
+361838	|	5268475	|	Chloroplastida	|	kingdom	|	silva:D13324/#3,study713:361838,ncbi:33090	|		|		|	
+916750	|	361838	|	Streptophyta	|	phylum	|	ncbi:35493	|		|		|	
+56610	|	916750	|	Embryophyta	|	no rank	|	ncbi:3193	|		|		|	
+56601	|	56610	|	Marchantiophyta	|	phylum	|	ncbi:3195,worms:742162,gbif:9,irmng:1179	|		|		|	
+738980	|	56610	|	Anthocerotophyta	|	phylum	|	ncbi:13809,gbif:13	|		|		|	
+246594	|	56610	|	Bryophyta	|	phylum	|	ncbi:3208,worms:147480,gbif:35,irmng:139	|		|		|	
+10210	|	56610	|	Tracheophyta	|	phylum	|	ncbi:58023,worms:596326,gbif:7707728,irmng:227	|		|		|	
+1007992	|	10210	|	Euphyllophyta	|	no rank	|	ncbi:78536	|		|		|	
+166292	|	1007992	|	Moniliformopses	|	no rank	|	ncbi:241806	|		|		|	
+10218	|	1007992	|	Spermatophyta	|	no rank	|	ncbi:58024	|		|		|	
+99252	|	10218	|	Magnoliophyta	|	phylum	|	ncbi:3398,irmng:221	|		|		|	
+5298374	|	99252	|	Mesangiospermae	|	no rank	|	ncbi:1437183	|		|		|	
+1058517	|	5298374	|	Liliopsida	|	class	|	ncbi:4447,gbif:196,irmng:1487	|		|		|	
+431495	|	5298374	|	eudicotyledons	|	no rank	|	ncbi:71240	|		|		|	
+853757	|	431495	|	Gunneridae	|	no rank	|	ncbi:91827	|		|		|	
+5316182	|	853757	|	Pentapetalae	|	no rank	|	ncbi:1437201	|		|		|	
+1008294	|	5316182	|	asterids	|	subclass	|	ncbi:71274	|		|		|	
+596121	|	1008294	|	campanulids	|	no rank	|	ncbi:91882	|		|		|	
+1042120	|	596121	|	Asterales	|	order	|	ncbi:4209,worms:234044,gbif:414,irmng:10011,irmng:12186	|		|		|	
+1008296	|	5316182	|	rosids	|	subclass	|	ncbi:71275	|		|		|	
+46248	|	1042120	|	Asteraceae	|	family	|	ncbi:4210,worms:234045,gbif:3065,gbif:6070956,irmng:114753	|		|		|	
+1084160	|	46248	|	Asteroideae	|	subfamily	|	ncbi:102804	|		|		|	
+1084166	|	1084160	|	Astereae	|	tribe	|	ncbi:102809	|		|		|	
+445368	|	1084166	|	North American clade	|	no rank	|	ncbi:877976	|		|		|	
+1058735	|	445368	|	Symphyotrichum	|	genus	|	ncbi:72977,worms:416035,gbif:3151391,irmng:1029676	|		|		|	
+124080	|	1084166	|	Australasian lineages	|	no rank	|	ncbi:886583	|		|		|	
+409712	|	124080	|	Aster	|	genus	|	ncbi:41479,worms:403904,gbif:3093921,irmng:1375618,irmng:1355106,irmng:1080732	|		|		|	
+1086303	|	1042120	|	Campanulaceae	|	family	|	ncbi:4381,gbif:8801,irmng:112583	|		|		|	
+1086294	|	1086303	|	Lobelia	|	genus	|	ncbi:4382,gbif:2756426,irmng:1083184,irmng:1452934,irmng:1308508,irmng:1299058,irmng:1295316	|		|		|	
+332573	|	304358	|	Opisthokonta	|	no rank	|	silva:D11377/#2,ncbi:33154,irmng:183	|		|		|	
+5246132	|	332573	|	Nucletmycea	|	no rank	|	silva:D11377/#3	|		|		|	
+352914	|	5246132	|	Fungi	|	kingdom	|	silva:D11377/#4,h2007:Fungi,if:90156,ncbi:4751,worms:4,gbif:5,irmng:14	|		|		|	
+5576447	|	352914	|	h2007-2	|	no rank	|	h2007:h2007-2	|		|		|	
+5584405	|	5576447	|	h2007-1	|	no rank	|	h2007:h2007-1	|		|		|	
+656316	|	5584405	|	Dikarya	|	subkingdom	|	h2007:Dikarya,ncbi:451864	|		|		|	
+634628	|	656316	|	Basidiomycota	|	phylum	|	h2007:Basidiomycota,if:90050,ncbi:5204,worms:21890,gbif:34,irmng:236	|		|		|	
+439373	|	656316	|	Ascomycota	|	phylum	|	h2007:Ascomycota,if:90031,ncbi:4890,worms:21891,gbif:95,irmng:134	|		|		|	
+5246131	|	332573	|	Holozoa	|	no rank	|	silva:D14357/#3	|		|		|	
+691846	|	5246131	|	Metazoa	|	kingdom	|	silva:D14357/#4,ncbi:33208,worms:2,gbif:1,irmng:11	|		|		|	
+641038	|	691846	|	Eumetazoa	|	no rank	|	ncbi:6072	|		|		|	
+641033	|	641038	|	Cnidaria	|	phylum	|	worms:1267,ncbi:6073,gbif:43,irmng:151	|		|		|	
+117569	|	641038	|	Bilateria	|	no rank	|	ncbi:33213	|		|		|	
+147604	|	117569	|	Deuterostomia	|	no rank	|	ncbi:33511	|		|		|	
+125642	|	147604	|	Chordata	|	phylum	|	ncbi:7711,worms:1821,gbif:44,irmng:148	|		|		|	
+947318	|	125642	|	Craniata	|	subphylum	|	ncbi:89593	|	Craniata (subphylum in Deuterostomia)	|		|	
+801601	|	947318	|	Vertebrata	|	subphylum	|	ncbi:7742,worms:146419	|	Vertebrata (subphylum in Opisthokonta)	|		|	
+278114	|	801601	|	Gnathostomata	|	superclass	|	ncbi:7776,worms:1828	|	Gnathostomata (superclass in phylum Chordata)	|		|	
+114656	|	278114	|	Teleostomi	|	no rank	|	ncbi:117570	|		|		|	
+114654	|	114656	|	Euteleostomi	|	no rank	|	ncbi:117571	|		|		|	
+458402	|	114654	|	Sarcopterygii	|	class	|	ncbi:8287,worms:163509,gbif:238,irmng:1531	|		|	sibling_higher	|	
+4940726	|	458402	|	Dipnotetrapodomorpha	|	no rank	|	ncbi:1338369	|		|		|	
+229562	|	4940726	|	Tetrapoda	|	superclass	|	ncbi:32523,worms:1831	|		|		|	
+544595	|	229562	|	Amphibia	|	class	|	ncbi:8292,worms:178701,gbif:131,irmng:1131	|		|		|	
+229560	|	229562	|	Amniota	|	no rank	|	ncbi:32524	|		|		|	
+244265	|	229560	|	Mammalia	|	class	|	ncbi:40674,worms:1837,gbif:359,irmng:1310	|		|		|	
+639642	|	229560	|	Sauropsida	|	no rank	|	ncbi:8457	|		|		|	
+329823	|	639642	|	Sauria	|	order	|	ncbi:32561,worms:342632	|	Sauria (order in Opisthokonta)	|	sibling_higher	|	
+90223	|	90215	|	Saurischia	|	order	|	ncbi:436489,irmng:10565	|		|		|	
+4947372	|	329823	|	Archelosauria	|	no rank	|	ncbi:1329799	|		|		|	
+335588	|	4947372	|	Archosauria	|	no rank	|	ncbi:8492	|		|		|	
+90215	|	335588	|	Dinosauria	|	no rank	|	ncbi:436486	|		|		|	
+664350	|	90223	|	Theropoda	|	no rank	|	ncbi:436491	|		|		|	
+64351	|	664350	|	Coelurosauria	|	no rank	|	ncbi:436492	|		|		|	
+81461	|	664351	|	Aves	|	class	|	ncbi:8782,worms:1836,gbif:212,irmng:1142	|		|		|	
+189832	|	117569	|	Protostomia	|	no rank	|	ncbi:33317	|		|		|	
+611099	|	189832	|	Ecdysozoa	|	no rank	|	ncbi:1206794	|		|		|	
+395057	|	611099	|	Nematoda	|	phylum	|	ncbi:6231,worms:799,gbif:5967481,irmng:177	|		|	sibling_higher	|	
+816442	|	611099	|	Panarthropoda	|	no rank	|	ncbi:88770	|		|		|	
+632179	|	816442	|	Arthropoda	|	phylum	|	ncbi:6656,worms:1065,gbif:54,irmng:235	|		|		|	
+1041457	|	632179	|	Chelicerata	|	subphylum	|	ncbi:6843,worms:1274	|		|		|	
+511967	|	1041457	|	Arachnida	|	class	|	ncbi:6854,worms:1300,gbif:367,irmng:1136	|		|		|	
+985907	|	632179	|	Mandibulata	|	no rank	|	ncbi:197563	|		|		|	
+985906	|	985907	|	Pancrustacea	|	no rank	|	ncbi:197562	|		|		|	
+568991	|	985906	|	Hexapoda	|	superclass	|	ncbi:6960,worms:1278	|		|	sibling_higher	|	
+1062253	|	568991	|	Insecta	|	class	|	ncbi:50557,worms:1307,gbif:216,irmng:1096	|		|		|	
+155737	|	189832	|	Lophotrochozoa	|	no rank	|	ncbi:1206795	|		|		|	
+941620	|	155737	|	Annelida	|	phylum	|	ncbi:6340,worms:882,gbif:42,irmng:234	|		|		|	
+555379	|	155737	|	Platyhelminthes	|	phylum	|	ncbi:6157,worms:793,gbif:108,irmng:116	|		|		|	
+6802117	|	155737	|	Mollusca	|	phylum	|	ncbi:6447,worms:51,gbif:52,irmng:175	|		|		|	
+826261	|	155737	|	Brachiopoda	|	phylum	|	ncbi:7568,worms:1803,gbif:110,irmng:107	|		|		|	
+681832	|	826261	|	Rhynchonelliformea	|	subphylum	|	ncbi:115369,worms:104018,irmng:1139	|		|		|	
+107877	|	681832	|	Rhynchonellata	|	class	|	ncbi:115371,worms:104020,gbif:210,irmng:1242	|		|		|	
+2933645	|	107877	|	Camerellidae	|	family	|	gbif:4867458,irmng:117478	|		|	major_rank_conflict,extinct	|	
+2934022	|	2933645	|	Camerella	|	genus	|	gbif:4867475,irmng:1435390	|		|	major_rank_conflict_inherited,extinct	|	
+6329558	|	2934022	|	Camerella volborthi	|	species	|	gbif:8630866	|		|	major_rank_conflict_inherited,extinct	|	
+632176	|	985906	|	Crustacea	|	subphylum	|	ncbi:6657,worms:1066	|		|		|	
+212701	|	632176	|	Malacostraca	|	class	|	worms:1071,ncbi:6681,gbif:229,irmng:1190	|		|	sibling_higher	|	
+1007062	|	212701	|	Eumalacostraca	|	subclass	|	worms:1086,ncbi:72041	|		|		|	
+737016	|	1007062	|	Peracarida	|	superorder	|	worms:1090,ncbi:6820	|		|		|	
+737019	|	737016	|	Amphipoda	|	order	|	worms:1135,ncbi:6821,gbif:1231,irmng:11158	|		|		|	
+941215	|	737019	|	Gammaridea	|	suborder	|	worms:1207,ncbi:44327	|		|		|	
+302925	|	941215	|	Lysianassoidea	|	superfamily	|	worms:176788,ncbi:44330	|		|		|	
+5092163	|	302925	|	Amaryllididae	|	family	|	worms:236743,gbif:3254520,irmng:107356	|		|		|	
+5764812	|	5092163	|	Amaryllidinae	|	subfamily	|	worms:244453	|		|		|	
+4671788	|	4671782	|	Amaryllis carrascoi	|	species	|	worms:244458,gbif:5717265,irmng:10523254	|		|		|	
+5308424	|	1058517	|	Petrosaviidae	|	no rank	|	ncbi:1437197	|		|		|	
+557124	|	5308424	|	Asparagales	|	order	|	ncbi:73496,worms:414699,gbif:1169,irmng:10928	|		|	sibling_higher	|	
+258473	|	557124	|	Amaryllidaceae	|	family	|	ncbi:4668,worms:414755,gbif:7682,irmng:119252	|		|		|	
+267867	|	258473	|	Amaryllidoideae	|	subfamily	|	ncbi:703251	|		|		|	
+200683	|	655592	|	Amaryllis paradisicola	|	species	|	ncbi:180130,gbif:5326211	|		|		|	

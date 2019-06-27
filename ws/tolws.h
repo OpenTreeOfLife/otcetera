@@ -16,6 +16,7 @@
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
 #include "ws/parallelreadserialwrite.h"
+#include "ws/otc_web_error.h"
 #include "json.hpp"
 
 #define REPORT_MEMORY_USAGE 1
@@ -28,6 +29,8 @@ namespace otc {
 
 typedef std::pair<const std::string *, const std::string *> src_node_id;
 typedef std::vector<src_node_id> vec_src_node_id_mapper;
+
+typedef RTRichTaxNode Taxon;
 
 #define JOINT_MAPPING_VEC
 
@@ -44,45 +47,6 @@ typedef std::vector<src_node_id> vec_src_node_id_mapper;
 #else
     typedef std::vector<std::uint32_t> vec_src_node_ids;
 #endif
-
-class OTCWebError : public std::exception
-{
-protected:
-    int status_code_ = 500;
-    nlohmann::json data;
-public:
-    int status_code() const {return status_code_;}
-
-    const char * what() const noexcept {
-        return data["message"].get<std::string>().c_str();
-    }
-
-    template <typename T> OTCWebError& operator<<(const T&);
-
-    void prepend(const std::string& s);
-
-    nlohmann::json& json() {return data;}
-
-    OTCWebError() noexcept;
-    OTCWebError(int c) noexcept;
-    OTCWebError(const std::string & msg) noexcept;
-    OTCWebError(int c, const std::string & msg) noexcept;
-};
-
-    template <typename T>
-    OTCWebError& OTCWebError::operator<<(const T& t)
-    {
-        std::ostringstream oss(data["message"].get<std::string>());
-        oss << t;
-        data["message"] = oss.str();
-        return *this;
-    }
-
-    template <>
-    OTCWebError& OTCWebError::operator<<(const nlohmann::json& j);
-
-inline OTCWebError OTCBadRequest() {return OTCWebError(400);}
-inline OTCWebError OTCBadRequest(const std::string& m) {return OTCWebError(400,m);}
 
 class SumTreeNodeData {
     public:
@@ -223,6 +187,20 @@ struct SummaryTreeAnnotation {
         }
 };
 
+inline std::string ott_id_to_idstr(OttId ott_id) {
+    std::string ret;
+    ret.reserve(12);
+    ret = "ott";
+    ret += std::to_string(ott_id);
+    return ret;
+}
+
+enum NodeNameStyle {
+    NNS_NAME_ONLY = 0,
+    NNS_ID_ONLY = 1,
+    NNS_NAME_AND_ID = 2
+};
+
 template<typename T>
 void index_by_name_or_id(T & tree) {
     const std::string empty_string;
@@ -244,11 +222,7 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           bool & was_broken);
 class TreesToServe;
 
-enum NodeNameStyle {
-    NNS_NAME_ONLY = 0,
-    NNS_ID_ONLY = 1,
-    NNS_NAME_AND_ID = 2
-};
+
 
 std::string available_trees_ws_method(const TreesToServe &tts);
 
@@ -264,6 +238,12 @@ std::string node_info_ws_method(const TreesToServe & tts,
                                 const SummaryTreeAnnotation * sta,
                                 const std::string & node_id,
                                 bool include_lineage);
+
+std::string nodes_info_ws_method(const TreesToServe & tts,
+                                 const SummaryTree_t * tree_ptr,
+                                 const SummaryTreeAnnotation * sta,
+                                 const std::vector<std::string> & node_id,
+                                 bool include_lineage);
 
 std::string mrca_ws_method(const TreesToServe & tts,
                            const SummaryTree_t * tree_ptr,
@@ -296,10 +276,6 @@ std::string taxon_info_ws_method(const RichTaxonomy & taxonomy,
 
 std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy);
 
-std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy, const std::string& query, bool include_suppressed);
-
-const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes);
-
 std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                     const OttIdSet & ott_id_set);
 
@@ -314,12 +290,12 @@ std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
                                        bool include_suppressed,
                                        const RichTaxonomy& taxonomy);
 std::string tnrs_autocomplete_name_ws_method(const std::string& name,
-					     const std::string& context_name,
-					     bool include_suppressed,
-					     const RichTaxonomy& taxonomy);
+                                             const std::string& context_name,
+                                             bool include_suppressed,
+                                             const RichTaxonomy& taxonomy);
 std::string tnrs_contexts_ws_method();
 std::string tnrs_infer_context_ws_method(const std::vector<std::string>& names,
-					 const RichTaxonomy& taxonomy);
+                                         const RichTaxonomy& taxonomy);
 
 
 std::string newick_conflict_ws_method(const SummaryTree_t & summary,
@@ -374,6 +350,68 @@ inline void from_json(const nlohmann::json &j, SourceTreeId & sti) {
     sti.git_sha = extract_string(j, "git_sha");
     sti.study_id = extract_string(j, "study_id");
     sti.tree_id = extract_string(j, "tree_id");
+}
+
+nlohmann::json tax_about_json(const RichTaxonomy & taxonomy);
+void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, nlohmann::json & taxonrepr);
+
+inline const std::string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
+    return nd_taxon.get_name();
+}
+
+inline void add_taxon_info(const RichTaxonomy & ,
+                           const RTRichTaxNode & nd_taxon,
+                           nlohmann::json & taxonrepr) {
+    const auto & taxon_data = nd_taxon.get_data();
+    taxonrepr["tax_sources"] = taxon_data.get_sources_json();
+    taxonrepr["name"] = taxon_data.get_nonuniqname();
+    taxonrepr["unique_name"] = get_taxon_unique_name(nd_taxon);
+    taxonrepr["rank"] = taxon_data.get_rank();
+    taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
+}
+
+template <typename Tree_t>
+inline std::size_t n_leaves(const Tree_t& T) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    std::size_t count = 0;
+    for(auto nd: iter_leaf_const(T)){
+        count++;
+    }
+    return count;
+}
+
+
+// Get a list of nodes in T2 that are leaves in T1.
+// The nodes in T2 do NOT need to be leaves of T2.
+
+template <typename Tree1_t, typename Tree2_t>
+auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2) {
+    auto& ott_to_nodes2 = T2.get_data().id_to_node;
+    std::vector<const typename Tree2_t::node_type*> nodes;
+    for(auto leaf: iter_leaf_const(T1)) {
+        auto id = leaf->get_ott_id();
+        auto it = ott_to_nodes2.find(id);
+        if (it != ott_to_nodes2.end()) {
+            nodes.push_back(it->second);
+        }
+    }
+    return nodes;
+}
+
+template <typename T>
+void delete_tip_and_monotypic_ancestors(T& tree, typename T::node_type* node) {
+    assert(node->is_tip());
+    while (node and node->is_tip()) {
+        auto parent = node->get_parent();
+        if (not parent) {
+            tree._set_root(nullptr);
+        } else {
+            node->detach_this_node();
+        }
+        delete node;
+        node = parent;
+    }
 }
 
 

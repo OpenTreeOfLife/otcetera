@@ -86,12 +86,10 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         for (auto tree_pref_pair: edits) {
             auto needs_move_taxon = tree_pref_pair.second;
             if (needs_move_taxon.first) {
-                bool lowest = false;
                 auto attach_nd = needs_move_taxon.second;
                 const RTSplits & an_data = attach_nd->get_data();
                 auto an_depth = an_data.depth;
                 if (tree_names.empty() || an_depth < lowest_depth) {
-                    lowest = true;
                     lowest_depth = an_depth;
                     tree_names.clear();
                     deepest_attach_nd = attach_nd;
@@ -288,7 +286,8 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         }
         json jTreesWoExt = json::array(); 
         for (auto i : namesOfTreesWithoutExtinct) {
-            jTreesWoExt.push_back(i);
+            jTreesWoExt.push_back(i);bool lowest = false;
+                
         }
         document["trees_with_no_extinct_tips"] = jTreesWoExt;
         assert(jsonOutStream != nullptr);
@@ -393,7 +392,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         return true;
     }
 
-    NeedsMoveTipmostTaxonPair evaluate_extinct_leaf_placement(const TreeMappedWithSplits & tree,
+    NeedsMoveTipmostTaxonPair evaluate_extinct_leaf_placement(const TreeMappedWithSplits & ,
                                                               ConstNdPtr extinct_tip,
                                                               const OttIdSet & extant_ids,
                                                               const OttIdSet & , //relevantIncSedIDs,

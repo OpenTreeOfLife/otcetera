@@ -331,8 +331,8 @@ class RichTaxonomy: public BaseTaxonomy {
     bool node_is_suppressed_from_tnrs(const RTRichTaxNode* nd) const
     {
         auto& tree_data = tree->get_data();
-	const auto& tax_record_flags = nd->get_data().get_flags();
-	return (tree_data.suppress_flags & tax_record_flags).any();
+        const auto& tax_record_flags = nd->get_data().get_flags();
+        return (tree_data.suppress_flags & tax_record_flags).any();
     }
 
     const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {
@@ -544,6 +544,63 @@ OttId root_ott_id_from_file(const std::string& filename);
 std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
 Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
 RichTaxonomy load_rich_taxonomy(const boost::program_options::variables_map& args);
+
+
+const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes);
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                    const std::string& query,
+                                                    bool include_suppressed);
+
+std::vector<const RTRichTaxNode*> exact_name_search(const RTRichTaxNode* context_root,
+                                                    const std::string& query,
+                                                    std::function<bool(const RTRichTaxNode*)> ok = [](const RTRichTaxNode*){return true;});
+
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                    const RTRichTaxNode* context_root,
+                                                    const std::string& query,
+                                                    bool include_suppressed);
+
+
+inline std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                           const RTRichTaxNode* context_root,
+                                                           const std::string& query,
+                                                           bool include_suppressed) {
+    if (include_suppressed) {
+        return exact_name_search(context_root, query);
+    }                                               
+    std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
+        return not taxonomy.node_is_suppressed_from_tnrs(taxon);
+    };
+    return exact_name_search(context_root, query, ok);
+}
+
+
+inline std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                           const std::string& query,
+                                                           bool include_suppressed) {
+    const RTRichTaxNode* context_root = taxonomy.get_tax_tree().get_root();
+    return exact_name_search(taxonomy, context_root, query, include_suppressed);
+}
+
+
+template<typename N>
+N * find_mrca_via_traversal_indices(N *f, N *s);
+
+template<typename N>
+inline N * find_mrca_via_traversal_indices(N *f, N *s) {
+    const auto * fdata = &(f->get_data());
+    const auto sec_ind = s->get_data().trav_enter;
+    while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
+        f = f->get_parent();
+        if (f == nullptr) {
+            assert(false); 
+            return nullptr;
+        }
+        fdata = &(f->get_data());
+    }
+    return f;
+}
+
 
 } // namespace
 #endif
