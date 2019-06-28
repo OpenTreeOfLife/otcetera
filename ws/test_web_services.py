@@ -147,7 +147,11 @@ class WebServiceTestJob(object):
     @property
     def status_str(self):
         with self.stat_lock:
-            x = str(self._status_str)
+            if self._status_str is None:
+                x = None
+            else:
+                x = str(self._status_str)
+            
         return x
     @status_str.setter
     def status_str(self, value):
@@ -175,14 +179,14 @@ class WebServiceTestJob(object):
                 except:
                     pass
                 raise sce
-            # _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
+            _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
             if self.expected is not None:
                 try:
                     j = response.json()
                 except:
                     _LOG.error("{} no JSON in response: {}".format(self.name, response.text))
                     raise
-                # _LOG.debug('name: {} Observed: {}'.format(self.name, j))
+                _LOG.debug('name: {} Observed: {}'.format(self.name, j))
 
                 if j != self.expected:
                     dd = gen_expected_obs_diff(self.expected, j, 'x')
@@ -294,7 +298,7 @@ def run_tests(dirs_to_run, test_threads):
                 # _LOG.debug('putting {} back in queue'.format(j.name))
                 srj.append(j)
                 continue
-            # _LOG.debug('test {} status_str = {} resolved'.format(j.name, repr(jss)))
+            _LOG.debug('test {} status_str = {} resolved'.format(j.name, repr(jss)))
             if j.erred or j.failed:
                 if j.failed:
                     fc = "FAILURE"
