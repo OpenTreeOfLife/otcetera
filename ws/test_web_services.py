@@ -309,6 +309,7 @@ if __name__ == '__main__':
     parser.add_argument('--server-port', default=1985, type=int, required=False, help='Port number for the server')
     parser.add_argument('--server-threads', default=4, type=int, required=False, help='Number of threads for the server')
     parser.add_argument('--test-threads', default=8, type=int, required=False, help='Number of threads launched for running tests.')
+    parser.add_argument('--secs-to-recheck-pid-file', default=0, type=int, required=False, help='If the pid file exists, the process will enter a loop sleeping and rechecking for this number of seconds.')
     
     args = parser.parse_args()
     if args.server_threads < 1 or args.test_threads < 1:
@@ -347,7 +348,14 @@ if __name__ == '__main__':
         sys.exit("No test were found!")
     pidfile_path = os.path.join(exe_dir, PIDFILE_NAME)
     if os.path.exists(pidfile_path):
-        sys.exit("{} is in the way!\n".format(pidfile_path))
+        recheck = 0
+        checks_per_sec = 3
+        while recheck < checks_per_sec*args.secs_to_recheck_pid_file:
+            time.sleep(1.0/checks_per_sec)
+            if not os.path.exists(pidfile_path):
+                break
+        if os.path.exists(pidfile_path):
+            sys.exit("{} is in the way!\n".format(pidfile_path))
     if launch_server(exe_dir=exe_dir,
                      taxonomy_dir=taxonomy_dir,
                      synth_par=synth_par_path,
