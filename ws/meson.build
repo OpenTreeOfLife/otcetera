@@ -59,5 +59,6 @@ test('tnrs web services test',
      	    '--synthesis-parent', synth_dir,
 	    	'--tests-parent', expectedws_dir,
 	    	'--exe-dir', exe_dir,
+			'--server-port=1986',
 			'--secs-to-recheck-pid-file=30']
     )

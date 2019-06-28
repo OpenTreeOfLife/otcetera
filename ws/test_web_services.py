@@ -8,7 +8,7 @@ try:
     from Queue import Queue
 except:
     from queue import Queue
-from threading import Thread
+from threading import Thread, RLock
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
 _lh = logging.StreamHandler()
@@ -135,14 +135,26 @@ class WebServiceTestJob(object):
         self.service_prefix = service_prefix
         self.url = service_prefix + self.url_fragment
         self.expected = test_description.get('expected_response_payload')
-        self.status_str = None
+        self._status_str = None
         self.passed = False
         self.failed = False
         self.erred = False
         self.test_dir = test_description.get("test_dir")
         self.test_subdir = os.path.split(self.test_dir)[-1]
         self.name = test_description.get("name", self.test_subdir or self.url_fragment)
+        self.stat_lock = RLock()
+    
+    @property
+    def status_str(self):
+        with self.stat_lock:
+            x = str(self._status_str)
+        return x
+    @status_str.setter
+    def status_str(self, value):
+        with self.stat_lock:
+            self._status_str = value
         
+
     def __str__(self):
         return 'WebServiceTestJob {}'.format(self.name)
 
@@ -157,17 +169,21 @@ class WebServiceTestJob(object):
             try:
                 response.raise_for_status()
             except Exception as sce:
+                _LOG.exception('exception url: {}'.format(self.url))
                 try:
                     self.status_str = "Non-200 response body = {}\n".format(response.text)
                 except:
                     pass
                 raise sce
+            # _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
             if self.expected is not None:
                 try:
                     j = response.json()
                 except:
                     _LOG.error("{} no JSON in response: {}".format(self.name, response.text))
                     raise
+                # _LOG.debug('name: {} Observed: {}'.format(self.name, j))
+
                 if j != self.expected:
                     dd = gen_expected_obs_diff(self.expected, j, 'x')
                     self.failed = True
@@ -262,20 +278,23 @@ def run_tests(dirs_to_run, test_threads):
     start_worker(test_threads)
     service_prefix = "http://127.0.0.1:{}/".format(SERVER_PORT)
     all_jobs = [WebServiceTestJob(test_description=td, service_prefix=service_prefix) for td in td_list]
+    running_jobs = list(all_jobs)
     for j in all_jobs:
         _jobq.put(j)
 
     # now we block until all jobs have a status_str
-    running_jobs = list(all_jobs)
     num_passed = 0 
     num_failed = 0
     num_errors = 0
     while True:
         srj = []
         for j in running_jobs:
-            if j.status_str is None:
+            jss = j.status_str
+            if not jss:
+                # _LOG.debug('putting {} back in queue'.format(j.name))
                 srj.append(j)
                 continue
+            # _LOG.debug('test {} status_str = {} resolved'.format(j.name, repr(jss)))
             if j.erred or j.failed:
                 if j.failed:
                     fc = "FAILURE"
@@ -356,29 +375,31 @@ if __name__ == '__main__':
                 break
         if os.path.exists(pidfile_path):
             sys.exit("{} is in the way!\n".format(pidfile_path))
-    if launch_server(exe_dir=exe_dir,
-                     taxonomy_dir=taxonomy_dir,
-                     synth_par=synth_par_path,
-                     server_threads=args.server_threads):
-        try:
-            num_passed, nf, ne = run_tests(to_run, args.test_threads)
-
-        finally:
-            kill_server(exe_dir)
-        NUM_TESTS = nf + ne + num_passed
-        assert nf == len(FAILED_TESTS)
-        assert ne == len(ERRORED_TESTS)
-        sys.stderr.write('Passed {p:d}/{t:d} tests.'.format(p=num_passed, t=NUM_TESTS))
-        if FAILED_TESTS:
-            sys.stderr.write(' Failed:\n    {}\n'.format('\n    '.join(FAILED_TESTS)))
-        if ERRORED_TESTS:
-            sys.stderr.write(' Errors in:\n    {}\n'.format('\n    '.join(ERRORED_TESTS)))
-        if nf + ne > 0:
-            sys.exit(nf + ne)
-        sys.stderr.write('SUCCESS\n')
-    else:
-        _LOG.error("Server launch failed: ")
-        with open(os.path.join(exe_dir, SERVER_OUT_ERR_FN), 'r') as seo:
-            sys.stderr.write(seo.read())
-        sys.exit(-1)
+    for i in range(2):
+        if launch_server(exe_dir=exe_dir,
+                        taxonomy_dir=taxonomy_dir,
+                        synth_par=synth_par_path,
+                        server_threads=args.server_threads):
+            try:
+                num_passed, nf, ne = run_tests(to_run, args.test_threads)
+            finally:
+                kill_server(exe_dir)
+            NUM_TESTS = nf + ne + num_passed
+            assert nf == len(FAILED_TESTS)
+            assert ne == len(ERRORED_TESTS)
+            sys.stderr.write('Passed {p:d}/{t:d} tests.'.format(p=num_passed, t=NUM_TESTS))
+            if FAILED_TESTS:
+                sys.stderr.write(' Failed:\n    {}\n'.format('\n    '.join(FAILED_TESTS)))
+            if ERRORED_TESTS:
+                sys.stderr.write(' Errors in:\n    {}\n'.format('\n    '.join(ERRORED_TESTS)))
+            if nf + ne > 0:
+                sys.exit(nf + ne)
+            sys.stderr.write('SUCCESS\n')
+            sys.exit(0)
+        else:
+            time.sleep(1) # relaunch (most likely cause is the port not being freed from previous test) 
+    _LOG.error("Server launch failed: ")
+    with open(os.path.join(exe_dir, SERVER_OUT_ERR_FN), 'r') as seo:
+        sys.stderr.write(seo.read())
+    sys.exit(-1)
 
