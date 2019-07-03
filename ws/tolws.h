@@ -226,6 +226,8 @@ class TreesToServe;
 
 std::string available_trees_ws_method(const TreesToServe &tts);
 
+std::string available_trees_ws_method(const TreesToServe &tts);
+
 std::string about_ws_method(const TreesToServe &tts,
                             const SummaryTree_t * tree_ptr,
                             const SummaryTreeAnnotation * sta,

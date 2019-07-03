@@ -355,8 +355,9 @@ string available_trees_ws_method(const TreesToServe &tts)
 {
     json response;
     json trees = json::array();
-    for(auto& synth_id: tts.get_available_trees())
+    for(auto& synth_id: tts.get_available_trees()) {
         trees.push_back(synth_id);
+    }
     response["synth_ids"] = trees;
     response["default"] = tts.get_default_tree();
     return response.dump(1);
