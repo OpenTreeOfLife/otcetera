@@ -222,10 +222,6 @@ const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           bool & was_broken);
 class TreesToServe;
 
-
-
-std::string available_trees_ws_method(const TreesToServe &tts);
-
 std::string available_trees_ws_method(const TreesToServe &tts);
 
 std::string about_ws_method(const TreesToServe &tts,
