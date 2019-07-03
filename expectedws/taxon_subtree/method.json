@@ -1,5 +1,5 @@
 {
-  "url_fragment": "taxonomy/subtree",
+  "url_fragment": "v3/taxonomy/subtree",
   "verb": "POST",
   "arguments": {
     "source_id": "ncbi:10239",

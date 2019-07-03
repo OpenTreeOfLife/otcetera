@@ -17,8 +17,8 @@ template <typename N, typename T>
 inline void newick_close_node_hook(RootedTree<N,T> & ,
                                 RootedTreeNode<N> & ,
                                 const NewickTokenizer::Token & ,
-                                const ParsingRules & )
-{ }
+                                const ParsingRules & ) {
+}
 
 template <typename N, typename T>
 inline void newick_parse_node_info(RootedTree<N, T> & ,
@@ -29,8 +29,9 @@ inline void newick_parse_node_info(RootedTree<N, T> & ,
                                 const ParsingRules &parsingRules) {
     if (labelToken) {
         node.set_name(labelToken->content());
-        if (not parsingRules.set_ott_ids)
+        if (not parsingRules.set_ott_ids) {
             return;
+        }
         if ((!parsingRules.set_ott_idForInternals) && node.is_internal()) {
             return;
         }

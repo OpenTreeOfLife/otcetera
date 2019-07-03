@@ -134,7 +134,7 @@ class InterTreeBand {
     private:
     std::map<const node_type *, node_set> node_to_phantom;
     const PhyloStatement & statement;
-    const node_set empty_set;
+    const node_set empty_set = {};
 };
 
 template<typename T>
@@ -174,7 +174,7 @@ class ExcludeConstraints {
     void ingest_exclude_raw(const node_type * nd2Exclude, const node_type * forbiddenAttach);
     node2many_map by_exclude_node;
     node2many_map by_node_with_constraints;
-    const cnode_set empty_set;
+    const cnode_set empty_set = {};
 };
 
 template<typename T>
@@ -228,7 +228,7 @@ class InterTreeBandBookkeeping {
     private:
     std::map<const band_type *, node_type *> band_to_node;
     std::map<const node_type *, band_set > node_to_band;
-    const band_set empty_set;
+    const band_set empty_set = {};
 };
 
 template<typename T, typename U>

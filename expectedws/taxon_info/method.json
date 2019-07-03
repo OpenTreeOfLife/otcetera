@@ -1,5 +1,5 @@
 {
-  "url_fragment": "taxonomy/taxon_info",
+  "url_fragment": "v3/taxonomy/taxon_info",
   "verb": "POST",
   "arguments": {
     "ott_id": 100,

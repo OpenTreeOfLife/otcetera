@@ -1,6 +1,6 @@
 #if !defined OTCETERA_BASE_INCLUDES_H
 #define OTCETERA_BASE_INCLUDES_H
-#include <cassert>
+#include "assert.hh"
 #include <set>
 #include <functional>
 #ifdef __clang__
@@ -8,31 +8,45 @@
 #pragma clang diagnostic ignored  "-Wweak-vtables"
 #endif
 #define ELPP_CUSTOM_COUT std::cerr
-#define OTC_UNREACHABLE assert(false);
+#define ELPP_THREAD_SAFE 1
+#define ELPP_STACKTRACE_ON_CRASH 1
 
 #include "otc/easylogging++.hpp"
+#include <optional>
+
+#define OTC_UNREACHABLE {LOG(ERROR)<<"Unreachable code reached!"; std::abort();}
 
 namespace otc {
 extern bool debugging_output_enabled;
 
 
-void throw_ott_id_type_too_small_exception(long);
 #if defined(LONG_OTT_ID)
     using OttId = long;
-    inline OttId check_ott_id_size(long raw_ott_id) {
-        return raw_ott_id;
-    }
 #else
     using OttId = int;
-    inline OttId check_ott_id_size(long raw_ott_id) {
-        if (raw_ott_id >= std::numeric_limits<OttId>::max()) {
-            throw_ott_id_type_too_small_exception(raw_ott_id);
-        }
-        return static_cast<OttId>(raw_ott_id);
-    }
 #endif
-using OttIdOSet = std::set<OttId>;
-using OttIdSet = OttIdOSet;
+
+// The compiler should be able to optimize this away if OttId = long
+inline std::optional<OttId> to_OttId(long raw_ott_id) {
+    if (raw_ott_id > std::numeric_limits<OttId>::max()) {
+        return std::optional<OttId>{};
+    }
+    return static_cast<OttId>(raw_ott_id);
+}
+
+void throw_ott_id_type_too_small_exception(long);
+
+inline OttId check_ott_id_size(long raw_ott_id) {
+    auto id = to_OttId(raw_ott_id);
+    if (not id) {
+        throw_ott_id_type_too_small_exception(raw_ott_id);
+        return std::numeric_limits<OttId>::max();//unreachable, but the compiler doesn't know that...
+    } else {
+        return *id;
+    }
+}
+
+using OttIdSet = std::set<OttId>;
 
 // forward decl
 class RTSplits;

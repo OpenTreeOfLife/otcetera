@@ -24,7 +24,8 @@ inline std::size_t calc_memory_used(const T &, MemoryBookkeeper &) {
 
 
 template<>
-inline std::size_t calc_memory_used(const OttIdSet &d, MemoryBookkeeper &mb) {
+inline std::size_t calc_memory_used(const OttIdSet &d,
+                                    MemoryBookkeeper &) {
     return sizeof(char *) * 2 + sizeof(OttId) * d.size();
 }
 
@@ -69,7 +70,9 @@ inline std::size_t calc_memory_used_owned_pair(const std::pair<T*, U*> &p, Memor
 }
 
 template<typename E>
-inline std::size_t calc_memory_used_by_vector_eqsize(const std::vector<E> & v, std::size_t el_size, MemoryBookkeeper &) {
+inline std::size_t calc_memory_used_by_vector_eqsize(const std::vector<E> & v,
+                                                     std::size_t el_size,
+                                                     MemoryBookkeeper &) {
     std::size_t total = 0;
     total += sizeof(E *); // start pointer
     total += sizeof(std::size_t); // capacity

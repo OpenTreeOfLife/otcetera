@@ -10,7 +10,7 @@ namespace fs = boost::filesystem;
 using std::string;
 using std::size_t;
 using std::vector;
-using boost::optional;
+using std::optional;
 using boost::property_tree::ptree;
 
 namespace otc {
@@ -18,11 +18,11 @@ namespace otc {
 optional<string> interpolate(const ptree& pt, const string& section_name, const string& key) {
     static std::regex KEYCRE ("%\\(([^)]+)\\)s");
     if (not pt.get_child_optional(section_name)) {
-        return boost::none;
+        return {};
     }
     const ptree& section = pt.get_child(section_name);
     if (not section.get_optional<string>(key)) {
-        return boost::none;
+        return {};
     }
     string value = section.get<string>(key);
     for(int i = 0; i < 20 and value.find('%') != string::npos; i++) {
@@ -80,19 +80,27 @@ optional<string> load_config(const vector<string>& filenames, const string& sect
             return result;
         }
     }
-    return boost::none;
+    return {};
 }
 
 optional<string> dot_opentree() {
+    auto envconfig = std::getenv("OTC_CONFIG");
+    if (envconfig) {
+        std::ifstream test(envconfig);
+        if (not test) {
+            return {};
+        }
+        return envconfig;
+    }
     auto homedir = std::getenv("HOME");
     if (not homedir) {
-        return boost::none;
+        return {};
     }
     string path = homedir;
     path += "/.opentree";
     std::ifstream test(path);
     if (not test) {
-        return boost::none;
+        return {};
     }
     test.close();
     return path;

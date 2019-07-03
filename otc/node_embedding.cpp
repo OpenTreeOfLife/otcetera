@@ -983,8 +983,7 @@ void NodeEmbedding<T, U>::prune_collapsed_node(T & scaffold_node, SupertreeConte
             }
         }
     }
-    while(scaffold_node.has_children())
-    {
+    while(scaffold_node.has_children()) {
         auto n = scaffold_node.get_first_child();
         n->detach_this_node();
         scaffold_node.add_sib_on_left(n);

@@ -1,15 +1,54 @@
 sudo: true
+cache: apt
 language: C++
+
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+      env: CXX_COMPILER=g++-8
+      addons:
+        apt:
+          sources:
+          - ubuntu-toolchain-r-test
+          packages:
+          - g++-8
+          - pandoc
+          - libboost-all-dev
+    - os: linux
+      dist: xenial
+      compiler: clang++
+      addons:
+        apt:
+          sources:
+          - ubuntu-toolchain-r-test
+          packages:
+          - g++-7
+          - pandoc
+          - libboost-all-dev
+    - os: osx
+      osx_image: xcode10.1
+
+
 before_install:
-    - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-    - sudo add-apt-repository -y ppa:afrank/boost
-    - sudo apt-get update -y -qq
-    - sudo apt-get autoremove libboost-all-dev
-    - sudo apt-get install -y libboost1.57-all-dev
-    - sudo apt-get install -y g++-5
-compiler:
-    - clang++
-install:
-    - sh travis-build-and-test.sh
+  # We need to re-export CC and CXX here, because travis exports CXX=g++ or clang++ AFTER we set CXX.
+  - PATH=$HOME/local/bin:$PATH
+  - echo $PATH
+  - if [ -n "${C_COMPILER}" ]; then export CC="${C_COMPILER}"; fi
+  - if [ -n "${CXX_COMPILER}" ]; then export CXX="${CXX_COMPILER}"; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install meson && pip install requests; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d ~/bin && pyenv local 3.7 && pip3 install meson requests; fi
+
 script:
-    - cd buildgcc/test && make check && cd ../tools && make check
+# build restbed
+  - git clone --recursive https://github.com/corvusoft/restbed.git
+  - mkdir restbed/build
+  - ( cd restbed/build ; cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
+# build otcetera
+  - export CPPFLAGS="-I${HOME}/local/include"
+  - export LDFLAGS="-L${HOME}/local/lib -L${HOME}/local/library"
+  - if ! meson build --prefix=$HOME/local ; then cat build/meson-logs/meson-log.txt ; exit 1 ; fi
+  - ninja -C build install
+# test otcetera
+  - export LD_LIBRARY_PATH="${HOME}/local/lib:${HOME}/local/library"
+  - if ! ninja -C build test ; then cat build/meson-logs/testlog.txt ; exit 1 ; fi

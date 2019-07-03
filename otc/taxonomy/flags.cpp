@@ -23,10 +23,8 @@ using namespace otc;
 
 using std::string;
 using std::vector;
-using std::cout;
-using std::cerr;
-using std::endl;
 using std::bitset;
+using std::optional;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
@@ -59,7 +57,7 @@ auto get_symbols() {
         ("hybrid", 18)
         ("incertae_sedis", 19)
         ("incertae_sedis_inherited", 20)
-//	      incertae_sedis_direct
+//     incertae_sedis_direct
         ("infraspecific", 22)
         ("sibling_lower", 23)
         ("sibling_higher", 24)
@@ -79,6 +77,9 @@ auto flag_symbols = get_symbols();
 namespace otc {
 int flag_from_string(const char* start, const char* end) {
     int n = end - start;
+    if (n == 0) {
+        throw OTCError() << "Flags string with consecutive commas or a starting or trailing commas.";
+    }
     assert(n > 0);
     int flag = 0;
     auto cur = start;
@@ -112,6 +113,9 @@ tax_flags flags_from_string(const char* start, const char* end) {
 }
 
 tax_flags flags_from_string(const string& s) {
+    if (s.empty()) {
+        return {};
+    }
     const char* start = s.c_str();
     const char* end = start + s.length();
     return flags_from_string(start, end);
@@ -124,14 +128,38 @@ tax_flags cleaning_flags_from_config_file(const string& filename) {
     return flags_from_string(cleaning_flags_string);
 }
 
-string string_for_flag(int i) {
+tax_flags regrafting_flags_from_config_file(const std::string& filename) {
+    boost::property_tree::ptree pt;
+    boost::property_tree::ini_parser::read_ini(filename, pt);
+    auto cfs =  pt.get<std::string>("taxonomy.cleaning_flags");
+    tax_flags cf;
+    if (!cfs.empty()) {
+        cf = flags_from_string(cfs);
+    }
+    tax_flags arf;
+    try {
+        string ars = pt.get<std::string>("taxonomy.additional_regrafting_flags");
+        if (!ars.empty()) {
+              arf = flags_from_string(ars);
+        }
+    } catch (...) {
+    }
+    tax_flags u = cf | arf;
+    return u;
+}
+
+optional<string> string_for_flag(int i)
+{
     vector<string> matches;
     flag_symbols.for_each([&](const string& s, int j) {
-                             if (i == j) {
-                                 matches.push_back(s);
-                             }
-                         });
-    return matches[0];
+            if (i == j) {
+                matches.push_back(s);
+            }
+        });
+    if (matches.size()) {
+        return matches[0];
+    }
+    return {};
 }
 
 std::string flags_to_string(const tax_flags flags) {
@@ -139,11 +167,12 @@ std::string flags_to_string(const tax_flags flags) {
     return boost::algorithm::join(f, ", ");
 }
 
-std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags) {
+std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags)
+{
     vector<string> f;
     for(int i=0;i<32;i++) {
         if (flags.test(i)) {
-            f.push_back(string_for_flag(i));
+            f.push_back(*string_for_flag(i));
         }
     }
     return f;

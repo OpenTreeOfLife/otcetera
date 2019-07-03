@@ -9,10 +9,10 @@
       "name": "Nototuexample",
       "ott_id": 999999,
       "rank": "no rank",
-      "source": "0.0draft0",
+      "source": "ott0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "Nototuexample"
+      "unique_name": "Nototuexample"
     },
     {
       "flags": [],
@@ -21,10 +21,10 @@
       "name": "ABC",
       "ott_id": 1001,
       "rank": "no rank",
-      "source": "0.0draft0",
+      "source": "ott0.0draft0",
       "synonyms": [],
       "tax_sources": [],
-      "uniqname": "ABC"
+      "unique_name": "ABC"
     }
   ],
   "flags": [],
@@ -33,7 +33,7 @@
   "name": "Exampleroot",
   "ott_id": 1000000,
   "rank": "no rank",
-  "source": "0.0draft0",
+  "source": "ott0.0draft0",
   "synonyms": [],
   "tax_sources": [
     "ncbi:10239",
@@ -51,5 +51,5 @@
     22,
     23
   ],
-  "uniqname": "Exampleroot"
+  "unique_name": "Exampleroot"
 }

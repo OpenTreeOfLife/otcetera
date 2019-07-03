@@ -95,17 +95,15 @@ bool OTCLI::handle_flag(const std::string & flagWithoutDash) {
         const auto cb = clientDefFlagCallbacks[f];
         try {
             const auto n = flagWithoutDash.substr(1);
-            if (contains(clientDefArgNeeded, f))
-        {
-            if (n.empty()) {
+            if (contains(clientDefArgNeeded, f)) {
+                if (n.empty()) {
                     this->err << "Expecting an argument value after the  -" << f << " flag.\n";
                     return false;
-          }
-        }
-        else if (not n.empty()) {
-            this->err << "Unexpected argument value after the  -" << f << " flag.\n";
-            return false;
-        }
+                }
+            } else if (not n.empty()) {
+                this->err << "Unexpected argument value after the  -" << f << " flag.\n";
+                return false;
+            }
             const auto rc = cb(*this, n);
             return rc;
         } catch (std::exception & x) {
@@ -186,10 +184,7 @@ bool OTCLI::is_dot_txt_file(const std::string &fp) {
     return (fp.substr(fnl - 4) == std::string(".txt"));
 }
 
-
-
-po::options_description standard_options()
-{
+po::options_description standard_options() {
     using namespace po;
     options_description standard("Standard command-line flags");
     standard.add_options()
@@ -202,36 +197,32 @@ po::options_description standard_options()
     return standard;
 }
 
-variables_map cmd_line_set_logging(const po::variables_map& vm)
-{
+variables_map cmd_line_set_logging(const po::variables_map& vm) {
     el::Configurations defaultConf;
-    if (vm.count("quiet"))
+    if (vm.count("quiet")) {
         defaultConf.set(el::Level::Global,  el::ConfigurationType::Enabled, "false");
-    else
-    {
+    } else {
         defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
         defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
-
-        if (vm.count("trace"))
+        if (vm.count("trace")) {
             defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
-
-        if (vm.count("verbose"))
+        }
+        if (vm.count("verbose")) {
             defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
+        }
     }
     el::Loggers::reconfigureLogger("default", defaultConf);
-
     return vm;
 }
 
-vector<string> cmd_line_response_file_contents(const po::variables_map& vm)
-{
+vector<string> cmd_line_response_file_contents(const po::variables_map& vm) {
     vector<string> args;
-    if (vm.count("response-file"))
-    {
+    if (vm.count("response-file")) {
         // Load the file and tokenize it
         std::ifstream ifs(vm["response-file"].as<string>().c_str());
-        if (not ifs)
+        if (not ifs) {
             throw OTCError() << "Could not open the response file\n";
+        }
         // Read the whole file into a string
         std::stringstream ss;
         ss << ifs.rdbuf();
@@ -247,8 +238,7 @@ vector<string> cmd_line_response_file_contents(const po::variables_map& vm)
 variables_map parse_cmd_line_response_file(int argc, char* argv[],
                                            po::options_description visible,
                                            po::options_description invisible,
-                                           po::positional_options_description p)
-{
+                                           po::positional_options_description p) {
     using namespace po;
     variables_map vm;
     options_description all;
@@ -259,7 +249,6 @@ variables_map parse_cmd_line_response_file(int argc, char* argv[],
     std::vector<string> args = cmd_line_response_file_contents(vm);
     store(command_line_parser(args).options(all).positional(p).run(), vm);
     notify(vm);
-
     return vm;
 }
 
@@ -267,22 +256,18 @@ variables_map parse_cmd_line_standard(int argc, char* argv[],
                                       const string& message,
                                       po::options_description visible,
                                       po::options_description invisible,
-                                      po::positional_options_description p)
-{
+                                      po::positional_options_description p) {
     using namespace po;
-
     variables_map vm = parse_cmd_line_response_file(argc, argv, visible, invisible, p);
-
     if (vm.count("help")) {
-        std::cout<<message<<"\n";
-        std::cout<<visible<<"\n";
-        if (vm.count("verbose"))
-            std::cout<<invisible<<"\n";
+        std::cout << message << "\n";
+        std::cout << visible << "\n";
+        if (vm.count("verbose")) {
+            std::cout << invisible << "\n";
+        }
         exit(0);
     }
-
     cmd_line_set_logging(vm);
-
     return vm; 
 }
 

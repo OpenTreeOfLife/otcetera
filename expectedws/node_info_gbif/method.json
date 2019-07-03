@@ -1,0 +1,8 @@
+{
+  "url_fragment": "v3/tree_of_life/node_info",
+  "verb": "POST",
+  "arguments": {
+    "source_id": "gbif:8",
+    "include_lineage": true
+  }
+}

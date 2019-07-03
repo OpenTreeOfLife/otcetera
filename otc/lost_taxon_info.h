@@ -102,9 +102,13 @@ inline void write_lost_taxa(std::ostream & out,
         for (auto attachPoint: attachmentPoints) {
             const auto & parent = attachPoint.first;
             const auto & childVec = attachPoint.second;
-            json childVecJSON = json::array();
+            std::set<std::string> sortedNameSet;
             for (auto c : childVec) {
-                childVecJSON.push_back(c->get_name());
+                sortedNameSet.insert(c->get_name());
+            }
+            json childVecJSON = json::array();
+            for (auto c : sortedNameSet) {
+                childVecJSON.push_back(c);
             }
             apjson[parent->get_name()] = childVecJSON;
         }

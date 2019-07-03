@@ -77,9 +77,9 @@ int main(int argc, char *argv[]) {
             e << ", " << no_root_label[i];
         }
         if (n > 10) {
-            e<<" ...";
+            e << " ...";
         } else {
-            e<<".";
+            e << ".";
         }
         throw e;
     }
@@ -99,9 +99,9 @@ int main(int argc, char *argv[]) {
                 OttId id = nd->get_ott_id();
                 if (my_leaf.find(id) != my_leaf.end()) {
                     if (set_ott_ids){
-                        throw OTCError()<<"OTT Id "<<id<<" occurs at multiple tips!";
+                        throw OTCError() << "OTT Id " << id << " occurs at multiple tips!";
                     } else {
-                        throw OTCError()<<"Label '"<<nd->get_name()<<"' occurs at multiple tips!";
+                        throw OTCError() << "Label '" << nd->get_name() << "' occurs at multiple tips!";
                     }
                 }
                 my_leaf[id] = nd;
@@ -118,9 +118,9 @@ int main(int argc, char *argv[]) {
             root_ids.insert(id);
         } else {
             if (set_ott_ids) {
-                throw OTCError()<<"OTT Id "<<id<<" occurs at the root of multiple trees!";
+                throw OTCError() << "OTT Id " << id << " occurs at the root of multiple trees!";
             } else {
-                throw OTCError()<<"Label '"<<root->get_name()<<"' occurs at the root of multiple trees!";
+                throw OTCError() << "Label '" << root->get_name() << "' occurs at the root of multiple trees!";
             }
         }
     }
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
         OttId id = trees[i]->get_root()->get_ott_id();
         if (not my_leaf.count(id)) {
             if (otCLI.verbose) {
-                LOG(INFO)<<"OTT Id "<<id<<" is not a leaf in any subproblem.  Must be a root.\n";
+                LOG(INFO) << "OTT Id " << id << " is not a leaf in any subproblem.  Must be a root.\n";
             }
             roots.push_back({});
             std::swap(roots.back(), trees[i]);
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
     }
     for(const auto& tree: roots) {
         write_tree_as_newick(std::cout, *tree);
-        std::cout<<"\n";
+        std::cout << "\n";
     }
     return (roots.size() != 1 ? 1 : 0);
 }

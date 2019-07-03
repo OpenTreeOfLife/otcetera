@@ -2,7 +2,58 @@
 #define OTC_TOLWS_ADAPTORS_H
 #include <restbed>
 #include "ws/tolws.h"
+#include "ws/trees_to_serve.h"
+#include "ws/parallelreadserialwrite.h"
 #include "otc/otc_base_includes.h"
+#include <optional>
+
+inline std::optional<nlohmann::json> parse_body(const restbed::Bytes& body) {
+    if (body.empty()) {
+        return nlohmann::json();
+    }
+    try {
+        return nlohmann::json::parse(body);
+    }
+    catch (...) {
+        return {};
+    }
+}
+
+inline std::optional<nlohmann::json> lookup(const nlohmann::json& j, const std::string& s) {
+    auto x = j.find(s);
+    if (x == j.end()) {
+        return {};
+    }
+    return {*x};
+}
+
+inline std::optional<nlohmann::json> parse_body(const unsigned char* body) {
+    if (not body) {
+        return nlohmann::json();
+    }
+    try {
+        return nlohmann::json::parse(body);
+    }
+    catch (...) {
+        return {};
+    }
+}
+
+inline nlohmann::json parse_body_or_throw(const restbed::Bytes& body) {
+    auto oj = parse_body(body);
+    if (not oj) {
+        throw otc::OTCBadRequest("Could not parse body of call as JSON.\n");
+    }
+    return *oj;
+}
+
+inline nlohmann::json parse_body_or_throw(const unsigned char* body) {
+    auto oj = parse_body(body);
+    if (not oj) {
+        throw otc::OTCBadRequest("Could not parse body of call as JSON.\n");
+    }
+    return *oj;
+}
 
 template<typename T>
 bool extract_from_request(const nlohmann::json & j,
@@ -185,16 +236,6 @@ inline const nlohmann::json & extract_obj(const nlohmann::json &j, const char * 
     throw otc::OTCError() << "Expected \"" << field << "\" field to be a string.\n";
 }
 
-
-///////////////////////
-// handlers that are registered as callback
-void about_method_handler(const std::shared_ptr<restbed::Session> session);
-void node_info_method_handler(const std::shared_ptr<restbed::Session> session);
-void mrca_method_handler(const std::shared_ptr<restbed::Session> session);
-void subtree_method_handler(const std::shared_ptr<restbed::Session> session);
-void induced_subtree_method_handler(const std::shared_ptr<restbed::Session> session);
-void tax_about_method_handler(const std::shared_ptr<restbed::Session> session);
-void taxon_info_method_handler(const std::shared_ptr<restbed::Session> session);
 int run_server(const boost::program_options::variables_map & args);
 boost::program_options::variables_map parse_cmd_line(int argc, char* argv[]);
 

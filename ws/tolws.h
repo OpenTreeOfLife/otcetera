@@ -7,12 +7,16 @@
 #include <vector>
 #include <unordered_map>
 #include <boost/filesystem/operations.hpp>
+#include <stdexcept>
+#include <memory>
 #include "otc/newick_tokenizer.h"
 #include "otc/newick.h"
 #include "otc/tree.h"
 #include "otc/error.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
+#include "ws/parallelreadserialwrite.h"
+#include "ws/otc_web_error.h"
 #include "json.hpp"
 
 #define REPORT_MEMORY_USAGE 1
@@ -25,6 +29,8 @@ namespace otc {
 
 typedef std::pair<const std::string *, const std::string *> src_node_id;
 typedef std::vector<src_node_id> vec_src_node_id_mapper;
+
+typedef RTRichTaxNode Taxon;
 
 #define JOINT_MAPPING_VEC
 
@@ -61,7 +67,8 @@ class SumTreeNodeData {
 
 #if defined(REPORT_MEMORY_USAGE)
 template<>
-inline std::size_t calc_memory_used(const src_node_id &d, MemoryBookkeeper &) {
+inline std::size_t calc_memory_used(const src_node_id &,
+                                    MemoryBookkeeper &) {
     return  2 * sizeof(const std::string *); // we are aliasing stored strings, so we don't count len
 }
 
@@ -144,6 +151,9 @@ struct SourceTreeId {
     std::string git_sha;
 };
 
+struct SummaryTreeAnnotation;
+void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta);
+
 struct SummaryTreeAnnotation {
     public:
         bool initialized = false;
@@ -166,6 +176,29 @@ struct SummaryTreeAnnotation {
         std::vector<std::string> sources;
         nlohmann::json full_source_id_map_json;
         OttIdSet suppressed_from_tree; // IDs not included in tree
+        explicit SummaryTreeAnnotation() {
+        }
+        SummaryTreeAnnotation(const SummaryTreeAnnotation &) = delete;
+        SummaryTreeAnnotation(const SummaryTreeAnnotation &&) = delete;
+        SummaryTreeAnnotation &operator=(const SummaryTreeAnnotation &) = delete;
+        SummaryTreeAnnotation &operator=(const nlohmann::json &j) {
+            from_json(j, *this);
+            return *this;
+        }
+};
+
+inline std::string ott_id_to_idstr(OttId ott_id) {
+    std::string ret;
+    ret.reserve(12);
+    ret = "ott";
+    ret += std::to_string(ott_id);
+    return ret;
+}
+
+enum NodeNameStyle {
+    NNS_NAME_ONLY = 0,
+    NNS_ID_ONLY = 1,
+    NNS_NAME_AND_ID = 2
 };
 
 template<typename T>
@@ -187,219 +220,96 @@ void index_by_name_or_id(T & tree) {
 const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
                                           const std::string & node_id,
                                           bool & was_broken);
-class TreesToServe {
-        std::list< SummaryTreeAnnotation> annotation_list;
-        std::list<std::unique_ptr<SummaryTree_t> > tree_list;
-        std::map<std::string, const SummaryTree_t *> id_to_tree;
-        std::map<std::string, const SummaryTreeAnnotation *> id_to_annotations;
-        std::string default_synth_id;
-        const RichTaxonomy * taxonomy_ptr = nullptr;
-        std::map<std::string, const std::string *> stored_strings;
-        std::list<std::string> stored_strings_list;
-        const RichTaxTree * taxonomy_tree = nullptr;
-        vec_src_node_id_mapper src_node_id_storer;
-        std::map<src_node_id, std::uint32_t> lookup_for_node_ids_while_registering_trees;
-        bool finalized = false;
-    public:
-        const src_node_id & decode_study_node_id_index(std::uint32_t sni_ind) const {
-            return src_node_id_storer.at(sni_ind);
-        }
-        std::uint32_t get_source_node_id_index(src_node_id sni) {
-            assert(!finalized); // should only be called while registering
-            auto it = lookup_for_node_ids_while_registering_trees.find(sni);
-            std::uint32_t r;
-            if (it == lookup_for_node_ids_while_registering_trees.end()) {
-                r = src_node_id_storer.size();
-                lookup_for_node_ids_while_registering_trees[sni] = r;
-                src_node_id_storer.push_back(sni);
-            } else {
-                r = it->second;
-            }
-            return r;
-        }
-        const std::string * get_stored_string(const std::string & k) {
-            const std::string * v = stored_strings[k];
-            if (v == nullptr) {
-                stored_strings_list.push_back(k);
-                v = &(stored_strings_list.back());
-                stored_strings[k] = v;
-            }
-            return v;
-        }
+class TreesToServe;
 
-        void set_taxonomy(const RichTaxonomy &taxonomy) {
-            assert(taxonomy_ptr == nullptr);
-            taxonomy_ptr = &taxonomy;
-            taxonomy_tree = &(taxonomy.get_tax_tree());
-        }
-        const RichTaxonomy & get_taxonomy() const {
-            assert(taxonomy_ptr != nullptr);
-            return *taxonomy_ptr;
-        }
-        void fill_ott_id_set(const std::bitset<32> & flags,
-                              OttIdSet & ott_id_set,
-                              OttIdSet & suppressed_from_tree) {
-            ott_id_set.clear();
-            for (const auto nd : iter_node_const(*taxonomy_tree)) {
-                const auto & tax_record_flags = nd->get_data().get_flags();
-                auto intersection = flags & tax_record_flags;
-                const auto ott_id = nd->get_ott_id();
-                if (!intersection.any()) {
-                    ott_id_set.insert(ott_id);
-                } else {
-                    suppressed_from_tree.insert(ott_id);
-                }
-            }
-        }
-        typedef std::pair<SummaryTree_t &, SummaryTreeAnnotation &> SumTreeInitPair;
-        SumTreeInitPair get_new_tree_and_annotations(const std::string & configfilename,
-                                                     const std::string & filename) {
-            
-            OttIdSet ott_id_set, suppressed_id_set;
-            auto cleaning_flags = cleaning_flags_from_config_file(configfilename);
-            fill_ott_id_set(cleaning_flags, ott_id_set, suppressed_id_set);
 
-            assert(taxonomy_ptr != nullptr);
-            ParsingRules parsingRules;
-            parsingRules.ott_id_validator = &ott_id_set;
-            parsingRules.include_internal_nodes_in_des_id_sets = true;
-            parsingRules.set_ott_idForInternals = true;
-            parsingRules.require_ott_ids = true;
-            parsingRules.set_ott_ids = true;
-            std::ifstream inp;
-            if (!open_utf8_file(filename, inp)) {
-                throw OTCError("Could not open \"" + filename + "\"");
-            }
-            LOG(INFO) << "reading \"" << filename << "\"...";
-            ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
-            FilePosStruct pos(filenamePtr);
-            std::unique_ptr<SummaryTree_t> nt = read_next_newick<SummaryTree_t>(inp, pos, parsingRules);
-            index_by_name_or_id(*nt);
-            set_traversal_entry_exit_and_num_tips(*nt);
-            tree_list.push_back(move(nt));
-            annotation_list.push_back(SummaryTreeAnnotation());
-            auto & sta = annotation_list.back();
-            sta.suppressed_from_tree = suppressed_id_set;
-            return {*(tree_list.back()), sta};
-        }
-        void register_last_tree_and_annotations() {
-            const SummaryTreeAnnotation & sta = annotation_list.back();
-            const SummaryTree_t & tree = *(tree_list.back());
-            default_synth_id = sta.synth_id; // @ TODO need a better system for deciding the default synth ID.
-            id_to_tree[sta.synth_id] = &tree;
-            id_to_annotations[sta.synth_id] = &sta;
-        }
-        void free_last_tree_and_annotations() {
-            tree_list.back()->clear();
-            tree_list.pop_back();
-            annotation_list.pop_back();
-        }
 
-        const SummaryTreeAnnotation * get_annotations(std::string synth_id) const {
-            const auto & key = synth_id.empty() ? default_synth_id : synth_id;
-            auto mit = id_to_annotations.find(key);
-            return mit == id_to_annotations.end() ? nullptr : mit->second;
-        }
+std::string available_trees_ws_method(const TreesToServe &tts);
 
-        const SummaryTree_t * get_summary_tree(std::string synth_id) const {
-            const auto & key = synth_id.empty() ? default_synth_id : synth_id;
-            auto mit = id_to_tree.find(key);
-            return mit == id_to_tree.end() ? nullptr : mit->second;
-        }
-        std::size_t get_num_trees() const {
-            return id_to_tree.size();
-        }
-        void final_tree_added() {
-            finalized = true;
-            if (get_num_trees() == 1) {
-                const auto & annot = annotation_list.back();
-                const auto & sft = annot.suppressed_from_tree;
-                assert(taxonomy_ptr != nullptr);
-                // TODO: make taxonomy_ptr non-const or make the relevant field mutable. Probably the former.
-                auto nct = const_cast<RichTaxonomy *>(taxonomy_ptr);
-                nct->set_ids_suppressed_from_summary_tree_alias(&sft);
-            }
+std::string about_ws_method(const TreesToServe &tts,
+                            const SummaryTree_t * tree_ptr,
+                            const SummaryTreeAnnotation * sta,
+                            bool include_sources);
 
-            std::map<src_node_id, std::uint32_t> tmpm;
-            std::swap(lookup_for_node_ids_while_registering_trees, tmpm);
-        }
-};
+std::string tax_about_ws_method(const RichTaxonomy &tts);
 
-enum NodeNameStyle {
-    NNS_NAME_ONLY = 0,
-    NNS_ID_ONLY = 1,
-    NNS_NAME_AND_ID = 2
-};
+std::string node_info_ws_method(const TreesToServe & tts,
+                                const SummaryTree_t * tree_ptr,
+                                const SummaryTreeAnnotation * sta,
+                                const std::string & node_id,
+                                bool include_lineage);
 
-void about_ws_method(const TreesToServe &tts,
-                     const SummaryTree_t * tree_ptr,
-                     const SummaryTreeAnnotation * sta,
-                     bool include_sources,
-                     std::string & response_str,
-                     int & status_code);
-void tax_about_ws_method(const TreesToServe &tts,
-                         std::string & response_str,
-                         int & status_code);
+std::string nodes_info_ws_method(const TreesToServe & tts,
+                                 const SummaryTree_t * tree_ptr,
+                                 const SummaryTreeAnnotation * sta,
+                                 const std::vector<std::string> & node_id,
+                                 bool include_lineage);
 
-void node_info_ws_method(const TreesToServe & tts,
-                         const SummaryTree_t * tree_ptr,
-                         const SummaryTreeAnnotation * sta,
-                         const std::string & node_id,
-                         bool include_lineage,
-                         std::string & response_str,
-                         int & status_code);
+std::string mrca_ws_method(const TreesToServe & tts,
+                           const SummaryTree_t * tree_ptr,
+                           const SummaryTreeAnnotation * sta,
+                           const std::vector<std::string> & node_id_vec);
 
-void mrca_ws_method(const TreesToServe & tts,
-                    const SummaryTree_t * tree_ptr,
-                    const SummaryTreeAnnotation * sta,
-                    const std::vector<std::string> & node_id_vec,
-                    std::string & response_str,
-                    int & status_code);
+std::string induced_subtree_ws_method(const TreesToServe & tts,
+                                      const SummaryTree_t * tree_ptr,
+                                      const std::vector<std::string> & node_id_vec,
+                                      NodeNameStyle label_format);
 
-void induced_subtree_ws_method(const TreesToServe & tts,
-                               const SummaryTree_t * tree_ptr,
-                               const SummaryTreeAnnotation * sta,
-                               const std::vector<std::string> & node_id_vec,
-                               NodeNameStyle label_format, 
-                               std::string & response_str,
-                               int & status_code);
+std::string newick_subtree_ws_method(const TreesToServe & tts,
+                                     const SummaryTree_t * tree_ptr,
+                                     const std::string & node_id,
+                                     NodeNameStyle label_format,
+                                     bool include_all_node_labels,
+                                     int height_limit);
 
-void newick_subtree_ws_method(const TreesToServe & tts,
-                              const SummaryTree_t * tree_ptr,
-                              const SummaryTreeAnnotation * sta,
-                              const std::string & node_id,
-                              NodeNameStyle label_format, 
-                              int height_limit,
-                              std::string & response_str,
-                              int & status_code);
-void arguson_subtree_ws_method(const TreesToServe & tts,
-                               const SummaryTree_t * tree_ptr,
-                               const SummaryTreeAnnotation * sta,
-                               const std::string & node_id,
-                               int height_limit,
-                               std::string & response_str,
-                               int & status_code);
-void taxon_info_ws_method(const TreesToServe & tts,
-                          const RTRichTaxNode * taxon_node,
-                          bool include_lineage,
-                          bool include_children,
-                          bool include_terminal_descendants,
-                          std::string & response_str,
-                          int & status_code);
-void taxonomy_mrca_ws_method(const TreesToServe & tts,
-                             const OttIdSet & ott_id_set,
-                             std::string & response_str,
-                             int & status_code);
-void taxon_subtree_ws_method(const TreesToServe & tts,
-                             const RTRichTaxNode * taxon_node,
-                             NodeNameStyle label_format, 
-                             std::string & response_str,
-                             int & status_code);
+std::string arguson_subtree_ws_method(const TreesToServe & tts,
+                                      const SummaryTree_t * tree_ptr,
+                                      const SummaryTreeAnnotation * sta,
+                                      const std::string & node_id,
+                                      int height_limit);
 
+std::string taxon_info_ws_method(const RichTaxonomy & taxonomy,
+                                 const RTRichTaxNode * taxon_node,
+                                 bool include_lineage,
+                                 bool include_children,
+                                 bool include_terminal_descendants);
+
+std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy);
+
+std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
+                                    const OttIdSet & ott_id_set);
+
+std::string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
+                                    const RTRichTaxNode * taxon_node,
+                                    NodeNameStyle label_format);
+
+std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
+                                       const std::optional<std::string>& context_name,
+                                       bool do_approximate_matching,
+                                       const std::optional<std::vector<std::string>>& ids,
+                                       bool include_suppressed,
+                                       const RichTaxonomy& taxonomy);
+std::string tnrs_autocomplete_name_ws_method(const std::string& name,
+                                             const std::string& context_name,
+                                             bool include_suppressed,
+                                             const RichTaxonomy& taxonomy);
+std::string tnrs_contexts_ws_method();
+std::string tnrs_infer_context_ws_method(const std::vector<std::string>& names,
+                                         const RichTaxonomy& taxonomy);
+
+
+std::string newick_conflict_ws_method(const SummaryTree_t & summary,
+                                      const RichTaxonomy & taxonomy,
+                                      const std::string& tree1s,
+                                      const std::string& tree2s);
+
+std::string phylesystem_conflict_ws_method(const SummaryTree_t & summary,
+                                           const RichTaxonomy & taxonomy,
+                                           const std::string& tree1s,
+                                           const std::string& tree2s);
 
 bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
 
-void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta);
 void from_json(const nlohmann::json &j, SourceTreeId & sti);
 void to_json(nlohmann::json &j, const SourceTreeId & sti);
 
@@ -431,6 +341,7 @@ inline OttId extract_ott_id(const nlohmann::json &j, const char * field) {
     long ol = extract_unsigned_long(j, field);
     return check_ott_id_size(ol);
 }
+
 inline void to_json(nlohmann::json &j, const SourceTreeId & sti) {
     j = nlohmann::json{{"git_sha", sti.git_sha}, {"study_id", sti.study_id}, {"tree_id", sti.tree_id}};
 }
@@ -439,6 +350,68 @@ inline void from_json(const nlohmann::json &j, SourceTreeId & sti) {
     sti.git_sha = extract_string(j, "git_sha");
     sti.study_id = extract_string(j, "study_id");
     sti.tree_id = extract_string(j, "tree_id");
+}
+
+nlohmann::json tax_about_json(const RichTaxonomy & taxonomy);
+void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, nlohmann::json & taxonrepr);
+
+inline const std::string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
+    return nd_taxon.get_name();
+}
+
+inline void add_taxon_info(const RichTaxonomy & ,
+                           const RTRichTaxNode & nd_taxon,
+                           nlohmann::json & taxonrepr) {
+    const auto & taxon_data = nd_taxon.get_data();
+    taxonrepr["tax_sources"] = taxon_data.get_sources_json();
+    taxonrepr["name"] = taxon_data.get_nonuniqname();
+    taxonrepr["unique_name"] = get_taxon_unique_name(nd_taxon);
+    taxonrepr["rank"] = taxon_data.get_rank();
+    taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
+}
+
+template <typename Tree_t>
+inline std::size_t n_leaves(const Tree_t& T) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    std::size_t count = 0;
+    for(auto nd: iter_leaf_const(T)){
+        count++;
+    }
+    return count;
+}
+
+
+// Get a list of nodes in T2 that are leaves in T1.
+// The nodes in T2 do NOT need to be leaves of T2.
+
+template <typename Tree1_t, typename Tree2_t>
+auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2) {
+    auto& ott_to_nodes2 = T2.get_data().id_to_node;
+    std::vector<const typename Tree2_t::node_type*> nodes;
+    for(auto leaf: iter_leaf_const(T1)) {
+        auto id = leaf->get_ott_id();
+        auto it = ott_to_nodes2.find(id);
+        if (it != ott_to_nodes2.end()) {
+            nodes.push_back(it->second);
+        }
+    }
+    return nodes;
+}
+
+template <typename T>
+void delete_tip_and_monotypic_ancestors(T& tree, typename T::node_type* node) {
+    assert(node->is_tip());
+    while (node and node->is_tip()) {
+        auto parent = node->get_parent();
+        if (not parent) {
+            tree._set_root(nullptr);
+        } else {
+            node->detach_this_node();
+        }
+        delete node;
+        node = parent;
+    }
 }
 
 

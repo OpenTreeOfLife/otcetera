@@ -304,7 +304,7 @@ bool handleJSONOutput(OTCLI & otCLI, const std::string &narg) {
 }
 
 
-bool handleUseJustOTTID(OTCLI & otCLI, const std::string &narg) {
+bool handleUseJustOTTID(OTCLI & , const std::string &) {
     transferNodeNameToExemplars = false;
     return true;
 }

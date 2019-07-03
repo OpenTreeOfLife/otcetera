@@ -1,5 +1,5 @@
 {
-  "url_fragment": "taxonomy/mrca",
+  "url_fragment": "v3/taxonomy/mrca",
   "verb": "POST",
   "arguments": {
     "ott_ids": [1, 3]

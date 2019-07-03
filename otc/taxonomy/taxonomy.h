@@ -10,12 +10,14 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <map>
+#include <optional>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/utility/string_ref.hpp>
+#include <string_view>
 #include <bitset>
+#include "otc/taxonomy/flags.h"
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -78,6 +80,8 @@ enum TaxonomicRank {
     RANK_NO_RANK_TERMINAL
 };
 
+bool rank_is_specific(TaxonomicRank rank);
+
 extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
 extern const std::string empty_string;
 extern const std::set<std::string> indexed_source_prefixes;
@@ -116,10 +120,10 @@ struct TaxonomyRecord {
     OttId id = 0;
     OttId parent_id = 0;
     int parent_index = 0;
-    boost::string_ref name;
-    boost::string_ref rank;
-    boost::string_ref sourceinfo;
-    boost::string_ref uniqname; // will point to name field, if empty in .tsv
+    std::string_view name;
+    std::string_view rank;
+    std::string_view sourceinfo;
+    std::string_view uniqname; // will point to name field, if empty in .tsv
     std::bitset<32> flags;
     int depth = 0;
     int out_degree = 0;
@@ -167,13 +171,19 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
     protected:
     std::unordered_map<OttId, int> index;
     void read_forwards_file(std::string filepath);
-    public:
+
+    std::optional<int> maybe_index_from_id(OttId) const;
+    int index_from_id(OttId) const;
+
+public:
     template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
 
     TaxonomyRecord& record_from_id(OttId id);
     
     const TaxonomyRecord& record_from_id(OttId id) const;
     
+    std::vector<std::string> path_from_id(OttId) const;
+
     TaxonomyRecord& record_from_unforwarded_id(OttId id) {
         return at(index.at(id));
     }
@@ -214,8 +224,9 @@ class RTRichTaxNodeData {
     TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
     std::bitset<32> flags;
     std::string source_info;
-    boost::string_ref possibly_nonunique_name;
-    boost::string_ref get_nonuniqname() const {
+    std::string_view possibly_nonunique_name;
+    uint32_t depth;
+    std::string_view get_nonuniqname() const {
         return possibly_nonunique_name;
     }
     const std::string & get_rank() const {
@@ -250,10 +261,12 @@ class TaxonomicJuniorSynonym {
     const std::string & get_name() const {
         return name;
     }
-    // deleting copy ctor because we are using string_refs, so it is important
+    // deleting copy ctor because we are using string_views, so it is important
     //    that the object not be copied.
     TaxonomicJuniorSynonym(const TaxonomicJuniorSynonym &) = delete;
 };
+
+constexpr const char* sup_flag_comma = "not_otu,environmental,environmental_inherited,viral,hidden,hidden_inherited,was_container";
 
 #define MAP_FOREIGN_TO_POINTER
 class RTRichTaxTreeData {
@@ -272,14 +285,15 @@ class RTRichTaxTreeData {
     std::unordered_map<OttId, OttId> irmng_id_map;
 #endif
     std::unordered_map<std::bitset<32>, nlohmann::json> flags2json;
-    std::map<boost::string_ref, const RTRichTaxNode *> name_to_node; // null if homonym, then check homonym2node
-    std::map<boost::string_ref, const TaxonomyRecord *> name_to_record; // for filtered
+    std::map<std::string_view, const RTRichTaxNode *> name_to_node; // null if homonym, then check homonym2node
+    std::map<std::string_view, const TaxonomyRecord *> name_to_record; // for filtered
     std::unordered_map<OttId, const RTRichTaxNode *> id_to_node;
     std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
-    std::map<boost::string_ref, std::vector<const RTRichTaxNode *> > homonym_to_node;
-    std::map<boost::string_ref, std::vector<const TaxonomyRecord *> > homonym_to_record;
+    std::map<std::string_view, std::vector<const RTRichTaxNode *> > homonym_to_node;
+    std::map<std::string_view, std::vector<const TaxonomyRecord *> > homonym_to_record;
     std::map<std::string, OttIdSet> non_unique_taxon_names;
-    
+
+    std::bitset<32> suppress_flags = flags_from_string(sup_flag_comma);
 };
 
 typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;
@@ -311,6 +325,13 @@ class RichTaxonomy: public BaseTaxonomy {
     }
     void set_ids_suppressed_from_summary_tree_alias(const OttIdSet * ott_id_set_ptr) {
         is_suppressed_from_synth = ott_id_set_ptr;
+    }
+
+    bool node_is_suppressed_from_tnrs(const RTRichTaxNode* nd) const
+    {
+        auto& tree_data = tree->get_data();
+        const auto& tax_record_flags = nd->get_data().get_flags();
+        return (tree_data.suppress_flags & tax_record_flags).any();
     }
 
     const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {
@@ -394,7 +415,7 @@ std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const Taxon
     return tree;
 }
 // formatting options.
-std::string format_with_taxonomy(const std::string& orig, const std::string& format, const TaxonomyRecord& rec);
+std::string format_with_taxonomy(const std::string& orig, const std::string& format, const TaxonomyRecord& rec, const Taxonomy& taxonomy);
 std::string format_without_taxonomy(const std::string& orig, const std::string& format);
 char format_needs_taxonomy(const std::string& format);
 
@@ -402,6 +423,63 @@ OttId root_ott_id_from_file(const std::string& filename);
 std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
 Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
 RichTaxonomy load_rich_taxonomy(const boost::program_options::variables_map& args);
+
+
+const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes);
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                    const std::string& query,
+                                                    bool include_suppressed);
+
+std::vector<const RTRichTaxNode*> exact_name_search(const RTRichTaxNode* context_root,
+                                                    const std::string& query,
+                                                    std::function<bool(const RTRichTaxNode*)> ok = [](const RTRichTaxNode*){return true;});
+
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                    const RTRichTaxNode* context_root,
+                                                    const std::string& query,
+                                                    bool include_suppressed);
+
+
+inline std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                           const RTRichTaxNode* context_root,
+                                                           const std::string& query,
+                                                           bool include_suppressed) {
+    if (include_suppressed) {
+        return exact_name_search(context_root, query);
+    }                                               
+    std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
+        return not taxonomy.node_is_suppressed_from_tnrs(taxon);
+    };
+    return exact_name_search(context_root, query, ok);
+}
+
+
+inline std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                           const std::string& query,
+                                                           bool include_suppressed) {
+    const RTRichTaxNode* context_root = taxonomy.get_tax_tree().get_root();
+    return exact_name_search(taxonomy, context_root, query, include_suppressed);
+}
+
+
+template<typename N>
+N * find_mrca_via_traversal_indices(N *f, N *s);
+
+template<typename N>
+inline N * find_mrca_via_traversal_indices(N *f, N *s) {
+    const auto * fdata = &(f->get_data());
+    const auto sec_ind = s->get_data().trav_enter;
+    while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
+        f = f->get_parent();
+        if (f == nullptr) {
+            assert(false); 
+            return nullptr;
+        }
+        fdata = &(f->get_data());
+    }
+    return f;
+}
+
 
 } // namespace
 #endif

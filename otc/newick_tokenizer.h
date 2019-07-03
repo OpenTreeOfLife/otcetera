@@ -67,6 +67,15 @@ struct FilePosStruct {
 
 class OTCParsingError: public OTCError {
     public:
+        OTCParsingError(const char * msg) {
+            (*this) << "parsing newick: " << msg;
+        }
+
+        OTCParsingError(const char * msg, const FilePosStruct & position)
+            :pos(position) {
+            (*this)<<"parsing newick: "<<msg<<" "<<pos.describe();
+        }
+
         OTCParsingError(const char * msg, char offending, const FilePosStruct & position)
             :OTCError(msg),
             frag(msg),

@@ -59,8 +59,9 @@ void sort_by_smallest_child(T& tree) {
         }
         std::sort(begin(children),
                   end(children),
-                  [](const auto& nd1, const auto& nd2)
-                  {return smallest_child(nd1) < smallest_child(nd2);});
+                  [](const auto& nd1, const auto& nd2) {
+                      return smallest_child(nd1) < smallest_child(nd2);
+                  });
         while (not children.empty()) {
             auto x = children.back();
             children.pop_back();
@@ -108,7 +109,7 @@ void name_unnamed_nodes(T & tree) {
             auto id2 = smallest_child(nd->get_first_child()->get_next_sib());
             auto name = make_mrca_name(id1,id2);
             if (names.count(name)) {
-                throw OTCError()<<"Synthesized name '"<<name<<"' already exists in the tree!";
+                throw OTCError() << "Synthesized name '" << name << "' already exists in the tree!";
             }
             nd->set_name(name);
             names.insert(name);

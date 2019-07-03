@@ -138,7 +138,6 @@ class RootedTreeNode {
                 assert(parent->lChild == this);
                 parent->lChild = n;
             }
-
             // Connect right (from n)
             n->rSib = this;
 #           if ! defined (MINIMAL_NODE_NAVIGATION_PTRS)                
@@ -329,6 +328,9 @@ class RootedTree {
         RootedTree<T, U>()
             :root(nullptr) {
         }
+        explicit RootedTree<T, U>(node_type* r)
+            :root(r) {
+        }
         ~RootedTree<T, U>() {
             clear();
         }
@@ -440,8 +442,9 @@ class RootedTree {
         }
         std::set<const node_type *> get_set_of_all_attached_nodes() const {
             std::set<const node_type*> nodes;
-            for(auto nd: get_all_attached_nodes())
+            for(auto nd: get_all_attached_nodes()) {
                 nodes.insert(nd);
+            }
             return nodes;
         }
         void mark_as_detached(node_type * nd) {
@@ -464,6 +467,11 @@ class RootedTree {
 
 class RTNodeNoData{};
 class RTreeNoData{};
+
+class RTNodeIncludeBoolData{
+    public:
+        bool include = false;
+};
 
 template<typename Tree>
 inline void add_subtree(typename Tree::node_type* par, Tree& T2) {

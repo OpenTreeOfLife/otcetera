@@ -55,7 +55,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     for (auto nd: iter_post(solution)) {
         if (nd->is_tip()) {
             if (not ott_to_tax.count(nd->get_ott_id())) {
-                throw OTCError()<<"OttId "<<nd->get_ott_id()<<" not in taxonomy!";
+                throw OTCError() << "OttId " << nd->get_ott_id() << " not in taxonomy!";
             }
             //auto nd2 = ott_to_tax.at(nd->get_ott_id());
         }
@@ -108,9 +108,9 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
         } else {
             while(nodes.size()) {
                 if (verbose) {
-                    LOG(INFO)<<"Removing Id = '"<<nodes.back()->get_name()<<"' ("<<nodes.back()->get_ott_id()<<")"
-                             <<"  children = "<<nodes.back()->get_out_degree()
-                             <<"  ancestral children = "<<count_children_in_set(nodes.back(),ancestral);
+                    LOG(INFO) << "Removing Id = '" << nodes.back()->get_name() << "' (" << nodes.back()->get_ott_id() << ")"
+                             <<"  children = " << nodes.back()->get_out_degree()
+                             <<"  ancestral children = " << count_children_in_set(nodes.back(),ancestral);
                 }
                 // MTH this is where we should make note of which higher taxa do not make it into the solution.
                 collapse_split_and_del_node(nodes.back());
@@ -171,12 +171,12 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
     }
     // This is similar to, but different from, the number of non-monotypic nodes reject.
     // That is because the rejected nodes are marked as monotypic if they have no ANCESTRAL children.
-    std::cerr<<"Taxonomy splits: #rejected  by phylo inputs = "<<out_degree_many1 - out_degree_many2<<std::endl;
-    std::cerr<<"Solution splits: #in taxonomy            = "<<n_internal_confirmed<<std::endl;
-    std::cerr<<"Solution splits: #from phylo inputs only = "<<n_internal_new<<std::endl;
+    std::cerr << "Taxonomy splits: #rejected  by phylo inputs = " << out_degree_many1 - out_degree_many2 << std::endl;
+    std::cerr << "Solution splits: #in taxonomy            = " << n_internal_confirmed << std::endl;
+    std::cerr << "Solution splits: #from phylo inputs only = " << n_internal_new << std::endl;
     const auto out_degree_many3 = n_internal_out_degree_many(solution);
-    std::cerr<<"Unpruned splits: #added by phylo inputs = "<<out_degree_many3 - out_degree_many2<<std::endl;
-    std::cerr<<"Unpruned splits: total = "<<out_degree_many3<<std::endl;
+    std::cerr << "Unpruned splits: #added by phylo inputs = " << out_degree_many3 - out_degree_many2 << std::endl;
+    std::cerr << "Unpruned splits: total = " << out_degree_many3 << std::endl;
 }
 
 bool handleRequireOttIds(OTCLI & otCLI, const std::string & arg) {
@@ -191,7 +191,7 @@ bool handlePruneUnrecognizedTips(OTCLI & otCLI, const std::string & arg) {
 
 bool handleRegraft(OTCLI&, const std::string & arg) {
     if (arg.size()) {
-        throw OTCError()<<"-r does not take an argument.";
+        throw OTCError() << "-r does not take an argument.";
     }
     regrafting = true;
     return true;
@@ -258,6 +258,6 @@ int main(int argc, char *argv[]) {
         tree->get_root()->set_name(rootName);
     }
     write_tree_as_newick(std::cout, *tree);
-    std::cout<<"\n";
+    std::cout << "\n";
     return 0;
 }

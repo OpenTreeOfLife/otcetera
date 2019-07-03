@@ -9,6 +9,7 @@
 #include <iterator>
 #include <list>
 #include <unordered_map>
+#include <string_view>
 #include "otc/otc_base_includes.h"
 #include "otc/error.h"
 
@@ -547,6 +548,27 @@ inline OttIdSet nodes_to_ott_id_set(const C & container) {
     return s;
 }
 
+
+
+template <typename T>
+inline bool lcase_string_equals(const std::string_view& s1, const T& s2) {
+    if (s1.size() != s2.size()) {
+        return false;
+    }
+    for(auto i = 0U; i < s1.size(); i++) {
+        if (std::tolower(s1[i]) != std::tolower(s2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool lcase_match_prefix(const std::string_view& s, const std::string_view & prefix) {
+    if (prefix.size() < s.size()) {
+        return false;
+    }
+    return lcase_string_equals(s.substr(prefix.size()), prefix);
+}
 
 } //namespace otc
 #endif

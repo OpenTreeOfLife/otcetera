@@ -1,4 +1,4 @@
 taxonomy.tre
 ((A1_ott1,A3_ott3)A_ott4,(B1_ott5)B_ott8,(C1_ott9,C3_ott11)C_ott12)life_ott14;
 3genus-subsamplehigher.tre
-((A1_ott1,C3_ott11),ott5,(C1_ott9,A3_ott3)C_ott12);
+((A1_ott1,C3_ott11),ott8_ott5,(C1_ott9,A3_ott3)C_ott12);

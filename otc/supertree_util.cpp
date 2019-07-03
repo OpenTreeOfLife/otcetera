@@ -1,5 +1,9 @@
 #include "otc/supertree_util.h"
 #include <regex>
+
+using std::optional;
+using std::string;
+
 namespace otc {
 
 std::string string_between_chars(const std::string & s, char beforeC, char endC) {
@@ -25,17 +29,28 @@ std::string source_from_tree_name(const std::string& name) {
     return string_between_chars(name, ' ', '.');
 }
 
-boost::optional<std::string> get_source_node_name(const std::string& name) {
-    static std::regex e("(.*[ _])?(node\\d+)([ _].*)?");
+optional<string> get_source_node_name(const std::string& name)
+{
+    // Here the middle group can match ott12345, so we add ottXXX on the end to avoid this.
+    static std::regex with_ott(".*[ _]([a-zA-Z]+\\d+)[ _]ott.*");
+    // Then we need another regex to handle the case where there's no ottid.
+    static std::regex without_ott(".*[ _]([a-zA-Z]+\\d+)[ _]?");
     std::smatch matches;
-    if (std::regex_match(name,matches,e))
+    if (std::regex_match(name, matches, with_ott))
     {
         assert(matches.size() >= 2);
-        std::string source = matches[2];
+        std::string source = matches[1];
         return source;
     }
-    else
-        return boost::none;
+
+    if (std::regex_match(name, matches, without_ott)) {
+        assert(matches.size() >= 2);
+        std::string source = matches[1];
+        return source;
+    }
+    else {
+        return {};
+    }
 }
 
 bool culled_and_complete_incompat_wrt_leaf_set(const OttIdSet & culled,

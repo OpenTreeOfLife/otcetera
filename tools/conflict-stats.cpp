@@ -42,11 +42,11 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description reporting("Reporting options");
     reporting.add_options()
-	("each",value<bool>()->default_value(false),"Show separate results for each input tree")
-	("all",value<bool>()->default_value(true),"Show accumulated over all input trees")
-	("switch","Count synth nodes instead of input tree nodes")
+        ("each",value<bool>()->default_value(false),"Show separate results for each input tree")
+        ("all",value<bool>()->default_value(true),"Show accumulated over all input trees")
+        ("switch","Count synth nodes instead of input tree nodes")
         ("names,N","Write out node names instead of counts.")
-	;
+        ;
 
     options_description visible;
     visible.add(reporting).add(otc::standard_options());
@@ -59,22 +59,22 @@ variables_map parse_cmd_line(int argc,char* argv[])
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
                                                     "Usage: otc-conflict-stats <synth-tree> <input tree1> <input tree2> ... [OPTIONS]\n"
                                                     "Count or report input edges of each annotation type.\n\n"
-						    "For each relation of the form (synth_node RELATION input_node), find the input nodes\n"
-						    " that satisfy it for at least 1 synth_node.\n"
-						    "If --switch is given, find the synth_nodes that satisfy it for at least 1 input_node.",
+                                                    "For each relation of the form (synth_node RELATION input_node), find the input nodes\n"
+                                                    " that satisfy it for at least 1 synth_node.\n"
+                                                    "If --switch is given, find the synth_nodes that satisfy it for at least 1 input_node.",
                                                     visible, invisible, p);
 
     return vm;
 }
 
-namespace std
-{
+namespace std {
+
 template<typename T, typename U>
-struct hash<pair<T,U>>
-{
+struct hash<pair<T,U>> {
     std::size_t operator()(const std::pair<T,U>& p) const noexcept {return std::hash<T>()(p.first) * std::hash<U>()(p.second);}
 };
-}
+
+} // namespace std
 
 using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
@@ -91,20 +91,19 @@ void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& s
 
 string get_source_node_name_if_available(const Tree_t::node_type* node) {
     string name = node->get_name();
-    if (name.empty())
-	throw OTCError()<<"Cannot get name for unnamed node!";
-
+    if (name.empty()) {
+        throw OTCError() << "Cannot get name for unnamed node!";
+    }
     auto source = get_source_node_name(name);
-    if (source)
+    if (source){
         return *source;
-    else
+    } else {
         return name;
+    }
 }
 
-map<string,string> suppress_and_record_monotypic(Tree_t& tree)
-{
+map<string,string> suppress_and_record_monotypic(Tree_t& tree) {
     map<string,string> to_child;
-
     std::vector<Tree_t::node_type*> remove;
     for (auto nd:iter_post(tree)) {
         if (nd->is_outdegree_one_node()) {
@@ -112,10 +111,8 @@ map<string,string> suppress_and_record_monotypic(Tree_t& tree)
         }
     }
 
-    for (auto nd: remove)
-    {
-        if (nd->get_name().size())
-        {
+    for (auto nd: remove) {
+        if (nd->get_name().size()) {
             auto child = nd->get_first_child();
             assert(not child->is_outdegree_one_node());
             assert(child->get_name().size());
@@ -142,27 +139,23 @@ bool headerEmitted = false;
 
 void add_element(set<pair<string, string>>& s,
                  const Tree_t::node_type*,
-		 const Tree_t::node_type* input_node,
-		 const string& source)
-{
+                 const Tree_t::node_type* input_node,
+                 const string& source) {
     // We only care about non-monotypic nodes.
-    if (input_node->is_outdegree_one_node()) return;
-    
+    if (input_node->is_outdegree_one_node()) {
+        return;
+    }
     string node = get_source_node_name_if_available(input_node);
-
     s.insert({source, node});
 }
 
 void mapNextTree1(const Tree_t& summaryTree,
-		  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
-		  const Tree_t & tree,
-		  stats& s) //isTaxoComp is third param
-{
+                  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
+                  const Tree_t & tree,
+                  stats& s) {
     typedef Tree_t::node_type node_type;
     std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
-
     string source_name = source_from_tree_name(tree.get_name());
-
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
     {
         auto log_supported_by    = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.supported_by,node2,node1,source_name);};
@@ -194,15 +187,12 @@ void mapNextTree1(const Tree_t& summaryTree,
 }
 
 void mapNextTree2(const Tree_t& summaryTree,
-		  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
-		  const Tree_t & tree,
-		  stats& s) //isTaxoComp is third param
-{
+                  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
+                  const Tree_t & tree,
+                  stats& s) {
     typedef Tree_t::node_type node_type;
     std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
-
     string source_name = source_from_tree_name(summaryTree.get_name());
-
     auto ottid_to_node = get_ottid_to_const_node_map(tree);
     {
         auto log_supported_by    = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.supported_by,node2,node1,source_name);};
@@ -222,7 +212,6 @@ void mapNextTree2(const Tree_t& summaryTree,
     {
         auto nothing    = [](const node_t*, const node_t*) {};
         auto log_resolved_by     = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.resolves,node1,node2,source_name);};
-
         perform_conflict_analysis(summaryTree, constSummaryOttIdToNode, mrca_of_pair,
                                   tree, ottid_to_node, mrca_of_pair,
                                   nothing,
@@ -234,31 +223,29 @@ void mapNextTree2(const Tree_t& summaryTree,
 }
 
 void mapNextTree(const Tree_t& summaryTree,
-		 const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
-		 const Tree_t & tree,
-		 stats& s, //isTaxoComp is third param
-		 bool sw)
-{
-    if (not sw)
-	mapNextTree1(summaryTree, constSummaryOttIdToNode, tree, s);
-    else
-	mapNextTree2(summaryTree, constSummaryOttIdToNode, tree, s);
+                 const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
+                 const Tree_t & tree,
+                 stats& s, //isTaxoComp is third param
+                 bool sw) {
+    if (not sw) {
+        mapNextTree1(summaryTree, constSummaryOttIdToNode, tree, s);
+    } else {
+        mapNextTree2(summaryTree, constSummaryOttIdToNode, tree, s);
+    }
 }
 
-void show_header(std::ostream& o)
-{
-    o<<"supported_by"<<"\t"<<"partial_path_of"<<"\t"<<"terminal"<<"\t"<<"conflicts_with"<<"\t"<<"resolves"<<"\t"<<"resolved_by"<<"\tname\n";
+void show_header(std::ostream& o) {
+    o << "supported_by" << "\t" << "partial_path_of" << "\t" << "terminal" << "\t" << "conflicts_with" << "\t" << "resolves" << "\t" << "resolved_by" << "\tname\n";
 }
 
-void show_stats(std::ostream& o, const stats& s, const string& name)
-{
-    o<<s.supported_by.size()<<"\t"<<s.partial_path_of.size()<<"\t"<<s.terminal.size()<<"\t"<<s.conflicts_with.size()<<"\t"<<s.resolves.size()<<"\t"<<s.resolved_by.size()<<"\t"<<name<<"\n";
+void show_stats(std::ostream& o, const stats& s, const string& name) {
+    o << s.supported_by.size() << "\t" << s.partial_path_of.size() << "\t" << s.terminal.size() << "\t" << s.conflicts_with.size() << "\t" << s.resolves.size() << "\t" << s.resolved_by.size() << "\t" << name << "\n";
 }
 
-void show_group(std::ostream& o, const set<pair<string,string>>& group, const string& relation, const string& name)
-{
-    for(auto& x: group)
-	o<<"relation = "<<relation<<"   tree = "<<x.first<<"   node = "<<x.second<<"   group = "<<name<<"\n";
+void show_group(std::ostream& o, const set<pair<string,string>>& group, const string& relation, const string& name) {
+    for(auto& x: group) {
+        o << "relation = " << relation << "   tree = " << x.first << "   node = " << x.second << "   group = " << name << "\n";
+    }
 }
 
 void show_names(std::ostream& o, const stats& s, const string& name)
@@ -273,61 +260,55 @@ void show_names(std::ostream& o, const stats& s, const string& name)
 }
 
 
-
 int main(int argc, char *argv[]) {
     try {
         variables_map args = parse_cmd_line(argc,argv);
         string synthfilename = args["synth"].as<string>();
         vector<string> inputs = args["input"].as<vector<string>>();
-	bool each = args["each"].as<bool>();
-	bool all = args["all"].as<bool>();
-	bool names = args.count("names");
-	bool sw = args.count("switch");
-	if (not each and not all)
-	    throw OTCError()<<"No output requested.";
-        
-	// 1. Load and process summary tree.
-        auto summaryTree = get_tree<Tree_t>(synthfilename);
-	auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
-	auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
-	auto monotypic_nodes = suppress_and_record_monotypic(*summaryTree);
-	compute_depth(*summaryTree);
-	stats global;
-
-	// 2. Load and process input trees.
-	if (not names)
-	    show_header(std::cout);
-        for(const auto& filename: inputs) {
-	    auto tree = get_tree<Tree_t>(filename);
-	    compute_depth(*tree);
-
-	    compute_summary_leaves(*tree, summaryOttIdToNode);
-
-	    string source_name = source_from_tree_name(tree->get_name());
-
-	    if (all)
-		mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, global, sw);
-	    if (each)
-	    {
-		stats local;
-		mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, local, sw);
-		if (names)
-		    show_names(std::cout, local, source_name);
-		else
-		    show_stats(std::cout, local, source_name);
-	    }
+        bool each = args["each"].as<bool>();
+        bool all = args["all"].as<bool>();
+        bool names = args.count("names");
+        bool sw = args.count("switch");
+        if (not each and not all) {
+            throw OTCError() << "No output requested.";
         }
-
-	// 3. Write out the stats
-	if (all and names)
-	    show_names(std::cout, global, "ALL");
-	else if (all)
-	    show_stats(std::cout, global, "ALL");
-	
-    }
-    catch (std::exception& e)
-    {
-        std::cerr<<"otc-conflict-stats: Error! "<<e.what()<<std::endl;
+        // 1. Load and process summary tree.
+        auto summaryTree = get_tree<Tree_t>(synthfilename);
+        auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
+        auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
+        auto monotypic_nodes = suppress_and_record_monotypic(*summaryTree);
+        compute_depth(*summaryTree);
+        stats global;
+        // 2. Load and process input trees.
+        if (not names) {
+            show_header(std::cout);
+        }
+        for(const auto& filename: inputs) {
+            auto tree = get_tree<Tree_t>(filename);
+            compute_depth(*tree);
+            compute_summary_leaves(*tree, summaryOttIdToNode);
+            string source_name = source_from_tree_name(tree->get_name());
+            if (all) {
+                mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, global, sw);
+            }
+            if (each) {
+                stats local;
+                mapNextTree(*summaryTree, constSummaryOttIdToNode, *tree, local, sw);
+                if (names) {
+                    show_names(std::cout, local, source_name);
+                } else {
+                    show_stats(std::cout, local, source_name);
+                }
+            }
+        }
+        // 3. Write out the stats
+        if (all and names) {
+            show_names(std::cout, global, "ALL");
+        } else if (all) {
+            show_stats(std::cout, global, "ALL");
+        }
+    } catch (std::exception& e) {
+        std::cerr << "otc-conflict-stats: Error! " << e.what() << std::endl;
         exit(1);
     }
 }

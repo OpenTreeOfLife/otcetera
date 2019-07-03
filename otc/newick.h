@@ -4,6 +4,7 @@
 #include <fstream>
 #include <stack>
 #include <stdexcept>
+#include <sstream>
 #include "otc/otc_base_includes.h"
 #include "otc/tree.h"
 #include "otc/newick_tokenizer.h"
@@ -73,5 +74,46 @@ inline std::unique_ptr<T> read_next_newick(std::istream &inp, FilePosStruct & po
     return treePtr;
 }
 
+template<typename T>
+inline std::unique_ptr<T> tree_from_newick_string(const std::string& s, const ParsingRules & Rules) {
+    std::istringstream sfile(s);
+    FilePosStruct pos;
+    auto tree = read_next_newick<T>(sfile, pos, Rules);
+    if (not tree) {
+        throw OTCParsingError("Newick string is empty (no tokens)");
+    }
+    return tree;
+}
+
+template<typename T>
+inline std::unique_ptr<T> tree_from_newick_string(const std::string& s) {
+    ParsingRules rules;
+    rules.require_ott_ids = false;
+    return tree_from_newick_string<T>(s,rules);
+}
+
+template <typename T>
+inline std::unique_ptr<T> first_newick_tree_from_file(const std::string& filename, const ParsingRules& Rules)
+{
+    std::ifstream inp;
+    if (!open_utf8_file(filename, inp)) {
+        throw OTCError()<<"Could not open \""<<filename<<"\"";
+    }
+    LOG(INFO) << "reading \"" << filename << "\"...";
+    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
+    FilePosStruct pos(filenamePtr);
+    return read_next_newick<T>(inp, pos, Rules);
+}
+
+template <typename T>
+inline std::unique_ptr<T> first_newick_tree_from_file(const std::string& filename)
+{
+    ParsingRules rules;
+    rules.require_ott_ids = false;
+    return first_newick_tree_from_file<T>(filename, rules);
+}
+
 }// namespace otc
+
+
 #endif

@@ -15,8 +15,7 @@ bool suppressMonotypicAndWrite(OTCLI & , std::unique_ptr<T> tree);
 //         do not want to check invariants.
 //       I believe this is a "shallow dangle" version, because we delete monotypic nodes
 //         instead of preserving the one closest to the root.
-void suppress_monotypic_fast(Tree_t& tree)
-{
+void suppress_monotypic_fast(Tree_t& tree) {
     std::vector<Tree_t::node_type*> remove;
     for (auto nd:iter_pre(tree)) {
         if (nd->is_outdegree_one_node()) {
@@ -45,7 +44,7 @@ inline bool suppressMonotypicAndWrite(OTCLI & otCLI, std::unique_ptr<T> tree) {
 int main(int argc, char *argv[]) {
     OTCLI otCLI("otc-suppress-monotypic",
                  "takes a filepath to a newick file and writes a newick without any nodes that have just one child",
-                 {"some.tre"});
+                 "some.tre");
     otCLI.get_parsing_rules().set_ott_idForInternals = false;
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wdd = suppressMonotypicAndWrite<Tree_t>;
     return tree_processing_main<Tree_t>(otCLI, argc, argv, wdd, nullptr, 1);

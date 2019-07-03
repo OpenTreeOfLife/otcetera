@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <boost/program_options.hpp>
-#include <boost/optional.hpp>
 #include <bitset>
 #include <regex>
 
@@ -38,10 +37,8 @@ namespace po = boost::program_options;
 using po::variables_map;
 using namespace boost::property_tree;
 
-variables_map parse_cmd_line(int argc,char* argv[]) 
-{ 
+variables_map parse_cmd_line(int argc,char* argv[]) {
     using namespace po;
-
     // named options
     options_description invisible("Invisible options");
     invisible.add_options()
@@ -57,6 +54,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
 
     options_description selection("Selection options");
     selection.add_options()
+    ("cull-flags",value<string>(),"Show records with none of these flags")
     ("any-flags",value<string>(),"Show records with one of these flags")
     ("all-flags",value<string>(),"Show records with all of these flags")
     ("in-tree",value<string>(),"Show records from OTT ids in tree")
@@ -66,6 +64,7 @@ variables_map parse_cmd_line(int argc,char* argv[])
     output.add_options()
         ("show-root,R","Show the ottid of the root node")
         ("find,S",value<string>(),"Show taxa whose names match regex <arg>")
+        ("id,I",value<string>(),"Show taxon with OTT ID <arg>")
         ("degree,D",value<long>(),"Show out the degree of node <arg>")
         ("children,C",value<long>(),"Show the children of node <arg>")
         ("parent,P",value<OttId>(),"Show the parent taxon of node <arg>")
@@ -97,54 +96,50 @@ variables_map parse_cmd_line(int argc,char* argv[])
     return vm;
 }
 
-std::size_t n_nodes(const Tree_t& T) {
-#pragma clang diagnostic ignored  "-Wunused-variable"
-#pragma GCC diagnostic ignored  "-Wunused-variable"
-    std::size_t count = 0;
-    for(auto nd: iter_post_const(T)){
-        count++;
-    }
-    return count;
-}
-
-void report_lost_taxa(const Taxonomy& taxonomy, const string& filename)
-{
+void report_lost_taxa(const Taxonomy& taxonomy, const string& filename) {
     vector<unique_ptr<Tree_t>> trees;
     std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
     ParsingRules rules;
     rules.require_ott_ids = false;
     otc::process_trees(filename,rules,a);//[&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;});
     const auto& T =  trees[0];
-
     std::unordered_map<long, const Tree_t::node_type*> ottid_to_node;
-    for(auto nd: iter_pre_const(*T))
-        if (nd->has_ott_id())
+    for(auto nd: iter_pre_const(*T)) {
+        if (nd->has_ott_id()) {
             ottid_to_node[nd->get_ott_id()] = nd;
-
+        }
+    }
     vector<const TaxonomyRecord*> records;
-    for(const auto& rec: taxonomy)
+    for(const auto& rec: taxonomy) {
         records.push_back(&rec);
-    
+    }
     std::sort(records.begin(), records.end(), [](const auto& a, const auto& b) {return a->depth < b->depth;});
-    for(const auto& rec: records)
-        if (not ottid_to_node.count(rec->id))
-            std::cout<<"depth="<<rec->depth<<"   id="<<rec->id<<"   uniqname='"<<rec->uniqname<<"'\n";
+    for(const auto& rec: records){
+        if (not ottid_to_node.count(rec->id)){
+            std::cout << "depth=" << rec->depth << "   id=" << rec->id << "   uniqname='" << rec->uniqname << "'\n";
+        }
+    }
 }
 
-void show_rec(const TaxonomyRecord& rec)
-{
-    std::cout<<rec.id<<"   '"<<rec.uniqname<<"'   '"<<rec.rank<<"'   depth = "<<rec.depth<<"   out-degree = "<<rec.out_degree<<"    flags = "<<flags_to_string(rec.flags)<<"\n";
+void show_rec(const TaxonomyRecord& rec) {
+    std::cout << rec.id << "   '" << rec.uniqname << "'   '" << rec.rank << "'   depth = " << rec.depth << "   out-degree = " << rec.out_degree << "    flags = " << flags_to_string(rec.flags) << "\n";
 }
 
-vector<OttId> get_ids_from_file(const string& filename) {
+vector<OttId> get_ids_from_stream(std::istream& file) {
     vector<OttId> ids;
-    std::ifstream file(filename);
-    while (file) {
-        long i;
-        file >> i;
+    long i;
+    while (file >> i) {
         ids.push_back(check_ott_id_size(i));
     }
     return ids;
+}
+
+vector<OttId> get_ids_from_file(const string& filename) {
+    if (filename == "-") {
+        return get_ids_from_stream(std::cin);
+    }
+    std::ifstream file(filename);
+    return get_ids_from_stream(file);
 }
 
 vector<OttId> get_ids_from_tree(const string& filename) {
@@ -181,43 +176,46 @@ bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags) {
     return true;
 }
 
-void show_taxonomy_ids(const Taxonomy& taxonomy, const string& format, const vector<OttId>& ids,
-               std::function<bool(tax_flags)> flags_match)
-{
-    for(auto id: ids)
-    {
-    try
-    {
-        auto& rec = taxonomy.record_from_id(id);
-        if (flags_match(rec.flags))
-        std::cout<<format_with_taxonomy("No original label",format,rec)<<"\n";
-    }
-    catch (...) {
-        std::cerr<<"id="<<id<<": not in taxonomy!\n";
-    }
+void show_taxonomy_ids(const Taxonomy& taxonomy,
+                       const string& format,
+                       const vector<OttId>& ids,
+                       std::function<bool(tax_flags)> flags_match) {
+    for(auto id: ids) {
+        try {
+            auto& rec = taxonomy.record_from_id(id);
+            if (flags_match(rec.flags)) {
+                std::cout << format_with_taxonomy("No original label",format,rec,taxonomy) << "\n";
+            }
+        } catch (...) {
+            std::cerr << "id=" << id << ": not in taxonomy!\n";
+        }
     }
 }
 
-std::function<bool(tax_flags)> get_flags_match(variables_map& args)
-{
+std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
     tax_flags all_flags;
-    if (args.count("all-flags"))
-    all_flags = flags_from_string(args["all-flags"].as<string>());
-
+    if (args.count("all-flags")) {
+        all_flags = flags_from_string(args["all-flags"].as<string>());
+    }
     tax_flags any_flags;
-    if (args.count("any-flags"))
-    any_flags = flags_from_string(args["any-flags"].as<string>());
-
-    
-    if (any_flags.any() and all_flags.any())
-    return [all_flags,any_flags](tax_flags flags) {return (flags&any_flags).any() and
+    if (args.count("any-flags")) {
+        any_flags = flags_from_string(args["any-flags"].as<string>());
+    }
+    if (any_flags.any() and all_flags.any()) {
+        return [all_flags,any_flags](tax_flags flags) {return (flags&any_flags).any() and
                                                       (flags&all_flags)==all_flags; };
-    else if (any_flags.any())
-    return [any_flags](tax_flags flags) { return (flags&any_flags).any(); };
-    else if (all_flags.any())
-    return [all_flags](tax_flags flags) { return (flags&all_flags)==all_flags; };
-    else
-    return [](tax_flags){return true;};
+    } else if (any_flags.any()) {
+        return [any_flags](tax_flags flags) { return (flags&any_flags).any(); };
+    } else if (all_flags.any()) {
+        return [all_flags](tax_flags flags) { return (flags&all_flags)==all_flags; };
+    } else {
+        if (args.count("cull-flags")) {
+            tax_flags cull_flags;
+            cull_flags = flags_from_string(args["cull-flags"].as<string>());
+            return [cull_flags](tax_flags flags) { return ! ((flags&cull_flags).any()); };
+        }
+        return [](tax_flags){return true;};
+    }
 }
 
 
@@ -243,11 +241,23 @@ int main(int argc, char* argv[]) {
             vector<OttId> ids = get_ids_matching_regex(taxonomy, args["find"].as<string>());
             show_taxonomy_ids(taxonomy, format, ids, flags_match);
             return 0;
+        } else if (args.count("id")) {
+            OttId id = args["name"].as<OttId>();
+            show_taxonomy_ids(taxonomy, format, {id}, flags_match);
+            return 0;
         } else if (args.count("any-flags") or args.count("all-flags")) {
             string format=args["format"].as<string>();
             for(const auto& rec: taxonomy) {
                 if (flags_match(rec.flags)) {
-                    std::cout << format_with_taxonomy("No original label",format,rec) << "\n";
+                    std::cout << format_with_taxonomy("No original label",format,rec,taxonomy) << "\n";
+                }
+            }
+            return 0;
+        } else if (args.count("cull-flags")) {
+            string format=args["format"].as<string>();
+            for(const auto& rec: taxonomy) {
+                if (flags_match(rec.flags)) {
+                    std::cout << format_with_taxonomy("No original label",format,rec,taxonomy) << "\n";
                 }
             }
             return 0;

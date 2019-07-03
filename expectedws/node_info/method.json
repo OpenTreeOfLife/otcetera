@@ -1,5 +1,5 @@
 {
-  "url_fragment": "tree_of_life/node_info",
+  "url_fragment": "v3/tree_of_life/node_info",
   "verb": "POST",
   "arguments": {
     "node_id": "ott100",
