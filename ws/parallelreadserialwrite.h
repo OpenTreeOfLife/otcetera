@@ -8,7 +8,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <iomanip>
-#include <cassert>
+#include "assert.hh"
 
 namespace otc {
 

@@ -18,7 +18,7 @@ git_version_h = vcs_tag(
 
 programs = [
   ['mungenames',  'munge-names'],
-  ['sampletips',  'sampletips'],
+  ['sampletips',  'sample-tips'],
   ['displayedstats',  'displayed-stats'],
   ['subproblemstats',  'subproblem-stats'],
   ['nonterminaltoexemplars',   'nonterminals-to-exemplars'],
@@ -49,7 +49,8 @@ programs = [
   ['relabel-tree',  'relabel-tree'],
   ['tree-tool',  'tree-tool'],
   ['broken-taxa',  'broken-taxa'],
-  ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes']
+  ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],
+  ['tnrs-cli', 'tnrs-cli']
   ]
 
 foreach program : programs
@@ -57,3 +58,17 @@ foreach program : programs
 endforeach
 
 executable('otc-version-reporter', ['version-reporter.cpp',git_version_h], dependencies: [boost, libotcetera, json], install_rpath: rpath, install: true)
+
+
+
+test_otc_tools = find_program(join_paths(meson.source_root(),'tools/test_otc_tools.py'))
+data_dir = join_paths(meson.source_root(),'data')
+expected_dir = join_paths(meson.source_root(),'expected')
+tools_dir = join_paths(meson.build_root(),'tools')
+
+test('otc tools test',
+     test_otc_tools,
+     timeout: 300,
+     workdir: tools_dir,
+     args: [data_dir, expected_dir, tools_dir]
+    )

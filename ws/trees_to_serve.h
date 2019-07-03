@@ -2,13 +2,16 @@
 #define TREES_TO_SERVE_H
 
 #include <set>
-
+#include <thread>
 #include "tolws.h"
 namespace otc
 {
-
-class TreesToServe
-{
+using ReadableTaxonomy = std::pair<const RichTaxonomy &,
+                                   std::unique_ptr<ReadMutexWrapper> >;
+using WritableTaxonomy = std::pair<RichTaxonomy &,
+                                   std::unique_ptr<WriteMutexWrapper> >;
+                                   
+class TreesToServe {
     std::list< SummaryTreeAnnotation> annotation_list;
     std::list<std::unique_ptr<SummaryTree_t> > tree_list;
     std::map<std::string, const SummaryTree_t *> id_to_tree;
@@ -34,21 +37,19 @@ public:
 
     void set_taxonomy(RichTaxonomy &taxonomy);
 
-    using ReadableTaxonomy = std::pair<const RichTaxonomy &,
-				       std::unique_ptr<ReadMutexWrapper> >;
-    using WritableTaxonomy = std::pair<RichTaxonomy &,
-				       std::unique_ptr<WriteMutexWrapper> >;
+    using ReadableTaxonomy = std::pair<const RichTaxonomy &, std::unique_ptr<ReadMutexWrapper> >;
+    using WritableTaxonomy = std::pair<RichTaxonomy &, std::unique_ptr<WriteMutexWrapper> >;
     ReadableTaxonomy get_readable_taxonomy() const;
 
     WritableTaxonomy get_writable_taxonomy();
 
     void fill_ott_id_set(const std::bitset<32> & flags,
-			 OttIdSet & ott_id_set,
-			 OttIdSet & suppressed_from_tree);
+                         OttIdSet & ott_id_set,
+                         OttIdSet & suppressed_from_tree);
 
     typedef std::pair<SummaryTree_t &, SummaryTreeAnnotation &> SumTreeInitPair;
     SumTreeInitPair get_new_tree_and_annotations(const std::string & configfilename,
-						 const std::string & filename);
+                                                 const std::string & filename);
 
     void register_last_tree_and_annotations();
 
@@ -66,5 +67,8 @@ public:
 
     void final_tree_added();
 };
-};
+
+
+
+} // namespace otc
 #endif

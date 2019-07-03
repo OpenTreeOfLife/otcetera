@@ -1,0 +1,33 @@
+{
+  "config": {
+    "collections": [],
+    "collections_root": "/home/mholder/opentree/versioned/phylesystem",
+    "config_filepath": "/home/mholder/opentree/cruft/fninp/out/config",
+    "otc_boost_version": "unknown",
+    "otc_sha": "unknown",
+    "otc_version": "unknown",
+    "ott_major_minor_version": "0.0",
+    "ott_root": "/home/mholder/opentree/cruft/fninp/taxonomy",
+    "ott_version": "0.0draft0",
+    "peyotl_root": "/home/mholder/opentree/propinq_peyotl",
+    "peyotl_sha": "4c3e468dceb2866fe0e8ce9a276f1f661871b6fb",
+    "peyotl_version": "0.1.4dev",
+    "phylesystem_root": "/home/mholder/opentree/versioned/phylesystem",
+    "propinquity_sha": "56259e16abe7deffb10da3df4f4715b81bc3c91d",
+    "root_ott_id": null,
+    "synth_id": null,
+    "taxonomy_cleaning_flags": [
+      "barren",
+      "environmental",
+      "hidden",
+      "hybrid",
+      "inconsistent",
+      "major_rank_conflict",
+      "major_rank_conflict_inherited",
+      "merged",
+      "not_otu",
+      "viral",
+      "was_container"
+    ]
+  }
+}

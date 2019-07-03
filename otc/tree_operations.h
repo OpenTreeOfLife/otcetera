@@ -778,11 +778,11 @@ inline void write_newick(std::ostream & out, const T *nd) {
 }
 
 template<typename T, typename Y>
-inline void write_newick_generic(std::ostream & out,
-                               T nd,
-                               Y & nodeNamer,
-                               bool include_all_node_labels,
-                               long height_limit) {
+inline void write_newick_generic_no_semi(std::ostream & out,
+                                         T nd,
+                                         Y & nodeNamer,
+                                         bool include_all_node_labels,
+                                         long height_limit) {
     assert(nd != nullptr);
     if (!(nd->is_tip()) && height_limit != 0) {
         out << '(';
@@ -794,15 +794,26 @@ inline void write_newick_generic(std::ostream & out,
             } else {
                 out << ',';
             }
-            write_newick_generic<T, Y>(out, c, nodeNamer, include_all_node_labels, nhl);
+            write_newick_generic_no_semi<T, Y>(out, c, nodeNamer, include_all_node_labels, nhl);
         }
         out << ')';
     }
     // We need to call nodeNamer(nd) to mark nd as visited, even if we don't use the name.
     auto name = nodeNamer(nd);
 
-    if (include_all_node_labels or nd->has_ott_id())
-	write_escaped_for_newick(out, name);
+    if (include_all_node_labels or nd->has_ott_id()) {
+        write_escaped_for_newick(out, name);
+    }
+}
+
+template<typename T, typename Y>
+inline void write_newick_generic(std::ostream & out,
+                                 T nd,
+                                 Y & nodeNamer,
+                                 bool include_all_node_labels,
+                                 long height_limit) {
+    write_newick_generic_no_semi<T,Y>(out, nd,  nodeNamer, include_all_node_labels, height_limit);
+    out<<';';
 }
 
 
@@ -897,7 +908,7 @@ template<typename T>
 inline std::string newick_string(const T& Tree) {
     std::ostringstream s;
     write_tree_as_newick(s, Tree);
-    return std::move(s.str());
+    return s.str();
 }
 
 template<typename T>
@@ -1487,6 +1498,15 @@ void set_traversal_entry_exit_and_num_tips(T & tree) {
                 d.num_tips += c->get_data().num_tips;
             }
         }
+    }
+}
+
+/// sets dest_node's name to src_nodes'. Also sets ott_id if src_node has one.
+template <typename T>
+inline void set_name_and_maybe_ott_id(const T & src_node, T & dest_node) {
+    dest_node.set_name(src_node.get_name());
+    if (src_node.has_ott_id()) {
+        dest_node.set_ott_id(src_node.get_ott_id());
     }
 }
 

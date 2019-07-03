@@ -1,0 +1,8 @@
+ott5268475.tre
+Out-degree	Count
+0	2
+2	1
+ott805080.tre
+Out-degree	Count
+0	2
+2	1

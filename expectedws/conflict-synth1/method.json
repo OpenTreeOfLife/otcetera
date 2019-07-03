@@ -1,8 +1,8 @@
 {
-  "url_fragment": "conflict/conflict-status",
+  "url_fragment": "v3/conflict/conflict-status",
   "verb": "POST",
   "arguments": {
-      "tree1newick": "((A1_node1_ott1,A2_node2_ott2)node5,(B1_node3_ott11,B2_node4_ott12)node6)node7;",
+      "tree1newick": "((A1_node1_ott1,A2_node2_ott2)_node5,(B1_node3_ott11,B2_node4_ott12)_node6)_node7;",
       "tree2": "synth"
   }
 }

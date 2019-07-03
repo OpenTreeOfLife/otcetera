@@ -53,14 +53,14 @@ unsigned long reportOnInducedConflicts(std::ostream & out,
     unsigned long nm = 0;
     for (const auto & icsm : inducedSplitMap) {
         const auto & ics = icsm.first;
-        bool found = false;
+//        bool found = false;
         std::list<OttIdSet > extraIds;
         std::list<OttIdSet > missingIds;
         std::list<const typename U::node_type *> nodeList;
         for (const auto & t2sP : tree2Splits) {
             const auto & t2s = t2sP.first;
             if (t2s == ics) {
-                found = true;
+//                found = true;
             } else {
                 if (!are_compatible_des_id_sets(t2s, ics)) {
                     auto e = set_difference_as_set(t2s, ics);

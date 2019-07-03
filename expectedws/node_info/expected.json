@@ -48,6 +48,7 @@
   ],
   "node_id": "ott100",
   "num_tips": 3,
+  "query": "ott100",
   "source_id_map": {
     "ott0.0draft0": {
       "taxonomy": "ott0.0draft0"

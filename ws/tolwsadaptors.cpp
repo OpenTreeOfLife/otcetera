@@ -15,12 +15,27 @@
 
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
-using namespace std;
+
+using std::vector;
+using std::map;
+using std::multimap;
+using std::shared_ptr;
+using std::pair;
+using std::set;
+using std::string;
+using std::ostringstream;
+using std::optional;
+using std::unique_ptr;
+
+using std::make_shared;
+using std::to_string;
+
 namespace po = boost::program_options;
 using namespace otc;
 namespace fs = boost::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
+namespace chrono = std::chrono;
 using std::pair;
 
 
@@ -42,7 +57,7 @@ optional<bool> convert_to(const json & j) {
     if (j.is_boolean()) {
         return j.get<bool>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
@@ -50,7 +65,7 @@ optional<string> convert_to(const json & j) {
     if (j.is_string()) {
         return j.get<string>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
@@ -58,18 +73,18 @@ optional<int> convert_to(const json & j) {
     if (j.is_number()) {
         return j.get<int>();
     }
-    return boost::none;
+    return {};
 }
 
 template <>
 optional<vector<string>> convert_to(const json & j) {
     if (not j.is_array()) {
-        return boost::none;
+        return {};
     }
     vector<string> v;
     for(auto& xj: j) {
         auto x = convert_to<string>(xj);
-        if (not x) return boost::none;
+        if (not x) return {};
         v.push_back(*x);
     }
     return v;
@@ -78,19 +93,19 @@ optional<vector<string>> convert_to(const json & j) {
 #if defined(LONG_OTT_ID)
 template <>
 optional<OttId> convert_to(const json & j) {
-    return (j.is_number() ? j.get<OttId>() : boost::none);
+    return (j.is_number() ? j.get<OttId>() : {});
 }
 #endif
 
 template <>
 optional<OttIdSet> convert_to(const json & j) {
     if (not j.is_array()) {
-        return boost::none;
+        return {};
     }
     OttIdSet ids;
     for(auto& jid: j) {
         auto id = convert_to<OttId>(jid);
-        if (not id) return boost::none;
+        if (not id) return {};
         ids.insert(*id);
     }
     return ids;
@@ -127,13 +142,13 @@ optional<T> extract_argument(const json & j, const std::string& opt_name, bool r
     auto opt = j.find(opt_name);
     if (opt == j.end()) {
         if (required) {
-            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called \"" << opt_name << "\"\n";
+            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called '" << opt_name << "'\n";
         }
-        return boost::none;
+        return {};
     }
     auto arg = convert_to<T>(*opt);
     if (not arg) {
-        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found \"" << *opt << "\"\n";
+        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found '" << opt->dump() << "'\n";
     }
     return arg;
 }
@@ -171,7 +186,7 @@ const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& sy
 }
 
 
-string available_trees_method_handler(const json& parsedargs)
+string available_trees_method_handler(const json&)
 {
     return available_trees_ws_method(tts);
 }
@@ -213,22 +228,129 @@ NodeNameStyle get_label_format(const json &j) {
     }
 }
 
-string node_info_method_handler( const json& parsedargs)
+auto lookup_source_id(const string& source_prefix, OttId foreign_id, const RichTaxonomy& taxonomy, const string& source_id)
 {
-    string synth_id;
-    string node_id;
-    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
-    bool include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
+    const auto & taxonomy_tree = taxonomy.get_tax_tree();
+    const auto & taxonomy_tree_data = taxonomy_tree.get_data();
+
+    try
+    {
+        if (source_prefix == "ncbi")
+            return taxonomy_tree_data.ncbi_id_map.at(foreign_id);
+        else if (source_prefix == "gbif")
+            return taxonomy_tree_data.gbif_id_map.at(foreign_id);
+        else if (source_prefix == "worms")
+            return taxonomy_tree_data.worms_id_map.at(foreign_id);
+        else if (source_prefix == "if")
+            return taxonomy_tree_data.if_id_map.at(foreign_id);
+        else if (source_prefix == "irmng")
+            return taxonomy_tree_data.irmng_id_map.at(foreign_id);
+        else
+            throw OTCBadRequest() << "Don't recognize source_prefix = '" << source_prefix << "' - but we shouldn't get here.";
+    }
+    catch (std::out_of_range & x) {
+        throw OTCBadRequest() << "No taxon in the taxonomy is associated with source_id of '"<<source_id<<"'";
+    }
+}
+
+
+// Get an OttId from a string.
+//
+// The fact that this function is so long (uses exceptions) is ridiculous.
+// + We could use std::strtol, which sets errno.
+// + c++17 has a function from_chars( ) which seems less ridiculous.
+//
+OttId id_from_string(const string& id_str)
+{
+    std::size_t pos;
+    long raw_id;
+    try
+    {
+        raw_id  = std::stol(id_str.c_str(), &pos);
+    }
+    catch(const std::out_of_range&)
+    {
+        throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
+    }
+    catch(std::invalid_argument&)
+    {
+        throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
+    }
+    if (pos < id_str.length())
+        throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
+
+    auto id = to_OttId(raw_id);
+
+    if (not id)
+        throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
+
+    return *id;
+}
+
+const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTaxonomy& taxonomy)
+{
+    auto pref_id = split_string(source_id, ':');
+    if (pref_id.size() != 2) {
+        throw OTCBadRequest() << "Expecting exactly 1 colon in a source ID string. Found: \"" << source_id << "\".";
+    }
+
+    string source_prefix = *pref_id.begin();
+    if (indexed_source_prefixes.count(source_prefix) == 0) {
+        throw OTCBadRequest() << "IDs from source " << source_prefix << " are not known or not indexed for searching.";
+    }
+
+    string id_str = *pref_id.rbegin();
+
+    auto foreign_id = id_from_string(id_str);
+
+    auto in_ott = lookup_source_id(source_prefix, foreign_id, taxonomy, source_id);
+
+#   if defined(MAP_FOREIGN_TO_POINTER)
+        return in_ott;
+#   else
+        if (auto taxon_node = taxonomy.included_taxon_from_id(in_ott))
+            return taxon_node;
+        else
+            throw OTCBadRequest("Foreign ID '"+ source_id+"' mapped to unknown OTT ID: "+ to_string(in_ott));
+#   endif
+}
+
+string node_info_method_handler( const json& parsed_args)
+{
+    string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
+    auto node_id = extract_argument<string>(parsed_args,"node_id");
+    auto source_id = extract_argument<string>(parsed_args,"source_id");
+    auto node_ids = extract_argument<vector<string>>(parsed_args,"node_ids");
+
+    int count =0;
+    count += bool(node_id)?1:0;
+    count += bool(node_ids)?1:0;
+    count += bool(source_id)?1:0;
+
+    if (count != 1)
+        throw OTCBadRequest("Must supply exactly one of 'node_id', 'node_ids', or 'source_id'.");
+
+    if (source_id)
+    {
+        auto locked_taxonomy = tts.get_readable_taxonomy();
+        const auto & taxonomy = locked_taxonomy.first;
+        auto tax_node = taxon_from_source_id(*source_id, taxonomy);
+        node_id = "ott"+std::to_string(tax_node->get_ott_id());
+    }
+
+    bool include_lineage = extract_argument_or_default<bool>(parsed_args, "include_lineage", false);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-    return node_info_ws_method(tts, treeptr, sta, node_id, include_lineage);
+
+    if (node_id)
+        return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
+    else
+        return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
 }
 
 string mrca_method_handler( const json& parsedargs)
 {
-    string synth_id;
-    vector<string> node_id_vec;
-    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
     return mrca_ws_method(tts, treeptr, sta, node_id_vec);
@@ -240,12 +362,10 @@ std::string process_subtree(const json& parsedargs)
     //        argument.  Unless this is explicitly set to true, we are supposed to not write node labels
     //        for non-ottids.  At least in Newick.
 
-    string synth_id;
-    string node_id;
-    tie(synth_id, node_id) = get_synth_and_node_id(parsedargs);
+    auto [synth_id, node_id] = get_synth_and_node_id(parsedargs);
     auto format = extract_argument_or_default<string>(parsedargs, "format", "newick");
     if (format != "newick" && format != "arguson") {
-	throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
+        throw OTCBadRequest("format must be \"newick\" or \"arguson\".\n");
     }
     NodeNameStyle nns = get_label_format(parsedargs);
     int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")? 3 : -1);
@@ -255,17 +375,15 @@ std::string process_subtree(const json& parsedargs)
     bool all_node_labels = extract_argument_or_default<bool>(parsedargs, "include_all_node_labels", false);
 
     if (format == "newick") {
-	return newick_subtree_ws_method(tts, treeptr, node_id, nns, all_node_labels, height_limit);
+        return newick_subtree_ws_method(tts, treeptr, node_id, nns, all_node_labels, height_limit);
     } else {
-	return arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
+        return arguson_subtree_ws_method(tts, treeptr, sta, node_id, height_limit);
     }
 }
 
 string induced_subtree_method_handler( const json& parsedargs )
 {
-    string synth_id;
-    vector<string> node_id_vec;
-    tie(synth_id, node_id_vec) = get_synth_and_node_id_vec(parsedargs);
+    auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     NodeNameStyle nns = get_label_format(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
@@ -280,83 +398,19 @@ string tax_about_method_handler( const json& )
 }
 
 // looks for ott_id or source_id args to find a node
-const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, const RichTaxonomy & taxonomy) {
-    const auto & taxonomy_tree = taxonomy.get_tax_tree();
-    const auto & taxonomy_tree_data = taxonomy_tree.get_data();
-
+const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, const RichTaxonomy & taxonomy)
+{
     auto ott_id = extract_argument<OttId>(parsedargs, "ott_id");
     auto source_id = extract_argument<string>(parsedargs, "source_id");
 
-    if (ott_id and source_id) {
+    if (ott_id and source_id)
         throw OTCBadRequest("'ott_id' and 'source_id' arguments cannot both be supplied.");
-    } else if (not ott_id and not source_id) {
+    else if (not ott_id and not source_id)
         throw OTCBadRequest("An 'ott_id' or 'source_id' argument is required.");
-    } else if (source_id) {
-        auto pref_id = split_string(*source_id, ':');
-        if (pref_id.size() != 2) {
-            throw OTCBadRequest() << "Expecting exactly 1 colon in a source ID string. Found: \"" << *source_id << "\".";
-        }
-        string source_prefix = *pref_id.begin();
-        if (indexed_source_prefixes.count(source_prefix) == 0) {
-            throw OTCBadRequest() << "IDs from source " << source_prefix << " are not known or not indexed for searching.";
-        }
-        string id_str = *pref_id.rbegin();
-        try {
-            std::size_t pos;
-            long raw_foreign_id  = std::stol(id_str.c_str(), &pos);
-            if (pos < id_str.length()) {
-                throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
-            }
-            OttId foreign_id = std::stol(id_str.c_str(), &pos);
-            if (pos < id_str.length()) {
-                throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " << id_str;
-            }
-            try {
-                foreign_id = check_ott_id_size(raw_foreign_id);
-            } catch (OTCError &) {
-                throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
-            }
-            try {
-#               if defined(MAP_FOREIGN_TO_POINTER)
-                    const RTRichTaxNode * in_ott = nullptr;
-#               else
-                    OttId in_ott = 0;
-#               endif
 
-                if (source_prefix == "ncbi") {
-                    in_ott = taxonomy_tree_data.ncbi_id_map.at(foreign_id);
-                } else if (source_prefix == "gbif") {
-                    in_ott = taxonomy_tree_data.gbif_id_map.at(foreign_id);
-                } else if (source_prefix == "worms") {
-                    in_ott =  taxonomy_tree_data.worms_id_map.at(foreign_id);
-                } else if (source_prefix == "if") {
-                    in_ott =  taxonomy_tree_data.if_id_map.at(foreign_id);
-                } else if (source_prefix == "irmng") {
-                    in_ott =  taxonomy_tree_data.irmng_id_map.at(foreign_id);
-                } else {
-                    assert(false); // We should catch an unknown source_prefix above
-                    throw OTCBadRequest() << "Don't recognized source_prefix = '" << source_prefix << "' - but we shouldn't get here.";
-                }
-#               if defined(MAP_FOREIGN_TO_POINTER)
-                    return in_ott;
-#               else
-                    auto taxon_node =  taxonomy.included_taxon_from_id(in_ott);
-                    if (taxon_node == nullptr) {
-                        rbody = "Foreign ID " ;
-                        rbody += supplied_source_id;
-                        rbody += " mapped to unknown OTT ID: ";
-                        rbody += to_string(ott_id);
-                        status_code = 400;
-                    }
-                    return taxon_node;
-#               endif
-            } catch (std::out_of_range & x) {
-                throw OTCBadRequest() << "No taxon in the taxonomy is associated with source_id of " << source_id;
-            }
-        } catch (...) {
-            throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " << id_str;
-        }
-    } else {
+    if (source_id)
+        return taxon_from_source_id(*source_id, taxonomy);
+    else {
         assert(ott_id);
         auto taxon_node = taxonomy.included_taxon_from_id(*ott_id);
         if (taxon_node == nullptr) {
@@ -378,6 +432,13 @@ string taxon_info_method_handler( const json& parsedargs )
     return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
 }
 
+string taxon_flags_method_handler( const json& )
+{
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return taxonomy_flags_ws_method(taxonomy);
+}
+
 string taxon_mrca_method_handler( const json& parsedargs )
 {
     OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
@@ -395,6 +456,64 @@ string taxon_subtree_method_handler( const json& parsedargs )
     return taxon_subtree_ws_method(taxonomy, taxon_node, nns);
 }
 
+// See taxomachine/src/main/java/org/opentree/taxonomy/plugins/tnrs_v3.java
+
+// 10,000 queries at .0016 second per query = 16 seconds
+const int MAX_NONFUZZY_QUERY_STRINGS = 10000;
+// 250 queries at .3 second per query = 75 seconds
+const int MAX_FUZZY_QUERY_STRINGS = 250;
+
+static string LIFE_NODE_NAME = "life";
+
+string tnrs_match_names_handler( const json& parsedargs )
+{
+    // 1. Requred argument: "names"
+    vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
+
+    // 2. Optional argunments
+    optional<string> context_name = extract_argument<string>(parsedargs, "context_name");
+    bool do_approximate_matching  = extract_argument_or_default(parsedargs, "do_approximate_matching", false);
+    vector<string> ids            = extract_argument_or_default(parsedargs, "ids",                     names);
+    bool include_suppressed       = extract_argument_or_default(parsedargs, "include_suppressed",      false);
+
+    // 3. Check that "ids" have the same length as "names", if supplied
+    if (ids.size() != names.size())
+    {
+        throw OTCBadRequest()<<"The number of names and ids does not match. If you provide ids, then you "
+                             <<"must provide exactly as many ids as names.";
+    }
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+
+    return tnrs_match_names_ws_method(names, context_name, do_approximate_matching, ids, include_suppressed, taxonomy);
+}
+
+string tnrs_autocomplete_name_handler( const json& parsedargs )
+{
+    string name              = extract_required_argument<string>(parsedargs, "name");
+    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
+    bool include_suppressed  = extract_argument_or_default(parsedargs, "include_suppressed",      false);
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_autocomplete_name_ws_method(name, context_name, include_suppressed, taxonomy);
+}
+
+string tnrs_contexts_handler( const json& )
+{
+    return tnrs_contexts_ws_method();
+}
+
+string tnrs_infer_context_handler( const json& parsedargs )
+{
+    vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
+
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    return tnrs_infer_context_ws_method(names, taxonomy);
+}
+
 string conflict_status_method_handler( const json& parsed_args )
 {
     auto tree1newick = extract_argument<string>(parsed_args, "tree1newick");
@@ -407,11 +526,11 @@ string conflict_status_method_handler( const json& parsed_args )
     const auto & taxonomy = locked_taxonomy.first;
 
     if (tree1newick)
-	return newick_conflict_ws_method(summary, taxonomy, *tree1newick, tree2);
+        return newick_conflict_ws_method(summary, taxonomy, *tree1newick, tree2);
     else if (tree1)
-	return phylesystem_conflict_ws_method(summary, taxonomy, *tree1, tree2);
+        return phylesystem_conflict_ws_method(summary, taxonomy, *tree1, tree2);
     else
-	throw OTCBadRequest()<<"Expecting argument 'tree1' or argument 'tree1newick'";
+        throw OTCBadRequest()<<"Expecting argument 'tree1' or argument 'tree1newick'";
 }
 
 /// End of method_handler. Start of global service related code
@@ -446,7 +565,7 @@ void ready_handler( Service& ) {
 #endif
     LOG(INFO) << "Service is ready. PID is " << pid;
     if (!pidfile.empty()) {
-        ofstream pstream(pidfile);
+        std::ofstream pstream(pidfile);
         if (pstream.good()) {
             pstream << pid << '\n';
             pstream.close();
@@ -480,7 +599,10 @@ multimap<string,string> request_headers(const string& rbody)
 // Connection:Keep-Alive  -- I 
 //  We're calling 'close' so this doesn't make sense, I think...
     headers.insert({ "Content-Length", ::to_string(rbody.length())});
-    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+
+//  All of our replies should be JSON, so that users can unconditionally parse the response a JSON.
+    headers.insert({ "Content-Type", "application/json;"});
+
     headers.insert({ "Date", ctime(chrono::system_clock::now())});
     headers.insert({ "Expires", ctime(chrono::system_clock::now())});
 // Keep-Alive:timeout=5, max=99
@@ -501,7 +623,9 @@ multimap<string,string> options_headers()
     headers.insert({ "Access-Control-Allow-Origin", "*" });
     headers.insert({ "Access-Control-Max-Age","86400" });
 //    headers.insert({ "Connection", "Keep-Alive"});
-    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
+
+//    There is no content, to don't include a Content-Type header
+//    headers.insert({ "Content-Type", "text/html; charset=UTF-8"});
     headers.insert({ "Content-Length", "0"});
     headers.insert({ "Date", ctime(chrono::system_clock::now())});  //    Date:Mon, 22 May 2017 20:55:05 GMT
     headers.insert({ "X-Powered-By","otc-tol-ws"});  //X-Powered-By:web2py
@@ -512,35 +636,60 @@ multimap<string,string> options_headers()
     return headers;
 }
 
+// OK, so I want to make something like OTCWebError, but add the ability to pass back
+// some JSON along with the error.
+
+// The difficult thing is how to generically (polymorphically) use the same interface
+// for this error and other stuff.
+
+std::string error_response(const string& path, const std::exception& e)
+{
+    string msg = string("[") + path + ("] Error: ") + e.what();
+    LOG(DEBUG)<<msg;
+    json j = { {"message", msg} };
+    return j.dump(4)+"\n";
+}
+
+std::string error_response(const string& path, const OTCWebError& e1)
+{
+    OTCWebError e2 = e1;
+    e2.prepend(string("[") + path + ("] Error: "));
+
+    LOG(DEBUG)<<e2.what();
+    return e2.json().dump(4)+"\n";
+}
+
 std::function<void(const shared_ptr< Session > session)>
 create_method_handler(const string& path, const std::function<std::string(const json&)> process_request)
 {
     return [=](const shared_ptr< Session > session ) {
-	const auto request = session->get_request( );
-	size_t content_length = request->get_header( "Content-Length", 0 );
-	session->fetch( content_length, [ path, process_request, request ]( const shared_ptr< Session > session, const Bytes & body ) {
-		try {
-		    LOG(WARNING)<<"request: "<<path;
-		    json parsedargs = parse_body_or_throw(body);
-		    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
-		    auto rbody = process_request(parsedargs);
-		    session->close( OK, rbody, request_headers(rbody) );
-		    LOG(WARNING)<<"request: DONE";
-		} catch (OTCWebError& e) {
-		    string rbody = string("[") + path + ("] Error: ") + e.what();
-		    session->close( e.status_code(), rbody, request_headers(rbody) );
-		    LOG(WARNING)<<rbody;
-		}
-	    });
+        const auto request = session->get_request( );
+        size_t content_length = request->get_header( "Content-Length", 0 );
+        session->fetch( content_length, [ path, process_request, request ]( const shared_ptr< Session > session, const Bytes & body ) {
+                try {
+                    LOG(DEBUG)<<"request: "<<path;
+                    json parsedargs = parse_body_or_throw(body);
+                    LOG(DEBUG)<<"   argument "<<parsedargs.dump(1);
+                    auto rbody = process_request(parsedargs);
+                    LOG(DEBUG)<<"request: DONE";
+                    session->close( OK, rbody, request_headers(rbody) );
+                } catch (OTCWebError& e) {
+                    string rbody = error_response(path,e);
+                    session->close( e.status_code(), rbody, request_headers(rbody) );
+                } catch (OTCError& e) {
+                    string rbody = error_response(path,e);
+                    session->close( 500, rbody, request_headers(rbody) );
+                }
+            });
     };
 }
 
 json request_to_json(const Request& request)
 {
-    LOG(WARNING)<<"GET "<<request.get_path();
+    LOG(DEBUG)<<"GET "<<request.get_path();
     json query;
     for(auto& key_value_pair: request.get_query_parameters())
-	query[key_value_pair.first] = key_value_pair.second;
+        query[key_value_pair.first] = key_value_pair.second;
     return query;
 }
 
@@ -549,22 +698,24 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
 {
     return [=](const shared_ptr< Session > session )
     {
-	try
-	{
-	    LOG(WARNING)<<"request: "<<path;
-	    const auto& request = session->get_request( );
-	    json parsedargs = request_to_json(*request);
-	    LOG(WARNING)<<"   argument "<<parsedargs.dump(1);
-	    auto rbody = process_request(parsedargs);
-	    session->close( OK, rbody, request_headers(rbody) );
-	    LOG(WARNING)<<"request: DONE";
-	}
-	catch (OTCWebError& e)
-	{
-	    string rbody = string("[GET ") + path + ("] Error: ") + e.what();
-	    session->close( e.status_code(), rbody, request_headers(rbody) );
-	    LOG(WARNING)<<rbody;
-	}
+        try
+        {
+            LOG(DEBUG)<<"request: "<<path;
+            const auto& request = session->get_request( );
+            json parsedargs = request_to_json(*request);
+            LOG(DEBUG)<<"   argument "<<parsedargs.dump(1);
+            auto rbody = process_request(parsedargs);
+            LOG(DEBUG)<<"request: DONE";
+            session->close( OK, rbody, request_headers(rbody) );
+        }
+        catch (OTCWebError& e)
+        {
+            string rbody = error_response(path, e);
+            session->close( e.status_code(), rbody, request_headers(rbody) );
+        } catch (OTCError& e) {
+            string rbody = error_response(path, e);
+            session->close( 500, rbody, request_headers(rbody) );
+        }
     };
 }
 void options_method_handler( const shared_ptr< Session > session ) {
@@ -599,14 +750,14 @@ int run_server(const po::variables_map & args) {
     }
 
     if (!args.count("tree-dir")) {
-        cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
+        std::cerr << "Expecting a tree-dir argument for a path to a directory of synth outputs.\n";
         return 1;
     }
     const fs::path topdir{args["tree-dir"].as<string>()};
 
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
-    RichTaxonomy taxonomy = std::move(load_rich_taxonomy(args));
+    RichTaxonomy taxonomy = load_rich_taxonomy(args);
     time_t post_tax_time;
     time(&post_tax_time);
     tts.set_taxonomy(taxonomy);
@@ -618,7 +769,7 @@ int run_server(const po::variables_map & args) {
     time_t post_trees_time;
     time(&post_trees_time);
     if (tts.get_num_trees() == 0) {
-        cerr << "No tree to serve. Exiting...\n";
+        std::cerr << "No tree to serve. Exiting...\n";
         return 3;
     }
 
@@ -633,8 +784,15 @@ int run_server(const po::variables_map & args) {
     // taxonomy web services
     auto v3_r_tax_about        = path_handler(v3_prefix + "/taxonomy/about", tax_about_method_handler );
     auto v3_r_taxon_info       = path_handler(v3_prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
+    auto v3_r_taxon_flags      = path_handler(v3_prefix + "/taxonomy/flags", taxon_flags_method_handler );
     auto v3_r_taxon_mrca       = path_handler(v3_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v3_r_taxon_subtree    = path_handler(v3_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
+
+    // tnrs
+    auto v3_r_tnrs_match_names       = path_handler(v3_prefix + "/tnrs/match_names", tnrs_match_names_handler );
+    auto v3_r_tnrs_autocomplete_name = path_handler(v3_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
+    auto v3_r_tnrs_contexts          = path_handler(v3_prefix + "/tnrs/contexts", tnrs_contexts_handler );
+    auto v3_r_tnrs_infer_context     = path_handler(v3_prefix + "/tnrs/infer_context", tnrs_infer_context_handler );
 
     // conflict
     auto v3_r_conflict_status  = path_handler(v3_prefix + "/conflict/conflict-status", conflict_status_method_handler );
@@ -642,10 +800,10 @@ int run_server(const po::variables_map & args) {
     // v2 conflict --
     auto v3_r_old_conflict_status = make_shared< Resource >( );
     {
-	string path = v3_prefix + "/conflict/old-conflict-status";
-	v3_r_old_conflict_status->set_path( path );
-	v3_r_old_conflict_status->set_method_handler( "GET", create_GET_method_handler(path, conflict_status_method_handler) );
-	v3_r_old_conflict_status->set_method_handler( "OPTIONS", options_method_handler);
+        string path = v3_prefix + "/conflict/old-conflict-status";
+        v3_r_old_conflict_status->set_path( path );
+        v3_r_old_conflict_status->set_method_handler( "GET", create_GET_method_handler(path, conflict_status_method_handler) );
+        v3_r_old_conflict_status->set_method_handler( "OPTIONS", options_method_handler);
     }
 
     ////// v4 ROUTES
@@ -661,8 +819,15 @@ int run_server(const po::variables_map & args) {
     // taxonomy web services
     auto v4_r_tax_about        = path_handler(v4_prefix + "/taxonomy/about", tax_about_method_handler );
     auto v4_r_taxon_info       = path_handler(v4_prefix + "/taxonomy/taxon_info", taxon_info_method_handler );
+    auto v4_r_taxon_flags      = path_handler(v4_prefix + "/taxonomy/flags", taxon_flags_method_handler );
     auto v4_r_taxon_mrca       = path_handler(v4_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v4_r_taxon_subtree    = path_handler(v4_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
+
+    // tnrs
+    auto v4_r_tnrs_match_names       = path_handler(v4_prefix + "/tnrs/match_names", tnrs_match_names_handler );
+    auto v4_r_tnrs_autocomplete_name = path_handler(v4_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
+    auto v4_r_tnrs_contexts          = path_handler(v4_prefix + "/tnrs/contexts", tnrs_contexts_handler );
+    auto v4_r_tnrs_infer_context     = path_handler(v4_prefix + "/tnrs/infer_context", tnrs_infer_context_handler );
 
     // conflict
     auto v4_r_conflict_status  = path_handler(v4_prefix + "/conflict/conflict-status", conflict_status_method_handler );
@@ -683,8 +848,13 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_induced_subtree );
     service.publish( v3_r_tax_about );
     service.publish( v3_r_taxon_info );
+    service.publish( v3_r_taxon_flags );
     service.publish( v3_r_taxon_mrca );
     service.publish( v3_r_taxon_subtree );
+    service.publish( v3_r_tnrs_match_names );
+    service.publish( v3_r_tnrs_autocomplete_name );
+    service.publish( v3_r_tnrs_contexts );
+    service.publish( v3_r_tnrs_infer_context );
     service.publish( v3_r_conflict_status );
     service.publish( v3_r_old_conflict_status );
 
@@ -696,8 +866,13 @@ int run_server(const po::variables_map & args) {
     service.publish( v4_r_induced_subtree );
     service.publish( v4_r_tax_about );
     service.publish( v4_r_taxon_info );
+    service.publish( v4_r_taxon_flags );
     service.publish( v4_r_taxon_mrca );
     service.publish( v4_r_taxon_subtree );
+    service.publish( v4_r_tnrs_match_names );
+    service.publish( v4_r_tnrs_autocomplete_name );
+    service.publish( v4_r_tnrs_contexts );
+    service.publish( v4_r_tnrs_infer_context );
     service.publish( v4_r_conflict_status );
 
     service.set_signal_handler( SIGINT, sigterm_handler );

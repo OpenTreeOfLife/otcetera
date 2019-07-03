@@ -943,7 +943,7 @@ map<OttId, childParPair> index_nodes_by_id(Tree_t & taxonomy,
 //    and `unprune_stats.inc_sed_taxon_to_sampled_tips`
 // Uses non-empty des_ids in tax nodes to figure out which descendants of any incertae sedis
 //    taxon are sampled in the supertree
-void find_incertae_sedis_in_supertree(Tree_t & taxonomy,
+void find_incertae_sedis_in_supertree(Tree_t & /* taxonomy */,
                                  Tree_t & supertree,
                                  const map<OttId, childParPair> & ott_to_tax,
                                  UnpruneStats & unprune_stats) {
@@ -972,10 +972,10 @@ void find_incertae_sedis_in_supertree(Tree_t & taxonomy,
 // Taxa that are descendants of an incertae sedis taxon, will demand some special handling..
 // so we find out which ones are not found in the supertree before calling unprune_by_postorder_traversal
 // results are stored in unprune_stats. This relies on having been filled...
-void find_broken_incertae_sedis_des(Tree_t & taxonomy,
-                                        Tree_t & supertree,
-                                        const map<OttId, childParPair> & ott_to_tax,
-                                        UnpruneStats & unprune_stats) {
+void find_broken_incertae_sedis_des(Tree_t & /* taxonomy */,
+                                    Tree_t & /* supertree */,
+                                    const map<OttId, childParPair> & /* ott_to_tax */,
+                                    UnpruneStats & unprune_stats) {
     const auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto ttm_it: to_tips_map) {
         auto inc_sed_taxon = ttm_it.first;
@@ -997,11 +997,11 @@ void find_broken_incertae_sedis_des(Tree_t & taxonomy,
 }
 
 // last step in do_unprune_and_name
-void unprune_by_postorder_traversal(Tree_t & taxonomy,
-                          Tree_t & supertree,
-                          const OttIdSet & incertae_sedis_ids,
-                          const map<OttId, childParPair> & ott_to_tax,
-                          UnpruneStats & unprune_stats) {
+void unprune_by_postorder_traversal(Tree_t & /* taxonomy */,
+                                    Tree_t & supertree,
+                                    const OttIdSet & /* incertae_sedis_ids */,
+                                    const map<OttId, childParPair> & ott_to_tax,
+                                    UnpruneStats & unprune_stats) {
     map<OttId, Node_t*> ott_to_sol;
     const auto snVec = all_nodes(supertree);
     // postorder walk over supertree. Every time we find a node assigned to a taxon
