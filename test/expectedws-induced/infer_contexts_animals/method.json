@@ -1,0 +1,8 @@
+{
+    "url_fragment": "v3/tnrs/infer_context",
+    "verb": "POST",
+    "arguments": {
+      "names": ["Amaryllis carrascoi", "Camerella"]
+    }
+}
+  

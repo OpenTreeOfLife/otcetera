@@ -1,0 +1,82 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://opentreeoflife.github.io/css/main.css">
+<style>
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+</style>
+
+    <div></div>
+</head>
+<body>
+    <div>
+<p>Propinquity output documentation. The top-level docs are <a href="../index.html">here</a>.
+<p>The <em>cleaned_ott</em> directory contains the results of pruning OTT
+version 0.0draft0 so that the root is
+<a href="https://tree.opentreeoflife.org/taxonomy/browse?id="></a>
+and the taxa flagged with the following flags were removed:</p>
+<ul>
+    <li>barren</li>
+    <li>environmental</li>
+    <li>hidden</li>
+    <li>hybrid</li>
+    <li>inconsistent</li>
+    <li>major_rank_conflict</li>
+    <li>major_rank_conflict_inherited</li>
+    <li>merged</li>
+    <li>not_otu</li>
+    <li>viral</li>
+    <li>was_container</li>
+</ul>
+<strong>Next step: </strong>Choose exemplars for tips in phylogenies that are
+mapped to higher taxa. See
+<a href="../exemplified_phylo/index.html">../exemplified_phylo/index.html</a>.
+
+<p><strong>Results: </strong>A taxonomy with a total of 42 nodes.
+3 of these are leaves and
+39 internal nodes.</p>
+<p>The <em>cleaned_ott.tre</em> file in this directory contains a newick
+representation of this taxonomy (<a href="./cleaned_ott.tre" download>download newick</a>).</p>
+<p>The following table lists the number of OTT Ids pruned by the combination of
+  flags that caused the pruning. We don't list each of the OTT Ids here because
+  the list is extremely long and can make your browser hang. The <em>cleaned_ott.json</em>
+  file in this directory contains the list of pruned Ids
+  (<a href="./cleaned_ott.json" download>download cleaned_ott.json</a>).
+  </p>
+<table>
+    <tr><th>Combination of flags</th><th># of nodes pruned</th></tr>
+    <tr>
+        <td>barren,inconsistent</td>
+        <div>
+            
+            <td>1</td>
+        </div>
+    </tr>
+    <tr>
+        <td>empty-after-higher-taxon-tip-prune</td>
+        <div>
+            <td>46</td>
+            
+        </div>
+    </tr>
+    <tr>
+        <td>higher-taxon-tip</td>
+        <div>
+            <td>29</td>
+            
+        </div>
+    </tr>
+    <tr>
+        <td>major_rank_conflict</td>
+        <div>
+            
+            <td>1</td>
+        </div>
+    </tr>
+</table>
+</div>
+</body>
+</html>
+
