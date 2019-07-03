@@ -1,5 +1,6 @@
 #include "git_version.h"
 #include "config.h"
+#include "config_file.h"
 #include <boost/version.hpp>
 #include <iostream>
 #include <string>
@@ -24,5 +25,11 @@ int main() {
 #ifdef CONFIG_FLAGS
     std::cout << "  CXXFLAGS = " << CONFIG_FLAGS << std::endl;
 #endif
+    auto configpath = otc::dot_opentree();
+    if (configpath) {
+        std::cout << "Default config filepath = \"" << *configpath << '\"' << std::endl;
+    } else {
+        std::cout << "No default config filepath found." << std::endl;
+    }
     return 0;
 }
