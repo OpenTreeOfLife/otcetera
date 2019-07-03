@@ -1,0 +1,42 @@
+{
+"flags_to_prune": [
+"major_rank_conflict",
+"major_rank_conflict_inherited",
+"environmental",
+"viral",
+"barren",
+"not_otu",
+"hidden",
+"was_container",
+"inconsistent",
+"hybrid",
+"merged"
+],
+"incertae_sedis_unpruned_ids": [],
+"num_monotypic_nodes": 65,
+"num_nodes": 117,
+"num_non_leaf_nodes": 85,
+"num_non_leaf_nodes_with_multiple_children": 20,
+"num_pruned_anc_nodes": 2,
+"num_tips": 32,
+"pruned": {
+"barren,inconsistent": {
+"anc_ott_id_pruned": [
+671092
+],
+"flags_causing_prune": [
+"barren",
+"inconsistent"
+]
+},
+"major_rank_conflict": {
+"anc_ott_id_pruned": [
+2933645
+],
+"flags_causing_prune": [
+"major_rank_conflict"
+]
+}
+},
+"version": "0.0draft0"
+}

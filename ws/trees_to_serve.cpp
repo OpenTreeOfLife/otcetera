@@ -48,22 +48,18 @@ void TreesToServe::set_taxonomy(RichTaxonomy &taxonomy) {
     taxonomy_ptr = &taxonomy;
     taxonomy_tree = &(taxonomy.get_tax_tree());
 }
-using ReadableTaxonomy = pair<const RichTaxonomy &,
-                              unique_ptr<ReadMutexWrapper> >;
 
-using WritableTaxonomy = pair<RichTaxonomy &,
-                              unique_ptr<WriteMutexWrapper> >;
 
 ReadableTaxonomy TreesToServe::get_readable_taxonomy() const {
     assert(taxonomy_ptr != nullptr);
     return {*taxonomy_ptr,
-            std::move(std::make_unique<ReadMutexWrapper>(taxonomy_thread_safety))};
+            std::make_unique<ReadMutexWrapper>(taxonomy_thread_safety)};
 }
 
 WritableTaxonomy TreesToServe::get_writable_taxonomy() {
     assert(taxonomy_ptr != nullptr);
     return {*taxonomy_ptr,
-            std::move(std::make_unique<WriteMutexWrapper>(taxonomy_thread_safety))};
+            std::make_unique<WriteMutexWrapper>(taxonomy_thread_safety)};
 }
 
 void TreesToServe::fill_ott_id_set(const std::bitset<32> & flags,
@@ -168,11 +164,12 @@ string TreesToServe::get_default_tree() const
 set<string> TreesToServe::get_available_trees() const
 {
     set<string> synth_ids;
-    for(auto& x: id_to_tree)
-	synth_ids.insert(x.first);
+    for(auto& x: id_to_tree) {
+        synth_ids.insert(x.first);
+    }
     return synth_ids;
 }
-	
+
 const SummaryTreeAnnotation * TreesToServe::get_annotations(string synth_id) const {
     const auto & key = synth_id.empty() ? default_synth_id : synth_id;
     auto mit = id_to_annotations.find(key);

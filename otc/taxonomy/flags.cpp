@@ -24,7 +24,7 @@ using namespace otc;
 using std::string;
 using std::vector;
 using std::bitset;
-using boost::optional;
+using std::optional;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
@@ -152,14 +152,14 @@ optional<string> string_for_flag(int i)
 {
     vector<string> matches;
     flag_symbols.for_each([&](const string& s, int j) {
-                             if (i == j) {
-                                 matches.push_back(s);
-                             }
-                         });
-    if (matches.size())
-	return matches[0];
-    else
-	return {};
+            if (i == j) {
+                matches.push_back(s);
+            }
+        });
+    if (matches.size()) {
+        return matches[0];
+    }
+    return {};
 }
 
 std::string flags_to_string(const tax_flags flags) {

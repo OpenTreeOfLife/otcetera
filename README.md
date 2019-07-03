@@ -22,157 +22,101 @@ https://peerj.com/preprints/2538/ describes some of the tools that are a part of
 
 The instructions below contain all of the gory detail. There are a few quirks with OS X installation. See [Short OSX instructions](#short-osx-instructions) for an overview of the process on OS X. 
 
-## prerequisites
+## prerequisites: overview
 
-### autotools
-You also need the a fairly recent version of the whole autotools stack
-including libtool. MTH had problems with automake 1.10. If you can't install
-these with something like apt, then you can grab the sources. The following
-worked for MTH on Mac on 28-Feb-2015:
+### Compiler
+Otcetera requires a C++17 compiler.  You can use
+* g++ version 8 (or higer)
+* clang++ version 7 (or higher)
+* XCode version 10.1 (or higher)
 
-    wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz
-    tar xfvz autoconf-2.69.tar.gz
-    cd autoconf-2.69
-    ./configure
-    make
-    sudo make install
-    cd ..
-    wget http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
-    tar xfvz automake-1.15.tar.gz
-    cd automake-1.15
-    ./configure
-    make
-    sudo make install
+### Build tools: meson, cmake, and ninja
+To build otcetera, we need the build tools
+* [meson](http://mesonbuild.com).
+* ninja
+* cmake (to build the restbed library)
 
+### HTTP library: restbed
 
-### BOOST C++ libraries
-You also need the BOOST C++ source libraries.  You should install the BOOST libraries and
-header files using your operating system's package manager. version 1.58 of boost works; earlier versions might.
+We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. By default, otcetera will not compile the web services if it can't find restbed.
 
-Many BOOST modules are header-only.  However, some modules require linking to an installed
-library archive.  You must install library archives for at least these BOOST libraries:
-
-    cd "${BOOST_ROOT}"
-    b2 program_options
-    b2 system
-    b2 filesystem
-
-If you do not do a full installation of BOOST, then you will need to add the
-libraries to your dynamic library loading path. On Mac:
-
-    export DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$BOOST_ROOT/bin.v2/libs/program_options/build/darwin-4.2.1/release/threading-multi/:$BOOST_ROOT/bin.v2/libs/system/build/darwin-4.2.1/release/threading-multi:$BOOST_ROOT/bin.v2/libs/filesystem/build/darwin-4.2.1/release/threading-multi"
-
-on most other unix variants the variable is called `LD_LIBRARY_PATH` (without the `DY`
-prefix); also note that the path to the libraries in the build BOOST dir is platform-dependent.
-
-
-# requests
+### Testing: requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
 
-# restbed
+## prerequisites: quick start
 
-We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. This is work in progress. By default, otcetera will NOT include restbed unless you run configure with the `--with-webservices=yes` option.
+### Mac
+On a Mac, you can install dependencies with:
 
-On debian or ubuntu:
+    brew install meson cmake ninja boost
+    pip install requests
 
-    sudo apt install g++-5
-    sudo apt install cmake
-    sudo apt install libtool
-    sudo apt install libboost-all-dev
-    sudo apt install libcurl4-openssl-dev
+### Linux
+On recent versions of Debian or Ubuntu Linux, you can run:
 
-On a mac:
+    sudo apt-get install meson cmake ninja-build libboost-all-dev libcurl4-openssl-dev
 
-    sudo brew install cmake
-    sudo brew install openssl
-    SSL=/usr/local/opt/openssl
-    export CPPFLAGS="$CPPFLAGS -I${SSL}/include"
-    export LDFLAGS="$LDFLAGS -L${SSL}/lib"
+### Meson (alternate)
+If you don't have version >= 0.49 of meson, you can install it in a virtualenv
 
-then:
+    # Install meson in a virtualenv
+    python3 -m venv meson
+    source meson/bin/activate
+    pip3 install meson
+    # Install ninja to the virtualenv bin directory
+    wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d meson/bin
 
+On windows, you can install meson using the MSI installer on the [releases page](https://github.com/mesonbuild/meson/releases).
+
+Meson's [installation instructions](https://mesonbuild.com/Getting-meson.html) give more detail.
+
+# configuration + building: quick start
+
+After installing prerequisites, try the following commands to build `restbed` and then `otcetera` under the directory `$HOME/Applications/OpenTree/`.
+
+    # Fetch source
+    OPENTREE=$HOME/Applications/OpenTree
+    mkdir -p $OPENTREE/restbed
+    cd $OPENTREE/restbed
     git clone --recursive https://github.com/corvusoft/restbed.git
-    mkdir restbed/build
-    cd restbed/build/
-    cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX=$PWD/install ..
-    make install
-    export CPPFLAGS="$CPPFLAGS -I$PWD/install/include "
-    export LDFLAGS="$LDFLAGS -I$PWD/install/library "
-
-To build including restbed, you will also need to set:
-
-    CPPFLAGS=-Ipath_to_restbed_include
-    LDFLAGS=-Lpath_to_restbed_library
-
-On a Mac, you will need to set:
-
-    CPPFLAGS=-Ipath_to_homebrew_openssl_include -Ipath_to_restbed_include 
-    LDFLAGS=-Lpath_to_homebrew_openssl_include -Lpath_to_restbed_library
-
-These variables should be set by the lines above that begin with `export`.
-
-## configuration + building
-
-To run the whole autoreconf stuff in a manner that will add missing bits as needed,
-run:
-
-    $ sh bootstrap.sh
-
-Then to configure and build with clang use:
-
-    $ mkdir buildclang
-    $ cd buildclang
-    $ bash ../reconf-clang.sh
-    $ make
-    $ make check
-    $ make install
-    $ make installcheck
-
-To use g++, substitute `reconf-gcc.sh` for `reconf-clang.sh` in that work flow.
-g++ version 5.4 works earlier versions might work.
-
-Python 2 (recent enough to have the subprocess module as part of the standard lib)
-is required for the `make check` operation to succeed.
-
-Those `reconf-...sh` scripts set the installation prefix to an `installed` sub-directory
-of your build directory as the prefix for the installation. So, you will need to
-add `$PWD/installed/bin` to your `PATH` environmental variable to use the version
-of the otc tools that you just installed. Depending on your platform, you may have to
-add the `$PWD/installed/lib` to your `LD_LIBRARY_PATH` variable.
-
-# Short OSX instructions
-
-Tested by kcranston on OS X Sierra 10.12.4. These instructions do not include building the web services. Assumes you have the [Homebrew package manager](https://brew.sh/) installed. 
-
-    $ brew install autoconf
-    $ brew install automake
-    $ brew install boost
-    $ brew install libtool
-    $ brew install md5sha1sum
+    mkdir -p $OPENTREE/otcetera
+    cd $OPENTREE/otcetera
+    git clone https://github.com/mtholder/otcetera.git
     
-When you install libtool, you will get the following warning:
+    # On Mac, check that we are using homebrew ssl in /usr/local/opt/openssl, not system ssl!
+    echo "CPPFLAGS=${CPPFLAGS}"
+    echo "LDFLAGS=${LDFLAGS}"
 
-```
-In order to prevent conflicts with Apple's own libtool we have prepended a "g"
-so, you have instead: glibtool and glibtoolize.
-```
+    # Build restbed
+    alias ninja='nice -n10 ninja'
+    cd $OPENTREE/restbed
+    mkdir restbed/build       
+    cd restbed/build        # Go to $OPENTREE/restbed/restbed/build
+    cmake .. -G Ninja -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$OPENTREE/local"
+    ninja install
 
-so on OS X the bootstrap script calls the `g*` versions.
+    # Make restbed library available too.
+    export CPPFLAGS="-I${OPENTREE}/local/include $CPPFLAGS"
+    export LDFLAGS="-L${OPENTREE}/local/lib $LDFLAGS"
+    echo "CPPFLAGS=${CPPFLAGS}"
+    echo "LDFLAGS=${LDFLAGS}"
+    # Mac ignores LD_LIBRARY_PATH and doesn't need it, but linux needs it.
+    export LD_LIBRARY_PATH=${OPENTREE}/local/lib
+    
+    # Build otcetera
+    cd $OPENTREE/otcetera
+    meson build otcetera --prefix=$OPENTREE/local
+    ninja -C build install
+    ninja -C build test
 
-    $ sh bootstrap.sh
-    $ mkdir build
-    $ cd build
-    $ bash ../reconf-clang.sh
-    $ make
-    $ make check
-    $ make install
-    $ make installcheck
+If the meson tests fail, then examine the logs
+
+    less $OPENTREE/otctera/build/meson-logs/testlog.txt
 
 Finally, add the `bin` directory to your $PATH:
 
-    $ export PATH=$PATH:$PWD/installed/bin
-    
+    export PATH=$PATH:$OPENTREE/local/bin
 
 # Documentation
 A LaTeX documentation file is [./doc/summarizing-taxonomy-plus-trees.tex](./doc/summarizing-taxonomy-plus-trees.tex)
@@ -204,9 +148,11 @@ OTT id is used to associate labels in different trees)
 
 ## Config file
 
-### The `~/.opentree` file
-You may optionally initialize the global config file `~/.opentree` to specify
-the location of the OpenTree Taxonomy (OTT).  Currently the only use of this
+You may optionally initialize the global config file.
+The filepath for the config file can be set using the OTC_CONFIG environmental variable.
+If that is not set, the default path is `~/.opentree` for the config file.
+The config can hold the location of the OpenTree Taxonomy (OTT).
+Currently the only use of this
 file in otcetera is to avoid specifying the taxonomy argument on the command-line
 to a few commands.
 

@@ -12,7 +12,7 @@
 #define ELPP_STACKTRACE_ON_CRASH 1
 
 #include "otc/easylogging++.hpp"
-#include <boost/optional.hpp>
+#include <optional>
 
 #define OTC_UNREACHABLE {LOG(ERROR)<<"Unreachable code reached!"; std::abort();}
 
@@ -27,22 +27,23 @@ extern bool debugging_output_enabled;
 #endif
 
 // The compiler should be able to optimize this away if OttId = long
-inline boost::optional<OttId> to_OttId(long raw_ott_id)
-{
-    if (raw_ott_id > std::numeric_limits<OttId>::max())
-	return boost::none;
-    else
-	return static_cast<OttId>(raw_ott_id);
+inline std::optional<OttId> to_OttId(long raw_ott_id) {
+    if (raw_ott_id > std::numeric_limits<OttId>::max()) {
+        return std::optional<OttId>{};
+    }
+    return static_cast<OttId>(raw_ott_id);
 }
 
 void throw_ott_id_type_too_small_exception(long);
 
-inline OttId check_ott_id_size(long raw_ott_id)
-{
+inline OttId check_ott_id_size(long raw_ott_id) {
     auto id = to_OttId(raw_ott_id);
-    if (not id)
-	throw_ott_id_type_too_small_exception(raw_ott_id);
-    return *id;
+    if (not id) {
+        throw_ott_id_type_too_small_exception(raw_ott_id);
+        return std::numeric_limits<OttId>::max();//unreachable, but the compiler doesn't know that...
+    } else {
+        return *id;
+    }
 }
 
 using OttIdSet = std::set<OttId>;

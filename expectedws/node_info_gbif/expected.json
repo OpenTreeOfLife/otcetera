@@ -2,6 +2,7 @@
   "lineage": [],
   "node_id": "ott1000000",
   "num_tips": 9,
+  "query": "ott1000000",
   "source_id_map": {
     "ott0.0draft0": {
       "taxonomy": "ott0.0draft0"
