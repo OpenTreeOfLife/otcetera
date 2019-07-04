@@ -120,3 +120,5 @@ uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|
 267867	|	258473	|	Amaryllidoideae	|	subfamily	|	ncbi:703251	|		|		|	
 655592	|	267867	|	Amaryllis	|	genus	|	ncbi:51431,gbif:2741678,irmng:1299908	|	Amaryllis (genus in kingdom Archaeplastida)	|		|	
 200683	|	655592	|	Amaryllis paradisicola	|	species	|	ncbi:180130,gbif:5326211	|		|		|	
+6013112	|	655592	|	Amaryllis brevipodis	|	species	|	gbif:5643263	|		|		|	
+4671798	|	4671782	|	Amaryllis brevicornis	|	species	|	worms:244457	|		|		|	
