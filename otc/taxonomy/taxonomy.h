@@ -298,6 +298,7 @@ class RTRichTaxTreeData {
 
 typedef RootedTree<RTRichTaxNodeData, RTRichTaxTreeData> RichTaxTree;
 
+class ContextAwareCTrieBasedDB; // for fuzzy matching
 class RichTaxonomy: public BaseTaxonomy {
     public:
     const RichTaxTree & get_tax_tree() const {
@@ -340,6 +341,15 @@ class RichTaxonomy: public BaseTaxonomy {
     const std::list<TaxonomicJuniorSynonym> & get_synonyms_list() const {
         return synonyms;
     }
+    
+    const ContextAwareCTrieBasedDB * get_fuzzy_matcher() const {
+        return fuzzy_match_db;
+    }
+
+    void set_fuzzy_matcher(const ContextAwareCTrieBasedDB * match_db) {
+        fuzzy_match_db = match_db;
+    }
+    
     private:
     std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;
@@ -351,6 +361,7 @@ class RichTaxonomy: public BaseTaxonomy {
     //    can pass a non-nullptr pointer in using the setter. This
     //    will allow the services to report "is_suppressed_from_synth" option.
     const OttIdSet * is_suppressed_from_synth = nullptr;
+    const ContextAwareCTrieBasedDB * fuzzy_match_db = nullptr;
     void read_synonyms();
     void _fill_ids_to_suppress_set();
     RichTaxonomy(const RichTaxonomy &) = delete;

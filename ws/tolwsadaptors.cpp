@@ -241,7 +241,7 @@ auto lookup_source_id(const string& source_prefix, OttId foreign_id, const RichT
             throw OTCBadRequest() << "Don't recognize source_prefix = '" << source_prefix << "' - but we shouldn't get here.";
         }
     } catch (std::out_of_range & x) {
-        throw OTCBadRequest() << "No taxon in the taxonomy is associated with source_id of '"<<source_id<<"'";
+        throw OTCBadRequest() << "No taxon in the taxonomy is associated with source_id of '"<< source_id <<"'";
     }
 }
 

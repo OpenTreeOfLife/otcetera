@@ -41,7 +41,7 @@ struct ContextSearcher {
     const Context& context;
     const Taxon* context_root;
 
-    pair<json,match_status> match_name(string query, bool do_approximate_matching, bool include_suppressed);
+    pair<json,match_status> match_name(const string & query, bool do_approximate_matching, bool include_suppressed);
 
     ContextSearcher(const RichTaxonomy& t, const Context& c): taxonomy(t), context(c) {
         context_root = taxonomy.included_taxon_from_id(c.ott_id);
@@ -251,13 +251,19 @@ json exact_synonym_match_json(const string& query,
     return result;
 }
 
-pair<json,match_status> ContextSearcher::match_name(string query,
-                                                    bool do_approximate_matching,
-                                                    bool include_suppressed) {
-    for(auto& c: query) {
+// could use this for \"e  -> e as well
+inline std::string normalize_query(const std::string & raw_query) {
+    std::string query = raw_query;
+    for (auto& c: query) {
         c = std::tolower(c);
     }
-    // What does an ambiguous match mean?
+    return query;
+}
+
+pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
+                                                    bool do_approximate_matching,
+                                                    bool include_suppressed) {
+    auto query = normalize_query(raw_query);
     json results;
     match_status status = unmatched;
     // 1. See if we can find an exact name match
