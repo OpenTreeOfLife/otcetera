@@ -465,11 +465,9 @@ const int MAX_FUZZY_QUERY_STRINGS = 250;
 
 static string LIFE_NODE_NAME = "life";
 
-string tnrs_match_names_handler( const json& parsedargs )
-{
+string tnrs_match_names_handler( const json& parsedargs ) {
     // 1. Requred argument: "names"
     vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
-
     // 2. Optional argunments
     optional<string> context_name = extract_argument<string>(parsedargs, "context_name");
     bool do_approximate_matching  = extract_argument_or_default(parsedargs, "do_approximate_matching", false);
@@ -477,60 +475,51 @@ string tnrs_match_names_handler( const json& parsedargs )
     bool include_suppressed       = extract_argument_or_default(parsedargs, "include_suppressed",      false);
 
     // 3. Check that "ids" have the same length as "names", if supplied
-    if (ids.size() != names.size())
-    {
-        throw OTCBadRequest()<<"The number of names and ids does not match. If you provide ids, then you "
-                             <<"must provide exactly as many ids as names.";
+    if (ids.size() != names.size()) {
+        throw OTCBadRequest() << "The number of names and ids does not match. If you provide ids, then you "
+                              << "must provide exactly as many ids as names.";
     }
-
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-
     return tnrs_match_names_ws_method(names, context_name, do_approximate_matching, ids, include_suppressed, taxonomy);
 }
 
-string tnrs_autocomplete_name_handler( const json& parsedargs )
-{
+string tnrs_autocomplete_name_handler( const json& parsedargs ) {
     string name              = extract_required_argument<string>(parsedargs, "name");
     string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
     bool include_suppressed  = extract_argument_or_default(parsedargs, "include_suppressed",      false);
-
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     return tnrs_autocomplete_name_ws_method(name, context_name, include_suppressed, taxonomy);
 }
 
-string tnrs_contexts_handler( const json& )
-{
+string tnrs_contexts_handler( const json& ) {
     return tnrs_contexts_ws_method();
 }
 
-string tnrs_infer_context_handler( const json& parsedargs )
-{
+string tnrs_infer_context_handler( const json& parsedargs ) {
     vector<string> names = extract_required_argument<vector<string>>(parsedargs, "names");
-
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     return tnrs_infer_context_ws_method(names, taxonomy);
 }
 
-string conflict_status_method_handler( const json& parsed_args )
-{
+string conflict_status_method_handler( const json& parsed_args ) {
     auto tree1newick = extract_argument<string>(parsed_args, "tree1newick");
     auto tree1 = extract_argument<string>(parsed_args, "tree1");
-
     string tree2 = extract_required_argument<string>(parsed_args, "tree2");
 
     const auto& summary = *tts.get_summary_tree("");
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
 
-    if (tree1newick)
+    if (tree1newick) {
         return newick_conflict_ws_method(summary, taxonomy, *tree1newick, tree2);
-    else if (tree1)
+    } else if (tree1) {
         return phylesystem_conflict_ws_method(summary, taxonomy, *tree1, tree2);
-    else
-        throw OTCBadRequest()<<"Expecting argument 'tree1' or argument 'tree1newick'";
+    } else {
+        throw OTCBadRequest() << "Expecting argument 'tree1' or argument 'tree1newick'";
+    }
 }
 
 /// End of method_handler. Start of global service related code
@@ -579,8 +568,7 @@ void ready_handler( Service& ) {
 }
 
 // this is a hack.  Also it doesn't include the time zone
-string ctime(const chrono::system_clock::time_point& t)
-{
+string ctime(const chrono::system_clock::time_point& t) {
     time_t t2 = chrono::system_clock::to_time_t(t);
     char* c = ctime(&t2);
     string tt = c;
@@ -588,10 +576,8 @@ string ctime(const chrono::system_clock::time_point& t)
     return tt;
 }
 
-multimap<string,string> request_headers(const string& rbody)
-{
+multimap<string,string> request_headers(const string& rbody) {
     multimap<string,string> headers;
-
     headers.insert({ "Access-Control-Allow-Credentials", "true" });
     headers.insert({ "Access-Control-Allow-Origin", "*" });
     headers.insert({ "Access-Control-Max-Age","86400" });
@@ -614,8 +600,7 @@ multimap<string,string> request_headers(const string& rbody)
     return headers;
 }
 
-multimap<string,string> options_headers()
-{
+multimap<string,string> options_headers() {
     multimap<string,string> headers;
     headers.insert({ "Access-Control-Allow-Credentials", "true" });
     headers.insert({ "Access-Control-Allow-Headers", "content-type" });
@@ -642,26 +627,22 @@ multimap<string,string> options_headers()
 // The difficult thing is how to generically (polymorphically) use the same interface
 // for this error and other stuff.
 
-std::string error_response(const string& path, const std::exception& e)
-{
+std::string error_response(const string& path, const std::exception& e) {
     string msg = string("[") + path + ("] Error: ") + e.what();
     LOG(DEBUG)<<msg;
     json j = { {"message", msg} };
     return j.dump(4)+"\n";
 }
 
-std::string error_response(const string& path, const OTCWebError& e1)
-{
+std::string error_response(const string& path, const OTCWebError& e1) {
     OTCWebError e2 = e1;
     e2.prepend(string("[") + path + ("] Error: "));
-
     LOG(DEBUG)<<e2.what();
     return e2.json().dump(4)+"\n";
 }
 
 std::function<void(const shared_ptr< Session > session)>
-create_method_handler(const string& path, const std::function<std::string(const json&)> process_request)
-{
+create_method_handler(const string& path, const std::function<std::string(const json&)> process_request) {
     return [=](const shared_ptr< Session > session ) {
         const auto request = session->get_request( );
         size_t content_length = request->get_header( "Content-Length", 0 );
@@ -684,22 +665,19 @@ create_method_handler(const string& path, const std::function<std::string(const 
     };
 }
 
-json request_to_json(const Request& request)
-{
+json request_to_json(const Request& request) {
     LOG(DEBUG)<<"GET "<<request.get_path();
     json query;
-    for(auto& key_value_pair: request.get_query_parameters())
+    for(auto& key_value_pair: request.get_query_parameters()) {
         query[key_value_pair.first] = key_value_pair.second;
+    }
     return query;
 }
 
 std::function<void(const shared_ptr< Session > session)>
-create_GET_method_handler(const string& path, const std::function<std::string(const json&)> process_request)
-{
-    return [=](const shared_ptr< Session > session )
-    {
-        try
-        {
+create_GET_method_handler(const string& path, const std::function<std::string(const json&)> process_request) {
+    return [=](const shared_ptr< Session > session ) {
+        try {
             LOG(DEBUG)<<"request: "<<path;
             const auto& request = session->get_request( );
             json parsedargs = request_to_json(*request);
@@ -707,9 +685,7 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
             auto rbody = process_request(parsedargs);
             LOG(DEBUG)<<"request: DONE";
             session->close( OK, rbody, request_headers(rbody) );
-        }
-        catch (OTCWebError& e)
-        {
+        } catch (OTCWebError& e) {
             string rbody = error_response(path, e);
             session->close( e.status_code(), rbody, request_headers(rbody) );
         } catch (OTCError& e) {
@@ -718,12 +694,12 @@ create_GET_method_handler(const string& path, const std::function<std::string(co
         }
     };
 }
+
 void options_method_handler( const shared_ptr< Session > session ) {
     session->close( OK, "", options_headers() );
 }
 
-shared_ptr< Resource > path_handler(const string& path, std::function<std::string(const json &)> process_request)
-{
+shared_ptr< Resource > path_handler(const string& path, std::function<std::string(const json &)> process_request) {
     auto r_subtree = make_shared< Resource >( );
     r_subtree->set_path( path );
     r_subtree->set_method_handler( "POST", create_method_handler(path,process_request));
