@@ -186,19 +186,15 @@ const SummaryTree_t * get_summary_tree(const TreesToServe& tts, const string& sy
 }
 
 
-string available_trees_method_handler(const json&)
-{
+string available_trees_method_handler(const json&) {
     return available_trees_ws_method(tts);
 }
 
-string about_method_handler(const json& parsedargs)
-{
+string about_method_handler(const json& parsedargs) {
     bool include_sources = extract_argument_or_default<bool>  (parsedargs, "include_source_list", false);
     string synth_id      = extract_argument_or_default<string>(parsedargs, "synth_id",            ""   );
-
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr     = get_summary_tree(tts, synth_id);
-
     return about_ws_method(tts, treeptr, sta, include_sources);
 }
 
@@ -214,7 +210,6 @@ pair<string,vector<string>> get_synth_and_node_id_vec(const json &j) {
     return pair<string, vector<string>>(synth_id, node_id_vec);
 }
 
-
 NodeNameStyle get_label_format(const json &j) {
     auto label_format = extract_argument_or_default<string>(j, "label_format", "name_and_id");
     if (label_format == "id") {
@@ -228,27 +223,24 @@ NodeNameStyle get_label_format(const json &j) {
     }
 }
 
-auto lookup_source_id(const string& source_prefix, OttId foreign_id, const RichTaxonomy& taxonomy, const string& source_id)
-{
+auto lookup_source_id(const string& source_prefix, OttId foreign_id, const RichTaxonomy& taxonomy, const string& source_id) {
     const auto & taxonomy_tree = taxonomy.get_tax_tree();
     const auto & taxonomy_tree_data = taxonomy_tree.get_data();
-
-    try
-    {
-        if (source_prefix == "ncbi")
+    try {
+        if (source_prefix == "ncbi") {
             return taxonomy_tree_data.ncbi_id_map.at(foreign_id);
-        else if (source_prefix == "gbif")
+        } else if (source_prefix == "gbif") {
             return taxonomy_tree_data.gbif_id_map.at(foreign_id);
-        else if (source_prefix == "worms")
+        } else if (source_prefix == "worms") {
             return taxonomy_tree_data.worms_id_map.at(foreign_id);
-        else if (source_prefix == "if")
+        } else if (source_prefix == "if") {
             return taxonomy_tree_data.if_id_map.at(foreign_id);
-        else if (source_prefix == "irmng")
+        } else if (source_prefix == "irmng") {
             return taxonomy_tree_data.irmng_id_map.at(foreign_id);
-        else
+        } else {
             throw OTCBadRequest() << "Don't recognize source_prefix = '" << source_prefix << "' - but we shouldn't get here.";
-    }
-    catch (std::out_of_range & x) {
+        }
+    } catch (std::out_of_range & x) {
         throw OTCBadRequest() << "No taxon in the taxonomy is associated with source_id of '"<<source_id<<"'";
     }
 }
@@ -260,104 +252,86 @@ auto lookup_source_id(const string& source_prefix, OttId foreign_id, const RichT
 // + We could use std::strtol, which sets errno.
 // + c++17 has a function from_chars( ) which seems less ridiculous.
 //
-OttId id_from_string(const string& id_str)
-{
+OttId id_from_string(const string& id_str) {
     std::size_t pos;
     long raw_id;
-    try
-    {
+    try {
         raw_id  = std::stol(id_str.c_str(), &pos);
-    }
-    catch(const std::out_of_range&)
-    {
+    } catch (const std::out_of_range&) {
         throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
-    }
-    catch(std::invalid_argument&)
-    {
+    } catch(std::invalid_argument&) {
         throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
     }
-    if (pos < id_str.length())
+    if (pos < id_str.length()) {
         throw OTCBadRequest() << "Expecting the ID portion of the source_id to be numeric. Found: " <<  id_str;
-
+    }
     auto id = to_OttId(raw_id);
-
-    if (not id)
+    if (not id) {
         throw OTCBadRequest() << "The ID portion of the source_id was too large. Found: " << id_str;
-
+    }
     return *id;
 }
 
-const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTaxonomy& taxonomy)
-{
+const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTaxonomy& taxonomy) {
     auto pref_id = split_string(source_id, ':');
     if (pref_id.size() != 2) {
         throw OTCBadRequest() << "Expecting exactly 1 colon in a source ID string. Found: \"" << source_id << "\".";
     }
-
     string source_prefix = *pref_id.begin();
     if (indexed_source_prefixes.count(source_prefix) == 0) {
         throw OTCBadRequest() << "IDs from source " << source_prefix << " are not known or not indexed for searching.";
     }
-
     string id_str = *pref_id.rbegin();
-
     auto foreign_id = id_from_string(id_str);
-
     auto in_ott = lookup_source_id(source_prefix, foreign_id, taxonomy, source_id);
 
 #   if defined(MAP_FOREIGN_TO_POINTER)
         return in_ott;
 #   else
-        if (auto taxon_node = taxonomy.included_taxon_from_id(in_ott))
+        if (auto taxon_node = taxonomy.included_taxon_from_id(in_ott)) {
             return taxon_node;
-        else
+        } else {
             throw OTCBadRequest("Foreign ID '"+ source_id+"' mapped to unknown OTT ID: "+ to_string(in_ott));
+        }
 #   endif
 }
 
-string node_info_method_handler( const json& parsed_args)
-{
+string node_info_method_handler( const json& parsed_args) {
     string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
     auto node_id = extract_argument<string>(parsed_args,"node_id");
     auto source_id = extract_argument<string>(parsed_args,"source_id");
     auto node_ids = extract_argument<vector<string>>(parsed_args,"node_ids");
-
     int count =0;
     count += bool(node_id)?1:0;
     count += bool(node_ids)?1:0;
     count += bool(source_id)?1:0;
-
-    if (count != 1)
+    if (count != 1) {
         throw OTCBadRequest("Must supply exactly one of 'node_id', 'node_ids', or 'source_id'.");
-
-    if (source_id)
-    {
+    }
+    if (source_id) {
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
         auto tax_node = taxon_from_source_id(*source_id, taxonomy);
         node_id = "ott"+std::to_string(tax_node->get_ott_id());
     }
-
     bool include_lineage = extract_argument_or_default<bool>(parsed_args, "include_lineage", false);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-
-    if (node_id)
+    if (node_id) {
         return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
-    else
+    } else {
         return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
+    }
 }
 
-string mrca_method_handler( const json& parsedargs)
-{
+string mrca_method_handler( const json& parsedargs) {
     auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
     return mrca_ws_method(tts, treeptr, sta, node_id_vec);
 }
 
-std::string process_subtree(const json& parsedargs)
-{
+std::string process_subtree(const json& parsedargs) {
     // FIXME: According to treemachine/ws-tests/tests.subtree, there is an "include_all_node_labels"
     //        argument.  Unless this is explicitly set to true, we are supposed to not write node labels
     //        for non-ottids.  At least in Newick.
@@ -371,9 +345,7 @@ std::string process_subtree(const json& parsedargs)
     int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")? 3 : -1);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-
     bool all_node_labels = extract_argument_or_default<bool>(parsedargs, "include_all_node_labels", false);
-
     if (format == "newick") {
         return newick_subtree_ws_method(tts, treeptr, node_id, nns, all_node_labels, height_limit);
     } else {
@@ -381,8 +353,7 @@ std::string process_subtree(const json& parsedargs)
     }
 }
 
-string induced_subtree_method_handler( const json& parsedargs )
-{
+string induced_subtree_method_handler( const json& parsedargs ) {
     auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
     NodeNameStyle nns = get_label_format(parsedargs);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
@@ -390,27 +361,24 @@ string induced_subtree_method_handler( const json& parsedargs )
     return induced_subtree_ws_method(tts, treeptr, node_id_vec, nns);
 }
 
-string tax_about_method_handler( const json& )
-{
+string tax_about_method_handler( const json& ) {
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     return tax_about_ws_method(taxonomy);
 }
 
 // looks for ott_id or source_id args to find a node
-const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, const RichTaxonomy & taxonomy)
-{
+const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, const RichTaxonomy & taxonomy) {
     auto ott_id = extract_argument<OttId>(parsedargs, "ott_id");
     auto source_id = extract_argument<string>(parsedargs, "source_id");
-
-    if (ott_id and source_id)
+    if (ott_id and source_id) {
         throw OTCBadRequest("'ott_id' and 'source_id' arguments cannot both be supplied.");
-    else if (not ott_id and not source_id)
+    } else if (not ott_id and not source_id) {
         throw OTCBadRequest("An 'ott_id' or 'source_id' argument is required.");
-
-    if (source_id)
+    }
+    if (source_id) {
         return taxon_from_source_id(*source_id, taxonomy);
-    else {
+    } else {
         assert(ott_id);
         auto taxon_node = taxonomy.included_taxon_from_id(*ott_id);
         if (taxon_node == nullptr) {
@@ -420,35 +388,30 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, cons
     }
 }
 
-string taxon_info_method_handler( const json& parsedargs )
-{
+string taxon_info_method_handler( const json& parsedargs ) {
     auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
     auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
     auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
-
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
     return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
 }
 
-string taxon_flags_method_handler( const json& )
-{
+string taxon_flags_method_handler( const json& ) {
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     return taxonomy_flags_ws_method(taxonomy);
 }
 
-string taxon_mrca_method_handler( const json& parsedargs )
-{
+string taxon_mrca_method_handler( const json& parsedargs ) {
     OttIdSet ott_id_set = extract_required_argument<OttIdSet>(parsedargs, "ott_ids");
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     return taxonomy_mrca_ws_method(taxonomy, ott_id_set);
 }
 
-string taxon_subtree_method_handler( const json& parsedargs )
-{
+string taxon_subtree_method_handler( const json& parsedargs ) {
     NodeNameStyle nns = get_label_format(parsedargs);
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
