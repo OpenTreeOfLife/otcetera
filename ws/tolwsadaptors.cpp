@@ -12,6 +12,8 @@
 #include <cstdlib>
 #include "ws/tolwsadaptors.h"
 #include "otc/otcli.h"
+#include "otc/ctrie/context_ctrie_db.h"
+#include "otc/tnrs/context.h"
 
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
@@ -697,6 +699,15 @@ int run_server(const po::variables_map & args) {
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
     RichTaxonomy taxonomy = load_rich_taxonomy(args);
+
+
+    const Context * c = determine_context({});
+    if (c == nullptr) {
+        throw OTCError() << "no context found for entire taxonomy";
+    }
+    ContextAwareCTrieBasedDB ct{*c, taxonomy};
+    taxonomy.set_fuzzy_matcher(&ct);
+
     time_t post_tax_time;
     time(&post_tax_time);
     tts.set_taxonomy(taxonomy);

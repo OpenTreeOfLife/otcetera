@@ -8,6 +8,8 @@
 #include <optional>
 #include <string_view>
 #include "otc/tnrs/context.h"
+
+#include "otc/ctrie/str_utils.h"
 INITIALIZE_EASYLOGGINGPP
 
 
@@ -798,6 +800,10 @@ void delete_subtree_and_monotypic_ancestors(Tree& tree, typename Tree::node_type
 } //namespace otc
 
 int main( const int argc, char** argv) {
+    if (otc::set_global_conv_facet() != 0) {
+        return 1;
+    }
+    
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc,argv);
