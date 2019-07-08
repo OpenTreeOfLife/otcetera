@@ -352,6 +352,7 @@ inline void from_json(const nlohmann::json &j, SourceTreeId & sti) {
 
 nlohmann::json tax_about_json(const RichTaxonomy & taxonomy);
 void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, nlohmann::json & taxonrepr);
+void tax_service_add_suppressed_taxon_info(const RichTaxonomy & taxonomy, const TaxonomyRecord & nd_taxon, nlohmann::json & taxonrepr);
 
 inline const std::string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
     return nd_taxon.get_name();
@@ -366,6 +367,18 @@ inline void add_taxon_info(const RichTaxonomy & ,
     taxonrepr["unique_name"] = get_taxon_unique_name(nd_taxon);
     taxonrepr["rank"] = taxon_data.get_rank();
     taxonrepr["ott_id"] = nd_taxon.get_ott_id();    
+}
+
+inline void add_taxon_record_info(const RichTaxonomy & ,
+                           const TaxonomyRecord & record,
+                           nlohmann::json & taxonrepr) {
+    const std::string srcs{record.sourceinfo};
+    const auto av = comma_separated_as_vec(srcs);
+    taxonrepr["tax_sources"] = sources_vec_as_json(av);
+    taxonrepr["name"] = std::string{record.name};
+    taxonrepr["unique_name"] = std::string{record.uniqname};
+    taxonrepr["rank"] = std::string{record.rank};
+    taxonrepr["ott_id"] = record.id;    
 }
 
 template <typename Tree_t>

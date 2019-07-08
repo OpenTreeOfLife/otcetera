@@ -49,6 +49,19 @@ void tax_service_add_taxon_info(const RichTaxonomy & taxonomy,
     }
 }
 
+void tax_service_add_suppressed_taxon_info(const RichTaxonomy & taxonomy,
+                                          const TaxonomyRecord & record,
+                                          nlohmann::json & taxonrepr){
+    add_taxon_record_info(taxonomy, record, taxonrepr);
+    taxonrepr["source"] = string("ott") + taxonomy.get_version(); //TBD "source" ?
+    taxonrepr["flags"] = flags_to_string_vec(record.flags);
+    json syn_list = json::array();
+    taxonrepr["synonyms"] = syn_list;
+    taxonrepr["is_suppressed"] = true;
+    taxonrepr["is_suppressed_from_synth"] = true;
+}
+
+
 string taxon_info_ws_method(const RichTaxonomy & taxonomy,
                             const RTRichTaxNode * taxon_node,
                             bool include_lineage,

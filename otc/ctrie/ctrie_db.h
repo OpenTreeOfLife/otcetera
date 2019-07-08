@@ -11,7 +11,7 @@ using CTrie2_t = CompressedTrie<CTrie2Node>;
 
 class CompressedTrieBasedDB {
     public:
-    void initialize(const std::set<std::string_view> & keys);
+    void initialize(const std::set<std::string> & keys);
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     private:
     CTrie3_t wide_trie;
@@ -19,7 +19,7 @@ class CompressedTrieBasedDB {
 };
 
 
-std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
+inline std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
     auto conv_query = to_u32string(query_str);
     unsigned int max_dist;
     // defaults taken from taxomachine...
@@ -46,7 +46,7 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_
 }
 
 
-void CompressedTrieBasedDB::initialize(const std::set<std::string_view> & keys) {
+inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys) {
     ctrie_init_set_t for_wide;
     ctrie_init_set_t for_thin;
     // could fit a couple more non-funky, if we want <- 76, I think...
@@ -96,7 +96,6 @@ void CompressedTrieBasedDB::initialize(const std::set<std::string_view> & keys) 
     thin_trie.db_write_words(std::cerr);
     */
 }
-
 
 
 } // namespace otc

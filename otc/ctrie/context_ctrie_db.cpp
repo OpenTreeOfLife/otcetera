@@ -14,26 +14,40 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
     }
     const auto & rich_tax_tree = taxonomy.get_tax_tree();
     const auto & rt_data = rich_tax_tree.get_data();
-    std::set<std::string_view> all_names;
+    std::set<std::string> all_names;
     auto insert_hint = all_names.begin();
     for (auto const & name2nd : rt_data.name_to_node) {
-        insert_hint = all_names.insert(insert_hint, name2nd.first);
+        auto nn = normalize_query(name2nd.first);
+        match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{name2nd.second, nullptr});
+        insert_hint = all_names.insert(insert_hint, nn);
     }
     insert_hint = all_names.begin();
     for (auto name2ndvec : rt_data.homonym_to_node) {
-        insert_hint = all_names.insert(insert_hint, name2ndvec.first);
+        auto nn = normalize_query(name2ndvec.first);
+        for (auto hnp : name2ndvec.second) {
+            match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{hnp, nullptr});
+        }
+        insert_hint = all_names.insert(insert_hint, nn);
     }
     // filtered
     insert_hint = all_names.begin();
     for (auto name2rec : rt_data.name_to_record) {
-        insert_hint = all_names.insert(insert_hint, name2rec.first);
+        auto nn = normalize_query(name2rec.first);
+        match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{nullptr, (const void *)name2rec.second});
+        insert_hint = all_names.insert(insert_hint, nn);
     }
     insert_hint = all_names.begin();
     for (auto name2recvec : rt_data.homonym_to_record) {
-        insert_hint = all_names.insert(insert_hint, name2recvec.first);
+        auto nn = normalize_query(name2recvec.first);
+        for (auto hrp : name2recvec.second) {
+            match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{nullptr, (const void *)hrp});
+        }
+        insert_hint = all_names.insert(insert_hint, nn);
     }
     for (const auto & tjs : taxonomy.get_synonyms_list()) {
-        all_names.insert(std::string_view{tjs.name});
+        auto nn = normalize_query(tjs.name);
+        match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{tjs.primary, (const void *)(&tjs)});
+        all_names.insert(nn);
     }
     
     trie.initialize(all_names);
@@ -47,6 +61,7 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
     :context(context_arg) {
     throw OTCError() << "partitioning by context is not implemented yet...";
 }
+
 
 std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuzzy_query(const std::string & query_str) const {
     std::set<FuzzyQueryResult, SortQueryResByNearness> sorted;
@@ -62,5 +77,39 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuz
     return sorted;
 }
 
+using vec_fqr_w_t = std::vector<FuzzyQueryResultWithTaxon>;
+vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & query_str,
+                                                          const RTRichTaxNode * context_root,
+                                                          const RichTaxonomy & taxonomy, 
+                                                          bool include_suppressed) const {
+    vec_fqr_w_t results;
+    const auto & tax_data = context_root->get_data();
+    const auto filter_trav_enter = tax_data.trav_enter;
+    const auto filter_trav_exit = tax_data.trav_exit;
+    const std::set<FuzzyQueryResult, SortQueryResByNearness> sorted = fuzzy_query(query_str);
+    for (auto fqr : sorted) {
+        const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(fqr.match());
+        for (auto & tax_and_syn_pair : vec_taxon_and_syn_ptrs) {
+            auto tax_ptr = tax_and_syn_pair.first;
+            if (tax_ptr == nullptr) {
+                if (include_suppressed) {
+                    const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
+                    results.push_back(FuzzyQueryResultWithTaxon(fqr, tr));
+                }
+            } else {
+                const auto & res_tax_data = tax_ptr->get_data();
+                if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter) {
+                    const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_and_syn_pair.second);
+                    if (syn_ptr == nullptr) {
+                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr));
+                    } else {
+                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr,  syn_ptr));
+                    }
+                }
+            }
+        }
+    }
+    return results;
+}
 
 } // namespace otc

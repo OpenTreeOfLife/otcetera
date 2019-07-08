@@ -4,6 +4,8 @@
 #include "ws/trees_to_serve.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
+#include "otc/ctrie/search_data_models.h"
+#include "otc/ctrie/context_ctrie_db.h"
 #include "nexson/nexson.h"
 #include <optional>
 #include <string_view>
@@ -224,13 +226,62 @@ vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
     return prefix_synonym_search(context_root, query, ok);
 }
 
-json exact_name_match_json(const string& query, const Taxon* taxon, const RichTaxonomy& taxonomy) {
+inline json get_taxon_json(const RichTaxonomy& taxonomy, const Taxon& taxon) {
+    json j;
+    tax_service_add_taxon_info(taxonomy, taxon, j);
+    // What about the "is_suppressed_from_synth" flag?  Do we want that?
+    return j;
+}
+ 
+inline json get_taxon_record_json(const RichTaxonomy& taxonomy, const TaxonomyRecord & taxon) {
+    json j;
+    tax_service_add_suppressed_taxon_info(taxonomy, taxon, j);
+    return j;
+}
+
+
+inline json _base_name_match_json(const string& query, 
+                           const Taxon* taxon,
+                           const RichTaxonomy & taxonomy) {
     json result;
     result["taxon"] = get_taxon_json(taxonomy, *taxon);
     result["search_string"] = query;
+    result["nomenclature_code"] = "code";   // FIXME!
+    return result;
+}
+
+inline json _base_name_match_json(const string & query, 
+                           const TaxonomyRecord * record,
+                           const RichTaxonomy & taxonomy) {
+    json result;
+    result["taxon"] = get_taxon_record_json(taxonomy, *record);
+    result["search_string"] = query;
+    result["nomenclature_code"] = "code";   // FIXME!
+    return result;
+}
+
+json fuzzy_name_match_json(const string& query, 
+                           const FuzzyQueryResultWithTaxon & fqrwt,
+                           const ContextAwareCTrieBasedDB & ,
+                           const RichTaxonomy & taxonomy) {
+    json result;
+    auto taxon = fqrwt.get_taxon();
+    if (taxon != nullptr) {
+        result = _base_name_match_json(query, taxon, taxonomy);
+    } else {
+        result = _base_name_match_json(query, taxon, taxonomy);
+    }
+    result["score"] = fqrwt.get_score();
+    result["is_approximate_match"] = true;
+    result["is_synonym"] = false;
+    result["matched_name"] = fqrwt.get_matched_name();
+    return result;                           
+}
+
+json exact_name_match_json(const string& query, const Taxon* taxon, const RichTaxonomy& taxonomy) {
+    auto result = _base_name_match_json(query, taxon, taxonomy);
     result["score"] = 1.0;
     result["is_approximate_match"] = false;
-    result["nomenclature_code"] = "code";   // FIXME!
     result["is_synonym"] = false;
     result["matched_name"] = taxon->get_data().get_nonuniqname();
     return result;
@@ -240,25 +291,14 @@ json exact_synonym_match_json(const string& query,
                               const Taxon* taxon,
                               const string& synonym_name,
                               const RichTaxonomy& taxonomy) {
-    json result;
-    result["taxon"] = get_taxon_json(taxonomy, *taxon);
-    result["search_string"] = query;
+    auto result = _base_name_match_json(query, taxon, taxonomy);
     result["score"] = 1.0;
     result["is_approximate_match"] = false;
-    result["nomenclature_code"] = "code";   // FIXME!
     result["is_synonym"] = true;
     result["matched_name"] = synonym_name;
     return result;
 }
 
-// could use this for \"e  -> e as well
-inline std::string normalize_query(const std::string & raw_query) {
-    std::string query = raw_query;
-    for (auto& c: query) {
-        c = std::tolower(c);
-    }
-    return query;
-}
 
 pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
                                                     bool do_approximate_matching,
@@ -285,6 +325,14 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
     // 3. Do fuzzy matching ONLY for names that we couldn't match
     if (do_approximate_matching and status == unmatched) {
         // do fuzzy matching.
+        auto ctp = taxonomy.get_fuzzy_matcher();
+        if (ctp == nullptr) {
+            throw OTCError() << "Fuzzy matching has not been enabled in the taxonomy, but was requested in match_name.";
+        }
+        auto fuzzy_results = ctp->fuzzy_query_to_taxa(query, context_root, taxonomy, include_suppressed);
+        for (auto fqr : fuzzy_results) {
+            fuzzy_name_match_json(query, fqr, *ctp, taxonomy);
+        }
     }
     json match_results;
     match_results["name"] = query;
@@ -435,13 +483,6 @@ vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus,
         }
     }
     return match_species;
-}
-
-json get_taxon_json(const RichTaxonomy& taxonomy, const Taxon& taxon) {
-    json j;
-    tax_service_add_taxon_info(taxonomy, taxon, j);
-    // What about the "is_suppressed_from_synth" flag?  Do we want that?
-    return j;
 }
 
 

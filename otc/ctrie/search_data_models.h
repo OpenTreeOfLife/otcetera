@@ -8,10 +8,11 @@
 #include "otc/otc_base_includes.h"
 #include "otc/ctrie/str_utils.h"
 #include "otc/ctrie/ctrie_node.h"
+#include "otc/taxonomy/taxonomy.h"
 #include "otc/util.h"
 
 namespace otc {
-
+    
 class FuzzyQueryResult {
     public:
     std::string match() const {
@@ -39,8 +40,63 @@ class FuzzyQueryResult {
 
 };
 
+class FuzzyQueryResultWithTaxon {
+    const FuzzyQueryResult query_result;
+    const RTRichTaxNode * taxon = nullptr;
+    const TaxonomyRecord * record = nullptr;
+    bool matched_to_synonym;
+    const std::string matched_name;
+    public:
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg)
+      :query_result(fqr),
+      taxon(tax_arg),
+      record(nullptr),
+      matched_to_synonym(false),
+      matched_name(fqr.match()) {
+    }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const TaxonomyRecord * tax_rec)
+      :query_result(fqr),
+      taxon(nullptr),
+      record(tax_rec),
+      matched_to_synonym(false),
+      matched_name(tax_rec->name) {
+    }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg,
+                              const TaxonomicJuniorSynonym *syn)
+      :query_result(fqr),
+      taxon(tax_arg),
+      record(nullptr),
+      matched_to_synonym(true),
+      matched_name(syn->get_name()) {
+    }
+
+    float get_score() const {
+        return query_result.score;
+    }
+
+    bool is_synonym() const {
+        return matched_to_synonym;
+    }
+    std::string get_matched_name() const {
+        return matched_name;
+    }
+
+    const RTRichTaxNode * get_taxon() const {
+        return taxon;
+    }
+
+    const TaxonomyRecord * get_record() const {
+        return record;
+    }
+};
 struct SortQueryResByNearness {
-    bool operator() (const FuzzyQueryResult & lhs, const FuzzyQueryResult & rhs) const {
+    bool operator() (const FuzzyQueryResult & lhs,
+                     const FuzzyQueryResult & rhs) const {
         if (lhs.score < rhs.score) {
             return false;
         } else if (rhs.score < lhs.score) {
