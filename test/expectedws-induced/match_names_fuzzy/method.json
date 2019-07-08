@@ -2,7 +2,8 @@
     "url_fragment": "v3/tnrs/match_names",
     "verb": "POST",
     "arguments": {
-      "names": ["Amaryllis breviconis"]
+      "names": ["Amaryllis breviconis"],
+      "do_approximate_matching": true
     }
 }
   

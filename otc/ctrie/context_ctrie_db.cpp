@@ -82,12 +82,17 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
                                                           const RTRichTaxNode * context_root,
                                                           const RichTaxonomy & taxonomy, 
                                                           bool include_suppressed) const {
+    LOG(DEBUG) << "fuzzy_query_to_taxa(" << query_str << ", context_id = " << context_root->get_ott_id() << ", ... , included_suppressed ="  << include_suppressed << ")";
     vec_fqr_w_t results;
     const auto & tax_data = context_root->get_data();
     const auto filter_trav_enter = tax_data.trav_enter;
     const auto filter_trav_exit = tax_data.trav_exit;
     const std::set<FuzzyQueryResult, SortQueryResByNearness> sorted = fuzzy_query(query_str);
+    if (sorted.empty()) {
+        LOG(DEBUG) << "no matches";
+    }
     for (auto fqr : sorted) {
+        LOG(DEBUG) << "FuzzyQueryResult(match=\"" << fqr.match() << "\", score = " << fqr.score << ")";
         const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(fqr.match());
         for (auto & tax_and_syn_pair : vec_taxon_and_syn_ptrs) {
             auto tax_ptr = tax_and_syn_pair.first;

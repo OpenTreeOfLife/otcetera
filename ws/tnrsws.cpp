@@ -432,7 +432,7 @@ std::string tnrs_match_names_ws_method(const vector<string>& names,
     json response;
     response["governing_code"] = context->code.name;
     response["context"] = context->name;
-    response["includes_approximage_matches"] = do_approximate_matching;
+    response["includes_approximate_matches"] = do_approximate_matching;
     response["includes_deprecated_taxa"] = false; // ?? How is this different from suppressed_names?
     response["includes_suppressed_names"] = include_suppressed;
     response["taxonomy"] = tax_about_json(taxonomy);
