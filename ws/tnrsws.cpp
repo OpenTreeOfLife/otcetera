@@ -48,6 +48,16 @@ struct ContextSearcher {
     ContextSearcher(const RichTaxonomy& t, const Context& c): taxonomy(t), context(c) {
         context_root = taxonomy.included_taxon_from_id(c.ott_id);
     }
+    private:
+    json fuzzy_name_match_json(const string& query, 
+                               const FuzzyQueryResultWithTaxon & fqrwt) const;
+    json exact_name_match_json(const string& query,
+                               const Taxon* taxon) const;
+    json exact_synonym_match_json(const string& query,
+                                  const Taxon* taxon,
+                                    const string& synonym_name) const;
+    json _base_name_match_json(const string& query, const Taxon * taxon) const;
+    json _base_name_match_json(const string & query, const TaxonomyRecord * record) const; 
 };
 
 string escape_query_string(const string& name) {
@@ -240,36 +250,32 @@ inline json get_taxon_record_json(const RichTaxonomy& taxonomy, const TaxonomyRe
 }
 
 
-inline json _base_name_match_json(const string& query, 
-                           const Taxon* taxon,
-                           const RichTaxonomy & taxonomy) {
+inline json ContextSearcher::_base_name_match_json(const string& query,
+                                                   const Taxon * taxon) const {
     json result;
     result["taxon"] = get_taxon_json(taxonomy, *taxon);
     result["search_string"] = query;
-    result["nomenclature_code"] = "code";   // FIXME!
+    result["nomenclature_code"] = Context::get_code_name(taxonomy, taxon);
     return result;
 }
 
-inline json _base_name_match_json(const string & query, 
-                           const TaxonomyRecord * record,
-                           const RichTaxonomy & taxonomy) {
+inline json ContextSearcher::_base_name_match_json(const string & query, 
+                                                   const TaxonomyRecord * record) const {
     json result;
     result["taxon"] = get_taxon_record_json(taxonomy, *record);
     result["search_string"] = query;
-    result["nomenclature_code"] = "code";   // FIXME!
+    result["nomenclature_code"] = Context::get_code_name(taxonomy, record);
     return result;
 }
 
-json fuzzy_name_match_json(const string& query, 
-                           const FuzzyQueryResultWithTaxon & fqrwt,
-                           const ContextAwareCTrieBasedDB & ,
-                           const RichTaxonomy & taxonomy) {
+inline json ContextSearcher::fuzzy_name_match_json(const string& query, 
+                           const FuzzyQueryResultWithTaxon & fqrwt) const {
     json result;
     auto taxon = fqrwt.get_taxon();
     if (taxon != nullptr) {
-        result = _base_name_match_json(query, taxon, taxonomy);
+        result = _base_name_match_json(query, taxon);
     } else {
-        result = _base_name_match_json(query, taxon, taxonomy);
+        result = _base_name_match_json(query, taxon);
     }
     result["score"] = fqrwt.get_score();
     result["is_approximate_match"] = true;
@@ -278,8 +284,9 @@ json fuzzy_name_match_json(const string& query,
     return result;                           
 }
 
-json exact_name_match_json(const string& query, const Taxon* taxon, const RichTaxonomy& taxonomy) {
-    auto result = _base_name_match_json(query, taxon, taxonomy);
+inline json ContextSearcher::exact_name_match_json(const string& query,
+                                            const Taxon* taxon) const {
+    auto result = _base_name_match_json(query, taxon);
     result["score"] = 1.0;
     result["is_approximate_match"] = false;
     result["is_synonym"] = false;
@@ -287,11 +294,10 @@ json exact_name_match_json(const string& query, const Taxon* taxon, const RichTa
     return result;
 }
 
-json exact_synonym_match_json(const string& query,
+inline json ContextSearcher::exact_synonym_match_json(const string& query,
                               const Taxon* taxon,
-                              const string& synonym_name,
-                              const RichTaxonomy& taxonomy) {
-    auto result = _base_name_match_json(query, taxon, taxonomy);
+                              const string& synonym_name) const {
+    auto result = _base_name_match_json(query, taxon);
     result["score"] = 1.0;
     result["is_approximate_match"] = false;
     result["is_synonym"] = true;
@@ -309,7 +315,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
     // 1. See if we can find an exact name match
     auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
     for(auto taxon: exact_name_matches) {
-        results.push_back(exact_name_match_json(query, taxon, taxonomy));
+        results.push_back(exact_name_match_json(query, taxon));
     }
     if (exact_name_matches.size() == 1) {
         status = unambiguous_match;
@@ -317,7 +323,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
     // 2. See if we can find an exact name match for synonyms
     auto exact_synonym_matches = exact_synonym_search(taxonomy, context_root, query, include_suppressed);
     for(auto& [ taxon, synonym_name ]: exact_synonym_matches) {
-        results.push_back(exact_synonym_match_json(query, taxon, synonym_name, taxonomy));
+        results.push_back(exact_synonym_match_json(query, taxon, synonym_name));
     }
     if (status == unmatched and results.size()) {
         status = ambiguous_match;
@@ -337,7 +343,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
                 status = ambiguous_match;
             }
             for (auto fqr : fuzzy_results) {
-                results.push_back(fuzzy_name_match_json(query, fqr, *ctp, taxonomy));
+                results.push_back(fuzzy_name_match_json(query, fqr));
             }
         }
     }

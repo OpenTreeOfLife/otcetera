@@ -122,3 +122,7 @@ uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|
 200683	|	655592	|	Amaryllis paradisicola	|	species	|	ncbi:180130,gbif:5326211	|		|		|	
 6013112	|	655592	|	Amaryllis brevipodis	|	species	|	gbif:5643263	|		|		|	
 4671798	|	4671782	|	Amaryllis brevicornis	|	species	|	worms:244457	|		|		|	
+5246131	|	332573	|	Holozoa	|	no rank	|	silva:D14357/#3	|		|		|	
+202765	|	5246131	|	Choanoflagellida	|	order	|	silva:Z34900/#4,ncbi:28009,worms:580116,irmng:10270	|		|	sibling_higher	|	
+878953	|	5268475	|	Rhodophyta	|	phylum	|	silva:L19345/#3,ncbi:2763,worms:852,gbif:106,gbif:8029077,irmng:250	|		|	sibling_higher	|	
+664970	|	5268475	|	Glaucophyta	|	class	|	silva:X70803/#3,ncbi:38254,worms:599656,gbif:37,gbif:335,irmng:164,irmng:1479	|		|	sibling_higher	|	

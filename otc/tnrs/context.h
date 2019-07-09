@@ -38,6 +38,10 @@ struct Context
      code(code_arg), 
      name_matcher(nullptr)
      {}
+
+    static void init_nom_codes_to_traversal(const RichTaxonomy &);
+    static const std::string & get_code_name(const RichTaxonomy & taxonomy, const RTRichTaxNode * taxon);
+    static const std::string & get_code_name(const RichTaxonomy & taxonomy, const TaxonomyRecord * record);
 };
 
 extern const std::vector<Context> all_contexts;
