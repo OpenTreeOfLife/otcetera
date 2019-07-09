@@ -12,7 +12,7 @@
 #include "otc/util.h"
 
 namespace otc {
-    
+
 class FuzzyQueryResult {
     public:
     std::string match() const {
@@ -53,7 +53,7 @@ class FuzzyQueryResultWithTaxon {
       taxon(tax_arg),
       record(nullptr),
       matched_to_synonym(false),
-      matched_name(fqr.match()) {
+      matched_name(tax_arg->get_data().get_nonuniqname()) {
     }
 
     FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,

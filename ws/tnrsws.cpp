@@ -330,8 +330,15 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
             throw OTCError() << "Fuzzy matching has not been enabled in the taxonomy, but was requested in match_name.";
         }
         auto fuzzy_results = ctp->fuzzy_query_to_taxa(query, context_root, taxonomy, include_suppressed);
-        for (auto fqr : fuzzy_results) {
-            fuzzy_name_match_json(query, fqr, *ctp, taxonomy);
+        if (fuzzy_results.size() > 0) {
+            if (fuzzy_results.size() == 1) {
+                status = unambiguous_match;
+            } else {
+                status = ambiguous_match;
+            }
+            for (auto fqr : fuzzy_results) {
+                results.push_back(fuzzy_name_match_json(query, fqr, *ctp, taxonomy));
+            }
         }
     }
     json match_results;
