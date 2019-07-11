@@ -58,12 +58,13 @@ def gen_dict_diff_str(expected, observed, ex_pref, obs_pref):
             return '{} is a list, but {} is a {}'.format(ex_pref, obs_pref, type(observed))
         if len(expected) != len(observed):
             diff_list.append('{} had {} elments but {} has {}'.format(ex_pref, len(expected), obs_pref, len(observed)))
-        ml = len(expected)
-        for ind in range(ml):
-            eel, oel = expected[ind], observed[ind]
-            if eel != oel:
-                r = gen_dict_diff_str(eel, oel, '{}[{}]'.format(ex_pref, ind), '{}[{}]'.format(obs_pref, ind))
-                _extend_diff_list(diff_list, r)
+        else:
+            ml = len(expected)
+            for ind in range(ml):
+                eel, oel = expected[ind], observed[ind]
+                if eel != oel:
+                    r = gen_dict_diff_str(eel, oel, '{}[{}]'.format(ex_pref, ind), '{}[{}]'.format(obs_pref, ind))
+                    _extend_diff_list(diff_list, r)
     elif type(expected) == type(observed):
         return ['{} = {}, but {} = {}'.format(ex_pref, repr(expected), obs_pref, repr(observed))]
     else:
@@ -216,6 +217,7 @@ class WebServiceTestJob(object):
             self.status_str = "Completed"
         except Exception as x:
             self.erred = True
+            _LOG.exception('writing exception to status string')
             self.status_str += "Exception: {}".format(x)
 
     def start(self):
