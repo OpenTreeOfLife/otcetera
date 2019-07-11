@@ -15,17 +15,17 @@
           "is_synonym": false,
           "matched_name": "Amaryllis brevicornis",
           "nomenclature_code": "ICZN",
-          "score": 0.9,
+          "score": 0.95238,
           "search_string": "amaryllis breviconis",
           "taxon": {
             "flags": [],
             "is_suppressed": false,
+            "is_suppressed_from_synth": false,
             "name": "Amaryllis brevicornis",
             "ott_id": 4671798,
             "rank": "species",
-            "synonyms": [
-              "Amaryllis brevicornis"
-            ],
+            "source": "ott0.0draft0",
+            "synonyms": [],
             "tax_sources": [
               "worms:244457"
             ],
@@ -37,17 +37,17 @@
           "is_synonym": false,
           "matched_name": "Amaryllis brevipodis",
           "nomenclature_code": "ICN",
-          "score": 0.85,
+          "score": 0.9,
           "search_string": "amaryllis breviconis",
           "taxon": {
             "flags": [],
             "is_suppressed": false,
+            "is_suppressed_from_synth": false,
             "name": "Amaryllis brevipodis",
             "ott_id": 6013112,
             "rank": "species",
-            "synonyms": [
-              "Amaryllis brevipodis"
-            ],
+            "source": "ott0.0draft0",
+            "synonyms": [],
             "tax_sources": [
               "gbif:5643263"
             ],

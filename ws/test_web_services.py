@@ -17,6 +17,7 @@ _LOG.addHandler(_lh)
 
 NUM_TESTS = 0
 FAILED_TESTS = []
+FRAC_FLOAT_DIFF_TOL = 0.001
 
 def _extend_diff_list(diff_list, r):
     if r:
@@ -36,8 +37,16 @@ def gen_dict_diff_str(expected, observed, ex_pref, obs_pref):
             if ek in observed:
                 ov = observed[ek]
                 if ov != ev:
-                    r = gen_dict_diff_str(ev, ov, '{}["{}"]'.format(ex_pref, ek), '{}["{}"]'.format(obs_pref, ek))
-                    _extend_diff_list(diff_list, r)
+                    matched_as_floats = False
+                    if isinstance(ev, float):
+                        try:
+                            if abs(ev - ov)/abs(ev) <= FRAC_FLOAT_DIFF_TOL:
+                                matched_as_floats = True
+                        except:
+                            pass
+                    if not matched_as_floats:
+                        r = gen_dict_diff_str(ev, ov, '{}["{}"]'.format(ex_pref, ek), '{}["{}"]'.format(obs_pref, ek))
+                        _extend_diff_list(diff_list, r)
 
             else:
                 diff_list.append('{}["{}"] is absent'.format(obs_pref, ek))
@@ -47,7 +56,9 @@ def gen_dict_diff_str(expected, observed, ex_pref, obs_pref):
     elif isinstance(expected, list) or isinstance(expected, tuple):
         if not isinstance(observed, list) or isinstance(observed, tuple):
             return '{} is a list, but {} is a {}'.format(ex_pref, obs_pref, type(observed))
-        ml = min(len(expected), len(observed))
+        if len(expected) != len(observed):
+            diff_list.append('{} had {} elments but {} has {}'.format(ex_pref, len(expected), obs_pref, len(observed)))
+        ml = len(expected)
         for ind in range(ml):
             eel, oel = expected[ind], observed[ind]
             if eel != oel:
@@ -190,16 +201,17 @@ class WebServiceTestJob(object):
 
                 if j != self.expected:
                     dd = gen_expected_obs_diff(self.expected, j, 'x')
-                    self.failed = True
-                    if self.test_dir:
-                        dbout_observed = os.path.join(self.test_dir, "observed.json")
-                        with codecs.open(dbout_observed, 'w', encoding="utf-8") as obsfo:
-                            json.dump(j, obsfo, sort_keys=True, indent=2, separators=(',', ': '))
-                        m = 'Response written to {}'.format(dbout_observed)
-                    else:
-                        m = ''
-                    self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
-                    return
+                    if dd:
+                        self.failed = True
+                        if self.test_dir:
+                            dbout_observed = os.path.join(self.test_dir, "observed.json")
+                            with codecs.open(dbout_observed, 'w', encoding="utf-8") as obsfo:
+                                json.dump(j, obsfo, sort_keys=True, indent=2, separators=(',', ': '))
+                            m = 'Response written to {}'.format(dbout_observed)
+                        else:
+                            m = ''
+                        self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
+                        return
             self.passed = True
             self.status_str = "Completed"
         except Exception as x:

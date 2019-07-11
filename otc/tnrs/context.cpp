@@ -247,11 +247,28 @@ const std::string & Context::get_code_name(const RichTaxonomy & , const RTRichTa
 }
 
 const RTRichTaxNode * get_closest_anc_with_node(const RichTaxonomy & taxonomy, const TaxonomyRecord * record) {
-
+    const auto & tax_data = taxonomy.get_tax_tree().get_data();
+    OttId par_id = record->parent_id;
+    for (;;) {
+        auto ndit = tax_data.id_to_node.find(par_id);
+        if (ndit == tax_data.id_to_node.end()) {
+            auto taxit = tax_data.id_to_record.find(par_id);
+            if (taxit == tax_data.id_to_record.end()) {
+                return nullptr;
+            } else {
+                par_id = taxit->second->parent_id;
+            }
+        } else {
+            return ndit->second;
+        }
+    }
 }
 
 const std::string & Context::get_code_name(const RichTaxonomy & taxonomy, const TaxonomyRecord * record) {
     const auto taxon = get_closest_anc_with_node(taxonomy, record);
+    if (taxon == nullptr) {
+        return Nomenclature::Undefined.name;
+    }
     return get_code_name(taxonomy, taxon);
 }
 

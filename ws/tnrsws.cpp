@@ -348,7 +348,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
         }
     }
     json match_results;
-    match_results["name"] = query;
+    match_results["name"] = raw_query;
     match_results["matches"] = results;
     return {match_results, status};
 }
