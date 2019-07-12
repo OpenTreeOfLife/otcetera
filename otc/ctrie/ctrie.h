@@ -13,7 +13,7 @@
 #include "otc/ctrie/search_data_models.h"
 
 namespace otc {
-constexpr bool DB_FUZZY_MATCH = false;
+constexpr bool DB_FUZZY_MATCH = true;
 /* Compressed Trie
   based on, but not identical to structure by Maly 1976
 */
@@ -42,13 +42,13 @@ class CompressedTrie {
     CompressedTrie(const std::string &inp_letters) {
         std::set<char> ils{std::begin(inp_letters), std::end(inp_letters)};
         std::string uniq{std::begin(ils), std::end(ils)};
-        letters = to_u32string(uniq);
+        letters = to_stored_str_type(uniq);
         fill_equivalent_letter_array();
         null_char_index = letters.size();
     }
 
     std::vector<stored_index_t> using_letter_order_to_encode(const stored_str_t & query_str,
-                                                  bool null_terminate=false) const {
+                                                             bool null_terminate=false) const {
         std::vector<stored_index_t> ret;
         ret.reserve(query_str.length() + (null_terminate ? 1 : 0));
         for (auto c: query_str) {
@@ -108,7 +108,7 @@ class CompressedTrie {
             } else {
                 auto nl = letters[let_ind];
                 try {
-                    ret += to_char_str(nl);
+                    append_char_str<stored_char_t>(ret, nl);
                 } catch (...) {
                     LOG(ERROR) << "error translating p[" << i << "] = "<< int(p[i]) << " where letters = \"" << to_char_str(letters) << "\"\n";
                     throw;
@@ -238,7 +238,7 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
     ctrie_init_set_t::const_iterator lb;
     bool has_indexed_par = false;
     static const std::string TARGET_THIN_STR{"A"};
-    static const stored_str_t TARGET_STR = to_u32string(TARGET_THIN_STR);
+    static const stored_str_t TARGET_STR = to_stored_str_type(TARGET_THIN_STR);
     bool had_target_pref = false;
     for (auto letter : rev_letters) {
         if (letter == '\0') {
@@ -315,6 +315,7 @@ void CompressedTrie<T>::_store_suffix_node(T & curr_node,
 
 template <typename T>
 void CompressedTrie<T>::fill_equivalent_letter_array() {
+#if defined(USING_EQUIL_LETTER_ARRAY)
     equivalent_letter.reserve(letters.length());
     equivalent_letter.clear();
     for (auto nl : letters) {
@@ -322,7 +323,7 @@ void CompressedTrie<T>::fill_equivalent_letter_array() {
         std::string lccov = lower_case_version(uncov);
         stored_index_t char_ind = NO_MATCHING_CHAR_CODE;
         if (lccov != uncov) {
-            auto alt = to_u32string(lccov);
+            auto alt = to_stored_str_type(lccov);
             if (alt.length() != 1) {
                 throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << lccov << "\"\n";
             }
@@ -330,7 +331,7 @@ void CompressedTrie<T>::fill_equivalent_letter_array() {
         } else {
             std::string uccov = upper_case_version(uncov);
             if (uccov != uncov) {
-                auto alt = to_u32string(uccov);
+                auto alt = to_stored_str_type(uccov);
                 if (alt.length() != 1) {
                     throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << uccov << "\"\n";
                 }
@@ -339,6 +340,7 @@ void CompressedTrie<T>::fill_equivalent_letter_array() {
         }
         equivalent_letter.push_back(char_ind);
     }
+#endif
 }
 
 template <typename T>
@@ -374,7 +376,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     suffix2index[mt] = 0;
     T & root_node = append_node();
     static const std::string TARGET_THIN_STR{"A"};
-    static const stored_str_t TARGET_STR = to_u32string(TARGET_THIN_STR);
+    static const stored_str_t TARGET_STR = to_stored_str_type(TARGET_THIN_STR);
     unsigned int target_ind = UINT_MAX;
     assert(node_list.size() == 1);
     std::cerr << "letters \"" << to_char_str(letters) << "\"\n";

@@ -20,7 +20,11 @@ class CompressedTrieBasedDB {
 
 
 inline std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
-    auto conv_query = to_u32string(query_str);
+#   if defined(U32_TRIE_QUERIES)
+        auto conv_query = to_query_str(query_str);
+#   else
+        const std::string & conv_query = query_str;
+#   endif
     unsigned int max_dist;
     // defaults taken from taxomachine...
     const unsigned int SHORT_NAME_LENGTH = 9;
@@ -58,7 +62,7 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
     out << keys.size() << " keys\n";
     for (auto i : keys) {
         mem_str += i.length();
-        auto widestr = to_u32string(i);
+        auto widestr = to_stored_str_type(i);
         bool has_funky = false;
         if (trimming_by_funky) {
             for (auto c : i) {

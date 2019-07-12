@@ -165,9 +165,9 @@ void interactive_tests() {
         lastinteractive << trie << '\n';
         lastinteractive << dist_threshold << '\n';
         lastinteractive.close();
-        auto wq = to_u32string(query);
+        auto wq = to_stored_str_type(query);
         auto wqi = testtrie.using_letter_order_to_encode(wq);
-        auto wt = to_u32string(trie);
+        auto wt = to_stored_str_type(trie);
         auto wti = testtrie.using_letter_order_to_encode(wt);
         out << "query \"" << query << "\"\n";
         out << "       "; for(auto q : wqi) {out << (unsigned int) q << ", ";}; out << "\n";
