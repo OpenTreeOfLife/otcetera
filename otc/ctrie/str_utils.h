@@ -86,23 +86,11 @@ inline bool starts_with(const stored_str_t & full, const stored_str_t & pref) {
     return 0 == full.compare(0, pref.length(), pref);
 }
 
+void init_char_maps(); // must be called before normalize_queries are used.
 // could use this for \"e  -> e as well
-inline std::string normalize_query(const std::string & raw_query) {
-    std::string query = raw_query;
-    for (auto& c: query) {
-        c = std::tolower(c);
-    }
-    return query;
-}
+std::string normalize_query(const std::string & raw_query);
+std::string normalize_query(const std::string_view & raw_query);
 
-inline std::string normalize_query(const std::string_view & raw_query) {
-    std::string query;
-    query.reserve(query.size());
-    for (auto c: raw_query) {
-        query.push_back(std::tolower(c));
-    }
-    return query;
-}
 
 
 } // namespace otc
