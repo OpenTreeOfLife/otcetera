@@ -34,11 +34,19 @@ extern std::wstring_convert<deletable_facet<std::codecvt<char32_t, char, std::mb
 extern std::wstring_convert<std::codecvt_utf8_utf16<char32_t>, char32_t> glob_conv8;
 
 inline std::u32string to_u32string(const std::string_view & undecoded) {
-    return glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    try {
+        return glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    } catch (...) {
+        throw OTCError() << "Error converting \"" << undecoded << "\" to_u32string";  
+    }
 }
 
 inline std::u32string to_u32string(const std::string & undecoded) {
-    return glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    try {
+        return glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    } catch (...) {
+        throw OTCError() << "Error converting \"" << undecoded << "\" to_u32string";  
+    }
 }
 
 
@@ -59,7 +67,13 @@ inline std::u32string to_u32string_ci(const std::string_view & uncap_mod) {
     assert(glob_facet != nullptr);
     std::string undecoded{uncap_mod};
     glob_facet->tolower(&undecoded[0], &undecoded[0] + undecoded.size());
-    std::u32string ret = glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    std::u32string ret;
+    try {
+        ret = glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
+    } catch (...) {
+        throw OTCError() << "Error converting \"" << undecoded << "\" to_u32string";  
+    }
+
     return ret;
 }
 

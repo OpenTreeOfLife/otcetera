@@ -5,7 +5,6 @@
 namespace otc {
 const std::ctype<char> * glob_facet;
 std::wstring_convert<deletable_facet<std::codecvt<char32_t, char, std::mbstate_t> >, char32_t> glob_conv32;
-std::wstring_convert<deletable_facet<std::codecvt<wchar_t, char, std::mbstate_t> >, wchar_t> glob_convw;
 std::wstring_convert<std::codecvt_utf8_utf16<char32_t>, char32_t> glob_conv8;
 std::locale global_locale;
 
@@ -23,6 +22,9 @@ int set_global_conv_facet() {
     }
     auto & f = std::use_facet<std::ctype<char> >(global_locale);
     glob_facet = &f;
+    //std::cin.imbue(global_locale);
+    //std::cerr.imbue(global_locale);
+    //std::cout.imbue(global_locale);
     return 0;
 }
 
@@ -31,28 +33,20 @@ const char PUNC_CHAR = '?';
 const char UNKNOWN_CHAR = '@'; // some char that is not in any encoded indexed string
 const char BRACE_CHAR = '|';
 std::vector<char> ascii_char_to_norm;
-std::map<wchar_t, char> wide_to_norm;
+std::map<char32_t, char> wide_to_norm;
 
-std::string normalize_query(const std::wstring & raw_query);
-std::wstring to_wide_str(const std::string &q);
-std::wstring to_wide_str(const std::string_view &q);
+std::string normalize_query(const std::u32string & raw_query);
 
 
-inline std::wstring to_wide_str(const std::string &undecoded) {
-    return glob_convw.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
-}
-
-inline  std::wstring to_wide_str(const std::string_view &undecoded) {
-    return glob_convw.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
-}
-
-std::string normalize_query(const std::wstring & wide_query) {
+std::string normalize_query(const std::u32string & wide_query) {
     std::string norm;
     norm.reserve(wide_query.size());
-    for (const wchar_t & c: wide_query) {
+    std::cerr << "trying to normalize_query \"" << to_char_str(wide_query) << "\" ...";
+    
+    for (const auto & c: wide_query) {
         if (c < 127) {
             char tc = (char) c;
-            norm.push_back(ascii_char_to_norm[c]);
+            norm.push_back(ascii_char_to_norm[tc]);
         } else {
             auto wcit = wide_to_norm.find(c);
             if (wcit == wide_to_norm.end()) {
@@ -62,9 +56,9 @@ std::string normalize_query(const std::wstring & wide_query) {
             }
         }
     }
+    std::cerr << " converted  to \"" << norm << "\" \n";
     return norm;
 }
-
 
 // could use this for \"e  -> e as well
 std::string normalize_query(const std::string & raw_query) {
@@ -74,10 +68,12 @@ std::string normalize_query(const std::string & raw_query) {
         if (c < 127) {
             norm.push_back(ascii_char_to_norm[c]);
         } else {
-            std::wstring wrq = to_wide_str(raw_query);
-            return normalize_query(wrq);
+            auto wrq = to_u32string(raw_query);
+            norm = normalize_query(wrq);
+            break;
         }
     }
+    std::cerr << "normalized \"" << raw_query << "\" to \"" << norm << "\" \n";
     return norm;
 }
 
@@ -88,16 +84,18 @@ std::string normalize_query(const std::string_view & raw_query) {
         if (c < 127) {
             norm.push_back(ascii_char_to_norm[c]);
         } else {
-            std::wstring wrq = to_wide_str(raw_query);
-            return normalize_query(wrq);
+            auto wrq = to_u32string(raw_query);
+            norm = normalize_query(wrq);
+            break;
         }
     }
+    std::cerr << "normalized \"" << raw_query << "\" to \"" << norm << "\" \n";
     return norm;
 }
 
 void init_char_maps(){
     std::vector<char> & c = ascii_char_to_norm;
-    std::map<wchar_t, char> & m = wide_to_norm;
+    std::map<char32_t, char> & m = wide_to_norm;
     c.assign(128, PUNC_CHAR);
     const char SPACE_CHAR = ' ';
     const char SEP_CHAR = '-';
@@ -242,6 +240,9 @@ void init_char_maps(){
     m[L'\u2009'] = SPACE_CHAR;  //  8201 " "
     m[L'\u2019'] = BRACE_CHAR;  //  8217 ’
     m[L'\ufb02'] = 'f';  //  64258 ﬂ
+    for (auto x : m) {
+        std::cerr << "\"" << to_char_str(x.first) << "\" -> " << x.second << "\"\n"; 
+    }
 }
 
 } // namespace otc
