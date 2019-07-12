@@ -19,6 +19,7 @@ constexpr bool DB_FUZZY_MATCH = false;
 */
 
 using ctrie_init_set_t = std::set<stored_str_t>;
+
 template <typename T>
 class CTrieCtorHelperTemp {
     public:
@@ -29,6 +30,7 @@ class CTrieCtorHelperTemp {
 
 
 using suff_map_t = std::map<std::vector<stored_index_t> , std::size_t>;
+
 template <typename T>
 class CompressedTrie {
     public:
@@ -240,6 +242,9 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
     bool had_target_pref = false;
     for (auto letter : rev_letters) {
         if (letter == '\0') {
+            if (curr_letter_index != rev_letters.length() - 1) {
+                throw OTCError() << "_process_prefix error when curr_letter_index=" << curr_letter_index << " on rev_letters=\"" << to_char_str(rev_letters) << "\"";
+            }
             assert(curr_letter_index == rev_letters.length() - 1);
             break;
         }
@@ -359,7 +364,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     }
     fill_equivalent_letter_array();
     null_char_index = letters.length();
-    letters.append(1, '\0');
+    //letters.append(1, '\0');
 
     std::stack<CTrieCtorHelper> todo_q;
     stored_str_t curr_pref;
@@ -372,9 +377,10 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     static const stored_str_t TARGET_STR = to_u32string(TARGET_THIN_STR);
     unsigned int target_ind = UINT_MAX;
     assert(node_list.size() == 1);
-    // std::cerr << "ROOT before any children:"; root_node.log_state();
+    std::cerr << "letters \"" << to_char_str(letters) << "\"\n";
+    std::cerr << "ROOT before any children:"; root_node.log_state();
     _process_prefix(curr_pref, todo_q, letters, keys, root_node, suffix2index);
-    // std::cerr << "ROOT after first _process_prefix:"; root_node.log_state();
+    std::cerr << "ROOT after first _process_prefix:"; root_node.log_state();
     CTrieCtorHelper curr_ctch;
     while (!todo_q.empty()) {
         curr_ctch = todo_q.top();

@@ -32,10 +32,10 @@ const char BRACE_CHAR = '|';
 std::vector<char> ascii_char_to_norm;
 std::map<char32_t, char> wide_to_norm;
 
-std::string normalize_query(const std::u32string & raw_query);
+std::string normalize_wide_query(const std::u32string & raw_query);
 
 
-std::string normalize_query(const std::u32string & wide_query) {
+std::string normalize_wide_query(const std::u32string & wide_query) {
     std::string norm;
     norm.reserve(wide_query.size());
     std::cerr << "trying to normalize_query \"" << to_char_str(wide_query) << "\" ...";
@@ -43,12 +43,16 @@ std::string normalize_query(const std::u32string & wide_query) {
     for (const auto & c: wide_query) {
         if (c < 127) {
             char tc = (char) c;
+            std::cerr << "\n  norm ascii  to \"" << ascii_char_to_norm[tc] << "\" \n";
+                
             norm.push_back(ascii_char_to_norm[tc]);
         } else {
             auto wcit = wide_to_norm.find(c);
             if (wcit == wide_to_norm.end()) {
+                std::cerr << "\n  norm nonascii  to \"" << UNKNOWN_CHAR << "\" \n";
                 norm.push_back(UNKNOWN_CHAR);
             } else {
+                std::cerr << "\n  norm nonascii  to \"" << wcit->second << "\" \n";
                 norm.push_back(wcit->second);
             }
         }
@@ -62,11 +66,11 @@ std::string normalize_query(const std::string & raw_query) {
     std::string norm;
     norm.reserve(raw_query.size());
     for (auto& c: raw_query) {
-        if (c < 127) {
+        if (c > 0 && c < 127) {
             norm.push_back(ascii_char_to_norm[c]);
         } else {
             auto wrq = to_u32string(raw_query);
-            norm = normalize_query(wrq);
+            norm = normalize_wide_query(wrq);
             break;
         }
     }
@@ -78,11 +82,11 @@ std::string normalize_query(const std::string_view & raw_query) {
     std::string norm;
     norm.reserve(raw_query.size());
     for (auto& c: raw_query) {
-        if (c < 127) {
+        if (c > 0 && c < 127) {
             norm.push_back(ascii_char_to_norm[c]);
         } else {
             auto wrq = to_u32string(raw_query);
-            norm = normalize_query(wrq);
+            norm = normalize_wide_query(wrq);
             break;
         }
     }

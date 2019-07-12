@@ -49,6 +49,7 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
     ctrie_init_set_t for_wide;
     ctrie_init_set_t for_thin;
     // could fit a couple more non-funky, if we want <- 76, I think...
+    bool trimming_by_funky = false;
     auto nonfunky = " \'()-.0123456789:,_aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ/?";
     std::ostream & out = std::cout;
     std::map<stored_char_t, unsigned int> letter_counts;
@@ -59,10 +60,12 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
         mem_str += i.length();
         auto widestr = to_u32string(i);
         bool has_funky = false;
-        for (auto c : i) {
-            if (std::strchr(nonfunky, c) == nullptr) {
-                has_funky = true;
-                break;
+        if (trimming_by_funky) {
+            for (auto c : i) {
+                if (std::strchr(nonfunky, c) == nullptr) {
+                    has_funky = true;
+                    break;
+                }
             }
         }
         if (has_funky) {
@@ -75,6 +78,9 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
             for (auto letter : widestr) {
                thin_letter_set.insert(letter);
             }
+        }
+        if (contains(thin_letter_set, '\0')) {
+            std::cerr << "\\0 in \"" << i << "\"";
         }
         //std::cerr << glob_conv8.to_bytes(widestr) << '\n';
     }
