@@ -22,9 +22,6 @@ int set_global_conv_facet() {
     }
     auto & f = std::use_facet<std::ctype<char> >(global_locale);
     glob_facet = &f;
-    //std::cin.imbue(global_locale);
-    //std::cerr.imbue(global_locale);
-    //std::cout.imbue(global_locale);
     return 0;
 }
 
@@ -94,6 +91,7 @@ std::string normalize_query(const std::string_view & raw_query) {
 }
 
 void init_char_maps(){
+    set_global_conv_facet();
     std::vector<char> & c = ascii_char_to_norm;
     std::map<char32_t, char> & m = wide_to_norm;
     c.assign(128, PUNC_CHAR);
