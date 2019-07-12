@@ -364,7 +364,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     }
     fill_equivalent_letter_array();
     null_char_index = letters.length();
-    //letters.append(1, '\0');
+    letters.append(1, '\0');
 
     std::stack<CTrieCtorHelper> todo_q;
     stored_str_t curr_pref;
