@@ -81,6 +81,20 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuz
     return sorted;
 }
 
+
+struct SortQueryResWTaxonByNearness {
+    bool operator() (const FuzzyQueryResultWithTaxon & lhs,
+                     const FuzzyQueryResultWithTaxon & rhs) const {
+        if (lhs.get_score() < rhs.get_score()) {
+            return false;
+        } else if (rhs.get_score() < lhs.get_score()) {
+            return true;
+        }
+        return lhs.get_matched_name() < rhs.get_matched_name();
+    }
+};
+
+
 using vec_fqr_w_t = std::vector<FuzzyQueryResultWithTaxon>;
 vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & query_str,
                                                           const RTRichTaxNode * context_root,
@@ -95,6 +109,10 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
     if (sorted.empty()) {
         LOG(DEBUG) << "no matches";
     }
+    const auto qlc = lower_case_version(query_str);
+    const auto wc = to_u32string(qlc);
+    auto wcp = &wc;
+    std::set<FuzzyQueryResultWithTaxon, SortQueryResWTaxonByNearness> sorted_correct_score;
     for (auto fqr : sorted) {
         const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(fqr.match());
         LOG(DEBUG) << "FuzzyQueryResult(match=\"" << fqr.match() << "\", score = " << fqr.score << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
@@ -104,7 +122,7 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
                 LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
                 if (include_suppressed) {
                     const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
-                    results.push_back(FuzzyQueryResultWithTaxon(fqr, tr));
+                    results.push_back(FuzzyQueryResultWithTaxon(fqr, tr, wcp));
                 }
             } else {
                 const auto & res_tax_data = tax_ptr->get_data();
@@ -113,10 +131,10 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_and_syn_pair.second);
                     if (syn_ptr == nullptr) {
                         LOG(DEBUG) << "pushing non-syn";
-                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr));
+                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr, wcp));
                     } else {
                         LOG(DEBUG) << "pushing synonym";
-                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr,  syn_ptr));
+                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr,  syn_ptr, wcp));
                     }
                 }
             }

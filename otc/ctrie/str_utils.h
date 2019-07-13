@@ -145,7 +145,7 @@ void init_char_maps(); // must be called before normalize_queries are used.
 std::string normalize_query(const std::string & raw_query);
 std::string normalize_query(const std::string_view & raw_query);
 
-
+unsigned int calc_damerau_levenshtein_dist(const std::u32string & one, const std::u32string & other);
 
 } // namespace otc
 #endif

@@ -206,7 +206,6 @@ inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_q
     }
     if (eff_quer_len == 1 || eff_trie_len == 1) {
         const unsigned int ldc = (eff_quer_len > eff_trie_len ? eff_quer_len - eff_trie_len : eff_quer_len - eff_trie_len);
-        
         if (0 == _match_cost(prev_quer_char, quer_suff[0], prev_trie_match_char, trie_suff[0])) {
             return ldc;
         }

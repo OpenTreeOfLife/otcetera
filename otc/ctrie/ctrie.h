@@ -383,10 +383,10 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     static const stored_str_t TARGET_STR = to_stored_str_type(TARGET_THIN_STR);
     unsigned int target_ind = UINT_MAX;
     assert(node_list.size() == 1);
-    std::cerr << "letters \"" << to_char_str(letters) << "\"\n";
-    std::cerr << "ROOT before any children:"; root_node.log_state();
+    // std::cerr << "letters \"" << to_char_str(letters) << "\"\n";
+    // std::cerr << "ROOT before any children:"; root_node.log_state();
     _process_prefix(curr_pref, todo_q, letters, keys, root_node, suffix2index);
-    std::cerr << "ROOT after first _process_prefix:"; root_node.log_state();
+    // std::cerr << "ROOT after first _process_prefix:"; root_node.log_state();
     CTrieCtorHelper curr_ctch;
     while (!todo_q.empty()) {
         curr_ctch = todo_q.top();
@@ -461,6 +461,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
 #   endif
     auto nvs = sizeof(T)*node_vec.size();
     auto suffs = concat_suff.size();
+    std::cerr << "letters.size() = " << letters.size() << "\n";
     std::cerr << "vecsize = " << nvs << " bytes\n";
     std::cerr << "concat_suff length = " << suffs << " bytes\n";
     std::cerr << "compressed tree size = " << 4*letters.size() + nvs + suffs << " bytes\n";

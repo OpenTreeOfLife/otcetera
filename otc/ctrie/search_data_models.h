@@ -46,43 +46,75 @@ class FuzzyQueryResultWithTaxon {
     const TaxonomyRecord * record = nullptr;
     bool matched_to_synonym;
     const std::string matched_name;
+    float rescored  = -1;
     public:
     FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const RTRichTaxNode * tax_arg)
-      :query_result(fqr),
-      taxon(tax_arg),
-      record(nullptr),
-      matched_to_synonym(false),
-      matched_name(tax_arg->get_data().get_nonuniqname()) {
+                              const RTRichTaxNode * tax_arg,
+                              const std::u32string * wide_query=nullptr
+                              )
+        :query_result(fqr),
+        taxon(tax_arg),
+        record(nullptr),
+        matched_to_synonym(false),
+        matched_name(tax_arg->get_data().get_nonuniqname()) {
+        if (wide_query != nullptr) {
+            do_rescore(*wide_query);
+        }
     }
 
     FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const TaxonomyRecord * tax_rec)
-      :query_result(fqr),
-      taxon(nullptr),
-      record(tax_rec),
-      matched_to_synonym(false),
-      matched_name(tax_rec->name) {
+                              const TaxonomyRecord * tax_rec,
+                              const std::u32string * wide_query=nullptr)
+        :query_result(fqr),
+        taxon(nullptr),
+        record(tax_rec),
+        matched_to_synonym(false),
+        matched_name(tax_rec->name) {
+        if (wide_query != nullptr) {
+            do_rescore(*wide_query);
+        }
     }
 
     FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
                               const RTRichTaxNode * tax_arg,
-                              const TaxonomicJuniorSynonym *syn)
-      :query_result(fqr),
-      taxon(tax_arg),
-      record(nullptr),
-      matched_to_synonym(true),
-      matched_name(syn->get_name()) {
+                              const TaxonomicJuniorSynonym *syn,
+                              const std::u32string * wide_query=nullptr)
+        :query_result(fqr),
+        taxon(tax_arg),
+        record(nullptr),
+        matched_to_synonym(true),
+        matched_name(syn->get_name()) {
+        if (wide_query != nullptr) {
+            do_rescore(*wide_query);
+        }
+    }
+
+    void do_rescore(const std::u32string &wide_query) {
+        const auto lmn = lower_case_version(matched_name);
+        auto wide_matched = to_u32string(lmn);
+        auto dist = calc_damerau_levenshtein_dist(wide_query, wide_matched);
+        float x;
+        if (dist == 0) {
+            x = 1.0;
+        } else {
+            const float denom = (float)wide_matched.length();
+            x = (denom - (float)(dist))/denom;
+        }
+        set_rescore(x);
+    }
+
+    void set_rescore(float rescore_arg) {
+        rescored = rescore_arg;
     }
 
     float get_score() const {
-        return query_result.score;
+        return (rescored < -0.5 ? query_result.score : rescored);
     }
 
     bool is_synonym() const {
         return matched_to_synonym;
     }
-    std::string get_matched_name() const {
+    const std::string & get_matched_name() const {
         return matched_name;
     }
 
@@ -93,6 +125,7 @@ class FuzzyQueryResultWithTaxon {
     const TaxonomyRecord * get_record() const {
         return record;
     }
+
 };
 struct SortQueryResByNearness {
     bool operator() (const FuzzyQueryResult & lhs,

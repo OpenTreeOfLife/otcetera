@@ -242,9 +242,51 @@ void init_char_maps(){
     m[L'\u2009'] = SPACE_CHAR;  //  8201 " "
     m[L'\u2019'] = BRACE_CHAR;  //  8217 ’
     m[L'\ufb02'] = 'f';  //  64258 ﬂ
-    for (auto x : m) {
-        std::cerr << "\"" << to_char_str(x.first) << "\" -> " << x.second << "\"\n"; 
+    // for (auto x : m) {
+    //    std::cerr << "\"" << to_char_str(x.first) << "\" -> " << x.second << "\"\n"; 
+    // }
+}
+
+
+unsigned int calc_damerau_levenshtein_dist(const std::u32string & a,
+                                           const std::u32string & b) {
+    if (a.length() > b.length()) {
+        return calc_damerau_levenshtein_dist(b, a);
     }
+    const auto alen = a.length();
+    const auto blen = b.length();
+    std::vector<unsigned int> cost_curr_a, cost_next_a;
+    cost_curr_a.resize(blen + 1);
+    cost_next_a.resize(blen + 1);
+    std::size_t bpos;
+    for (std::size_t bpos = 0; bpos <= blen; ++bpos) {
+        cost_curr_a[bpos] = bpos;
+    }
+    for (std::size_t capos = 0; capos < alen; ++capos) {
+        cost_next_a[0] = 1 + cost_curr_a[0];
+        const auto & achar = a[capos];
+        for (std::size_t bpos = 1; bpos <= blen; ++bpos) {
+            const auto leftc = 1 + cost_next_a[bpos - 1];
+            const auto topc = 1 + cost_curr_a[bpos];
+            const auto bestnondiag = std::min(topc, leftc);
+            unsigned int match_cost;
+            if (achar == b[bpos - 1]) {
+                match_cost = 0;
+            } else if (capos > 0
+                       && a[capos - 1] == b[bpos - 1]
+                       && bpos > 1
+                       && achar == b[bpos - 2]) {
+                match_cost = 0;
+            } else {
+                match_cost = 1;
+            }
+            const auto diag_cost = match_cost + cost_curr_a[bpos - 1];
+            cost_next_a[bpos] = std::min(bestnondiag, diag_cost);
+        }
+        std::swap(cost_curr_a, cost_next_a);
+    }
+    //std::cerr << "damerau_levenshtein_dist(\"" << to_char_str(a) << "\", \"" << to_char_str(b) << "\") = " << cost_curr_a[blen] << '\n';
+    return cost_curr_a[blen];
 }
 
 } // namespace otc
