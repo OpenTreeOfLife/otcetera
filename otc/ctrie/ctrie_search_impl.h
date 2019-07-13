@@ -68,18 +68,31 @@ inline unsigned int CompressedTrie<T>::_match_cost(stored_char_t prev_q_match_ch
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
     }
-    if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
+    if (q_match_char == trie_match_char) {
         return 0;
     }
+#   if defined(USING_EQUIL_LETTER_ARRAY)
+        if (q_match_char == equivalent_letter[trie_match_char]) {
+            return 0;
+        }
+#   endif
     if (prev_trie_match_char == NO_MATCHING_CHAR_CODE) {
         // transposition is not possible
         return 1;
     }
-    if ((prev_q_match_char == trie_match_char || prev_q_match_char == equivalent_letter[trie_match_char])
-        && (q_match_char == prev_trie_match_char || q_match_char == equivalent_letter[prev_trie_match_char])) {
-        // transpostion, don't double penalize
-        return 0;
-    }
+
+#   if defined(USING_EQUIL_LETTER_ARRAY)
+        if ((prev_q_match_char == trie_match_char || prev_q_match_char == equivalent_letter[trie_match_char])
+            && (q_match_char == prev_trie_match_char || q_match_char == equivalent_letter[prev_trie_match_char])) {
+            // transpostion, don't double penalize
+            return 0;
+        }
+#   else
+        if (prev_q_match_char == trie_match_char && (q_match_char == prev_trie_match_char)) {
+            // transpostion, don't double penalize
+            return 0;
+        }
+#   endif
     return 1;
 }
 
@@ -89,9 +102,14 @@ inline unsigned int CompressedTrie<T>::_match_cost_no_transp(stored_char_t q_mat
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
     }
-    if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
+    if (q_match_char == trie_match_char) {
         return 0;
     }
+#   if defined(USING_EQUIL_LETTER_ARRAY)
+        if (q_match_char == equivalent_letter[trie_match_char]) {
+            return 0;
+        }
+#   endif
     return 1;
 }
 
@@ -383,14 +401,21 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     const unsigned int max_dist = pm.max_distance();
     auto cd = pm.curr_distance();
     auto qc = pm.query_char();
-    auto altqc = equivalent_letter[qc];
+#   if defined(USING_EQUIL_LETTER_ARRAY)
+        auto altqc = equivalent_letter[qc];
+#   endif
     if (DB_FUZZY_MATCH) {trienode->log_state();}
     auto inds_on = trienode->get_letter_and_node_indices_for_on_bits();
     for (auto & x : inds_on) {
         auto trie_char = x.first;
         auto next_ind = x.second;
         const T * next_nd = &(node_vec[next_ind]);
-        if (trie_char == qc || trie_char == altqc) {
+#   if defined(USING_EQUIL_LETTER_ARRAY)
+            const bool matched = (trie_char == qc || trie_char == altqc);
+#       else
+            const bool matched = trie_char == qc;
+#       endif 
+        if (matched) {
             if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
             next_alive.push_back(PartialMatch<T>{pm, trie_char, cd, next_nd, false});
         } else if (cd + 1 <= max_dist) {

@@ -172,7 +172,9 @@ class CompressedTrie {
         concat_suff.clear();
         node_vec.clear();
         letter_to_ind.clear();
-        equivalent_letter.clear();
+#       if defined(USING_EQUIL_LETTER_ARRAY)
+            equivalent_letter.clear();
+#       endif
     }
     bool _are_equivalent(stored_char_t prev_q,
                         const stored_index_t * quer_suff,
@@ -213,7 +215,9 @@ class CompressedTrie {
     }
 
     std::unordered_map<stored_char_t, stored_index_t> letter_to_ind;
-    std::vector<stored_index_t> equivalent_letter;
+#   if defined(USING_EQUIL_LETTER_ARRAY)
+        std::vector<stored_index_t> equivalent_letter;
+#   endif
     stored_str_t letters;
     std::list<T> node_list;
     std::vector<stored_index_t> concat_suff;
@@ -446,14 +450,15 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         const T * next_nd = &(node_vec[next_ind]);
         // std::cerr << "ROOT child for \"" << to_char_str(letters[trie_char]) <<  "\" "; next_nd->log_state();
     }
-    
-    for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
-        if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
-            std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
-        } else {
-            std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
+#   if defined(USING_EQUIL_LETTER_ARRAY)
+        for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
+            if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
+                std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
+            } else {
+                std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
+            }
         }
-    }
+#   endif
     auto nvs = sizeof(T)*node_vec.size();
     auto suffs = concat_suff.size();
     std::cerr << "vecsize = " << nvs << " bytes\n";
