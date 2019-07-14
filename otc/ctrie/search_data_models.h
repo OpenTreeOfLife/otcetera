@@ -170,7 +170,7 @@ class FQuery {
 template <typename T>
 class PartialMatch {
     public:
-    enum creation_modes {MATCH, DOWN, RIGHT};
+    enum creation_modes {MATCH, DOWN, RIGHT, MULTIPLE};
     
     PartialMatch(const FQuery & q,
                  const T *nextn)
@@ -235,6 +235,11 @@ class PartialMatch {
         match_coded = prevpm.match_coded;
         match_coded.push_back(match_char);
         assert(nextn != prevpm.next_node);
+    }
+    void add_creation_mode(creation_modes ncm) {
+        if (ncm != create_mode) {
+            create_mode = creation_modes::MULTIPLE;
+        }
     }
 
     bool can_downshift() const {
@@ -306,7 +311,7 @@ class PartialMatch {
     const T * next_node;
     stored_index_t prev_mismatched_trie;
     std::vector<stored_index_t> match_coded;
-    const creation_modes create_mode;
+    creation_modes create_mode;
 };
 
 

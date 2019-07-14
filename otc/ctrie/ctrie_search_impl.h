@@ -421,20 +421,39 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
 
         if (matched) {
             if (DB_FUZZY_MATCH) {LOG(DEBUG) << "matched  " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
+            bool add_el = false;
             if (nait == next_alive.end() || nait->second.curr_distance() > cd) {
-                next_alive.emplace(nmc, PartialMatch<T>{pm, trie_char, cd, next_nd, false});
+                add_el = true;
+            } else if (nait->second.curr_distance() == cd) {
+                nait->second.add_creation_mode(PartialMatch<T>::creation_modes::MATCH);
+            }
+            if (add_el) {
+                next_alive.emplace(nmc, PartialMatch<T>{pm, trie_char, cd, next_nd, true});
             }
         } else if (cd + 1 <= max_dist) {
             if (DB_FUZZY_MATCH) {LOG(DEBUG) << "mismatched " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
             // to do need some || logic here for transposition
+            bool add_el = false;
             if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
-                next_alive.emplace(nmc,  PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
+                add_el = true;
+            } else if (nait->second.curr_distance() == cd + 1) {
+                nait->second.add_creation_mode(PartialMatch<T>::creation_modes::MATCH);
             }
-            const db_qu_let_tuple rsc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords), (char) trie_char};
-            nait = next_alive.find(rsc);
-            if (pm.can_rightshift()
-                && (nait == next_alive.end() || nait->second.curr_distance() > cd + 1)) {
-                next_alive.emplace(rsc,  PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
+            if (add_el) {
+                next_alive.emplace(nmc,  PartialMatch<T>{pm, trie_char, cd + 1, next_nd, false});
+            }
+            if (pm.can_rightshift()) {
+                const db_qu_let_tuple rsc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords), (char) trie_char};
+                nait = next_alive.find(rsc);
+                bool add_el = false;
+                if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
+                    add_el = true;
+                } else if (nait->second.curr_distance() == cd + 1) {
+                    nait->second.add_creation_mode(PartialMatch<T>::creation_modes::RIGHT);
+                }
+                if (add_el) {
+                    next_alive.emplace(rsc,  PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
+                }
             }
         }
     }
@@ -442,7 +461,13 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     if (cd + 1 <= max_dist && pm.can_downshift()) {
         const db_qu_let_tuple dsc{std::get<0>(pm_coords), std::get<1>(pm_coords) + 1, std::get<2>(pm_coords)};
         auto nait = next_alive.find(dsc);
+        bool add_el = false;
         if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
+            add_el = true;
+        } else if (nait->second.curr_distance() == cd + 1) {
+            nait->second.add_creation_mode(PartialMatch<T>::creation_modes::DOWN);
+        }
+        if (add_el) {
             next_alive.emplace(dsc, PartialMatch<T>{pm, cd + 1, trienode}); //downshift
         }
     }

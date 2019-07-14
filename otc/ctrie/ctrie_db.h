@@ -23,7 +23,7 @@ inline std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB:
 #   if defined(U32_TRIE_QUERIES)
         auto conv_query = to_query_str(query_str);
 #   else
-        const std::string & conv_query = query_str;
+        const std::string & conv_query = lower_case_version(query_str);
 #   endif
     unsigned int max_dist;
     // defaults taken from taxomachine...
