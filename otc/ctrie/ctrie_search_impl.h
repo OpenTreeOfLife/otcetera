@@ -454,7 +454,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                 if (NEW_DB_FUZZY_MATCH) {std::cerr << "no mod because cd= " << cd << " and pm->curr_distance() = " << nait->second.curr_distance() << '\n';}
             }
             if (add_el) {
-                next_alive.insert(nait, std::make_pair(nmc, PartialMatch<T>{pm, trie_char, cd + 1, next_nd, false}));
+                next_alive.insert(std::make_pair(nmc, PartialMatch<T>{pm, trie_char, cd + 1, next_nd, false}));
                 if (NEW_DB_FUZZY_MATCH) {std::cerr << "added new pm mm.";  emit_partial(std::cerr, nmc, next_alive.at(nmc));}
             }
             if (pm.can_rightshift()) {
@@ -473,7 +473,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                     if (NEW_DB_FUZZY_MATCH) {std::cerr << "no mod because cd= " << cd << " and pm->curr_distance() = " << nait->second.curr_distance()<< '\n';}
                 }
                 if (add_el) {
-                    next_alive.insert(nait, std::make_pair(rsc,  PartialMatch<T>{pm, cd + 1, next_nd, trie_char})); // rightshift
+                    next_alive.insert(std::make_pair(rsc,  PartialMatch<T>{pm, cd + 1, next_nd, trie_char})); // rightshift
                     if (NEW_DB_FUZZY_MATCH) {std::cerr << "added new pm r.";  emit_partial(std::cerr, rsc, next_alive.at(rsc));}
                 }
             }
