@@ -167,6 +167,7 @@ class FQuery {
     }
 };
 
+template<typename T> class CompressedTrie;
 template <typename T>
 class PartialMatch {
     public:
@@ -196,7 +197,7 @@ class PartialMatch {
          next_node(nextn),
          prev_mismatched_trie(NO_MATCHING_CHAR_CODE),
          create_mode(creation_modes::MATCH) {
-        match_coded.reserve(prevpm.match_coded.capacity());
+        match_coded.reserve(1 + prevpm.match_coded.capacity());
         match_coded = prevpm.match_coded;
         match_coded.push_back(match_char);
         if (!was_match) {
@@ -302,16 +303,31 @@ class PartialMatch {
         return prev_mismatched_trie;
     }
     
+    const stored_str_t get_growing_match(const stored_str_t & letters) const {
+        stored_str_t x;
+        x.reserve(match_coded.size());
+        for (auto i : match_coded) {
+            if (i < letters.size()) {
+                x.push_back(letters[i]);
+            } else {
+                x.push_back('#');
+            }
+        }
+        return x;
+    }
 
+    stored_str_t get_growing_query() const {
+        return query.wide_str.substr(0, qpos);
+    }
     private:
     const FQuery & query;
     std::size_t qpos;
-    stored_str_t growing_match;
     unsigned int distance;
     const T * next_node;
     stored_index_t prev_mismatched_trie;
     std::vector<stored_index_t> match_coded;
     creation_modes create_mode;
+    friend class CompressedTrie<T>;
 };
 
 

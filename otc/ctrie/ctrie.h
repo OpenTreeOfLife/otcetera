@@ -13,7 +13,8 @@
 #include "otc/ctrie/search_data_models.h"
 
 namespace otc {
-constexpr bool DB_FUZZY_MATCH = true;
+constexpr bool DB_FUZZY_MATCH = false;
+constexpr bool NEW_DB_FUZZY_MATCH = true;
 /* Compressed Trie
   based on, but not identical to structure by Maly 1976
 */
@@ -33,12 +34,13 @@ class CTrieCtorHelperTemp {
 
 using suff_map_t = std::map<std::vector<stored_index_t> , std::size_t>;
 // <db_consumed, query_consumed, char index ( or -1) of db_node's most recent character
-using db_qu_let_tuple = std::tuple<std::size_t, std::size_t, char> ; 
 template <typename T>
 class CompressedTrie {
     public:
+    using db_qu_let_tuple = std::tuple<std::size_t, std::size_t, const T *> ; 
+
     using partial_match_queue_t = std::map<db_qu_let_tuple, PartialMatch<T> >;
-     
+    void emit_partial(std::ostream & out, const db_qu_let_tuple & curr_coor, const PartialMatch<T> & curr_pm, bool newline=true) const;
     CompressedTrie() {
     }
 

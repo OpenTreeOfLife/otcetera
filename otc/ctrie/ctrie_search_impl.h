@@ -415,44 +415,66 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
 #       else
             const bool matched = trie_char == qc;
 #       endif
-        const db_qu_let_tuple nmc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords) + 1, (char) trie_char};
+        const db_qu_let_tuple nmc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords) + 1, next_nd};
         auto nait = next_alive.find(nmc);
         stored_char_t trie_letter = letters[trie_char];
-
         if (matched) {
-            if (DB_FUZZY_MATCH) {LOG(DEBUG) << "matched  " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
+            if (NEW_DB_FUZZY_MATCH) {std::cerr << "matched  " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
             bool add_el = false;
-            if (nait == next_alive.end() || nait->second.curr_distance() > cd) {
+            if (nait == next_alive.end()) {
                 add_el = true;
+            } else if (nait->second.curr_distance() > cd) {
+                add_el = true;
+                next_alive.erase(nait);
             } else if (nait->second.curr_distance() == cd) {
                 nait->second.add_creation_mode(PartialMatch<T>::creation_modes::MATCH);
+                if (NEW_DB_FUZZY_MATCH) {std::cerr << "updated pm creation mode: "; emit_partial(std::cerr, nmc, nait->second);}
+            } else {
+                if (NEW_DB_FUZZY_MATCH) {std::cerr << "no mod because cd= " << cd << " and pm->curr_distance() = " << nait->second.curr_distance() << '\n';}
             }
             if (add_el) {
-                next_alive.emplace(nmc, PartialMatch<T>{pm, trie_char, cd, next_nd, true});
+                next_alive.insert(std::make_pair(nmc, PartialMatch<T>{pm, trie_char, cd, next_nd, true}));
+                if (NEW_DB_FUZZY_MATCH) {std::cerr << "added new pm m.";  emit_partial(std::cerr, nmc, next_alive.at(nmc));
+                    std::cerr << "from "; emit_partial(std::cerr, pm_coords, pm);
+                }
             }
         } else if (cd + 1 <= max_dist) {
-            if (DB_FUZZY_MATCH) {LOG(DEBUG) << "mismatched " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
+            if (NEW_DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
             // to do need some || logic here for transposition
             bool add_el = false;
-            if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
+            if (nait == next_alive.end()) {
                 add_el = true;
-            } else if (nait->second.curr_distance() == cd + 1) {
+            } else if (nait->second.curr_distance() > cd + 1) {
+                add_el = true;
+                next_alive.erase(nait);
+            }  else if (nait->second.curr_distance() == cd + 1) {
                 nait->second.add_creation_mode(PartialMatch<T>::creation_modes::MATCH);
+                if (NEW_DB_FUZZY_MATCH) {std::cerr << "updated mm pm creation mode: "; emit_partial(std::cerr, nmc, nait->second);}
+            } else {
+                if (NEW_DB_FUZZY_MATCH) {std::cerr << "no mod because cd= " << cd << " and pm->curr_distance() = " << nait->second.curr_distance() << '\n';}
             }
             if (add_el) {
-                next_alive.emplace(nmc,  PartialMatch<T>{pm, trie_char, cd + 1, next_nd, false});
+                next_alive.insert(nait, std::make_pair(nmc, PartialMatch<T>{pm, trie_char, cd + 1, next_nd, false}));
+                if (NEW_DB_FUZZY_MATCH) {std::cerr << "added new pm mm.";  emit_partial(std::cerr, nmc, next_alive.at(nmc));}
             }
             if (pm.can_rightshift()) {
-                const db_qu_let_tuple rsc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords), (char) trie_char};
+                const db_qu_let_tuple rsc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords), next_nd};
                 nait = next_alive.find(rsc);
                 bool add_el = false;
-                if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
+                if (nait == next_alive.end()) {
                     add_el = true;
-                } else if (nait->second.curr_distance() == cd + 1) {
+                } else if (nait->second.curr_distance() > cd + 1) {
+                    add_el = true;
+                    next_alive.erase(nait);
+                }   else if (nait->second.curr_distance() == cd + 1) {
+                    if (NEW_DB_FUZZY_MATCH) {std::cerr << "updated rsc pm creation mode: "; emit_partial(std::cerr, rsc, nait->second);}
                     nait->second.add_creation_mode(PartialMatch<T>::creation_modes::RIGHT);
+                } else {
+                    if (NEW_DB_FUZZY_MATCH) {std::cerr << "no mod because cd= " << cd << " and pm->curr_distance() = " << nait->second.curr_distance()<< '\n';}
                 }
                 if (add_el) {
-                    next_alive.emplace(rsc,  PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
+                    next_alive.insert(nait, std::make_pair(rsc,  PartialMatch<T>{pm, cd + 1, next_nd, trie_char})); // rightshift
+                    if (NEW_DB_FUZZY_MATCH) {std::cerr << "added new pm r.";  emit_partial(std::cerr, rsc, next_alive.at(rsc));}
                 }
             }
         }
@@ -462,13 +484,20 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
         const db_qu_let_tuple dsc{std::get<0>(pm_coords), std::get<1>(pm_coords) + 1, std::get<2>(pm_coords)};
         auto nait = next_alive.find(dsc);
         bool add_el = false;
-        if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
+        if (nait == next_alive.end() ) {
             add_el = true;
-        } else if (nait->second.curr_distance() == cd + 1) {
+        } else if (nait->second.curr_distance() > cd + 1) {
+            add_el = true;
+            next_alive.erase(nait);
+        }  else if (nait->second.curr_distance() == cd + 1) {
+            if (NEW_DB_FUZZY_MATCH) {std::cerr << "updated dsc pm creation mode: "; emit_partial(std::cerr, dsc, nait->second);}
             nait->second.add_creation_mode(PartialMatch<T>::creation_modes::DOWN);
+        } else {
+            if (NEW_DB_FUZZY_MATCH) {std::cerr << "no mod because cd= " << cd << " and pm->curr_distance() = " << nait->second.curr_distance()<< '\n';}
         }
         if (add_el) {
-            next_alive.emplace(dsc, PartialMatch<T>{pm, cd + 1, trienode}); //downshift
+            next_alive.insert(std::make_pair(dsc, PartialMatch<T>{pm, cd + 1, trienode})); //downshift
+            if (NEW_DB_FUZZY_MATCH) {std::cerr << "added new pm d.";  emit_partial(std::cerr, dsc, next_alive.at(dsc));}
         }
     }
     if (trienode->is_key_terminating()) {
@@ -515,27 +544,48 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
     std::list<FuzzyQueryResult> results;
     const T * root_nd = &(node_vec.at(0));
     partial_match_queue_t alive;
-    alive.emplace(db_qu_let_tuple{0, 0, -1}, PartialMatch<T>{query, root_nd});
+    alive.emplace(db_qu_let_tuple{0, 0, root_nd}, PartialMatch<T>{query, root_nd});
     while (!alive.empty()) {
-        if (DB_FUZZY_MATCH) {
-            LOG(DEBUG) << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\nkeys:";
-            for (auto it : alive) {
-                LOG(DEBUG) << (int) std::get<0>(it.first) << ' ' << (int) std::get<1>(it.first) << ' ' << (int) std::get<2>(it.first); 
-            }
+        if (NEW_DB_FUZZY_MATCH) {
+            std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\nkeys:";
+            //for (auto it : alive) {
+            //    LOG(DEBUG) << (int) std::get<0>(it.first) << ' ' << (int) std::get<1>(it.first) << ' ' << (int) std::get<2>(it.first); 
+            //}
         }
         const auto alive_it = alive.begin();
         const db_qu_let_tuple curr_coord = alive_it->first;
         const auto curr_pm = alive_it->second;
         alive.erase(alive_it);
         const auto prevnalen = alive.size();
+        if (NEW_DB_FUZZY_MATCH) {std::cerr << "  " << alive.size() << " alive partial matches. "; emit_partial(std::cerr, curr_coord, curr_pm); }
         extend_partial_match(curr_pm, curr_coord, results, alive);
-        if (DB_FUZZY_MATCH) {if (alive.size() != prevnalen) {LOG(DEBUG) << "added " << alive.size() - prevnalen << " PMs.\n"; }}
+        if (NEW_DB_FUZZY_MATCH) {if (alive.size() != prevnalen) {std::cerr << "added " << alive.size() - prevnalen << " PMs.\n"; }}
     }
     for (auto & r : results) {
         _finish_query_result(r);
     }
     return results;
 }
+
+template<typename T>
+void CompressedTrie<T>::emit_partial(std::ostream & out,
+                                     const db_qu_let_tuple & curr_coord,
+                                     const PartialMatch<T> & curr_pm,
+                                     bool newline) const {
+    out << "@(" << std::get<0>(curr_coord) << ", " << std::get<1>(curr_coord) << ", " << (long) std::get<2>(curr_coord) <<  ") ";
+    out << "for PM(match_coded=[";
+    for (auto i : curr_pm.match_coded) {
+        out << (int)i  << ", ";
+    }
+    out << "], match=\"" << curr_pm.get_growing_match(letters) << "\"";
+    out << ", q=\"" << curr_pm.get_growing_query() << "\"";
+    out << ", dist=" << curr_pm.curr_distance();
+    out << ")";
+    if (newline) {
+        out << '\n';
+    }
+}
+
 
 
 } // namespace otc
