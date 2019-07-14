@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
         OttId id = trees[i]->get_root()->get_ott_id();
         if (not my_leaf.count(id)) {
             if (otCLI.verbose) {
-                LOG(INFO) << "OTT Id " << id << " is not a leaf in any subproblem.  Must be a root.\n";
+                LOG(INFO) << "OTT Id " << id << " is not a leaf in any subproblem.  Must be a root.";
             }
             roots.push_back({});
             std::swap(roots.back(), trees[i]);

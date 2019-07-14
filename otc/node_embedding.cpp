@@ -171,7 +171,7 @@ void NodeEmbedding<T, U>::resolve_parent_in_favor_of_this_node(
     //      tolerate the const cast, which is in very poor form...
     // @TMP @TODO
     TreeMappedWithSplits * treePtr = const_cast<TreeMappedWithSplits *>(cTreePtr);
-    LOG(INFO) << "Resolving treeIndex = " << treeIndex << " name = " << treePtr->get_name() << " for OTT " << scaffold_node.get_ott_id() << '\n';
+    LOG(INFO) << "Resolving treeIndex = " << treeIndex << " name = " << treePtr->get_name() << " for OTT " << scaffold_node.get_ott_id();
     const std::map<U *, U *> phyloNode2PhyloPar = get_exit_phylo_node_to_par(treeIndex);
     // resolve the phylo tree
     U * phPar = nullptr;

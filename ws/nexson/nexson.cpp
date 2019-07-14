@@ -36,10 +36,10 @@ json get_json_from_uri(const string & uri_string) {
     //    session->send(request, 
     auto response = Http::sync( request );
 
-    LOG(DEBUG)<<"Status Code:    "<<response->get_status_code()<<"\n";
-    LOG(DEBUG)<<"Status Message: "<<response->get_status_message().data()<<"\n";
-    LOG(DEBUG)<<"HTTP Version:   "<<response->get_version()<<"\n";
-    LOG(DEBUG)<<"HTTP Protocol:  "<<response->get_protocol().data()<<"\n";
+    LOG(DEBUG)<<"Status Code:    "<<response->get_status_code();
+    LOG(DEBUG)<<"Status Message: "<<response->get_status_message().data();
+    LOG(DEBUG)<<"HTTP Version:   "<<response->get_version();
+    LOG(DEBUG)<<"HTTP Protocol:  "<<response->get_protocol().data();
 
     for ( const auto header : response->get_headers( ) ) {
         LOG(DEBUG)<<"Header '"<<header.first.data()<<"' > '"<<header.second.data()<<"'";

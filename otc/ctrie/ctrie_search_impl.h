@@ -47,7 +47,7 @@ inline unsigned int _ran_out_of_trie_score(const std::vector<unsigned int> & pre
     }
     // add 1 because we'll decrement in the loop below, before we use it.
     unsigned int gd = 1 + num_q_left;
-    if (DB_FUZZY_MATCH) {std::cerr << "no more trie at gd=" << gd << '\n';}
+    if (DB_FUZZY_MATCH) {LOG(DEBUG) << "no more trie at gd=" << gd << '\n';}
     unsigned int d = UINT_MAX;
     for (auto psc : prev_row) {
         assert(gd > 0);
@@ -149,11 +149,11 @@ inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_q
                                                             const unsigned int dist_threshold,
                                                             stored_index_t prev_trie_match_char) const {
     if (DB_FUZZY_MATCH) {
-        std::cerr << "_calc_dist_prim_impl(pqc=\"" << (prev_quer_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_quer_char])) << ", \"";
-        for (auto i=0U; i < quer_len; ++i) {std::cerr << (quer_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[quer_suff[i]]));}
-        std::cerr << "\", " << quer_len << ", \"";
-        for (auto i=0U; i < trie_len; ++i) {std::cerr << (trie_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[trie_suff[i]]));}
-        std::cerr << "\", " << trie_len << ", " << dist_threshold << ", ptc=\"" << (prev_trie_match_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_trie_match_char])) << "\")\n";
+        LOG(DEBUG) << "_calc_dist_prim_impl(pqc=\"" << (prev_quer_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_quer_char])) << ", \"";
+        for (auto i=0U; i < quer_len; ++i) {LOG(DEBUG) << (quer_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[quer_suff[i]]));}
+        LOG(DEBUG) << "\", " << quer_len << ", \"";
+        for (auto i=0U; i < trie_len; ++i) {LOG(DEBUG) << (trie_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[trie_suff[i]]));}
+        LOG(DEBUG) << "\", " << trie_len << ", " << dist_threshold << ", ptc=\"" << (prev_trie_match_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_trie_match_char])) << "\")";
     }
     if (dist_threshold == 0) {
         if (_are_equivalent(prev_quer_char, quer_suff, quer_len, trie_suff, trie_len, prev_trie_match_char)) {
@@ -246,8 +246,8 @@ inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t pre
     std::vector<unsigned int> next_row;
     next_row.reserve(prev_row.capacity());
 
-    if (DB_FUZZY_MATCH) {std::cerr << "    quer_len = " << quer_len << "\"\n";}
-    if (DB_FUZZY_MATCH) {std::cerr << "    query suffix =\"" << to_char_from_inds(quer_suff, quer_len) << "\"\n";}
+    if (DB_FUZZY_MATCH) {LOG(DEBUG) << "    quer_len = " << quer_len << "\"\n";}
+    if (DB_FUZZY_MATCH) {LOG(DEBUG) << "    query suffix =\"" << to_char_from_inds(quer_suff, quer_len) << "\"\n";}
     
     unsigned int leftside_cost = 1;
     
@@ -256,16 +256,16 @@ inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t pre
             return _ran_out_of_trie_score(prev_row, prev_quer_ind, quer_len);
         }
         if (DB_FUZZY_MATCH) { 
-            std::cerr << "rowchar = " << to_char_str(letters[trie_suff[trie_ind]]) ;
-            std::cerr << " prev_row  (" << prev_quer_ind << ", " << trie_ind << ") " ; 
-            for (auto pr : prev_row) {std::cerr << pr << ' ';}   std::cerr << "\"\n";
+            LOG(DEBUG) << "rowchar = " << to_char_str(letters[trie_suff[trie_ind]]) ;
+            LOG(DEBUG) << " prev_row  (" << prev_quer_ind << ", " << trie_ind << ") " ; 
+            for (auto pr : prev_row) {LOG(DEBUG) << pr << ' ';}   LOG(DEBUG) << "\"\n";
         }
         
         next_row.clear();
         std::size_t next_quer_ind = prev_quer_ind;
         // initialize first el in curr_row and update next_quer_ind if needed
         if (leftside_cost <= dist_threshold) {
-            if (DB_FUZZY_MATCH) {std::cerr << "leftside_cost = " << leftside_cost << '\n';}
+            if (DB_FUZZY_MATCH) {LOG(DEBUG) << "leftside_cost = " << leftside_cost << '\n';}
             next_row.push_back(leftside_cost++);
         } else {
             next_row.push_back(prev_row[0] + 1);
@@ -284,7 +284,7 @@ inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t pre
             
             const stored_index_t q_match_char = quer_suff[match_quer_pos];
             
-            if (DB_FUZZY_MATCH) {std::cerr << " q_match_char = " << to_char_str(letters[q_match_char]) << ' ';}
+            if (DB_FUZZY_MATCH) {LOG(DEBUG) << " q_match_char = " << to_char_str(letters[q_match_char]) << ' ';}
         
             assert(match_prev_index < prev_row.size());
             unsigned int cell_match_cost = prev_row[match_prev_index];
@@ -292,7 +292,7 @@ inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t pre
 
             unsigned int cell_top_cost = 1 + (match_prev_index + 1 >= prev_row.size() ? dist_threshold : prev_row[match_prev_index + 1]);
             
-            if (DB_FUZZY_MATCH) {std::cerr << "cell costs: (l = " << cell_left_cost << ", m = " << cell_match_cost << ", t = "  << cell_top_cost << ")\n";}
+            if (DB_FUZZY_MATCH) {LOG(DEBUG) << "cell costs: (l = " << cell_left_cost << ", m = " << cell_match_cost << ", t = "  << cell_top_cost << ")\n";}
             
             auto min_cost = std::min(cell_left_cost, std::min(cell_match_cost, cell_top_cost));
             next_row.push_back(min_cost);
@@ -310,12 +310,12 @@ inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t pre
             prev_q_match_char = q_match_char;
         }
         if (min_in_next_row > dist_threshold) {
-            if (DB_FUZZY_MATCH) {std::cerr << "exceeded match threshold dist\n";}
+            if (DB_FUZZY_MATCH) {LOG(DEBUG) << "exceeded match threshold dist\n";}
             return dist_threshold + 1;
         }
         prev_trie_match_char = trie_match_char;
 
-        if (DB_FUZZY_MATCH) {std::cerr << "next_row = "; for (auto pr : next_row) {std::cerr << pr << ' ';}   std::cerr << "\n";}
+        if (DB_FUZZY_MATCH) {LOG(DEBUG) << "next_row = "; for (auto pr : next_row) {LOG(DEBUG) << pr << ' ';}   LOG(DEBUG) << "\n";}
         
         prev_quer_ind = next_quer_ind;
         trie_ind++;
@@ -347,16 +347,16 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
     const auto trie_len = count_suff_len(trie_suff);
     const auto num_q_left_ini = pm.num_q_char_left();
     
-    if (DB_FUZZY_MATCH) {std::cerr << "    trie suffix =\"" << to_char_from_inds(trie_suff, trie_len) << "\"\n";}
+    if (DB_FUZZY_MATCH) {LOG(DEBUG) << "    trie suffix =\"" << to_char_from_inds(trie_suff, trie_len) << "\"\n";}
     
     std::size_t abs_len_diff = (trie_len > num_q_left_ini ? trie_len - num_q_left_ini : num_q_left_ini - trie_len);
     if (abs_len_diff + pm.curr_distance() > pm.max_distance()) {
-        if (DB_FUZZY_MATCH) {std::cerr << "    bailing out because abs_len_diff = " << abs_len_diff << '\n';}
+        if (DB_FUZZY_MATCH) {LOG(DEBUG) << "    bailing out because abs_len_diff = " << abs_len_diff << '\n';}
         return false;
     }
     unsigned int d;
     if (num_q_left_ini == 0 || trie_len == 0) {
-        if (DB_FUZZY_MATCH) {std::cerr << "    Match via running out of trie \n";}
+        if (DB_FUZZY_MATCH) {LOG(DEBUG) << "    Match via running out of trie \n";}
         d = abs_len_diff + pm.curr_distance();
     } else {
         d = _calc_dist_impl(pm, trie_suff, trie_len);
@@ -370,7 +370,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
 
 template<typename T>
 void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> &pm) const {
-    auto & out = std::cerr;
+    auto & out = LOG(DEBUG);
     if (context != nullptr) {
         out << context << " ";
     }
@@ -388,7 +388,7 @@ void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> 
 
 template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
-                                             db_query_consumed_counts pm_coords,
+                                             const db_qu_let_tuple pm_coords,
                                              std::list<FuzzyQueryResult> & results,
                                              CompressedTrie<T>::partial_match_queue_t & next_alive) const {
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
@@ -415,21 +415,22 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
 #       else
             const bool matched = trie_char == qc;
 #       endif
-        const db_query_consumed_counts nmc{pm_coords.first + 1, pm_coords.second + 1};
+        const db_qu_let_tuple nmc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords) + 1, (char) trie_char};
         auto nait = next_alive.find(nmc);
-        
+        stored_char_t trie_letter = letters[trie_char];
+
         if (matched) {
-            if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
+            if (DB_FUZZY_MATCH) {LOG(DEBUG) << "matched  " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
             if (nait == next_alive.end() || nait->second.curr_distance() > cd) {
                 next_alive.emplace(nmc, PartialMatch<T>{pm, trie_char, cd, next_nd, false});
             }
         } else if (cd + 1 <= max_dist) {
-            if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
-            
+            if (DB_FUZZY_MATCH) {LOG(DEBUG) << "mismatched " << to_char_str(trie_letter) << " in pre adding extended pm.\n";}
+            // to do need some || logic here for transposition
             if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
                 next_alive.emplace(nmc,  PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
             }
-            const db_query_consumed_counts rsc{pm_coords.first + 1, pm_coords.second};
+            const db_qu_let_tuple rsc{std::get<0>(pm_coords) + 1, std::get<1>(pm_coords), (char) trie_char};
             nait = next_alive.find(rsc);
             if (pm.can_rightshift()
                 && (nait == next_alive.end() || nait->second.curr_distance() > cd + 1)) {
@@ -439,7 +440,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     }
     // frameshift
     if (cd + 1 <= max_dist && pm.can_downshift()) {
-        const db_query_consumed_counts dsc{pm_coords.first, pm_coords.second + 1};
+        const db_qu_let_tuple dsc{std::get<0>(pm_coords), std::get<1>(pm_coords) + 1, std::get<2>(pm_coords)};
         auto nait = next_alive.find(dsc);
         if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
             next_alive.emplace(dsc, PartialMatch<T>{pm, cd + 1, trienode}); //downshift
@@ -463,14 +464,14 @@ inline void CompressedTrie<T>::_finish_query_result(FuzzyQueryResult & res) cons
     }
     float sl = res.match_wide_char.length();
     res.score = ((sl - (float)res.distance)/sl);
-    if (DB_FUZZY_MATCH) {std::cerr << "res.score = " << res.score << " res.match: " << res.match() << '\n';}
+    if (DB_FUZZY_MATCH) {LOG(DEBUG) << "res.score = " << res.score << " res.match: " << res.match() << '\n';}
 }
 
 
 template<typename T>
 std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
                                                              unsigned int max_dist) const {
-    if (DB_FUZZY_MATCH) {std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";}
+    if (DB_FUZZY_MATCH) {LOG(DEBUG) << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";}
     if (query_str.length() == 0) {
         return std::list<FuzzyQueryResult>{};
     }
@@ -480,7 +481,7 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
         if (qai == NO_MATCHING_CHAR_CODE) {
             num_missing_in_letters++;
             if (num_missing_in_letters > max_dist) {
-                if (DB_FUZZY_MATCH) {std::cerr << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";}
+                if (DB_FUZZY_MATCH) {LOG(DEBUG) << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";}
                 return std::list<FuzzyQueryResult>{};
             }
         }
@@ -489,16 +490,21 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
     std::list<FuzzyQueryResult> results;
     const T * root_nd = &(node_vec.at(0));
     partial_match_queue_t alive;
-    alive.emplace(db_query_consumed_counts{0, 0}, PartialMatch<T>{query, root_nd});
+    alive.emplace(db_qu_let_tuple{0, 0, -1}, PartialMatch<T>{query, root_nd});
     while (!alive.empty()) {
-        if (DB_FUZZY_MATCH) {std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\n";}
+        if (DB_FUZZY_MATCH) {
+            LOG(DEBUG) << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\nkeys:";
+            for (auto it : alive) {
+                LOG(DEBUG) << (int) std::get<0>(it.first) << ' ' << (int) std::get<1>(it.first) << ' ' << (int) std::get<2>(it.first); 
+            }
+        }
         const auto alive_it = alive.begin();
-        const db_query_consumed_counts curr_coord = alive_it->first;
+        const db_qu_let_tuple curr_coord = alive_it->first;
         const auto curr_pm = alive_it->second;
         alive.erase(alive_it);
         const auto prevnalen = alive.size();
         extend_partial_match(curr_pm, curr_coord, results, alive);
-        if (DB_FUZZY_MATCH) {if (alive.size() != prevnalen) {std::cerr << "added " << alive.size() - prevnalen << " PMs.\n"; }}
+        if (DB_FUZZY_MATCH) {if (alive.size() != prevnalen) {LOG(DEBUG) << "added " << alive.size() - prevnalen << " PMs.\n"; }}
     }
     for (auto & r : results) {
         _finish_query_result(r);

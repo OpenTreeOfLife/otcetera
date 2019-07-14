@@ -32,11 +32,12 @@ class CTrieCtorHelperTemp {
 
 
 using suff_map_t = std::map<std::vector<stored_index_t> , std::size_t>;
-using db_query_consumed_counts = std::pair<std::size_t, std::size_t> ; 
+// <db_consumed, query_consumed, char index ( or -1) of db_node's most recent character
+using db_qu_let_tuple = std::tuple<std::size_t, std::size_t, char> ; 
 template <typename T>
 class CompressedTrie {
     public:
-    using partial_match_queue_t = std::map<db_query_consumed_counts, PartialMatch<T> >;
+    using partial_match_queue_t = std::map<db_qu_let_tuple, PartialMatch<T> >;
      
     CompressedTrie() {
     }
@@ -114,7 +115,7 @@ class CompressedTrie {
                 try {
                     append_char_str<stored_char_t>(ret, nl);
                 } catch (...) {
-                    LOG(ERROR) << "error translating p[" << i << "] = "<< int(p[i]) << " where letters = \"" << to_char_str(letters) << "\"\n";
+                    LOG(ERROR) << "error translating p[" << i << "] = "<< int(p[i]) << " where letters = \"" << to_char_str(letters) << "\"";
                     throw;
                 }
             }
@@ -194,7 +195,7 @@ class CompressedTrie {
                                         const unsigned int dist_threshold,
                                         stored_index_t prev_trie_match_char) const;
     void extend_partial_match(const PartialMatch<T> &pm,
-                              db_query_consumed_counts pm_coords,
+                              db_qu_let_tuple pm_coords,
                               std::list<FuzzyQueryResult> & results,
                               partial_match_queue_t & next_alive) const;
     void db_write_pm(const char *, const PartialMatch<T> &pm) const;
@@ -366,8 +367,8 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     if (letters.length() >= T::DATA_TYPE::END_LETTER_INDEX) {
         throw OTCError() << "# of letters (" << letters.length() << ") exceeds size of CompressedTrie node type";
     }
-    if (letters.length() > 253) {
-        throw OTCError() << "# of letters (" << letters.length() << ") exceeds 253, so letter_to_ind value type needs to be changed.";
+    if (letters.length() > 127) {
+        throw OTCError() << "# of letters (" << letters.length() << ") exceeds 127, so 3 element in db_qu_let_tuple type needs to be changed.";
     }
     stored_index_t curr_ind = 0;
     for (auto nl : letters) {

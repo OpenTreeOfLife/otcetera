@@ -49,7 +49,7 @@ void combine2(vector<unique_ptr<Tree_t>>& trees, bool verbose) {
         if (nd->has_ott_id()) {
             ott_to_tax[nd->get_ott_id()] = nd;
         } else {
-            LOG(WARNING) << "  warning: node in taxonomy without an OTT ID.\n";
+            LOG(WARNING) << "  warning: node in taxonomy without an OTT ID.";
         }
     }
     for (auto nd: iter_post(solution)) {

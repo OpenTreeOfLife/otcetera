@@ -560,11 +560,11 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             if (not result) {
                 consistent.pop_back();
                 if (verbose and nd->has_ott_id()) {
-                    LOG(INFO) << "Reject: ott" << nd->get_ott_id() << "\n";
+                    LOG(INFO) << "Reject: ott" << nd->get_ott_id();
                 }
                 return false;
             } else if (verbose and nd->has_ott_id()) {
-                LOG(INFO) << "Keep: ott" << nd->get_ott_id() << "\n";
+                LOG(INFO) << "Keep: ott" << nd->get_ott_id();
             }
             return true;
         };
@@ -731,7 +731,7 @@ int main(int argc, char *argv[]) {
         // 3. Make a fake taxonomy if asked
         if (synthesize_taxonomy) {
             trees.push_back(make_unresolved_tree(trees, rules.set_ott_ids));
-            LOG(DEBUG) << "taxonomy = " << newick(*trees.back()) << "\n";
+            LOG(DEBUG) << "taxonomy = " << newick(*trees.back());
         }
         // 4. Add fake Ott Ids to tips and compute des_ids (if asked)
         if (not rules.set_ott_ids) {

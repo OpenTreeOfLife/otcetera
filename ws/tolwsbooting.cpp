@@ -10,7 +10,7 @@ typedef std::pair<bool, fp_set > bool_fp_set;
 
 bool_fp_set get_subdirs(const fs::path & dirname) {
     if (!fs::is_directory(dirname)) {
-        LOG(ERROR) << "\"" << dirname << "\" is not a directory.\n";
+        LOG(ERROR) << "\"" << dirname << "\" is not a directory.";
         return bool_fp_set(false, fp_set());
     }
     fp_set fps;

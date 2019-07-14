@@ -84,7 +84,7 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
             }
         }
         if (contains(thin_letter_set, '\0')) {
-            std::cerr << "\\0 in \"" << i << "\"";
+            LOG(DEBUG) << "\\0 in \"" << i << "\"";
         }
         //std::cerr << glob_conv8.to_bytes(widestr) << '\n';
     }
@@ -100,10 +100,6 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
     wide_trie.init(for_wide, wide_letters);
     thin_trie.init(for_thin, thin_letters);
 
-    /*
-    wide_trie.db_write_words(std::cerr);
-    thin_trie.db_write_words(std::cerr);
-    */
 }
 
 

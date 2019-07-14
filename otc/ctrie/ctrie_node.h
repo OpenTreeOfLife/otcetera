@@ -189,7 +189,7 @@ class CTrieNode {
     }
     
     void log_state() const {
-       std::cerr << " CTrieNode( "; data.db_write_state(std::cerr); std::cerr << ")\n";
+       //LOG(DEBUG) << " CTrieNode( "; data.db_write_state(std::cerr); std::cerr << ")\n";
     }
 
     void flag_as_key_terminating() {

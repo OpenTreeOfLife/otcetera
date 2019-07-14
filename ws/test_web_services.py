@@ -232,7 +232,7 @@ class WebServiceTestJob(object):
 PIDFILE_NAME = "pidfile.txt"
 RUNNING_SERVER = None
 SERVER_PORT = 1985 # global, set by CLI. Needed by server launch and threads
-SERVER_OUT_ERR_FN = "test-server-stdouterr.txt"
+SERVER_OUT_ERR_FN = "test-server-stdouterr-port{}.txt"
 
 def launch_server(exe_dir, taxonomy_dir, synth_par, server_threads=4):
     global RUNNING_SERVER
@@ -242,6 +242,7 @@ def launch_server(exe_dir, taxonomy_dir, synth_par, server_threads=4):
     invocation = [exe_path,
                   taxonomy_dir,
                   "-D" + synth_par,
+                  "-v",
                   "-p{}".format(pidfile_path),
                   "-P{}".format(SERVER_PORT), 
                   "--num-threads={}".format(server_threads)]
@@ -369,6 +370,7 @@ if __name__ == '__main__':
         e_dir_list = os.listdir(test_par)
         e_dir_list.sort()
     SERVER_PORT = args.server_port
+    SERVER_OUT_ERR_FN = SERVER_OUT_ERR_FN.format(SERVER_PORT)
 
     to_run = []
     for e_subdir_name in e_dir_list:

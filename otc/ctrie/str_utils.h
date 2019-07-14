@@ -99,7 +99,9 @@ inline std::string to_char_str(const std::string & undecoded) {
 }
 
 inline std::string to_char_str(const char & undecoded) {
-    return std::string{1, undecoded};
+    std::string ret;
+    ret.push_back(undecoded);
+    return ret;
 }
 
 

@@ -451,7 +451,7 @@ bool RootedForest<T, U>::add_phylo_statement_to_graph(const PhyloStatement &ps) 
     if (attachmentPair.first.size() == 1) {
         // greedy approach is to add the rest of the ingroup as deep in this tree as possible.
         //  less greedy: make include/exclude statements at that node
-        LOG(DEBUG) << "Missing opportunity to special case ingroups that only overlap with leaves of current trees.\n";
+        LOG(DEBUG) << "Missing opportunity to special case ingroups that only overlap with leaves of current trees.";
     }
     debug_invariants_check();
     auto rc = add_ingroup_overlapping_phylo_statement_to_graph(byIncCardinality, ps);

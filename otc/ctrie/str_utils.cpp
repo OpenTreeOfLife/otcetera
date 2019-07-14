@@ -38,26 +38,26 @@ std::string normalize_wide_query(const std::u32string & raw_query);
 std::string normalize_wide_query(const std::u32string & wide_query) {
     std::string norm;
     norm.reserve(wide_query.size());
-    std::cerr << "trying to normalize_query \"" << to_char_str(wide_query) << "\" ...";
+    LOG(DEBUG) << "trying to normalize_query \"" << to_char_str(wide_query) << "\" ...";
     
     for (const auto & c: wide_query) {
         if (c < 127) {
             char tc = (char) c;
-            std::cerr << "\n  norm ascii  to \"" << ascii_char_to_norm[tc] << "\" \n";
+            LOG(DEBUG) << "\n  norm ascii  to \"" << ascii_char_to_norm[tc] << "\"";
                 
             norm.push_back(ascii_char_to_norm[tc]);
         } else {
             auto wcit = wide_to_norm.find(c);
             if (wcit == wide_to_norm.end()) {
-                std::cerr << "\n  norm nonascii  to \"" << UNKNOWN_CHAR << "\" \n";
+                LOG(DEBUG) << "\n  norm nonascii  to \"" << UNKNOWN_CHAR << "\"";
                 norm.push_back(UNKNOWN_CHAR);
             } else {
-                std::cerr << "\n  norm nonascii  to \"" << wcit->second << "\" \n";
+                LOG(DEBUG) << "\n  norm nonascii  to \"" << wcit->second << "\" ";
                 norm.push_back(wcit->second);
             }
         }
     }
-    std::cerr << " converted  to \"" << norm << "\" \n";
+    LOG(DEBUG) << " converted  to \"" << norm << "\" ";
     return norm;
 }
 
@@ -74,7 +74,7 @@ std::string normalize_query(const std::string & raw_query) {
             break;
         }
     }
-    std::cerr << "normalized \"" << raw_query << "\" to \"" << norm << "\" \n";
+    // LOG(DEBUG) << "normalized \"" << raw_query << "\" to \"" << norm << "\" \n";
     return norm;
 }
 
@@ -90,7 +90,7 @@ std::string normalize_query(const std::string_view & raw_query) {
             break;
         }
     }
-    std::cerr << "normalized \"" << raw_query << "\" to \"" << norm << "\" \n";
+    //LOG(DEBUG) << "normalized \"" << raw_query << "\" to \"" << norm << "\" \n";
     return norm;
 }
 
@@ -243,7 +243,7 @@ void init_char_maps(){
     m[L'\u2019'] = BRACE_CHAR;  //  8217 ’
     m[L'\ufb02'] = 'f';  //  64258 ﬂ
     // for (auto x : m) {
-    //    std::cerr << "\"" << to_char_str(x.first) << "\" -> " << x.second << "\"\n"; 
+    //    LOG(DEBUG) << "\"" << to_char_str(x.first) << "\" -> " << x.second << "\"\n"; 
     // }
 }
 
@@ -258,7 +258,6 @@ unsigned int calc_damerau_levenshtein_dist(const std::u32string & a,
     std::vector<unsigned int> cost_curr_a, cost_next_a;
     cost_curr_a.resize(blen + 1);
     cost_next_a.resize(blen + 1);
-    std::size_t bpos;
     for (std::size_t bpos = 0; bpos <= blen; ++bpos) {
         cost_curr_a[bpos] = bpos;
     }
@@ -285,7 +284,7 @@ unsigned int calc_damerau_levenshtein_dist(const std::u32string & a,
         }
         std::swap(cost_curr_a, cost_next_a);
     }
-    //std::cerr << "damerau_levenshtein_dist(\"" << to_char_str(a) << "\", \"" << to_char_str(b) << "\") = " << cost_curr_a[blen] << '\n';
+    //LOG(DEBUG) << "damerau_levenshtein_dist(\"" << to_char_str(a) << "\", \"" << to_char_str(b) << "\") = " << cost_curr_a[blen] << '\n';
     return cost_curr_a[blen];
 }
 

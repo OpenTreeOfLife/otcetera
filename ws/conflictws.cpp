@@ -571,11 +571,11 @@ vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, co
 
             if (id_to_node.count(child_id)) {
                 // In synth, we can stop expanding the frontier at this node.
-                LOG(DEBUG) << "GOOD\n"; 
+                LOG(DEBUG) << "GOOD"; 
                 children.push_back(child_id);
             } else {
                 // Not in synth, we need to consider the children of this node.
-                LOG(DEBUG) << "BAD\n";
+                LOG(DEBUG) << "BAD";
                 bad_parents.push_back(child_id);
             }
         }
