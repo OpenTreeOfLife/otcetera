@@ -388,8 +388,9 @@ void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> 
 
 template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
+                                             db_query_consumed_counts pm_coords,
                                              std::list<FuzzyQueryResult> & results,
-                                             std::list<PartialMatch<T> > & next_alive) const {
+                                             CompressedTrie<T>::partial_match_queue_t & next_alive) const {
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
     const T * trienode = pm.get_next_node();
     if (trienode->is_terminal()) {
@@ -413,21 +414,36 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
             const bool matched = (trie_char == qc || trie_char == altqc);
 #       else
             const bool matched = trie_char == qc;
-#       endif 
+#       endif
+        const db_query_consumed_counts nmc{pm_coords.first + 1, pm_coords.second + 1};
+        auto nait = next_alive.find(nmc);
+        
         if (matched) {
             if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
-            next_alive.push_back(PartialMatch<T>{pm, trie_char, cd, next_nd, false});
+            if (nait == next_alive.end() || nait->second.curr_distance() > cd) {
+                next_alive.emplace(nmc, PartialMatch<T>{pm, trie_char, cd, next_nd, false});
+            }
         } else if (cd + 1 <= max_dist) {
             if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
-            next_alive.push_back(PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
-            if (pm.can_rightshift()) {
-                next_alive.push_back(PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
+            
+            if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
+                next_alive.emplace(nmc,  PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
+            }
+            const db_query_consumed_counts rsc{pm_coords.first + 1, pm_coords.second};
+            nait = next_alive.find(rsc);
+            if (pm.can_rightshift()
+                && (nait == next_alive.end() || nait->second.curr_distance() > cd + 1)) {
+                next_alive.emplace(rsc,  PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
             }
         }
     }
     // frameshift
     if (cd + 1 <= max_dist && pm.can_downshift()) {
-        next_alive.push_back(PartialMatch<T>{pm, cd + 1, trienode}); //downshift
+        const db_query_consumed_counts dsc{pm_coords.first, pm_coords.second + 1};
+        auto nait = next_alive.find(dsc);
+        if (nait == next_alive.end() || nait->second.curr_distance() > cd + 1) {
+            next_alive.emplace(dsc, PartialMatch<T>{pm, cd + 1, trienode}); //downshift
+        }
     }
     if (trienode->is_key_terminating()) {
         auto d = pm.num_q_char_left() + pm.curr_distance();
@@ -472,17 +488,17 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
     // non-trivial case
     std::list<FuzzyQueryResult> results;
     const T * root_nd = &(node_vec.at(0));
-    std::list<PartialMatch<T> > alive;
-    alive.push_back(PartialMatch<T>{query, root_nd});
+    partial_match_queue_t alive;
+    alive.emplace(db_query_consumed_counts{0, 0}, PartialMatch<T>{query, root_nd});
     while (!alive.empty()) {
         if (DB_FUZZY_MATCH) {std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\n";}
-        std::list<PartialMatch<T> > next_alive;
-        for (const auto & pm : alive) {
-            auto prevnalen = next_alive.size();
-            extend_partial_match(pm, results, next_alive);
-            if (DB_FUZZY_MATCH) {if (next_alive.size() != prevnalen) {std::cerr << "added " << next_alive.size() - prevnalen << " PMs.\n"; }}
-        }
-        std::swap(alive, next_alive);
+        const auto alive_it = alive.begin();
+        const db_query_consumed_counts curr_coord = alive_it->first;
+        const auto curr_pm = alive_it->second;
+        alive.erase(alive_it);
+        const auto prevnalen = alive.size();
+        extend_partial_match(curr_pm, curr_coord, results, alive);
+        if (DB_FUZZY_MATCH) {if (alive.size() != prevnalen) {std::cerr << "added " << alive.size() - prevnalen << " PMs.\n"; }}
     }
     for (auto & r : results) {
         _finish_query_result(r);

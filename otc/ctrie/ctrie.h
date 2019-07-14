@@ -29,11 +29,14 @@ class CTrieCtorHelperTemp {
 };
 
 
-using suff_map_t = std::map<std::vector<stored_index_t> , std::size_t>;
 
+
+using suff_map_t = std::map<std::vector<stored_index_t> , std::size_t>;
+using db_query_consumed_counts = std::pair<std::size_t, std::size_t> ; 
 template <typename T>
 class CompressedTrie {
     public:
+    using partial_match_queue_t = std::map<db_query_consumed_counts, PartialMatch<T> >;
      
     CompressedTrie() {
     }
@@ -105,6 +108,7 @@ class CompressedTrie {
             if (let_ind == NO_MATCHING_CHAR_CODE) {
                 ret += "?";
             } else if (let_ind == null_char_index) {
+                // pass
             } else {
                 auto nl = letters[let_ind];
                 try {
@@ -190,8 +194,9 @@ class CompressedTrie {
                                         const unsigned int dist_threshold,
                                         stored_index_t prev_trie_match_char) const;
     void extend_partial_match(const PartialMatch<T> &pm,
+                              db_query_consumed_counts pm_coords,
                               std::list<FuzzyQueryResult> & results,
-                              std::list<PartialMatch<T> > & next_alive) const;
+                              partial_match_queue_t & next_alive) const;
     void db_write_pm(const char *, const PartialMatch<T> &pm) const;
     unsigned int _calc_dist_impl(const PartialMatch<T> &pm,
                                  const stored_index_t * suffix,
