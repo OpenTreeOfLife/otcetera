@@ -14,7 +14,7 @@ class CompressedTrieBasedDB {
     void initialize(const std::set<std::string> & keys);
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     private:
-    CTrie3_t wide_trie;
+    // CTrie3_t wide_trie;
     CTrie2_t thin_trie;
 };
 
@@ -43,8 +43,8 @@ inline std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB:
     auto from_thin = thin_trie.fuzzy_matches(conv_query, max_dist);
     sorted.insert(std::begin(from_thin), std::end(from_thin));
 
-    auto from_full = wide_trie.fuzzy_matches(conv_query, max_dist);
-    sorted.insert(std::begin(from_full), std::end(from_full));
+    //auto from_full = wide_trie.fuzzy_matches(conv_query, max_dist);
+    //sorted.insert(std::begin(from_full), std::end(from_full));
     return sorted;
 }
 
@@ -97,7 +97,7 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
         by_count[lcp.second].push_back(lcp.first);
     }
     //std::cerr << "set size = " << (sizeof(std::string *) + sizeof(char *) + 8)*keys.size() + mem_str << "bytes\n";
-    wide_trie.init(for_wide, wide_letters);
+    //wide_trie.init(for_wide, wide_letters);
     thin_trie.init(for_thin, thin_letters);
 
 }
