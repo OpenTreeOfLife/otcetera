@@ -277,7 +277,7 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
                     _store_suffix_node(next_node, *lb, curr_pref, suffix2index);
                 }
                 par_node.flag_letter(curr_letter_index);
-                if (NEW_DB_FUZZY_MATCH) {std::cerr << "added " << letter << " at index " << curr_letter_index << " "; par_node.log_state(std::cerr) ; std::cerr << '\n';}
+                //if (NEW_DB_FUZZY_MATCH) {std::cerr << "added " << letter << " at index " << curr_letter_index << " "; par_node.log_state(std::cerr) ; std::cerr << '\n';}
                 if (!has_indexed_par) {
                     par_node.set_first_child_index(node_list.size() - 1);
                     has_indexed_par = true;

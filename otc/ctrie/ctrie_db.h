@@ -14,7 +14,7 @@ class CompressedTrieBasedDB {
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     private:
     // CTrie3_t wide_trie;
-    CTrie128_t thin_trie;
+    CTrie80_t thin_trie;
 };
 
 
@@ -100,7 +100,7 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
     thin_trie.init(for_thin, thin_letters);
 
     std::cerr << "writing input words:\n";
-    thin_trie.db_write_words(std::cerr);
+    // thin_trie.db_write_words(std::cerr);
 
 }
 
