@@ -5,9 +5,8 @@
 #include "otc/ctrie/ctrie.h"
 
 namespace otc {
-using CTrie3_t = CompressedTrie<CTrie3Node>;
-using CTrie2_t = CompressedTrie<CTrie2Node>;
-
+using CTrie128_t = CompressedTrie<CTrie128Node>;
+using CTrie80_t = CompressedTrie<CTrie80Node>;
 
 class CompressedTrieBasedDB {
     public:
@@ -15,7 +14,7 @@ class CompressedTrieBasedDB {
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     private:
     // CTrie3_t wide_trie;
-    CTrie2_t thin_trie;
+    CTrie128_t thin_trie;
 };
 
 
@@ -99,6 +98,9 @@ inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys
     //std::cerr << "set size = " << (sizeof(std::string *) + sizeof(char *) + 8)*keys.size() + mem_str << "bytes\n";
     //wide_trie.init(for_wide, wide_letters);
     thin_trie.init(for_thin, thin_letters);
+
+    std::cerr << "writing input words:\n";
+    thin_trie.db_write_words(std::cerr);
 
 }
 

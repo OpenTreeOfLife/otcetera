@@ -277,6 +277,7 @@ void CompressedTrie<T>::_process_prefix(const stored_str_t & curr_pref,
                     _store_suffix_node(next_node, *lb, curr_pref, suffix2index);
                 }
                 par_node.flag_letter(curr_letter_index);
+                if (NEW_DB_FUZZY_MATCH) {std::cerr << "added " << letter << " at index " << curr_letter_index << " "; par_node.log_state(std::cerr) ; std::cerr << '\n';}
                 if (!has_indexed_par) {
                     par_node.set_first_child_index(node_list.size() - 1);
                     has_indexed_par = true;
@@ -366,7 +367,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     std::set<stored_char_t> let_set{letter_var.begin(), letter_var.end()};
     letters = stored_str_t{let_set.begin(), let_set.end()};
     stored_str_t rev_letters = stored_str_t{letters.rbegin(), letters.rend()};
-    if (letters.length() >= T::DATA_TYPE::END_LETTER_INDEX) {
+    if (letters.length() > T::MAX_LETTER_CAPACITY) {
         throw OTCError() << "# of letters (" << letters.length() << ") exceeds size of CompressedTrie node type";
     }
     if (letters.length() > 127) {
@@ -392,9 +393,9 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     unsigned int target_ind = UINT_MAX;
     assert(node_list.size() == 1);
     // std::cerr << "letters \"" << to_char_str(letters) << "\"\n";
-    // std::cerr << "ROOT before any children:"; root_node.log_state();
+    // std::cerr << "ROOT before any children:"; root_node.log_state(std::cerr);
     _process_prefix(curr_pref, todo_q, letters, keys, root_node, suffix2index);
-    // std::cerr << "ROOT after first _process_prefix:"; root_node.log_state();
+    // std::cerr << "ROOT after first _process_prefix:"; root_node.log_state(std::cerr);
     CTrieCtorHelper curr_ctch;
     while (!todo_q.empty()) {
         curr_ctch = todo_q.top();
@@ -415,7 +416,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
             _process_prefix(curr_pref, todo_q, letters, keys, curr_node, suffix2index);
         }
         if (curr_pref == TARGET_STR) {
-            // std::cerr << "MATCH TARGET: "; curr_node.log_state();
+            // std::cerr << "MATCH TARGET: "; curr_node.log_state(std::cerr);
             std::size_t i = 0;
             for (const auto & nd : node_list) {
                 if (&(nd) == &curr_node) {
@@ -433,7 +434,7 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
         for (const auto & nd : node_list) {
             if (i++ == target_ind) {
                 // std::cerr << "MATCH TARGET from node list spot " << target_ind << " = ";
-                nd.log_state();
+                nd.log_state(std::cerr);
             }
         }
     }
@@ -445,18 +446,18 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
 
     if (target_ind != UINT_MAX) {
         // std::cerr << "MATCH TARGET from node vector spot " << target_ind << " = ";
-        node_vec[target_ind].log_state();
+        node_vec[target_ind].log_state(std::cerr);
     }
     
-    if (DB_FUZZY_MATCH) {node_vec[0].log_state();}
+    if (DB_FUZZY_MATCH) {node_vec[0].log_state(std::cerr);}
     auto inds_on = node_vec[0].get_letter_and_node_indices_for_on_bits();
-    // std::cerr << "ROOT:"; node_vec[0].log_state();
+    // std::cerr << "ROOT:"; node_vec[0].log_state(std::cerr);
     
     for (auto & x : inds_on) {
         auto trie_char = x.first;
         auto next_ind = x.second;
         const T * next_nd = &(node_vec[next_ind]);
-        // std::cerr << "ROOT child for \"" << to_char_str(letters[trie_char]) <<  "\" "; next_nd->log_state();
+        // std::cerr << "ROOT child for \"" << to_char_str(letters[trie_char]) <<  "\" "; next_nd->log_state(std::cerr);
     }
 #   if defined(USING_EQUIL_LETTER_ARRAY)
         for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {

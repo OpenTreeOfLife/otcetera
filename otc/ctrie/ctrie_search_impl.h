@@ -404,7 +404,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
 #   if defined(USING_EQUIL_LETTER_ARRAY)
         auto altqc = equivalent_letter[qc];
 #   endif
-    if (DB_FUZZY_MATCH) {trienode->log_state();}
+    if (DB_FUZZY_MATCH) {trienode->log_state(std::cerr);}
     auto inds_on = trienode->get_letter_and_node_indices_for_on_bits();
     for (auto & x : inds_on) {
         auto trie_char = x.first;
