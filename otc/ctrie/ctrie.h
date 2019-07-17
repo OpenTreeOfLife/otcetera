@@ -14,7 +14,7 @@
 
 namespace otc {
 constexpr bool DB_FUZZY_MATCH = false;
-constexpr bool NEW_DB_FUZZY_MATCH = true;
+constexpr bool NEW_DB_FUZZY_MATCH = false;
 /* Compressed Trie
   based on, but not identical to structure by Maly 1976
 */
