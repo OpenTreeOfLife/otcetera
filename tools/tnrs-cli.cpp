@@ -187,13 +187,14 @@ void interactive_tests() {
     out << "EOF\n";
 }
 
-void process_taxonomy(const RichTaxonomy & taxonomy) {
+void process_taxonomy(RichTaxonomy & taxonomy) {
     const Context * c = determine_context({});
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";
     }
     ContextAwareCTrieBasedDB ct{*c, taxonomy};
-
+    taxonomy.set_fuzzy_matcher(&ct);
+    
     using time_diff_t = std::chrono::duration<double, std::milli>;
     time_diff_t total_time;
     auto num_q = 0;
