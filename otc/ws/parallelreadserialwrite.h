@@ -14,9 +14,6 @@ namespace otc {
 
 class ParallelReadSerialWrite {
     public:
-#if defined(DEBUGGING_THREAD_LOCKING)
-        static std::mutex cout_mutex;
-#endif
     // The following four variables are the core, they are protectedb by  mutex
     std::mutex mutex;
     std::size_t num_readers_working = 0;
@@ -58,15 +55,7 @@ class ReadWriteMutex {
         name(name_prefix) {
     }
 
-#   if defined(DEBUGGING_THREAD_LOCKING)
-        // writes the state of the core variables, assumes that the caller has locked shared.mutex
-        void debug_book_lock_held(std::string pre, std::ostream & out) {
-            std::unique_lock<std::mutex> cout_lock(ParallelReadSerialWrite::cout_mutex);
-            out << name << ": " << std::setw(15) << pre << ": ";
-            out << "READERS: " << shared.num_readers_working << " working ";
-            out << "WRITERS: " << shared.num_writers_waiting << " waiting and " << (shared.the_working_writer != nullptr ? "1" : "0") << " working" << std::endl;
-        }
-#   endif
+
 
     public:
     
@@ -138,10 +127,6 @@ class  ReadMutexWrapper: public ReadWriteMutex {
         :ReadWriteMutex(prsw, "R") {
         while (!can_read(true)) {
             {
-#               if defined(DEBUGGING_THREAD_LOCKING)
-                    std::unique_lock<std::mutex> cout_lock(ParallelReadSerialWrite::cout_mutex);
-                    std::cerr << get_thread_wrapper_id() << " blocked" << std::endl;
-#               endif
             }
             {
                 std::unique_lock<std::mutex> ssul(shared.mutex);
@@ -150,10 +135,6 @@ class  ReadMutexWrapper: public ReadWriteMutex {
                     });
             }
             {
-#               if defined(DEBUGGING_THREAD_LOCKING)
-                    std::unique_lock<std::mutex> cout_lock(ParallelReadSerialWrite::cout_mutex);
-                    std::cerr << get_thread_wrapper_id() << " unblocked" << std::endl;
-#               endif
             }
         }
     }
@@ -220,18 +201,10 @@ class  WriteMutexWrapper: public ReadWriteMutex {
         }
         if (is_last_writer) {
             {
-#               if defined(DEBUGGING_THREAD_LOCKING)
-                    std::unique_lock<std::mutex> cout_lock(ParallelReadSerialWrite::cout_mutex);
-                    std::cerr << get_thread_wrapper_id() <<  ": writer_released_cond_var.notify_all()" << std::endl;
-#               endif
             }
            shared.writer_released_cond_var.notify_all();
         } else {
             {
-#               if defined(DEBUGGING_THREAD_LOCKING)
-                    std::unique_lock<std::mutex> cout_lock(ParallelReadSerialWrite::cout_mutex);
-                    std::cerr << get_thread_wrapper_id() <<  ": no_readers_working_cond_var    .notify_all()" << std::endl;
-#               endif
             }
             shared.no_readers_working_cond_var.notify_one();
         }
@@ -242,10 +215,6 @@ class  WriteMutexWrapper: public ReadWriteMutex {
         already_logged_as_waiting(false) {
         while (!can_write(true)) { 
             {
-#               if defined(DEBUGGING_THREAD_LOCKING)
-                    std::unique_lock<std::mutex> cout_lock(ParallelReadSerialWrite::cout_mutex);
-                    std::cerr << get_thread_wrapper_id() << " blocked" << std::endl;
-#               endif
             }
             {
                 //WriteMutexWrapper * this_w_m_w = this;
@@ -256,10 +225,6 @@ class  WriteMutexWrapper: public ReadWriteMutex {
                     });
             }
             {
-#               if defined(DEBUGGING_THREAD_LOCKING)
-                    std::unique_lock<std::mutex> cout_lock(ParallelReadSerialWrite::cout_mutex);
-                    std::cerr << get_thread_wrapper_id() << " unblocked" << std::endl;
-#               endif
             }
         }
     }

@@ -54,7 +54,11 @@ programs = [
   ]
 
 foreach program : programs
-  executable('otc-'+program[1], program[0] + '.cpp', dependencies: [boost, libotcetera, json], install_rpath: rpath, install: true)
+  executable('otc-'+program[1],
+             program[0] + '.cpp',
+             dependencies: [boost, libotcetera, json],
+             install_rpath: rpath,
+             install: true)
 endforeach
 
 executable('otc-version-reporter', ['version-reporter.cpp',git_version_h], dependencies: [boost, libotcetera, json], install_rpath: rpath, install: true)

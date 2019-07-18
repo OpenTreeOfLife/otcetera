@@ -1,12 +1,12 @@
 #include <regex>
-#include "ws/tolws.h"
-#include "ws/tolwsadaptors.h"
-#include "ws/trees_to_serve.h"
+#include "otc/ws/tolws.h"
+#include "otc/ws/tolwsadaptors.h"
+#include "otc/ws/trees_to_serve.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "otc/ctrie/search_data_models.h"
 #include "otc/ctrie/context_ctrie_db.h"
-#include "nexson/nexson.h"
+#include "otc/ws/nexson/nexson.h"
 #include <optional>
 #include <string_view>
 #include "otc/tnrs/context.h"

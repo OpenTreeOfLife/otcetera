@@ -223,7 +223,7 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
 
 
 int main(int argc, char* argv[]) {
-    if (set_global_conv_facet() != 0) {
+    if (otc::set_global_conv_facet() != 0) {
         return 1;
     }
     std::ios::sync_with_stdio(false);

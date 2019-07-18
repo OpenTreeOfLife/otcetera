@@ -19,10 +19,21 @@ libotcetera_sources = [
   'tree.cpp',
   'util.cpp',
   'write_dot.cpp',
+  'ws/conflictws.cpp',
+  'ws/taxonomyws.cpp',
+  'ws/tnrsws.cpp',
+  'ws/tolws.cpp',
+  'ws/tolwsadaptors.cpp',
+  'ws/trees_to_serve.cpp', 
+  'ws/nexson/nexson.cpp',
   ]
 
 otc_inc = include_directories('..')
-otc_lib = shared_library('otcetera', libotcetera_sources, include_directories: otc_inc, dependencies: boost, install: true)
+otc_lib = shared_library('otcetera',
+                         libotcetera_sources,
+                         include_directories: otc_inc,
+                         dependencies: [boost, restbed],
+                         install: true)
 
 libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib)
 
