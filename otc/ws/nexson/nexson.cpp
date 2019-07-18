@@ -1,8 +1,8 @@
 #include <memory>
 #include <restbed>
-#include "nexson.h"
+#include "otc/ws/nexson/nexson.h"
 #include "otc/error.h"
-#include "ws/tolwsadaptors.h"
+#include "otc/ws/tolwsadaptors.h"
 
 using std::string;
 using std::pair;

@@ -27,7 +27,7 @@
 #include "otc/ctrie/ctrie_db.h"
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
-
+#include "otc/ws/tolws.h"
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -200,22 +200,26 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
     
     std::cout << "Enter a query and hit return:\n";
     std::string query;
+    const std::string context_name = "All life";
+    const std::vector<std::string> empty_ids_vec;
     while (std::getline(std::cin, query)) {
         std::cout << "query =\"" << query << "\"\n";
+        std::vector<std::string> qvec;
+        qvec.push_back(query);
         auto start_time = std::chrono::steady_clock::now();
-        auto results = ct.fuzzy_query(query);
+        auto tnrs_res = tnrs_match_names_ws_method(qvec,
+                                                   context_name,
+                                                   true,
+                                                   empty_ids_vec,
+                                                   false,
+                                                   taxonomy);
         auto end_time = std::chrono::steady_clock::now();
         num_q++;
         time_diff_t time_diff = end_time - start_time;
         std::cerr << "took: " << time_diff.count() << " milliseconds.\n";
         total_time += time_diff;
-        std::cout << results.size() << " matches:\n";
-        for (auto res : results) {
-            std::cout << "res.match = \"" << res.match()
-                      << "\", distance = " << res.distance 
-                      << " score = " << res.score << "\n";
-        }
-        std::cout << "Enter a query and hit return:\n";
+        std::cout << tnrs_res;
+        std::cout << "\nEnter a query and hit return:\n";
     }
     std::cerr << "EOF\n";
     std::cerr << num_q << " queries " << total_time.count() << " milliseconds\n";

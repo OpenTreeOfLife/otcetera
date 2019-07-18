@@ -3,7 +3,7 @@
 
 #include <set>
 #include <thread>
-#include "tolws.h"
+#include "otc/ws/tolws.h"
 namespace otc
 {
 using ReadableTaxonomy = std::pair<const RichTaxonomy &,

@@ -1,26 +1,6 @@
-# We don't need ssl and curl unless librested itself was compiled with them.
-#ssl  = dependency('openssl')
-#curl = dependency('libcurl')
-# Can we test if we need them to link with restbed?
-threads = dependency('threads')
 
-restbed_lib = cpp.find_library('restbed')
-restbed_deps = [restbed_lib, threads] # ssl, curl?
-restbed = declare_dependency(dependencies: restbed_deps)
 
-# FIXME: we could put this back if we made enabling webservices a build-if-you-can tri-state option.
-# if not restbed.found() or not ssl.found() or not curl.found()
-#  restbed = disabler()
-# endif
-
-otc_tol_ws_sources = ['conflictws.cpp',
-					  'taxonomyws.cpp',
-	                  'tnrsws.cpp',
-					  'tolws.cpp',
-					  'tolwsadaptors.cpp',
-					  'tolwsbooting.cpp',
-					  'nexson/nexson.cpp',
-					  'trees_to_serve.cpp',
+otc_tol_ws_sources = ['tolwsbooting.cpp',
 					  ]
 ws_inc = include_directories('.')
 executable('otc-tol-ws', otc_tol_ws_sources,

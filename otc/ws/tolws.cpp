@@ -1,8 +1,8 @@
 #include <regex>
-#include "ws/tolws.h"
-#include "ws/tolwsadaptors.h"
-#include "ws/trees_to_serve.h"
-#include "ws/node_namer_supported_by_stasher.h"
+#include "otc/ws/tolws.h"
+#include "otc/ws/tolwsadaptors.h"
+#include "otc/ws/trees_to_serve.h"
+#include "otc/ws/node_namer_supported_by_stasher.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include <optional>
@@ -10,7 +10,6 @@
 #include "otc/tnrs/context.h"
 
 #include "otc/ctrie/str_utils.h"
-INITIALIZE_EASYLOGGINGPP
 
 
 using std::vector;
@@ -134,7 +133,8 @@ inline void add_str_to_str_or_vec_string(json & o, const string& first, const st
 }
 
 #if !defined(JOINT_MAPPING_VEC)
-void add_support_info_vec(const char * tag,
+void add_support_info_vec(const TreesToServe & tts, 
+                          const char * tag,
                           const vec_src_node_ids & v,
                           json & noderepr,
                           set<string> & usedSrcIds,
@@ -152,7 +152,8 @@ void add_support_info_vec(const char * tag,
     noderepr[tag] = o;
 }
 
-void add_support_info_single_element(const char * tag,
+void add_support_info_single_element(const TreesToServe & tts,
+                                     const char * tag,
                                      const vec_src_node_ids & v,
                                      json & noderepr,
                                      set<string> & usedSrcIds,
@@ -353,8 +354,7 @@ const SumTreeNode_t * find_required_node_by_id_str(const SummaryTree_t & tree,
 
 // See API docs at https://github.com/OpenTreeOfLife/germinator/wiki/Synthetic-tree-API-v3
 
-string available_trees_ws_method(const TreesToServe &tts)
-{
+string available_trees_ws_method(const TreesToServe &tts) {
     json response;
     json trees = json::array();
     for(auto& synth_id: tts.get_available_trees()) {
@@ -412,7 +412,11 @@ string tax_about_ws_method(const RichTaxonomy & taxonomy) {
 }
 
 
-inline void add_lineage(json & j, const SumTreeNode_t * focal, const RichTaxonomy & taxonomy, set<string> & usedSrcIds, bool is_arguson = false) {
+inline void add_lineage(const TreesToServe & tts,
+                        json & j,
+                        const SumTreeNode_t * focal,
+                        const RichTaxonomy & taxonomy,
+                        set<string> & usedSrcIds, bool is_arguson = false) {
     json lineage_arr;
     const SumTreeNode_t * anc = focal->get_parent();
     if (!anc) {
@@ -466,7 +470,7 @@ json node_info_json(const TreesToServe & tts,
         add_basic_node_info(taxonomy, *focal, response);
         add_node_support_info(tts, *focal, response, usedSrcIds);
         if (include_lineage) {
-            add_lineage(response, focal, taxonomy, usedSrcIds);
+            add_lineage(tts, response, focal, taxonomy, usedSrcIds);
         }
         add_source_id_map(response, usedSrcIds, taxonomy, sta);
     }
@@ -480,8 +484,7 @@ string node_info_ws_method(const TreesToServe & tts,
                            const SummaryTree_t * tree_ptr,
                            const SummaryTreeAnnotation * sta,
                            const string & node_id,
-                           bool include_lineage)
-{
+                           bool include_lineage) {
     LOG(DEBUG)<<"Got to node_info_ws_method( )";
     bool was_broken = false;
 
@@ -711,7 +714,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             cnd = cnd->get_parent(); 
         } 
     }
-    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy, tts);
     ostringstream out;
     write_visited_newick(out, visited, focal, nnsbs);
     json response;
@@ -731,7 +734,7 @@ string newick_subtree_ws_method(const TreesToServe & tts,
     const SumTreeNode_t * focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy, tts);
     ostringstream out;
     write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, include_all_node_labels, height_limit);
     json response;
@@ -779,7 +782,7 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
         write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
-        add_lineage(a, focal, taxonomy, usedSrcIds, true);
+        add_lineage(tts, a, focal, taxonomy, usedSrcIds, true);
         add_source_id_map(a, usedSrcIds, taxonomy, sta);
     }
     response["arguson"] = a;
@@ -799,17 +802,3 @@ void delete_subtree_and_monotypic_ancestors(Tree& tree, typename Tree::node_type
 
 } //namespace otc
 
-int main( const int argc, char** argv) {
-    if (otc::set_global_conv_facet() != 0) {
-        return 1;
-    }
-    
-    std::ios::sync_with_stdio(false);
-    try {
-        auto args = parse_cmd_line(argc,argv);
-        return run_server(args);
-    } catch (std::exception& e) {
-        LOG(ERROR) <<"otc-tol-ws: Error! " << e.what() << std::endl;
-        return 1;
-    }
-}

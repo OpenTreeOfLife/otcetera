@@ -6,7 +6,7 @@
 #include <memory>
 #include <map>
 #include "otc/tree.h"
-#include "ws/tolwsadaptors.h"
+#include "otc/ws/tolwsadaptors.h"
 #include "json.hpp"
 
 namespace otc

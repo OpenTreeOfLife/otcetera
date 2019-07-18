@@ -1,11 +1,11 @@
 #include <regex>
-#include "ws/tolws.h"
-#include "ws/tolwsadaptors.h"
-#include "ws/trees_to_serve.h"
-#include "ws/node_namer_supported_by_stasher.h"
+#include "otc/ws/tolws.h"
+#include "otc/ws/tolwsadaptors.h"
+#include "otc/ws/trees_to_serve.h"
+#include "otc/ws/node_namer_supported_by_stasher.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
-#include "nexson/nexson.h"
+#include "otc/ws/nexson/nexson.h"
 #include <optional>
 #include <string_view>
 
@@ -191,13 +191,14 @@ string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
     return response.dump(1);
 }
 
-string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
-                             const RTRichTaxNode * taxon_node,
-                             NodeNameStyle label_format) {
+string taxon_subtree_ws_method(const TreesToServe & tts, 
+                               const RichTaxonomy & taxonomy,
+                               const RTRichTaxNode * taxon_node,
+                               NodeNameStyle label_format) {
     assert(taxon_node != nullptr);
     const auto & taxonomy_tree = taxonomy.get_tax_tree();
     json response;
-    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy);
+    NodeNamerSupportedByStasher nnsbs(label_format, taxonomy, tts);
     ostringstream out;
     int height_limit = -1;
     bool include_all_node_labels = true; // ??

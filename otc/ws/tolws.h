@@ -15,8 +15,8 @@
 #include "otc/error.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
-#include "ws/parallelreadserialwrite.h"
-#include "ws/otc_web_error.h"
+#include "otc/ws/parallelreadserialwrite.h"
+#include "otc/ws/otc_web_error.h"
 #include "json.hpp"
 
 #define REPORT_MEMORY_USAGE 1
@@ -277,7 +277,8 @@ std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy);
 std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
                                     const OttIdSet & ott_id_set);
 
-std::string taxon_subtree_ws_method(const RichTaxonomy & taxonomy,
+std::string taxon_subtree_ws_method(const TreesToServe & tts,
+                                    const RichTaxonomy & taxonomy,
                                     const RTRichTaxNode * taxon_node,
                                     NodeNameStyle label_format);
 

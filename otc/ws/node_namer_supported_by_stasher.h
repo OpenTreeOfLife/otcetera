@@ -1,12 +1,11 @@
 #ifndef OTC_NODE_NAMER_STASHER_H
 #define OTC_NODE_NAMER_STASHER_H
-#include "ws/tolws.h"
-#include "ws/trees_to_serve.h"
+#include "otc/ws/tolws.h"
+#include "otc/ws/trees_to_serve.h"
 
 
 namespace otc {
 
-extern TreesToServe tts;
 
 
 inline std::string node_id_for_summary_tree_node(const SumTreeNode_t & nd) {
@@ -21,9 +20,11 @@ class NodeNamerSupportedByStasher {
     mutable std::set<const std::string *> study_id_set;
     NodeNameStyle nns;
     const RichTaxonomy & taxonomy;
-    NodeNamerSupportedByStasher(NodeNameStyle in_nns, const RichTaxonomy &tax)
+    const TreesToServe & tts;
+    NodeNamerSupportedByStasher(NodeNameStyle in_nns, const RichTaxonomy &tax, const TreesToServe & tts_arg)
         :nns(in_nns),
-        taxonomy(tax) {
+        taxonomy(tax),
+        tts(tts_arg) {
     }
 
     std::string operator()(const SumTreeNode_t *nd) const {
