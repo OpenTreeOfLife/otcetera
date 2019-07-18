@@ -398,7 +398,14 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
         _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
         return;
     }
-    const unsigned int max_dist = pm.max_distance();
+    unsigned int max_dist = pm.max_distance();
+    const unsigned int max_offset = std::max(std::get<0>(pm_coords), std::get<1>(pm_coords));
+    if (max_offset > 2) {
+        max_dist = std::min(max_dist, max_offset - 1);
+    }
+    if (max_offset > 4) {
+        max_dist = std::min(max_dist, max_offset - 2);
+    }
     auto cd = pm.curr_distance();
     auto qc = pm.query_char();
 #   if defined(USING_EQUIL_LETTER_ARRAY)
