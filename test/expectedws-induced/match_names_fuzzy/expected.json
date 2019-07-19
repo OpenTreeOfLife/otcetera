@@ -16,7 +16,7 @@
           "matched_name": "Amaryllis brevicornis",
           "nomenclature_code": "ICZN",
           "score": 0.95238,
-          "search_string": "amaryllis breviconis",
+          "search_string": "Amaryllis breviconis",
           "taxon": {
             "flags": [],
             "is_suppressed": false,
@@ -38,7 +38,7 @@
           "matched_name": "Amaryllis brevipodis",
           "nomenclature_code": "ICN",
           "score": 0.9,
-          "search_string": "amaryllis breviconis",
+          "search_string": "Amaryllis breviconis",
           "taxon": {
             "flags": [],
             "is_suppressed": false,

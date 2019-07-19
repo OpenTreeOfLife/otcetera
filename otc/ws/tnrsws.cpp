@@ -60,10 +60,6 @@ struct ContextSearcher {
     json _base_name_match_json(const string & query, const TaxonomyRecord * record) const; 
 };
 
-string escape_query_string(const string& name) {
-    return name;
-}
-
 // It seems that infer_context is supposed to ignore synonyms:
 // * Bacteria is NOT ambiguous: it has 1 name match, and 1 synonym match.
 // * Firmiscala IS ambiguous: it has 0 name matches, and 1 synonym match.
@@ -131,22 +127,24 @@ vec_tax_str_pair_t exact_synonym_search_higher(const RichTaxonomy& taxonomy,
 }
 
 vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
-                                              const Taxon* context_root,
-                                              string query,
-                                              bool include_suppressed) {
+                                               const Taxon* context_root,
+                                               const string & query,
+                                               const string * normalized_query,
+                                               bool include_suppressed) {
     tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
         return taxon_is_specific(taxon);
     };
-    return taxonomy.exact_name_search(query, context_root, ok);
+    return taxonomy.exact_name_search(query, normalized_query, context_root, ok);
     
 }
 
 vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
                                              const Taxon* context_root,
-                                             string query,
+                                             const string & query,
+                                             const string * normalized_query,
                                              bool include_suppressed) {
     tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
@@ -154,12 +152,13 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
         }
         return taxon_is_genus(taxon);
     };
-    return taxonomy.exact_name_search(query, context_root, ok);
+    return taxonomy.exact_name_search(query, normalized_query, context_root, ok);
 }
 
 vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
                                               const Taxon* context_root,
-                                              string query,
+                                              const string & query,
+                                              const string * normalized_query,
                                               bool include_suppressed) {
     tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
@@ -167,7 +166,7 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return taxonomy.exact_name_search(query, context_root, ok);
+    return taxonomy.exact_name_search(query, normalized_query, context_root, ok);
 }
 
 vector<const Taxon*> prefix_name_search(const Taxon* context_root,
@@ -309,21 +308,21 @@ inline json ContextSearcher::exact_synonym_match_json(const string& query,
 pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
                                                     bool do_approximate_matching,
                                                     bool include_suppressed) {
-    auto query = normalize_query(raw_query);
+    auto norm_query = normalize_query(raw_query);
     json results;
     match_status status = unmatched;
     // 1. See if we can find an exact name match
-    auto exact_name_matches = taxonomy.exact_name_search(query, context_root, include_suppressed);
+    auto exact_name_matches = taxonomy.exact_name_search(raw_query, &norm_query, context_root, include_suppressed);
     for(auto taxon: exact_name_matches) {
-        results.push_back(exact_name_match_json(query, taxon));
+        results.push_back(exact_name_match_json(raw_query, taxon));
     }
     if (exact_name_matches.size() == 1) {
         status = unambiguous_match;
     }
     // 2. See if we can find an exact name match for synonyms
-    auto exact_synonym_matches = exact_synonym_search(taxonomy, context_root, query, include_suppressed);
+    auto exact_synonym_matches = exact_synonym_search(taxonomy, context_root, raw_query, include_suppressed);
     for(auto& [ taxon, synonym_name ]: exact_synonym_matches) {
-        results.push_back(exact_synonym_match_json(query, taxon, synonym_name));
+        results.push_back(exact_synonym_match_json(raw_query, taxon, synonym_name));
     }
     if (status == unmatched and results.size()) {
         status = ambiguous_match;
@@ -335,7 +334,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
         if (ctp == nullptr) {
             throw OTCError() << "Fuzzy matching has not been enabled in the taxonomy, but was requested in match_name.";
         }
-        auto fuzzy_results = ctp->fuzzy_query_to_taxa(query, context_root, taxonomy, include_suppressed);
+        auto fuzzy_results = ctp->fuzzy_query_to_taxa(norm_query, context_root, taxonomy, include_suppressed);
         if (fuzzy_results.size() > 0) {
             if (fuzzy_results.size() == 1) {
                 status = unambiguous_match;
@@ -343,7 +342,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
                 status = ambiguous_match;
             }
             for (auto fqr : fuzzy_results) {
-                results.push_back(fuzzy_name_match_json(query, fqr));
+                results.push_back(fuzzy_name_match_json(raw_query, fqr));
             }
         }
     }
@@ -500,13 +499,13 @@ vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus,
 
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
-string tnrs_autocomplete_name_ws_method(const string& name,
-                                        const string& context_name,
+string tnrs_autocomplete_name_ws_method(const string & name,
+                                        const string & context_name,
                                         bool include_suppressed,
                                         const RichTaxonomy& taxonomy) {
     json response;
     // We need to escape the query string.
-    auto escaped_query = escape_query_string(name);
+    auto escaped_query = normalize_query(name);
     // This corresponds to a SingleNamePrefixQuery in taxomachine.
     // * See org/opentree/taxonomy/plugins/tnrs_v3.java
     // * See org/opentree/tnrs/queries/SingleNamePrefixQuery.java
@@ -518,13 +517,13 @@ string tnrs_autocomplete_name_ws_method(const string& name,
     if (auto query_genus_species = split_genus_species(name)) {
         // 2. If we have a space, then assume the first part is a genus and match species names within the genus
         // Search against species and synonyms
-        add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, escaped_query, include_suppressed));
+        add_hits(response, taxonomy, exact_name_search_species(taxonomy, context_root, name, &escaped_query, include_suppressed));
         add_hits(response, taxonomy, exact_synonym_search(taxonomy, context_root, escaped_query, include_suppressed));
         if (response.size()) {
             return response.dump(1);
         }
         // no exact hit against the species index
-        auto genus_hits = exact_name_search_genus(taxonomy, context_root, escaped_query, include_suppressed);
+        auto genus_hits = exact_name_search_genus(taxonomy, context_root, name, &escaped_query, include_suppressed);
         if (not genus_hits.empty()) { // the first word was an exact match against the genus index
             auto [query_genus,query_species] = *query_genus_species;
             for(auto genus: genus_hits) {
@@ -536,7 +535,7 @@ string tnrs_autocomplete_name_ws_method(const string& name,
         }
         // no exact hit for first word against the genus index
         // Hit query string against the higher taxon index... not sure if this is useful, since it has a space
-        add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+        add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, name, &escaped_query, include_suppressed));
         if (not response.empty()) {
             return response.dump(1);
         }
@@ -548,7 +547,7 @@ string tnrs_autocomplete_name_ws_method(const string& name,
         }
         // fuzzy search on names and synonyms
     } else { // does not contain a space at all
-        add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
+        add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, name, &escaped_query, include_suppressed));
         add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
         if (not response.empty()) {
             return response.dump(1);

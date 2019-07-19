@@ -921,27 +921,4 @@ const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& node
 }
 
 
-vec_tax_nodes_t RichTaxonomy::exact_name_search(const std::string&  query_ref,
-                                                const RTRichTaxNode* context_root,
-                                                std::function<bool(const RTRichTaxNode*)> ok) const {
-    if (context_root == nullptr) {
-        context_root = get_tax_tree().get_root();
-    }                             
-    std::string query{query_ref};
-    for (auto& c: query) {
-        c = std::tolower(c);
-    }
-    vector<const RTRichTaxNode*> hits;
-    for(auto taxon: iter_post_n_const(*context_root)) {
-        if (not ok(taxon)) {
-            continue;
-        }
-        if (lcase_string_equals(query, taxon->get_data().get_nonuniqname())) {
-            hits.push_back(taxon);
-        }
-    }
-    return hits;
-}
-
-
 } //namespace otc

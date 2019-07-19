@@ -94,7 +94,7 @@ class CompressedTrie {
                                       const std::size_t trie_len,
                                       const unsigned int dist_threshold,
                                       stored_index_t prev_trie_match_char) const;
-    
+    std::optional<FuzzyQueryResult> exact_match(const stored_str_t & query_str) const;
     std::list<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str,
                                               unsigned int max_dist) const;
     
@@ -213,7 +213,10 @@ class CompressedTrie {
     bool _check_suffix_for_match(const PartialMatch<T> &pm,
                                  const stored_index_t * suffix,
                                  std::list<FuzzyQueryResult> & results) const;
-
+    bool suffix_is_empty(const stored_index_t * trie_suff) const;
+    bool suffix_is_exact_match(const stored_index_t * trie_suff,
+                               const std::vector<stored_index_t> & as_ind,
+                               std::size_t as_ind_pos) const;
     stored_index_t ctrie_get_index_for_letter(const stored_char_t & c) const {
         auto ltiit = letter_to_ind.find(c);
         if (ltiit == letter_to_ind.end()) {

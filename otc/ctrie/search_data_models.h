@@ -127,6 +127,9 @@ class FuzzyQueryResultWithTaxon {
     }
 
 };
+
+using vec_q_res_w_taxon = std::vector<FuzzyQueryResultWithTaxon>;
+
 struct SortQueryResByNearness {
     bool operator() (const FuzzyQueryResult & lhs,
                      const FuzzyQueryResult & rhs) const {
@@ -138,6 +141,8 @@ struct SortQueryResByNearness {
         return rhs.match_wide_char < rhs.match_wide_char;
     }
 };
+
+using sorted_q_res_set = std::set<FuzzyQueryResult, SortQueryResByNearness>;
 
 class FQuery {
     using ptr_pair = std::pair<const void *, const stored_index_t *>;

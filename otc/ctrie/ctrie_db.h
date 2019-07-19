@@ -11,14 +11,15 @@ using CTrie80_t = CompressedTrie<CTrie80Node>;
 class CompressedTrieBasedDB {
     public:
     void initialize(const std::set<std::string> & keys);
-    std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
+    sorted_q_res_set fuzzy_query(const std::string & query_str) const;
+    sorted_q_res_set exact_query(const std::string & query_str, const std::string & norm_query) const;
     private:
     // CTrie3_t wide_trie;
     CTrie80_t thin_trie;
 };
 
 
-inline std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
+inline sorted_q_res_set CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
 #   if defined(U32_TRIE_QUERIES)
         auto conv_query = to_query_str(query_str);
 #   else
@@ -46,6 +47,16 @@ inline std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB:
     //sorted.insert(std::begin(from_full), std::end(from_full));
     return sorted;
 }
+
+inline sorted_q_res_set CompressedTrieBasedDB::exact_query(const std::string & raw_query, const std::string & norm_query) const {
+    sorted_q_res_set sorted;
+    auto from_thin = thin_trie.exact_match(norm_query);
+    if (from_thin) {
+        sorted.insert(*from_thin);
+    }
+    return sorted;
+}
+
 
 
 inline void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys) {

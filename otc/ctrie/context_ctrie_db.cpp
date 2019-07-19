@@ -67,8 +67,8 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
 }
 
 
-std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuzzy_query(const std::string & query_str) const {
-    std::set<FuzzyQueryResult, SortQueryResByNearness> sorted;
+sorted_q_res_set ContextAwareCTrieBasedDB::fuzzy_query(const std::string & query_str) const {
+    sorted_q_res_set sorted;
     if (context.name_matcher != nullptr) {
         sorted = context.name_matcher->fuzzy_query(query_str);
     }
@@ -81,6 +81,19 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuz
     return sorted;
 }
 
+sorted_q_res_set  exact_query(const std::string & raw_query, const std::string & norm_query) const {
+    sorted_q_res_set sorted;
+    if (context.name_matcher != nullptr) {
+        sorted = context.name_matcher->exact_query(raw_query, norm_query);
+    }
+    for (auto c :children) {
+        if (c->context.name_matcher) {
+            auto csorted = c->context.name_matcher->exact_query(raw_query, norm_query);
+            sorted.insert(std::begin(csorted), std::end(csorted));
+        }
+    }
+    return sorted;
+}
 
 struct SortQueryResWTaxonByNearness {
     bool operator() (const FuzzyQueryResultWithTaxon & lhs,
@@ -95,17 +108,16 @@ struct SortQueryResWTaxonByNearness {
 };
 
 
-using vec_fqr_w_t = std::vector<FuzzyQueryResultWithTaxon>;
-vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & query_str,
-                                                          const RTRichTaxNode * context_root,
-                                                          const RichTaxonomy & , 
-                                                          bool include_suppressed) const {
-    LOG(DEBUG) << "fuzzy_query_to_taxa(" << query_str << ", context_id = " << context_root->get_ott_id() << ", ... , included_suppressed ="  << include_suppressed << ")";
-    vec_fqr_w_t results;
+
+vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set & sorted,
+                                                  const std::string & query_str,
+                                                  const RTRichTaxNode * context_root,
+                                                  const RichTaxonomy & , 
+                                                  bool include_suppressed,
+                                                  const std::string * exact_string) const {
     const auto & tax_data = context_root->get_data();
     const auto filter_trav_enter = tax_data.trav_enter;
     const auto filter_trav_exit = tax_data.trav_exit;
-    const std::set<FuzzyQueryResult, SortQueryResByNearness> sorted = fuzzy_query(query_str);
     if (sorted.empty()) {
         LOG(DEBUG) << "no matches";
     }
@@ -122,7 +134,7 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
                 LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
                 if (include_suppressed) {
                     const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
-                    results.push_back(FuzzyQueryResultWithTaxon(fqr, tr, wcp));
+                    sorted_correct_score.emplace({fqr, tr, wcp});
                 }
             } else {
                 const auto & res_tax_data = tax_ptr->get_data();
@@ -131,16 +143,21 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_and_syn_pair.second);
                     if (syn_ptr == nullptr) {
                         LOG(DEBUG) << "pushing non-syn";
-                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr, wcp));
+                        sorted_correct_score.emplace({fqr, tax_ptr, wcp});
                     } else {
                         LOG(DEBUG) << "pushing synonym";
-                        results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr,  syn_ptr, wcp));
+                        sorted_correct_score.emplace({fqr, tax_ptr,  syn_ptr, wcp});
                     }
                 }
             }
         }
     }
+    vec_q_res_w_taxon results;
+    for (const auto & sr : sorted_correct_score) {
+        results.push_back(sr);
+    }
     return results;
 }
+    
 
 } // namespace otc

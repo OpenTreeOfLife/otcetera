@@ -356,19 +356,21 @@ class RichTaxonomy: public BaseTaxonomy {
     
 
     vec_tax_nodes_t exact_name_search(const std::string& query,
+                                      const std::string * normalized_query,
                                       const RTRichTaxNode* context_root = nullptr,
                                       keep_taxon_pred_t ok = [](const RTRichTaxNode*){return true;}) const;
     vec_tax_nodes_t exact_name_search(const std::string & query,
+                                      const std::string * normalized_query,
                                       const RTRichTaxNode * context_root = nullptr,
                                       bool include_suppressed = true) const {
         if (include_suppressed) {
             keep_taxon_pred_t ok = [](const RTRichTaxNode*){return true;};
-            return exact_name_search(query, context_root, ok);
+            return exact_name_search(query, normalized_query, context_root, ok);
         } else {
             keep_taxon_pred_t ok = [&](const RTRichTaxNode* taxon) {
                 return not this->node_is_suppressed_from_tnrs(taxon);
             };
-            return exact_name_search(query, context_root, ok);
+            return exact_name_search(query, normalized_query, context_root, ok);
         }
     }
 

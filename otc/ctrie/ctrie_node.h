@@ -143,6 +143,29 @@ inline void fill_letter_and_node_indices(unsigned char curr_byte,
     }
 }
 
+inline std::optional<uint32_t> node_index_for_letter_for_word(unsigned char curr_byte,
+                                                                int offset,
+                                                                int target ,
+                                                                uint32_t & node_index) {
+    if (curr_byte == 0) {
+        return {};
+    }                             
+    unsigned char curr_bit = FIRST_BIT_OF_BYTE;
+    for (unsigned char i = 0; i < 8; ++i) {
+        if (curr_byte & curr_bit) {
+            if (i + offset ==  target) {
+                return {node_index};
+            }
+            node_index++;
+        }
+        if (i + offset >= target) {
+            return {};
+        }
+        curr_bit >>= 1;
+    }
+    return {};
+}
+
 template <typename T>
 class CTrieNode {
     private:
@@ -204,6 +227,28 @@ class CTrieNode {
         uint8_t bit = ONE_8;
         bit <<= (7 - bit_left_index);
         data.letters[byte_index] |= bit;
+    }
+
+    std::optional<u_int32_t> node_index_for_letter(int target) const {
+        assert(!is_terminal());
+        u_int32_t node_index = get_index();
+        uint8_t masked = data.letters[0] & TOP_LETTER_MASK8;
+        auto r = node_index_for_letter_for_word(masked, -2, target, node_index);
+        if (r) {
+            return r;
+        }
+        int offset = 6;
+        for (unsigned char i = 1; i < T::NUM_LETTER_BYTES; ++i) {
+            if (offset > target) {
+                return {};
+            }
+            r = node_index_for_letter_for_word(data.letters[i], offset, target, node_index);
+            if (r) {
+                return r;
+            }
+            offset += 8;
+        }
+        return {};
     }
 
     vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const  {
