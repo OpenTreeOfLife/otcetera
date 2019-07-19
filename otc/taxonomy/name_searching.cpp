@@ -22,13 +22,14 @@ namespace fs = boost::filesystem;
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/ctrie/str_utils.h"
+#include "otc/ctrie/context_ctrie_db.h"
 namespace otc
 {
 vec_tax_nodes_t RichTaxonomy::exact_name_search(const std::string & query_ref,
                                                 const std::string * normalized_query,
                                                 const RTRichTaxNode* context_root,
                                                 std::function<bool(const RTRichTaxNode*)> ok) const {
-    auto fuzzy = this->get_fuzzy_matcher();
+    const ContextAwareCTrieBasedDB * fuzzy = this->get_fuzzy_matcher();
     if (context_root == nullptr) {
         context_root = get_tax_tree().get_root();
     }
@@ -52,7 +53,11 @@ vec_tax_nodes_t RichTaxonomy::exact_name_search(const std::string & query_ref,
             scratch = normalize_query(query_ref);
             normalized_query = &scratch;
         }
-        
+        auto res = fuzzy->exact_query_to_taxa(query_ref, *normalized_query,
+                                              context_root, *this, ok);
+        for (auto x : res) {
+            hits.push_back(x.get_taxon());
+        }
     }
     return hits;
 }

@@ -12,7 +12,10 @@ class CompressedTrieBasedDB {
     public:
     void initialize(const std::set<std::string> & keys);
     sorted_q_res_set fuzzy_query(const std::string & query_str) const;
-    sorted_q_res_set exact_query(const std::string & query_str, const std::string & norm_query) const;
+    std::optional<FuzzyQueryResult> exact_query(const std::string & ,
+                                                const std::string & norm_query) const {
+        return thin_trie.exact_match(norm_query);
+    }
     private:
     // CTrie3_t wide_trie;
     CTrie80_t thin_trie;
@@ -45,15 +48,6 @@ inline sorted_q_res_set CompressedTrieBasedDB::fuzzy_query(const std::string & q
 
     //auto from_full = wide_trie.fuzzy_matches(conv_query, max_dist);
     //sorted.insert(std::begin(from_full), std::end(from_full));
-    return sorted;
-}
-
-inline sorted_q_res_set CompressedTrieBasedDB::exact_query(const std::string & , const std::string & norm_query) const {
-    sorted_q_res_set sorted;
-    auto from_thin = thin_trie.exact_match(norm_query);
-    if (from_thin) {
-        sorted.insert(*from_thin);
-    }
     return sorted;
 }
 

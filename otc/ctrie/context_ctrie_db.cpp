@@ -81,18 +81,22 @@ sorted_q_res_set ContextAwareCTrieBasedDB::fuzzy_query(const std::string & query
     return sorted;
 }
 
-sorted_q_res_set  ContextAwareCTrieBasedDB::exact_query(const std::string & raw_query, const std::string & norm_query) const {
-    sorted_q_res_set sorted;
+std::optional<FuzzyQueryResult>  ContextAwareCTrieBasedDB::exact_query(const std::string & raw_query, const std::string & norm_query) const {
     if (context.name_matcher != nullptr) {
-        sorted = context.name_matcher->exact_query(raw_query, norm_query);
+        auto res = context.name_matcher->exact_query(raw_query, norm_query);
+        if (res) {
+            return res;
+        }
     }
     for (auto c :children) {
         if (c->context.name_matcher) {
-            auto csorted = c->context.name_matcher->exact_query(raw_query, norm_query);
-            sorted.insert(std::begin(csorted), std::end(csorted));
+            auto res = c->context.name_matcher->exact_query(raw_query, norm_query);
+            if (res) {
+                return res;
+            }
         }
     }
-    return sorted;
+    return {};
 }
 
 struct SortQueryResWTaxonByNearness {
@@ -113,7 +117,7 @@ vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set &
                                                   const std::string & query_str,
                                                   const RTRichTaxNode * context_root,
                                                   const RichTaxonomy & , 
-                                                  bool include_suppressed,
+                                                  keep_taxon_pred_t keep,
                                                   const std::string * exact_string) const {
     const auto & tax_data = context_root->get_data();
     const auto filter_trav_enter = tax_data.trav_enter;
@@ -130,23 +134,31 @@ vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set &
         LOG(DEBUG) << "FuzzyQueryResult(match=\"" << fqr.match() << "\", score = " << fqr.score << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
         for (auto & tax_and_syn_pair : vec_taxon_and_syn_ptrs) {
             auto tax_ptr = tax_and_syn_pair.first;
+            if (not keep(tax_ptr)) {
+                LOG(DEBUG) << "skipped based on predicate returning false";
+                continue;
+            }
             if (tax_ptr == nullptr) {
-                LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
-                if (include_suppressed) {
-                    const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
+                LOG(DEBUG) << "taxon record match";
+                const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
+                if (exact_string == nullptr || tr->name == *exact_string) {
                     sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tr, wcp});
                 }
-            } else {
+           } else {
                 const auto & res_tax_data = tax_ptr->get_data();
                 LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
                 if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter) {
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_and_syn_pair.second);
                     if (syn_ptr == nullptr) {
                         LOG(DEBUG) << "pushing non-syn";
-                        sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr, wcp});
+                        if (exact_string == nullptr || tax_ptr->get_name() == *exact_string) {
+                            sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr, wcp});
+                        }
                     } else {
                         LOG(DEBUG) << "pushing synonym";
-                        sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr,  syn_ptr, wcp});
+                        if (exact_string == nullptr || syn_ptr->get_name() == *exact_string) {
+                            sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr,  syn_ptr, wcp});
+                        }
                     }
                 }
             }

@@ -289,10 +289,14 @@ const Context* least_inclusive_context(const vector<const RTRichTaxNode*> & taxa
     throw OTCError() << "Can't find least inclusive context for " << taxa.size() << " taxa!";
 }
 
+}
+#include <boost/algorithm/string/join.hpp>
+namespace otc {
 // FIXME - technically we could try and save the exact matches to avoid work.
 // FIXME - We should return Context* or Context&.
 pair<const Context*, vector<string>> infer_context_and_ambiguous_names(const RichTaxonomy& taxonomy,
                                                                       const vector<string>& names) {
+    LOG(DEBUG) << "infer_context_and_ambiguous_names(\"" << boost::algorithm::join(names, "\", \"") << ")" ;
     vector<const RTRichTaxNode*> unique_taxa;
     vector<string> ambiguous_names;
     for(auto& name: names) {

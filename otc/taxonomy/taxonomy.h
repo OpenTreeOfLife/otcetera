@@ -359,6 +359,7 @@ class RichTaxonomy: public BaseTaxonomy {
                                       const std::string * normalized_query,
                                       const RTRichTaxNode* context_root = nullptr,
                                       keep_taxon_pred_t ok = [](const RTRichTaxNode*){return true;}) const;
+    
     vec_tax_nodes_t exact_name_search(const std::string & query,
                                       const std::string * normalized_query,
                                       const RTRichTaxNode * context_root = nullptr,

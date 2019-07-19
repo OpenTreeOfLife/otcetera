@@ -24,14 +24,35 @@ class ContextAwareCTrieBasedDB {
         return tie_to_taxa(sorted, query_str, context_root, taxonomy, include_suppressed, nullptr);
     }
     
-    sorted_q_res_set  exact_query(const std::string & rqw_query, const std::string & norm_query) const;
+    std::optional<FuzzyQueryResult>  exact_query(const std::string & rqw_query, const std::string & norm_query) const;
+    
     vec_q_res_w_taxon exact_query_to_taxa(const std::string & raw_query, 
                                           const std::string & norm_query,
                                           const RTRichTaxNode * context_root,
                                           const RichTaxonomy & taxonomy,
                                           bool include_suppressed) const {
-        const auto sorted = exact_query(raw_query, norm_query);
-        return tie_to_taxa(sorted, raw_query, context_root, taxonomy, include_suppressed, &raw_query);
+        if (include_suppressed) {
+            std::function<bool(const RTRichTaxNode*)> ok = [](const RTRichTaxNode*){return true;};
+            return exact_query_to_taxa(raw_query, norm_query, context_root, taxonomy, ok);
+        } else {
+            std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
+                return (taxon != nullptr) && (not taxonomy.node_is_suppressed_from_tnrs(taxon));
+            };
+            return exact_query_to_taxa(raw_query, norm_query, context_root, taxonomy, ok);
+        }
+    }
+
+    vec_q_res_w_taxon exact_query_to_taxa(const std::string & raw_query, 
+                                          const std::string & norm_query,
+                                          const RTRichTaxNode * context_root,
+                                          const RichTaxonomy & taxonomy,
+                                          std::function<bool(const RTRichTaxNode*)> keep) const {
+        const auto res = exact_query(raw_query, norm_query);
+        sorted_q_res_set sorted;
+        if (res) {
+            sorted.insert(*res);
+        }
+        return tie_to_taxa(sorted, raw_query, context_root, taxonomy, keep, &raw_query);
     }
         
     private:
@@ -39,8 +60,24 @@ class ContextAwareCTrieBasedDB {
     vec_q_res_w_taxon tie_to_taxa(const sorted_q_res_set &sorted,
                                   const std::string & query_str,
                                   const RTRichTaxNode * context_root,
-                                  const RichTaxonomy & , 
+                                  const RichTaxonomy & taxonomy, 
                                   bool include_suppressed,
+                                  const std::string * exact_string) const {
+        if (include_suppressed) {
+            std::function<bool(const RTRichTaxNode*)> ok =  [](const RTRichTaxNode*){return true;};
+            return tie_to_taxa(sorted, query_str, context_root, taxonomy, ok, exact_string);
+        } else {
+            std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
+                return (taxon != nullptr) && (not taxonomy.node_is_suppressed_from_tnrs(taxon));
+            };
+            return tie_to_taxa(sorted, query_str, context_root, taxonomy, ok, exact_string);
+        }        
+    }
+    vec_q_res_w_taxon tie_to_taxa(const sorted_q_res_set &sorted,
+                                  const std::string & query_str,
+                                  const RTRichTaxNode * context_root,
+                                  const RichTaxonomy & , 
+                                  keep_taxon_pred_t keep,
                                   const std::string * exact_string) const;
     const Context & context;
     std::vector<const ContextAwareCTrieBasedDB *> children;

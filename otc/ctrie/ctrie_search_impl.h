@@ -411,35 +411,47 @@ void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> 
 
 template<typename T>
 std::optional<FuzzyQueryResult> CompressedTrie<T>::exact_match(const stored_str_t & norm_q) const {
+    LOG(DEBUG) << "exact_match(\"" << norm_q << "\")\n";
     const auto as_ind = encode_as_indices(norm_q);
     for (auto qai : as_ind) {
         if (qai == NO_MATCHING_CHAR_CODE) {
+            LOG(DEBUG) << "No match because of NO_MATCHING_CHAR_CODE";
             return {};
         }
     }
     const T * curr_nd = &(node_vec.at(0));
     for (std::size_t i = 0U; i < as_ind.size(); ++i) {
+        curr_nd->log_state(std::cerr);
         if (curr_nd->is_terminal()) {
             auto suffix_index = curr_nd->get_index();
+            LOG(DEBUG) << "checking suffix_index=" << (int) suffix_index ;
             if (suffix_is_exact_match(get_suffix_as_indices(suffix_index), as_ind, i)) {
-                return FuzzyQueryResult{as_ind, nullptr, 0, 0};
+                FuzzyQueryResult ret{as_ind, nullptr, 0, 0};
+                _finish_query_result(ret);
+                return ret;
             }
             return {};
         }
-        auto next_ind = curr_nd->node_index_for_letter(i);
+        const auto letter_index = as_ind[i];
+        auto next_ind = curr_nd->node_index_for_letter(letter_index);
         if (not next_ind) {
+            LOG(DEBUG) << "node_index_for_letter(" << (int) letter_index << ") ==> NOT FOUND";
+        
             return {};
         }
+        LOG(DEBUG) << "node_index_for_letter(" << (int) letter_index << ") ==> " << (int)(*next_ind);
         curr_nd = &(node_vec.at(*next_ind));
     }
-    if (curr_nd->is_terminal()) {
-        auto suffix_index = curr_nd->get_index();
-        if (suffix_is_empty(get_suffix_as_indices(suffix_index))) {
-            return FuzzyQueryResult{as_ind, nullptr, 0, 0};
-        }
+    LOG(DEBUG) << "matched entirety of query, checking if we are at a terminal...";
+    curr_nd->log_state(std::cerr);
+    if (curr_nd->is_key_terminating()) {
+        FuzzyQueryResult ret{as_ind, nullptr, 0, 0};
+        _finish_query_result(ret);
+        return ret;
     }
     return {};
 }
+
 template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
                                              const db_qu_let_tuple pm_coords,
