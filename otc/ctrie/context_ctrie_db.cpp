@@ -81,7 +81,7 @@ sorted_q_res_set ContextAwareCTrieBasedDB::fuzzy_query(const std::string & query
     return sorted;
 }
 
-sorted_q_res_set  exact_query(const std::string & raw_query, const std::string & norm_query) const {
+sorted_q_res_set  ContextAwareCTrieBasedDB::exact_query(const std::string & raw_query, const std::string & norm_query) const {
     sorted_q_res_set sorted;
     if (context.name_matcher != nullptr) {
         sorted = context.name_matcher->exact_query(raw_query, norm_query);
@@ -134,7 +134,7 @@ vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set &
                 LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
                 if (include_suppressed) {
                     const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
-                    sorted_correct_score.emplace({fqr, tr, wcp});
+                    sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tr, wcp});
                 }
             } else {
                 const auto & res_tax_data = tax_ptr->get_data();
@@ -143,10 +143,10 @@ vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set &
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_and_syn_pair.second);
                     if (syn_ptr == nullptr) {
                         LOG(DEBUG) << "pushing non-syn";
-                        sorted_correct_score.emplace({fqr, tax_ptr, wcp});
+                        sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr, wcp});
                     } else {
                         LOG(DEBUG) << "pushing synonym";
-                        sorted_correct_score.emplace({fqr, tax_ptr,  syn_ptr, wcp});
+                        sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr,  syn_ptr, wcp});
                     }
                 }
             }

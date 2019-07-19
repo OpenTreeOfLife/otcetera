@@ -30,7 +30,7 @@ class ContextAwareCTrieBasedDB {
                                           const RTRichTaxNode * context_root,
                                           const RichTaxonomy & taxonomy,
                                           bool include_suppressed) const {
-        const auto sorted = exact_query(norm_query);
+        const auto sorted = exact_query(raw_query, norm_query);
         return tie_to_taxa(sorted, raw_query, context_root, taxonomy, include_suppressed, &raw_query);
     }
         

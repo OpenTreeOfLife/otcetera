@@ -411,7 +411,7 @@ void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> 
 
 template<typename T>
 std::optional<FuzzyQueryResult> CompressedTrie<T>::exact_match(const stored_str_t & norm_q) const {
-    const auto as_ind = encode_as_indices(query_str);
+    const auto as_ind = encode_as_indices(norm_q);
     for (auto qai : as_ind) {
         if (qai == NO_MATCHING_CHAR_CODE) {
             return {};

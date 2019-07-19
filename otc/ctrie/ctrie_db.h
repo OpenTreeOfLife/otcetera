@@ -48,7 +48,7 @@ inline sorted_q_res_set CompressedTrieBasedDB::fuzzy_query(const std::string & q
     return sorted;
 }
 
-inline sorted_q_res_set CompressedTrieBasedDB::exact_query(const std::string & raw_query, const std::string & norm_query) const {
+inline sorted_q_res_set CompressedTrieBasedDB::exact_query(const std::string & , const std::string & norm_query) const {
     sorted_q_res_set sorted;
     auto from_thin = thin_trie.exact_match(norm_query);
     if (from_thin) {
