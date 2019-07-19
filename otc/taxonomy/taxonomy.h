@@ -360,14 +360,16 @@ class RichTaxonomy: public BaseTaxonomy {
                                       keep_taxon_pred_t ok = [](const RTRichTaxNode*){return true;}) const;
     vec_tax_nodes_t exact_name_search(const std::string & query,
                                       const RTRichTaxNode * context_root = nullptr,
-                                      bool include_suppressed) const {
+                                      bool include_suppressed = true) const {
         if (include_suppressed) {
-            return exact_name_search(query, context_root);
-        }                                               
-        std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
-            return not this->node_is_suppressed_from_tnrs(taxon);
-        };
-        // return exact_name_search(query, context_root, ok);
+            keep_taxon_pred_t ok = [](const RTRichTaxNode*){return true;};
+            return exact_name_search(query, context_root, ok);
+        } else {
+            keep_taxon_pred_t ok = [&](const RTRichTaxNode* taxon) {
+                return not this->node_is_suppressed_from_tnrs(taxon);
+            };
+            return exact_name_search(query, context_root, ok);
+        }
     }
 
     private:
