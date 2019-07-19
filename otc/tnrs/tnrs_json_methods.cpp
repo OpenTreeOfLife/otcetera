@@ -97,7 +97,7 @@ vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
         }
         return taxon_is_specific(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return taxonomy.exact_name_search(query, context_root, ok);
     
 }
 
@@ -111,7 +111,7 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
         }
         return taxon_is_genus(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return taxonomy.exact_name_search(query, context_root, ok);
 }
 
 vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
@@ -124,7 +124,7 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return taxonomy.exact_name_search(query, context_root, ok);
 }
 
 vector<const Taxon*> prefix_name_search(const Taxon* context_root,
@@ -337,7 +337,7 @@ vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
         }
         return taxon_is_specific(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return taxonomy.exact_name_search(query, context_root, , ok);
     
 }
 
@@ -351,7 +351,7 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
         }
         return taxon_is_genus(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return taxonomy.exact_name_search(query, context_root, ok);
 }
 
 vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
@@ -364,7 +364,7 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return taxonomy.exact_name_search(query, context_root, , ok);
 }
 
 vector<const Taxon*> prefix_name_search(const Taxon* context_root,
@@ -510,7 +510,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
     json results;
     match_status status = unmatched;
     // 1. See if we can find an exact name match
-    auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
+    auto exact_name_matches = taxonomy.exact_name_search(query, context_root, include_suppressed);
     for(auto taxon: exact_name_matches) {
         results.push_back(exact_name_match_json(query, taxon));
     }
@@ -619,7 +619,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
     json results;
     match_status status = unmatched;
     // 1. See if we can find an exact name match
-    auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
+    auto exact_name_matches = taxonomy.exact_name_search(query, context_root, include_suppressed);
     for(auto taxon: exact_name_matches) {
         results.push_back(exact_name_match_json(query, taxon));
     }

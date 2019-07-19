@@ -297,7 +297,7 @@ pair<const Context*, vector<string>> infer_context_and_ambiguous_names(const Ric
     vector<string> ambiguous_names;
     for(auto& name: names) {
         // This search (i) includes suppressed/dubious/deprecated taxa and (ii) DOES (?NOT) include synonyms.
-        auto hits = exact_name_search(taxonomy, name, true);
+        auto hits = taxonomy.exact_name_search(name, nullptr, true);
         if (hits.size() == 1) {
             unique_taxa.push_back(hits.front());
         } else {

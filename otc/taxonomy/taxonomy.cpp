@@ -921,9 +921,12 @@ const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& node
 }
 
 
-vector<const RTRichTaxNode *> exact_name_search(const RTRichTaxNode* context_root,
-                                                const std::string&  query_ref,
-                                                std::function<bool(const RTRichTaxNode*)> ok) {
+vec_tax_nodes_t RichTaxonomy::exact_name_search(const std::string&  query_ref,
+                                                const RTRichTaxNode* context_root,
+                                                std::function<bool(const RTRichTaxNode*)> ok) const {
+    if (context_root == nullptr) {
+        context_root = get_tax_tree().get_root();
+    }                             
     std::string query{query_ref};
     for (auto& c: query) {
         c = std::tolower(c);
