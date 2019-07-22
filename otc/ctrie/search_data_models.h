@@ -37,6 +37,13 @@ class FuzzyQueryResult {
             match_coded.insert(ip, trie_suff, trie_suff + suff_len);
         }
     }
+    
+    FuzzyQueryResult(const stored_str_t & exact_match)
+        :match_wide_char(exact_match),
+        distance(0),
+        score(1.0) {
+    }
+    
 
 };
 

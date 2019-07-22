@@ -19,14 +19,17 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
     std::set<std::string> all_names;
     auto insert_hint = all_names.begin();
     for (auto const & name2nd : rt_data.name_to_node) {
-        auto nn = normalize_query(name2nd.first);
-        match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{name2nd.second, nullptr});
-        insert_hint = all_names.insert(insert_hint, nn);
+        if (name2nd.second != nullptr) {
+            auto nn = normalize_query(name2nd.first);
+            match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{name2nd.second, nullptr});
+            insert_hint = all_names.insert(insert_hint, nn);
+        }
     }
     insert_hint = all_names.begin();
     for (auto name2ndvec : rt_data.homonym_to_node) {
         auto nn = normalize_query(name2ndvec.first);
         for (auto hnp : name2ndvec.second) {
+            assert(hnp != nullptr);
             match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{hnp, nullptr});
         }
         insert_hint = all_names.insert(insert_hint, nn);
@@ -35,6 +38,7 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
     insert_hint = all_names.begin();
     for (auto name2rec : rt_data.name_to_record) {
         auto nn = normalize_query(name2rec.first);
+        assert (name2rec.second != nullptr);
         match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{nullptr, (const void *)name2rec.second});
         insert_hint = all_names.insert(insert_hint, nn);
     }
@@ -42,12 +46,14 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
     for (auto name2recvec : rt_data.homonym_to_record) {
         auto nn = normalize_query(name2recvec.first);
         for (auto hrp : name2recvec.second) {
+            assert(hrp != nullptr);
             match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{nullptr, (const void *)hrp});
         }
         insert_hint = all_names.insert(insert_hint, nn);
     }
     for (const auto & tjs : taxonomy.get_synonyms_list()) {
         auto nn = normalize_query(tjs.name);
+        assert(tjs.primary != nullptr);
         match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{tjs.primary, (const void *)(&tjs)});
         all_names.insert(nn);
     }
@@ -125,7 +131,12 @@ vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set &
     if (sorted.empty()) {
         LOG(DEBUG) << "no matches";
     }
-    const auto qlc = lower_case_version(query_str);
+    std::string qlc;
+    if (exact_string == nullptr) {
+        qlc = lower_case_version(query_str);
+    } else {
+        qlc = lower_case_version(*exact_string);
+    }
     const auto wc = to_u32string(qlc);
     auto wcp = &wc;
     std::set<FuzzyQueryResultWithTaxon, SortQueryResWTaxonByNearness> sorted_correct_score;
@@ -142,7 +153,7 @@ vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set &
                 LOG(DEBUG) << "taxon record match";
                 const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
                 if (exact_string == nullptr || tr->name == *exact_string) {
-                    sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tr, wcp});
+                    sorted_correct_score.insert(FuzzyQueryResultWithTaxon{fqr, tr, wcp});
                 }
            } else {
                 const auto & res_tax_data = tax_ptr->get_data();
@@ -152,12 +163,12 @@ vec_q_res_w_taxon ContextAwareCTrieBasedDB::tie_to_taxa(const sorted_q_res_set &
                     if (syn_ptr == nullptr) {
                         LOG(DEBUG) << "pushing non-syn";
                         if (exact_string == nullptr || tax_ptr->get_name() == *exact_string) {
-                            sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr, wcp});
+                            sorted_correct_score.insert(FuzzyQueryResultWithTaxon{fqr, tax_ptr, wcp});
                         }
                     } else {
                         LOG(DEBUG) << "pushing synonym";
                         if (exact_string == nullptr || syn_ptr->get_name() == *exact_string) {
-                            sorted_correct_score.emplace(FuzzyQueryResultWithTaxon{fqr, tax_ptr,  syn_ptr, wcp});
+                            sorted_correct_score.insert(FuzzyQueryResultWithTaxon{fqr, tax_ptr,  syn_ptr, wcp});
                         }
                     }
                 }

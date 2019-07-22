@@ -47,11 +47,11 @@ class ContextAwareCTrieBasedDB {
                                           const RTRichTaxNode * context_root,
                                           const RichTaxonomy & taxonomy,
                                           std::function<bool(const RTRichTaxNode*)> keep) const {
-        const auto res = exact_query(raw_query, norm_query);
-        sorted_q_res_set sorted;
-        if (res) {
-            sorted.insert(*res);
+        if (match_name_to_taxon.find(norm_query) == match_name_to_taxon.end()) {
+            return vec_q_res_w_taxon{};
         }
+        sorted_q_res_set sorted;
+        sorted.insert(FuzzyQueryResult{norm_query});
         return tie_to_taxa(sorted, raw_query, context_root, taxonomy, keep, &raw_query);
     }
         
