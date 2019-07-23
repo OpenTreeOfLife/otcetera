@@ -375,8 +375,10 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         const OttIdSet extant_ids = set_difference_as_set(phylo_tip_ids, relevantExtinctIDs);
         for (auto tax2id_set_it : taxo_internal2id_set) {
             if (taxon_extant_conflicts_with_tree(tree, tax2id_set_it.second, extant_ids, relevantIncSedIDs)) {
+                LOG(DEBUG) << "taxon ott=" << tax2id_set_it.first->get_ott_id() << " contested by extant taxa.";
                 contestedByExtant.insert(tax2id_set_it.first);
             } else {
+                LOG(DEBUG) << "taxon ott=" << tax2id_set_it.first->get_ott_id() << " uncontested by extant taxa.";
                 uncontestedByExtant.insert(tax2id_set_it.first);
             }
         }
@@ -406,50 +408,69 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
         OttId curr_id = extinct_tip->get_ott_id();
         ConstNdPtr rel_forking_phylo_anc = extinct_tip;
         OttIdSet rfpa_des = set_intersection_as_set(extant_ids, rel_forking_phylo_anc->get_data().des_ids);
-
+        LOG(DEBUG) << "evaluate_extinct_leaf_placement(extinct_tip=ott" << curr_id << ")";
+        db_write_ott_id_set("rfpa_des", rfpa_des);
+        // find tip-most phylo ancestor of extinct tip that also has some extant descendants
         while (rfpa_des.size() < 1) {
             rel_forking_phylo_anc = rel_forking_phylo_anc->get_parent();
             if (rel_forking_phylo_anc == nullptr) {
+                LOG(DEBUG) << "in while rel_forking_phylo_anc == nullptr...";
                 return nmttp;
             }
             const auto & np_des_ids = rel_forking_phylo_anc->get_data().des_ids;
             rfpa_des = set_intersection_as_set(extant_ids, np_des_ids);
+            db_write_ott_id_set("rfpa_des in while", rfpa_des);
         }
         if (rfpa_des == extant_ids) {
+            LOG(DEBUG) << "in while rfpa_des == extant_ids ...";
             return nmttp;
         }
         auto taxo_node = phylo2taxo.at(extinct_tip);
         const InducedParAndIds * tax_par_and_id_set = &(taxo_induced_tree.at(taxo_node));
-        OttIdSet tax_forking_anc_des_ids;
         ConstNdPtr curr_taxo_nd = tax_par_and_id_set->first;
         while (true) {
+            LOG(DEBUG) << "in while(true). tax_par_and_id_set->first=" << tax_par_and_id_set->first->get_ott_id();
+            db_write_ott_id_set("tax_par_and_id_set->second", tax_par_and_id_set->second);
             while (contains(contestedByExtant, curr_taxo_nd)){
+                LOG(DEBUG) << "Skipping because contested by extant...";
                 tax_par_and_id_set = &(taxo_induced_tree.at(curr_taxo_nd));
                 curr_taxo_nd = tax_par_and_id_set->first;
+                LOG(DEBUG) << "in while(true). tax_par_and_id_set->first=" << tax_par_and_id_set->first->get_ott_id();
+                db_write_ott_id_set("tax_par_and_id_set->second", tax_par_and_id_set->second);
+            
             }
             if (curr_taxo_nd == taxo_root) {
                 break;
             }
-            tax_forking_anc_des_ids = set_intersection_as_set(tax_par_and_id_set->second, extant_ids);
+            OttIdSet tax_forking_anc_des_ids = set_intersection_as_set(tax_par_and_id_set->second, extant_ids);
+            db_write_ott_id_set("tax_forking_anc_des_ids", tax_forking_anc_des_ids);
             if (tax_forking_anc_des_ids.size() >= rfpa_des.size()) {
                 if (is_subset(rfpa_des, tax_forking_anc_des_ids)) {
+                    LOG(DEBUG) << "breaking because rfpa_des is subset of tax_forking_anc_des_ids";
                     break;
                 } else {
                     nmttp.first = true;
                     tax_par_and_id_set = &(taxo_induced_tree.at(curr_taxo_nd));
                     curr_taxo_nd = tax_par_and_id_set->first;
+                    LOG(DEBUG) << "nmttp.first <- true; curr_taxo_nd = " << curr_taxo_nd->get_ott_id();
+                    db_write_ott_id_set("tax_par_and_id_set->second", tax_par_and_id_set->second);
                 }
             } else {
-                if (!is_subset(tax_forking_anc_des_ids, rfpa_des)) {
+                if (true || is_subset(tax_forking_anc_des_ids, rfpa_des)) {
+                    LOG(DEBUG) << "nmttp.first <- true";
                     nmttp.first = true;
                 }
                 tax_par_and_id_set = &(taxo_induced_tree.at(curr_taxo_nd));
                 curr_taxo_nd = tax_par_and_id_set->first;
+                LOG(DEBUG) << "curr_taxo_nd = " << curr_taxo_nd->get_ott_id();
+                db_write_ott_id_set("tax_par_and_id_set->second", tax_par_and_id_set->second);
+                
             }
         }
         if (nmttp.first) {
             nmttp.second = curr_taxo_nd;
         }
+        LOG(DEBUG) << "nmttp = " << nmttp.first << ", " << (nmttp.second == nullptr ? OttId{0} : nmttp.second->get_ott_id());
         return nmttp;
     }
 
