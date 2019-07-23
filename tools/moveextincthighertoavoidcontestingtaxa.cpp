@@ -443,7 +443,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                 break;
             }
             OttIdSet tax_forking_anc_des_ids = set_intersection_as_set(tax_par_and_id_set->second, extant_ids);
-            db_write_ott_id_set("tax_forking_anc_des_ids", tax_forking_anc_des_ids);
+            db_write_ott_id_set("tax_forking_anc_des_ids extant", tax_forking_anc_des_ids);
             if (tax_forking_anc_des_ids.size() >= rfpa_des.size()) {
                 if (is_subset(rfpa_des, tax_forking_anc_des_ids)) {
                     LOG(DEBUG) << "breaking because rfpa_des is subset of tax_forking_anc_des_ids";
@@ -456,7 +456,7 @@ struct MoveExtinctHigherState : public TaxonomyDependentTreeProcessor<TreeMapped
                     db_write_ott_id_set("tax_par_and_id_set->second", tax_par_and_id_set->second);
                 }
             } else {
-                if (true || is_subset(tax_forking_anc_des_ids, rfpa_des)) {
+                if ((not tax_forking_anc_des_ids.empty()) and is_subset(tax_forking_anc_des_ids, rfpa_des)) {
                     LOG(DEBUG) << "nmttp.first <- true";
                     nmttp.first = true;
                 }
