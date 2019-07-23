@@ -1,70 +1,25 @@
 {
   "context": "All life",
   "governing_code": "undefined",
-  "includes_approximate_matches": true,
+  "includes_approximage_matches": false,
   "includes_deprecated_taxa": false,
   "includes_suppressed_names": false,
-  "matched_names": [
-    "Amaryllis breviconis"
-  ],
+  "matched_names": [],
   "results": [
     {
-      "matches": [
-        {
-          "is_approximate_match": true,
-          "is_synonym": false,
-          "matched_name": "Amaryllis brevicornis",
-          "nomenclature_code": "ICZN",
-          "score": 0.9,
-          "search_string": "amaryllis breviconis",
-          "taxon": {
-            "flags": [],
-            "is_suppressed": false,
-            "name": "Amaryllis brevicornis",
-            "ott_id": 4671798,
-            "rank": "species",
-            "synonyms": [
-              "Amaryllis brevicornis"
-            ],
-            "tax_sources": [
-              "worms:244457"
-            ],
-            "unique_name": "Amaryllis brevicornis"
-          }
-        },
-        {
-          "is_approximate_match": true,
-          "is_synonym": false,
-          "matched_name": "Amaryllis brevipodis",
-          "nomenclature_code": "ICN",
-          "score": 0.85,
-          "search_string": "amaryllis breviconis",
-          "taxon": {
-            "flags": [],
-            "is_suppressed": false,
-            "name": "Amaryllis brevipodis",
-            "ott_id": 6013112,
-            "rank": "species",
-            "synonyms": [
-              "Amaryllis brevipodis"
-            ],
-            "tax_sources": [
-              "gbif:5643263"
-            ],
-            "unique_name": "Amaryllis brevipodis"
-          }
-        }
-      ],
-      "name": "Amaryllis breviconis"
+      "matches": null,
+      "name": "amaryllis breviconis"
     }
   ],
   "taxonomy": {
     "author": "open tree of life project",
     "name": "ott",
-    "source": "ott3.0draft6",
-    "version": "3.0",
-    "weburl": "https://tree.opentreeoflife.org/about/taxonomy-version/ott3.0"
+    "source": "ott0.0draft0",
+    "version": "0.0",
+    "weburl": "https://tree.opentreeoflife.org/about/taxonomy-version/ott0.0"
   },
   "unambiguous_names": [],
-  "unmatched_names": []
+  "unmatched_names": [
+    "Amaryllis breviconis"
+  ]
 }
