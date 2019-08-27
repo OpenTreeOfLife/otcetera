@@ -33,7 +33,7 @@
  *     We're spending 30% time in map::operator[], and probably more in allocation/deletion.
  *     A Vertex is really an integer.
  *
- * S2. dynamic_graph::remove_edge takes 18% of the time.
+ * S2. dynamic_graph::remove_edge takes 78% of the time.
  *
  * Problems:
  *
@@ -1387,15 +1387,15 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 }
 
 // % otc-solve-subproblem ott596112.tre
-// % otc-solve-subproblem ott5553749.tre FAILS - different answer!
-// % otc-solve-subproblem ott5551466.tre
+// % otc-solve-subproblem ott497126.tre   OK, used to FAIL is_consistent == is_consistent2
+// % otc-solve-subproblem ott5553749.tre
 // % otc-solve-subproblem ott56610.tre
 // % otc-solve-subproblem ott1041547.tre
+// % otc-solve-subproblem ott5551466.tre  OK, used to FAIL is_consistent == is_consistent2
 
 /*
 Find test-cases that are not too large:
 for i in $(<files-by-size.txt) ; do echo $i ; if ! otc-solve-subproblem $i ; then echo $i >> bad ; fi ; done
-ott497126.tre
  - OK, the problem comes from going through the tree a node at a time.
  - if have ((a1,a2)a,(b1,b2)b), the we test {stuff,a} and keep a, and then {stuff,b} BUT WITHOUT 'a'.
 ott791895.tre
@@ -1416,6 +1416,37 @@ ott216628.tre
  * This one seems not to terminate: ott1041547.tre
  * - debugging it by gdb/^C/back-trace seems like it could be effective.
  */
+
+template<typename T>
+vector<T> append(const vector<T>& v1, const vector<T>& v2)
+{
+    auto v3 = v1;
+    v3.insert(v3.end(), v2.begin(), v2.end());
+    return v3;
+}
+
+int non_leaf_children(const node_t* start)
+{
+    int count = 0;
+    for(auto node = start->get_first_child(); node ; node = node->get_next_sib())
+        if (not node->is_tip())
+            count++;
+    return count;
+}
+
+vector<const node_t*> add_node_remove_children(const vector<const node_t*>& nodes, const node_t* focal_node)
+{
+    vector<const node_t*> nodes2;
+    nodes2.reserve(nodes.size());
+    for(auto node: nodes)
+        if (node->get_parent() != focal_node)
+            nodes2.push_back(node);
+
+    assert(nodes.size() - nodes2.size() == non_leaf_children(focal_node));
+
+    nodes2.push_back(focal_node);
+    return nodes2;
+}
 
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
@@ -1461,23 +1492,28 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             return true;
         };
     vector<const node_t*> consistent_trees;
-    auto remove_split_if_inconsistent = [&](auto nd) {
-                                            consistent_trees.push_back(nd);
-                                            auto tree = BUILD_ST(consistent_trees);
-                                            consistent_trees.pop_back();
+    auto remove_split_if_inconsistent = [&](auto focal_node, vector<const node_t*>& consistent_nodes)
+                                        {
+                                            // 1. Append the focal node and remove its descendants. There should only have DIRECT descendants.
+                                            auto consistent_nodes2 = add_node_remove_children(consistent_nodes, focal_node);
+
+                                            // 2. Append consistent_trees + consistent_nodes2.
+                                            auto tree = BUILD_ST( append(consistent_trees, consistent_nodes2) );
                                             if (not tree)
-                                            {
-                                                collapse_split_and_del_node(nd);
-                                            }
+                                                collapse_split_and_del_node(focal_node);
+                                            else
+                                                std::swap(consistent_nodes, consistent_nodes2);
                                             return tree;
                                         };
     // 1. Find splits in order of input trees
     vector<Tree_t::node_type const*> compatible_taxa;
-    for(int i=0;i<trees.size();i++) {
+    for(int i=0;i<trees.size();i++)
+    {
         const auto& tree = trees[i];
         auto root = tree->get_root();
         const auto leafTaxa = root->get_data().des_ids;
         const auto leafTaxaIndices = remap(leafTaxa);
+
 #ifndef NDEBUG
 #pragma clang diagnostic ignored  "-Wunreachable-code-loop-increment"
         for(const auto& leaf: set_difference_as_set(leafTaxa, all_leaves)) {
@@ -1514,6 +1550,10 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 if (not nd->is_tip() and nd != root)
                     nodes_to_check.push_back(nd);
 
+            // There are sibling subtrees that have been checked before us.
+            // When checking consistency we need to include these.
+            vector<const node_t*> consistent_nodes;
+
             for(auto nd: nodes_to_check)
             {
                 const auto descendants = remap(nd->get_data().des_ids);
@@ -1521,8 +1561,11 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 LOG(WARNING)<<"Trying partition "<<nd<<" in tree "<<i<<": "<<is_consistent;
                 for(auto d: descendants)
                     LOG(DEBUG)<<"    "<<ids[d]<<"  ("<<d<<")";
-                bool is_consistent2 = (bool)remove_split_if_inconsistent(nd);
+
+                bool is_consistent2 = (bool)remove_split_if_inconsistent(nd, consistent_nodes);
                 assert(is_consistent == is_consistent2);
+                if (is_consistent != is_consistent2)
+                    throw OTCError() << "is_consistent != is_consistent2";
                 if (is_consistent) consistent_count++;
             }
             if (consistent_count > 0)
