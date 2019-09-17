@@ -493,7 +493,14 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
         data.possibly_nonunique_name = string_view(nd.get_name());
     }
     data.flags = tr.flags;
-    data.rank = rank_name_to_enum.at(string(tr.rank));
+    auto rank = rank_name_to_enum.find(string(tr.rank));
+    if (rank == rank_name_to_enum.end())
+    {
+        data.rank = RANK_NO_RANK;
+        LOG(WARNING)<<"taxon '"<<uname<<"' has unknown rank '"<<tr.rank<<"'";
+    }
+    else
+        data.rank = rank->second;
     register_taxon_in_maps(tree_data.name_to_node,
                            tree_data.homonym_to_node,
                            data.possibly_nonunique_name,
