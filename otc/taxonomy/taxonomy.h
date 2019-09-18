@@ -83,7 +83,9 @@ enum TaxonomicRank {
 
 bool rank_is_specific(TaxonomicRank rank);
 
-extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
+extern const std::map<TaxonomicRank, std::string, std::less<>> rank_enum_to_name;
+extern const std::map<std::string, TaxonomicRank, std::less<>> rank_name_to_enum;
+
 extern const std::string empty_string;
 extern const std::set<std::string> indexed_source_prefixes;
 
@@ -380,9 +382,6 @@ inline void populate_node_from_taxonomy_record(Node_t & nd,
     nd.set_ott_id(line.id);
     nd.set_name(get_name(line));    
 }
-
-extern const std::map<TaxonomicRank, std::string> rank_enum_to_name;
-extern const std::map<std::string, TaxonomicRank> rank_name_to_enum;
 
 template<typename T>
 inline void register_taxon_in_maps(std::map<std::string_view, const T *> & n2n,

@@ -65,7 +65,7 @@ bool rank_is_specific(TaxonomicRank rank)
 }
 
 
-const map<string, TaxonomicRank> rank_name_to_enum = 
+const map<string, TaxonomicRank, std::less<>> rank_name_to_enum = 
     {   {"domain", RANK_DOMAIN},
         {"superkingdom", RANK_SUPERKINGDOM},
         {"kingdom", RANK_KINGDOM},
@@ -111,7 +111,7 @@ const map<string, TaxonomicRank> rank_name_to_enum =
         {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
     };
 
-const map<TaxonomicRank, string> rank_enum_to_name = 
+const map<TaxonomicRank, string, std::less<>> rank_enum_to_name = 
     {   {RANK_DOMAIN, "domain"},
         {RANK_SUPERKINGDOM, "superkingdom"},
         {RANK_KINGDOM, "kingdom"},
