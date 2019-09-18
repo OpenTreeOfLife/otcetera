@@ -97,6 +97,18 @@ inline const std::string & rank_to_string(const TaxonomicRank &r) {
     return i->second;
 }
 
+inline const TaxonomicRank string_to_rank(const std::string_view& s)
+{
+    // FIXME! 
+    auto rank = rank_name_to_enum.find(s);
+    if (rank == rank_name_to_enum.end())
+    {
+        LOG(WARNING)<<"unknown rank '"<<s<<"'";
+        return RANK_NO_RANK;
+    }
+    else
+        return rank->second;
+}
 
 
 inline std::vector<std::string> comma_separated_as_vec(const std::string & sourceinfo) {
@@ -492,14 +504,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
         data.possibly_nonunique_name = string_view(nd.get_name());
     }
     data.flags = tr.flags;
-    auto rank = rank_name_to_enum.find(string(tr.rank));
-    if (rank == rank_name_to_enum.end())
-    {
-        data.rank = RANK_NO_RANK;
-        LOG(WARNING)<<"taxon '"<<uname<<"' has unknown rank '"<<tr.rank<<"'";
-    }
-    else
-        data.rank = rank->second;
+    data.rank = string_to_rank(tr.rank);
     register_taxon_in_maps(tree_data.name_to_node,
                            tree_data.homonym_to_node,
                            data.possibly_nonunique_name,
