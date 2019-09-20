@@ -84,6 +84,14 @@ optional<string> load_config(const vector<string>& filenames, const string& sect
 }
 
 optional<string> dot_opentree() {
+    auto envconfig = std::getenv("OTC_CONFIG");
+    if (envconfig) {
+        std::ifstream test(envconfig);
+        if (not test) {
+            return {};
+        }
+        return envconfig;
+    }
     auto homedir = std::getenv("HOME");
     if (not homedir) {
         return {};

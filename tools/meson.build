@@ -49,11 +49,16 @@ programs = [
   ['relabel-tree',  'relabel-tree'],
   ['tree-tool',  'tree-tool'],
   ['broken-taxa',  'broken-taxa'],
-  ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes']
+  ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],
+  ['tnrs-cli', 'tnrs-cli']
   ]
 
 foreach program : programs
-  executable('otc-'+program[1], program[0] + '.cpp', dependencies: [boost, libotcetera, json], install_rpath: rpath, install: true)
+  executable('otc-'+program[1],
+             program[0] + '.cpp',
+             dependencies: [boost, libotcetera, json],
+             install_rpath: rpath,
+             install: true)
 endforeach
 
 executable('otc-version-reporter', ['version-reporter.cpp',git_version_h], dependencies: [boost, libotcetera, json], install_rpath: rpath, install: true)

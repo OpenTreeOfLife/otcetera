@@ -973,9 +973,9 @@ void find_incertae_sedis_in_supertree(Tree_t & /* taxonomy */,
 // so we find out which ones are not found in the supertree before calling unprune_by_postorder_traversal
 // results are stored in unprune_stats. This relies on having been filled...
 void find_broken_incertae_sedis_des(Tree_t & /* taxonomy */,
-				    Tree_t & /* supertree */,
-				    const map<OttId, childParPair> & /* ott_to_tax */,
-                                        UnpruneStats & unprune_stats) {
+                                    Tree_t & /* supertree */,
+                                    const map<OttId, childParPair> & /* ott_to_tax */,
+                                    UnpruneStats & unprune_stats) {
     const auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto ttm_it: to_tips_map) {
         auto inc_sed_taxon = ttm_it.first;
@@ -998,10 +998,10 @@ void find_broken_incertae_sedis_des(Tree_t & /* taxonomy */,
 
 // last step in do_unprune_and_name
 void unprune_by_postorder_traversal(Tree_t & /* taxonomy */,
-				    Tree_t & supertree,
-				    const OttIdSet & /* incertae_sedis_ids */,
-				    const map<OttId, childParPair> & ott_to_tax,
-				    UnpruneStats & unprune_stats) {
+                                    Tree_t & supertree,
+                                    const OttIdSet & /* incertae_sedis_ids */,
+                                    const map<OttId, childParPair> & ott_to_tax,
+                                    UnpruneStats & unprune_stats) {
     map<OttId, Node_t*> ott_to_sol;
     const auto snVec = all_nodes(supertree);
     // postorder walk over supertree. Every time we find a node assigned to a taxon

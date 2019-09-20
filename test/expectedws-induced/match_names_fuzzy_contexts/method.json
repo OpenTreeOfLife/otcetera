@@ -1,0 +1,10 @@
+{
+    "url_fragment": "v3/tnrs/match_names",
+    "verb": "POST",
+    "arguments": {
+      "names": ["Amaryllis breviconis"],
+      "do_approximate_matching": true,
+      "context_name": "Vascular plants"
+    }
+}
+  

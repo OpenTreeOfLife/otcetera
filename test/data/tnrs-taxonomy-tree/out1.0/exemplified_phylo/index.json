@@ -1,0 +1,21 @@
+{
+  "exemplified_phylo": {
+    "nonempty_tree_filenames": [
+      "xx_1@1.tre",
+      "xx_2@1.tre"
+    ],
+    "nonempty_trees": [
+      [
+        "xx_1",
+        "1"
+      ],
+      [
+        "xx_2",
+        "1"
+      ]
+    ],
+    "num_leaves_in_exemplified_taxonomy": 3,
+    "source_tree_to_ott_id_exemplified_list": {},
+    "taxa_exemplified": {}
+  }
+}

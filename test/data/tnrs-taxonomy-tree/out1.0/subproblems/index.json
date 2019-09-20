@@ -1,0 +1,45 @@
+{
+  "subproblems": {
+    "contested_taxa": {},
+    "input_and_subproblems_sorted": [
+      [
+        "xx_2@1",
+        [
+          "ott5268475",
+          "ott805080"
+        ]
+      ],
+      [
+        "xx_1@1",
+        [
+          "ott5268475",
+          "ott805080"
+        ]
+      ]
+    ],
+    "sorted_by_num_phylo_inputs": [
+      [
+        "ott5268475.tre",
+        [
+          "xx_1@1.tre",
+          "xx_2@1.tre",
+          "TAXONOMY"
+        ],
+        2
+      ],
+      [
+        "ott805080.tre",
+        [
+          "xx_1@1.tre",
+          "xx_2@1.tre",
+          "TAXONOMY"
+        ],
+        2
+      ]
+    ],
+    "tree_files": [
+      "ott5268475.tre",
+      "ott805080.tre"
+    ]
+  }
+}
