@@ -376,6 +376,8 @@ nlohmann::json tax_about_json(const RichTaxonomy & taxonomy);
 void tax_service_add_taxon_info(const RichTaxonomy & taxonomy, const RTRichTaxNode & nd_taxon, nlohmann::json & taxonrepr);
 void tax_service_add_suppressed_taxon_info(const RichTaxonomy & taxonomy, const TaxonomyRecord & nd_taxon, nlohmann::json & taxonrepr);
 
+std::string get_synth_node_label(const SumTreeNode_t* node);
+
 inline const std::string & get_taxon_unique_name(const RTRichTaxNode & nd_taxon) {
     return nd_taxon.get_name();
 }

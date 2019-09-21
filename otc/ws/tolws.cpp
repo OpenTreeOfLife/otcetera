@@ -5,6 +5,7 @@
 #include "otc/ws/node_namer_supported_by_stasher.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
+#include "otc/node_naming.h"       // for make_name(prefix,OttId)
 #include <optional>
 #include <string_view>
 #include "otc/tnrs/context.h"
@@ -31,7 +32,13 @@ using otc::OttId;
 namespace otc {
 const int OK = restbed::OK;
 
-
+string get_synth_node_label(const SumTreeNode_t* node)
+{
+    if (node->has_ott_id())
+        return make_name("ott", node->get_ott_id());
+    else
+        return node->get_name();
+}
 
 string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
@@ -629,7 +636,7 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
     auto result = find_required_node_by_id_str(*tree_ptr, node_id);
     if (result.was_broken) {
         json broken;
-        broken["mrca"] = result.node->get_name();
+        broken["mrca"] = get_synth_node_label(result.node);
         json j;
         j["broken"] = broken;
         throw OTCBadRequest("node_id was not found (broken taxon).\n")<<j;
