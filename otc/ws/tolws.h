@@ -1,3 +1,4 @@
+
 #ifndef OTC_TOLWS_H
 #define OTC_TOLWS_H
 #include <cstdint>
@@ -107,9 +108,11 @@ typedef std::pair<const SumTreeNode_t *, SumTreeNodeVec_t> BrokenMRCAAttachVec;
 
 class SumTreeData {
     public:
+    // maps ottX or mrcaottXottY to node* if node lacks ottid.
     std::unordered_map<std::string, const SumTreeNode_t *> broken_name_to_node;
     std::unordered_map<OttId, const SumTreeNode_t *> id_to_node;
     
+    // maps ottX to node* if taxon is broken.
     std::unordered_map<std::string, BrokenMRCAAttachVec> broken_taxa;
 };
 using SummaryTree_t = otc::RootedTree<SumTreeNodeData, SumTreeData>;
@@ -217,9 +220,27 @@ void index_by_name_or_id(T & tree) {
     }
 }
 
-const SumTreeNode_t * find_node_by_id_str(const SummaryTree_t & tree,
-                                          const std::string & node_id,
-                                          bool & was_broken);
+/// The complete taxonomy of looking up is like:
+///    ottX -> {too large, _ -> {never valid, _ -> {deprecated (previously valid), _ -> {pruned, _ -> {broken, OK!}}}}}
+///     mrcaottXottY -> OK | BadOTT (ReasonOTTMissing) | BadMRCA (ReasonOTTMissing)
+///       In this case if X or Y has a "broken" result, then we needn't fail.
+
+struct node_lookup_t
+{
+    const SumTreeNode_t* node = nullptr;
+    bool was_broken = false;
+
+    bool broken() const {return was_broken;}
+    bool present() const {return node and not was_broken;}
+    // technically, this includes: {too large, never valid, deprecated (once valid), and PRUNED}
+    bool invalid() const {return node == nullptr and not was_broken;}
+
+    node_lookup_t() {};
+    node_lookup_t(const SumTreeNode_t* n):node(n) {}
+};
+
+node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const std::string & node_id);
+
 class TreesToServe;
 
 std::string available_trees_ws_method(const TreesToServe &tts);
