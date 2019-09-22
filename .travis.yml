@@ -26,8 +26,8 @@ matrix:
           - g++-7
           - pandoc
           - libboost-all-dev
-    - os: osx
-      osx_image: xcode10.1
+# - os: osx
+# osx_image: xcode10.1
 
 
 before_install:

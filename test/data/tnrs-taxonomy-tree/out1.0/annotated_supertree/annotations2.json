@@ -1,0 +1,46 @@
+{
+ "date_completed": "2019-06-27 18:12:00",
+ "filtered_flags": "major_rank_conflict,major_rank_conflict_inherited,environmental,viral,barren,not_otu,hidden,was_container,inconsistent,hybrid,merged",
+ "generated_by": [
+  {
+   "git_sha": "56259e16abe7deffb10da3df4f4715b81bc3c91d",
+   "invocation": "cmd",
+   "name": "propinquity",
+   "url": "https://github.com/OpenTreeOfLife/propinquity",
+   "version": "N/A"
+  },
+  {
+   "git_sha": "4c3e468dceb2866fe0e8ce9a276f1f661871b6fb",
+   "invocation": "N/A",
+   "name": "peyotl",
+   "url": "http://opentreeoflife.github.io/peyotl",
+   "version": "0.1.4dev"
+  },
+  {
+   "git_sha": "unknown",
+   "invocation": "N/A",
+   "name": "otcetera",
+   "url": "https://github.com/OpenTreeOfLife/otcetera",
+   "version": "unknown"
+  }
+ ],
+ "num_leaves_in_exemplified_taxonomy": 3,
+ "num_source_studies": 2,
+ "num_source_trees": 2,
+ "root_taxon_name": "",
+ "source_id_map": {
+  "xx_1@1": {
+   "git_sha": "unknown",
+   "study_id": "xx_1",
+   "tree_id": "1"
+  },
+  "xx_2@1": {
+   "git_sha": "unknown",
+   "study_id": "xx_2",
+   "tree_id": "1"
+  }
+ },
+ "synth_id": "<UNKNOWN>",
+ "taxonomy_version": "0.0draft0",
+ "tree_id": "<UNKNOWN>"
+}
