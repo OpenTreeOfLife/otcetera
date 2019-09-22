@@ -242,21 +242,17 @@ N * special_bisect_with_new_child(N * taxon, N * curr_supertree_node, bool move_
 // Used for starting from an ancestor of the taxa in taxon_node and moving one
 //    step closer to the MRCA of those taxa
 Node_t * find_single_child_with_all_marked_taxa(Node_t * curr_supertree_node,
-                                                const Node_t * taxon_node) {
-    const auto & taxon_data = taxon_node->get_data();
-    const auto & taxon_des = taxon_data.des_ids;
-    Node_t * next_supertree_node = nullptr;
-    for (auto c : iter_child(*curr_supertree_node)) {
-        const auto & cdesId = c->get_data().des_ids;
-        if (!are_disjoint(cdesId, taxon_des)) {
-            if (next_supertree_node == nullptr) {
-                next_supertree_node = c;
-            } else {
-                return nullptr;
-            }
-        }
-    }
-    return next_supertree_node;
+                                                const Node_t * taxon_node)
+{
+    const auto & taxon_des = taxon_node->get_data().des_ids;
+    assert(not taxon_des.empty());
+    assert(is_subset(taxon_des, curr_supertree_node->get_data().des_ids));
+
+    for (auto c : iter_child(*curr_supertree_node))
+        if (is_subset(taxon_des, c->get_data().des_ids))
+            return c;
+
+    return nullptr;
 }
 
 
@@ -264,20 +260,22 @@ Node_t * find_single_child_with_all_marked_taxa(Node_t * curr_supertree_node,
 // This function walks through the subtree rooted at `root_supertree_node`
 //    to find the MRCA of the IDs in the taxon's des_ids field.
 template <typename N>
-N * walk_tipward_to_find_taxon_mrca(N* taxon, N* root_supertree_node) {
+N * walk_tipward_to_find_taxon_mrca(N* taxon, N* root_supertree_node)
+{
     const auto & taxDes = taxon->get_data().des_ids;
-    assert(taxDes.size() > 0);
-    N * curr_supertree_node = root_supertree_node;
-    // the root of the supertree, must have all of the constituent taxa
+    assert(not taxDes.empty());
+
+    // 1. the root of the supertree, must have all of the constituent taxa
     assert(is_subset(taxDes, root_supertree_node->get_data().des_ids));
-    // here we walk tipward to find the MRCA of the taxa in taxDes
-    while (true) {
-        N * next_supertree_node = find_single_child_with_all_marked_taxa(curr_supertree_node, taxon);
-        if (next_supertree_node == nullptr) {
-            return curr_supertree_node;
-        }
+
+    // 2. here we walk tipward to find the MRCA of the taxa in taxDes
+    auto curr_supertree_node = root_supertree_node;
+    while (auto next_supertree_node = find_single_child_with_all_marked_taxa(curr_supertree_node, taxon))
         curr_supertree_node = next_supertree_node;
-    }
+
+    // 3. the result should be an ancestor of all the taxa in the des_ids of `taxon`
+    assert(is_subset(taxDes, curr_supertree_node->get_data().des_ids));
+    return curr_supertree_node;
 }
 
 // This is the core function for adding a part of the taxonomy to a slice of the
@@ -973,9 +971,9 @@ void find_incertae_sedis_in_supertree(Tree_t & /* taxonomy */,
 // so we find out which ones are not found in the supertree before calling unprune_by_postorder_traversal
 // results are stored in unprune_stats. This relies on having been filled...
 void find_broken_incertae_sedis_des(Tree_t & /* taxonomy */,
-				    Tree_t & /* supertree */,
-				    const map<OttId, childParPair> & /* ott_to_tax */,
-                                        UnpruneStats & unprune_stats) {
+                                    Tree_t & /* supertree */,
+                                    const map<OttId, childParPair> & /* ott_to_tax */,
+                                    UnpruneStats & unprune_stats) {
     const auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
     for (auto ttm_it: to_tips_map) {
         auto inc_sed_taxon = ttm_it.first;
@@ -998,10 +996,10 @@ void find_broken_incertae_sedis_des(Tree_t & /* taxonomy */,
 
 // last step in do_unprune_and_name
 void unprune_by_postorder_traversal(Tree_t & /* taxonomy */,
-				    Tree_t & supertree,
-				    const OttIdSet & /* incertae_sedis_ids */,
-				    const map<OttId, childParPair> & ott_to_tax,
-				    UnpruneStats & unprune_stats) {
+                                    Tree_t & supertree,
+                                    const OttIdSet & /* incertae_sedis_ids */,
+                                    const map<OttId, childParPair> & ott_to_tax,
+                                    UnpruneStats & unprune_stats) {
     map<OttId, Node_t*> ott_to_sol;
     const auto snVec = all_nodes(supertree);
     // postorder walk over supertree. Every time we find a node assigned to a taxon

@@ -130,13 +130,12 @@ std::vector<const typename T::node_type*> all_nodes_postorder(const T& tree)
 // * A node of T1 can conflict with several nodes of T2.
 
 inline void perform_conflict_analysis(ConflictTree& induced_tree1,
-				      ConflictTree& induced_tree2,
-				      node_logger_t log_supported_by,
-				      node_logger_t log_partial_path_of,
-				      node_logger_t log_conflicts_with,
-				      node_logger_t log_resolved_by,
-				      node_logger_t log_terminal)
-{
+                                      ConflictTree& induced_tree2,
+                                      node_logger_t log_supported_by,
+                                      node_logger_t log_partial_path_of,
+                                      node_logger_t log_conflicts_with,
+                                      node_logger_t log_resolved_by,
+                                      node_logger_t log_terminal) {
     typedef ConflictTree::node_type node_type;
 
     // 1. Record depth of nodes, in order to compute MRCAs.
@@ -166,11 +165,11 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
     for(auto nd1: all_nodes_postorder(induced_tree1))
     {
         // 4.1 Quit when we get to a parent of all leaves.
-	//     (This could be the root, or a child of a monotypic root.)
+        //     (This could be the root, or a child of a monotypic root.)
         if (nd1->get_data().n_tips == (int)L) break;
 
-	// If we've gotten here, this should not be the root.
-	assert(nd1->get_parent());
+        // If we've gotten here, this should not be the root.
+        assert(nd1->get_parent());
 
         // 4.2 Ignore knuckles in input trees.
         //     (Note that in general, if we've pruned this tree down to match the shared taxon set
@@ -217,7 +216,7 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
 
         // The n_include_tips for a parent node should count the n_include_tips for this node
         if (nodes.size() > 1) {
-	    // Loop over all the nodes except the MRCA.
+            // Loop over all the nodes except the MRCA.
             for(std::size_t i=0;i<nodes.size()-1;i++) {
                 auto nd = nodes[i];
                 if (nd->is_tip()) {

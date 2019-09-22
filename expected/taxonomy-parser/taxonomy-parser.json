@@ -1,0 +1,7 @@
+[
+  {
+    "invocation" : ["otc-taxonomy-parser", "-T", "<INFILELIST>"],
+    "infile_list": ["tnrs-taxonomy"],
+    "expected": "write-tree"
+  }
+]
