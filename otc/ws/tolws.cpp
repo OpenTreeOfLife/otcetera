@@ -637,6 +637,16 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
     if (result.was_broken) {
         json broken;
         broken["mrca"] = get_synth_node_label(result.node);
+
+        auto& contesting_trees = tree_ptr->get_data().contesting_trees;
+        json contesting;
+        if (auto ctrees = contesting_trees.find(node_id); ctrees != contesting_trees.end())
+        {
+            for(auto& [tree,nodes]: ctrees->second)
+                contesting[tree] = nodes;
+            broken["contesting_trees"] = contesting;
+        }
+
         json j;
         j["broken"] = broken;
         throw OTCBadRequest("node_id was not found (broken taxon).\n")<<j;
