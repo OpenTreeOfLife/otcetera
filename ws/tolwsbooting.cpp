@@ -14,6 +14,7 @@
 #include "otc/otcli.h"
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
+#include "otc/supertree_util.h"
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -1295,6 +1296,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
                     {
                         string parent = edge_group["parent"].get<string>();
                         parent = strip_surrounding_whitespace(parent);
+                        parent = get_source_node_name_if_available(parent);
                         ctree.nodes.push_back(parent);
                     }
                 }
