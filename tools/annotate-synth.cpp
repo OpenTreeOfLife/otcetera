@@ -70,7 +70,6 @@ using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
 
 void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& summaryOttIdToNode);
-string get_source_node_name_if_available(const Tree_t::node_type* node);
 
 // uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
 void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& summaryOttIdToNode) {
@@ -79,12 +78,6 @@ void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& s
     }
 }
 
-
-string get_source_node_name_if_available(const Tree_t::node_type* node) {
-    string name = node->get_name();
-    auto source = get_source_node_name(name);
-    return (source ? *source : name);
-}
 
 json get_support_blob_as_array(const Map<string,string>& M) {
     json support_blob = json::object();
@@ -150,7 +143,7 @@ void set_support_blob_as_single_element(json& j, const map<string,Map<string,str
 void add_element(map<string, Map<string, string>>& m, map<string, set<pair<string,string>>>& s,
                  const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source) {
     string synth = synth_node->get_name();
-    string node = get_source_node_name_if_available(input_node);
+    string node = get_source_node_name_if_available(input_node->get_name());
     pair<string,string> x{source, node};
     if (not s[synth].count(x)) {
         s[synth].insert(x);
