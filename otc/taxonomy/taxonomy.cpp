@@ -155,6 +155,19 @@ const map<TaxonomicRank, string> rank_enum_to_name =
         {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
         {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT
     };
+
+inline const TaxonomicRank string_to_rank(const std::string_view& s)
+{
+    auto rank = rank_name_to_enum.find(s);
+    if (rank == rank_name_to_enum.end())
+    {
+        LOG(WARNING)<<"unknown rank '"<<s<<"'";
+        return RANK_NO_RANK;
+    }
+    else
+        return rank->second;
+}
+
 const std::string empty_string;
 const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
 std::set<std::string> rank_strings;
@@ -656,7 +669,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
         data.possibly_nonunique_name = string_view(nd.get_name());
     }
     data.flags = tr.flags;
-    data.rank = rank_name_to_enum.at(string(tr.rank));
+    data.rank = string_to_rank(tr.rank);
     register_taxon_in_maps(tree_data.name_to_node,
                            tree_data.homonym_to_node,
                            data.possibly_nonunique_name,
