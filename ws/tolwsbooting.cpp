@@ -785,8 +785,12 @@ int run_server(const po::variables_map & args) {
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";
     }
-    ContextAwareCTrieBasedDB ct{*c, taxonomy};
-    taxonomy.set_fuzzy_matcher(&ct);
+#   if defined SUPPORT_FUZZY_MATCHING
+        ContextAwareCTrieBasedDB ct{*c, taxonomy};
+        taxonomy.set_fuzzy_matcher(&ct);
+#   else
+        std::cerr << "Compiled without support for fuzzy taxonomy matching.\n" ;
+#   endif
 
     time_t post_tax_time;
     time(&post_tax_time);
