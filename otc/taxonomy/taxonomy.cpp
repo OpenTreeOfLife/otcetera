@@ -64,8 +64,7 @@ bool rank_is_specific(TaxonomicRank rank)
     return false;
 }
 
-
-const map<string, TaxonomicRank> rank_name_to_enum = 
+const map<string, TaxonomicRank, std::less<>> rank_name_to_enum = 
     {   {"domain", RANK_DOMAIN},
         {"superkingdom", RANK_SUPERKINGDOM},
         {"kingdom", RANK_KINGDOM},
