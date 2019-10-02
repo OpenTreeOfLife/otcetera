@@ -627,6 +627,7 @@ string mrca_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
+
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            const string & node_id, 
                                            int height_limit,
@@ -643,7 +644,16 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
         if (auto ctrees = contesting_trees.find(node_id); ctrees != contesting_trees.end())
         {
             for(auto& [tree,nodes]: ctrees->second)
-                contesting[tree] = nodes;
+            {
+                json edges;
+                for(auto& node: nodes)
+                {
+                    json edge = {{"parent", node}};
+                    edges.push_back(edge);
+                }
+                json contesting_tree = {{"edges",edges}};
+                contesting[tree] = contesting_tree;
+            }
             broken["contesting_trees"] = contesting;
         }
 
