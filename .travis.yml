@@ -17,13 +17,24 @@ matrix:
           - libboost-all-dev
     - os: linux
       dist: bionic
+      env: CXX_COMPILER=g++-9
+      addons:
+        apt:
+          sources:
+          - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          packages:
+          - g++-9
+          - pandoc
+          - libboost-all-dev
+    - os: linux
+      dist: bionic
       compiler: clang++
       addons:
         apt:
           sources:
           - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
-          - g++-7
+          - g++-9
           - pandoc
           - libboost-all-dev
 # - os: osx
