@@ -5,23 +5,23 @@ language: C++
 matrix:
   include:
     - os: linux
-      dist: xenial
+      dist: bionic
       env: CXX_COMPILER=g++-8
       addons:
         apt:
           sources:
-          - ubuntu-toolchain-r-test
+          - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
           - g++-8
           - pandoc
           - libboost-all-dev
     - os: linux
-      dist: xenial
+      dist: bionic
       compiler: clang++
       addons:
         apt:
           sources:
-          - ubuntu-toolchain-r-test
+          - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
           - g++-7
           - pandoc
