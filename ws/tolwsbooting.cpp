@@ -1280,29 +1280,38 @@ bool read_tree_and_annotations(const fs::path & config_path,
         }
 
         // Read in the 'contesting-trees.json' file.  We aren't using all the info yet.
-        auto& contesting_trees = sum_tree_data.contesting_trees;
+        auto& contesting_trees_for_taxon = sum_tree_data.contesting_trees_for_taxon;
         for(auto& [taxon,trees]: contestingtrees_obj.items())
         {
-            vector<contesting_tree_and_nodes> ctrees;
-            for(auto& [tree,edges]: trees.items())
+            vector<contesting_tree_t> contesting_trees;
+            for(auto& [tree,attachment_points_json]: trees.items())
             {
-                contesting_tree_and_nodes ctree;
+                contesting_tree_t contesting_tree;
                 // Remove extension ".tre"
                 assert(tree.substr(tree.size()-4) == ".tre");
-                ctree.tree = tree.substr(0,tree.size()-4);
-                for(auto& edge_group: edges)
+                contesting_tree.tree = tree.substr(0,tree.size()-4);
+                for(auto& attachment_point_json: attachment_points_json)
                 {
-                    if (edge_group.count("parent"))
+                    attachment_point_t A;
+                    assert(attachment_point_json.count("parent"));
+                    assert(attachment_point_json.count("children_from_taxon")>0);
+
+                    A.parent = attachment_point_json["parent"].get<string>();
+                    A.parent = strip_surrounding_whitespace(A.parent);
+                    A.parent = get_source_node_name_if_available(A.parent);
+
+                    for(auto& child_json: attachment_point_json["children_from_taxon"])
                     {
-                        string parent = edge_group["parent"].get<string>();
-                        parent = strip_surrounding_whitespace(parent);
-                        parent = get_source_node_name_if_available(parent);
-                        ctree.nodes.push_back(parent);
+                        string child = child_json.get<string>();
+                        child = strip_surrounding_whitespace(child);
+                        child = get_source_node_name_if_available(child);
+                        A.children_from_taxon.push_back(child);
                     }
+                    contesting_tree.attachment_points.push_back(A);
                 }
-                ctrees.push_back(ctree);
+                contesting_trees.push_back(contesting_tree);
             }
-            contesting_trees.insert({taxon, ctrees});
+            contesting_trees_for_taxon.insert({taxon, contesting_trees});
         }
 
         auto & tree_broken_taxa = sum_tree_data.broken_taxa;

@@ -31,23 +31,22 @@ class UncontestedTaxonDecompose : public EmbeddingCLI {
             if (documentP != nullptr) {
                 auto treeIndToContestingNodeMap = thr.get_how_tree_contests_monophyly_maps();
                 json treeIDToNodeMapJSON;
-                for (auto treeCNMPair : treeIndToContestingNodeMap) {
-                    auto & treei = treeCNMPair.first;
-                    auto & parToChildSetMap = treeCNMPair.second;
-                    const auto ct = treePtrByIndex.at(treei);
+                for (auto& [treei, parToChildSetMap] : treeIndToContestingNodeMap)
+                {
                     json parToChildSetJSON = json::array();
-                    for (auto parChildSetPair : parToChildSetMap) {
-                        json pcsObj;
-                        const auto & parNode = parChildSetPair.first;
-                        const auto & childSet = parChildSetPair.second;
+                    for (auto& [parNode, childSet] : parToChildSetMap)
+                    {
                         json childSetAsJSONList = json::array();
-                        for (auto childP : childSet) {
+                        for (auto childP : childSet)
+                        {
                             childSetAsJSONList.push_back(childP->get_name());
                         }
-                        pcsObj["parent"] = parNode->get_name();
-                        pcsObj["children_from_taxon"] = childSetAsJSONList;
+
+                        json pcsObj = {{"parent",parNode->get_name()},{"children_from_taxon", childSetAsJSONList}};
                         parToChildSetJSON.push_back(pcsObj);
                     }
+
+                    const auto ct = treePtrByIndex.at(treei);
                     treeIDToNodeMapJSON[ct->get_name()] = parToChildSetJSON;
                 }
                 std::string ottIdStr = "ott" + std::to_string(scaffoldNd->get_ott_id());
