@@ -1,5 +1,5 @@
 sudo: true
-cache: apt
+cache: ccache
 language: C++
 
 matrix:
