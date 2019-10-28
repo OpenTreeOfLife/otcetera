@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
+#include <iomanip>
 #include <regex>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
