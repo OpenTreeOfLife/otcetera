@@ -1,0 +1,4 @@
+Out-degree	Count
+0	4
+1	36
+2	3

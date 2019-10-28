@@ -1,0 +1,15 @@
+{
+"became_trivial": {
+"edges": [], 
+"nodes": []
+}, 
+"flagged": {
+"edges": [
+"edge8"
+], 
+"nodes": [
+"node8", 
+"node8"
+]
+}
+}
