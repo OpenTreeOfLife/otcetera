@@ -1,0 +1,18 @@
+{
+ "input": {
+  "num_incertae_sedis_taxa": 0,
+  "num_solution_internals": 3,
+  "num_solution_leaves": 4,
+  "num_solution_splits": 3,
+  "num_taxonomy_internals": 85,
+  "num_taxonomy_leaves": 37,
+  "num_taxonomy_splits": 24
+ },
+ "output": {
+  "num_leaves_added": 33,
+  "num_solution_leaves_expanded": 0,
+  "num_taxa_rejected": 0,
+  "num_taxonomy_internals_merged": 3,
+  "num_taxonomy_splits_rejected": 0
+ }
+}
