@@ -1,173 +1,92 @@
 {
   "nodes": {
-    "ott1007062": {
+    "mrcaott56601ott4671788": {
       "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
+        "xx_1@Tree1": [
+          "node6"
+        ],
+        "xx_3@Tree1": [
+          "node6"
         ]
       },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
+      "supported_by": {
+        "xx_2@Tree1": "node3"
       }
     },
     "ott1007992": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     },
     "ott10210": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     },
     "ott10218": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     },
     "ott1058517": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
-      }
-    },
-    "ott117569": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott189832": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott200683": {
       "terminal": {
         "xx_1@Tree1": "node4",
-        "xx_2@Tree1": "node4",
+        "xx_2@Tree1": "node5",
         "xx_3@Tree1": "node3"
-      }
-    },
-    "ott212701": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott258473": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     },
     "ott267867": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
-      }
-    },
-    "ott302925": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott332573": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott361838": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
-      },
-      "resolves": {
-        "xx_2@Tree1": "node3"
-      }
-    },
-    "ott4671782": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott4671788": {
       "terminal": {
         "xx_1@Tree1": "node7",
-        "xx_2@Tree1": "node6",
-        "xx_3@Tree1": "node6"
+        "xx_2@Tree1": "node7",
+        "xx_3@Tree1": "node7"
       }
     },
     "ott4671798": {
       "terminal": {
         "xx_1@Tree1": "node8",
-        "xx_2@Tree1": "node7",
-        "xx_3@Tree1": "node7"
-      }
-    },
-    "ott5092163": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott5246131": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
+        "xx_2@Tree1": "node8",
+        "xx_3@Tree1": "node8"
       }
     },
     "ott5268475": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       },
       "was_constrained": true,
@@ -176,191 +95,60 @@
     "ott5298374": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     },
     "ott5308424": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     },
     "ott557124": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     },
     "ott56610": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
-      }
-    },
-    "ott5764812": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott6013112": {
       "terminal": {
         "xx_1@Tree1": "node5",
-        "xx_2@Tree1": "node5",
+        "xx_2@Tree1": "node6",
         "xx_3@Tree1": "node4"
-      }
-    },
-    "ott611099": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott632176": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott632179": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott641038": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott655592": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
-      },
-      "resolves": {
-        "xx_2@Tree1": "node3"
-      }
-    },
-    "ott691846": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott737016": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott737019": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott805080": {
       "was_constrained": true,
       "was_uncontested": true
     },
-    "ott816442": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
     "ott916750": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
-      },
-      "resolves": {
-        "xx_2@Tree1": "node3"
-      }
-    },
-    "ott941215": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott985906": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
-      }
-    },
-    "ott985907": {
-      "conflicts_with": {
-        "xx_2@Tree1": [
-          "node3"
-        ]
-      },
-      "partial_path_of": {
-        "xx_1@Tree1": "node6",
-        "xx_3@Tree1": "node5"
       }
     },
     "ott99252": {
       "partial_path_of": {
         "xx_1@Tree1": "node3",
+        "xx_2@Tree1": "node4",
         "xx_3@Tree1": "node2"
       }
     }
@@ -368,8 +156,8 @@
   "num_tips": 37,
   "root_ott_id": 93302,
   "sources": [
-    "xx_1@Tree1",
     "xx_2@Tree1",
+    "xx_1@Tree1",
     "xx_3@Tree1"
   ]
 }
