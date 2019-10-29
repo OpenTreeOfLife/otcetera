@@ -1,0 +1,25 @@
+{
+  "mrca": {
+    "node_id": "ott304358",
+    "num_tips": 35,
+    "supported_by": {
+      "ott0.0draft0": "ott304358"
+    },
+    "taxon": {
+      "name": "Eukaryota",
+      "ott_id": 304358,
+      "rank": "domain",
+      "tax_sources": [
+        "silva:D11377/#1",
+        "ncbi:2759"
+      ],
+      "unique_name": "Eukaryota"
+    }
+  },
+  "source_id_map": {
+    "ott0.0draft0": {
+      "taxonomy": "ott0.0draft0"
+    }
+  },
+  "synth_id": "<UNKNOWN>"
+}
