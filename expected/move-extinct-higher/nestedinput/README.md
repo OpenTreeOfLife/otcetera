@@ -1,0 +1,1 @@
+Exit with error code 3 because one of the inputs have tips that are nested in the taxonomy.

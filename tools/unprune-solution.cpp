@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
     }
     // I think multiple subproblem files are essentially concatenated.
     // Is it possible to read a single subproblem from cin?
-    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, 1)){
+    if (tree_processing_main<Tree_t>(otCLI, argc, argv, get, nullptr, nullptr, 1)){
         std::exit(1);
     }
 

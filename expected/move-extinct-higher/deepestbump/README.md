@@ -1,0 +1,1 @@
+when 2 trees want to bump deeper than current, go with the deepest placement.

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <functional>
 #include "otc/otc_base_includes.h"
 #include "otc/newick.h"
 #include "otc/util.h"
@@ -145,6 +146,7 @@ int tree_processing_main(OTCLI & otCLI,
                           char * argv[],
                           std::function<bool (OTCLI &, std::unique_ptr<T>)> treePtr,
                           int (*summarizePtr)(OTCLI &),
+                          std::function<bool(OTCLI &)>,
                           unsigned minNumTrees);
 
 template<typename T>
@@ -153,12 +155,19 @@ inline int tree_processing_main(OTCLI & otCLI,
                                  char * argv[],
                                  std::function<bool (OTCLI &, std::unique_ptr<T>)> treePtr,
                                  int (*summarizePtr)(OTCLI &),
+                                 std::function<bool (OTCLI &)> preTreeHook,
                                  unsigned minNumTrees) {
     std::vector<std::string> filenameVec;
     if (!otCLI.parse_args(argc, argv, filenameVec)) {
         otCLI.exitCode = 1;
         return otCLI.exitCode;
     }
+    if (preTreeHook) {
+        if (!preTreeHook(otCLI)) {
+            return -1;
+        }
+    }
+    
     if (filenameVec.size() < minNumTrees) {
         otCLI.print_help(otCLI.err);
         otCLI.err << otCLI.get_title() << ": Expecting at least " << minNumTrees << " tree filepath(s).\n";
@@ -218,6 +227,9 @@ class TaxonomyDependentTreeProcessor {
 
         std::unique_ptr<T> taxonomy;
         OttIdSet ottIds;
+        virtual bool pretree_read_hook(OTCLI & ) {
+            return true;
+        }
 
         virtual bool process_taxonomy_tree(OTCLI & otCLI) {
             ottIds = get_all_ott_ids(*taxonomy);
@@ -255,6 +267,7 @@ inline bool tax_dependent_process_next_tree(OTCLI & otCLI, std::unique_ptr<T> tr
     return tdtp->process_source_tree(otCLI, std::move(tree));
 }
 
+
 template<typename T>
 int tax_dependent_tree_processing_main(OTCLI & otCLI,
                                    int argc,
@@ -266,7 +279,10 @@ int tax_dependent_tree_processing_main(OTCLI & otCLI,
     otCLI.blob = static_cast<void *>(&proc);
     otCLI.get_parsing_rules().include_internal_nodes_in_des_id_sets = include_internal_nodes_in_des_id_sets;
     std::function<bool (OTCLI &, std::unique_ptr<T>)> pcb = tax_dependent_process_next_tree<T>;
-    auto rc = tree_processing_main<T>(otCLI, argc, argv, pcb, nullptr, num_trees);
+    using namespace std::placeholders;
+    //auto prh = std::bind(&TaxonomyDependentTreeProcessor<T>::pretree_read_hook, proc, _2);
+    std::function<bool(OTCLI &) > prh = [&proc] (OTCLI & o) {return proc.pretree_read_hook(o);};
+    auto rc = tree_processing_main<T>(otCLI, argc, argv, pcb, nullptr, prh, num_trees);
     if (rc == 0) {
         return (proc.summarize(otCLI) ? 0 : 1);
     }

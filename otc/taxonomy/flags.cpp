@@ -164,7 +164,7 @@ optional<string> string_for_flag(int i)
 
 std::string flags_to_string(const tax_flags flags) {
     vector<string> f = flags_to_string_vec(flags);
-    return boost::algorithm::join(f, ", ");
+    return boost::algorithm::join(f, ",");
 }
 
 std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags)

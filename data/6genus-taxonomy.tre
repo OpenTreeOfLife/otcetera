@@ -1,0 +1,14 @@
+(
+    (
+        (
+            (A1_ott1,A2_ott2,A3_ott3)A_ott4,
+            (B1_ott5,B2_ott6,B3_ott7)B_ott8,
+            (C1_ott9,C2_ott10,C3_ott11)C_ott12
+        )ABC_ott13,
+        (D1_ott14,D2_ott15,D3_ott16)D_ott17
+    )ABCD_ott18,
+    (
+        (E1_ott19,E2_ott20,E3_ott21)E_ott22,
+        (F1_ott23,B2_ott24,F3_ott25)F_ott26
+    )EF_ott27
+)life_ott28;

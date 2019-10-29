@@ -75,6 +75,6 @@ int main(int argc, char *argv[]) {
                   "If present, names rather than counting them",
                   handleListNameTips,
                   false);
-    return tree_processing_main<Tree_t>(otCLI, argc, argv, wnl, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, wnl, nullptr, nullptr, 1);
 }
 

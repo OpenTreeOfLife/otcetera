@@ -1,0 +1,42 @@
+[
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre"],
+    "expected": "noextinct"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-illegal-Anested.tre"],
+    "expected": "nestedinput"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A1DvB.tre"],
+    "expected": "basicbump"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1,2,3,4]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A1DvB.tre"],
+    "expected": "bumpparent"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A1EvB.tre", "6genus-A1DvB.tre"],
+    "expected": "deepestbump"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1,2,3]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A2EvB.tre", "6genus-A1DvB.tre"],
+    "expected": "move2"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1,2,4,3]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A2EvB.tre", "6genus-A1DvB.tre"],
+    "expected": "movebydeepest"
+  },
+  {
+    "invocation" : ["otc-move-extinct-higher-to-avoid-contesting-taxa", "<INFILELIST>", "-i{\"extinct\":[1]}"],
+    "infile_list": ["6genus-taxonomy.tre", "6genus-ACvB.tre", "6genus-A1A2EvB.tre"],
+    "expected": "notifcontestedbyextant"
+  }
+]

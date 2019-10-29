@@ -1,0 +1,1 @@
+like the basicbump tree, but called with the entirety of the A clade being declared extinct. This means that A moves, not just A1.

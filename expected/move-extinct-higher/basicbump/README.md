@@ -1,0 +1,1 @@
+1 extinct tip bumped to grandparent based on second input tree. The other tree, does not refer to an extinct tip.

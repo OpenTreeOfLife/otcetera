@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
                   "write output as a newick polytomy.",
                   handleNewick,
                   false);
-    auto rc = tree_processing_main<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, 1);
+    auto rc = tree_processing_main<Tree_t>(otCLI, argc, argv, processNextTree, nullptr, nullptr, 1);
     if (rc == 0) {
         cts.summarize(otCLI);
         return cts.numErrors;

@@ -16,6 +16,6 @@ int main(int argc, char *argv[]) {
                  "takes a filepath to a newick file and reports the number of polytomies in each tree (one line per tree)",
                  "some.tre");
     std::function<bool (OTCLI &, std::unique_ptr<Tree_t>)> wnp = writeNumPolytomies<Tree_t>;
-    return tree_processing_main<Tree_t>(otCLI, argc, argv, wnp, nullptr, 1);
+    return tree_processing_main<Tree_t>(otCLI, argc, argv, wnp, nullptr, nullptr, 1);
 }
 
