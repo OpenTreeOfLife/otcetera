@@ -1,0 +1,34 @@
+{
+    "name": "", 
+    "contributors": [], 
+    "creator": {
+        "login": "", 
+        "name": ""
+    }, 
+    "url": "", 
+    "queries": [], 
+    "decisions": [
+        {
+            "treeID": "Tree1", 
+            "SHA": "1", 
+            "name": "xx_2@Tree1.tre\n", 
+            "decision": "INCLUDED", 
+            "studyID": "xx_2"
+        }, 
+        {
+            "treeID": "Tree1", 
+            "SHA": "2", 
+            "name": "xx_1@Tree1.tre\n", 
+            "decision": "INCLUDED", 
+            "studyID": "xx_1"
+        }, 
+        {
+            "treeID": "Tree1", 
+            "SHA": "3", 
+            "name": "xx_3@Tree1.tre\n", 
+            "decision": "INCLUDED", 
+            "studyID": "xx_3"
+        }
+    ], 
+    "description": "generated from newicks"
+}

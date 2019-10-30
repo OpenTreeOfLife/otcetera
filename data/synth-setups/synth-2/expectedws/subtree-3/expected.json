@@ -1,0 +1,24 @@
+{
+  "broken": {
+    "contesting_trees": {
+      "xx_2@Tree1": {
+        "attachment_points": [
+          {
+            "children_from_taxon": [
+              "node7"
+            ],
+            "parent": "node3"
+          },
+          {
+            "children_from_taxon": [
+              "node8"
+            ],
+            "parent": "node2"
+          }
+        ]
+      }
+    },
+    "mrca": "ott304358"
+  },
+  "message": "[/v3/tree_of_life/subtree] Error: node_id was not found (broken taxon).\n"
+}

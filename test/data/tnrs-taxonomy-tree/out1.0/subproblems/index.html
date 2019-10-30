@@ -1,0 +1,92 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://opentreeoflife.github.io/css/main.css">
+<style>
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+</style>
+
+    <div></div>
+</head>
+<body>
+    <div>
+<p>Propinquity output documentation. The top-level docs are
+  <a href="../index.html">here</a>.</p>
+<p>The <em>subproblems</em> directory holds the 2
+subproblems. Each one is a slice of the full tree. They do not overlap.
+The decomposition is produced
+    by identifying each higher taxon that is not contested by any single
+    phylogenetic input.
+This taxon becomes the root of the subproblem (and is used in the file name to
+identify the subproblem).
+Many of the subproblems contain only trivial phylogenetic statements.
+See <a href="https://github.com/OpenTreeOfLife/propinquity/blob/master/subproblems/README.md" target="_blank">the subproblems README</a> for details on the procedure.
+</p>
+
+<p><strong>Next step: </strong>Solving the subproblems. See
+<a href="../subproblem_solutions/index.html">../subproblem_solutions/index.html</a>
+for details.</p>
+
+<p><strong>Results:</strong>
+This page contains the <a href="#subproblems">list of subproblems</a>, the
+<a href="#trees">list of subproblems overlapping each input tree</a>, and the
+<a href="#contested">list of contested taxa</a>.
+
+<p id="subproblems"><strong>List of subproblems</strong></p>
+
+Each of the 2
+subproblems is a list of trees (in newick
+representation) with the order reflecting the ranking of the input trees.
+The taxonomy overlaps with every subproblem.</p>
+<p>Sorted by the number of phylogenetic inputs, the subproblems are:</p>
+<table>
+    <tr><th>Subproblem</th><th># inputs</th><th># tips</th><th>Input Identifiers</th></tr>
+    <tr>
+        <td><a href="./ott5268475.tre">ott5268475.tre</a></td>
+        <td>3</td>
+        <td>2</td>
+        <td>xx_1@1.tre, xx_2@1.tre, TAXONOMY</td>
+    </tr>
+    <tr>
+        <td><a href="./ott805080.tre">ott805080.tre</a></td>
+        <td>3</td>
+        <td>2</td>
+        <td>xx_1@1.tre, xx_2@1.tre, TAXONOMY</td>
+    </tr>
+</table>
+
+<p id="trees"><strong>Overlap between trees and subproblems</strong></p>
+
+<p>The list of input phylogenetic trees sorted by the number of subproblems that they overlap with is:</p>
+<table>
+    <tr><th>Study+Tree key</th><th># subproblems</th><th>Subproblem Identifiers</th></tr>
+    <tr>
+        <td>xx_2@1</td>
+        <td>2</td>
+        <td>ott5268475, ott805080</td>
+    </tr>
+    <tr>
+        <td>xx_1@1</td>
+        <td>2</td>
+        <td>ott5268475, ott805080</td>
+    </tr>
+</table>
+
+<p id="contested"><strong>Contested taxa</strong></p>
+
+<p>The 0 contested taxa follow. For each taxon,
+  we list the input tree(s) that conflict with the taxon. For each tree,
+the "parent nodes" are internal nodes each of which has
+at least 1 child that belongs entirely to the taxon
+and at least one descendant that does not belong in the taxon. If the OTT Id were
+not contested, there would only be one internal node that fit those criterion, but
+in contested taxa there are multiple.</p>
+<ul>
+    
+</ul>
+</div>
+</body>
+</html>
+

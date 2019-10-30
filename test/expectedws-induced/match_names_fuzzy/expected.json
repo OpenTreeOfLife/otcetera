@@ -1,0 +1,70 @@
+{
+  "context": "All life",
+  "governing_code": "undefined",
+  "includes_approximate_matches": true,
+  "includes_deprecated_taxa": false,
+  "includes_suppressed_names": false,
+  "matched_names": [
+    "Amaryllis breviconis"
+  ],
+  "results": [
+    {
+      "matches": [
+        {
+          "is_approximate_match": true,
+          "is_synonym": false,
+          "matched_name": "Amaryllis brevicornis",
+          "nomenclature_code": "ICZN",
+          "score": 0.95238,
+          "search_string": "amaryllis breviconis",
+          "taxon": {
+            "flags": [],
+            "is_suppressed": false,
+            "is_suppressed_from_synth": false,
+            "name": "Amaryllis brevicornis",
+            "ott_id": 4671798,
+            "rank": "species",
+            "source": "ott0.0draft0",
+            "synonyms": [],
+            "tax_sources": [
+              "worms:244457"
+            ],
+            "unique_name": "Amaryllis brevicornis"
+          }
+        },
+        {
+          "is_approximate_match": true,
+          "is_synonym": false,
+          "matched_name": "Amaryllis brevipodis",
+          "nomenclature_code": "ICN",
+          "score": 0.9,
+          "search_string": "amaryllis breviconis",
+          "taxon": {
+            "flags": [],
+            "is_suppressed": false,
+            "is_suppressed_from_synth": false,
+            "name": "Amaryllis brevipodis",
+            "ott_id": 6013112,
+            "rank": "species",
+            "source": "ott0.0draft0",
+            "synonyms": [],
+            "tax_sources": [
+              "gbif:5643263"
+            ],
+            "unique_name": "Amaryllis brevipodis"
+          }
+        }
+      ],
+      "name": "Amaryllis breviconis"
+    }
+  ],
+  "taxonomy": {
+    "author": "open tree of life project",
+    "name": "ott",
+    "source": "ott0.0draft0",
+    "version": "0.0",
+    "weburl": "https://tree.opentreeoflife.org/about/taxonomy-version/ott0.0"
+  },
+  "unambiguous_names": [],
+  "unmatched_names": []
+}

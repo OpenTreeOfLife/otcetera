@@ -1,0 +1,45 @@
+{
+  "date_created": "2019-10-29 09:52:56",
+  "filtered_flags": [
+    "major_rank_conflict",
+    "major_rank_conflict_inherited",
+    "environmental",
+    "unclassified_inherited",
+    "unclassified",
+    "viral",
+    "barren",
+    "not_otu",
+    "incertae_sedis",
+    "incertae_sedis_inherited",
+    "extinct_inherited",
+    "extinct",
+    "hidden",
+    "unplaced",
+    "unplaced_inherited",
+    "was_container",
+    "inconsistent",
+    "hybrid",
+    "merged"
+  ],
+  "num_source_studies": 3,
+  "num_source_trees": 3,
+  "root": {
+    "node_id": "ott805080",
+    "num_tips": 37,
+    "taxon": {
+      "name": "life",
+      "ott_id": 805080,
+      "rank": "no rank",
+      "tax_sources": [
+        "silva:0",
+        "ncbi:1",
+        "worms:1",
+        "gbif:0",
+        "irmng:0"
+      ],
+      "unique_name": "life"
+    }
+  },
+  "synth_id": "<UNKNOWN>",
+  "taxonomy_version": "0.0draft0"
+}

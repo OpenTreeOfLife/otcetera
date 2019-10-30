@@ -1,20 +1,7 @@
-# We don't need ssl and curl unless librested itself was compiled with them.
-#ssl  = dependency('openssl')
-#curl = dependency('libcurl')
-# Can we test if we need them to link with restbed?
-threads = dependency('threads')
 
-restbed_lib = cpp.find_library('restbed')
-restbed_deps = [restbed_lib, threads] # ssl, curl?
-restbed = declare_dependency(dependencies: restbed_deps)
 
-# FIXME: we could put this back if we made enabling webservices a build-if-you-can tri-state option.
-# if not restbed.found() or not ssl.found() or not curl.found()
-#  restbed = disabler()
-# endif
+otc_tol_ws_sources = ['tolwsbooting.cpp']
 
-otc_tol_ws_sources = ['tolws.cpp', 'tolwsadaptors.cpp', 'tolwsbooting.cpp', 'nexson/nexson.cpp','trees_to_serve.cpp',
-		      'tnrs/nomenclature.cpp', 'tnrs/context.cpp']
 ws_inc = include_directories('.')
 executable('otc-tol-ws', otc_tol_ws_sources,
 	   dependencies: [boost, libotcetera, json, restbed],
@@ -25,18 +12,53 @@ executable('otc-tol-ws', otc_tol_ws_sources,
 
 test_web_services = find_program(join_paths(meson.source_root(),'ws/test_web_services.py'))
 
-tax_dir = join_paths(meson.source_root(),'data/ex-tax-1')
-synth_dir = join_paths(meson.source_root(),'data/ex-synth-par')
-expectedws_dir = join_paths(meson.source_root(),'expectedws')
 # this should be the dir of the otc-tol-ws binary before its installed.
 exe_dir = join_paths(meson.build_root(),'ws')
 
-test('web services test',
+synth_setups = join_paths(meson.source_root(),'data/synth-setups')
+
+synth_setup_1 = join_paths(synth_setups,'synth-1')
+
+tax_dir1        = join_paths(synth_setup_1, 'taxonomy')
+synth_dir1      = join_paths(synth_setup_1, 'synth-par')
+expectedws_dir1 = join_paths(synth_setup_1, 'expectedws')
+
+test('web services test (1)',
      test_web_services,
      timeout: 300,
-#     workdir: exe_dir,
-     args: ['--taxonomy-dir',tax_dir,
-	    '--synthesis-parent',synth_dir,
-	    '--tests-parent',expectedws_dir,
-	    '--exe-dir',exe_dir]
+     args: ['--taxonomy-dir',tax_dir1,
+            '--synthesis-parent',synth_dir1,
+            '--tests-parent',expectedws_dir1,
+            '--exe-dir',exe_dir,
+            '--secs-to-recheck-pid-file=30']
+    )
+
+synth_setup_2 = join_paths(synth_setups,'synth-2')
+
+tax_dir2        = join_paths(synth_setup_2, 'taxonomy')
+synth_dir2      = join_paths(synth_setup_2, 'synth-par')
+expectedws_dir2 = join_paths(synth_setup_2, 'expectedws')
+
+test('web services test (2)',
+     test_web_services,
+     timeout: 300,
+     args: ['--taxonomy-dir',tax_dir2,
+            '--synthesis-parent',synth_dir2,
+            '--tests-parent',expectedws_dir2,
+            '--exe-dir',exe_dir,
+            '--secs-to-recheck-pid-file=30']
+    )
+
+tax_dir = join_paths(meson.source_root(),'test/data/tnrs-taxonomy-induced')
+synth_dir = join_paths(meson.source_root(),'test/data/tnrs-taxonomy-tree')
+expectedws_dir = join_paths(meson.source_root(),'test/expectedws-induced')
+test('tnrs web services test',
+     test_web_services,
+     timeout: 300,
+     args: ['--taxonomy-dir', tax_dir,
+     	    '--synthesis-parent', synth_dir,
+	    	'--tests-parent', expectedws_dir,
+	    	'--exe-dir', exe_dir,
+			'--server-port=1986',
+			'--secs-to-recheck-pid-file=30']
     )

@@ -1,0 +1,40 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://opentreeoflife.github.io/css/main.css">
+<style>
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+</style>
+
+    <div></div>
+</head>
+<body>
+    <div>
+<p>Propinquity output documentation. The top-level docs are <a href="../index.html">here</a>.
+<p>The <em>phylo_input</em> directory holds the files that are used to extract the ranked list of
+  study+tree IDs for the phylogenetic inputs to the pipeline.
+</p>
+<p><strong>Next step: </strong>Copy the NexSON files as a snapshot.
+  See <a href="../phylo_snapshot/index.html">../phylo_snapshot/index.html</a>
+  for details.
+</p>
+<p><strong>Results: </strong></p>
+<ul>
+    <li><a href="./collections.txt">collections.txt</a> is simply a copy of the configuration setting that list the identifiers for the collections in order</li>
+    <li><a href="./rank_collection.json">rank_collection.json</a> is a collection JSON that is the concatenation of the collections (which where found in the phylesystem shard
+    described in <a href="../index.html#configuration">the configuration</a> documentation.</li>
+    <li><a href="./study_tree_pairs.txt">study_tree_pairs.txt</a> is list of the study ID + tree ID in a terse syntax that is appropriate for file names within this propinquity pipeline.</li>
+    <li>These are the 2 trees used as inputs for this run (click any link to view a tree in a new window):
+        <ol>
+            <li><a href="https://tree.opentreeoflife.org/curator/study/view/xx_1/?tab=trees&tree=1" target="_blank">tree 1 of study xx_1</a></li>
+            <li><a href="https://tree.opentreeoflife.org/curator/study/view/xx_2/?tab=trees&tree=1" target="_blank">tree 1 of study xx_2</a></li>
+        </ol>
+    </li>
+    <li><a href="./index.json">index.json</a> is a JSON representation of the summaries used when writing this page.</li>
+
+</div>
+</body>
+</html>
+

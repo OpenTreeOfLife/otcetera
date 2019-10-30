@@ -64,8 +64,7 @@ bool rank_is_specific(TaxonomicRank rank)
     return false;
 }
 
-
-const map<string, TaxonomicRank> rank_name_to_enum = 
+const map<string, TaxonomicRank, std::less<>> rank_name_to_enum = 
     {   {"domain", RANK_DOMAIN},
         {"superkingdom", RANK_SUPERKINGDOM},
         {"kingdom", RANK_KINGDOM},
@@ -156,6 +155,19 @@ const map<TaxonomicRank, string> rank_enum_to_name =
         {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
         {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT
     };
+
+inline const TaxonomicRank string_to_rank(const std::string_view& s)
+{
+    auto rank = rank_name_to_enum.find(s);
+    if (rank == rank_name_to_enum.end())
+    {
+        LOG(WARNING)<<"unknown rank '"<<s<<"'";
+        return RANK_NO_RANK;
+    }
+    else
+        return rank->second;
+}
+
 const std::string empty_string;
 const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
 std::set<std::string> rank_strings;
@@ -657,7 +669,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
         data.possibly_nonunique_name = string_view(nd.get_name());
     }
     data.flags = tr.flags;
-    data.rank = rank_name_to_enum.at(string(tr.rank));
+    data.rank = string_to_rank(tr.rank);
     register_taxon_in_maps(tree_data.name_to_node,
                            tree_data.homonym_to_node,
                            data.possibly_nonunique_name,
@@ -731,18 +743,19 @@ void RichTaxonomy::read_synonyms() {
     }
 }
 
-void RichTaxonomy::_fill_ids_to_suppress_set()
-{
-    for (const auto nd : iter_node_const(*tree))
-	if (node_is_suppressed_from_tnrs(nd))
+void RichTaxonomy::_fill_ids_to_suppress_set() {
+    for (const auto nd : iter_node_const(*tree)) {
+        if (node_is_suppressed_from_tnrs(nd)) {
             ids_to_suppress_from_tnrs.insert(nd->get_ott_id());
+        }
+    }
 }
 
 string format_with_taxonomy(const string& orig, const string& format, const TaxonomyRecord& rec, const Taxonomy& taxonomy) {
     string result;
     int pos = 0;
     do {
-        auto loc = format.find('%',pos);
+        auto loc = format.find('%', pos);
         if (loc == string::npos) {
             result += format.substr(pos);
             break;
@@ -816,11 +829,12 @@ char format_needs_taxonomy(const string& format) {
     return false;
 }
 
+
 string format_without_taxonomy(const string& orig, const string& format) {
     string result;
     int pos = 0;
     do {
-        auto loc = format.find('%',pos);
+        auto loc = format.find('%', pos);
         if (loc == string::npos) {
             result += format.substr(pos);
             break;
@@ -900,5 +914,43 @@ void RichTaxonomy::add_taxonomic_addition_string(const std::string &s) {
         //process_taxonomy_line(fake_line);
     }
 }
+
+
+// BDR: factored this code out of taxonomy_mrca_ws_method below for use in tnrs
+const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes)
+{
+    if (nodes.empty()) {
+        return nullptr;
+    }
+    auto focal = nodes[0];
+    for(auto& node: nodes) {
+        focal = find_mrca_via_traversal_indices(focal, node);
+        if (not focal) {
+            throw OTCError() << "MRCA of taxa was not found. Please report this bug!\n";
+        }
+    }
+    return focal;
+}
+
+
+vector<const RTRichTaxNode *> exact_name_search(const RTRichTaxNode* context_root,
+                                                const std::string&  query_ref,
+                                                std::function<bool(const RTRichTaxNode*)> ok) {
+    std::string query{query_ref};
+    for (auto& c: query) {
+        c = std::tolower(c);
+    }
+    vector<const RTRichTaxNode*> hits;
+    for(auto taxon: iter_post_n_const(*context_root)) {
+        if (not ok(taxon)) {
+            continue;
+        }
+        if (lcase_string_equals(query, taxon->get_data().get_nonuniqname())) {
+            hits.push_back(taxon);
+        }
+    }
+    return hits;
+}
+
 
 } //namespace otc

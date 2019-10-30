@@ -57,7 +57,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     options_description taxonomy("Taxonomy options");
     taxonomy.add_options()
         ("taxonomy", value<string>(),"Directory name for the taxonomy")
-	;
+        ;
 
     options_description output("Output options");
     output.add_options()
@@ -70,7 +70,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("show-leaves","Show the number of leaves")
         ("show-internal","Show the number of leaves")
         ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
-	("lost-taxa-vs",value<string>(),"Taxonomy tree to compare for lost taxa.")
+        ("lost-taxa-vs",value<string>(),"Taxonomy tree to compare for lost taxa.")
         ("indented-table","print number of leaves for each internal node")
         ;
 
@@ -88,15 +88,6 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     return vm;
 }
 
-std::size_t n_nodes(const Tree_t& T) {
-#pragma clang diagnostic ignored  "-Wunused-variable"
-#pragma GCC diagnostic ignored  "-Wunused-variable"
-    std::size_t count = 0;
-    for(auto nd: iter_post_const(T)){
-        count++;
-    }
-    return count;
-}
 
 void show_nodes(const Tree_t& T) {
     for(auto nd: iter_post_const(T)) {
@@ -329,25 +320,20 @@ void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree) {
 // There is similar code in tools/taxonomy-parser.cpp.  ALthough not that similar.
 // Maybe we should merge the two.  This would require adding a --tax-root argument, and changing
 //  the load_taxonomy(args) function in taxonomy.h to understand it.
-void show_lost_taxa(const Tree_t& tree, const string& tax_tre_filename, const string& tax_tax_filename)
-{
+void show_lost_taxa(const Tree_t& tree, const string& tax_tre_filename, const string& tax_tax_filename) {
     Taxonomy taxonomy{tax_tax_filename};
-
     auto tax_tree = first_newick_tree_from_file<Tree_t>(tax_tre_filename);
-
     auto all_taxa = get_all_ott_ids(*tax_tree);
-
     auto unbroken_taxa = get_all_ott_ids(tree);
-
     auto broken_taxa = set_difference_as_set(all_taxa, unbroken_taxa);
-
     vector<const TaxonomyRecord*> records;
-    for(auto& id: broken_taxa)
-	records.push_back( &taxonomy.record_from_id(id) );
-
+    for(auto& id: broken_taxa) {
+        records.push_back( &taxonomy.record_from_id(id) );
+    }
     std::sort(records.begin(), records.end(), [](const auto& a, const auto& b) {return a->depth < b->depth;});
-    for(const auto& rec: records)
-	std::cout << "depth=" << rec->depth << "   id=" << rec->id << "   uniqname='" << rec->uniqname << "'\n";
+    for(const auto& rec: records) {
+        std::cout << "depth=" << rec->depth << "   id=" << rec->id << "   uniqname='" << rec->uniqname << "'\n";
+    }
 }
 
 
@@ -416,10 +402,10 @@ int main(int argc, char* argv[]) {
             string dirname = args["write-taxonomy"].as<string>();
             writeTreeAsTaxonomy(dirname, *tree);
         } else if (args.count("lost-taxa-vs")) {
-	    string tax_tre_filename = args["lost-taxa-vs"].as<string>();
-	    string tax_tax_filename = args["taxonomy"].as<string>();
-	    show_lost_taxa(*tree, tax_tre_filename, tax_tax_filename);
-	}else {
+            string tax_tre_filename = args["lost-taxa-vs"].as<string>();
+            string tax_tax_filename = args["taxonomy"].as<string>();
+            show_lost_taxa(*tree, tax_tre_filename, tax_tax_filename);
+        } else {
             write_tree_as_newick(std::cout, *tree);
             std::cout << std::endl;
         }

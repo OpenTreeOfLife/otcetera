@@ -8,7 +8,7 @@ try:
     from Queue import Queue
 except:
     from queue import Queue
-from threading import Thread
+from threading import Thread, RLock
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(logging.DEBUG)
 _lh = logging.StreamHandler()
@@ -17,6 +17,7 @@ _LOG.addHandler(_lh)
 
 NUM_TESTS = 0
 FAILED_TESTS = []
+FRAC_FLOAT_DIFF_TOL = 0.001
 
 def _extend_diff_list(diff_list, r):
     if r:
@@ -36,8 +37,16 @@ def gen_dict_diff_str(expected, observed, ex_pref, obs_pref):
             if ek in observed:
                 ov = observed[ek]
                 if ov != ev:
-                    r = gen_dict_diff_str(ev, ov, '{}["{}"]'.format(ex_pref, ek), '{}["{}"]'.format(obs_pref, ek))
-                    _extend_diff_list(diff_list, r)
+                    matched_as_floats = False
+                    if isinstance(ev, float):
+                        try:
+                            if abs(ev - ov)/abs(ev) <= FRAC_FLOAT_DIFF_TOL:
+                                matched_as_floats = True
+                        except:
+                            pass
+                    if not matched_as_floats:
+                        r = gen_dict_diff_str(ev, ov, '{}["{}"]'.format(ex_pref, ek), '{}["{}"]'.format(obs_pref, ek))
+                        _extend_diff_list(diff_list, r)
 
             else:
                 diff_list.append('{}["{}"] is absent'.format(obs_pref, ek))
@@ -47,12 +56,15 @@ def gen_dict_diff_str(expected, observed, ex_pref, obs_pref):
     elif isinstance(expected, list) or isinstance(expected, tuple):
         if not isinstance(observed, list) or isinstance(observed, tuple):
             return '{} is a list, but {} is a {}'.format(ex_pref, obs_pref, type(observed))
-        ml = min(len(expected), len(observed))
-        for ind in range(ml):
-            eel, oel = expected[ind], observed[ind]
-            if eel != oel:
-                r = gen_dict_diff_str(eel, oel, '{}[{}]'.format(ex_pref, ind), '{}[{}]'.format(obs_pref, ind))
-                _extend_diff_list(diff_list, r)
+        if len(expected) != len(observed):
+            diff_list.append('{} had {} elments but {} has {}'.format(ex_pref, len(expected), obs_pref, len(observed)))
+        else:
+            ml = len(expected)
+            for ind in range(ml):
+                eel, oel = expected[ind], observed[ind]
+                if eel != oel:
+                    r = gen_dict_diff_str(eel, oel, '{}[{}]'.format(ex_pref, ind), '{}[{}]'.format(obs_pref, ind))
+                    _extend_diff_list(diff_list, r)
     elif type(expected) == type(observed):
         return ['{} = {}, but {} = {}'.format(ex_pref, repr(expected), obs_pref, repr(observed))]
     else:
@@ -135,55 +147,92 @@ class WebServiceTestJob(object):
         self.service_prefix = service_prefix
         self.url = service_prefix + self.url_fragment
         self.expected = test_description.get('expected_response_payload')
-        self.status_str = None
+        self.expected_status = test_description.get('expected_status_code')
+        self._status_str = None
         self.passed = False
         self.failed = False
         self.erred = False
         self.test_dir = test_description.get("test_dir")
         self.test_subdir = os.path.split(self.test_dir)[-1]
         self.name = test_description.get("name", self.test_subdir or self.url_fragment)
+        self.stat_lock = RLock()
+    
+    @property
+    def status_str(self):
+        with self.stat_lock:
+            if self._status_str is None:
+                x = None
+            else:
+                x = str(self._status_str)
+            
+        return x
+    @status_str.setter
+    def status_str(self, value):
+        with self.stat_lock:
+            self._status_str = value
         
+
     def __str__(self):
         return 'WebServiceTestJob {}'.format(self.name)
 
     def run_ws_test(self):
         self.status_str = ''
         try:
+            # 1. Make the call
             if self.arguments:
                 _LOG.debug("{} arguments = {}".format(self.name, repr(self.arguments)))
                 response = self.requests_method(self.url, headers=API_HEADERS, data=json.dumps(self.arguments))
             else:
                 response = self.requests_method(self.url)
-            try:
-                response.raise_for_status()
-            except Exception as sce:
+
+            # 2.A Raise exception if we expected status 200 and didn't get it.
+            if self.expected_status == 200:
                 try:
-                    self.status_str = "Non-200 response body = {}\n".format(response.text)
+                    response.raise_for_status()
+                except Exception as sce:
+                    _LOG.exception('exception url: {}'.format(self.url))
+                    try:
+                        self.status_str = "Non-200 response body = {}\n".format(response.text)
+                    except:
+                        pass
+                    raise sce
+            # 2.B. Return if we expected an error code and didn't get it
+            elif response.status_code != self.expected_status:
+                self.failed = True
+                try:
+                    self.status_str = "Expected status {} but got {}.  response body = {}\n".format(self.expected_status, response.status_code, response.text)
                 except:
                     pass
-                raise sce
+                return
+
+            # 3. Check JSON body
+            _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
             if self.expected is not None:
                 try:
                     j = response.json()
                 except:
                     _LOG.error("{} no JSON in response: {}".format(self.name, response.text))
                     raise
+                _LOG.debug('name: {} Observed: {}'.format(self.name, j))
+
                 if j != self.expected:
                     dd = gen_expected_obs_diff(self.expected, j, 'x')
-                    self.failed = True
-                    if self.test_dir:
-                        dbout_observed = os.path.join(self.test_dir, "observed.json")
-                        with codecs.open(dbout_observed, 'w', encoding="utf-8") as obsfo:
-                            json.dump(j, obsfo, sort_keys=True, indent=2, separators=(',', ': '))
-                        m = 'Response written to {}'.format(dbout_observed)
-                    else:
-                        m = ''
-                    self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
-                    return
+                    if dd:
+                        self.failed = True
+                        if self.test_dir:
+                            dbout_observed = os.path.join(self.test_dir, "observed.json")
+                            with codecs.open(dbout_observed, 'w', encoding="utf-8") as obsfo:
+                                json.dump(j, obsfo, sort_keys=True, indent=2, separators=(',', ': '))
+                            m = 'Response written to {}'.format(dbout_observed)
+                        else:
+                            m = ''
+                        self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
+                        return
             self.passed = True
             self.status_str = "Completed"
         except Exception as x:
             self.erred = True
+            _LOG.exception('writing exception to status string')
             self.status_str += "Exception: {}".format(x)
 
     def start(self):
@@ -256,26 +305,37 @@ def run_tests(dirs_to_run, test_threads):
         if os.path.exists(os.path.join(test_dir, "expected.json")):
             with codecs.open(os.path.join(test_dir, "expected.json")) as inp:
                 td["expected_response_payload"] = json.load(inp)
+
+        if os.path.exists(os.path.join(test_dir, "expected_code.txt")):
+            with codecs.open(os.path.join(test_dir, "expected_code.txt")) as inp:
+                lines = inp.readlines()
+            td["expected_status_code"] = int(lines[0])
+        else:
+            td["expected_status_code"] = 200
+
         td["test_dir"] = test_dir
         td_list.append(td)
 
     start_worker(test_threads)
     service_prefix = "http://127.0.0.1:{}/".format(SERVER_PORT)
     all_jobs = [WebServiceTestJob(test_description=td, service_prefix=service_prefix) for td in td_list]
+    running_jobs = list(all_jobs)
     for j in all_jobs:
         _jobq.put(j)
 
     # now we block until all jobs have a status_str
-    running_jobs = list(all_jobs)
     num_passed = 0 
     num_failed = 0
     num_errors = 0
     while True:
         srj = []
         for j in running_jobs:
-            if j.status_str is None:
+            jss = j.status_str
+            if not jss:
+                # _LOG.debug('putting {} back in queue'.format(j.name))
                 srj.append(j)
                 continue
+            _LOG.debug('test {} status_str = {} resolved'.format(j.name, repr(jss)))
             if j.erred or j.failed:
                 if j.failed:
                     fc = "FAILURE"
@@ -309,6 +369,7 @@ if __name__ == '__main__':
     parser.add_argument('--server-port', default=1985, type=int, required=False, help='Port number for the server')
     parser.add_argument('--server-threads', default=4, type=int, required=False, help='Number of threads for the server')
     parser.add_argument('--test-threads', default=8, type=int, required=False, help='Number of threads launched for running tests.')
+    parser.add_argument('--secs-to-recheck-pid-file', default=0, type=int, required=False, help='If the pid file exists, the process will enter a loop sleeping and rechecking for this number of seconds.')
     
     args = parser.parse_args()
     if args.server_threads < 1 or args.test_threads < 1:
@@ -347,30 +408,39 @@ if __name__ == '__main__':
         sys.exit("No test were found!")
     pidfile_path = os.path.join(exe_dir, PIDFILE_NAME)
     if os.path.exists(pidfile_path):
-        sys.exit("{} is in the way!\n".format(pidfile_path))
-    if launch_server(exe_dir=exe_dir,
-                     taxonomy_dir=taxonomy_dir,
-                     synth_par=synth_par_path,
-                     server_threads=args.server_threads):
-        try:
-            num_passed, nf, ne = run_tests(to_run, args.test_threads)
-
-        finally:
-            kill_server(exe_dir)
-        NUM_TESTS = nf + ne + num_passed
-        assert nf == len(FAILED_TESTS)
-        assert ne == len(ERRORED_TESTS)
-        sys.stderr.write('Passed {p:d}/{t:d} tests.'.format(p=num_passed, t=NUM_TESTS))
-        if FAILED_TESTS:
-            sys.stderr.write(' Failed:\n    {}\n'.format('\n    '.join(FAILED_TESTS)))
-        if ERRORED_TESTS:
-            sys.stderr.write(' Errors in:\n    {}\n'.format('\n    '.join(ERRORED_TESTS)))
-        if nf + ne > 0:
-            sys.exit(nf + ne)
-        sys.stderr.write('SUCCESS\n')
-    else:
-        _LOG.error("Server launch failed: ")
-        with open(os.path.join(exe_dir, SERVER_OUT_ERR_FN), 'r') as seo:
-            sys.stderr.write(seo.read())
-        sys.exit(-1)
+        recheck = 0
+        checks_per_sec = 3
+        while recheck < checks_per_sec*args.secs_to_recheck_pid_file:
+            time.sleep(1.0/checks_per_sec)
+            if not os.path.exists(pidfile_path):
+                break
+        if os.path.exists(pidfile_path):
+            sys.exit("{} is in the way!\n".format(pidfile_path))
+    for i in range(2):
+        if launch_server(exe_dir=exe_dir,
+                        taxonomy_dir=taxonomy_dir,
+                        synth_par=synth_par_path,
+                        server_threads=args.server_threads):
+            try:
+                num_passed, nf, ne = run_tests(to_run, args.test_threads)
+            finally:
+                kill_server(exe_dir)
+            NUM_TESTS = nf + ne + num_passed
+            assert nf == len(FAILED_TESTS)
+            assert ne == len(ERRORED_TESTS)
+            sys.stderr.write('Passed {p:d}/{t:d} tests.'.format(p=num_passed, t=NUM_TESTS))
+            if FAILED_TESTS:
+                sys.stderr.write(' Failed:\n    {}\n'.format('\n    '.join(FAILED_TESTS)))
+            if ERRORED_TESTS:
+                sys.stderr.write(' Errors in:\n    {}\n'.format('\n    '.join(ERRORED_TESTS)))
+            if nf + ne > 0:
+                sys.exit(nf + ne)
+            sys.stderr.write('SUCCESS\n')
+            sys.exit(0)
+        else:
+            time.sleep(1) # relaunch (most likely cause is the port not being freed from previous test) 
+    _LOG.error("Server launch failed: ")
+    with open(os.path.join(exe_dir, SERVER_OUT_ERR_FN), 'r') as seo:
+        sys.stderr.write(seo.read())
+    sys.exit(-1)
 
