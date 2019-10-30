@@ -14,6 +14,7 @@
 #include "otc/otcli.h"
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
+#include "otc/supertree_util.h"
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -1017,6 +1018,7 @@ bool read_tree_and_annotations(const fs::path & configpath,
                                const fs::path & treepath,
                                const fs::path & annotationspath,
                                const fs::path & brokentaxapath,
+                               const fs::path & contestingtrees_path,
                                TreesToServe & tts);
 
 // Globals. TODO: lock if we read twice
@@ -1043,12 +1045,15 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
             fs::path annotationspath = p;
             annotationspath /= "annotated_supertree";
             annotationspath /= "annotations.json";
+
+            fs::path contestingtrees_path = p / "subproblems" / "contesting-trees.json";
+
             bool was_tree_par = false;
             try {
                 if (fs::is_regular_file(treepath)
                     && fs::is_regular_file(annotationspath)
                     && fs::is_regular_file(configpath)) {
-                    if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, tts)) {
+                    if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, contestingtrees_path, tts)) {
                         known_tree_dirs.insert(p);
                         was_tree_par = true;
                     }
@@ -1145,11 +1150,24 @@ inline std::size_t calc_memory_used(const RichTaxonomy &rt, MemoryBookkeeper &mb
 
 #endif
 
+
+
 bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & tree_path,
                                const fs::path & annotations_path,
                                const fs::path & brokentaxa_path,
-                               TreesToServe & tts) {
+                               const fs::path & contestingtrees_path,
+                               TreesToServe & tts)
+{
+    std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
+    json contestingtrees_obj;
+    try {
+        contestingtrees_stream >> contestingtrees_obj;
+    } catch (...) {
+        LOG(WARNING) << "Could not read \"" << contestingtrees_path << "\" as JSON.\n";
+        throw;
+    }
+
     std::string annot_str = annotations_path.native();
     std::ifstream annotations_stream(annot_str.c_str());
     json annotations_obj;
@@ -1260,6 +1278,42 @@ bool read_tree_and_annotations(const fs::path & config_path,
 #           endif
 
         }
+
+        // Read in the 'contesting-trees.json' file.  We aren't using all the info yet.
+        auto& contesting_trees_for_taxon = sum_tree_data.contesting_trees_for_taxon;
+        for(auto& [taxon,trees]: contestingtrees_obj.items())
+        {
+            vector<contesting_tree_t> contesting_trees;
+            for(auto& [tree,attachment_points_json]: trees.items())
+            {
+                contesting_tree_t contesting_tree;
+                // Remove extension ".tre"
+                assert(tree.substr(tree.size()-4) == ".tre");
+                contesting_tree.tree = tree.substr(0,tree.size()-4);
+                for(auto& attachment_point_json: attachment_points_json)
+                {
+                    attachment_point_t A;
+                    assert(attachment_point_json.count("parent"));
+                    assert(attachment_point_json.count("children_from_taxon")>0);
+
+                    A.parent = attachment_point_json["parent"].get<string>();
+                    A.parent = strip_surrounding_whitespace(A.parent);
+                    A.parent = get_source_node_name_if_available(A.parent);
+
+                    for(auto& child_json: attachment_point_json["children_from_taxon"])
+                    {
+                        string child = child_json.get<string>();
+                        child = strip_surrounding_whitespace(child);
+                        child = get_source_node_name_if_available(child);
+                        A.children_from_taxon.push_back(child);
+                    }
+                    contesting_tree.attachment_points.push_back(A);
+                }
+                contesting_trees.push_back(contesting_tree);
+            }
+            contesting_trees_for_taxon.insert({taxon, contesting_trees});
+        }
+
         auto & tree_broken_taxa = sum_tree_data.broken_taxa;
         // read the info from the broken taxa file
         if (brokentaxa_obj.count("non_monophyletic_taxa")

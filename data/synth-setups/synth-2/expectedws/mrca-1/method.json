@@ -1,0 +1,7 @@
+{
+  "url_fragment": "v3/tree_of_life/mrca",
+  "verb": "POST",
+  "arguments": {
+      "node_ids": ["ott200683", "ott409712" ,"ott81461"]
+  }
+}

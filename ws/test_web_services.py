@@ -147,6 +147,7 @@ class WebServiceTestJob(object):
         self.service_prefix = service_prefix
         self.url = service_prefix + self.url_fragment
         self.expected = test_description.get('expected_response_payload')
+        self.expected_status = test_description.get('expected_status_code')
         self._status_str = None
         self.passed = False
         self.failed = False
@@ -177,20 +178,34 @@ class WebServiceTestJob(object):
     def run_ws_test(self):
         self.status_str = ''
         try:
+            # 1. Make the call
             if self.arguments:
                 _LOG.debug("{} arguments = {}".format(self.name, repr(self.arguments)))
                 response = self.requests_method(self.url, headers=API_HEADERS, data=json.dumps(self.arguments))
             else:
                 response = self.requests_method(self.url)
-            try:
-                response.raise_for_status()
-            except Exception as sce:
-                _LOG.exception('exception url: {}'.format(self.url))
+
+            # 2.A Raise exception if we expected status 200 and didn't get it.
+            if self.expected_status == 200:
                 try:
-                    self.status_str = "Non-200 response body = {}\n".format(response.text)
+                    response.raise_for_status()
+                except Exception as sce:
+                    _LOG.exception('exception url: {}'.format(self.url))
+                    try:
+                        self.status_str = "Non-200 response body = {}\n".format(response.text)
+                    except:
+                        pass
+                    raise sce
+            # 2.B. Return if we expected an error code and didn't get it
+            elif response.status_code != self.expected_status:
+                self.failed = True
+                try:
+                    self.status_str = "Expected status {} but got {}.  response body = {}\n".format(self.expected_status, response.status_code, response.text)
                 except:
                     pass
-                raise sce
+                return
+
+            # 3. Check JSON body
             _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
             if self.expected is not None:
                 try:
@@ -290,6 +305,14 @@ def run_tests(dirs_to_run, test_threads):
         if os.path.exists(os.path.join(test_dir, "expected.json")):
             with codecs.open(os.path.join(test_dir, "expected.json")) as inp:
                 td["expected_response_payload"] = json.load(inp)
+
+        if os.path.exists(os.path.join(test_dir, "expected_code.txt")):
+            with codecs.open(os.path.join(test_dir, "expected_code.txt")) as inp:
+                lines = inp.readlines()
+            td["expected_status_code"] = int(lines[0])
+        else:
+            td["expected_status_code"] = 200
+
         td["test_dir"] = test_dir
         td_list.append(td)
 

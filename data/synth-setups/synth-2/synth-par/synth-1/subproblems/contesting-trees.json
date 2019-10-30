@@ -1,0 +1,18 @@
+{
+ "ott332573": {
+  "xx_2@Tree1.tre": [
+   {
+    "children_from_taxon": [
+     "Amaryllis carrascoi_ott4671788_node7_ott4671788"
+    ],
+    "parent": "_node3 "
+   },
+   {
+    "children_from_taxon": [
+     "Amaryllis brevicornis_ott4671798_node8_ott4671798"
+    ],
+    "parent": "_node2 "
+   }
+  ]
+ }
+}
