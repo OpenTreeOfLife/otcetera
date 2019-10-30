@@ -82,7 +82,7 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuz
 using vec_fqr_w_t = std::vector<FuzzyQueryResultWithTaxon>;
 vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & query_str,
                                                           const RTRichTaxNode * context_root,
-                                                          const RichTaxonomy & taxonomy, 
+                                                          const RichTaxonomy & /*taxonomy*/, 
                                                           bool include_suppressed) const {
     LOG(DEBUG) << "fuzzy_query_to_taxa(" << query_str << ", context_id = " << context_root->get_ott_id() << ", ... , included_suppressed ="  << include_suppressed << ")";
     vec_fqr_w_t results;

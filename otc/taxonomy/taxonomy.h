@@ -98,7 +98,7 @@ inline const std::string & rank_to_string(const TaxonomicRank &r) {
 }
 
 
-inline const TaxonomicRank string_to_rank(const std::string_view& s)
+inline TaxonomicRank string_to_rank(const std::string_view& s)
 {
     // FIXME! 
     auto rank = rank_name_to_enum.find(s);
