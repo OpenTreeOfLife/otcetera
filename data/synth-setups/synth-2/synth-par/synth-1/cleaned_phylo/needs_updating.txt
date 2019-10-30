@@ -1,3 +1,3 @@
-/home/bredelings/Devel/OpenTree/otcetera/source/data/synth-setups/synth-par/synth-1/phylo_snapshot/xx_1@Tree1.json
-/home/bredelings/Devel/OpenTree/otcetera/source/data/synth-setups/synth-par/synth-1/phylo_snapshot/xx_2@Tree1.json
-/home/bredelings/Devel/OpenTree/otcetera/source/data/synth-setups/synth-par/synth-1/phylo_snapshot/xx_3@Tree1.json
+/home/bredelings/example/phylo_snapshot/xx_2@Tree1.json
+/home/bredelings/example/phylo_snapshot/xx_1@Tree1.json
+/home/bredelings/example/phylo_snapshot/xx_3@Tree1.json

@@ -23,27 +23,27 @@
 "otusById": {
 "otus1": {
 "otuById": {
-"otu4": {
+"otu5": {
 "^ot:originalLabel": "Amaryllis paradisicola_ott200683", 
 "^ot:ottId": 200683, 
 "^ot:ottTaxonName": "Amaryllis paradisicola_ott200683"
 }, 
-"otu5": {
+"otu6": {
 "^ot:originalLabel": "Amaryllis brevipodis_ott6013112", 
 "^ot:ottId": 6013112, 
 "^ot:ottTaxonName": "Amaryllis brevipodis_ott6013112"
 }, 
-"otu6": {
+"otu7": {
 "^ot:originalLabel": "Amaryllis carrascoi_ott4671788", 
 "^ot:ottId": 4671788, 
 "^ot:ottTaxonName": "Amaryllis carrascoi_ott4671788"
 }, 
-"otu7": {
+"otu8": {
 "^ot:originalLabel": "Amaryllis brevicornis_ott4671798", 
 "^ot:ottId": 4671798, 
 "^ot:ottTaxonName": "Amaryllis brevicornis_ott4671798"
 }, 
-"otu8": {
+"otu9": {
 "^ot:originalLabel": "Camerella volborthi_ott6329558", 
 "^ot:ottId": 6329558, 
 "^ot:ottTaxonName": "Camerella volborthi_ott6329558"
@@ -66,9 +66,9 @@
 "@source": "node1", 
 "@target": "node2"
 }, 
-"edge8": {
+"edge9": {
 "@source": "node1", 
-"@target": "node8"
+"@target": "node9"
 }
 }, 
 "node2": {
@@ -76,9 +76,9 @@
 "@source": "node2", 
 "@target": "node3"
 }, 
-"edge7": {
+"edge8": {
 "@source": "node2", 
-"@target": "node7"
+"@target": "node8"
 }
 }, 
 "node3": {
@@ -86,12 +86,18 @@
 "@source": "node3", 
 "@target": "node4"
 }, 
-"edge5": {
+"edge7": {
 "@source": "node3", 
+"@target": "node7"
+}
+}, 
+"node4": {
+"edge5": {
+"@source": "node4", 
 "@target": "node5"
 }, 
 "edge6": {
-"@source": "node3", 
+"@source": "node4", 
 "@target": "node6"
 }
 }
@@ -102,9 +108,7 @@
 }, 
 "node2": {}, 
 "node3": {}, 
-"node4": {
-"@otu": "otu4"
-}, 
+"node4": {}, 
 "node5": {
 "@otu": "otu5"
 }, 
@@ -116,6 +120,9 @@
 }, 
 "node8": {
 "@otu": "otu8"
+}, 
+"node9": {
+"@otu": "otu9"
 }
 }
 }

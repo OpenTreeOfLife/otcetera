@@ -390,6 +390,7 @@ std::string tree_in_study_from_tree_name(const std::string& name);
 std::string string_between_chars(const std::string & s, char beforeC, char endC);
 std::string source_from_tree_name(const std::string & name);
 std::optional<std::string> get_source_node_name(const std::string& name);
+std::string get_source_node_name_if_available(const std::string& name);
 
 } // namespace
 #endif

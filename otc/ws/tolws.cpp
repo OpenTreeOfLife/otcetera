@@ -627,6 +627,23 @@ string mrca_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
+void to_json(json& j, const attachment_point_t& attachment_point)
+{
+    j["parent"] = attachment_point.parent;
+    j["children_from_taxon"] = attachment_point.children_from_taxon;
+}
+
+
+template <typename Map, typename Key>
+auto lookup(const Map& m, const Key& k)
+{
+    auto it = m.find(k);
+    return it != m.end()
+               ? std::make_optional(it->second)
+               : std::nullopt;
+}
+
+
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
                                            const string & node_id, 
                                            int height_limit,
@@ -637,6 +654,19 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
     if (result.was_broken) {
         json broken;
         broken["mrca"] = get_synth_node_label(result.node);
+
+        auto& contesting_trees_for_taxon = tree_ptr->get_data().contesting_trees_for_taxon;
+
+        if (auto contesting_trees = lookup(contesting_trees_for_taxon, node_id))
+        {
+            json contesting;
+            for(auto& [tree, attachment_points]: *contesting_trees)
+            {
+                contesting[tree] = {{"attachment_points", attachment_points}};
+            }
+            broken["contesting_trees"] = contesting;
+        }
+
         json j;
         j["broken"] = broken;
         throw OTCBadRequest("node_id was not found (broken taxon).\n")<<j;

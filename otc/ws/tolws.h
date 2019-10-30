@@ -106,6 +106,18 @@ typedef RootedTreeNode<SumTreeNodeData> SumTreeNode_t;
 typedef std::vector<const SumTreeNode_t *> SumTreeNodeVec_t;
 typedef std::pair<const SumTreeNode_t *, SumTreeNodeVec_t> BrokenMRCAAttachVec;
 
+struct attachment_point_t
+{
+    std::string parent;
+    std::vector<std::string> children_from_taxon;
+};
+
+struct contesting_tree_t
+{
+    std::string tree;
+    std::vector<attachment_point_t> attachment_points;
+};
+
 class SumTreeData {
     public:
     // maps ottX or mrcaottXottY to node* if node lacks ottid.
@@ -114,7 +126,11 @@ class SumTreeData {
     
     // maps ottX to node* if taxon is broken.
     std::unordered_map<std::string, BrokenMRCAAttachVec> broken_taxa;
+
+    // string -> [(Tree,[(parent,[children])])]
+    std::unordered_map<std::string, std::vector<contesting_tree_t>> contesting_trees_for_taxon;
 };
+
 using SummaryTree_t = otc::RootedTree<SumTreeNodeData, SumTreeData>;
 
 

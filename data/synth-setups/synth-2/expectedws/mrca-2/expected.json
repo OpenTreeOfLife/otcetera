@@ -1,0 +1,44 @@
+{
+  "mrca": {
+    "node_id": "ott56610",
+    "num_tips": 5,
+    "partial_path_of": {
+      "xx_1@Tree1": "node3",
+      "xx_2@Tree1": "node4",
+      "xx_3@Tree1": "node2"
+    },
+    "supported_by": {
+      "ott0.0draft0": "ott56610"
+    },
+    "taxon": {
+      "name": "Embryophyta",
+      "ott_id": 56610,
+      "rank": "no rank",
+      "tax_sources": [
+        "ncbi:3193"
+      ],
+      "unique_name": "Embryophyta"
+    }
+  },
+  "source_id_map": {
+    "ott0.0draft0": {
+      "taxonomy": "ott0.0draft0"
+    },
+    "xx_1@Tree1": {
+      "git_sha": "2",
+      "study_id": "xx_1",
+      "tree_id": "Tree1"
+    },
+    "xx_2@Tree1": {
+      "git_sha": "1",
+      "study_id": "xx_2",
+      "tree_id": "Tree1"
+    },
+    "xx_3@Tree1": {
+      "git_sha": "3",
+      "study_id": "xx_3",
+      "tree_id": "Tree1"
+    }
+  },
+  "synth_id": "<UNKNOWN>"
+}
