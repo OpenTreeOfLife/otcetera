@@ -1,0 +1,2 @@
+option('webservices', type : 'boolean', value : true,
+       description : 'enables compilation of the ws subdirectory (requires restbed be installed)')

@@ -28,18 +28,22 @@ boost = dependency('boost', modules : ['program_options','system','filesystem'],
 
 json = declare_dependency(include_directories: include_directories('otc'))
 
-# We don't need ssl and curl unless librested itself was compiled with them.
-#ssl  = dependency('openssl')
-#curl = dependency('libcurl')
-# Can we test if we need them to link with restbed?
-threads = dependency('threads')
-restbed_lib = cpp.find_library('restbed')
-restbed_deps = [restbed_lib, threads] # ssl, curl?
-restbed = declare_dependency(dependencies: restbed_deps)
-# FIXME: we could put this back if we made enabling webservices a build-if-you-can tri-state option.
-# if not restbed.found() or not ssl.found() or not curl.found()
-#  restbed = disabler()
-# endif
+if get_option('webservices')
+  # We don't need ssl and curl unless librested itself was compiled with them.
+  #ssl  = dependency('openssl')
+  #curl = dependency('libcurl')
+  # Can we test if we need them to link with restbed?
+  threads = dependency('threads')
+  restbed_lib = cpp.find_library('restbed')
+  restbed_deps = [restbed_lib, threads] # ssl, curl?
+  restbed = declare_dependency(dependencies: restbed_deps)
+  # FIXME: we could put this back if we made enabling webservices a build-if-you-can tri-state option.
+  # if not restbed.found() or not ssl.found() or not curl.found()
+  #  restbed = disabler()
+  # endif
+else
+  restbed = dependency('', required: false)
+endif
 
 rpath = '$ORIGIN/../'+get_option('libdir')
 
@@ -48,7 +52,9 @@ subdir('otc')
 # build tools
 subdir('tools')
 # build web services
-subdir('ws')
+if get_option('webservices')
+  subdir('ws')
+endif
 
 # check if python subprocess module is installed
 if true

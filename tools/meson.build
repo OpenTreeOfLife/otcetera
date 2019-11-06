@@ -51,8 +51,12 @@ programs = [
   ['tree-tool',  'tree-tool'],
   ['broken-taxa',  'broken-taxa'],
   ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],
-  ['tnrs-cli', 'tnrs-cli']
   ]
+
+# we need restbed for this, indirectly.
+if get_option('webservices')
+  programs += [['tnrs-cli', 'tnrs-cli']]
+endif
 
 foreach program : programs
   executable('otc-'+program[1],

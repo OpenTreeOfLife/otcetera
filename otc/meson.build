@@ -19,6 +19,9 @@ libotcetera_sources = [
   'tree.cpp',
   'util.cpp',
   'write_dot.cpp',
+  ]
+
+libotcetera_ws_sources = [
   'ws/conflictws.cpp',
   'ws/taxonomyws.cpp',
   'ws/tnrsws.cpp',
@@ -26,7 +29,11 @@ libotcetera_sources = [
   'ws/tolwsadaptors.cpp',
   'ws/trees_to_serve.cpp', 
   'ws/nexson/nexson.cpp',
-  ]
+]
+
+if get_option('webservices')
+  libotcetera_sources += libotcetera_ws_sources
+endif
 
 otc_inc = include_directories('..')
 otc_lib = shared_library('otcetera',
