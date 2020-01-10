@@ -5,6 +5,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
+#include <regex>
 #include "json.hpp"
 #include "otc/conflict.h"
 #include "otc/otcli.h"
@@ -142,8 +143,34 @@ void set_support_blob_as_single_element(json& j, const map<string,Map<string,str
 
 void add_element(map<string, Map<string, string>>& m, map<string, set<pair<string,string>>>& s,
                  const Tree_t::node_type* synth_node, const Tree_t::node_type* input_node, const string& source) {
+    static std::regex just_ott_id(".*[ _](ott\\d+)");
+    static std::regex node_name_with_taxon_name(".*[ _]([a-zA-Z]+\\d+)[ _]ott.*");
+    static std::regex node_name_without_taxon_name("^[ _]?([a-zA-Z]+\\d+)[ _]ott.*");
+    static std::regex without_ott(".*[ _]([a-zA-Z]+\\d+)[ _]?");
     string synth = synth_node->get_name();
-    string node = get_source_node_name_if_available(input_node->get_name());
+    string node;
+    string inp_name = input_node->get_name();
+    std::smatch matches;
+    if (source == "taxonomy") {
+        auto r = std::regex_match(inp_name, matches, just_ott_id);
+        assert(r);
+        assert(matches.size() >= 2);
+        node = matches[1];
+    } else {
+        if (std::regex_match(inp_name, matches, node_name_with_taxon_name)) {
+            assert(matches.size() >= 2);
+            node = matches[1];
+        } else if (std::regex_match(inp_name, matches, node_name_without_taxon_name)) {
+            assert(matches.size() >= 2);
+            node = matches[1];
+        } else if (std::regex_match(inp_name, matches, without_ott)) {
+            assert(matches.size() >= 2);
+            node = matches[1];
+        } else {
+            node = inp_name;
+        }
+    }
+    LOG(INFO) << "inp_name \"" << inp_name << "\" -> \"" << node << "\"";
     pair<string,string> x{source, node};
     if (not s[synth].count(x)) {
         s[synth].insert(x);

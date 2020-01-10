@@ -15,7 +15,7 @@
     "tree2": "node9"
    },
    "terminal": {
-    "tree1": "ott7"
+    "tree1": "node10"
    }
   },
   "mrcaott7ott9": {
@@ -23,7 +23,7 @@
     "tree2": "node10"
    },
    "terminal": {
-    "tree1": "ott7"
+    "tree1": "node10"
    }
   },
   "ott1": {
@@ -67,7 +67,7 @@
   },
   "ott15": {
    "terminal": {
-    "tree1": "ott7",
+    "tree1": "node10",
     "tree2": "node11"
    }
   },
@@ -101,7 +101,7 @@
   },
   "ott7": {
    "terminal": {
-    "tree1": "ott7",
+    "tree1": "node10",
     "tree2": "node11"
    }
   },
