@@ -612,7 +612,9 @@ const SumTreeNode_t * mrca(const T & nodes) {
     return focal;
 }
 
-bool update_excluded_ancestor(const SumTreeNode_t* mrca_included, const SumTreeNode_t* excluded_node, const SumTreeNode_t* &closest_excluded_ancestor)
+
+// Check if the excluded node is inside the include group, and update the MRCA of the exclude group if not.
+bool check_node_and_update_excluded_ancestor(const SumTreeNode_t* mrca_included, const SumTreeNode_t* excluded_node, const SumTreeNode_t* &closest_excluded_ancestor)
 {
     auto mrca = find_mrca_via_traversal_indices(mrca_included, excluded_node);
 
@@ -642,28 +644,30 @@ string mrca_ws_method(const TreesToServe & tts,
 
     auto [taxonomy,_] = tts.get_readable_taxonomy();
 
+    // 1. Find MRCA of include group
     auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
 
     auto mrca_included = mrca(tip_nodes);
 
     if (not mrca_included) throw OTCBadRequest("MRCA of taxa was not found.\n");
 
-    
     const SumTreeNode_t* closest_excluded_ancestor = nullptr;
 
+    // 2. Find MRCA of soft exclude group - 
     auto [soft_excluded_nodes,_1] = find_nodes_for_id_strings(taxonomy, tree_ptr, soft_excluded_ids, false);
     json soft_reversals;
     for(int i=0;i<soft_excluded_nodes.size();i++)
     {
-        if (not update_excluded_ancestor(mrca_included, soft_excluded_nodes[i], closest_excluded_ancestor))
+        if (not check_node_and_update_excluded_ancestor(mrca_included, soft_excluded_nodes[i], closest_excluded_ancestor))
             soft_reversals.push_back(soft_excluded_ids[i]);
     }
 
+    // 3. Find MRCA of hard exclude group
     auto [hard_excluded_nodes,_2] = find_nodes_for_id_strings(taxonomy, tree_ptr, hard_excluded_ids, false);
     json hard_reversals;
     for(int i=0;i<hard_excluded_nodes.size();i++)
     {
-        if (not update_excluded_ancestor(mrca_included, hard_excluded_nodes[i], closest_excluded_ancestor))
+        if (not check_node_and_update_excluded_ancestor(mrca_included, hard_excluded_nodes[i], closest_excluded_ancestor))
             hard_reversals.push_back(hard_excluded_ids[i]);
     }
 
@@ -680,6 +684,7 @@ string mrca_ws_method(const TreesToServe & tts,
     if (not soft_excluded_ids.empty() and closest_excluded_ancestor == nullptr)
         throw OTCWebError(404)<<"All soft-excluded taxa were nested within the include group!";
     
+    // 4. Do the phylo-ref response here.
     if (not soft_excluded_ids.empty() or not hard_excluded_ids.empty())
     {
         assert(is_ancestor_of(closest_excluded_ancestor, mrca_included));
@@ -690,6 +695,7 @@ string mrca_ws_method(const TreesToServe & tts,
         return response.dump(1);
     }
 
+    // 5. Do the standard mrca response.
     json mrcaj;
     set<string> usedSrcIds;
     add_node_support_info(tts, *mrca_included, mrcaj, usedSrcIds);
