@@ -636,8 +636,8 @@ string mrca_ws_method(const TreesToServe & tts,
                       const SummaryTree_t * tree_ptr,
                       const SummaryTreeAnnotation * sta,
                       const vector<string> & node_id_vec,
-                      const vector<string> & soft_excluded_ids,
-                      const vector<string> & hard_excluded_ids)
+                      const vector<string> & excluded_node_ids,
+                      bool soft_exclude)
 {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
@@ -653,39 +653,30 @@ string mrca_ws_method(const TreesToServe & tts,
 
     const SumTreeNode_t* closest_excluded_ancestor = nullptr;
 
-    // 2. Find MRCA of soft exclude group - 
-    auto [soft_excluded_nodes,_1] = find_nodes_for_id_strings(taxonomy, tree_ptr, soft_excluded_ids, false);
-    json soft_reversals;
-    for(int i=0;i<soft_excluded_nodes.size();i++)
+    // 2. Find MRCA of exclude group
+    auto [excluded_nodes, broken_excluded] = find_nodes_for_id_strings(taxonomy, tree_ptr, excluded_node_ids, false);
+    json reversals;
+    for(int i=0;i<excluded_nodes.size();i++)
     {
-        if (not check_node_and_update_excluded_ancestor(mrca_included, soft_excluded_nodes[i], closest_excluded_ancestor))
-            soft_reversals.push_back(soft_excluded_ids[i]);
-    }
-
-    // 3. Find MRCA of hard exclude group
-    auto [hard_excluded_nodes,_2] = find_nodes_for_id_strings(taxonomy, tree_ptr, hard_excluded_ids, false);
-    json hard_reversals;
-    for(int i=0;i<hard_excluded_nodes.size();i++)
-    {
-        if (not check_node_and_update_excluded_ancestor(mrca_included, hard_excluded_nodes[i], closest_excluded_ancestor))
-            hard_reversals.push_back(hard_excluded_ids[i]);
+        if (not check_node_and_update_excluded_ancestor(mrca_included, excluded_nodes[i], closest_excluded_ancestor))
+            reversals.push_back(excluded_node_ids[i]);
     }
 
     json response;
-    if (not soft_reversals.empty())
-        response["soft_reversals"] = soft_reversals;
-    if (not hard_reversals.empty())
-        response["hard_reversals"] = hard_reversals;
+    if (not reversals.empty())
+        response["reversals"] = reversals;
     response["synth_id"] = sta->synth_id;
 
-    if (not hard_reversals.empty())
+    // 3a. Error: check for hard reversals.
+    if (not reversals.empty() and not soft_exclude)
         throw OTCWebError(404)<<"Excluded taxa were nested within the include group!"<<response;
 
-    if (not soft_excluded_ids.empty() and closest_excluded_ancestor == nullptr)
-        throw OTCWebError(404)<<"All soft-excluded taxa were nested within the include group!";
+    // 3b. Error: check for empty exclude group after soft reversals.
+    if (not excluded_node_ids.empty() and closest_excluded_ancestor == nullptr)
+        throw OTCWebError(404)<<"All excluded taxa were nested within the include group!";
     
-    // 4. Do the phylo-ref response here.
-    if (not soft_excluded_ids.empty() or not hard_excluded_ids.empty())
+    // 4. Do the phylo-ref response here, if we had any excluded ids.
+    if (not excluded_node_ids.empty())
     {
         assert(is_ancestor_of(closest_excluded_ancestor, mrca_included));
         json nodes;
