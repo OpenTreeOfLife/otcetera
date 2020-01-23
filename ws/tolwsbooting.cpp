@@ -329,11 +329,11 @@ string node_info_method_handler(const json& parsed_args) {
 string mrca_method_handler( const json& parsedargs)
 {
     auto [synth_id, node_id_vec] = get_synth_and_node_id_vec(parsedargs);
-    auto exclude_soft =  extract_argument_or_default<vector<string>>(parsedargs, "exclude_soft", {});
-    auto exclude_hard =  extract_argument_or_default<vector<string>>(parsedargs, "exclude_hard", {});
+    auto excluded_node_ids =  extract_argument_or_default<vector<string>>(parsedargs, "excluded_node_ids", {});
+    auto soft_exclude =  extract_argument_or_default<bool>(parsedargs, "soft_exclude", false);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-    return mrca_ws_method(tts, treeptr, sta, node_id_vec, exclude_soft, exclude_hard);
+    return mrca_ws_method(tts, treeptr, sta, node_id_vec, excluded_node_ids, soft_exclude);
 }
 
 std::string process_subtree(const json& parsedargs) {

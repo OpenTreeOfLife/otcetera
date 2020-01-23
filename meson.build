@@ -2,13 +2,14 @@ project('otcetera', ['cpp'],
 	version: '0.0.01-dev',
 	default_options: [
 	  'buildtype=release',
-	  'cpp_std=c++17'
+	  'cpp_std=c++17',
+          'warning_level=3'
 	],
 	meson_version: '>=0.49')
 
 cpp = meson.get_compiler('cpp')
 
-project_cpp_args = ['-Wall','-Wextra','-Wno-sign-compare','-Woverloaded-virtual','-Wstrict-aliasing','-Wno-unknown-pragmas','-Wno-maybe-uninitialized','-Wno-expansion-to-defined']
+project_cpp_args = ['-Wno-sign-compare','-Woverloaded-virtual','-Wstrict-aliasing','-Wno-unknown-pragmas','-Wno-maybe-uninitialized','-Wno-expansion-to-defined']
 
 add_project_arguments(cpp.get_supported_arguments(project_cpp_args), language: 'cpp')
 
