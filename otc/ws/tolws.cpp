@@ -612,7 +612,9 @@ const SumTreeNode_t * mrca(const T & nodes) {
     return focal;
 }
 
-bool update_excluded_ancestor(const SumTreeNode_t* mrca_included, const SumTreeNode_t* excluded_node, const SumTreeNode_t* &closest_excluded_ancestor)
+
+// Check if the excluded node is inside the include group, and update the MRCA of the exclude group if not.
+bool check_node_and_update_excluded_ancestor(const SumTreeNode_t* mrca_included, const SumTreeNode_t* excluded_node, const SumTreeNode_t* &closest_excluded_ancestor)
 {
     auto mrca = find_mrca_via_traversal_indices(mrca_included, excluded_node);
 
@@ -634,53 +636,47 @@ string mrca_ws_method(const TreesToServe & tts,
                       const SummaryTree_t * tree_ptr,
                       const SummaryTreeAnnotation * sta,
                       const vector<string> & node_id_vec,
-                      const vector<string> & soft_excluded_ids,
-                      const vector<string> & hard_excluded_ids)
+                      const vector<string> & excluded_node_ids,
+                      bool soft_exclude)
 {
     assert(tree_ptr != nullptr);
     assert(sta != nullptr);
 
     auto [taxonomy,_] = tts.get_readable_taxonomy();
 
+    // 1. Find MRCA of include group
     auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
 
     auto mrca_included = mrca(tip_nodes);
 
     if (not mrca_included) throw OTCBadRequest("MRCA of taxa was not found.\n");
 
-    
     const SumTreeNode_t* closest_excluded_ancestor = nullptr;
 
-    auto [soft_excluded_nodes,_1] = find_nodes_for_id_strings(taxonomy, tree_ptr, soft_excluded_ids, false);
-    json soft_reversals;
-    for(int i=0;i<soft_excluded_nodes.size();i++)
+    // 2. Find MRCA of exclude group
+    auto [excluded_nodes, broken_excluded] = find_nodes_for_id_strings(taxonomy, tree_ptr, excluded_node_ids, false);
+    json reversals;
+    for(int i=0;i<excluded_nodes.size();i++)
     {
-        if (not update_excluded_ancestor(mrca_included, soft_excluded_nodes[i], closest_excluded_ancestor))
-            soft_reversals.push_back(soft_excluded_ids[i]);
-    }
-
-    auto [hard_excluded_nodes,_2] = find_nodes_for_id_strings(taxonomy, tree_ptr, hard_excluded_ids, false);
-    json hard_reversals;
-    for(int i=0;i<hard_excluded_nodes.size();i++)
-    {
-        if (not update_excluded_ancestor(mrca_included, hard_excluded_nodes[i], closest_excluded_ancestor))
-            hard_reversals.push_back(hard_excluded_ids[i]);
+        if (not check_node_and_update_excluded_ancestor(mrca_included, excluded_nodes[i], closest_excluded_ancestor))
+            reversals.push_back(excluded_node_ids[i]);
     }
 
     json response;
-    if (not soft_reversals.empty())
-        response["soft_reversals"] = soft_reversals;
-    if (not hard_reversals.empty())
-        response["hard_reversals"] = hard_reversals;
+    if (not reversals.empty())
+        response["reversals"] = reversals;
     response["synth_id"] = sta->synth_id;
 
-    if (not hard_reversals.empty())
+    // 3a. Error: check for hard reversals.
+    if (not reversals.empty() and not soft_exclude)
         throw OTCWebError(404)<<"Excluded taxa were nested within the include group!"<<response;
 
-    if (not soft_excluded_ids.empty() and closest_excluded_ancestor == nullptr)
-        throw OTCWebError(404)<<"All soft-excluded taxa were nested within the include group!";
+    // 3b. Error: check for empty exclude group after soft reversals.
+    if (not excluded_node_ids.empty() and closest_excluded_ancestor == nullptr)
+        throw OTCWebError(404)<<"All excluded taxa were nested within the include group!";
     
-    if (not soft_excluded_ids.empty() or not hard_excluded_ids.empty())
+    // 4. Do the phylo-ref response here, if we had any excluded ids.
+    if (not excluded_node_ids.empty())
     {
         assert(is_ancestor_of(closest_excluded_ancestor, mrca_included));
         json nodes;
@@ -690,6 +686,7 @@ string mrca_ws_method(const TreesToServe & tts,
         return response.dump(1);
     }
 
+    // 5. Do the standard mrca response.
     json mrcaj;
     set<string> usedSrcIds;
     add_node_support_info(tts, *mrca_included, mrcaj, usedSrcIds);
