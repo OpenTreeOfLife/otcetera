@@ -240,6 +240,9 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
                 log_supported_by(MRCA, nd1);
             } else {
                 for(auto nd2 = MRCA; nd2 and nd2->get_data().n_tips == MRCA->get_data().n_tips; nd2 = nd2->get_parent()) {
+                    // The name of nd1 is used as a key to insert into std::map<string,string>.
+                    // std::map ignores inserts if the kep already exists, and so later (and more parental) nodes are not retained.
+                    // RESULT: This means that we report as a "witness" only the most tip-ward node in the sequence of nodes nd2 from tree2 that map to nd1 from tree1.
                     log_partial_path_of(nd2, nd1);
                 }
             }
