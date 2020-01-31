@@ -845,7 +845,7 @@ string newick_subtree_ws_method(const TreesToServe & tts,
                                 bool include_all_node_labels,
                                 int height_limit)
 {
-    const uint32_t NEWICK_TIP_LIMIT = 25000;
+    const uint32_t NEWICK_TIP_LIMIT = 100000;
     auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
