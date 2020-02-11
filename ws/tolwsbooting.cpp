@@ -1197,10 +1197,8 @@ bool read_tree_and_annotations(const fs::path & config_path,
         auto tax_mem = calc_memory_used(taxonomy, tax_mem_b);
         write_memory_bookkeeping(LOG(INFO), tax_mem_b, "taxonomy", tax_mem);
 #   endif
-    auto tree_and_ann = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
+    auto [tree,sta] = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
     try {
-        SummaryTree_t & tree = tree_and_ann.first;
-        SummaryTreeAnnotation & sta = tree_and_ann.second;
         sta = annotations_obj;
         json tref;
         tref["taxonomy"] = taxonomy.get_version();
