@@ -337,6 +337,24 @@ BaseTaxonomy::BaseTaxonomy(const string& dir,
     }
 }
 
+std::optional<OttId> BaseTaxonomy::get_forwarded_id(OttId id) const
+{
+    auto id_or_reason = get_forwarded_id_or_reason(id);
+    if (std::holds_alternative<OttId>(id_or_reason))
+        return std::get<OttId>(id_or_reason);
+    else
+        return {};
+}
+
+std::variant<OttId,reason_missing> Taxonomy::get_forwarded_id_or_reason(OttId id) const
+{
+    if (index.count(id))
+        return id;
+    if (auto iter = forwards.find(id); iter != forwards.end())
+        return iter->second;
+    return reason_missing::unknown;
+}
+
 Taxonomy::Taxonomy(const string& dir,
                    bitset<32> cf,
                    OttId kr)
@@ -409,6 +427,16 @@ Taxonomy::Taxonomy(const string& dir,
     }
     */
     read_forwards_file(path + "/forwards.tsv");
+}
+
+std::variant<OttId,reason_missing> RichTaxonomy::get_forwarded_id_or_reason(OttId id) const
+{
+    const auto & td = tree->get_data();
+    if (td.id_to_node.count(id))
+        return id;
+    if (auto iter = forwards.find(id); iter != forwards.end())
+        return iter->second;
+    return reason_missing::unknown;
 }
 
 RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)

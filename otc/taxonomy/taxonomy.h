@@ -17,6 +17,7 @@
 #include <boost/spirit/include/qi_symbols.hpp>
 #include <string_view>
 #include <bitset>
+#include <variant>
 #include "otc/taxonomy/flags.h"
 
 #include "otc/error.h"
@@ -161,6 +162,8 @@ inline std::vector<int> get_index_vec(std::size_t sz) {
     return iv;
 }
 
+enum class reason_missing {unknown, not_an_id, never_minted_id, deprecated, pruned, forwarded, broken};
+
 class BaseTaxonomy {
     protected:
     std::unordered_map<OttId, OttId> forwards;
@@ -179,6 +182,12 @@ class BaseTaxonomy {
     const std::string & get_version_number() const {
         return version_number;
     }
+
+    // We should probably generalize this to record EITHER an OttId OR a reason why the OttId isn't found.
+    virtual std::variant<OttId,reason_missing> get_forwarded_id_or_reason(OttId id) const = 0;
+    std::optional<OttId> get_forwarded_id(OttId id) const;
+
+    virtual ~BaseTaxonomy() = default;
 };
 
 class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
@@ -191,6 +200,8 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
 
 public:
     template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
+
+    std::variant<OttId,reason_missing> get_forwarded_id_or_reason(OttId id) const;
 
     TaxonomyRecord& record_from_id(OttId id);
     
@@ -321,6 +332,9 @@ class RichTaxonomy: public BaseTaxonomy {
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), OttId kr = -1);
     RichTaxonomy(RichTaxonomy &&) = default;
+
+    std::variant<OttId,reason_missing> get_forwarded_id_or_reason(OttId id) const;
+
     const RTRichTaxNode * included_taxon_from_id(OttId ott_id) const {
         //Returns node * or nullptr if not found.
         const auto & td = tree->get_data();
