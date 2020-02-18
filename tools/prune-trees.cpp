@@ -12,6 +12,7 @@
 #include "otc/otcli.h"
 #include "otc/newick.h"
 #include "otc/tree_operations.h"
+#include "otc/induced_tree.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
 
@@ -37,7 +38,11 @@ using std::unique_ptr;
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
 
-using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
+struct RTNodeDepth {
+    int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
+};
+
+using Tree_t = RootedTree<RTNodeDepth, RTreeNoData>;
 
 namespace po = boost::program_options;
 using po::variables_map;
@@ -164,6 +169,43 @@ void write_tree(const Tree_t& tree, const fs::path& out_path)
     write_tree_as_newick(out_file, tree);
 }
 
+
+// OK, so we need to make an induced tree from a taxonomy.
+
+// Remove leaves (and their monotypic ancestors) in the query tree
+// that are the ancestors of other leaves in the query tree.
+
+void prune_ancestral_leaves(Tree_t& query_tree, const Tree_t& taxonomy_tree, const std::unordered_map<OttId,const Tree_t::node_type*>& tax_id_to_node)
+{
+    // 1. Get an induced taxonomy tree starting from the leaves of the query tree
+    auto query_id_to_node = get_ottid_to_const_node_map(query_tree);
+    auto induced_leaves = get_induced_leaves<Tree_t,Tree_t>(query_tree, query_id_to_node, taxonomy_tree, tax_id_to_node); 
+    auto mrca = [](const Tree_t::node_type* n1, const Tree_t::node_type* n2) {return mrca_from_depth(n1,n2);};
+    auto induced_taxonomy = get_induced_tree<Tree_t,Tree_t>(induced_leaves, mrca);
+
+    LOG(WARNING)<<"induced taxonomy has "<<n_leaves(*induced_taxonomy)<<" leaves.";
+
+    // 2. Find the query tree leaves that are not tips on the induced taxonomy
+    auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);
+
+    vector<Tree_t::node_type*> nodes_to_prune;
+    for(auto leaf: iter_leaf(query_tree))
+    {
+        auto ottid = leaf->get_ott_id();
+        auto tax_node = ottid_to_induced_tax_node.at(ottid);
+        if (not tax_node->is_tip()) {
+            nodes_to_prune.push_back(leaf);
+        }
+    }
+
+    // 3. Prune the leaves that we selected while walking the query tree
+    for(auto node: nodes_to_prune)
+        delete_tip_and_monotypic_ancestors(query_tree, node);
+
+    LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
+}
+
+
 std::pair<string,string> split_on_last(const string& s, char c)
 {
     auto pos = s.rfind(c);
@@ -182,6 +224,10 @@ int main(int argc, char* argv[]) {
         // Should I remove the --config argument?  Or should we pass the propinquity config here?
         auto taxonomy = load_taxonomy(args);
 
+        auto taxonomy_tree = taxonomy.get_tree<Tree_t>([](auto&){return "";});
+        compute_depth(*taxonomy_tree);
+        auto tax_node_map = get_ottid_to_const_node_map(*taxonomy_tree);
+
         if (not args.count("trees")) throw OTCError() << "No trees given!";
 
         auto filenames = args["trees"].as<vector<string>>();
@@ -199,8 +245,11 @@ int main(int argc, char* argv[]) {
                 throw OTCError()<<"tree file '"<<filename_name<<"' should have the form <filename>:<name>";
 
             auto tree = get_tree(in_filename);
+            compute_depth(*tree);
 
             prune_unmapped_leaves(*tree, taxonomy);
+
+            prune_ancestral_leaves(*tree, *taxonomy_tree, tax_node_map);
 
             // Uh... what tree are we supposed to write here?
             write_tree(*tree, out_dir / (out_name + "-taxonomy.tre"));
@@ -213,14 +262,3 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 }
-
-// 1. Write a parser to read the lines faster
-// 2. Avoid memory allocation -- by mmapping the taxonomy file?
-// 3. Convert the flags into a bitmask
-// 4. Should the Rank be a converted to an integer?
-// 5. Can we assign OTT IDs to internal nodes of a tree while accounting for Incertae Sedis taxa?
-// * What are the triplet-inference rules for the Incertae Sedis problem?
-
-// TODO: mmap via BOOST https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
-// TODO: write out a reduced taxonomy
-
