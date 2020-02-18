@@ -18,7 +18,7 @@ std::pair<int,int> prune_unmapped_leaves(Tree& tree, const BaseTaxonomy& tax)
         if (leaf->has_ott_id())
         {
             auto id1 = leaf->get_ott_id();
-            auto id2 = tax.get_forwarded_id(id1);
+            auto id2 = tax.get_unforwarded_id(id1);
             if (id2)
             {
                 // Handle forwards
@@ -50,7 +50,6 @@ std::pair<int,int> prune_unmapped_leaves(Tree& tree, const BaseTaxonomy& tax)
     }
     return {mapped_leaves, unmapped_leaves};
 }
-
 
 }
 

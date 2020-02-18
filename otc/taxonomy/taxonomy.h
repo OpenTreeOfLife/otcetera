@@ -184,8 +184,8 @@ class BaseTaxonomy {
     }
 
     // We should probably generalize this to record EITHER an OttId OR a reason why the OttId isn't found.
-    virtual std::variant<OttId,reason_missing> get_forwarded_id_or_reason(OttId id) const = 0;
-    std::optional<OttId> get_forwarded_id(OttId id) const;
+    virtual std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const = 0;
+    std::optional<OttId> get_unforwarded_id(OttId id) const;
 
     virtual ~BaseTaxonomy() = default;
 };
@@ -201,7 +201,7 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
 public:
     template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
 
-    std::variant<OttId,reason_missing> get_forwarded_id_or_reason(OttId id) const;
+    std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;
 
     TaxonomyRecord& record_from_id(OttId id);
     
@@ -333,7 +333,7 @@ class RichTaxonomy: public BaseTaxonomy {
     RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), OttId kr = -1);
     RichTaxonomy(RichTaxonomy &&) = default;
 
-    std::variant<OttId,reason_missing> get_forwarded_id_or_reason(OttId id) const;
+    std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;
 
     const RTRichTaxNode * included_taxon_from_id(OttId ott_id) const {
         //Returns node * or nullptr if not found.
