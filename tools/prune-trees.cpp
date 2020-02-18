@@ -10,6 +10,7 @@
 #include "otc/error.h"
 #include "otc/tree.h"
 #include "otc/otcli.h"
+#include "otc/newick.h"
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
@@ -17,6 +18,8 @@
 #include <boost/range/adaptor/reversed.hpp>
 
 #include <boost/filesystem/operations.hpp>
+
+#include "otc/ws/prune.h"
 
 namespace fs = boost::filesystem;
 
@@ -196,6 +199,8 @@ int main(int argc, char* argv[]) {
                 throw OTCError()<<"tree file '"<<filename_name<<"' should have the form <filename>:<name>";
 
             auto tree = get_tree(in_filename);
+
+            prune_unmapped_leaves(*tree, taxonomy);
 
             // Uh... what tree are we supposed to write here?
             write_tree(*tree, out_dir / (out_name + "-taxonomy.tre"));
