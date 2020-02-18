@@ -4,6 +4,7 @@
 #include "otc/ws/trees_to_serve.h"
 #include "otc/conflict.h"
 #include "otc/ws/nexson/nexson.h"
+#include "otc/ws/prune.h"
 #include <optional>
 #include <string_view>
 
@@ -497,47 +498,6 @@ void check_all_nodes_have_node_names(const ConflictTree& query_tree) {
             throw E;
         }
     }
-}
-
-
-template <typename Tree>
-pair<int,int> prune_unmapped_leaves(Tree& tree, const RichTaxonomy& tax) {
-    int mapped_leaves = 0;
-    int unmapped_leaves = 0;
-    vector<typename Tree::node_type*> leaves;
-    for(auto leaf: iter_leaf(tree)) {
-        if (leaf->has_ott_id()) {
-            auto tax_node = tax.included_taxon_from_id(leaf->get_ott_id());
-            if (tax_node)  {
-                // Handle forwards
-                auto id = tax_node->get_ott_id();
-                if (id != leaf->get_ott_id()) {
-                    leaf->set_ott_id(id);
-                }
-                // Count as mapped
-                mapped_leaves++;
-                continue;
-            }
-        }
-        // Mark leaf for deletion
-        leaves.push_back(leaf);
-        unmapped_leaves++;
-    }
-    for(auto leaf: leaves) {
-        while (leaf and leaf->is_tip()) {
-            auto parent = leaf->get_parent();
-            if (parent) {
-                leaf->detach_this_node();
-                delete leaf;
-                leaf = parent;
-            } else {
-                delete leaf;
-                tree._set_root(nullptr);
-            }
-        }
-        assert(tree.get_root());
-    }
-    return {mapped_leaves, unmapped_leaves};
 }
 
 
