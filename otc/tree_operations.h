@@ -36,6 +36,17 @@ std::string newick(const T &t);
 template <typename T>
 T* bisect_branch_with_new_child(T* x);
 
+template <typename Tree>
+inline std::size_t n_leaves(const Tree& T) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    std::size_t count = 0;
+    for(auto nd: iter_leaf_const(T)){
+        count++;
+    }
+    return count;
+}
+
 
 template<typename T>
 unsigned int count_polytomies(const T & tree);
@@ -1507,6 +1518,21 @@ inline void set_name_and_maybe_ott_id(const T & src_node, T & dest_node) {
     dest_node.set_name(src_node.get_name());
     if (src_node.has_ott_id()) {
         dest_node.set_ott_id(src_node.get_ott_id());
+    }
+}
+
+template <typename T>
+void delete_tip_and_monotypic_ancestors(T& tree, typename T::node_type* node) {
+    assert(node->is_tip());
+    while (node and node->is_tip()) {
+        auto parent = node->get_parent();
+        if (not parent) {
+            tree._set_root(nullptr);
+        } else {
+            node->detach_this_node();
+        }
+        delete node;
+        node = parent;
     }
 }
 
