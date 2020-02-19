@@ -212,7 +212,7 @@ std::pair<string,string> split_on_last(const string& s, char c)
     if (pos == string::npos)
         return {s,""};
     else
-        return {s.substr(0,pos),s.substr(pos)};
+        return {s.substr(0,pos),s.substr(pos+1)};
 }
 
 int main(int argc, char* argv[]) {
