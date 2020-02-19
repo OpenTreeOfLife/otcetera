@@ -254,7 +254,7 @@ int main(int argc, char* argv[]) {
             prune_duplicate_ottids(*tree);
 
             // Uh... what tree are we supposed to write here?
-            write_tree(*tree, out_dir / (out_name + "-taxonomy.tre"));
+            // write_tree(*tree, out_dir / (out_name + "-taxonomy.tre"));
 
             // Write out the pruned tree
             write_tree(*tree, out_dir / (out_name + ".tre"));
