@@ -251,6 +251,8 @@ int main(int argc, char* argv[]) {
 
             prune_ancestral_leaves(*tree, *taxonomy_tree, tax_node_map);
 
+            prune_duplicate_ottids(*tree);
+
             // Uh... what tree are we supposed to write here?
             write_tree(*tree, out_dir / (out_name + "-taxonomy.tre"));
 
