@@ -183,8 +183,6 @@ void prune_ancestral_leaves(Tree_t& query_tree, const Tree_t& taxonomy_tree, con
     auto mrca = [](const Tree_t::node_type* n1, const Tree_t::node_type* n2) {return mrca_from_depth(n1,n2);};
     auto induced_taxonomy = get_induced_tree<Tree_t,Tree_t>(induced_leaves, mrca);
 
-    LOG(WARNING)<<"induced taxonomy has "<<n_leaves(*induced_taxonomy)<<" leaves.";
-
     // 2. Find the query tree leaves that are not tips on the induced taxonomy
     auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);
 
@@ -201,8 +199,6 @@ void prune_ancestral_leaves(Tree_t& query_tree, const Tree_t& taxonomy_tree, con
     // 3. Prune the leaves that we selected while walking the query tree
     for(auto node: nodes_to_prune)
         delete_tip_and_monotypic_ancestors(query_tree, node);
-
-    LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
 }
 
 
@@ -222,11 +218,15 @@ int main(int argc, char* argv[]) {
 
         // Where does this load the taxonomy from?
         // Should I remove the --config argument?  Or should we pass the propinquity config here?
+        LOG(INFO)<<"Loading taxonomy:";
         auto taxonomy = load_taxonomy(args);
+        LOG(INFO)<<"  "<<taxonomy.get_version();
 
+        LOG(INFO)<<"Making taxonomy tree:";
         auto taxonomy_tree = taxonomy.get_tree<Tree_t>([](auto&){return "";});
         compute_depth(*taxonomy_tree);
         auto tax_node_map = get_ottid_to_const_node_map(*taxonomy_tree);
+        LOG(INFO)<<"done.";
 
         if (not args.count("trees")) throw OTCError() << "No trees given!";
 
@@ -247,17 +247,28 @@ int main(int argc, char* argv[]) {
             auto tree = get_tree(in_filename);
             compute_depth(*tree);
 
+            int n_leaves1 = n_leaves(*tree);
+
             prune_unmapped_leaves(*tree, taxonomy);
+
+            int n_leaves2 = n_leaves(*tree);
 
             prune_ancestral_leaves(*tree, *taxonomy_tree, tax_node_map);
 
+            int n_leaves3 = n_leaves(*tree);
+
             prune_duplicate_ottids(*tree);
+
+            int n_leaves4 = n_leaves(*tree);
 
             // Uh... what tree are we supposed to write here?
             // write_tree(*tree, out_dir / (out_name + "-taxonomy.tre"));
 
             // Write out the pruned tree
             write_tree(*tree, out_dir / (out_name + ".tre"));
+
+            LOG(INFO)<<"Pruning tree '"<<out_name<<"' from "<<n_leaves1<<" to "<<n_leaves4<<" leaves.";
+            LOG(INFO)<<"   no OTT ID: "<<n_leaves1 - n_leaves2<<"   leaf ancestor of other leaf: "<<n_leaves2 - n_leaves3<<"   duplicate OTT id: "<<n_leaves3 - n_leaves4;
         }
     } catch (std::exception& e) {
         cerr << "otc-prune-trees: Error! " << e.what() << std::endl;
