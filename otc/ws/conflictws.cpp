@@ -451,28 +451,6 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
     LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
 }
 
-template <typename Tree>
-void prune_duplicate_ottids(Tree& tree) {
-    vector<typename Tree::node_type*> leaves;
-    for(auto leaf: iter_leaf(tree)) {
-        leaves.push_back(leaf);
-    }
-    map<OttId, typename Tree::node_type*> node_ptrs;
-    for(auto leaf: leaves) {
-        if (not leaf->has_ott_id()) {
-            continue;
-        }
-        auto id = leaf->get_ott_id();
-        // If the OTT id is new, then add the node as canonical representative of the OTT id
-        if (not node_ptrs.count(id)) {
-            node_ptrs.insert({id, leaf});
-        } else {
-            // Otherwise delete the non-canonical OTT id and its ancestors
-            delete_tip_and_monotypic_ancestors(tree, leaf);
-        }
-    }
-}
-
 void check_all_leaves_have_ott_ids(const ConflictTree& query_tree) {
     for(auto leaf: iter_leaf_const(query_tree)) {
         if (leaf->has_ott_id()) {

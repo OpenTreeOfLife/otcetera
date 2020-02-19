@@ -51,6 +51,28 @@ std::pair<int,int> prune_unmapped_leaves(Tree& tree, const BaseTaxonomy& tax)
     return {mapped_leaves, unmapped_leaves};
 }
 
+template <typename Tree>
+void prune_duplicate_ottids(Tree& tree) {
+    std::vector<typename Tree::node_type*> leaves;
+    for(auto leaf: iter_leaf(tree)) {
+        leaves.push_back(leaf);
+    }
+    std::map<OttId, typename Tree::node_type*> node_ptrs;
+    for(auto leaf: leaves) {
+        if (not leaf->has_ott_id()) {
+            continue;
+        }
+        auto id = leaf->get_ott_id();
+        // If the OTT id is new, then add the node as canonical representative of the OTT id
+        if (not node_ptrs.count(id)) {
+            node_ptrs.insert({id, leaf});
+        } else {
+            // Otherwise delete the non-canonical OTT id and its ancestors
+            delete_tip_and_monotypic_ancestors(tree, leaf);
+        }
+    }
+}
+
 }
 
 #endif
