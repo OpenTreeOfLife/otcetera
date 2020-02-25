@@ -179,7 +179,7 @@ void prune_ancestral_leaves(Tree_t& query_tree, const Tree_t& taxonomy_tree, con
 {
     // 1. Get an induced taxonomy tree starting from the leaves of the query tree
     auto query_id_to_node = get_ottid_to_const_node_map(query_tree);
-    auto induced_leaves = get_induced_leaves<Tree_t,Tree_t>(query_tree, query_id_to_node, taxonomy_tree, tax_id_to_node); 
+    auto induced_leaves = get_induced_leaves<Tree_t,Tree_t>(taxonomy_tree, tax_id_to_node, query_tree, query_id_to_node);
     auto mrca = [](const Tree_t::node_type* n1, const Tree_t::node_type* n2) {return mrca_from_depth(n1,n2);};
     auto induced_taxonomy = get_induced_tree<Tree_t,Tree_t>(induced_leaves, mrca);
 
@@ -253,11 +253,11 @@ int main(int argc, char* argv[]) {
 
             int n_leaves2 = n_leaves(*tree);
 
-            prune_ancestral_leaves(*tree, *taxonomy_tree, tax_node_map);
+            prune_duplicate_ottids(*tree);
 
             int n_leaves3 = n_leaves(*tree);
 
-            prune_duplicate_ottids(*tree);
+            prune_ancestral_leaves(*tree, *taxonomy_tree, tax_node_map);
 
             int n_leaves4 = n_leaves(*tree);
 
@@ -268,7 +268,7 @@ int main(int argc, char* argv[]) {
             write_tree(*tree, out_dir / (out_name + ".tre"));
 
             LOG(INFO)<<"Pruning tree '"<<out_name<<"' from "<<n_leaves1<<" to "<<n_leaves4<<" leaves.";
-            LOG(INFO)<<"   no OTT ID: "<<n_leaves1 - n_leaves2<<"   leaf ancestor of other leaf: "<<n_leaves2 - n_leaves3<<"   duplicate OTT id: "<<n_leaves3 - n_leaves4;
+            LOG(INFO)<<"   no OTT ID: "<<n_leaves1 - n_leaves2<<"   duplicate OTT id: "<<n_leaves2 - n_leaves3<<"   leaf ancestor of other leaf: "<<n_leaves3 - n_leaves4;
         }
     } catch (std::exception& e) {
         cerr << "otc-prune-trees: Error! " << e.what() << std::endl;
