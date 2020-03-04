@@ -251,6 +251,14 @@ int main(int argc, char* argv[]) {
 
             prune_unmapped_leaves(*tree, taxonomy);
 
+            // Clear the existing names to generate ott_XXXX names from the ids,
+            // since the ids have just been forwarded by prune_unmapped_leaves( ).
+            for(auto leaf: iter_leaf(*tree))
+            {
+                assert(leaf->has_ott_id());
+                leaf->set_name("");
+            }
+
             int n_leaves2 = n_leaves(*tree);
 
             prune_duplicate_ottids(*tree);
