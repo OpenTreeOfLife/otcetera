@@ -41,5 +41,5 @@ otc_lib = shared_library('otcetera',
                          dependencies: [boost, restbed],
                          install: true)
 
-libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib)
+libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib, dependencies: [restbed])
 
