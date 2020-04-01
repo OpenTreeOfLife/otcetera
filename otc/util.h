@@ -564,7 +564,7 @@ inline bool lcase_string_equals(const std::string_view& s1, const T& s2) {
 }
 
 inline bool lcase_match_prefix(const std::string_view& s, const std::string_view & prefix) {
-    if (prefix.size() < s.size()) {
+    if (prefix.size() > s.size()) {
         return false;
     }
     return lcase_string_equals(s.substr(prefix.size()), prefix);
