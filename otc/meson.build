@@ -2,6 +2,8 @@ libotcetera_sources = [
   'config_file.cpp',
   'ctrie/context_ctrie_db.cpp',
   'ctrie/str_utils.cpp',
+  'ctrie/ctrie_db.cpp',
+  'ctrie/ctrie_node.cpp',
   'embedded_tree.cpp',
   'forest.cpp',
   'ftree.cpp',
