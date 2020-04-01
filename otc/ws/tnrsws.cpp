@@ -580,14 +580,15 @@ std::string tnrs_contexts_ws_method() {
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
 // curl -X POST http://localhost:1984/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
-string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy) {
-    auto results = infer_context_and_ambiguous_names(taxonomy, names);
-    auto& context = results.first;
-    auto& ambiguous_names = results.second;
+string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy)
+{
+    auto [context, ambiguous_names] = infer_context_and_ambiguous_names(taxonomy, names);
+
     json response;
-    response["context_name"] = results.first->name;
-    response["context_ott_id"] = results.first->ott_id;
+    response["context_name"] = context->name;
+    response["context_ott_id"] = context->ott_id;
     response["ambiguous_names"] = ambiguous_names;
+
     return response.dump(1);
 }
 
