@@ -97,6 +97,9 @@ void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd
     else
         noderepr["num_tips"] = nd.get_data().num_tips;
 
+    if (is_arguson)
+        noderepr["extinct"] = nd.get_data().is_extinct();
+
     if (nd.has_ott_id()) {
         auto nd_id = nd.get_ott_id();
         const auto * nd_taxon = taxonomy.included_taxon_from_id(nd_id);

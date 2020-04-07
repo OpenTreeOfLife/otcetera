@@ -63,6 +63,8 @@ class SumTreeNodeData {
         vec_src_node_ids terminal;
 #   endif
     bool was_uncontested = false;
+    bool extinct_mark = false;  // extinctness means that the node has >= 1 descendant (including itself), and all descendants are extinct.
+    bool is_extinct() const {return extinct_mark;}
     uint32_t num_tips = 0;
 };
 

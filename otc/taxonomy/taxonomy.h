@@ -145,6 +145,7 @@ struct TaxonomyRecord {
     TaxonomyRecord& operator=(const TaxonomyRecord& tr) = delete;
     TaxonomyRecord(TaxonomyRecord&& tr) = default;
     TaxonomyRecord(TaxonomyRecord& tr) = delete;
+    bool is_extinct() const;
     explicit TaxonomyRecord(const std::string& line);
     std::vector<std::string> sourceinfoAsVec() const {
         std::string si = std::string(sourceinfo);
@@ -256,6 +257,7 @@ class RTRichTaxNodeData {
         auto vs = this->sourceinfoAsVec();
         return sources_vec_as_json(vs);
     }
+    bool is_extinct() const;
 };
 
 typedef RootedTreeNode<RTRichTaxNodeData> RTRichTaxNode;

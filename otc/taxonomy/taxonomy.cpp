@@ -160,6 +160,10 @@ const std::string empty_string;
 const set<string> indexed_source_prefixes = {"ncbi", "gbif", "worms", "if", "irmng"};
 std::set<std::string> rank_strings;
 
+bool TaxonomyRecord::is_extinct() const
+{
+    return ::is_extinct(flags);
+}
 
 TaxonomyRecord::TaxonomyRecord(const string& line_)
     :line(line_) {
@@ -577,6 +581,11 @@ RichTaxonomy load_rich_taxonomy(const variables_map& args) {
         cleaning_flags = flags_from_string(args["clean"].as<string>());
     }
     return {taxonomy_dir, cleaning_flags, keep_root};
+}
+
+bool RTRichTaxNodeData::is_extinct() const
+{
+    return ::is_extinct(flags);
 }
 
 
