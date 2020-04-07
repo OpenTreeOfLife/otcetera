@@ -341,6 +341,24 @@ BaseTaxonomy::BaseTaxonomy(const string& dir,
     }
 }
 
+std::optional<OttId> BaseTaxonomy::get_unforwarded_id(OttId id) const
+{
+    auto id_or_reason = get_unforwarded_id_or_reason(id);
+    if (std::holds_alternative<OttId>(id_or_reason))
+        return std::get<OttId>(id_or_reason);
+    else
+        return {};
+}
+
+std::variant<OttId,reason_missing> Taxonomy::get_unforwarded_id_or_reason(OttId id) const
+{
+    if (index.count(id))
+        return id;
+    if (auto iter = forwards.find(id); iter != forwards.end())
+        return iter->second;
+    return reason_missing::unknown;
+}
+
 Taxonomy::Taxonomy(const string& dir,
                    bitset<32> cf,
                    OttId kr)
@@ -415,6 +433,16 @@ Taxonomy::Taxonomy(const string& dir,
     read_forwards_file(path + "/forwards.tsv");
 }
 
+std::variant<OttId,reason_missing> RichTaxonomy::get_unforwarded_id_or_reason(OttId id) const
+{
+    const auto & td = tree->get_data();
+    if (td.id_to_node.count(id))
+        return id;
+    if (auto iter = forwards.find(id); iter != forwards.end())
+        return iter->second;
+    return reason_missing::unknown;
+}
+
 RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     :BaseTaxonomy(dir, cf, kr) {
     { //braced to reduce scope of light_taxonomy to reduced memory
@@ -460,7 +488,9 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
 }
 
 
-void Taxonomy::read_forwards_file(string filepath) {
+void Taxonomy::read_forwards_file(string filepath)
+{
+    // 1. Read forwards file and create id -> forwarded_id map
     ifstream forwards_stream(filepath);
     if (forwards_stream) {
         string line;
@@ -476,33 +506,41 @@ void Taxonomy::read_forwards_file(string filepath) {
             forwards[check_ott_id_size(old_id)] = check_ott_id_size(new_id);
         }
     }
-    // walk through the full forwards table, and try to find any that are multiple
+
+
+    // 2. walk through the full forwards table, and try to find any that are multiple
     //    step paths of forwards.
-    unordered_set<OttId> need_iterating;
-    for (auto old_new : forwards) {
-        auto new_id = old_new.second;
-        if (new_id >= 0) {
-            OttId nnid = this->map(new_id);
-            if (nnid != new_id) {
-                need_iterating.insert(old_new.first);
-            }
+    unordered_set<OttId> failed_forwards;
+    for (auto& [old_id,new_id] : forwards)
+    {
+        unordered_set<OttId> visited;
+        visited.insert(old_id);
+        visited.insert(new_id);
+
+        // Iterate the new_id
+        assert(new_id > 0);
+        while(forwards.count(new_id))
+        {
+            new_id = forwards.at(new_id);
+            assert(new_id > 0);
+            if (visited.count(new_id))
+                throw OTCError()<<"forwarding loop from id "<<old_id<<"!";
+            visited.insert(new_id);
         }
-    }
-    while (!need_iterating.empty()) {
-        unordered_set<OttId> scratch;
-        for (auto old_id: need_iterating) {
-            auto fm_it = forwards.find(old_id);
-            assert(fm_it != forwards.end());
-            auto curr_new_id = fm_it->second;
-            OttId nnid = this->map(fm_it->second);
-            assert(nnid != fm_it->second);
-            fm_it->second = nnid;
-            if (nnid > 0 && nnid != this->map(nnid)) {
-                scratch.insert(old_id);
-            }
+
+        if (not index.count(new_id))
+        {
+            LOG(DEBUG) << "OTT id "<<old_id<<" forwarded to non-existent (possibly pruned) id "<<new_id;
+            failed_forwards.insert(old_id);
         }
-        need_iterating = scratch;
+
+        assert(new_id != -1);
+        assert(new_id >= 0);
     }
+
+    // 3. Remove forwards that forward to ids that are non-existent for any reason
+    for(auto id: failed_forwards)
+        forwards.erase(id);
 }
 
 std::string get_taxonomy_dir(const variables_map& args) {
