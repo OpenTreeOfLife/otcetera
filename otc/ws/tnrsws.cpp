@@ -404,7 +404,6 @@ autocompleting name fields on forms, use the `match_names` service.
 */
 
 
-
 //FIXME: how is "suppressed_names" different from "deprecated_taxa"?
 
 // $ curl -X POST https://api.opentreeoflife.org/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
@@ -474,7 +473,14 @@ inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<const T
         j.push_back(autocomplete_json(taxonomy, taxon));
     }
 }
-    
+
+inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<FuzzyQueryResultWithTaxon>& fuzzy_query_results)
+{
+    for(auto fuzzy_query_result: fuzzy_query_results) {
+        j.push_back(autocomplete_json(taxonomy, fuzzy_query_result.get_taxon()));
+    }
+}
+
 inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vec_tax_str_pair_t taxa) {
     for(auto [taxon, synonym]: taxa) {
         j.push_back(autocomplete_json(taxonomy, taxon));
@@ -497,6 +503,30 @@ vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus,
     }
     return match_species;
 }
+
+/*
+ * Fuzzy matching DOES occur in autocomplete_name:
+ *
+ * curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Homo salien"}'
+[ {
+  "is_suppressed" : false,
+  "unique_name" : "Homo sapiens",
+  "ott_id" : 770315,
+  "is_higher" : false
+} ]
+ *
+ * However, fuzzy matching does not find `Homo sapiens neanderthalensis` and `Homo sapiens subsp. 'Denisova'`, whereas direct matching does.
+ *
+ * curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Homo sapien"}'
+ *
+ * However, it appears that a difference of 2 chars is allowed on an exact match, instead of doing a prefix-query on the fuzzy index:
+ *
+ * "Hono saliens" -> "Homo sapiens" + "Neobodo saliens"
+ * "Hono salien"  -> nothing
+ * "Homo salens"  -> "Homo sapiens"
+ * "Homo salen"   -> nothing
+ */
+
 
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
@@ -547,7 +577,15 @@ string tnrs_autocomplete_name_ws_method(const string& name,
         if (not response.empty()) {
             return response.dump(1);
         }
-        // fuzzy search on names and synonyms
+        // fuzzy search on names and synonyms (BDR -- not a prefix search?)
+        {
+            auto ctp = taxonomy.get_fuzzy_matcher();
+            if (ctp == nullptr) {
+                throw OTCError() << "Fuzzy matching has not been enabled in the taxonomy, but was requested in match_name.";
+            }
+            auto fuzzy_results = ctp->fuzzy_query_to_taxa(escaped_query, context_root, taxonomy, include_suppressed);
+            add_hits(response, taxonomy, fuzzy_results);
+        }
     } else { // does not contain a space at all
         add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
         add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
@@ -564,7 +602,15 @@ string tnrs_autocomplete_name_ws_method(const string& name,
         if (not response.empty()) {
             return response.dump(1);
         }
-        // fuzzy search on higher names and synonyms
+        // fuzzy search on HIGHER names and synonyms (BDR -- not a prefix search?)
+        {
+            auto ctp = taxonomy.get_fuzzy_matcher();
+            if (ctp == nullptr) {
+                throw OTCError() << "Fuzzy matching has not been enabled in the taxonomy, but was requested in match_name.";
+            }
+            auto fuzzy_results = ctp->fuzzy_query_to_taxa(escaped_query, context_root, taxonomy, include_suppressed);
+            add_hits(response, taxonomy, fuzzy_results);
+        }
     }
     return response.dump(1);
 }
