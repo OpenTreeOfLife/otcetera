@@ -355,6 +355,16 @@ def run_tests(dirs_to_run, test_threads):
         time.sleep(0.1)
     return num_passed, num_failed, num_errors
 
+
+def get_test_dirs_under(top_test_dir):
+    test_dirs = []
+    for root, dirs, files in os.walk(top_test_dir):
+        if "method.json" in files:
+            path = os.path.relpath(root, top_test_dir)
+            test_dirs.insert(0,path)
+    return test_dirs
+
+
 if __name__ == '__main__':
     import argparse
     import codecs
@@ -389,7 +399,7 @@ if __name__ == '__main__':
     if args.test_name is not None:
         e_dir_list = [args.test_name]
     else:
-        e_dir_list = os.listdir(test_par)
+        e_dir_list = get_test_dirs_under(test_par)
         e_dir_list.sort()
     SERVER_PORT = args.server_port
 
