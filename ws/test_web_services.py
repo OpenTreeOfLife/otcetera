@@ -139,7 +139,7 @@ API_HEADERS = {'content-type' : 'application/json',
                'accept' : 'application/json',
               }
 class WebServiceTestJob(object):
-    def __init__(self, test_description, service_prefix):
+    def __init__(self, test_par, test_description, service_prefix):
         self.url_fragment = test_description["url_fragment"]
         self.arguments = test_description["arguments"]
         v = test_description.get("verb", "GET").upper()
@@ -152,8 +152,9 @@ class WebServiceTestJob(object):
         self.passed = False
         self.failed = False
         self.erred = False
+        self.test_par = test_par
         self.test_dir = test_description.get("test_dir")
-        self.test_subdir = os.path.split(self.test_dir)[-1]
+        self.test_subdir = os.path.relpath(self.test_dir, self.test_par)
         self.name = test_description.get("name", self.test_subdir or self.url_fragment)
         self.stat_lock = RLock()
     
@@ -296,7 +297,7 @@ def kill_server(exe_dir):
 
 FAILED_TESTS, ERRORED_TESTS = [], []
 
-def run_tests(dirs_to_run, test_threads):
+def run_tests(test_par, dirs_to_run, test_threads):
     assert test_threads > 0
     td_list = []
     for test_dir in dirs_to_run:
@@ -318,7 +319,7 @@ def run_tests(dirs_to_run, test_threads):
 
     start_worker(test_threads)
     service_prefix = "http://127.0.0.1:{}/".format(SERVER_PORT)
-    all_jobs = [WebServiceTestJob(test_description=td, service_prefix=service_prefix) for td in td_list]
+    all_jobs = [WebServiceTestJob(test_par=test_par, test_description=td, service_prefix=service_prefix) for td in td_list]
     running_jobs = list(all_jobs)
     for j in all_jobs:
         _jobq.put(j)
@@ -403,6 +404,7 @@ if __name__ == '__main__':
         e_dir_list.sort()
     SERVER_PORT = args.server_port
 
+    # Get test paths
     to_run = []
     for e_subdir_name in e_dir_list:
         e_path = os.path.join(test_par, e_subdir_name)
@@ -416,6 +418,8 @@ if __name__ == '__main__':
         to_run.append(e_path)
     if not to_run:
         sys.exit("No test were found!")
+
+    # Check that there are no PIDfiles in the way
     pidfile_path = os.path.join(exe_dir, PIDFILE_NAME)
     if os.path.exists(pidfile_path):
         recheck = 0
@@ -426,13 +430,15 @@ if __name__ == '__main__':
                 break
         if os.path.exists(pidfile_path):
             sys.exit("{} is in the way!\n".format(pidfile_path))
+
+    # try launching otc-tol-ws and running the tests against it.
     for i in range(2):
         if launch_server(exe_dir=exe_dir,
                         taxonomy_dir=taxonomy_dir,
                         synth_par=synth_par_path,
                         server_threads=args.server_threads):
             try:
-                num_passed, nf, ne = run_tests(to_run, args.test_threads)
+                num_passed, nf, ne = run_tests(test_par, to_run, args.test_threads)
             finally:
                 kill_server(exe_dir)
             NUM_TESTS = nf + ne + num_passed
