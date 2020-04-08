@@ -432,6 +432,7 @@ const int MAX_NONFUZZY_QUERY_STRINGS = 10000;
 const int MAX_FUZZY_QUERY_STRINGS = 250;
 
 static string LIFE_NODE_NAME = "life";
+static string LIFE_CONTEXT_NAME = "All life";
 
 string tnrs_match_names_handler( const json& parsedargs ) {
     // 1. Requred argument: "names"
@@ -454,7 +455,7 @@ string tnrs_match_names_handler( const json& parsedargs ) {
 
 string tnrs_autocomplete_name_handler( const json& parsedargs ) {
     string name              = extract_required_argument<string>(parsedargs, "name");
-    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
+    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_CONTEXT_NAME);
     bool include_suppressed  = extract_argument_or_default(parsedargs, "include_suppressed",      false);
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
