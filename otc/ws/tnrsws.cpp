@@ -504,7 +504,8 @@ string tnrs_autocomplete_name_ws_method(const string& name,
                                         const string& context_name,
                                         bool include_suppressed,
                                         const RichTaxonomy& taxonomy) {
-    json response;
+    // An empty response should be `[ ]`, not `null`.
+    json response = json::array();
     // We need to escape the query string.
     auto escaped_query = escape_query_string(name);
     // This corresponds to a SingleNamePrefixQuery in taxomachine.
