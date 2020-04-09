@@ -1163,14 +1163,8 @@ bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & contestingtrees_path,
                                TreesToServe & tts)
 {
-    std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
-    json contestingtrees_obj;
-    try {
-        contestingtrees_stream >> contestingtrees_obj;
-    } catch (...) {
-        LOG(WARNING) << "Could not read \"" << contestingtrees_path << "\" as JSON.\n";
-        throw;
-    }
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
 
     std::string annot_str = annotations_path.native();
     std::ifstream annotations_stream(annot_str.c_str());
@@ -1181,6 +1175,25 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
         throw;
     }
+
+    // Check that the tree was built against the correct taxonomy.
+    string tree_tax_version = annotations_obj["taxonomy_version"];
+    string synth_id = annotations_obj["synth_id"];
+    if (tree_tax_version != taxonomy.get_version())
+    {
+        LOG(WARNING) << "Read \"" << annotations_path << "\" as JSON.\n";
+        throw OTCError()<<"Tree with <synth_id='"<<synth_id<<"',taxonomy_version='"<<tree_tax_version<<"'> does not match taxonomy version '"<<taxonomy.get_version()<<"'";
+    }
+
+    std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
+    json contestingtrees_obj;
+    try {
+        contestingtrees_stream >> contestingtrees_obj;
+    } catch (...) {
+        LOG(WARNING) << "Could not read \"" << contestingtrees_path << "\" as JSON.\n";
+        throw;
+    }
+
     std::string bt_str = brokentaxa_path.native();
     std::ifstream brokentaxa_stream(bt_str.c_str());
     json brokentaxa_obj;
@@ -1190,8 +1203,6 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    auto locked_taxonomy = tts.get_readable_taxonomy();
-    const auto & taxonomy = locked_taxonomy.first;
 #   if defined(REPORT_MEMORY_USAGE)
         MemoryBookkeeper tax_mem_b;
         std::size_t tree_mem = 0;
