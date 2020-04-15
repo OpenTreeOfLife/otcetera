@@ -27,6 +27,21 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_
     return sorted;
 }
 
+std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::exact_query(const std::string & query_str) const
+{
+    auto conv_query = to_u32string(query_str);
+
+    std::set<FuzzyQueryResult, SortQueryResByNearness> sorted;
+
+    auto from_thin = thin_trie.fuzzy_matches(conv_query, 0);
+    sorted.insert(std::begin(from_thin), std::end(from_thin));
+
+    auto from_full = wide_trie.fuzzy_matches(conv_query, 0);
+    sorted.insert(std::begin(from_full), std::end(from_full));
+
+    return sorted;
+}
+
 
 void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys) {
     ctrie_init_set_t for_wide;
