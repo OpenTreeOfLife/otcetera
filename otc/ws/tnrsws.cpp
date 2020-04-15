@@ -140,7 +140,7 @@ vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
         }
         return taxon_is_specific(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, ok);
     
 }
 
@@ -154,7 +154,7 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
         }
         return taxon_is_genus(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, ok);
 }
 
 vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
@@ -167,7 +167,7 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, ok);
 }
 
 vector<const Taxon*> prefix_name_search(const Taxon* context_root,

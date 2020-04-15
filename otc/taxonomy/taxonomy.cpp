@@ -820,10 +820,37 @@ const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& node
     return focal;
 }
 
+// FIXME: move this out of here
 
-vector<const RTRichTaxNode *> exact_name_search(const RTRichTaxNode* context_root,
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                    const RTRichTaxNode* context_root,
+                                                    const std::string& query,
+                                                    bool include_suppressed)
+{
+    if (include_suppressed) {
+        return exact_name_search(taxonomy, context_root, query);
+    }
+    std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
+        return not taxonomy.node_is_suppressed_from_tnrs(taxon);
+    };
+    return exact_name_search(taxonomy, context_root, query, ok);
+}
+
+
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                    const std::string& query,
+                                                    bool include_suppressed)
+{
+    const RTRichTaxNode* context_root = taxonomy.get_tax_tree().get_root();
+    return exact_name_search(taxonomy, context_root, query, include_suppressed);
+}
+
+
+vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
+                                                const RTRichTaxNode* context_root,
                                                 const std::string&  query_ref,
-                                                std::function<bool(const RTRichTaxNode*)> ok) {
+                                                std::function<bool(const RTRichTaxNode*)> ok)
+{
     std::string query{query_ref};
     for (auto& c: query) {
         c = std::tolower(c);
