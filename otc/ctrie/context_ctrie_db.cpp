@@ -4,6 +4,10 @@
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
 
+using std::set;
+using std::string;
+using std::vector;
+
 namespace otc {
 
 ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
@@ -73,6 +77,20 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuz
     for (auto c :children) {
         if (c->context.name_matcher) {
             auto csorted = c->context.name_matcher->fuzzy_query(query_str);
+            sorted.insert(std::begin(csorted), std::end(csorted));
+        }
+    }
+    return sorted;
+}
+
+std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::exact_query(const std::string & query_str) const {
+    std::set<FuzzyQueryResult, SortQueryResByNearness> sorted;
+    if (context.name_matcher != nullptr) {
+        sorted = context.name_matcher->exact_query(query_str);
+    }
+    for (auto c :children) {
+        if (c->context.name_matcher) {
+            auto csorted = c->context.name_matcher->exact_query(query_str);
             sorted.insert(std::begin(csorted), std::end(csorted));
         }
     }

@@ -16,6 +16,8 @@ class ContextAwareCTrieBasedDB {
     ContextAwareCTrieBasedDB(const Context &, const RichTaxonomy &);
     ContextAwareCTrieBasedDB(const Context &, const RichTaxonomy &, const std::set<std::string_view> & keys);
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
+    std::set<FuzzyQueryResult, SortQueryResByNearness>  exact_query(const std::string & query_str) const;
+
     std::vector<FuzzyQueryResultWithTaxon> fuzzy_query_to_taxa(const std::string & query_str,
                                                                const RTRichTaxNode * context_root,
                                                                const RichTaxonomy & taxonomy,
