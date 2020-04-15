@@ -21,36 +21,45 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
     const auto & rt_data = rich_tax_tree.get_data();
     std::set<std::string> all_names;
     auto insert_hint = all_names.begin();
-    for (auto const & name2nd : rt_data.name_to_node) {
-        auto nn = normalize_query(name2nd.first);
-        match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{name2nd.second, nullptr});
-        insert_hint = all_names.insert(insert_hint, nn);
+    for (auto& [name, node] : rt_data.name_to_node)
+    {
+        // node could be nullptr here if this is a homonym, see note in taxonomy.h
+        if (node)
+        {
+            auto nn = normalize_query(name);
+            match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{node, nullptr});
+            insert_hint = all_names.insert(insert_hint, nn);
+        }
     }
     insert_hint = all_names.begin();
-    for (auto name2ndvec : rt_data.homonym_to_node) {
-        auto nn = normalize_query(name2ndvec.first);
-        for (auto hnp : name2ndvec.second) {
+    for (auto& [name, nodes] : rt_data.homonym_to_node) {
+        auto nn = normalize_query(name);
+        for (auto hnp : nodes) {
+            assert(hnp);
             match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{hnp, nullptr});
         }
         insert_hint = all_names.insert(insert_hint, nn);
     }
     // filtered
     insert_hint = all_names.begin();
-    for (auto name2rec : rt_data.name_to_record) {
-        auto nn = normalize_query(name2rec.first);
-        match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{nullptr, (const void *)name2rec.second});
+    for (auto& [name, record] : rt_data.name_to_record) {
+        auto nn = normalize_query(name);
+        assert(record);
+        match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{nullptr, (const void *)record});
         insert_hint = all_names.insert(insert_hint, nn);
     }
     insert_hint = all_names.begin();
-    for (auto name2recvec : rt_data.homonym_to_record) {
-        auto nn = normalize_query(name2recvec.first);
-        for (auto hrp : name2recvec.second) {
+    for (auto& [name, records] : rt_data.homonym_to_record) {
+        auto nn = normalize_query(name);
+        for (auto hrp : records) {
+            assert(hrp);
             match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{nullptr, (const void *)hrp});
         }
         insert_hint = all_names.insert(insert_hint, nn);
     }
     for (const auto & tjs : taxonomy.get_synonyms_list()) {
         auto nn = normalize_query(tjs.name);
+        assert(&tjs);
         match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{tjs.primary, (const void *)(&tjs)});
         all_names.insert(nn);
     }
