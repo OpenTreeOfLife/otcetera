@@ -22,6 +22,12 @@ class ContextAwareCTrieBasedDB {
                                                                const RTRichTaxNode * context_root,
                                                                const RichTaxonomy & taxonomy,
                                                                bool include_suppressed) const;
+
+    std::vector<FuzzyQueryResultWithTaxon> to_taxa(const std::set<FuzzyQueryResult, SortQueryResByNearness>& sorted_results,
+                                                   const RTRichTaxNode * context_root,
+                                                   const RichTaxonomy & taxonomy,
+                                                   bool include_suppressed) const;
+
     private:
     const Context & context;
     std::vector<const ContextAwareCTrieBasedDB *> children;
