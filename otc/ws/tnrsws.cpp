@@ -86,7 +86,8 @@ bool taxon_is_higher(const Taxon* taxon) {
 }
 
 using vec_tax_str_pair_t = vector<pair<const Taxon*, const string&> >;
-vec_tax_str_pair_t exact_synonym_search(const Taxon* context_root,
+vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
+                                        const Taxon* context_root,
                                         string query, 
                                         tax_pred_t ok = [](const Taxon*){return true;})
 {
@@ -109,12 +110,12 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
                                         string query,
                                         bool include_suppressed) {
     if (include_suppressed) {
-        return exact_synonym_search(context_root, query);
+        return exact_synonym_search(taxonomy, context_root, query);
     }
     tax_pred_t ok = [&](const Taxon* taxon) {
         return not taxonomy.node_is_suppressed_from_tnrs(taxon);
     };
-    return exact_synonym_search(context_root, query, ok);
+    return exact_synonym_search(taxonomy, context_root, query, ok);
 }
 
 vec_tax_str_pair_t exact_synonym_search_higher(const RichTaxonomy& taxonomy,
@@ -127,7 +128,7 @@ vec_tax_str_pair_t exact_synonym_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return exact_synonym_search(context_root, query, ok);
+    return exact_synonym_search(taxonomy, context_root, query, ok);
 }
 
 vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
