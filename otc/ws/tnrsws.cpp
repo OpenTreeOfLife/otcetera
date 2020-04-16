@@ -85,7 +85,7 @@ bool taxon_is_higher(const Taxon* taxon) {
     return taxon->get_data().rank < TaxonomicRank::RANK_SPECIES;
 }
 
-using vec_tax_str_pair_t = vector<pair<const Taxon*, const string&> >;
+using vec_tax_str_pair_t = vector<pair<const Taxon*, const string> >;
 
 vec_tax_str_pair_t exact_synonym_search_slow(const RichTaxonomy& /*taxonomy*/,
                                              const Taxon* context_root,
