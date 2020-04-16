@@ -847,7 +847,7 @@ std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy
 }
 
 
-vector<const RTRichTaxNode *> exact_name_search_slow(const RichTaxonomy& taxonomy,
+vector<const RTRichTaxNode *> exact_name_search_slow(const RichTaxonomy& /*taxonomy*/,
                                                      const RTRichTaxNode* context_root,
                                                      const std::string&  query_ref,
                                                      std::function<bool(const RTRichTaxNode*)> ok)

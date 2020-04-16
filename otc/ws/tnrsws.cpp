@@ -87,7 +87,7 @@ bool taxon_is_higher(const Taxon* taxon) {
 
 using vec_tax_str_pair_t = vector<pair<const Taxon*, const string&> >;
 
-vec_tax_str_pair_t exact_synonym_search_slow(const RichTaxonomy& taxonomy,
+vec_tax_str_pair_t exact_synonym_search_slow(const RichTaxonomy& /*taxonomy*/,
                                              const Taxon* context_root,
                                              string query,
                                              tax_pred_t ok = [](const Taxon*){return true;})
