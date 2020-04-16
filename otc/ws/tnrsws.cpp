@@ -125,7 +125,7 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
         {
             auto t = result.get_taxon();
             if (ok(t))
-                hits.push_back({t,query});
+                hits.push_back({t,result.get_matched_name()});
         }
     }
 
