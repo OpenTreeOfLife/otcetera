@@ -24,6 +24,7 @@ namespace fs = boost::filesystem;
 #include "otc/config_file.h"
 #include "otc/util.h"
 #include "otc/otc_base_includes.h"
+#include "otc/ctrie/context_ctrie_db.h"
 
 using namespace otc;
 
@@ -846,10 +847,10 @@ std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy
 }
 
 
-vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
-                                                const RTRichTaxNode* context_root,
-                                                const std::string&  query_ref,
-                                                std::function<bool(const RTRichTaxNode*)> ok)
+vector<const RTRichTaxNode *> exact_name_search_slow(const RichTaxonomy& taxonomy,
+                                                     const RTRichTaxNode* context_root,
+                                                     const std::string&  query_ref,
+                                                     std::function<bool(const RTRichTaxNode*)> ok)
 {
     std::string query{query_ref};
     for (auto& c: query) {
@@ -864,6 +865,52 @@ vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
             hits.push_back(taxon);
         }
     }
+    return hits;
+}
+
+vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
+                                                const RTRichTaxNode* context_root,
+                                                const std::string&  query_ref,
+                                                std::function<bool(const RTRichTaxNode*)> ok)
+{
+    // Maybe move this into the exact_query( ) call.
+    string query = normalize_query(query_ref);
+
+    auto ctp = taxonomy.get_fuzzy_matcher();
+    assert(ctp);
+
+    auto fuzzy_results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
+    vector<const RTRichTaxNode*> hits;
+    for(auto& result: fuzzy_results)
+    {
+        if (not result.is_synonym())
+        {
+            auto t = result.get_taxon();
+            if (ok(t))
+                hits.push_back(t);
+        }
+    }
+
+#ifdef DEBUG_NAME_SEARCH
+    {
+        auto hits2 = exact_name_search_slow(taxonomy, context_root, query_ref, ok);
+        std::sort(hits.begin(), hits.end());
+        std::sort(hits2.begin(), hits2.end());
+        LOG(INFO)<<"exact_name_search: query = '"<<query_ref<<"'  context_id = "<<context_root->get_ott_id();
+        if (hits != hits2)
+        {
+            LOG(INFO)<<"ctrie match:";
+            for(int i=0;i<hits.size();i++)
+                LOG(INFO)<<"   "<<hits[i]->get_data().get_nonuniqname();
+            LOG(INFO)<<"lcase match:";
+            for(int i=0;i<hits2.size();i++)
+                LOG(INFO)<<"   "<<hits2[i]->get_data().get_nonuniqname();
+        }
+        else
+            LOG(INFO)<<"exact name search: "<<hits.size()<<" names agree";
+    }
+#endif
+
     return hits;
 }
 

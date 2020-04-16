@@ -91,6 +91,7 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
                                         string query, 
                                         tax_pred_t ok = [](const Taxon*){return true;})
 {
+    query = normalize_query(query);
     vec_tax_str_pair_t hits;
     for(auto taxon: iter_post_n_const(*context_root)) {
         if (not ok(taxon)) {
@@ -102,6 +103,44 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
             }
         }
     }
+
+
+    if (auto ctp = taxonomy.get_fuzzy_matcher())
+    {
+        auto fuzzy_results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
+        vec_tax_str_pair_t hits2;
+        for(auto& result: fuzzy_results)
+        {
+            if (result.is_synonym())
+            {
+                auto t = result.get_taxon();
+                if (ok(t))
+                    hits2.push_back({t,query});
+            }
+        }
+//        we can't sort references -- use string_view?
+        vector<const Taxon*> taxon_hits1;
+        for(auto& [taxon,_]: hits)
+            taxon_hits1.push_back(taxon);
+        vector<const Taxon*> taxon_hits2;
+        for(auto& [taxon,_]: hits2)
+            taxon_hits2.push_back(taxon);
+        std::sort(taxon_hits1.begin(), taxon_hits1.end());
+        std::sort(taxon_hits2.begin(), taxon_hits2.end());
+        LOG(INFO)<<"exact_synonym_search: query = '"<<query<<"'  context_id = "<<context_root->get_ott_id();
+        if (taxon_hits1 != taxon_hits2)
+        {
+            LOG(INFO)<<"lcase match:";
+            for(int i=0;i<taxon_hits1.size();i++)
+                LOG(INFO)<<"   "<<taxon_hits1[i]->get_data().get_nonuniqname();
+            LOG(INFO)<<"ctrie match:";
+            for(int i=0;i<taxon_hits2.size();i++)
+                LOG(INFO)<<"   "<<taxon_hits2[i]->get_data().get_nonuniqname();
+        }
+        else
+            LOG(INFO)<<"exact synonym search: "<<hits.size()<<" names agree";
+    }
+
     return hits;
 }
 
@@ -538,7 +577,7 @@ string tnrs_autocomplete_name_ws_method(const string& name,
     // An empty response should be `[ ]`, not `null`.
     json response = json::array();
     // We need to escape the query string.
-    auto escaped_query = escape_query_string(name);
+    auto escaped_query = normalize_query(name);
     // This corresponds to a SingleNamePrefixQuery in taxomachine.
     // * See org/opentree/taxonomy/plugins/tnrs_v3.java
     // * See org/opentree/tnrs/queries/SingleNamePrefixQuery.java
