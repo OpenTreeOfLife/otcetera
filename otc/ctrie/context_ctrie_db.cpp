@@ -59,7 +59,6 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
     }
     for (const auto & tjs : taxonomy.get_synonyms_list()) {
         auto nn = normalize_query(tjs.name);
-        assert(&tjs);
         match_name_to_taxon[nn].push_back(const_rich_taxon_and_syn_ptr{tjs.primary, (const void *)(&tjs)});
         all_names.insert(nn);
     }
