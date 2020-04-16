@@ -86,10 +86,11 @@ bool taxon_is_higher(const Taxon* taxon) {
 }
 
 using vec_tax_str_pair_t = vector<pair<const Taxon*, const string&> >;
-vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
-                                        const Taxon* context_root,
-                                        string query, 
-                                        tax_pred_t ok = [](const Taxon*){return true;})
+
+vec_tax_str_pair_t exact_synonym_search_slow(const RichTaxonomy& taxonomy,
+                                             const Taxon* context_root,
+                                             string query,
+                                             tax_pred_t ok = [](const Taxon*){return true;})
 {
     query = normalize_query(query);
     vec_tax_str_pair_t hits;
@@ -103,43 +104,60 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
             }
         }
     }
+    return hits;
+}
 
 
-    if (auto ctp = taxonomy.get_fuzzy_matcher())
+vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
+                                        const Taxon* context_root,
+                                        string query,
+                                        tax_pred_t ok = [](const Taxon*){return true;})
+{
+    auto ctp = taxonomy.get_fuzzy_matcher();
+
+    assert(ctp);
+
+    auto fuzzy_results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
+    vec_tax_str_pair_t hits;
+    for(auto& result: fuzzy_results)
     {
-        auto fuzzy_results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
-        vec_tax_str_pair_t hits2;
-        for(auto& result: fuzzy_results)
+        if (result.is_synonym())
         {
-            if (result.is_synonym())
-            {
-                auto t = result.get_taxon();
-                if (ok(t))
-                    hits2.push_back({t,query});
-            }
+            auto t = result.get_taxon();
+            if (ok(t))
+                hits.push_back({t,query});
         }
-//        we can't sort references -- use string_view?
+    }
+
+#ifdef DEBUG_NAME_SEARCH
+    {
+//      we can't sort references -- use string_view?
+        auto hits2 = exact_synonym_search_slow(taxonomy, context_root, query, ok);
+
         vector<const Taxon*> taxon_hits1;
         for(auto& [taxon,_]: hits)
             taxon_hits1.push_back(taxon);
+
         vector<const Taxon*> taxon_hits2;
         for(auto& [taxon,_]: hits2)
             taxon_hits2.push_back(taxon);
+
         std::sort(taxon_hits1.begin(), taxon_hits1.end());
         std::sort(taxon_hits2.begin(), taxon_hits2.end());
         LOG(INFO)<<"exact_synonym_search: query = '"<<query<<"'  context_id = "<<context_root->get_ott_id();
         if (taxon_hits1 != taxon_hits2)
         {
-            LOG(INFO)<<"lcase match:";
+            LOG(INFO)<<"ctrie match:";
             for(int i=0;i<taxon_hits1.size();i++)
                 LOG(INFO)<<"   "<<taxon_hits1[i]->get_data().get_nonuniqname();
-            LOG(INFO)<<"ctrie match:";
+            LOG(INFO)<<"lcase match:";
             for(int i=0;i<taxon_hits2.size();i++)
                 LOG(INFO)<<"   "<<taxon_hits2[i]->get_data().get_nonuniqname();
         }
         else
             LOG(INFO)<<"exact synonym search: "<<hits.size()<<" names agree";
     }
+#endif
 
     return hits;
 }
