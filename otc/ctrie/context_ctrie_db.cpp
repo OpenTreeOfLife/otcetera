@@ -32,7 +32,7 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
         }
     }
     insert_hint = all_names.begin();
-    for (auto& [name, nodes] : rt_data.homonym_to_node) {
+    for (auto& [name, nodes] : rt_data.homonym_to_nodes) {
         auto nn = normalize_query(name);
         for (auto hnp : nodes) {
             assert(hnp);

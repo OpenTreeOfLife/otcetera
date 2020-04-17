@@ -80,8 +80,8 @@ OttIdSet diagnose_name(const RTRichTaxTreeData & rt_data,
             if (out != nullptr) {*out << "node in taxonomy: ott_id = " << nd->get_ott_id() << " name = \"" << nd->get_name() << "\"\n";}
         }
     }
-    auto n2hit = rt_data.homonym_to_node.find(name);
-    if (n2hit != rt_data.homonym_to_node.end()) {
+    auto n2hit = rt_data.homonym_to_nodes.find(name);
+    if (n2hit != rt_data.homonym_to_nodes.end()) {
         const auto & ndv = n2hit->second;
         for (auto nd : ndv) {
             if (nd != nullptr) {

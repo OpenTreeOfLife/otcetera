@@ -1090,7 +1090,7 @@ inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper
     std::size_t nn_sz = calc_memory_used_by_map_simple(d.name_to_node, mb);
     std::size_t nutn_sz = calc_memory_used_by_map_simple(d.non_unique_taxon_names, mb);
     std::size_t htn_sz = 0;
-    for (auto el : d.homonym_to_node) {
+    for (auto el : d.homonym_to_nodes) {
         htn_sz += sizeof(std::string_view);
         htn_sz += calc_memory_used_by_vector_eqsize(el.second, sizeof(const RTRichTaxNode *), mb);
     }
@@ -1103,7 +1103,7 @@ inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper
     mb["taxonomy data id_to_node"] += in_sz;
     mb["taxonomy data name_to_node"] += nn_sz;
     mb["taxonomy data non_unique_taxon_names"] += nutn_sz;
-    mb["taxonomy data homonym_to_node"] += htn_sz;
+    mb["taxonomy data homonym_to_nodes"] += htn_sz;
     return nm_sz + gm_sz + wm_sz + fm_sz + im_sz + f2j_sz + in_sz + nn_sz + nutn_sz + htn_sz;
 }
 

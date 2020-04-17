@@ -303,7 +303,7 @@ class RTRichTaxTreeData {
     std::map<std::string_view, const TaxonomyRecord *> name_to_record; // for filtered
     std::unordered_map<OttId, const RTRichTaxNode *> id_to_node;
     std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
-    std::map<std::string_view, std::vector<const RTRichTaxNode *> > homonym_to_node;
+    std::map<std::string_view, std::vector<const RTRichTaxNode *> > homonym_to_nodes;
     std::map<std::string_view, std::vector<const TaxonomyRecord *> > homonym_to_record;
     std::map<std::string, OttIdSet> non_unique_taxon_names;
 
@@ -516,7 +516,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
     data.flags = tr.flags;
     data.rank = string_to_rank(tr.rank);
     register_taxon_in_maps(tree_data.name_to_node,
-                           tree_data.homonym_to_node,
+                           tree_data.homonym_to_nodes,
                            data.possibly_nonunique_name,
                            uname,
                            this_node);

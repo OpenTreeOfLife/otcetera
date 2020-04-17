@@ -619,10 +619,10 @@ void RichTaxonomy::read_synonyms() {
             nit = tree_data.name_to_node.insert(nit, name_map_pair(name_ref, primary));
         } else {
             if (nit->second != nullptr) {
-                tree_data.homonym_to_node[name_ref].push_back(nit->second);
+                tree_data.homonym_to_nodes[name_ref].push_back(nit->second);
                 nit->second = nullptr;
             }
-            tree_data.homonym_to_node[name_ref].push_back(primary);
+            tree_data.homonym_to_nodes[name_ref].push_back(primary);
         }
         
         auto vs = comma_separated_as_vec(sourceinfo);
