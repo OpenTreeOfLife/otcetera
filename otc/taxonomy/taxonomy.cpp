@@ -612,18 +612,6 @@ void RichTaxonomy::read_synonyms() {
         
         this->synonyms.emplace_back(name, primary, sourceinfo);
         TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
-        auto nit = tree_data.name_to_node.lower_bound(name);
-        string_view name_ref = tjs.name;
-        typedef std::pair<string_view, const RTRichTaxNode *> name_map_pair;
-        if (nit == tree_data.name_to_node.end() or nit->first != name_ref) {
-            nit = tree_data.name_to_node.insert(nit, name_map_pair(name_ref, primary));
-        } else {
-            if (nit->second != nullptr) {
-                tree_data.homonym_to_nodes[name_ref].push_back(nit->second);
-                nit->second = nullptr;
-            }
-            tree_data.homonym_to_nodes[name_ref].push_back(primary);
-        }
         
         auto vs = comma_separated_as_vec(sourceinfo);
         process_source_info_vec(vs, tree_data, tjs, primary);
