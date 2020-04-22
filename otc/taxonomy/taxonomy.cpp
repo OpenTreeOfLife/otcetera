@@ -861,15 +861,12 @@ vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
                                                 const std::string&  query_ref,
                                                 std::function<bool(const RTRichTaxNode*)> ok)
 {
-    // Maybe move this into the exact_query( ) call.
-    string query = normalize_query(query_ref);
-
     auto ctp = taxonomy.get_fuzzy_matcher();
     assert(ctp);
 
-    auto fuzzy_results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
+    auto results = ctp->to_taxa(ctp->exact_query(query_ref), context_root, taxonomy, true);
     vector<const RTRichTaxNode*> hits;
-    for(auto& result: fuzzy_results)
+    for(auto& result: results)
     {
         if (not result.is_synonym())
         {

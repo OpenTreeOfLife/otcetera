@@ -117,9 +117,9 @@ vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
 
     assert(ctp);
 
-    auto fuzzy_results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
+    auto results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
     vec_tax_str_pair_t hits;
-    for(auto& result: fuzzy_results)
+    for(auto& result: results)
     {
         if (result.is_synonym())
         {

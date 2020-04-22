@@ -15,8 +15,12 @@ class ContextAwareCTrieBasedDB {
     public:
     ContextAwareCTrieBasedDB(const Context &, const RichTaxonomy &);
     ContextAwareCTrieBasedDB(const Context &, const RichTaxonomy &, const std::set<std::string_view> & keys);
-    std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
-    std::set<FuzzyQueryResult, SortQueryResByNearness>  exact_query(const std::string & query_str) const;
+
+    // What strings (for names or synonyms) match the normalized query string?
+    std::set<FuzzyQueryResult, SortQueryResByNearness> fuzzy_query(const std::string & query_str) const;
+
+    // Does anything match this normalized query string?
+    std::optional<std::string> exact_query(const std::string & query_str) const;
 
     std::vector<FuzzyQueryResultWithTaxon> fuzzy_query_to_taxa(const std::string & query_str,
                                                                const RTRichTaxNode * context_root,
@@ -28,7 +32,13 @@ class ContextAwareCTrieBasedDB {
                                                    const RichTaxonomy & taxonomy,
                                                    bool include_suppressed) const;
 
-    private:
+    std::vector<TaxonResult> to_taxa(const std::optional<std::string>& result,
+                                     const RTRichTaxNode * context_root,
+                                     const RichTaxonomy & taxonomy,
+                                     bool include_suppressed) const;
+
+
+private:
     const Context & context;
     std::vector<const ContextAwareCTrieBasedDB *> children;
     CompressedTrieBasedDB trie;

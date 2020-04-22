@@ -40,48 +40,19 @@ class FuzzyQueryResult {
 
 };
 
-class FuzzyQueryResultWithTaxon {
-    const FuzzyQueryResult query_result;
+class TaxonResult
+{
     const RTRichTaxNode * taxon = nullptr;
     const TaxonomyRecord * record = nullptr;
     bool matched_to_synonym;
     const std::string matched_name;
-    public:
-    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const RTRichTaxNode * tax_arg)
-      :query_result(fqr),
-      taxon(tax_arg),
-      record(nullptr),
-      matched_to_synonym(false),
-      matched_name(tax_arg->get_data().get_nonuniqname()) {
-    }
 
-    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const TaxonomyRecord * tax_rec)
-      :query_result(fqr),
-      taxon(nullptr),
-      record(tax_rec),
-      matched_to_synonym(false),
-      matched_name(tax_rec->name) {
-    }
-
-    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const RTRichTaxNode * tax_arg,
-                              const TaxonomicJuniorSynonym *syn)
-      :query_result(fqr),
-      taxon(tax_arg),
-      record(nullptr),
-      matched_to_synonym(true),
-      matched_name(syn->get_name()) {
-    }
-
-    float get_score() const {
-        return query_result.score;
-    }
+public:
 
     bool is_synonym() const {
         return matched_to_synonym;
     }
+
     std::string get_matched_name() const {
         return matched_name;
     }
@@ -93,7 +64,56 @@ class FuzzyQueryResultWithTaxon {
     const TaxonomyRecord * get_record() const {
         return record;
     }
+
+    TaxonResult(const RTRichTaxNode * tax_arg)
+        :taxon(tax_arg),
+         matched_to_synonym(false),
+         matched_name(tax_arg->get_data().get_nonuniqname())
+    { }
+
+    TaxonResult(const TaxonomyRecord * tax_rec)
+        :record(tax_rec),
+         matched_to_synonym(false),
+         matched_name(tax_rec->name)
+    { }
+
+    TaxonResult(const RTRichTaxNode * tax_arg,
+                const TaxonomicJuniorSynonym *syn)
+        :taxon(tax_arg),
+         matched_to_synonym(true),
+         matched_name(syn->get_name())
+    { }
 };
+        
+
+class FuzzyQueryResultWithTaxon: public TaxonResult
+{
+    const FuzzyQueryResult query_result;
+public:
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg)
+        :TaxonResult(tax_arg),
+         query_result(fqr)
+        { }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const TaxonomyRecord * tax_rec)
+        :TaxonResult(tax_rec),
+         query_result(fqr)
+        { }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg,
+                              const TaxonomicJuniorSynonym *syn)
+        :TaxonResult(tax_arg,syn),
+         query_result(fqr)
+        { }
+
+    float get_score() const {
+        return query_result.score;
+    }
+};
+
 struct SortQueryResByNearness {
     bool operator() (const FuzzyQueryResult & lhs,
                      const FuzzyQueryResult & rhs) const {
