@@ -7,16 +7,16 @@ void fill_letter_and_node_indices_64(uint64_t letter_bits,
                                      vec_ind_pair_t & ret,
                                      uint64_t & node_index)
 {
-    uint64_t curr_bit = (ONE_64<<63);
-    for (unsigned char i = 0; i < 64; i++)
+    constexpr uint64_t left_bit = (ONE_64<<63);
+    while (letter_bits)
     {
-        if (letter_bits == 0) return;
+        int i = __builtin_clzl(letter_bits);
 
+        uint64_t curr_bit = left_bit >> i;
         if (letter_bits & curr_bit)
-            ret.push_back(ind_pair_t{offset, node_index++});
+            ret.push_back(ind_pair_t{offset+i, node_index++});
 
-        curr_bit >>= 1;
-        offset ++;
+        letter_bits &= (~curr_bit);
     }
 }
 
