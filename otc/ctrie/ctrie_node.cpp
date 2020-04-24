@@ -2,58 +2,21 @@
 
 namespace otc {
 
-//@TODO use lookup table
-void fill_letter_and_node_indices(unsigned char curr_byte,
-                                  int offset,
-                                  vec_ind_pair_t & ret,
-                                  uint64_t & node_index)
-{
-    if (curr_byte == 0) {
-        return;
-    }                             
-    unsigned char curr_bit = FIRST_BIT_OF_BYTE;
-    for (unsigned char i = 0; i < 8; ++i) {
-        //std::cerr << "fill_letter_and_node_indices byte=" << std::hex << (unsigned int)curr_byte << " bit=" << std::hex << (unsigned int)curr_bit << '\n' << std::dec;
-        if (curr_byte & curr_bit) {
-            ret.push_back(ind_pair_t{i + offset, node_index++});
-        }
-        curr_bit >>= 1;
-    }
-}
-
-void fill_letter_and_node_indices_64(uint64_t masked_workspace,
+void fill_letter_and_node_indices_64(uint64_t letter_bits,
                                      int offset,
                                      vec_ind_pair_t & ret,
                                      uint64_t & node_index)
 {
-    // Start with the most significant 8 bits
-    int bitshift = 56;
-    uint64_t blot_out_masker;
-    for (unsigned char i = 0U; i < 8; ++i)
+    uint64_t curr_bit = (ONE_64<<63);
+    for (unsigned char i = 0; i < 64; i++)
     {
-        if (masked_workspace == 0) {
-            return;
-        }
-        unsigned char curr_byte = masked_workspace >> bitshift;
-        if (curr_byte != 0)
-        {
-            blot_out_masker = curr_byte;
-            blot_out_masker <<= bitshift;
-            // 0 out the bits in masked_workspace that we're dealing with in this iteration.
-            masked_workspace ^= blot_out_masker; 
+        if (letter_bits == 0) return;
 
-            // Start with the most significant bit of the byte.
-            unsigned char curr_bit = FIRST_BIT_OF_BYTE;
-            for (unsigned char j = 0; j < 8; ++j)
-            {
-                //std::cerr << "fill_letter_and_node_indices byte=" << std::hex << (unsigned int)curr_byte << " bit=" << std::hex << (unsigned int)curr_bit << '\n' << std::dec;
-                if (curr_byte & curr_bit)
-                    ret.push_back(ind_pair_t{offset, node_index++});
-                curr_bit >>= 1;
-                offset ++;
-            }
-            bitshift -= 8;
-        }
+        if (letter_bits & curr_bit)
+            ret.push_back(ind_pair_t{offset, node_index++});
+
+        curr_bit >>= 1;
+        offset ++;
     }
 }
 
