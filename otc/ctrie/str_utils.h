@@ -86,13 +86,81 @@ inline bool starts_with(const stored_str_t & full, const stored_str_t & pref) {
     return 0 == full.compare(0, pref.length(), pref);
 }
 
-// could use this for \"e  -> e as well
-inline std::string normalize_query(const std::string & raw_query) {
-    std::string query = raw_query;
-    for (auto& c: query) {
+// BDR: This does not handle all accented characters, but should get a fair number of them.
+//      See https://en.wikipedia.org/wiki/Latin-1_Supplement_(Unicode_block)
+//      See https://en.wikipedia.org/wiki/ISO/IEC_8859-1
+//      See https://stackoverflow.com/questions/14094621/
+inline unsigned char normalize_latin_char(unsigned char ch)
+{
+    static const char*
+        //   "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+        tr = "AAAAAAECEEEEIIIIDNOOOOOx0UUUUYPsaaaaaaeceeeeiiiiOnooooo/0uuuuypy";
+
+    if ( ch < 128)
+        return ch;
+    else if ( ch < 192)
+    {
+        if (ch == 171) return '"'; // << quote
+        if (ch == 187) return '"'; // >> quote
+        return ch;
+    }
+
+    return tr[ ch-192 ];
+}
+
+inline char32_t normalize_greek_or_coptic_uchar(char32_t ch)
+{
+    // See https://unicode.org/charts/PDF/U0370.pdf
+
+    if (ch == 945)  return 'a'; // alpha
+    if (ch == 946)  return 'b'; // beta
+    if (ch == 947)  return 'g'; // gamma
+    if (ch == 948)  return 'd'; // delta
+    if (ch == 949)  return 'e'; // epsilon
+    if (ch == 950)  return 'z'; // zeta
+    if (ch == 951)  return 'e'; // eta
+    if (ch == 952)  return 't'; // theta
+    if (ch == 953)  return 'i'; // iota
+    if (ch == 954)  return 'k'; // kappa
+    if (ch == 955)  return 'l'; // lambda 
+    if (ch == 956)  return 'm'; // mu
+
+    return ch;
+}
+
+// https://www.codetable.net/decimal/8217
+inline char32_t normalize_uchar(char32_t ch)
+{
+    if (ch < 256)
+        return normalize_latin_char(ch);
+
+    if (ch >= 880 and ch < 1024)
+        return normalize_greek_or_coptic_uchar(ch);
+
+    if (ch == 352)  return  'S'; // Š Latin capital S with Caron
+    if (ch == 382)  return  'z'; // ž
+    if (ch == 353)  return  's'; // ſ
+
+    if (ch == 1086) return 'o';
+    if (ch == 1089) return 'c';
+
+    if (ch == 8201) return ' '; // thin space
+    if (ch == 8220) return '"'; // left quote
+    if (ch == 8221) return '"'; // right quote
+
+    return ch;
+}
+
+// Currently we don't allow changing the number of chars, so we can't handle
+// ligatures like fl or ae.
+inline std::string normalize_query(const std::string_view & raw_query)
+{
+    auto uquery = to_u32string(raw_query);
+    for (auto& c: uquery) {
+        c = normalize_uchar(c);
         c = std::tolower(c);
     }
-    return query;
+    return to_char_str(uquery);
 }
 
 } // namespace otc
