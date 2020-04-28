@@ -95,15 +95,5 @@ inline std::string normalize_query(const std::string & raw_query) {
     return query;
 }
 
-inline std::string normalize_query(const std::string_view & raw_query) {
-    std::string query;
-    query.reserve(query.size());
-    for (auto c: raw_query) {
-        query.push_back(std::tolower(c));
-    }
-    return query;
-}
-
-
 } // namespace otc
 #endif
