@@ -77,6 +77,10 @@ vec_ind_pair_t CTrieNode<CTrie2NodeData>::get_letter_and_node_indices_for_on_bit
     fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
     masked = data.bot & BOTTOM_LETTER_MASK;
     fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD, ret, node_index);
+
+    vec_ind_pair_t ret2;
+
+
     return ret;
 }
 

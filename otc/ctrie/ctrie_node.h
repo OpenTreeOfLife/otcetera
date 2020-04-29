@@ -11,6 +11,7 @@
 namespace otc {
 
 using stored_index_t = unsigned char;
+using ind_pair_t = std::pair<stored_index_t, uint64_t>;
 
 // The CTrieXNode classes are the elements stored in a vector by the CTrie class.
 // To allow for random access into the vector, each node is the same size for 
@@ -49,6 +50,49 @@ constexpr unsigned char FIRST_BIT_OF_BYTE = 0x080;
 constexpr int LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD = -2; // 2 bits for flags
 constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD;
 constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD;
+
+class ctrie_child_sentinel
+{
+};
+
+class ctrie_child_iterator
+{
+    uint64_t letter_bits;
+    uint64_t index_;
+
+    void mask_cur_letter()
+    {
+        assert(not done());
+        uint64_t curr_bit = (ONE_64<<63)>>letter();
+        letter_bits &= (~curr_bit);
+    }
+
+    bool done() const {return not letter_bits;}
+
+public:
+    uint64_t index() const {return index_;}
+    stored_index_t letter() const {return __builtin_clzl(letter_bits);}
+
+    ctrie_child_iterator operator++() {index_++; mask_cur_letter(); return (*this);}
+    ctrie_child_iterator operator++(int) {auto tmp = *this; (*this)++; return tmp;}
+
+    ind_pair_t operator*() const { return ind_pair_t(letter(),index());}
+
+    bool operator==(const ctrie_child_iterator& i2) {return index() == i2.index() and letter() == i2.letter();}
+    bool operator!=(const ctrie_child_iterator& i2) {return not (*this == i2);}
+    bool operator==(const ctrie_child_sentinel&) {return done();}
+    bool operator!=(const ctrie_child_sentinel&) {return not done();}
+
+    ctrie_child_iterator(uint64_t ul, uint64_t ui): letter_bits(ul),index_(ui) {}
+};
+
+struct ctrie_children
+{
+    ctrie_child_iterator begin_;
+    ctrie_child_iterator begin() const {return begin_;}
+    ctrie_child_sentinel end() const {return {};}
+    ctrie_children(uint64_t ul, uint64_t ui):begin_(ul,ui) {}
+};
 
 class CTrie3NodeData {
 public:
@@ -149,7 +193,7 @@ public:
     }
 };
 
-using ind_pair_t = std::pair<stored_index_t, uint64_t>;
+
 using vec_ind_pair_t = std::vector<ind_pair_t>;
 
 template <typename T>
@@ -165,7 +209,13 @@ public:
     uint64_t get_index() const {
         return INDEX_MASK & data.get_index_word_const();
     }
-    
+
+    uint64_t get_letter_bits() const {
+        return data.get_letter_bits();
+    }
+
+    ctrie_children children() const {return {get_letter_bits(),get_index()};}
+
     void log_state() const {
        std::cerr << " CTrieNode( "; data.db_write_state(std::cerr); std::cerr << ")\n";
     }
