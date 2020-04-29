@@ -77,6 +77,12 @@ public:
         return bot;
     }
 
+    uint64_t get_letter_bits() const {
+        assert(mid<<2 == 0);
+        assert((bot & BOTTOM_LETTER_MASK) == 0);
+        return (top<<2)|(mid>>62);
+    }
+
     void db_write_state(std::ostream &out) const {
        out << "top=" << std::bitset<64>{top} << " mid=" << std::bitset<64>{mid}  << " bot=" << std::bitset<64>{bot} ;
     }
@@ -103,6 +109,11 @@ public:
         return bot;
     }
 
+    uint64_t get_letter_bits() const {
+        assert((bot & BOTTOM_LETTER_MASK)<<2 == 0);
+        return (top<<2)|(bot>>62);
+    }
+
     void db_write_state(std::ostream &out) const {
        out << "top=" << std::bitset<64>{top} << " bot=" << std::bitset<64>{bot} ;
     }
@@ -127,6 +138,10 @@ public:
     }
     const uint64_t & get_index_word_const() const {
         return top;
+    }
+
+    uint64_t get_letter_bits() const {
+        return ((top&TOP_LETTER_MASK)<<2);
     }
 
     void db_write_state(std::ostream &out) const {
