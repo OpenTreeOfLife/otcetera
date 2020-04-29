@@ -76,8 +76,8 @@ class ctrie_child_iterator
     bool done() const {return not letter_bits;}
 
 public:
-    uint64_t index() const {return index_;}
-    stored_index_t letter() const {return __builtin_clzl(letter_bits);}
+    stored_index_t letter() const {assert(not done()); return __builtin_clzl(letter_bits);}
+    uint64_t index() const {assert(not done()); return index_;}
 
     ctrie_child_iterator operator++() {index_++; mask_cur_letter(); return (*this);}
     ctrie_child_iterator operator++(int) {auto tmp = *this; (*this)++; return tmp;}
