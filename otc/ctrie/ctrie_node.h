@@ -94,14 +94,13 @@ struct ctrie_children
     ctrie_children(uint64_t ul, uint64_t ui):begin_(ul,ui) {}
 };
 
-class CTrie2NodeData {
-public:
-    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD - NUM_INDEX_BITS;
+using vec_ind_pair_t = std::vector<ind_pair_t>;
 
-    uint64_t top, bot;
+class CTrieNode {
+private:
+    uint64_t top = 0;
+    uint64_t bot = 0;
     
-    CTrie2NodeData() :top{ZERO_64}, bot{ZERO_64} {
-    }
     uint64_t & get_flag_word() {
         return top;
     }
@@ -115,56 +114,45 @@ public:
         return bot;
     }
 
-    uint64_t get_letter_bits() const {
-        assert((bot & BOTTOM_LETTER_MASK)<<2 == 0);
-        return (top<<2)|(bot>>62);
-    }
-
     void db_write_state(std::ostream &out) const {
        out << "top=" << std::bitset<64>{top} << " bot=" << std::bitset<64>{bot} ;
     }
-};
 
-using vec_ind_pair_t = std::vector<ind_pair_t>;
-
-template <typename T>
-class CTrieNode {
-private:
-    T data;
 public:
-    using DATA_TYPE = T;
+    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD - NUM_INDEX_BITS;
 
     CTrieNode() {
     }
 
     uint64_t get_index() const {
-        return INDEX_MASK & data.get_index_word_const();
+        return INDEX_MASK & get_index_word_const();
     }
 
     uint64_t get_letter_bits() const {
-        return data.get_letter_bits();
+        assert((bot & BOTTOM_LETTER_MASK)<<2 == 0);
+        return (top<<2)|(bot>>62);
     }
 
     ctrie_children children() const {return {get_letter_bits(),get_index()};}
 
     void log_state() const {
-       std::cerr << " CTrieNode( "; data.db_write_state(std::cerr); std::cerr << ")\n";
+       std::cerr << " CTrieNode( "; db_write_state(std::cerr); std::cerr << ")\n";
     }
 
     void flag_as_key_terminating() {
-        data.get_flag_word() |= SECOND_HIGHEST_BIT;
+        get_flag_word() |= SECOND_HIGHEST_BIT;
     }
 
     bool is_key_terminating() const {
-        return data.get_flag_word_const() & SECOND_HIGHEST_BIT;
+        return get_flag_word_const() & SECOND_HIGHEST_BIT;
     }
 
     void flag_as_terminal() {
-        data.get_flag_word()  |= HIGHEST_BIT;
+        get_flag_word()  |= HIGHEST_BIT;
     }
 
     bool is_terminal() const {
-        return data.get_flag_word_const() & HIGHEST_BIT;
+        return get_flag_word_const() & HIGHEST_BIT;
     }
     
     void set_index(std::size_t index) {
@@ -173,7 +161,7 @@ public:
         if (ind != (uint64_t)index) {
             throw OTCError() << "not enough index field to hold pos = " << index;
         }
-        auto & word = data.get_index_word();
+        auto & word = get_index_word();
         word &= COMP_INDEX_MASK; // sets to 0 any bits for the index
         word |= ind;
     }
@@ -193,10 +181,7 @@ public:
 };
 
 
-template <>
-void CTrieNode<CTrie2NodeData>::flag_letter(unsigned int i);
-
-using CTrie2Node = CTrieNode<CTrie2NodeData>;
+using CTrie2Node = CTrieNode;
 
 } // namespace otc
 #endif
