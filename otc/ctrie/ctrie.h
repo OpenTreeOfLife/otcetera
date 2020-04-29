@@ -429,12 +429,9 @@ void CompressedTrie<T>::init(const ctrie_init_set_t & keys, const stored_str_t &
     }
     
     if (DB_FUZZY_MATCH) {node_vec[0].log_state();}
-    auto inds_on = node_vec[0].get_letter_and_node_indices_for_on_bits();
     // std::cerr << "ROOT:"; node_vec[0].log_state();
     
-    for (auto & x : inds_on) {
-        auto trie_char = x.first;
-        auto next_ind = x.second;
+    for (auto [trie_char, next_ind] : node_vec[0].children()) {
         const T * next_nd = &(node_vec[next_ind]);
         // std::cerr << "ROOT child for \"" << to_char_str(letters[trie_char]) <<  "\" "; next_nd->log_state();
     }
@@ -483,10 +480,9 @@ void CompressedTrie<T>::db_write_node(std::ostream & out, const T & nd) const {
         //out << "  letterbits = ";
         //nd.db_write_state(out);
         //out << "\n";
-        auto vipt = nd.get_letter_and_node_indices_for_on_bits();
-        for (auto & ind_pair : vipt) {
-            out << "  " << to_char_str(letters[ind_pair.first]);
-            out << " => node[" << std::dec << ind_pair.second << "]\n";
+        for (auto [trie_char,index] : nd.children()) {
+            out << "  " << to_char_str(letters[trie_char]);
+            out << " => node[" << std::dec << index << "]\n";
         }
     }
 }
@@ -520,7 +516,9 @@ void CompressedTrie<T>::db_write_words(std::ostream & out) const {
             auto full = curr_nd_pref.second + suff;
             out << i++ << " = " << to_char_str(full) << '\n';
         } else {
-            auto vipt = nd_ptr->get_letter_and_node_indices_for_on_bits();
+            vec_ind_pair_t vipt;
+            for(auto x : nd_ptr->children())
+                vipt.push_back(x);
             for (auto vipirit = vipt.rbegin(); vipirit != vipt.rend(); vipirit++) {
                 const T * nn = &(node_vec[vipirit->second]);
                 stored_str_t np = curr_nd_pref.second + letters[vipirit->first];

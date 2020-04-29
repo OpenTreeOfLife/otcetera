@@ -385,8 +385,8 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
     auto qc = pm.query_char();
     auto altqc = equivalent_letter[qc];
     if (DB_FUZZY_MATCH) {trienode->log_state();}
-    auto inds_on = trienode->get_letter_and_node_indices_for_on_bits();
-    for (auto & [trie_char, next_ind] : inds_on)
+
+    for (auto [trie_char, next_ind] : trienode->children())
     {
         const T * next_nd = &(node_vec[next_ind]);
         if (trie_char == qc || trie_char == altqc) {
