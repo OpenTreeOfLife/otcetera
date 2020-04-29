@@ -5,7 +5,6 @@
 #include "otc/ctrie/ctrie.h"
 
 namespace otc {
-using CTrie3_t = CompressedTrie<CTrie3Node>;
 using CTrie2_t = CompressedTrie<CTrie2Node>;
 
 class CompressedTrieBasedDB {

@@ -94,44 +94,6 @@ struct ctrie_children
     ctrie_children(uint64_t ul, uint64_t ui):begin_(ul,ui) {}
 };
 
-class CTrie3NodeData {
-public:
-    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD + 64 - NUM_INDEX_BITS;
-
-    uint64_t top, mid, bot;
-
-    CTrie3NodeData() :top{ZERO_64}, mid{ZERO_64}, bot{ZERO_64} {
-    }
-    uint64_t & get_flag_word() {
-        return top;
-    }
-    const uint64_t & get_flag_word_const() const {
-        return top;
-    }
-    uint64_t & get_middle_word() {
-        return mid;
-    }
-    const uint64_t & get_middle_word_const() const {
-        return mid;
-    }
-    uint64_t & get_index_word() {
-        return bot;
-    }
-    const uint64_t & get_index_word_const() const {
-        return bot;
-    }
-
-    uint64_t get_letter_bits() const {
-        assert(mid<<2 == 0);
-        assert((bot & BOTTOM_LETTER_MASK) == 0);
-        return (top<<2)|(mid>>62);
-    }
-
-    void db_write_state(std::ostream &out) const {
-       out << "top=" << std::bitset<64>{top} << " mid=" << std::bitset<64>{mid}  << " bot=" << std::bitset<64>{bot} ;
-    }
-};
-
 class CTrie2NodeData {
 public:
     static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD - NUM_INDEX_BITS;
@@ -162,37 +124,6 @@ public:
        out << "top=" << std::bitset<64>{top} << " bot=" << std::bitset<64>{bot} ;
     }
 };
-
-class CTrie1NodeData {
-public:
-    static constexpr unsigned int END_LETTER_INDEX = LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - NUM_INDEX_BITS;
-
-    uint64_t top;
-    
-    CTrie1NodeData() :top{ZERO_64} {
-    }
-    uint64_t & get_flag_word() {
-        return top;
-    }
-    const uint64_t & get_flag_word_const() const {
-        return top;
-    }
-    uint64_t & get_index_word() {
-        return top;
-    }
-    const uint64_t & get_index_word_const() const {
-        return top;
-    }
-
-    uint64_t get_letter_bits() const {
-        return ((top&TOP_LETTER_MASK)<<2);
-    }
-
-    void db_write_state(std::ostream &out) const {
-       out << "top=" << std::bitset<64>{top}  ;
-    }
-};
-
 
 using vec_ind_pair_t = std::vector<ind_pair_t>;
 
@@ -264,26 +195,12 @@ public:
 
 
 template <>
-void CTrieNode<CTrie3NodeData>::flag_letter(unsigned int i);
-
-template <>
-vec_ind_pair_t CTrieNode<CTrie3NodeData>::get_letter_and_node_indices_for_on_bits() const;
-
-template <>
 void CTrieNode<CTrie2NodeData>::flag_letter(unsigned int i);
 
 template <>
 vec_ind_pair_t CTrieNode<CTrie2NodeData>::get_letter_and_node_indices_for_on_bits() const;
 
-template <>
-void CTrieNode<CTrie1NodeData>::flag_letter(unsigned int i);
-
-template <>
-vec_ind_pair_t CTrieNode<CTrie1NodeData>::get_letter_and_node_indices_for_on_bits() const;
-
-using CTrie3Node = CTrieNode<CTrie3NodeData>;
 using CTrie2Node = CTrieNode<CTrie2NodeData>;
-using CTrie1Node = CTrieNode<CTrie1NodeData>;
 
 } // namespace otc
 #endif

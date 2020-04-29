@@ -21,38 +21,6 @@ void fill_letter_and_node_indices_64(uint64_t letter_bits,
 }
 
 template <>
-void CTrieNode<CTrie3NodeData>::flag_letter(unsigned int i) {
-    uint64_t bit = ONE_64;
-    //log_state();
-    if (i < LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD) {
-        const uint64_t shifted = (bit << (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i));
-        data.top |= shifted;
-    } else if (i < LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD) {
-        bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-        data.mid |= bit;
-    } else {
-        assert(i < DATA_TYPE::END_LETTER_INDEX);
-        bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD -1 - i);
-        data.bot |= bit;
-    }
-}
-
-template <>
-vec_ind_pair_t CTrieNode<CTrie3NodeData>::get_letter_and_node_indices_for_on_bits() const {
-    assert(!is_terminal());
-    vec_ind_pair_t ret;
-    ret.reserve(DATA_TYPE::END_LETTER_INDEX);
-    uint64_t node_index = get_index();
-    uint64_t masked = data.top & TOP_LETTER_MASK;
-    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
-    masked = data.mid;
-    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD, ret, node_index);
-    masked = data.bot & BOTTOM_LETTER_MASK;
-    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD, ret, node_index);
-    return ret;
-}
-
-template <>
 void CTrieNode<CTrie2NodeData>::flag_letter(unsigned int i) {
     uint64_t bit = ONE_64;
     if (i < LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD) {
@@ -81,28 +49,6 @@ vec_ind_pair_t CTrieNode<CTrie2NodeData>::get_letter_and_node_indices_for_on_bit
     vec_ind_pair_t ret2;
 
 
-    return ret;
-}
-
-
-template <>
-void CTrieNode<CTrie1NodeData>::flag_letter(unsigned int i) {
-    uint64_t bit = ONE_64;
-    assert(i < DATA_TYPE::END_LETTER_INDEX);
-    bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-    data.top |= bit;
-} 
-
-template <>
-vec_ind_pair_t CTrieNode<CTrie1NodeData>::get_letter_and_node_indices_for_on_bits() const {
-    //std::cerr << "get_letter_and_node_indices_for_on_bits top="
-    //          << std::hex << top << " bot=" << std::hex << bot << std::dec << '\n';
-    assert(!is_terminal());
-    vec_ind_pair_t ret;
-    ret.reserve(DATA_TYPE::END_LETTER_INDEX);
-    u_int64_t node_index = get_index();
-    uint64_t masked = data.top & TOP_LETTER_MASK;
-    fill_letter_and_node_indices_64(masked, LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD, ret, node_index);
     return ret;
 }
 
