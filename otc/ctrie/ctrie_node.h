@@ -190,15 +190,11 @@ public:
 
 
     void flag_letter(unsigned int i);
-    vec_ind_pair_t get_letter_and_node_indices_for_on_bits() const;
 };
 
 
 template <>
 void CTrieNode<CTrie2NodeData>::flag_letter(unsigned int i);
-
-template <>
-vec_ind_pair_t CTrieNode<CTrie2NodeData>::get_letter_and_node_indices_for_on_bits() const;
 
 using CTrie2Node = CTrieNode<CTrie2NodeData>;
 
