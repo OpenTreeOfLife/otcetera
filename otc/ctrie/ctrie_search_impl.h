@@ -321,7 +321,7 @@ inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t pre
 template<typename T>
 bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
                                  const stored_index_t * trie_suff,
-                                 std::list<FuzzyQueryResult> & results) const {
+                                 std::vector<FuzzyQueryResult> & results) const {
     if (pm.has_matched_suffix(trie_suff)) {
         return false;
     }
@@ -371,7 +371,7 @@ void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> 
 
 template<typename T>
 void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
-                                             std::list<FuzzyQueryResult> & results,
+                                             std::vector<FuzzyQueryResult> & results,
                                              std::list<PartialMatch<T> > & next_alive) const {
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
     const T * trienode = pm.get_next_node();
@@ -427,11 +427,11 @@ inline void CompressedTrie<T>::_finish_query_result(FuzzyQueryResult & res) cons
 
 
 template<typename T>
-std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
+std::vector<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
                                                              unsigned int max_dist) const {
     if (DB_FUZZY_MATCH) {std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";}
     if (query_str.length() == 0) {
-        return std::list<FuzzyQueryResult>{};
+        return std::vector<FuzzyQueryResult>{};
     }
     const FQuery query{query_str, encode_as_indices(query_str), max_dist};
     unsigned int num_missing_in_letters = 0;
@@ -440,12 +440,13 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
             num_missing_in_letters++;
             if (num_missing_in_letters > max_dist) {
                 if (DB_FUZZY_MATCH) {std::cerr << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";}
-                return std::list<FuzzyQueryResult>{};
+                return std::vector<FuzzyQueryResult>{};
             }
         }
     }
     // non-trivial case
-    std::list<FuzzyQueryResult> results;
+    std::vector<FuzzyQueryResult> results;
+    results.reserve(20);
     const T * root_nd = &(node_vec.at(0));
     std::list<PartialMatch<T> > alive;
     alive.push_back(PartialMatch<T>{query, root_nd});

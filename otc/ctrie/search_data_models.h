@@ -235,7 +235,7 @@ class PartialMatch {
     bool has_matched_suffix(const stored_index_t * trie_suff) const {
         return query.has_matched_suffix(next_node, trie_suff);
     }
-    bool store_result(std::list<FuzzyQueryResult> & results,
+    bool store_result(std::vector<FuzzyQueryResult> & results,
                       const stored_index_t * trie_suff,
                       std::size_t suff_len,
                       unsigned int distance) const {
