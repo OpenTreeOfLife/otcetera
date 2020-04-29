@@ -51,10 +51,15 @@ constexpr int LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD = -2; // 2 bits for flags
 constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_FIRST_WORD;
 constexpr unsigned int LETTER_INDEX_OF_FIRST_BIT_IN_THIRD_WORD = 64 + LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD;
 
+// This class is the type of children.end()
+// It exists only to be compared against iterators.
 class ctrie_child_sentinel
 {
 };
 
+// This iterator walks forward through the children of a given node.
+// The current letter is indicated by the highest non-zero bit in `letter_bits`.
+// Bits are numbered in reverse order from normal, with the highest bit (bit 63) indicating letter 0;
 class ctrie_child_iterator
 {
     uint64_t letter_bits;
@@ -67,6 +72,7 @@ class ctrie_child_iterator
         letter_bits &= (~curr_bit);
     }
 
+    // If there are no 1 bits, then we have visited all the children.
     bool done() const {return not letter_bits;}
 
 public:
@@ -86,6 +92,8 @@ public:
     ctrie_child_iterator(uint64_t ul, uint64_t ui): letter_bits(ul),index_(ui) {}
 };
 
+// This is the range object with begin() and end() methods for use in
+// range-for loops: for(auto [letter,index] : nd->children())
 struct ctrie_children
 {
     ctrie_child_iterator begin_;
