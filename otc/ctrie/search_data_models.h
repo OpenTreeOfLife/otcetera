@@ -8,6 +8,7 @@
 #include "otc/otc_base_includes.h"
 #include "otc/ctrie/str_utils.h"
 #include "otc/ctrie/ctrie_node.h"
+#include "otc/taxonomy/taxonomy.h"
 #include "otc/util.h"
 
 namespace otc {
@@ -39,8 +40,83 @@ class FuzzyQueryResult {
 
 };
 
+class TaxonResult
+{
+    const RTRichTaxNode * taxon = nullptr;
+    const TaxonomyRecord * record = nullptr;
+    bool matched_to_synonym;
+    const std::string matched_name;
+
+public:
+
+    bool is_synonym() const {
+        return matched_to_synonym;
+    }
+
+    std::string get_matched_name() const {
+        return matched_name;
+    }
+
+    const RTRichTaxNode * get_taxon() const {
+        return taxon;
+    }
+
+    const TaxonomyRecord * get_record() const {
+        return record;
+    }
+
+    TaxonResult(const RTRichTaxNode * tax_arg)
+        :taxon(tax_arg),
+         matched_to_synonym(false),
+         matched_name(tax_arg->get_data().get_nonuniqname())
+    { }
+
+    TaxonResult(const TaxonomyRecord * tax_rec)
+        :record(tax_rec),
+         matched_to_synonym(false),
+         matched_name(tax_rec->name)
+    { }
+
+    TaxonResult(const RTRichTaxNode * tax_arg,
+                const TaxonomicJuniorSynonym *syn)
+        :taxon(tax_arg),
+         matched_to_synonym(true),
+         matched_name(syn->get_name())
+    { }
+};
+        
+
+class FuzzyQueryResultWithTaxon: public TaxonResult
+{
+    const FuzzyQueryResult query_result;
+public:
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg)
+        :TaxonResult(tax_arg),
+         query_result(fqr)
+        { }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const TaxonomyRecord * tax_rec)
+        :TaxonResult(tax_rec),
+         query_result(fqr)
+        { }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg,
+                              const TaxonomicJuniorSynonym *syn)
+        :TaxonResult(tax_arg,syn),
+         query_result(fqr)
+        { }
+
+    float get_score() const {
+        return query_result.score;
+    }
+};
+
 struct SortQueryResByNearness {
-    bool operator() (const FuzzyQueryResult & lhs, const FuzzyQueryResult & rhs) const {
+    bool operator() (const FuzzyQueryResult & lhs,
+                     const FuzzyQueryResult & rhs) const {
         if (lhs.score < rhs.score) {
             return false;
         } else if (rhs.score < lhs.score) {

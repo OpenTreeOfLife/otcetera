@@ -1,33 +1,46 @@
 sudo: true
-cache: apt
+cache: ccache
 language: C++
 
 matrix:
   include:
     - os: linux
-      dist: xenial
+      dist: bionic
       env: CXX_COMPILER=g++-8
       addons:
         apt:
           sources:
-          - ubuntu-toolchain-r-test
+          - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
           - g++-8
           - pandoc
           - libboost-all-dev
     - os: linux
-      dist: xenial
+      dist: bionic
+      env: CXX_COMPILER=g++-9
+      addons:
+        apt:
+          sources:
+          - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          packages:
+          - g++-9
+          - pandoc
+          - libboost-all-dev
+    - os: linux
+      dist: bionic
       compiler: clang++
       addons:
         apt:
           sources:
-          - ubuntu-toolchain-r-test
+          - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
-          - g++-7
+          - g++-9
           - pandoc
           - libboost-all-dev
-    - os: osx
-      osx_image: xcode10.1
+# - os: osx
+# osx_image: xcode10.3
+# - os: osx
+# osx_image: xcode11.2
 
 
 before_install:
@@ -36,14 +49,14 @@ before_install:
   - echo $PATH
   - if [ -n "${C_COMPILER}" ]; then export CC="${C_COMPILER}"; fi
   - if [ -n "${CXX_COMPILER}" ]; then export CXX="${CXX_COMPILER}"; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install meson && pip install requests; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d ~/bin && pyenv local 3.7 && pip3 install meson requests; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install meson ccache && pip install requests; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://github.com/ninja-build/ninja/releases/download/v1.9.0/ninja-linux.zip && unzip -q ninja-linux.zip -d ~/bin && pyenv local 3.7 && pip3 install meson requests; fi
 
 script:
 # build restbed
   - git clone --recursive https://github.com/corvusoft/restbed.git
   - mkdir restbed/build
-  - ( cd restbed/build ; cmake -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
+  - ( cd restbed/build ; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
 # build otcetera
   - export CPPFLAGS="-I${HOME}/local/include"
   - export LDFLAGS="-L${HOME}/local/lib -L${HOME}/local/library"

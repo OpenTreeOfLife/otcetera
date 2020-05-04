@@ -351,7 +351,7 @@ int main(int argc, char* argv[]) {
             return 0;
         }
         else if (args.count("high-degree-nodes")) {
-            auto n = args["high-degree-nodes"].as<long>();
+            auto n = args["high-degree-nodes"].as<int>();
             auto index_vec = get_index_vec(taxonomy.size());
             std::sort(index_vec.begin(),
                       index_vec.end(),
@@ -359,7 +359,8 @@ int main(int argc, char* argv[]) {
                         return taxonomy[i].out_degree > taxonomy[j].out_degree;
                       });
             for(long i = 0; i < n; i++) {
-                show_rec(taxonomy.record_from_unforwarded_id(index_vec[i]));
+                auto id = taxonomy[index_vec[i]].id;
+                show_rec(taxonomy.record_from_unforwarded_id(id));
             }
             return 0;
         } else if (args.count("write-tree")) {

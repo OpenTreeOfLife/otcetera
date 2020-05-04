@@ -1,0 +1,50 @@
+{
+"flags_to_prune": [
+"major_rank_conflict", 
+"major_rank_conflict_inherited", 
+"environmental", 
+"unclassified_inherited", 
+"unclassified", 
+"viral", 
+"barren", 
+"not_otu", 
+"incertae_sedis", 
+"incertae_sedis_inherited", 
+"extinct_inherited", 
+"extinct", 
+"hidden", 
+"unplaced", 
+"unplaced_inherited", 
+"was_container", 
+"inconsistent", 
+"hybrid", 
+"merged"
+], 
+"num_monotypic_nodes": 61, 
+"num_nodes": 122, 
+"num_non_leaf_nodes": 85, 
+"num_non_leaf_nodes_with_multiple_children": 24, 
+"num_pruned_anc_nodes": 2, 
+"num_tips": 37, 
+"pruned": {
+"barren,inconsistent": {
+"anc_ott_id_pruned": [
+671092
+], 
+"flags_causing_prune": [
+"barren", 
+"inconsistent"
+]
+}, 
+"extinct,major_rank_conflict": {
+"anc_ott_id_pruned": [
+2933645
+], 
+"flags_causing_prune": [
+"extinct", 
+"major_rank_conflict"
+]
+}
+}, 
+"version": "0.0draft0"
+}

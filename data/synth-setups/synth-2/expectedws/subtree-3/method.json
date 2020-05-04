@@ -1,0 +1,8 @@
+{
+  "url_fragment": "v3/tree_of_life/subtree",
+  "verb": "POST",
+  "arguments": {
+    "node_id": "ott332573",
+    "height_limit":3
+  }
+}

@@ -93,7 +93,7 @@ After installing prerequisites, try the following commands to build `restbed` an
     cd $OPENTREE/restbed
     mkdir restbed/build       
     cd restbed/build        # Go to $OPENTREE/restbed/restbed/build
-    cmake .. -G Ninja -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$OPENTREE/local"
+    cmake .. -G Ninja -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$OPENTREE/local" -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     ninja install
 
     # Make restbed library available too.

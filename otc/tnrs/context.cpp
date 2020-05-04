@@ -48,7 +48,7 @@ vector<Context> generate_all_contexts() {
         {"Arthropods",      "ANIMALS",   "Arthopods",        "Arthropoda",       632179L,    Nomenclature::ICZN},
         {"Molluscs",        "ANIMALS",   "Molluscs",         "Mollusca",         802117L,    Nomenclature::ICZN},
         {"Nematodes",       "ANIMALS",   "Nematodes",        "Nematoda",         395057L,    Nomenclature::ICZN},
-        {"Platyhelminthes", "ANIMALS",   "Platyhelminthes",  "Platyhelminthes",  555379L,    Nomenclature::ICZN},
+        {"Platyhelminthes", "ANIMALS",   "PlatyContexthelminthes",  "Platyhelminthes",  555379L,    Nomenclature::ICZN},
         {"Annelids",        "ANIMALS",   "Annelids",         "Annelida",         941620L,    Nomenclature::ICZN},
         {"Cnidarians",      "ANIMALS",   "Cnidarians",       "Cnidaria",         641033L,    Nomenclature::ICZN},
         {"Arachnids",       "ANIMALS",   "Arachnids",        "Arachnida",        511967L,    Nomenclature::ICZN},
@@ -130,6 +130,8 @@ map<OttId, const Context*> make_ottid_to_context(const vector<Context> & all_con
 
 map<OttId, const Context*> ottid_to_context = make_ottid_to_context(all_contexts);
 
+
+
 map<string, const Context*> make_name_to_context(const vector<Context>& all_contexts)
 {
     map<string, const Context*> name_to_context;
@@ -139,6 +141,136 @@ map<string, const Context*> make_name_to_context(const vector<Context>& all_cont
 }
 
 map<string, const Context*> name_to_context = make_name_to_context(all_contexts);
+
+
+using trav_range_t = std::pair<std::uint32_t, std::uint32_t>;
+using nom_cod_and_ranges_t = std::pair<const Nomenclature::Code *, std::vector<trav_range_t> >;
+using vec_nom_cod_and_ranges_t = std::vector<nom_cod_and_ranges_t>;
+vec_nom_cod_and_ranges_t global_nom_code_and_ranges;
+
+
+using id_name_pair_t = std::pair<OttId, std::string>;
+using vec_id_name_pair_t = std::vector<id_name_pair_t>;
+
+std::vector<trav_range_t> _fill_and_sort_ranges(const RichTaxonomy & taxonomy, const vec_id_name_pair_t & vec_ids_names) {
+    const auto & tree = taxonomy.get_tax_tree();
+    const auto & tax_tree_data = tree.get_data();
+    std::vector<trav_range_t> ret;
+    for (auto & p : vec_ids_names) {
+        const RTRichTaxNode * nd;
+        try {
+             nd = tax_tree_data.id_to_node.at(p.first);
+        } catch (...) {
+            throw OTCError() << "Barrier taxon with id=" << p.first << " not found";
+        }
+        if (nd->get_name() != p.second) {
+            throw OTCError() << "Barrier taxon with id=" << p.first << " had name \"" << nd->get_name() << "\", but we expected \"" << p.second << "\".";
+        }
+        const auto & ndd = nd->get_data();
+        ret.push_back(trav_range_t{ndd.trav_enter, ndd.trav_exit});
+    }
+    std::sort(ret.begin(), ret.end());
+    return ret;
+}
+
+
+/* From BarrierNodes.java in taxomachine...
+ICN
+352914 "Fungi"
+361838 "Viridiplantae"
+266751 "Alveolata"
+878953 "Rhodophyta"
+664970 "Glaucocystophyceae"
+151014 "Haptophyceae"
+
+Nomenclature.ICNP
+844192 "Bacteria"
+996421 "Archaea"
+
+ICZN
+{691846, "Metazoa"}, {202765, "Choanoflagellida"}
+ */
+
+void Context::init_nom_codes_to_traversal(const RichTaxonomy & taxonomy) {
+    global_nom_code_and_ranges.clear();
+    if (taxonomy.get_tax_tree().get_root()->get_ott_id() != 805080) {
+        LOG(WARNING) << "taxonomy root did not have ID=805080, assuming that this is a taxonomy for testing purposes only... detection of nomenclatural code will be non-functional.";
+        return;
+    }
+    const vec_id_name_pair_t iczn{{691846, "Metazoa"},
+                                  {202765, "Choanoflagellida"}};
+    const vec_id_name_pair_t icnp{{844192, "Bacteria"},
+                                  {996421, "Archaea (domain silva:D37982/#1)"}};
+    const vec_id_name_pair_t icn{{352914, "Fungi"},
+                                 {361838, "Chloroplastida"},
+                                 {266751, "Alveolata"},
+                                 {878953, "Rhodophyta"},
+                                 {664970, "Glaucophyta"},
+                                 {151014, "Haptophyta"}};
+    const auto viczn = _fill_and_sort_ranges(taxonomy, iczn);
+    const auto vinp = _fill_and_sort_ranges(taxonomy, icnp);
+    const auto vicn = _fill_and_sort_ranges(taxonomy, icn);
+    global_nom_code_and_ranges.push_back(nom_cod_and_ranges_t{&Nomenclature::ICZN, viczn});
+    global_nom_code_and_ranges.push_back(nom_cod_and_ranges_t{&Nomenclature::ICNP, vinp});
+    global_nom_code_and_ranges.push_back(nom_cod_and_ranges_t{&Nomenclature::ICN, vicn});
+}
+
+const vec_nom_cod_and_ranges_t & get_nom_code_to_trav_ranges() {
+    return global_nom_code_and_ranges;
+}
+
+inline bool contains_trav(const std::vector<trav_range_t> & sorted_trav_pairs, std::uint32_t query) {
+    for (const auto & p : sorted_trav_pairs) {
+        if (p.first > query) {
+            return false;
+        }
+        if (p.second >= query) {
+            return true;
+        }
+    }
+    return false;
+}
+
+const Nomenclature::Code & get_nom_code_for_trav(std::uint32_t trav) {
+    const auto & nom_code_ranges = get_nom_code_to_trav_ranges();
+    for (const auto & c_and_r : nom_code_ranges) {
+        if (contains_trav(c_and_r.second, trav)) {
+            return *(c_and_r.first);
+        }
+    }
+    return Nomenclature::Undefined;
+}
+
+const std::string & Context::get_code_name(const RichTaxonomy & , const RTRichTaxNode * taxon) {
+    const auto & nom = get_nom_code_for_trav(taxon->get_data().trav_enter);
+    return nom.name;
+}
+
+const RTRichTaxNode * get_closest_anc_with_node(const RichTaxonomy & taxonomy, const TaxonomyRecord * record) {
+    const auto & tax_data = taxonomy.get_tax_tree().get_data();
+    OttId par_id = record->parent_id;
+    for (;;) {
+        auto ndit = tax_data.id_to_node.find(par_id);
+        if (ndit == tax_data.id_to_node.end()) {
+            auto taxit = tax_data.id_to_record.find(par_id);
+            if (taxit == tax_data.id_to_record.end()) {
+                return nullptr;
+            } else {
+                par_id = taxit->second->parent_id;
+            }
+        } else {
+            return ndit->second;
+        }
+    }
+}
+
+const std::string & Context::get_code_name(const RichTaxonomy & taxonomy, const TaxonomyRecord * record) {
+    const auto taxon = get_closest_anc_with_node(taxonomy, record);
+    if (taxon == nullptr) {
+        return Nomenclature::Undefined.name;
+    }
+    return get_code_name(taxonomy, taxon);
+}
 
 // FIXME - We should return Context* or Context&.
 const Context* least_inclusive_context(const vector<const RTRichTaxNode*> & taxa)

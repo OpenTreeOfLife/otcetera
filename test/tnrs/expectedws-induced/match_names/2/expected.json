@@ -1,0 +1,78 @@
+{
+  "context": "All life",
+  "governing_code": "undefined",
+  "includes_approximate_matches": false,
+  "includes_deprecated_taxa": false,
+  "includes_suppressed_names": false,
+  "matched_names": [
+    "Hypsela"
+  ],
+  "results": [
+    {
+      "matches": [
+        {
+          "is_approximate_match": false,
+          "is_synonym": true,
+          "matched_name": "Hypsela",
+          "nomenclature_code": "ICN",
+          "score": 1.0,
+          "search_string": "hypsela",
+          "taxon": {
+            "flags": [],
+            "is_suppressed": false,
+            "is_suppressed_from_synth": false,
+            "name": "Lobelia",
+            "ott_id": 1086294,
+            "rank": "genus",
+            "source": "ott0.0draft0",
+            "synonyms": [
+              "Hypsela",
+              "Heterotoma",
+              "Enchysia",
+              "Palmerella",
+              "Isolobus",
+              "Myopsia",
+              "Neowimmeria",
+              "Haynaldia",
+              "Dortmanna",
+              "Trimeris",
+              "Speirema",
+              "Colensoa",
+              "Piddingtonia",
+              "Isotoma",
+              "Mezleria",
+              "Tupa",
+              "Calcaratolobelia",
+              "Laurentia",
+              "Parastranthus",
+              "Rapuntium",
+              "Unigenes",
+              "Pratia",
+              "Solenopsis"
+            ],
+            "tax_sources": [
+              "ncbi:4382",
+              "gbif:2756426",
+              "irmng:1083184",
+              "irmng:1452934",
+              "irmng:1308508",
+              "irmng:1299058",
+              "irmng:1295316"
+            ],
+            "unique_name": "Lobelia"
+          }
+        }
+      ],
+      "name": "Hypsela"
+    }
+  ],
+  "taxonomy": {
+    "author": "open tree of life project",
+    "name": "ott",
+    "source": "ott0.0draft0",
+    "version": "0.0",
+    "weburl": "https://tree.opentreeoflife.org/about/taxonomy-version/ott0.0"
+  },
+  "unambiguous_names": [],
+  "unmatched_names": []
+}

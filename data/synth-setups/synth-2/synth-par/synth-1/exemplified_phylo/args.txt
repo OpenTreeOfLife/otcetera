@@ -1,0 +1,3 @@
+/home/bredelings/example/cleaned_phylo/xx_2@Tree1.tre
+/home/bredelings/example/cleaned_phylo/xx_1@Tree1.tre
+/home/bredelings/example/cleaned_phylo/xx_3@Tree1.tre

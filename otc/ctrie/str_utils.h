@@ -56,6 +56,7 @@ inline std::string to_char_str(const stored_char_t & undecoded) {
 
 
 inline std::u32string to_u32string_ci(const std::string_view & uncap_mod) {
+    assert(glob_facet != nullptr);
     std::string undecoded{uncap_mod};
     glob_facet->tolower(&undecoded[0], &undecoded[0] + undecoded.size());
     std::u32string ret = glob_conv32.from_bytes(undecoded.data(), undecoded.data() + undecoded.length());
@@ -63,12 +64,14 @@ inline std::u32string to_u32string_ci(const std::string_view & uncap_mod) {
 }
 
 inline std::string lower_case_version(const std::string & arg) {
+    assert(glob_facet != nullptr);
     std::string undecoded{arg};
     glob_facet->tolower(&undecoded[0], &undecoded[0] + undecoded.size());
     return undecoded;
 }
 
 inline std::string upper_case_version(const std::string & arg) {
+    assert(glob_facet != nullptr);
     std::string undecoded{arg};
     glob_facet->toupper(&undecoded[0], &undecoded[0] + undecoded.size());
     return undecoded;
@@ -81,6 +84,24 @@ inline bool starts_with(const stored_str_t & full, const stored_str_t & pref) {
     }
     //std::cerr << "starts_with(" << to_char_str(full) << ", " << to_char_str(pref) << ")\n";
     return 0 == full.compare(0, pref.length(), pref);
+}
+
+// could use this for \"e  -> e as well
+inline std::string normalize_query(const std::string & raw_query) {
+    std::string query = raw_query;
+    for (auto& c: query) {
+        c = std::tolower(c);
+    }
+    return query;
+}
+
+inline std::string normalize_query(const std::string_view & raw_query) {
+    std::string query;
+    query.reserve(query.size());
+    for (auto c: raw_query) {
+        query.push_back(std::tolower(c));
+    }
+    return query;
 }
 
 

@@ -112,7 +112,7 @@ inline void show_children_in_set(std::ostream & out, T nd, const CONTAINER& ance
             out << "'" << c->get_name() << "' ";
         }
     }
-    std::cerr << std::endl;
+    out << std::endl;
 }
 
 template<typename T, typename CONTAINER>

@@ -1,0 +1,6 @@
+{
+  "broken": {
+    "mrca": "ott304358"
+  },
+  "message": "[/v3/tree_of_life/subtree] Error: node_id was not found (broken taxon).\n"
+}

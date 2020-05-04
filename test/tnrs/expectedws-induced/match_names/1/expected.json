@@ -1,0 +1,70 @@
+{
+  "context": "Bacteria",
+  "governing_code": "ICNP",
+  "includes_approximate_matches": false,
+  "includes_deprecated_taxa": false,
+  "includes_suppressed_names": false,
+  "matched_names": [
+    "Bacteria"
+  ],
+  "results": [
+    {
+      "matches": [
+        {
+          "is_approximate_match": false,
+          "is_synonym": false,
+          "matched_name": "Bacteria",
+          "nomenclature_code": "ICNP",
+          "score": 1.0,
+          "search_string": "bacteria",
+          "taxon": {
+            "flags": [],
+            "is_suppressed": false,
+            "is_suppressed_from_synth": false,
+            "name": "Bacteria",
+            "ott_id": 844192,
+            "rank": "domain",
+            "source": "ott0.0draft0",
+            "synonyms": [
+              "GAL08",
+              "GOUTA4",
+              "JL-ETNP-Z39",
+              "Kazan-3B-28",
+              "LD1-PA38",
+              "MVP-21",
+              "NPL-UPA2",
+              "OC31",
+              "RsaHF231",
+              "S2R-29",
+              "SBYG-2791",
+              "SM2F11",
+              "WCHB1-60",
+              "not Bacteria Haeckel 1894",
+              "Monera"
+            ],
+            "tax_sources": [
+              "silva:A16379/#1",
+              "ncbi:2",
+              "worms:6",
+              "gbif:3",
+              "irmng:13"
+            ],
+            "unique_name": "Bacteria"
+          }
+        }
+      ],
+      "name": "Bacteria"
+    }
+  ],
+  "taxonomy": {
+    "author": "open tree of life project",
+    "name": "ott",
+    "source": "ott0.0draft0",
+    "version": "0.0",
+    "weburl": "https://tree.opentreeoflife.org/about/taxonomy-version/ott0.0"
+  },
+  "unambiguous_names": [
+    "Bacteria"
+  ],
+  "unmatched_names": []
+}
