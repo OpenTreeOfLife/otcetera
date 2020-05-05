@@ -358,41 +358,52 @@ void CompressedTrie::db_write_pm(const char * context, const PartialMatch &pm) c
     out << ")\n";
 }
 
-void CompressedTrie::extend_partial_match(const PartialMatch & pm,
-                                          std::vector<FuzzyQueryResult> & results,
-                                          std::list<PartialMatch> & next_alive) const {
+void CompressedTrie::extend_partial_match(const PartialMatch & pm, std::vector<FuzzyQueryResult> & results) const
+{
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
+
     const CTrieNode * trienode = pm.get_next_node();
+
     if (trienode->is_terminal()) {
         auto suffix_index = trienode->get_index();
         _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
         return;
     }
+
     const unsigned int max_dist = pm.max_distance();
     auto cd = pm.curr_distance();
     auto qc = pm.query_char();
     auto altqc = equivalent_letter[qc];
     if (DB_FUZZY_MATCH) {trienode->log_state();}
 
-    for (auto [trie_char, next_ind] : trienode->children())
+    for (auto [letter, index] : trienode->children())
     {
-        const CTrieNode * next_nd = &(node_vec[next_ind]);
-        if (trie_char == qc || trie_char == altqc) {
-            if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
-            next_alive.push_back(PartialMatch{pm, trie_char, cd, next_nd, false});
-        } else if (cd + 1 <= max_dist) {
-            if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
-            next_alive.push_back(PartialMatch{pm, trie_char, cd + 1, next_nd, true});
-            if (pm.can_rightshift()) {
-                next_alive.push_back(PartialMatch{pm, cd + 1, next_nd, trie_char}); // rightshift
-            }
+        const CTrieNode * next_nd = &(node_vec[index]);
+        if (letter == qc || letter == altqc)
+        {
+            if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
+
+            extend_partial_match(PartialMatch{pm, letter, cd, next_nd, false}, results);
+        }
+        else if (cd + 1 <= max_dist)
+        {
+            if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
+
+            extend_partial_match(PartialMatch{pm, letter, cd + 1, next_nd, true}, results);
+
+            if (pm.can_rightshift())
+                extend_partial_match(PartialMatch{pm, cd + 1, next_nd, letter}, results);
+
         }
     }
     // frameshift
-    if (cd + 1 <= max_dist && pm.can_downshift()) {
-        next_alive.push_back(PartialMatch{pm, cd + 1, trienode}); //downshift
+    if (cd + 1 <= max_dist && pm.can_downshift())
+    {
+        extend_partial_match(PartialMatch{pm, cd + 1, trienode}, results);
     }
-    if (trienode->is_key_terminating()) {
+
+    if (trienode->is_key_terminating())
+    {
         auto d = pm.num_q_char_left() + pm.curr_distance();
         if (d <= max_dist) {
             pm.store_result(results, nullptr, 0, d);
@@ -413,8 +424,8 @@ void CompressedTrie::_finish_query_result(FuzzyQueryResult & res) const {
 }
 
 
-std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t & query_str,
-                                                            unsigned int max_dist) const {
+std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t & query_str, unsigned int max_dist) const
+{
     if (DB_FUZZY_MATCH) {std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";}
     if (query_str.length() == 0) {
         return std::vector<FuzzyQueryResult>{};
@@ -433,22 +444,15 @@ std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t &
     // non-trivial case
     std::vector<FuzzyQueryResult> results;
     results.reserve(20);
-    const CTrieNode * root_nd = &(node_vec.at(0));
-    std::list<PartialMatch> alive;
-    alive.push_back(PartialMatch{query, root_nd});
-    while (!alive.empty()) {
-        if (DB_FUZZY_MATCH) {std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\n";}
-        std::list<PartialMatch> next_alive;
-        for (const auto & pm : alive) {
-            auto prevnalen = next_alive.size();
-            extend_partial_match(pm, results, next_alive);
-            if (DB_FUZZY_MATCH) {if (next_alive.size() != prevnalen) {std::cerr << "added " << next_alive.size() - prevnalen << " PMs.\n"; }}
-        }
-        std::swap(alive, next_alive);
-    }
-    for (auto & r : results) {
+
+    auto root_node = &(node_vec.at(0));
+
+    // Do a depth-first search using the stack.
+    extend_partial_match(PartialMatch(query, root_node), results);
+
+    for (auto & r : results)
         _finish_query_result(r);
-    }
+
     return results;
 }
 
