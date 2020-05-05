@@ -287,7 +287,6 @@ class PartialMatch {
     private:
     const FQuery & query;
     std::size_t qpos;
-    stored_str_t growing_match;
     unsigned int distance;
     const CTrieNode * next_node;
     stored_index_t prev_mismatched_trie;
