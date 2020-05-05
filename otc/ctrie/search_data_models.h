@@ -154,13 +154,12 @@ class FQuery {
     }
 };
 
-template <typename T>
 class PartialMatch {
     public:
     enum creation_modes {MATCH, DOWN, RIGHT};
     
     PartialMatch(const FQuery & q,
-                 const T *nextn)
+                 const CTrieNode *nextn)
         :query(q),
          qpos(0),
          distance(0),
@@ -175,7 +174,7 @@ class PartialMatch {
     PartialMatch(const PartialMatch & prevpm,
                  stored_index_t match_char,
                  unsigned int start_dist,
-                 const T *nextn,
+                 const CTrieNode *nextn,
                  bool was_match)
         :query(prevpm.query),
          qpos(prevpm.qpos + 1),
@@ -195,7 +194,7 @@ class PartialMatch {
     // create a partial match from a gap, moving through query but not trie
     PartialMatch(const PartialMatch & prevpm,
                  unsigned int start_dist,
-                 const T *nextn)
+                 const CTrieNode *nextn)
         :query(prevpm.query),
          qpos(prevpm.qpos + 1),
          distance(start_dist),
@@ -210,7 +209,7 @@ class PartialMatch {
     // create a partial match from a gap, moving through trie but not query
     PartialMatch(const PartialMatch & prevpm,
                  unsigned int start_dist,
-                 const T *nextn, 
+                 const CTrieNode *nextn, 
                  stored_index_t match_char)
         :query(prevpm.query),
          qpos(prevpm.qpos),
@@ -244,7 +243,7 @@ class PartialMatch {
         return true;
     }
     
-    const T * get_next_node() const {
+    const CTrieNode * get_next_node() const {
         return next_node;
     }
     
@@ -290,7 +289,7 @@ class PartialMatch {
     std::size_t qpos;
     stored_str_t growing_match;
     unsigned int distance;
-    const T * next_node;
+    const CTrieNode * next_node;
     stored_index_t prev_mismatched_trie;
     std::vector<stored_index_t> match_coded;
     const creation_modes create_mode;

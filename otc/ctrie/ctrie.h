@@ -186,11 +186,11 @@ class CompressedTrie {
                                         const std::size_t trie_len,
                                         const unsigned int dist_threshold,
                                         stored_index_t prev_trie_match_char) const;
-    void extend_partial_match(const PartialMatch<CTrieNode> &pm,
+    void extend_partial_match(const PartialMatch &pm,
                               std::vector<FuzzyQueryResult> & results,
-                              std::list<PartialMatch<CTrieNode> > & next_alive) const;
-    void db_write_pm(const char *, const PartialMatch<CTrieNode> &pm) const;
-    unsigned int _calc_dist_impl(const PartialMatch<CTrieNode> &pm,
+                              std::list<PartialMatch > & next_alive) const;
+    void db_write_pm(const char *, const PartialMatch &pm) const;
+    unsigned int _calc_dist_impl(const PartialMatch &pm,
                                  const stored_index_t * suffix,
                                  const std::size_t trie_len) const;
     unsigned int _match_cost(stored_char_t prev_q_match_char,
@@ -199,7 +199,7 @@ class CompressedTrie {
                                                 stored_char_t trie_match_char) const;
     unsigned int _match_cost_no_transp(stored_char_t q_match_char,
                                        stored_char_t trie_match_char) const;
-    bool _check_suffix_for_match(const PartialMatch<CTrieNode> &pm,
+    bool _check_suffix_for_match(const PartialMatch &pm,
                                  const stored_index_t * suffix,
                                  std::vector<FuzzyQueryResult> & results) const;
 
