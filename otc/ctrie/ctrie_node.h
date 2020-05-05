@@ -188,8 +188,5 @@ public:
     void flag_letter(unsigned int i);
 };
 
-
-using CTrie2Node = CTrieNode;
-
 } // namespace otc
 #endif
