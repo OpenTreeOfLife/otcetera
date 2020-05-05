@@ -1,11 +1,8 @@
-#ifndef OTC_CTRIE_SEARCH_IMPL_H
-#define OTC_CTRIE_SEARCH_IMPL_H
-
 #include "otc/ctrie/ctrie.h"
 
 namespace otc {
 
-inline std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
+std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
     std::vector<unsigned int> prev_row;
     prev_row.reserve(2 + 2*dist_threshold);
     unsigned int cd = 0;
@@ -15,9 +12,9 @@ inline std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
     return prev_row;
 }
 
-inline unsigned CompressedTrie::_calc_dist_impl(const PartialMatch<CTrieNode> &pm,
-                                                   const stored_index_t * trie_suff,
-                                                   const std::size_t trie_len) const {
+unsigned CompressedTrie::_calc_dist_impl(const PartialMatch<CTrieNode> &pm,
+                                         const stored_index_t * trie_suff,
+                                         const std::size_t trie_len) const {
     const stored_index_t * quer_suff = pm.query_data();
     const unsigned int dist_threshold = pm.max_distance() - pm.curr_distance();
     stored_index_t prev_trie_match_char = pm.get_prev_mismatched_trie();
@@ -36,9 +33,9 @@ inline unsigned CompressedTrie::_calc_dist_impl(const PartialMatch<CTrieNode> &p
     return pm.curr_distance() + d;
 }
 
-inline unsigned int _ran_out_of_trie_score(const std::vector<unsigned int> & prev_row,
-                                           std::size_t first_quer_ind,
-                                           std::size_t quer_len) {
+unsigned int _ran_out_of_trie_score(const std::vector<unsigned int> & prev_row,
+                                    std::size_t first_quer_ind,
+                                    std::size_t quer_len) {
     int num_q_left = quer_len - first_quer_ind;
     if (num_q_left < 0) {
         assert(prev_row.size() == 1);
@@ -59,10 +56,10 @@ inline unsigned int _ran_out_of_trie_score(const std::vector<unsigned int> & pre
     return d;
 }
 
-inline unsigned int CompressedTrie::_match_cost(stored_char_t prev_q_match_char,
-                                                   stored_char_t q_match_char,
-                                                   stored_char_t prev_trie_match_char,
-                                                   stored_char_t trie_match_char) const {
+unsigned int CompressedTrie::_match_cost(stored_char_t prev_q_match_char,
+                                         stored_char_t q_match_char,
+                                         stored_char_t prev_trie_match_char,
+                                         stored_char_t trie_match_char) const {
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
     }
@@ -81,7 +78,7 @@ inline unsigned int CompressedTrie::_match_cost(stored_char_t prev_q_match_char,
     return 1;
 }
 
-inline unsigned int CompressedTrie::_match_cost_no_transp(stored_char_t q_match_char,
+unsigned int CompressedTrie::_match_cost_no_transp(stored_char_t q_match_char,
                                                              stored_char_t trie_match_char) const {
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
@@ -94,12 +91,12 @@ inline unsigned int CompressedTrie::_match_cost_no_transp(stored_char_t q_match_
 
 
 
-inline bool CompressedTrie::_are_equivalent(stored_char_t prev_q,
-                                               const stored_index_t * quer_suff,
-                                               const std::size_t quer_len,
-                                               const stored_index_t * trie_suff,
-                                               const std::size_t trie_len,
-                                               stored_index_t prev_t) const {
+bool CompressedTrie::_are_equivalent(stored_char_t prev_q,
+                                     const stored_index_t * quer_suff,
+                                     const std::size_t quer_len,
+                                     const stored_index_t * trie_suff,
+                                     const std::size_t trie_len,
+                                     stored_index_t prev_t) const {
     if (quer_len != trie_len) {
         return false;
     }
@@ -118,13 +115,13 @@ inline bool CompressedTrie::_are_equivalent(stored_char_t prev_q,
 }
 
 // checks for some easy optimizations, and calls dynamic programming version if needed.
-inline unsigned int CompressedTrie::_calc_dist_prim_impl(stored_char_t prev_quer_char,
-                                                            const stored_index_t * quer_suff,
-                                                            const std::size_t quer_len,
-                                                            const stored_index_t * trie_suff,
-                                                            const std::size_t trie_len,
-                                                            const unsigned int dist_threshold,
-                                                            stored_index_t prev_trie_match_char) const {
+unsigned int CompressedTrie::_calc_dist_prim_impl(stored_char_t prev_quer_char,
+                                                  const stored_index_t * quer_suff,
+                                                  const std::size_t quer_len,
+                                                  const stored_index_t * trie_suff,
+                                                  const std::size_t trie_len,
+                                                  const unsigned int dist_threshold,
+                                                  stored_index_t prev_trie_match_char) const {
     if (DB_FUZZY_MATCH) {
         std::cerr << "_calc_dist_prim_impl(pqc=\"" << (prev_quer_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_quer_char])) << ", \"";
         for (auto i=0U; i < quer_len; ++i) {std::cerr << (quer_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[quer_suff[i]]));}
@@ -210,13 +207,13 @@ inline unsigned int CompressedTrie::_calc_dist_prim_impl(stored_char_t prev_quer
 }
 
 // called after preprocessing by _calc_dist_prim_impl
-inline unsigned int CompressedTrie::_dp_calc_dist_prim_impl(stored_char_t prev_quer_char,
-                                                               const stored_index_t * quer_suff,
-                                                               const std::size_t quer_len,
-                                                               const stored_index_t * trie_suff,
-                                                               const std::size_t trie_len,
-                                                               const unsigned int dist_threshold,
-                                                               stored_index_t prev_trie_match_char) const {
+unsigned int CompressedTrie::_dp_calc_dist_prim_impl(stored_char_t prev_quer_char,
+                                                     const stored_index_t * quer_suff,
+                                                     const std::size_t quer_len,
+                                                     const stored_index_t * trie_suff,
+                                                     const std::size_t trie_len,
+                                                     const unsigned int dist_threshold,
+                                                     stored_index_t prev_trie_match_char) const {
     std::size_t prev_quer_ind = 0;
     std::size_t trie_ind = 0;
     std::vector<unsigned int> prev_row = _init_prev_row(dist_threshold);
@@ -312,9 +309,9 @@ inline unsigned int CompressedTrie::_dp_calc_dist_prim_impl(stored_char_t prev_q
 }
 
 
-inline bool CompressedTrie::_check_suffix_for_match(const PartialMatch<CTrieNode> &pm,
-                                 const stored_index_t * trie_suff,
-                                 std::vector<FuzzyQueryResult> & results) const {
+bool CompressedTrie::_check_suffix_for_match(const PartialMatch<CTrieNode> &pm,
+                                             const stored_index_t * trie_suff,
+                                             std::vector<FuzzyQueryResult> & results) const {
     if (pm.has_matched_suffix(trie_suff)) {
         return false;
     }
@@ -344,7 +341,7 @@ inline bool CompressedTrie::_check_suffix_for_match(const PartialMatch<CTrieNode
 }
 
 
-inline void CompressedTrie::db_write_pm(const char * context, const PartialMatch<CTrieNode> &pm) const {
+void CompressedTrie::db_write_pm(const char * context, const PartialMatch<CTrieNode> &pm) const {
     auto & out = std::cerr;
     if (context != nullptr) {
         out << context << " ";
@@ -361,9 +358,9 @@ inline void CompressedTrie::db_write_pm(const char * context, const PartialMatch
     out << ")\n";
 }
 
-inline void CompressedTrie::extend_partial_match(const PartialMatch<CTrieNode> & pm,
-                                             std::vector<FuzzyQueryResult> & results,
-                                             std::list<PartialMatch<CTrieNode> > & next_alive) const {
+void CompressedTrie::extend_partial_match(const PartialMatch<CTrieNode> & pm,
+                                          std::vector<FuzzyQueryResult> & results,
+                                          std::list<PartialMatch<CTrieNode> > & next_alive) const {
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
     const CTrieNode * trienode = pm.get_next_node();
     if (trienode->is_terminal()) {
@@ -404,7 +401,7 @@ inline void CompressedTrie::extend_partial_match(const PartialMatch<CTrieNode> &
 }
 
 
-inline void CompressedTrie::_finish_query_result(FuzzyQueryResult & res) const {
+void CompressedTrie::_finish_query_result(FuzzyQueryResult & res) const {
     res.match_wide_char.clear();
     for (auto ind : res.match_coded) {
         assert(ind != NO_MATCHING_CHAR_CODE);
@@ -416,8 +413,8 @@ inline void CompressedTrie::_finish_query_result(FuzzyQueryResult & res) const {
 }
 
 
-inline std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t & query_str,
-                                                             unsigned int max_dist) const {
+std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t & query_str,
+                                                            unsigned int max_dist) const {
     if (DB_FUZZY_MATCH) {std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";}
     if (query_str.length() == 0) {
         return std::vector<FuzzyQueryResult>{};
@@ -457,4 +454,4 @@ inline std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_
 
 
 } // namespace otc
-#endif
+
