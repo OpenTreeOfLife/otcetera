@@ -177,7 +177,7 @@ class PartialMatch {
                  const CTrieNode *nextn,
                  bool was_match)
         :prev_match(&prevpm),
-         letter(match_char),
+         match_letter(match_char),
          query(prevpm.query),
          qpos(prevpm.qpos + 1),
          distance(start_dist),
@@ -211,7 +211,7 @@ class PartialMatch {
                  const CTrieNode *nextn, 
                  stored_index_t match_char)
         :prev_match(&prevpm),
-         letter(match_char),
+         match_letter(match_char),
          query(prevpm.query),
          qpos(prevpm.qpos),
          distance(start_dist),
@@ -280,8 +280,8 @@ class PartialMatch {
 
     void make_match_coded(std::vector<stored_index_t>& s) const
     {
-        if (letter)
-            s.push_back(*letter);
+        if (match_letter)
+            s.push_back(*match_letter);
         if (prev_match)
             prev_match->make_match_coded(s);
     }
@@ -295,9 +295,13 @@ class PartialMatch {
         return s;
     }
 
+    std::optional<stored_index_t> prev_match_letter() const
+    {
+        return match_letter;
+    }
 private:
     const PartialMatch* prev_match = nullptr;
-    std::optional<stored_index_t> letter;
+    std::optional<stored_index_t> match_letter;
 
     const FQuery & query;
     std::size_t qpos;

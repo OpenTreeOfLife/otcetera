@@ -21,7 +21,8 @@ unsigned CompressedTrie::_calc_dist_impl(const PartialMatch &pm,
     stored_index_t prev_query_char = NO_MATCHING_CHAR_CODE;
     if (prev_trie_match_char != NO_MATCHING_CHAR_CODE) {
         assert(pm.query_pos() > 0);
-        prev_query_char = *(pm.get_prev_match_coded().rbegin());
+        assert(pm.prev_match_letter());
+        prev_query_char = *pm.prev_match_letter();
     }
     auto d = _calc_dist_prim_impl(prev_query_char,
                                   quer_suff + pm.query_pos(),
