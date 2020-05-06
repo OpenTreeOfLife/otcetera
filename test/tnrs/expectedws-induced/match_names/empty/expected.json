@@ -1,0 +1,25 @@
+{
+  "context": "All life",
+  "governing_code": "undefined",
+  "includes_approximate_matches": false,
+  "includes_deprecated_taxa": false,
+  "includes_suppressed_names": false,
+  "matched_names": [],
+  "results": [
+    {
+      "matches": [],
+      "name": "asdfghjkl"
+    }
+  ],
+  "taxonomy": {
+    "author": "open tree of life project",
+    "name": "ott",
+    "source": "ott0.0draft0",
+    "version": "0.0",
+    "weburl": "https://tree.opentreeoflife.org/about/taxonomy-version/ott0.0"
+  },
+  "unambiguous_names": [],
+  "unmatched_names": [
+    "asdfghjkl"
+  ]
+}

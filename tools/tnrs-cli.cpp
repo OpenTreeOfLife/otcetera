@@ -80,8 +80,8 @@ OttIdSet diagnose_name(const RTRichTaxTreeData & rt_data,
             if (out != nullptr) {*out << "node in taxonomy: ott_id = " << nd->get_ott_id() << " name = \"" << nd->get_name() << "\"\n";}
         }
     }
-    auto n2hit = rt_data.homonym_to_node.find(name);
-    if (n2hit != rt_data.homonym_to_node.end()) {
+    auto n2hit = rt_data.homonym_to_nodes.find(name);
+    if (n2hit != rt_data.homonym_to_nodes.end()) {
         const auto & ndv = n2hit->second;
         for (auto nd : ndv) {
             if (nd != nullptr) {
@@ -140,7 +140,7 @@ void analyze_case_sensitivity(const RTRichTaxTreeData & rt_data,
 }
 
 void interactive_tests() {
-    const CTrie3_t testtrie{"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
+    const CompressedTrie testtrie{"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
     const std::string p1 = "Enter a query:\n";
     const std::string p2 = "Enter a trie:\n";
     const std::string p3 = "max distance:\n";

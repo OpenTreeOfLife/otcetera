@@ -432,6 +432,7 @@ const int MAX_NONFUZZY_QUERY_STRINGS = 10000;
 const int MAX_FUZZY_QUERY_STRINGS = 250;
 
 static string LIFE_NODE_NAME = "life";
+static string LIFE_CONTEXT_NAME = "All life";
 
 string tnrs_match_names_handler( const json& parsedargs ) {
     // 1. Requred argument: "names"
@@ -454,7 +455,7 @@ string tnrs_match_names_handler( const json& parsedargs ) {
 
 string tnrs_autocomplete_name_handler( const json& parsedargs ) {
     string name              = extract_required_argument<string>(parsedargs, "name");
-    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
+    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_CONTEXT_NAME);
     bool include_suppressed  = extract_argument_or_default(parsedargs, "include_suppressed",      false);
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
@@ -1089,7 +1090,7 @@ inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper
     std::size_t nn_sz = calc_memory_used_by_map_simple(d.name_to_node, mb);
     std::size_t nutn_sz = calc_memory_used_by_map_simple(d.non_unique_taxon_names, mb);
     std::size_t htn_sz = 0;
-    for (auto el : d.homonym_to_node) {
+    for (auto el : d.homonym_to_nodes) {
         htn_sz += sizeof(std::string_view);
         htn_sz += calc_memory_used_by_vector_eqsize(el.second, sizeof(const RTRichTaxNode *), mb);
     }
@@ -1102,7 +1103,7 @@ inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper
     mb["taxonomy data id_to_node"] += in_sz;
     mb["taxonomy data name_to_node"] += nn_sz;
     mb["taxonomy data non_unique_taxon_names"] += nutn_sz;
-    mb["taxonomy data homonym_to_node"] += htn_sz;
+    mb["taxonomy data homonym_to_nodes"] += htn_sz;
     return nm_sz + gm_sz + wm_sz + fm_sz + im_sz + f2j_sz + in_sz + nn_sz + nutn_sz + htn_sz;
 }
 
@@ -1199,14 +1200,8 @@ bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & contestingtrees_path,
                                TreesToServe & tts)
 {
-    std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
-    json contestingtrees_obj;
-    try {
-        contestingtrees_stream >> contestingtrees_obj;
-    } catch (...) {
-        LOG(WARNING) << "Could not read \"" << contestingtrees_path << "\" as JSON.\n";
-        throw;
-    }
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
 
     std::string annot_str = annotations_path.native();
     std::ifstream annotations_stream(annot_str.c_str());
@@ -1217,6 +1212,25 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
         throw;
     }
+
+    // Check that the tree was built against the correct taxonomy.
+    string tree_tax_version = annotations_obj["taxonomy_version"];
+    string synth_id = annotations_obj["synth_id"];
+    if (tree_tax_version != taxonomy.get_version())
+    {
+        LOG(WARNING) << "Read \"" << annotations_path << "\" as JSON.\n";
+        throw OTCError()<<"Tree with <synth_id='"<<synth_id<<"',taxonomy_version='"<<tree_tax_version<<"'> does not match taxonomy version '"<<taxonomy.get_version()<<"'";
+    }
+
+    std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
+    json contestingtrees_obj;
+    try {
+        contestingtrees_stream >> contestingtrees_obj;
+    } catch (...) {
+        LOG(WARNING) << "Could not read \"" << contestingtrees_path << "\" as JSON.\n";
+        throw;
+    }
+
     std::string bt_str = brokentaxa_path.native();
     std::ifstream brokentaxa_stream(bt_str.c_str());
     json brokentaxa_obj;
@@ -1226,8 +1240,6 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    auto locked_taxonomy = tts.get_readable_taxonomy();
-    const auto & taxonomy = locked_taxonomy.first;
 #   if defined(REPORT_MEMORY_USAGE)
         MemoryBookkeeper tax_mem_b;
         std::size_t tree_mem = 0;

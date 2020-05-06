@@ -316,7 +316,7 @@ class RTRichTaxTreeData {
     std::map<std::string_view, const TaxonomyRecord *> name_to_record; // for filtered
     std::unordered_map<OttId, const RTRichTaxNode *> id_to_node;
     std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
-    std::map<std::string_view, std::vector<const RTRichTaxNode *> > homonym_to_node;
+    std::map<std::string_view, std::vector<const RTRichTaxNode *> > homonym_to_nodes;
     std::map<std::string_view, std::vector<const TaxonomyRecord *> > homonym_to_record;
     std::map<std::string, OttIdSet> non_unique_taxon_names;
 
@@ -532,7 +532,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
     data.flags = tr.flags;
     data.rank = string_to_rank(tr.rank);
     register_taxon_in_maps(tree_data.name_to_node,
-                           tree_data.homonym_to_node,
+                           tree_data.homonym_to_nodes,
                            data.possibly_nonunique_name,
                            uname,
                            this_node);
@@ -588,36 +588,15 @@ std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy
                                                     const std::string& query,
                                                     bool include_suppressed);
 
-std::vector<const RTRichTaxNode*> exact_name_search(const RTRichTaxNode* context_root,
-                                                    const std::string& query,
-                                                    std::function<bool(const RTRichTaxNode*)> ok = [](const RTRichTaxNode*){return true;});
-
 std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
                                                     const RTRichTaxNode* context_root,
                                                     const std::string& query,
                                                     bool include_suppressed);
 
-
-inline std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
-                                                           const RTRichTaxNode* context_root,
-                                                           const std::string& query,
-                                                           bool include_suppressed) {
-    if (include_suppressed) {
-        return exact_name_search(context_root, query);
-    }                                               
-    std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
-        return not taxonomy.node_is_suppressed_from_tnrs(taxon);
-    };
-    return exact_name_search(context_root, query, ok);
-}
-
-
-inline std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
-                                                           const std::string& query,
-                                                           bool include_suppressed) {
-    const RTRichTaxNode* context_root = taxonomy.get_tax_tree().get_root();
-    return exact_name_search(taxonomy, context_root, query, include_suppressed);
-}
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
+                                                    const RTRichTaxNode* context_root,
+                                                    const std::string& query,
+                                                    std::function<bool(const RTRichTaxNode*)> ok = [](const RTRichTaxNode*){return true;});
 
 
 template<typename N>

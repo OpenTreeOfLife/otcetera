@@ -85,11 +85,14 @@ bool taxon_is_higher(const Taxon* taxon) {
     return taxon->get_data().rank < TaxonomicRank::RANK_SPECIES;
 }
 
-using vec_tax_str_pair_t = vector<pair<const Taxon*, const string&> >;
-vec_tax_str_pair_t exact_synonym_search(const Taxon* context_root,
-                                        string query, 
-                                        tax_pred_t ok = [](const Taxon*){return true;})
+using vec_tax_str_pair_t = vector<pair<const Taxon*, const string> >;
+
+vec_tax_str_pair_t exact_synonym_search_slow(const RichTaxonomy& /*taxonomy*/,
+                                             const Taxon* context_root,
+                                             string query,
+                                             tax_pred_t ok = [](const Taxon*){return true;})
 {
+    query = normalize_query(query);
     vec_tax_str_pair_t hits;
     for(auto taxon: iter_post_n_const(*context_root)) {
         if (not ok(taxon)) {
@@ -104,17 +107,72 @@ vec_tax_str_pair_t exact_synonym_search(const Taxon* context_root,
     return hits;
 }
 
+
+vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
+                                        const Taxon* context_root,
+                                        string query,
+                                        tax_pred_t ok = [](const Taxon*){return true;})
+{
+    auto ctp = taxonomy.get_fuzzy_matcher();
+
+    assert(ctp);
+
+    auto results = ctp->to_taxa(ctp->exact_query(query), context_root, taxonomy, true);
+    vec_tax_str_pair_t hits;
+    for(auto& result: results)
+    {
+        if (result.is_synonym())
+        {
+            auto t = result.get_taxon();
+            if (ok(t))
+                hits.push_back({t,result.get_matched_name()});
+        }
+    }
+
+#ifdef DEBUG_NAME_SEARCH
+    {
+//      we can't sort references -- use string_view?
+        auto hits2 = exact_synonym_search_slow(taxonomy, context_root, query, ok);
+
+        vector<const Taxon*> taxon_hits1;
+        for(auto& [taxon,_]: hits)
+            taxon_hits1.push_back(taxon);
+
+        vector<const Taxon*> taxon_hits2;
+        for(auto& [taxon,_]: hits2)
+            taxon_hits2.push_back(taxon);
+
+        std::sort(taxon_hits1.begin(), taxon_hits1.end());
+        std::sort(taxon_hits2.begin(), taxon_hits2.end());
+        LOG(INFO)<<"exact_synonym_search: query = '"<<query<<"'  context_id = "<<context_root->get_ott_id();
+        if (taxon_hits1 != taxon_hits2)
+        {
+            LOG(INFO)<<"ctrie match:";
+            for(int i=0;i<taxon_hits1.size();i++)
+                LOG(INFO)<<"   "<<taxon_hits1[i]->get_data().get_nonuniqname();
+            LOG(INFO)<<"lcase match:";
+            for(int i=0;i<taxon_hits2.size();i++)
+                LOG(INFO)<<"   "<<taxon_hits2[i]->get_data().get_nonuniqname();
+        }
+        else
+            LOG(INFO)<<"exact synonym search: "<<hits.size()<<" names agree";
+    }
+#endif
+
+    return hits;
+}
+
 vec_tax_str_pair_t exact_synonym_search(const RichTaxonomy& taxonomy,
                                         const Taxon* context_root,
                                         string query,
                                         bool include_suppressed) {
     if (include_suppressed) {
-        return exact_synonym_search(context_root, query);
+        return exact_synonym_search(taxonomy, context_root, query);
     }
     tax_pred_t ok = [&](const Taxon* taxon) {
         return not taxonomy.node_is_suppressed_from_tnrs(taxon);
     };
-    return exact_synonym_search(context_root, query, ok);
+    return exact_synonym_search(taxonomy, context_root, query, ok);
 }
 
 vec_tax_str_pair_t exact_synonym_search_higher(const RichTaxonomy& taxonomy,
@@ -127,7 +185,7 @@ vec_tax_str_pair_t exact_synonym_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return exact_synonym_search(context_root, query, ok);
+    return exact_synonym_search(taxonomy, context_root, query, ok);
 }
 
 vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
@@ -140,7 +198,7 @@ vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
         }
         return taxon_is_specific(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, ok);
     
 }
 
@@ -154,7 +212,7 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
         }
         return taxon_is_genus(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, ok);
 }
 
 vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
@@ -167,7 +225,7 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return exact_name_search(context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, ok);
 }
 
 vector<const Taxon*> prefix_name_search(const Taxon* context_root,
@@ -310,7 +368,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
                                                     bool do_approximate_matching,
                                                     bool include_suppressed) {
     auto query = normalize_query(raw_query);
-    json results;
+    json results = json::array();
     match_status status = unmatched;
     // 1. See if we can find an exact name match
     auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
@@ -404,7 +462,6 @@ autocompleting name fields on forms, use the `match_names` service.
 */
 
 
-
 //FIXME: how is "suppressed_names" different from "deprecated_taxa"?
 
 // $ curl -X POST https://api.opentreeoflife.org/v3/tnrs/match_names  -H "content-type:application/json" -d '{"names":["Aster","Symphyotrichum","Barnadesia"]}'
@@ -474,7 +531,14 @@ inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<const T
         j.push_back(autocomplete_json(taxonomy, taxon));
     }
 }
-    
+
+inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vector<FuzzyQueryResultWithTaxon>& fuzzy_query_results)
+{
+    for(auto fuzzy_query_result: fuzzy_query_results) {
+        j.push_back(autocomplete_json(taxonomy, fuzzy_query_result.get_taxon()));
+    }
+}
+
 inline void add_hits(json& j, const RichTaxonomy& taxonomy, const vec_tax_str_pair_t taxa) {
     for(auto [taxon, synonym]: taxa) {
         j.push_back(autocomplete_json(taxonomy, taxon));
@@ -498,15 +562,40 @@ vector<const Taxon*> prefix_search_species_in_genus(const Taxon* genus,
     return match_species;
 }
 
+/*
+ * Fuzzy matching DOES occur in autocomplete_name:
+ *
+ * curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Homo salien"}'
+[ {
+  "is_suppressed" : false,
+  "unique_name" : "Homo sapiens",
+  "ott_id" : 770315,
+  "is_higher" : false
+} ]
+ *
+ * However, fuzzy matching does not find `Homo sapiens neanderthalensis` and `Homo sapiens subsp. 'Denisova'`, whereas direct matching does.
+ *
+ * curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Homo sapien"}'
+ *
+ * However, it appears that a difference of 2 chars is allowed on an exact match, instead of doing a prefix-query on the fuzzy index:
+ *
+ * "Hono saliens" -> "Homo sapiens" + "Neobodo saliens"
+ * "Hono salien"  -> nothing
+ * "Homo salens"  -> "Homo sapiens"
+ * "Homo salen"   -> nothing
+ */
+
+
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/autocomplete_name -H "content-type:application/json" -d '{"name":"Endoxyla","context_name":"All life"}'
 string tnrs_autocomplete_name_ws_method(const string& name,
                                         const string& context_name,
                                         bool include_suppressed,
                                         const RichTaxonomy& taxonomy) {
-    json response;
+    // An empty response should be `[ ]`, not `null`.
+    json response = json::array();
     // We need to escape the query string.
-    auto escaped_query = escape_query_string(name);
+    auto escaped_query = normalize_query(name);
     // This corresponds to a SingleNamePrefixQuery in taxomachine.
     // * See org/opentree/taxonomy/plugins/tnrs_v3.java
     // * See org/opentree/tnrs/queries/SingleNamePrefixQuery.java
@@ -546,7 +635,15 @@ string tnrs_autocomplete_name_ws_method(const string& name,
         if (not response.empty()) {
             return response.dump(1);
         }
-        // fuzzy search on names and synonyms
+        // fuzzy search on names and synonyms (BDR -- not a prefix search?)
+        {
+            auto ctp = taxonomy.get_fuzzy_matcher();
+            if (ctp == nullptr) {
+                throw OTCError() << "Fuzzy matching has not been enabled in the taxonomy, but was requested in match_name.";
+            }
+            auto fuzzy_results = ctp->fuzzy_query_to_taxa(escaped_query, context_root, taxonomy, include_suppressed);
+            add_hits(response, taxonomy, fuzzy_results);
+        }
     } else { // does not contain a space at all
         add_hits(response, taxonomy, exact_name_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
         add_hits(response, taxonomy, exact_synonym_search_higher(taxonomy, context_root, escaped_query, include_suppressed));
@@ -563,7 +660,15 @@ string tnrs_autocomplete_name_ws_method(const string& name,
         if (not response.empty()) {
             return response.dump(1);
         }
-        // fuzzy search on higher names and synonyms
+        // fuzzy search on HIGHER names and synonyms (BDR -- not a prefix search?)
+        {
+            auto ctp = taxonomy.get_fuzzy_matcher();
+            if (ctp == nullptr) {
+                throw OTCError() << "Fuzzy matching has not been enabled in the taxonomy, but was requested in match_name.";
+            }
+            auto fuzzy_results = ctp->fuzzy_query_to_taxa(escaped_query, context_root, taxonomy, include_suppressed);
+            add_hits(response, taxonomy, fuzzy_results);
+        }
     }
     return response.dump(1);
 }
@@ -580,14 +685,15 @@ std::string tnrs_contexts_ws_method() {
 
 // curl -X POST https://api.opentreeoflife.org/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
 // curl -X POST http://localhost:1984/v3/tnrs/infer_context -H "content-type:application/json" -d '{"names":["Pan","Homo","Mus","Bufo","Drosophila"]}'
-string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy) {
-    auto results = infer_context_and_ambiguous_names(taxonomy, names);
-    auto& context = results.first;
-    auto& ambiguous_names = results.second;
+string tnrs_infer_context_ws_method(const vector<string>& names, const RichTaxonomy& taxonomy)
+{
+    auto [context, ambiguous_names] = infer_context_and_ambiguous_names(taxonomy, names);
+
     json response;
-    response["context_name"] = results.first->name;
-    response["context_ott_id"] = results.first->ott_id;
+    response["context_name"] = context->name;
+    response["context_ott_id"] = context->ott_id;
     response["ambiguous_names"] = ambiguous_names;
+
     return response.dump(1);
 }
 

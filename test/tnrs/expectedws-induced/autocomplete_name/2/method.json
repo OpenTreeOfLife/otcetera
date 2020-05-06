@@ -1,0 +1,9 @@
+{
+    "url_fragment": "v3/tnrs/autocomplete_name",
+    "verb": "POST",
+    "arguments": {
+      "name": "Amary",
+      "context_name": "All life"
+    }
+}
+

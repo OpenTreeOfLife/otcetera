@@ -49,9 +49,9 @@ test('web services test (2)',
             '--secs-to-recheck-pid-file=30']
     )
 
-tax_dir = join_paths(meson.source_root(),'test/data/tnrs-taxonomy-induced')
-synth_dir = join_paths(meson.source_root(),'test/data/tnrs-taxonomy-tree')
-expectedws_dir = join_paths(meson.source_root(),'test/expectedws-induced')
+tax_dir = join_paths(meson.source_root(),'test/tnrs/data/taxonomy-induced')
+synth_dir = join_paths(meson.source_root(),'test/tnrs/data/taxonomy-tree')
+expectedws_dir = join_paths(meson.source_root(),'test/tnrs/expectedws-induced')
 test('tnrs web services test',
      test_web_services,
      timeout: 300,

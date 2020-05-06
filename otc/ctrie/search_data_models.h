@@ -40,48 +40,19 @@ class FuzzyQueryResult {
 
 };
 
-class FuzzyQueryResultWithTaxon {
-    const FuzzyQueryResult query_result;
+class TaxonResult
+{
     const RTRichTaxNode * taxon = nullptr;
     const TaxonomyRecord * record = nullptr;
     bool matched_to_synonym;
     const std::string matched_name;
-    public:
-    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const RTRichTaxNode * tax_arg)
-      :query_result(fqr),
-      taxon(tax_arg),
-      record(nullptr),
-      matched_to_synonym(false),
-      matched_name(tax_arg->get_data().get_nonuniqname()) {
-    }
 
-    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const TaxonomyRecord * tax_rec)
-      :query_result(fqr),
-      taxon(nullptr),
-      record(tax_rec),
-      matched_to_synonym(false),
-      matched_name(tax_rec->name) {
-    }
-
-    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
-                              const RTRichTaxNode * tax_arg,
-                              const TaxonomicJuniorSynonym *syn)
-      :query_result(fqr),
-      taxon(tax_arg),
-      record(nullptr),
-      matched_to_synonym(true),
-      matched_name(syn->get_name()) {
-    }
-
-    float get_score() const {
-        return query_result.score;
-    }
+public:
 
     bool is_synonym() const {
         return matched_to_synonym;
     }
+
     std::string get_matched_name() const {
         return matched_name;
     }
@@ -93,7 +64,56 @@ class FuzzyQueryResultWithTaxon {
     const TaxonomyRecord * get_record() const {
         return record;
     }
+
+    TaxonResult(const RTRichTaxNode * tax_arg)
+        :taxon(tax_arg),
+         matched_to_synonym(false),
+         matched_name(tax_arg->get_data().get_nonuniqname())
+    { }
+
+    TaxonResult(const TaxonomyRecord * tax_rec)
+        :record(tax_rec),
+         matched_to_synonym(false),
+         matched_name(tax_rec->name)
+    { }
+
+    TaxonResult(const RTRichTaxNode * tax_arg,
+                const TaxonomicJuniorSynonym *syn)
+        :taxon(tax_arg),
+         matched_to_synonym(true),
+         matched_name(syn->get_name())
+    { }
 };
+        
+
+class FuzzyQueryResultWithTaxon: public TaxonResult
+{
+    const FuzzyQueryResult query_result;
+public:
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg)
+        :TaxonResult(tax_arg),
+         query_result(fqr)
+        { }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const TaxonomyRecord * tax_rec)
+        :TaxonResult(tax_rec),
+         query_result(fqr)
+        { }
+
+    FuzzyQueryResultWithTaxon(const FuzzyQueryResult & fqr,
+                              const RTRichTaxNode * tax_arg,
+                              const TaxonomicJuniorSynonym *syn)
+        :TaxonResult(tax_arg,syn),
+         query_result(fqr)
+        { }
+
+    float get_score() const {
+        return query_result.score;
+    }
+};
+
 struct SortQueryResByNearness {
     bool operator() (const FuzzyQueryResult & lhs,
                      const FuzzyQueryResult & rhs) const {
@@ -134,13 +154,12 @@ class FQuery {
     }
 };
 
-template <typename T>
 class PartialMatch {
     public:
     enum creation_modes {MATCH, DOWN, RIGHT};
     
     PartialMatch(const FQuery & q,
-                 const T *nextn)
+                 const CTrieNode *nextn)
         :query(q),
          qpos(0),
          distance(0),
@@ -155,7 +174,7 @@ class PartialMatch {
     PartialMatch(const PartialMatch & prevpm,
                  stored_index_t match_char,
                  unsigned int start_dist,
-                 const T *nextn,
+                 const CTrieNode *nextn,
                  bool was_match)
         :query(prevpm.query),
          qpos(prevpm.qpos + 1),
@@ -175,7 +194,7 @@ class PartialMatch {
     // create a partial match from a gap, moving through query but not trie
     PartialMatch(const PartialMatch & prevpm,
                  unsigned int start_dist,
-                 const T *nextn)
+                 const CTrieNode *nextn)
         :query(prevpm.query),
          qpos(prevpm.qpos + 1),
          distance(start_dist),
@@ -190,7 +209,7 @@ class PartialMatch {
     // create a partial match from a gap, moving through trie but not query
     PartialMatch(const PartialMatch & prevpm,
                  unsigned int start_dist,
-                 const T *nextn, 
+                 const CTrieNode *nextn, 
                  stored_index_t match_char)
         :query(prevpm.query),
          qpos(prevpm.qpos),
@@ -215,7 +234,7 @@ class PartialMatch {
     bool has_matched_suffix(const stored_index_t * trie_suff) const {
         return query.has_matched_suffix(next_node, trie_suff);
     }
-    bool store_result(std::list<FuzzyQueryResult> & results,
+    bool store_result(std::vector<FuzzyQueryResult> & results,
                       const stored_index_t * trie_suff,
                       std::size_t suff_len,
                       unsigned int distance) const {
@@ -224,7 +243,7 @@ class PartialMatch {
         return true;
     }
     
-    const T * get_next_node() const {
+    const CTrieNode * get_next_node() const {
         return next_node;
     }
     
@@ -268,9 +287,8 @@ class PartialMatch {
     private:
     const FQuery & query;
     std::size_t qpos;
-    stored_str_t growing_match;
     unsigned int distance;
-    const T * next_node;
+    const CTrieNode * next_node;
     stored_index_t prev_mismatched_trie;
     std::vector<stored_index_t> match_coded;
     const creation_modes create_mode;
