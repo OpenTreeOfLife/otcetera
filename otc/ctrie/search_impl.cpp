@@ -384,13 +384,13 @@ void CompressedTrie::extend_partial_match(const PartialMatch & pm, std::vector<F
         {
             if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
 
-            extend_partial_match(PartialMatch{pm, letter, cd, next_nd, false}, results);
+            extend_partial_match(PartialMatch{pm, letter, cd, next_nd, true}, results);
         }
         else if (cd + 1 <= max_dist)
         {
             if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
 
-            extend_partial_match(PartialMatch{pm, letter, cd + 1, next_nd, true}, results);
+            extend_partial_match(PartialMatch{pm, letter, cd + 1, next_nd, false}, results);
 
             if (pm.can_rightshift())
                 extend_partial_match(PartialMatch{pm, cd + 1, next_nd, letter}, results);
