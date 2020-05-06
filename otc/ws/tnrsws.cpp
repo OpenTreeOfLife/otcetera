@@ -368,7 +368,7 @@ pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
                                                     bool do_approximate_matching,
                                                     bool include_suppressed) {
     auto query = normalize_query(raw_query);
-    json results;
+    json results = json::array();
     match_status status = unmatched;
     // 1. See if we can find an exact name match
     auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
