@@ -64,15 +64,15 @@ unsigned int CompressedTrie::_match_cost(stored_char_t prev_q_match_char,
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
     }
-    if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
+    if (q_match_char == trie_match_char) {
         return 0;
     }
     if (prev_trie_match_char == NO_MATCHING_CHAR_CODE) {
         // transposition is not possible
         return 1;
     }
-    if ((prev_q_match_char == trie_match_char || prev_q_match_char == equivalent_letter[trie_match_char])
-        && (q_match_char == prev_trie_match_char || q_match_char == equivalent_letter[prev_trie_match_char])) {
+    if ((prev_q_match_char == trie_match_char)
+        && (q_match_char == prev_trie_match_char)) {
         // transpostion, don't double penalize
         return 0;
     }
@@ -84,7 +84,7 @@ unsigned int CompressedTrie::_match_cost_no_transp(stored_char_t q_match_char,
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
     }
-    if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
+    if (q_match_char == trie_match_char) {
         return 0;
     }
     return 1;
@@ -374,13 +374,12 @@ void CompressedTrie::extend_partial_match(const PartialMatch & pm, std::vector<F
     const unsigned int max_dist = pm.max_distance();
     auto cd = pm.curr_distance();
     auto qc = pm.query_char();
-    auto altqc = equivalent_letter[qc];
     if (DB_FUZZY_MATCH) {trienode->log_state();}
 
     for (auto [letter, index] : trienode->children())
     {
         const CTrieNode * next_nd = &(node_vec[index]);
-        if (letter == qc || letter == altqc)
+        if (letter == qc)
         {
             if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
 

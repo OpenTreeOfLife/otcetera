@@ -43,7 +43,6 @@ class CompressedTrie {
         std::set<char> ils{std::begin(inp_letters), std::end(inp_letters)};
         std::string uniq{std::begin(ils), std::end(ils)};
         letters = to_u32string(uniq);
-        fill_equivalent_letter_array();
         null_char_index = letters.size();
     }
 
@@ -144,7 +143,6 @@ class CompressedTrie {
     private:
     
     void init(const ctrie_init_set_t & keys, const stored_str_t & letter_var);
-    void fill_equivalent_letter_array();
     void _process_prefix(const stored_str_t & curr_pref,
                          std::stack<CTrieCtorHelper> & todo_q,
                          const stored_str_t & rev_letters,
@@ -171,7 +169,6 @@ class CompressedTrie {
         concat_suff.clear();
         node_vec.clear();
         letter_to_ind.clear();
-        equivalent_letter.clear();
     }
     bool _are_equivalent(stored_char_t prev_q,
                         const stored_index_t * quer_suff,
@@ -212,7 +209,6 @@ class CompressedTrie {
     }
 
     std::unordered_map<stored_char_t, stored_index_t> letter_to_ind;
-    std::vector<stored_index_t> equivalent_letter;
     stored_str_t letters;
     std::list<CTrieNode> node_list;
     std::vector<stored_index_t> concat_suff;

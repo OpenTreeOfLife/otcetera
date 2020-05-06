@@ -88,33 +88,6 @@ void CompressedTrie::_store_suffix_node(CTrieNode & curr_node,
 }
 
 
-void CompressedTrie::fill_equivalent_letter_array() {
-    equivalent_letter.reserve(letters.length());
-    equivalent_letter.clear();
-    for (auto nl : letters) {
-        std::string uncov = to_char_str(nl);
-        std::string lccov = lower_case_version(uncov);
-        stored_index_t char_ind = NO_MATCHING_CHAR_CODE;
-        if (lccov != uncov) {
-            auto alt = to_u32string(lccov);
-            if (alt.length() != 1) {
-                throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << lccov << "\"\n";
-            }
-            char_ind = ctrie_get_index_for_letter(alt[0]);
-        } else {
-            std::string uccov = upper_case_version(uncov);
-            if (uccov != uncov) {
-                auto alt = to_u32string(uccov);
-                if (alt.length() != 1) {
-                    throw OTCError() << "lower case version of \"" << uncov << "\" was not one character: \"" << uccov << "\"\n";
-                }
-                char_ind = ctrie_get_index_for_letter(alt[0]);
-            }
-        }
-        equivalent_letter.push_back(char_ind);
-    }
-}
-
 void CompressedTrie::init(const ctrie_init_set_t & keys, const stored_str_t & letter_var) {
     clear();
     // max_node_index = 0;
@@ -135,7 +108,6 @@ void CompressedTrie::init(const ctrie_init_set_t & keys, const stored_str_t & le
     for (auto nl : letters) {
         letter_to_ind[nl] = curr_ind++;
     }
-    fill_equivalent_letter_array();
     null_char_index = letters.length();
     letters.append(1, '\0');
 
@@ -214,13 +186,6 @@ void CompressedTrie::init(const ctrie_init_set_t & keys, const stored_str_t & le
         // std::cerr << "ROOT child for \"" << to_char_str(letters[trie_char]) <<  "\" "; next_nd->log_state();
     }
     
-    for (unsigned int eli = 0; eli < equivalent_letter.size(); ++eli) {
-        if (equivalent_letter[eli] == NO_MATCHING_CHAR_CODE) {
-            std::cerr << to_char_str(letters[eli]) << " = <nothing>\n";
-        } else {
-            std::cerr << to_char_str(letters[eli]) << " = " << to_char_str(letters[equivalent_letter[eli]]) << "\n";
-        }
-    }
     auto nvs = sizeof(CTrieNode)*node_vec.size();
     auto suffs = concat_suff.size();
     std::cerr << "vecsize = " << nvs << " bytes\n";
