@@ -299,6 +299,15 @@ class PartialMatch {
     {
         return match_letter;
     }
+
+// We are calling 4 things a "match":
+// * a path through the DP matrix (e.g. "PartialMatch")
+// * the string we are aligning to the query  (e.g. "get_prev_match_coded()")
+// * creation_modes::MATCH -- to move both DOWN and RIGHT
+// * if we do creation_modes::MATCH, then did both letters agree. ("bool was_match")
+
+// Following all paths through the DP matrix is actually exponential, not quadratic!
+
 private:
     const PartialMatch* prev_match = nullptr;
     std::optional<stored_index_t> match_letter;
