@@ -208,6 +208,9 @@ class CompressedTrie {
         return ltiit->second;
     }
 
+    void all_descendants(stored_str_t& prefix, uint64_t index, std::vector<std::string>& results) const;
+    std::vector<std::string> prefix_query(const stored_str_t& uquery) const;
+
     std::unordered_map<stored_char_t, stored_index_t> letter_to_ind;
     stored_str_t letters;
     std::list<CTrieNode> node_list;

@@ -1,5 +1,8 @@
 #include "otc/ctrie/ctrie.h"
 
+using std::vector;
+using std::string;
+
 namespace otc {
 
 std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
@@ -452,6 +455,52 @@ std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t &
 
     for (auto & r : results)
         _finish_query_result(r);
+
+    return results;
+}
+
+void CompressedTrie::all_descendants(stored_str_t& prefix, uint64_t index, vector<string>& results) const
+{
+    auto& node = node_vec[index];
+
+    if (node.is_key_terminating())
+        results.push_back(to_char_str(prefix));
+
+    if (node.is_terminal()) {
+        auto suffix_index = node.get_index();
+        auto suffix = get_suffix(suffix_index);
+        results.push_back(to_char_str(prefix + suffix));
+    }
+    else
+    {
+        for (auto [letter, next_index] : node.children())
+        {
+            prefix.push_back(letters[letter]);
+            all_descendants(prefix, next_index, results);
+            prefix.pop_back();
+        }
+    }
+}
+
+vector<string> CompressedTrie::prefix_query(const stored_str_t& uquery) const
+{
+    if (node_vec.empty()) return {};
+
+    auto letters = encode_as_indices(uquery);
+
+    int index = 0;
+    for(auto letter: letters)
+    {
+        auto next_index = node_vec[index].child_index_for_letter(letter);
+        if (next_index)
+            index = *next_index;
+        else
+            return {};
+    }
+
+    vector<string> results;
+    auto prefix = uquery;
+    all_descendants(prefix, index, results);
 
     return results;
 }
