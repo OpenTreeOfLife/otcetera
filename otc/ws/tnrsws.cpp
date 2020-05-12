@@ -228,7 +228,8 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
     return exact_name_search(taxonomy, context_root, query, ok);
 }
 
-vector<const Taxon*> prefix_name_search(const Taxon* context_root,
+vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy,
+                                        const Taxon* context_root,
                                         const string& query,
                                         tax_pred_t ok = [](const Taxon*){return true;}) {
     vector<const Taxon*> hits;
@@ -240,6 +241,24 @@ vector<const Taxon*> prefix_name_search(const Taxon* context_root,
             hits.push_back(taxon);
         }
     }
+
+    auto ctp = taxonomy.get_fuzzy_matcher();
+    auto results = ctp->to_taxa(ctp->prefix_query(query), context_root, taxonomy, true);
+    vector<const Taxon*> hits2;
+    for(auto& result: results)
+    {
+        if (not result.is_synonym())
+        {
+            auto t = result.get_taxon();
+            if (ok(t))
+                hits2.push_back(t);
+        }
+    }
+    std::sort(hits.begin(), hits.end());
+    std::sort(hits2.begin(), hits2.end());
+    hits2.erase( unique( hits2.begin(), hits2.end() ), hits2.end() );
+    assert(hits == hits2);
+
     return hits;
 }
 
@@ -250,7 +269,7 @@ vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy,
     tax_pred_t ok = [&](const Taxon* taxon) {
         return include_suppressed or not taxonomy.node_is_suppressed_from_tnrs(taxon);
     };
-    return prefix_name_search(context_root, query, ok);
+    return prefix_name_search(taxonomy, context_root, query, ok);
 }
 
 vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy,
@@ -263,10 +282,11 @@ vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy,
         }
         return taxon_is_higher(taxon);
     };
-    return prefix_name_search(context_root, query, ok);
+    return prefix_name_search(taxonomy, context_root, query, ok);
 }
 
-vec_tax_str_pair_t prefix_synonym_search(const Taxon* context_root,
+vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
+                                         const Taxon* context_root,
                                          string query,
                                          tax_pred_t ok = [](const Taxon*){return true;})
 {
@@ -291,7 +311,7 @@ vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
     std::function<bool(const Taxon*)> ok = [&](const Taxon* taxon) {
         return include_suppressed or not taxonomy.node_is_suppressed_from_tnrs(taxon);
     };
-    return prefix_synonym_search(context_root, query, ok);
+    return prefix_synonym_search(taxonomy, context_root, query, ok);
 }
 
 inline json get_taxon_json(const RichTaxonomy& taxonomy, const Taxon& taxon) {
