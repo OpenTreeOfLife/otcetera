@@ -228,10 +228,10 @@ vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
     return exact_name_search(taxonomy, context_root, query, ok);
 }
 
-vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy,
-                                        const Taxon* context_root,
-                                        const string& query,
-                                        tax_pred_t ok = [](const Taxon*){return true;}) {
+vector<const Taxon*> prefix_name_search_slow(const Taxon* context_root,
+                                             const string& query,
+                                             tax_pred_t ok = [](const Taxon*){return true;})
+{
     vector<const Taxon*> hits;
     for(auto taxon: iter_post_n_const(*context_root)) {
         if (not ok(taxon)) {
@@ -241,22 +241,32 @@ vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy,
             hits.push_back(taxon);
         }
     }
+    return hits;
+}
 
+
+vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy,
+                                        const Taxon* context_root,
+                                        const string& query,
+                                        tax_pred_t ok = [](const Taxon*){return true;})
+{
     auto ctp = taxonomy.get_fuzzy_matcher();
     auto results = ctp->to_taxa(ctp->prefix_query(query), context_root, taxonomy, true);
-    vector<const Taxon*> hits2;
+    vector<const Taxon*> hits;
     for(auto& result: results)
     {
         if (not result.is_synonym())
         {
             auto t = result.get_taxon();
             if (ok(t))
-                hits2.push_back(t);
+                hits.push_back(t);
         }
     }
     std::sort(hits.begin(), hits.end());
+    hits.erase( unique( hits.begin(), hits.end() ), hits.end() );
+
+    auto hits2 = prefix_name_search_slow(context_root, query, ok);
     std::sort(hits2.begin(), hits2.end());
-    hits2.erase( unique( hits2.begin(), hits2.end() ), hits2.end() );
     assert(hits == hits2);
 
     return hits;
