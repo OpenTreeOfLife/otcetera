@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <bitset>
+#include <optional>
 #include "otc/error.h"
 #include "otc/otc_base_includes.h"
 
@@ -184,6 +185,7 @@ public:
         set_index(index);
     }
 
+    std::optional<std::size_t> child_index_for_letter(stored_index_t letter) const;
 
     void flag_letter(unsigned int i);
 };
