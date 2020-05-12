@@ -1,5 +1,8 @@
 #include "otc/ctrie/ctrie_db.h"
 
+using std::vector;
+using std::string;
+
 namespace otc {
 
 std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
@@ -38,6 +41,21 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::exact_
 
     auto from_full = wide_trie.fuzzy_matches(conv_query, 0);
     sorted.insert(std::begin(from_full), std::end(from_full));
+
+    return sorted;
+}
+
+vector<string> CompressedTrieBasedDB::prefix_query(const std::string & query_str) const
+{
+    auto conv_query = to_u32string(query_str);
+
+    auto sorted = thin_trie.prefix_query(conv_query);
+
+    auto from_full = wide_trie.prefix_query(conv_query);
+    sorted.insert(sorted.end(), std::begin(from_full), std::end(from_full));
+
+    // I'm not sure this is a good idea...
+    std::sort(sorted.begin(), sorted.end());
 
     return sorted;
 }

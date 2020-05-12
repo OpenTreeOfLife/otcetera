@@ -11,6 +11,7 @@ class CompressedTrieBasedDB {
     void initialize(const std::set<std::string> & keys);
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     std::set<FuzzyQueryResult, SortQueryResByNearness>  exact_query(const std::string & query_str) const;
+    std::vector<std::string>                            prefix_query(const std::string & query_str) const;
     private:
     CompressedTrie wide_trie;
     CompressedTrie thin_trie;
