@@ -85,7 +85,7 @@ bool taxon_is_higher(const Taxon* taxon) {
     return taxon->get_data().rank < TaxonomicRank::RANK_SPECIES;
 }
 
-using vec_tax_str_pair_t = vector<pair<const Taxon*, const string> >;
+using vec_tax_str_pair_t = vector<pair<const Taxon*, string>>;
 
 vec_tax_str_pair_t exact_synonym_search_slow(const RichTaxonomy& /*taxonomy*/,
                                              const Taxon* context_root,
@@ -297,10 +297,9 @@ vector<const Taxon*> prefix_name_search_higher(const RichTaxonomy& taxonomy,
     return prefix_name_search(taxonomy, context_root, query, ok);
 }
 
-vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
-                                         const Taxon* context_root,
-                                         string query,
-                                         tax_pred_t ok = [](const Taxon*){return true;})
+vec_tax_str_pair_t prefix_synonym_search_slow(const Taxon* context_root,
+                                              string query,
+                                              tax_pred_t ok = [](const Taxon*){return true;})
 {
     vec_tax_str_pair_t hits;
     for(auto taxon: iter_post_n_const(*context_root)) {
@@ -313,6 +312,36 @@ vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
             }
         }
     }
+    return hits;
+}
+
+vec_tax_str_pair_t prefix_synonym_search(const RichTaxonomy& taxonomy,
+                                         const Taxon* context_root,
+                                         string query,
+                                         tax_pred_t ok = [](const Taxon*){return true;})
+{
+    auto ctp = taxonomy.get_fuzzy_matcher();
+    auto results = ctp->to_taxa(ctp->prefix_query(query), context_root, taxonomy, true);
+    vec_tax_str_pair_t hits;
+    for(auto& result: results)
+    {
+        if (result.is_synonym())
+        {
+            auto t = result.get_taxon();
+            assert(t);
+            if (ok(t))
+                hits.push_back({t,result.get_matched_name()});
+        }
+    }
+    std::sort(hits.begin(), hits.end());
+    hits.erase( unique( hits.begin(), hits.end() ), hits.end() );
+
+#ifdef DEBUG_NAME_SEARCH
+    auto hits2 = prefix_synonym_search_slow(context_root, query, ok);
+    std::sort(hits2.begin(), hits2.end());
+    assert(hits == hits2);
+#endif
+
     return hits;
 }
 
