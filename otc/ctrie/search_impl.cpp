@@ -482,27 +482,60 @@ void CompressedTrie::all_descendants(stored_str_t& prefix, uint64_t index, vecto
     }
 }
 
+// can we have both is_terminal() and key_terminating() on the same node?
+// if we could have them both set and have an empty suffix, then we would match the same string twice.
+// therefore perhaps, we can have them both set, but we only have is_terminal() set if there is a non-empty suffix.
 vector<string> CompressedTrie::prefix_query(const stored_str_t& uquery) const
 {
     if (node_vec.empty()) return {};
 
-    auto letters = encode_as_indices(uquery);
+    auto query_letters = encode_as_indices(uquery);
 
     int index = 0;
-    for(auto letter: letters)
+    int letters_matched = 0;
+    for(int i=0;i<query_letters.size() and not node_vec[index].is_terminal();i++)
     {
+        auto letter = query_letters[i];
         auto next_index = node_vec[index].child_index_for_letter(letter);
         if (next_index)
             index = *next_index;
         else
             return {};
+
+        letters_matched = i+1;
     }
 
-    vector<string> results;
-    auto prefix = uquery;
-    all_descendants(prefix, index, results);
+    // If we have not matched all the prefix letters, check the suffix
+    if (letters_matched<uquery.size())
+    {
+        assert(node_vec[index].is_terminal());
+        auto suffix_index = node_vec[index].get_index();
+        auto suffix = get_suffix(suffix_index);
 
-    return results;
+        // We can't match if there aren't enough letters in the suffix
+        if (letters_matched + suffix.size() < uquery.size())
+            return {};
+
+        // Check that the remaining query letters match the suffix
+        for(int i=0;i<uquery.size() - letters_matched;i++)
+            if (suffix[i] != uquery[letters_matched+i])
+                return {};
+
+        // Compute the matched string.
+        auto matched_string = uquery.substr(0,letters_matched)+suffix;
+
+        // Return a vector with 1 entry.
+        return {to_char_str(matched_string)};
+    }
+    // Otherwise find all descendants of the node we have found.
+    else
+    {
+        vector<string> results;
+        auto prefix = uquery;
+        all_descendants(prefix, index, results);
+
+        return results;
+    }
 }
 
 
