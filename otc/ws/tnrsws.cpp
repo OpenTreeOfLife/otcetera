@@ -265,9 +265,11 @@ vector<const Taxon*> prefix_name_search(const RichTaxonomy& taxonomy,
     std::sort(hits.begin(), hits.end());
     hits.erase( unique( hits.begin(), hits.end() ), hits.end() );
 
+#ifdef DEBUG_NAME_SEARCH
     auto hits2 = prefix_name_search_slow(context_root, query, ok);
     std::sort(hits2.begin(), hits2.end());
     assert(hits == hits2);
+#endif
 
     return hits;
 }
