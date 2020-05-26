@@ -1,5 +1,8 @@
 #include "otc/ctrie/ctrie_db.h"
 
+using std::vector;
+using std::string;
+
 namespace otc {
 
 std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::fuzzy_query(const std::string & query_str) const {
@@ -42,12 +45,28 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> CompressedTrieBasedDB::exact_
     return sorted;
 }
 
+vector<string> CompressedTrieBasedDB::prefix_query(const std::string & query_str) const
+{
+    auto conv_query = to_u32string(query_str);
+
+    auto sorted = thin_trie.prefix_query(conv_query);
+
+    auto from_full = wide_trie.prefix_query(conv_query);
+    sorted.insert(sorted.end(), std::begin(from_full), std::end(from_full));
+
+    // I'm not sure this is a good idea...
+    std::sort(sorted.begin(), sorted.end());
+
+    return sorted;
+}
 
 void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys) {
     ctrie_init_set_t for_wide;
     ctrie_init_set_t for_thin;
-    // could fit a couple more non-funky, if we want <- 76, I think...
-    auto nonfunky = " \'()-.0123456789:,_aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ/?";
+
+    // We don't need capital letters here, since we lcase queries when we normalize them.
+    auto nonfunky = " \"\'()[]+-%.&0123456789:<=>,^_abcdefghijklmnopqrstuvwxyz/?#*!";
+
     std::ostream & out = std::cout;
     std::map<stored_char_t, unsigned int> letter_counts;
     std::set<stored_char_t> thin_letter_set;
@@ -76,14 +95,45 @@ void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys) {
         }
         //std::cerr << glob_conv8.to_bytes(widestr) << '\n';
     }
+    std::cerr<<for_thin.size()<<" keys for thin ctrie\n";
+    std::cerr<<for_wide.size()<<" keys for wide ctrie\n";
     stored_str_t wide_letters;
     stored_str_t thin_letters;
     thin_letters.insert(std::begin(thin_letters), std::begin(thin_letter_set), std::end(thin_letter_set));
-    std::map<unsigned int, stored_str_t> by_count;
-    for (auto lcp : letter_counts) {
-        wide_letters.push_back(lcp.first);
-        by_count[lcp.second].push_back(lcp.first);
+    std::map<unsigned int, stored_str_t,std::greater<int>> by_count;
+
+
+    std::cerr<<"thin letters: "<<thin_letters.size()<<"\n";
+    for (auto letter : thin_letters)
+        std::cerr<<"  "<<to_char_str(letter)<<"\n";
+    std::cerr<<"done\n";
+
+    for (auto [letter,count] : letter_counts)
+        by_count[count].push_back(letter);
+
+    std::cerr<<"wide letters: "<<letter_counts.size()<<" letters\n";
+    int n_dropped_letters = 0;
+    for(auto [count,letters]: by_count)
+    {
+        std::cerr<<"  "<<count<<" : \n";
+        for(auto letter : letters)
+        {
+            std::cerr<<"    "<<to_char_str(letter)<<" ("<<letter<<")";
+            if (wide_letters.size() < 64)
+                wide_letters.push_back(letter);
+            else
+            {
+                n_dropped_letters++;
+                std::cerr<<"  DROPPED!";
+            }
+            std::cerr<<"\n";
+        }
     }
+    std::cerr<<"done\n";
+
+    if (n_dropped_letters)
+        std::cerr<<"dropped "<<n_dropped_letters<<" letters.\n";
+
     //std::cerr << "set size = " << (sizeof(std::string *) + sizeof(char *) + 8)*keys.size() + mem_str << "bytes\n";
     wide_trie.init(for_wide, wide_letters);
     thin_trie.init(for_thin, thin_letters);

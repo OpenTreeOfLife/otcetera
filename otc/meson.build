@@ -4,6 +4,8 @@ libotcetera_sources = [
   'ctrie/str_utils.cpp',
   'ctrie/ctrie_db.cpp',
   'ctrie/ctrie_node.cpp',
+  'ctrie/ctrie.cpp',
+  'ctrie/search_impl.cpp',
   'embedded_tree.cpp',
   'forest.cpp',
   'ftree.cpp',
@@ -43,5 +45,5 @@ otc_lib = shared_library('otcetera',
                          dependencies: [boost, restbed],
                          install: true)
 
-libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib)
+libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib, dependencies: [restbed])
 

@@ -1,11 +1,11 @@
-#ifndef OTC_CTRIE_SEARCH_IMPL_H
-#define OTC_CTRIE_SEARCH_IMPL_H
-
 #include "otc/ctrie/ctrie.h"
+
+using std::vector;
+using std::string;
 
 namespace otc {
 
-inline std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
+std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
     std::vector<unsigned int> prev_row;
     prev_row.reserve(2 + 2*dist_threshold);
     unsigned int cd = 0;
@@ -15,17 +15,17 @@ inline std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
     return prev_row;
 }
 
-template<typename T>
-inline unsigned CompressedTrie<T>::_calc_dist_impl(const PartialMatch<T> &pm,
-                                                   const stored_index_t * trie_suff,
-                                                   const std::size_t trie_len) const {
+unsigned CompressedTrie::_calc_dist_impl(const PartialMatch &pm,
+                                         const stored_index_t * trie_suff,
+                                         const std::size_t trie_len) const {
     const stored_index_t * quer_suff = pm.query_data();
     const unsigned int dist_threshold = pm.max_distance() - pm.curr_distance();
     stored_index_t prev_trie_match_char = pm.get_prev_mismatched_trie();
     stored_index_t prev_query_char = NO_MATCHING_CHAR_CODE;
     if (prev_trie_match_char != NO_MATCHING_CHAR_CODE) {
         assert(pm.query_pos() > 0);
-        prev_query_char = *(pm.get_prev_match_coded().rbegin());
+        assert(pm.prev_match_letter());
+        prev_query_char = *pm.prev_match_letter();
     }
     auto d = _calc_dist_prim_impl(prev_query_char,
                                   quer_suff + pm.query_pos(),
@@ -37,9 +37,9 @@ inline unsigned CompressedTrie<T>::_calc_dist_impl(const PartialMatch<T> &pm,
     return pm.curr_distance() + d;
 }
 
-inline unsigned int _ran_out_of_trie_score(const std::vector<unsigned int> & prev_row,
-                                           std::size_t first_quer_ind,
-                                           std::size_t quer_len) {
+unsigned int _ran_out_of_trie_score(const std::vector<unsigned int> & prev_row,
+                                    std::size_t first_quer_ind,
+                                    std::size_t quer_len) {
     int num_q_left = quer_len - first_quer_ind;
     if (num_q_left < 0) {
         assert(prev_row.size() == 1);
@@ -60,36 +60,34 @@ inline unsigned int _ran_out_of_trie_score(const std::vector<unsigned int> & pre
     return d;
 }
 
-template<typename T>
-inline unsigned int CompressedTrie<T>::_match_cost(stored_char_t prev_q_match_char,
-                                                   stored_char_t q_match_char,
-                                                   stored_char_t prev_trie_match_char,
-                                                   stored_char_t trie_match_char) const {
+unsigned int CompressedTrie::_match_cost(stored_char_t prev_q_match_char,
+                                         stored_char_t q_match_char,
+                                         stored_char_t prev_trie_match_char,
+                                         stored_char_t trie_match_char) const {
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
     }
-    if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
+    if (q_match_char == trie_match_char) {
         return 0;
     }
     if (prev_trie_match_char == NO_MATCHING_CHAR_CODE) {
         // transposition is not possible
         return 1;
     }
-    if ((prev_q_match_char == trie_match_char || prev_q_match_char == equivalent_letter[trie_match_char])
-        && (q_match_char == prev_trie_match_char || q_match_char == equivalent_letter[prev_trie_match_char])) {
+    if ((prev_q_match_char == trie_match_char)
+        && (q_match_char == prev_trie_match_char)) {
         // transpostion, don't double penalize
         return 0;
     }
     return 1;
 }
 
-template<typename T>
-inline unsigned int CompressedTrie<T>::_match_cost_no_transp(stored_char_t q_match_char,
+unsigned int CompressedTrie::_match_cost_no_transp(stored_char_t q_match_char,
                                                              stored_char_t trie_match_char) const {
     if (q_match_char == NO_MATCHING_CHAR_CODE || trie_match_char == NO_MATCHING_CHAR_CODE) {
         return 1;
     }
-    if (q_match_char == trie_match_char || q_match_char == equivalent_letter[trie_match_char]) {
+    if (q_match_char == trie_match_char) {
         return 0;
     }
     return 1;
@@ -97,13 +95,12 @@ inline unsigned int CompressedTrie<T>::_match_cost_no_transp(stored_char_t q_mat
 
 
 
-template<typename T>
-inline bool CompressedTrie<T>::_are_equivalent(stored_char_t prev_q,
-                                               const stored_index_t * quer_suff,
-                                               const std::size_t quer_len,
-                                               const stored_index_t * trie_suff,
-                                               const std::size_t trie_len,
-                                               stored_index_t prev_t) const {
+bool CompressedTrie::_are_equivalent(stored_char_t prev_q,
+                                     const stored_index_t * quer_suff,
+                                     const std::size_t quer_len,
+                                     const stored_index_t * trie_suff,
+                                     const std::size_t trie_len,
+                                     stored_index_t prev_t) const {
     if (quer_len != trie_len) {
         return false;
     }
@@ -122,14 +119,13 @@ inline bool CompressedTrie<T>::_are_equivalent(stored_char_t prev_q,
 }
 
 // checks for some easy optimizations, and calls dynamic programming version if needed.
-template<typename T>
-inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_quer_char,
-                                                            const stored_index_t * quer_suff,
-                                                            const std::size_t quer_len,
-                                                            const stored_index_t * trie_suff,
-                                                            const std::size_t trie_len,
-                                                            const unsigned int dist_threshold,
-                                                            stored_index_t prev_trie_match_char) const {
+unsigned int CompressedTrie::_calc_dist_prim_impl(stored_char_t prev_quer_char,
+                                                  const stored_index_t * quer_suff,
+                                                  const std::size_t quer_len,
+                                                  const stored_index_t * trie_suff,
+                                                  const std::size_t trie_len,
+                                                  const unsigned int dist_threshold,
+                                                  stored_index_t prev_trie_match_char) const {
     if (DB_FUZZY_MATCH) {
         std::cerr << "_calc_dist_prim_impl(pqc=\"" << (prev_quer_char == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[prev_quer_char])) << ", \"";
         for (auto i=0U; i < quer_len; ++i) {std::cerr << (quer_suff[i] == NO_MATCHING_CHAR_CODE ? "NO_MATCHING_CHAR_CODE" : to_char_str(letters[quer_suff[i]]));}
@@ -215,14 +211,13 @@ inline unsigned int CompressedTrie<T>::_calc_dist_prim_impl(stored_char_t prev_q
 }
 
 // called after preprocessing by _calc_dist_prim_impl
-template<typename T>
-inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t prev_quer_char,
-                                                               const stored_index_t * quer_suff,
-                                                               const std::size_t quer_len,
-                                                               const stored_index_t * trie_suff,
-                                                               const std::size_t trie_len,
-                                                               const unsigned int dist_threshold,
-                                                               stored_index_t prev_trie_match_char) const {
+unsigned int CompressedTrie::_dp_calc_dist_prim_impl(stored_char_t prev_quer_char,
+                                                     const stored_index_t * quer_suff,
+                                                     const std::size_t quer_len,
+                                                     const stored_index_t * trie_suff,
+                                                     const std::size_t trie_len,
+                                                     const unsigned int dist_threshold,
+                                                     stored_index_t prev_trie_match_char) const {
     std::size_t prev_quer_ind = 0;
     std::size_t trie_ind = 0;
     std::vector<unsigned int> prev_row = _init_prev_row(dist_threshold);
@@ -318,10 +313,9 @@ inline unsigned int CompressedTrie<T>::_dp_calc_dist_prim_impl(stored_char_t pre
 }
 
 
-template<typename T>
-bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
-                                 const stored_index_t * trie_suff,
-                                 std::list<FuzzyQueryResult> & results) const {
+bool CompressedTrie::_check_suffix_for_match(const PartialMatch &pm,
+                                             const stored_index_t * trie_suff,
+                                             std::vector<FuzzyQueryResult> & results) const {
     if (pm.has_matched_suffix(trie_suff)) {
         return false;
     }
@@ -351,8 +345,7 @@ bool CompressedTrie<T>::_check_suffix_for_match(const PartialMatch<T> &pm,
 }
 
 
-template<typename T>
-void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> &pm) const {
+void CompressedTrie::db_write_pm(const char * context, const PartialMatch &pm) const {
     auto & out = std::cerr;
     if (context != nullptr) {
         out << context << " ";
@@ -369,43 +362,51 @@ void CompressedTrie<T>::db_write_pm(const char * context, const PartialMatch<T> 
     out << ")\n";
 }
 
-template<typename T>
-void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
-                                             std::list<FuzzyQueryResult> & results,
-                                             std::list<PartialMatch<T> > & next_alive) const {
+void CompressedTrie::extend_partial_match(const PartialMatch & pm, std::vector<FuzzyQueryResult> & results) const
+{
     if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
-    const T * trienode = pm.get_next_node();
+
+    const CTrieNode * trienode = pm.get_next_node();
+
     if (trienode->is_terminal()) {
         auto suffix_index = trienode->get_index();
         _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
         return;
     }
+
     const unsigned int max_dist = pm.max_distance();
     auto cd = pm.curr_distance();
     auto qc = pm.query_char();
-    auto altqc = equivalent_letter[qc];
     if (DB_FUZZY_MATCH) {trienode->log_state();}
-    auto inds_on = trienode->get_letter_and_node_indices_for_on_bits();
-    for (auto & x : inds_on) {
-        auto trie_char = x.first;
-        auto next_ind = x.second;
-        const T * next_nd = &(node_vec[next_ind]);
-        if (trie_char == qc || trie_char == altqc) {
-            if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
-            next_alive.push_back(PartialMatch<T>{pm, trie_char, cd, next_nd, false});
-        } else if (cd + 1 <= max_dist) {
-            if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[trie_char]) << " in pre adding extended pm.\n";}
-            next_alive.push_back(PartialMatch<T>{pm, trie_char, cd + 1, next_nd, true});
-            if (pm.can_rightshift()) {
-                next_alive.push_back(PartialMatch<T>{pm, cd + 1, next_nd, trie_char}); // rightshift
-            }
+
+    for (auto [letter, index] : trienode->children())
+    {
+        const CTrieNode * next_nd = &(node_vec[index]);
+        if (letter == qc)
+        {
+            if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
+
+            extend_partial_match(PartialMatch{pm, letter, cd, next_nd, true}, results);
+        }
+        else if (cd + 1 <= max_dist)
+        {
+            if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
+
+            extend_partial_match(PartialMatch{pm, letter, cd + 1, next_nd, false}, results);
+
+            if (pm.can_rightshift())
+                extend_partial_match(PartialMatch{pm, cd + 1, next_nd, letter}, results);
+
         }
     }
     // frameshift
-    if (cd + 1 <= max_dist && pm.can_downshift()) {
-        next_alive.push_back(PartialMatch<T>{pm, cd + 1, trienode}); //downshift
+    if (cd + 1 <= max_dist && pm.can_downshift())
+    {
+        extend_partial_match(PartialMatch{pm, cd + 1, trienode}, results);
     }
-    if (trienode->is_key_terminating()) {
+
+    if (trienode->is_key_terminating())
+    {
         auto d = pm.num_q_char_left() + pm.curr_distance();
         if (d <= max_dist) {
             pm.store_result(results, nullptr, 0, d);
@@ -414,8 +415,7 @@ void CompressedTrie<T>::extend_partial_match(const PartialMatch<T> & pm,
 }
 
 
-template<typename T>
-inline void CompressedTrie<T>::_finish_query_result(FuzzyQueryResult & res) const {
+void CompressedTrie::_finish_query_result(FuzzyQueryResult & res) const {
     res.match_wide_char.clear();
     for (auto ind : res.match_coded) {
         assert(ind != NO_MATCHING_CHAR_CODE);
@@ -427,12 +427,11 @@ inline void CompressedTrie<T>::_finish_query_result(FuzzyQueryResult & res) cons
 }
 
 
-template<typename T>
-std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t & query_str,
-                                                             unsigned int max_dist) const {
+std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t & query_str, unsigned int max_dist) const
+{
     if (DB_FUZZY_MATCH) {std::cerr << "fuzzy_matches (within " << max_dist << " edits) of \"" << to_char_str(query_str) << "\"\n";}
     if (query_str.length() == 0) {
-        return std::list<FuzzyQueryResult>{};
+        return std::vector<FuzzyQueryResult>{};
     }
     const FQuery query{query_str, encode_as_indices(query_str), max_dist};
     unsigned int num_missing_in_letters = 0;
@@ -441,31 +440,104 @@ std::list<FuzzyQueryResult> CompressedTrie<T>::fuzzy_matches(const stored_str_t 
             num_missing_in_letters++;
             if (num_missing_in_letters > max_dist) {
                 if (DB_FUZZY_MATCH) {std::cerr << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";}
-                return std::list<FuzzyQueryResult>{};
+                return std::vector<FuzzyQueryResult>{};
             }
         }
     }
     // non-trivial case
-    std::list<FuzzyQueryResult> results;
-    const T * root_nd = &(node_vec.at(0));
-    std::list<PartialMatch<T> > alive;
-    alive.push_back(PartialMatch<T>{query, root_nd});
-    while (!alive.empty()) {
-        if (DB_FUZZY_MATCH) {std::cerr << "  " << alive.size() << " alive partial matches and " << results.size() << " hits.\n";}
-        std::list<PartialMatch<T> > next_alive;
-        for (const auto & pm : alive) {
-            auto prevnalen = next_alive.size();
-            extend_partial_match(pm, results, next_alive);
-            if (DB_FUZZY_MATCH) {if (next_alive.size() != prevnalen) {std::cerr << "added " << next_alive.size() - prevnalen << " PMs.\n"; }}
-        }
-        std::swap(alive, next_alive);
-    }
-    for (auto & r : results) {
+    std::vector<FuzzyQueryResult> results;
+    results.reserve(20);
+
+    auto root_node = &(node_vec.at(0));
+
+    // Do a depth-first search using the stack.
+    extend_partial_match(PartialMatch(query, root_node), results);
+
+    for (auto & r : results)
         _finish_query_result(r);
-    }
+
     return results;
+}
+
+void CompressedTrie::all_descendants(stored_str_t& prefix, uint64_t index, vector<string>& results) const
+{
+    auto& node = node_vec[index];
+
+    if (node.is_key_terminating())
+        results.push_back(to_char_str(prefix));
+
+    if (node.is_terminal()) {
+        auto suffix_index = node.get_index();
+        auto suffix = get_suffix(suffix_index);
+        results.push_back(to_char_str(prefix + suffix));
+    }
+    else
+    {
+        for (auto [letter, next_index] : node.children())
+        {
+            prefix.push_back(letters[letter]);
+            all_descendants(prefix, next_index, results);
+            prefix.pop_back();
+        }
+    }
+}
+
+// can we have both is_terminal() and key_terminating() on the same node?
+// if we could have them both set and have an empty suffix, then we would match the same string twice.
+// therefore perhaps, we can have them both set, but we only have is_terminal() set if there is a non-empty suffix.
+vector<string> CompressedTrie::prefix_query(const stored_str_t& uquery) const
+{
+    if (node_vec.empty()) return {};
+
+    auto query_letters = encode_as_indices(uquery);
+
+    int index = 0;
+    int letters_matched = 0;
+    for(int i=0;i<query_letters.size() and not node_vec[index].is_terminal();i++)
+    {
+        auto letter = query_letters[i];
+        auto next_index = node_vec[index].child_index_for_letter(letter);
+        if (next_index)
+            index = *next_index;
+        else
+            return {};
+
+        letters_matched = i+1;
+    }
+
+    // If we have not matched all the prefix letters, check the suffix
+    if (letters_matched<uquery.size())
+    {
+        assert(node_vec[index].is_terminal());
+        auto suffix_index = node_vec[index].get_index();
+        auto suffix = get_suffix(suffix_index);
+
+        // We can't match if there aren't enough letters in the suffix
+        if (letters_matched + suffix.size() < uquery.size())
+            return {};
+
+        // Check that the remaining query letters match the suffix
+        for(int i=0;i<uquery.size() - letters_matched;i++)
+            if (suffix[i] != uquery[letters_matched+i])
+                return {};
+
+        // Compute the matched string.
+        auto matched_string = uquery.substr(0,letters_matched)+suffix;
+
+        // Return a vector with 1 entry.
+        return {to_char_str(matched_string)};
+    }
+    // Otherwise find all descendants of the node we have found.
+    else
+    {
+        vector<string> results;
+        auto prefix = uquery;
+        all_descendants(prefix, index, results);
+
+        return results;
+    }
 }
 
 
 } // namespace otc
-#endif
+

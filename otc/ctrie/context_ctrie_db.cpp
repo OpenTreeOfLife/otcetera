@@ -7,6 +7,7 @@
 using std::set;
 using std::string;
 using std::vector;
+using std::optional;
 
 namespace otc {
 
@@ -91,18 +92,22 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuz
     return sorted;
 }
 
-std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::exact_query(const std::string & query_str) const {
-    std::set<FuzzyQueryResult, SortQueryResByNearness> sorted;
-    if (context.name_matcher != nullptr) {
-        sorted = context.name_matcher->exact_query(query_str);
-    }
-    for (auto c :children) {
-        if (c->context.name_matcher) {
-            auto csorted = c->context.name_matcher->exact_query(query_str);
-            sorted.insert(std::begin(csorted), std::end(csorted));
-        }
-    }
-    return sorted;
+optional<string> ContextAwareCTrieBasedDB::exact_query(const std::string & query_str) const
+{
+    auto nquery = normalize_query(query_str);
+    if (match_name_to_taxon.count(nquery))
+        return nquery;
+    else
+        return {};
+}
+
+vector<string> ContextAwareCTrieBasedDB::prefix_query(const std::string & query_str) const
+{
+    auto nquery = normalize_query(query_str);
+
+    if (nquery.size() < 3) return {};
+
+    return trie.prefix_query(nquery);
 }
 
 using vec_fqr_w_t = std::vector<FuzzyQueryResultWithTaxon>;
@@ -141,6 +146,116 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::to_taxa(const set<FuzzyQueryResult, SortQu
                     } else {
                         LOG(DEBUG) << "pushing synonym";
                         results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr,  syn_ptr));
+                    }
+                }
+            }
+        }
+    }
+    return results;
+}
+
+vector<TaxonResult>
+ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
+                                  const RTRichTaxNode * context_root,
+                                  const RichTaxonomy & /*taxonomy*/, 
+                                  bool include_suppressed) const
+{
+    if (not n_query)
+    {
+        LOG(DEBUG) << "no matches";
+        return {};
+    }
+
+    vector<TaxonResult> results;
+    const auto & tax_data = context_root->get_data();
+    const auto filter_trav_enter = tax_data.trav_enter;
+    const auto filter_trav_exit = tax_data.trav_exit;
+
+    const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(*n_query);
+    LOG(DEBUG) << "exact_query(match=\"" << *n_query << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
+    for (auto & [tax_ptr, rec_or_syn_ptr] : vec_taxon_and_syn_ptrs)
+    {
+        if (tax_ptr == nullptr)
+        {
+            LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
+            if (include_suppressed)
+            {
+                const TaxonomyRecord * tr = (const TaxonomyRecord *) rec_or_syn_ptr;
+                results.push_back(TaxonResult(tr));
+            }
+        }
+        else
+        {
+            const auto & res_tax_data = tax_ptr->get_data();
+            LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
+            if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter)
+            {
+                const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
+                if (syn_ptr == nullptr)
+                {
+                    LOG(DEBUG) << "pushing non-syn";
+                    results.push_back(TaxonResult(tax_ptr));
+                }
+                else
+                {
+                    LOG(DEBUG) << "pushing synonym";
+                    results.push_back(TaxonResult(tax_ptr,  syn_ptr));
+                }
+            }
+        }
+    }
+    return results;
+}
+
+vector<TaxonResult>
+ContextAwareCTrieBasedDB::to_taxa(const vector<string>& n_queries,
+                                  const RTRichTaxNode * context_root,
+                                  const RichTaxonomy & /*taxonomy*/, 
+                                  bool include_suppressed) const
+{
+    if (n_queries.empty())
+    {
+        LOG(DEBUG) << "no matches";
+        return {};
+    }
+
+    vector<TaxonResult> results;
+
+    const auto & tax_data = context_root->get_data();
+    const auto filter_trav_enter = tax_data.trav_enter;
+    const auto filter_trav_exit = tax_data.trav_exit;
+
+    for(auto& n_query: n_queries)
+    {
+        const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(n_query);
+        LOG(DEBUG) << "prefix_query(match=\"" << n_query << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
+        for (auto & [tax_ptr, rec_or_syn_ptr] : vec_taxon_and_syn_ptrs)
+        {
+            if (tax_ptr == nullptr)
+            {
+                LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
+                if (include_suppressed)
+                {
+                    const TaxonomyRecord * tr = (const TaxonomyRecord *) rec_or_syn_ptr;
+                    results.push_back(TaxonResult(tr));
+                }
+            }
+            else
+            {
+                const auto & res_tax_data = tax_ptr->get_data();
+                LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
+                if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter)
+                {
+                    const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
+                    if (syn_ptr == nullptr)
+                    {
+                        LOG(DEBUG) << "pushing non-syn";
+                        results.push_back(TaxonResult(tax_ptr));
+                    }
+                    else
+                    {
+                        LOG(DEBUG) << "pushing synonym";
+                        results.push_back(TaxonResult(tax_ptr,  syn_ptr));
                     }
                 }
             }

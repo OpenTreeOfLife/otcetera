@@ -177,6 +177,23 @@ std::unique_ptr<Tree_Out_t> get_induced_tree(const Tree_In1_t& T1,
     return induced_tree;
 }
 
+// Get a list of nodes in T2 that are leaves in T1.
+// The nodes in T2 do NOT need to be leaves of T2.
+
+template <typename Tree1_t, typename Tree2_t>
+auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2) {
+    auto& ott_to_nodes2 = T2.get_data().id_to_node;
+    std::vector<const typename Tree2_t::node_type*> nodes;
+    for(auto leaf: iter_leaf_const(T1)) {
+        auto id = leaf->get_ott_id();
+        auto it = ott_to_nodes2.find(id);
+        if (it != ott_to_nodes2.end()) {
+            nodes.push_back(it->second);
+        }
+    }
+    return nodes;
+}
+
 
 }// namespace otc
 #endif

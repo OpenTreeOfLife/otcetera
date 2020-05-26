@@ -20,8 +20,6 @@ conf_data.set_quoted('_ARCH_', host_machine.system()+' ' + host_machine.cpu_fami
 conf_data.set_quoted('_COMPILER_', cpp.get_id() + ' ' + cpp.version()+' ' + host_machine.cpu_family())
 configure_file(output : 'config.h', configuration : conf_data)
 
-clucene = dependency('libclucene-core', required: false)
-
 # Do we need this?
 # AC_PROG_LN_S
 

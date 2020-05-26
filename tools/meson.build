@@ -49,6 +49,7 @@ programs = [
   ['regrafttaxonomygenerator',  'regraft-taxonomy-generator'],
   ['relabel-tree',  'relabel-tree'],
   ['tree-tool',  'tree-tool'],
+  ['prune-clean',  'prune-clean'],
   ['broken-taxa',  'broken-taxa'],
   ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],
   ]
