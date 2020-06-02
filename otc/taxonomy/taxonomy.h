@@ -18,6 +18,8 @@
 #include <string_view>
 #include <bitset>
 #include <variant>
+#include "json.hpp"
+#include "otc/assert.hh"
 #include "otc/taxonomy/flags.h"
 
 #include "otc/error.h"
@@ -25,7 +27,6 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/flags.h"
 
-#include "json.hpp"
 
 // 1. Write a parser to read the lines faster
 // 2. Avoid memory allocation -- by mmapping the taxonomy file?
