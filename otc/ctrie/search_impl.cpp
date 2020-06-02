@@ -5,6 +5,63 @@ using std::string;
 
 namespace otc {
 
+// Dynamic programming matrix.
+//   This implementation doesn't separate gap-opening from gap-extension.
+class dp_matrix
+{
+    int* data;
+    int x_width;
+    int y_width;
+public:
+    int& operator()(int x,int y)       {assert(0 <= x and x < x_width); assert(0 <= y and y < y_width) ; return data[y*x_width + x];}
+    int  operator()(int x,int y) const {assert(0 <= x and x < x_width); assert(0 <= y and y < y_width) ; return data[y*x_width + x];}
+
+    int size1() const {return x_width;}
+    int size2() const {return y_width;}
+
+    int calc_row(int y, stored_index_t target_char, const vector<stored_index_t>& query)
+    {
+        int best = INT_MAX;
+        for(int x=1;x<x_width;x++)
+        {
+            // We have just matched the x-th char, which is query[x-1]
+            int match_cost       = (target_char == query[x-1]) ? 0 : 1;
+            // FIXME: if we have the PREVIOUS target_char, we could look at letter transpositions here.
+
+            int match_score      = (*this)(x-1,y-1) + match_cost;
+            int del_query_score  = (*this)(x  ,y-1) + 1;
+            int del_target_score = (*this)(x-1,y  ) + 1;
+            (*this)(x,y) = std::min(match_score,std::min(del_query_score, del_target_score));
+            best = std::min((*this)(x,y), best);
+        }
+        return best;
+    }
+
+    int score_for_row(int y) const
+    {
+        return (*this)(x_width-1, y);
+    }
+
+    dp_matrix(int xw, int yw)
+        :data(new int[xw*yw]),
+         x_width(xw),
+         y_width(yw)
+    {
+        // Initialize the first row and first column.
+        // This avoids handling special cases later.
+        for(int x=0;x<x_width;x++)
+            (*this)(x,0) = x;
+        for(int y=0;y<y_width;y++)
+            (*this)(0,y) = y;
+    };
+
+    ~dp_matrix()
+     {
+         delete[] data;
+     }
+};
+
+
 std::vector<unsigned int> _init_prev_row(unsigned int dist_threshold) {
     std::vector<unsigned int> prev_row;
     prev_row.reserve(2 + 2*dist_threshold);
