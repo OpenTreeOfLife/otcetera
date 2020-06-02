@@ -140,6 +140,19 @@ class CompressedTrie {
         return &(concat_suff.at(suff_ind));
     }
     
+    const stored_index_t * get_suffix_ptr(const CTrieNode& node) const
+    {
+        return get_suffix_as_indices( node.get_index() );
+    }
+
+    std::size_t get_suffix_length(const CTrieNode& node) const
+    {
+        assert(node.is_terminal());
+        auto suffix_index = node.get_index();
+        auto ptr = get_suffix_as_indices(suffix_index);
+        return count_suff_len(ptr);
+    }
+
     private:
     
     void init(const ctrie_init_set_t & keys, const stored_str_t & letter_var);
