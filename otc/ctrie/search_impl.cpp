@@ -419,56 +419,63 @@ void CompressedTrie::db_write_pm(const char * context, const PartialMatch &pm) c
     out << ")\n";
 }
 
-void CompressedTrie::extend_partial_match(const PartialMatch & pm, std::vector<FuzzyQueryResult> & results) const
+void CompressedTrie::extend_partial_match(const vector<stored_index_t>& query,
+                                          const unsigned int max_dist,
+                                          const CTrieNode* curr_node,
+                                          dp_matrix& score,
+                                          vector<stored_index_t>& match_coded,
+                                          std::vector<FuzzyQueryResult> & results) const
 {
-    if (DB_FUZZY_MATCH) {db_write_pm("extend", pm);}
+    // 2. Handle case where there only one target string with this prefix
+    if (curr_node->is_terminal())
+    {
+        auto prev_length = match_coded.size();
+        auto suffix_length = get_suffix_length(*curr_node);
+        auto total_length = prev_length + suffix_length;
 
-    const CTrieNode * trienode = pm.get_next_node();
+        // If the terminal suffix is too long, we can't match.
+        if (total_length >= score.size2()) return;
 
-    if (trienode->is_terminal()) {
-        auto suffix_index = trienode->get_index();
-        _check_suffix_for_match(pm, get_suffix_as_indices(suffix_index), results);
+        auto suffix_char_ptr = get_suffix_ptr(*curr_node);
+        for(int y = prev_length+1; y <= total_length; y++, suffix_char_ptr++)
+            score.calc_row(y, *suffix_char_ptr, query);
+
+        unsigned int dist = score.score_for_row(total_length);
+
+        // FIXME: maybe stop passing in L just to do a reserve?
+        if (dist <= max_dist)
+            results.push_back( {match_coded, get_suffix_ptr(*curr_node), suffix_length, dist} );
+
         return;
     }
 
-    const unsigned int max_dist = pm.max_distance();
-    auto cd = pm.curr_distance();
-    auto qc = pm.query_char();
-    if (DB_FUZZY_MATCH) {trienode->log_state();}
-
-    for (auto [letter, index] : trienode->children())
+    // 3. Handle case where there are multiple target strings with this prefix.
+    for (auto [letter, index] : curr_node->children())
     {
-        const CTrieNode * next_nd = &(node_vec[index]);
-        if (letter == qc)
+        match_coded.push_back(letter);
         {
-            if (DB_FUZZY_MATCH) {std::cerr << "matched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
 
-            extend_partial_match(PartialMatch{pm, letter, cd, next_nd, true}, results);
-        }
-        else if (cd + 1 <= max_dist)
-        {
-            if (DB_FUZZY_MATCH) {std::cerr << "mismatched " << to_char_str(letters[letter]) << " in pre adding extended pm.\n";}
+            int best = score.calc_row(match_coded.size(), letter, query);
 
-            extend_partial_match(PartialMatch{pm, letter, cd + 1, next_nd, false}, results);
+            const CTrieNode * next_nd = &(node_vec[index]);
 
-            if (pm.can_rightshift())
-                extend_partial_match(PartialMatch{pm, cd + 1, next_nd, letter}, results);
+            // Don't search branches of the tree that can never achieve dist <= max_dist
+            if (best <= max_dist)
+                extend_partial_match(query, max_dist, next_nd, score, match_coded, results);
 
         }
+        match_coded.pop_back();
     }
-    // frameshift
-    if (cd + 1 <= max_dist && pm.can_downshift())
+
+    // 1. Handle case where one target string terminates here, but this is a prefix of other target strings.
+    if (curr_node->is_key_terminating())
     {
-        extend_partial_match(PartialMatch{pm, cd + 1, trienode}, results);
+        unsigned int dist = score.score_for_row( match_coded.size() );
+
+        if (dist <= max_dist)
+            results.push_back( {match_coded, nullptr, 0, dist} );
     }
 
-    if (trienode->is_key_terminating())
-    {
-        auto d = pm.num_q_char_left() + pm.curr_distance();
-        if (d <= max_dist) {
-            pm.store_result(results, nullptr, 0, d);
-        }
-    }
 }
 
 
@@ -490,25 +497,40 @@ std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t &
     if (query_str.length() == 0) {
         return std::vector<FuzzyQueryResult>{};
     }
-    const FQuery query{query_str, encode_as_indices(query_str), max_dist};
+
+    // 1. Trivial case: unmatchable query.
+    auto query = encode_as_indices(query_str);
     unsigned int num_missing_in_letters = 0;
-    for (auto qai : query.as_indices) {
+    for (auto qai : query) {
         if (qai == NO_MATCHING_CHAR_CODE) {
             num_missing_in_letters++;
             if (num_missing_in_letters > max_dist) {
                 if (DB_FUZZY_MATCH) {std::cerr << "match infeasible because >= " << num_missing_in_letters << " positions in the query were not in the trie.\n";}
-                return std::vector<FuzzyQueryResult>{};
+                return {};
             }
         }
     }
+
     // non-trivial case
     std::vector<FuzzyQueryResult> results;
     results.reserve(20);
 
+    // 2. Allocate a dynamic programming matrix with size (|query|+1, |target|+1)
+    //    We can ignore target strings longer than query_str().size+max_dist.
+    const int XW = query.size()+1;
+    const int YW = query.size()+1+max_dist;
+
+    //    The cell (x,y) indicates the score after having seen x letters of the query and y letters of the target.
+    dp_matrix score(XW,YW);
+
+    // 4. Keep track of the path through the prefix ctrie as we walk it.
+    vector<stored_index_t> match_coded;
+    match_coded.reserve(YW-1);
+
     auto root_node = &(node_vec.at(0));
 
     // Do a depth-first search using the stack.
-    extend_partial_match(PartialMatch(query, root_node), results);
+    extend_partial_match(query, max_dist, root_node, score, match_coded, results);
 
     for (auto & r : results)
         _finish_query_result(r);

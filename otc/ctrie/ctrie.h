@@ -197,7 +197,12 @@ class CompressedTrie {
                                         const unsigned int dist_threshold,
                                         stored_index_t prev_trie_match_char) const;
 
-    void extend_partial_match(const PartialMatch &pm, std::vector<FuzzyQueryResult> & results) const;
+    void extend_partial_match(const std::vector<stored_index_t>& query,
+                              const unsigned int max_dist,
+                              const CTrieNode* curr_node,
+                              class dp_matrix& score,
+                              std::vector<stored_index_t>& match_coded,
+                              std::vector<FuzzyQueryResult> & results) const;
 
     void db_write_pm(const char *, const PartialMatch &pm) const;
     unsigned int _calc_dist_impl(const PartialMatch &pm,
