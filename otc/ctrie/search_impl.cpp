@@ -12,6 +12,8 @@ class dp_matrix
     int* data;
     int x_width;
     int y_width;
+    int* xmin;
+    int* xmax;
 public:
     int& operator()(int x,int y)       {assert(0 <= x and x < x_width); assert(0 <= y and y < y_width) ; return data[y*x_width + x];}
     int  operator()(int x,int y) const {assert(0 <= x and x < x_width); assert(0 <= y and y < y_width) ; return data[y*x_width + x];}
@@ -21,16 +23,16 @@ public:
 
     int calc_row(int y, stored_index_t target_char, const vector<stored_index_t>& query)
     {
-        int best = INT_MAX;
-        for(int x=1;x<x_width;x++)
+        int best = INT_MAX/2;
+        for(int x=xmin[y]; x<=xmax[y]; x++)
         {
             // We have just matched the x-th char, which is query[x-1]
             int match_cost       = (target_char == query[x-1]) ? 0 : 1;
             // FIXME: if we have the PREVIOUS target_char, we could look at letter transpositions here.
 
             int match_score      = (*this)(x-1,y-1) + match_cost;
-            int del_query_score  = (*this)(x  ,y-1) + 1;
             int del_target_score = (*this)(x-1,y  ) + 1;
+            int del_query_score  = (*this)(x  ,y-1) + 1;
             (*this)(x,y) = std::min(match_score,std::min(del_query_score, del_target_score));
             best = std::min((*this)(x,y), best);
         }
@@ -42,22 +44,42 @@ public:
         return (*this)(x_width-1, y);
     }
 
-    dp_matrix(int xw, int yw)
+    dp_matrix(int xw, int yw, int max_dist)
         :data(new int[xw*yw]),
          x_width(xw),
-         y_width(yw)
+         y_width(yw),
+         xmin(new int[yw]),
+         xmax(new int[yw])
     {
+        // Initialize cells to INT_MAX/2 so that they don't affect the calculation.
+        for(int x=0;x<x_width;x++)
+            for(int y=0;y<y_width;y++)
+                (*this)(x,y) = INT_MAX/2;
+
         // Initialize the first row and first column.
         // This avoids handling special cases later.
         for(int x=0;x<x_width;x++)
             (*this)(x,0) = x;
         for(int y=0;y<y_width;y++)
             (*this)(0,y) = y;
+
+        // The score cannot be higher than the score you would get if all letters matched.
+        // And that score is |x-y| for cell (x,y).
+        // So we can impose the constraint that |x-y| <= max_dist.
+        // This means that x \in (y-max_dist,y+max_dist) \cap (0,x_width-1)
+        // Since we are computed (x=0,y) previously, we set xmin to at least 1
+        for(int y=0;y<y_width;y++)
+        {
+            xmin[y] = std::max(1,y-max_dist);
+            xmax[y] = std::min(x_width-1,y+max_dist);
+        }
     };
 
     ~dp_matrix()
      {
          delete[] data;
+         delete[] xmin;
+         delete[] xmax;
      }
 };
 
@@ -525,7 +547,7 @@ std::vector<FuzzyQueryResult> CompressedTrie::fuzzy_matches(const stored_str_t &
     const int YW = query.size()+1+max_dist;
 
     //    The cell (x,y) indicates the score after having seen x letters of the query and y letters of the target.
-    dp_matrix score(XW,YW);
+    dp_matrix score(XW, YW, max_dist);
 
     // 4. Keep track of the path through the prefix ctrie as we walk it.
     vector<stored_index_t> match_coded;
@@ -574,7 +596,7 @@ vector<string> CompressedTrie::prefix_query(const stored_str_t& uquery) const
 
     auto query_letters = encode_as_indices(uquery);
 
-    int index = 0;
+    std::size_t index = 0;
     int letters_matched = 0;
     for(int i=0;i<query_letters.size() and not node_vec[index].is_terminal();i++)
     {
