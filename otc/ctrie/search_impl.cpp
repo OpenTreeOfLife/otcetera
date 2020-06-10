@@ -437,8 +437,12 @@ void CompressedTrie::extend_partial_match(const vector<stored_index_t>& query,
         if (total_length >= score.size2()) return;
 
         auto suffix_char_ptr = get_suffix_ptr(*curr_node);
+        int next_best = 0;
         for(int y = prev_length+1; y <= total_length; y++, suffix_char_ptr++)
-            score.calc_row(y, *suffix_char_ptr, query);
+        {
+            if (next_best > max_dist) return;
+            next_best = score.calc_row(y, *suffix_char_ptr, query);
+        }
 
         unsigned int dist = score.score_for_row(total_length);
 
