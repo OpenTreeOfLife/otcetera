@@ -217,40 +217,28 @@ inline json get_node_status(const string& witness, string status, const RichTaxo
     return j;
 }
 
-json get_conflict_node_status(const set<pair<string,int>>& witnesses, string status, const RichTaxonomy& Tax) {
-    json j;
-    string first_witness = witnesses.begin()->first;
-    j["witness"] = extract_node_name_if_present(witnesses.begin()->first);
-    j["status"] = std::move(status);
+json get_conflict_node_status(const set<pair<string,int>>& witnesses, string status, const RichTaxonomy& Tax)
+{
+    json j_witnesses = json::array();
+    json j_witness_names = json::array();
+    for(auto& [node_name, _]: witnesses)
+    {
+        json witness_name;
 
-    // Compute first 3 witnesses as name + name + name + ...
-    string witness_names;
-    int total = 0;
-    for(auto& witness: witnesses) {
-        long raw_ott_id = long_ott_id_from_name(witness.first);
-        if (raw_ott_id < 0) {
-            continue;
+        if (long raw_ott_id = long_ott_id_from_name(node_name); raw_ott_id >= 0)
+        {
+            OttId id = check_ott_id_size(raw_ott_id);
+            if (auto nd = Tax.included_taxon_from_id(id))
+                witness_name  = nd->get_name();
         }
-        OttId id = check_ott_id_size(raw_ott_id);
-        auto nd = Tax.included_taxon_from_id(id);
-        if (nd == nullptr) {
-            continue;
-        }
-        string witness_name  = nd->get_name();
-        if (total > 2) {
-            witness_names += " + ...";
-            break;
-        } else if (total == 0) {
-            witness_names = witness_name;
-        } else {
-            witness_names = witness_names + " + " + witness_name;
-        }
-        total++;
+        j_witnesses.push_back( extract_node_name_if_present(node_name) );
+        j_witness_names.push_back( witness_name );
     }
-    if (not witness_names.empty()) {
-        //      witness_names  = witness_names + " (" + std::to_string(witnesses.size()) + ")"; // record number of witnesses
-        j["witness_name"] = witness_names;
-    }
+
+    json j;
+    j["status"] = std::move(status);
+    j["witness_name"] = j_witness_names;
+    j["witness"] = j_witnesses;
     return j;
 }
 
