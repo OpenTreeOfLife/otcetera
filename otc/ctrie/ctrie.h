@@ -63,8 +63,6 @@ class CompressedTrie {
         }
         return ret;
     }
-    
-
 
     std::vector<stored_index_t> encode_as_indices(const stored_str_t & query_str,
                                                   bool null_terminate=false) const {
@@ -78,15 +76,6 @@ class CompressedTrie {
         }
         return ret;
     }
-    
-
-    unsigned int _calc_dist_prim_impl(stored_char_t prev_query_c,
-                                      const stored_index_t *quer_suff,
-                                      const std::size_t quer_len,
-                                      const stored_index_t * trie_suff,
-                                      const std::size_t trie_len,
-                                      const unsigned int dist_threshold,
-                                      stored_index_t prev_trie_match_char) const;
     
     std::vector<FuzzyQueryResult> fuzzy_matches(const stored_str_t & query_str,
                                                 unsigned int max_dist) const;
@@ -183,19 +172,6 @@ class CompressedTrie {
         node_vec.clear();
         letter_to_ind.clear();
     }
-    bool _are_equivalent(stored_char_t prev_q,
-                        const stored_index_t * quer_suff,
-                        const std::size_t quer_len,
-                        const stored_index_t * trie_suff,
-                        const std::size_t trie_len,
-                        stored_index_t prev_t) const;
-    unsigned int _dp_calc_dist_prim_impl(stored_char_t prev_query_c,
-                                        const stored_index_t *quer_suff,
-                                        const std::size_t quer_len,
-                                        const stored_index_t * trie_suff,
-                                        const std::size_t trie_len,
-                                        const unsigned int dist_threshold,
-                                        stored_index_t prev_trie_match_char) const;
 
     void extend_partial_match(const std::vector<stored_index_t>& query,
                               const unsigned int max_dist,
@@ -203,20 +179,6 @@ class CompressedTrie {
                               class dp_matrix& score,
                               std::vector<stored_index_t>& match_coded,
                               std::vector<FuzzyQueryResult> & results) const;
-
-    void db_write_pm(const char *, const PartialMatch &pm) const;
-    unsigned int _calc_dist_impl(const PartialMatch &pm,
-                                 const stored_index_t * suffix,
-                                 const std::size_t trie_len) const;
-    unsigned int _match_cost(stored_char_t prev_q_match_char,
-                                                stored_char_t q_match_char,
-                                                stored_char_t prev_trie_match_char,
-                                                stored_char_t trie_match_char) const;
-    unsigned int _match_cost_no_transp(stored_char_t q_match_char,
-                                       stored_char_t trie_match_char) const;
-    bool _check_suffix_for_match(const PartialMatch &pm,
-                                 const stored_index_t * suffix,
-                                 std::vector<FuzzyQueryResult> & results) const;
 
     stored_index_t ctrie_get_index_for_letter(const stored_char_t & c) const {
         auto ltiit = letter_to_ind.find(c);
