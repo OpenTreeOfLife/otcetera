@@ -6,15 +6,7 @@ namespace otc {
 
 void CTrieNode::flag_letter(unsigned int i)
 {
-    uint64_t bit = ONE_64;
-    if (i < LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD) {
-        bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-        top |= bit;
-    }  else {
-        assert(i < END_LETTER_INDEX);
-        bit <<= (LETTER_INDEX_OF_FIRST_BIT_IN_SECOND_WORD - 1 - i);
-        bot |= bit;
-    }
+    letter_bits |= HIGHEST_BIT >> i;
 }
 
 optional<std::size_t> CTrieNode::child_index_for_letter(stored_index_t letter) const
