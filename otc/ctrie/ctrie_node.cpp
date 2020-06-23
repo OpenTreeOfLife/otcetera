@@ -4,23 +4,23 @@ using std::optional;
 
 namespace otc {
 
-void CTrieNode::flag_letter(unsigned int i)
+void CTrieNode::flag_letter(unsigned int letter)
 {
-    letter_bits |= HIGHEST_BIT >> i;
+    letter_bits |= (1UL<<letter);
 }
 
 optional<std::size_t> CTrieNode::child_index_for_letter(stored_index_t letter) const
 {
     auto lbits = get_letter_bits();
 
-    // We don't have a bit for that letter.
-    if ((lbits & (HIGHEST_BIT>>letter)) == 0) return {};
+    // Quit if we don't have a bit for that letter.
+    if ((lbits & (1UL<<letter)) == 0) return {};
 
-    // remove bits for previous letters
-    uint64_t mask = ((-1UL)<<(63-letter))<<1;
+    // Get bits for letters BEFORE this letter
+    uint64_t prev_bits = (lbits<<(63-letter))<<1;
 
     // The number of letters BEFORE this letter
-    int delta = __builtin_popcountl(mask & lbits);
+    int delta = __builtin_popcountl(prev_bits);
 
     return get_index() + delta;
 }
