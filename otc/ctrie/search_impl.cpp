@@ -138,7 +138,7 @@ void CompressedTrie::extend_partial_match(const vector<stored_index_t>& query,
         match_coded.push_back(letter);
         {
             // 3a. Compute DP values for `letter`
-            int best = score.calc_row(match_coded.size(), letter, query);
+            int next_best = score.calc_row(match_coded.size(), letter, query);
 
             const CTrieNode * next_node = &(node_vec[index]);
 
@@ -152,8 +152,15 @@ void CompressedTrie::extend_partial_match(const vector<stored_index_t>& query,
             }
 
             // 3c. Consider matches that have at least one more letter.
-            if (best <= max_dist)
+            if (next_best <= max_dist)
                 extend_partial_match(query, max_dist, next_node, score, match_coded, results);
+
+            // NOTE: We need to avoid rows that are too large, because haven't allocated memory
+            //       for them in either the table itself, or xmin / xmax.
+            //
+            //       However, the last viable row should have only one viable cell, and this cell
+            //       can only have the value `max_dist`.  That means that the next_best will be
+            //       `max_dist+1`, so we will not call extend_partial_match in that case.
         }
         match_coded.pop_back();
     }
