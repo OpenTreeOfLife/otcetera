@@ -7,6 +7,9 @@ namespace otc {
 
 // Dynamic programming matrix.
 //   This implementation doesn't separate gap-opening from gap-extension.
+// The underlying algorithm is pretty simple.  However, code is made more complicated by:
+//   * trying to quit early if we know that examining more letters of the target won't help
+//   * trying to compute only letters in a band around the diagonal.
 class dp_matrix
 {
     int* data;
@@ -21,22 +24,34 @@ public:
     int size1() const {return x_width;}
     int size2() const {return y_width;}
 
+    // Perform DP for row `y` and return the best possible score for any row > y
     int calc_row(int y, stored_index_t target_char, const vector<stored_index_t>& query)
     {
-        int best = INT_MAX/2;
-        for(int x=xmin[y]; x<=xmax[y]; x++)
+        assert(y<y_width);
+        int next_best = INT_MAX/2;
+        int first_x = xmin[y];
+        int last_x = xmax[y];
+        int edge_x = x_width-1;
+        for(int x=first_x; x<=last_x; x++)
         {
             // We have just matched the x-th char, which is query[x-1]
             int match_cost       = (target_char == query[x-1]) ? 0 : 1;
-            // FIXME: if we have the PREVIOUS target_char, we could look at letter transpositions here.
 
             int match_score      = (*this)(x-1,y-1) + match_cost;
             int del_target_score = (*this)(x-1,y  ) + 1;
             int del_query_score  = (*this)(x  ,y-1) + 1;
-            (*this)(x,y) = std::min(match_score,std::min(del_query_score, del_target_score));
-            best = std::min((*this)(x,y), best);
+            int score = std::min(match_score,std::min(del_query_score, del_target_score));
+
+            // Find the best score for any FUTURE row.
+            // If we are at the right edge, future rows will include a +1
+            // penalty for a vertical move (=delete-query-letter).
+            int score2 = score;
+            if (x == edge_x) score2++;
+            next_best = std::min(score2, next_best);
+
+            (*this)(x,y) = score;
         }
-        return best;
+        return next_best;
     }
 
     int score_for_row(int y) const
