@@ -22,6 +22,9 @@ class ContextAwareCTrieBasedDB {
     // Does anything match this normalized query string?
     std::optional<std::string> exact_query(const std::string & query_str) const;
 
+    // Does anything match this normalized query string?
+    std::vector<std::string> prefix_query(const std::string & query_str) const;
+
     std::vector<FuzzyQueryResultWithTaxon> fuzzy_query_to_taxa(const std::string & query_str,
                                                                const RTRichTaxNode * context_root,
                                                                const RichTaxonomy & taxonomy,
@@ -37,6 +40,10 @@ class ContextAwareCTrieBasedDB {
                                      const RichTaxonomy & taxonomy,
                                      bool include_suppressed) const;
 
+    std::vector<TaxonResult> to_taxa(const std::vector<std::string>& result,
+                                     const RTRichTaxNode * context_root,
+                                     const RichTaxonomy & taxonomy,
+                                     bool include_suppressed) const;
 
 private:
     const Context & context;

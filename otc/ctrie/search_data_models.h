@@ -4,6 +4,7 @@
 #include <set>
 #include <vector>
 #include <algorithm>
+#include <optional>
 
 #include "otc/otc_base_includes.h"
 #include "otc/ctrie/str_utils.h"
@@ -154,75 +155,72 @@ class FQuery {
     }
 };
 
-template <typename T>
 class PartialMatch {
     public:
     enum creation_modes {MATCH, DOWN, RIGHT};
     
     PartialMatch(const FQuery & q,
-                 const T *nextn)
+                 const CTrieNode *nextn)
         :query(q),
          qpos(0),
          distance(0),
          next_node(nextn),
          prev_mismatched_trie(NO_MATCHING_CHAR_CODE),
-         create_mode(creation_modes::MATCH) {
-        auto max_match_len = q.max_dist + q.as_indices.size();
-        match_coded.reserve(max_match_len);
-    }
+         create_mode(creation_modes::MATCH)
+        {
+        }
 
     // create a partial match previous match and a char match
     PartialMatch(const PartialMatch & prevpm,
                  stored_index_t match_char,
                  unsigned int start_dist,
-                 const T *nextn,
+                 const CTrieNode *nextn,
                  bool was_match)
-        :query(prevpm.query),
+        :prev_match(&prevpm),
+         match_letter(match_char),
+         query(prevpm.query),
          qpos(prevpm.qpos + 1),
          distance(start_dist),
          next_node(nextn),
          prev_mismatched_trie(NO_MATCHING_CHAR_CODE),
-         create_mode(creation_modes::MATCH) {
-        match_coded.reserve(prevpm.match_coded.capacity());
-        match_coded = prevpm.match_coded;
-        match_coded.push_back(match_char);
-        if (!was_match) {
-            prev_mismatched_trie = match_char;
+         create_mode(creation_modes::MATCH)
+        {
+            if (not was_match)
+                prev_mismatched_trie = match_char;
+            assert(nextn != prevpm.next_node);
         }
-        assert(nextn != prevpm.next_node);
-    }
 
     // create a partial match from a gap, moving through query but not trie
     PartialMatch(const PartialMatch & prevpm,
                  unsigned int start_dist,
-                 const T *nextn)
-        :query(prevpm.query),
+                 const CTrieNode *nextn)
+        :prev_match(&prevpm),
+         query(prevpm.query),
          qpos(prevpm.qpos + 1),
          distance(start_dist),
          next_node(nextn),
          prev_mismatched_trie(NO_MATCHING_CHAR_CODE),
-         create_mode(creation_modes::DOWN) {
-        match_coded.reserve(prevpm.match_coded.capacity());
-        match_coded = prevpm.match_coded;
-        assert(nextn == prevpm.next_node);
+         create_mode(creation_modes::DOWN)
+        {
+            assert(nextn == prevpm.next_node);
+        }
 
-    }
     // create a partial match from a gap, moving through trie but not query
     PartialMatch(const PartialMatch & prevpm,
                  unsigned int start_dist,
-                 const T *nextn, 
+                 const CTrieNode *nextn, 
                  stored_index_t match_char)
-        :query(prevpm.query),
+        :prev_match(&prevpm),
+         match_letter(match_char),
+         query(prevpm.query),
          qpos(prevpm.qpos),
          distance(start_dist),
          next_node(nextn),
          prev_mismatched_trie(NO_MATCHING_CHAR_CODE),
-         create_mode(creation_modes::RIGHT) {
-        match_coded.reserve(prevpm.match_coded.capacity());
-        match_coded = prevpm.match_coded;
-        match_coded.push_back(match_char);
-        assert(nextn != prevpm.next_node);
-    }
+         create_mode(creation_modes::RIGHT)
+        {
+            assert(nextn != prevpm.next_node);
+        }
 
     bool can_downshift() const {
         return create_mode != creation_modes::RIGHT;
@@ -235,7 +233,7 @@ class PartialMatch {
     bool has_matched_suffix(const stored_index_t * trie_suff) const {
         return query.has_matched_suffix(next_node, trie_suff);
     }
-    bool store_result(std::list<FuzzyQueryResult> & results,
+    bool store_result(std::vector<FuzzyQueryResult> & results,
                       const stored_index_t * trie_suff,
                       std::size_t suff_len,
                       unsigned int distance) const {
@@ -244,7 +242,7 @@ class PartialMatch {
         return true;
     }
     
-    const T * get_next_node() const {
+    const CTrieNode * get_next_node() const {
         return next_node;
     }
     
@@ -258,10 +256,6 @@ class PartialMatch {
 
     unsigned int max_distance() const {
         return query.max_dist;
-    }
-
-    const std::vector<stored_index_t> & get_prev_match_coded() const {
-        return match_coded;
     }
 
     const stored_index_t * query_data() const {
@@ -283,16 +277,46 @@ class PartialMatch {
     stored_index_t get_prev_mismatched_trie() const {
         return prev_mismatched_trie;
     }
-    
 
-    private:
+    void make_match_coded(std::vector<stored_index_t>& s) const
+    {
+        if (match_letter)
+            s.push_back(*match_letter);
+        if (prev_match)
+            prev_match->make_match_coded(s);
+    }
+
+    std::vector<stored_index_t> get_prev_match_coded() const
+    {
+        std::vector<stored_index_t> s;
+        s.reserve(query.max_dist + query.as_indices.size());
+        make_match_coded(s);
+        std::reverse(s.begin(), s.end());
+        return s;
+    }
+
+    std::optional<stored_index_t> prev_match_letter() const
+    {
+        return match_letter;
+    }
+
+// We are calling 4 things a "match":
+// * a path through the DP matrix (e.g. "PartialMatch")
+// * the string we are aligning to the query  (e.g. "get_prev_match_coded()")
+// * creation_modes::MATCH -- to move both DOWN and RIGHT
+// * if we do creation_modes::MATCH, then did both letters agree. ("bool was_match")
+
+// Following all paths through the DP matrix is actually exponential, not quadratic!
+
+private:
+    const PartialMatch* prev_match = nullptr;
+    std::optional<stored_index_t> match_letter;
+
     const FQuery & query;
     std::size_t qpos;
-    stored_str_t growing_match;
     unsigned int distance;
-    const T * next_node;
+    const CTrieNode * next_node;
     stored_index_t prev_mismatched_trie;
-    std::vector<stored_index_t> match_coded;
     const creation_modes create_mode;
 };
 
