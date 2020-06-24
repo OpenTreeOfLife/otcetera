@@ -90,7 +90,7 @@ void CompressedTrie::extend_partial_match(const vector<stored_index_t>& query,
                                           vector<stored_index_t>& match_coded,
                                           std::vector<FuzzyQueryResult> & results) const
 {
-    // 2. Handle case where there only one target string with this prefix
+    // 1. Handle case where there only one target string with this prefix
     if (curr_node->is_terminal())
     {
         auto prev_length = match_coded.size();
@@ -117,33 +117,31 @@ void CompressedTrie::extend_partial_match(const vector<stored_index_t>& query,
         return;
     }
 
-    // 3. Handle case where there are multiple target strings with this prefix.
+    // 2. Handle case where there are multiple target strings with this prefix.
     for (auto [letter, index] : curr_node->children())
     {
         match_coded.push_back(letter);
         {
-
+            // 3a. Compute DP values for `letter`
             int best = score.calc_row(match_coded.size(), letter, query);
 
-            const CTrieNode * next_nd = &(node_vec[index]);
+            const CTrieNode * next_node = &(node_vec[index]);
 
-            // Don't search branches of the tree that can never achieve dist <= max_dist
+            // 3b. Consider matches that are now complete.
+            if (next_node->is_key_terminating())
+            {
+                unsigned int dist = score.score_for_row( match_coded.size() );
+
+                if (dist <= max_dist)
+                    results.push_back( {match_coded, nullptr, 0, dist} );
+            }
+
+            // 3c. Consider matches that have at least one more letter.
             if (best <= max_dist)
-                extend_partial_match(query, max_dist, next_nd, score, match_coded, results);
-
+                extend_partial_match(query, max_dist, next_node, score, match_coded, results);
         }
         match_coded.pop_back();
     }
-
-    // 1. Handle case where one target string terminates here, but this is a prefix of other target strings.
-    if (curr_node->is_key_terminating())
-    {
-        unsigned int dist = score.score_for_row( match_coded.size() );
-
-        if (dist <= max_dist)
-            results.push_back( {match_coded, nullptr, 0, dist} );
-    }
-
 }
 
 
