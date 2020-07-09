@@ -5,7 +5,7 @@ project('otcetera', ['cpp'],
 	  'cpp_std=c++17',
           'warning_level=3'
 	],
-	meson_version: '>=0.49')
+	meson_version: '>=0.53')
 
 cpp = meson.get_compiler('cpp')
 
@@ -59,3 +59,17 @@ endif
 if true
   subdir('test')  
 endif
+
+summary({'host': host_machine.system()
+        }, section: 'Architecture')
+
+summary({'webservices': get_option('webservices'),
+        },section: 'Configuration')
+
+summary({'prefix': get_option('prefix'),
+        },section: 'Directories')
+
+summary({'optimization': get_option('optimization'),
+         'b_ndebug': get_option('b_ndebug'),
+         'debug': get_option('debug'),
+        },section: 'Build')

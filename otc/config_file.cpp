@@ -4,6 +4,7 @@
 #include <fstream>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/functional/hash.hpp>
 
 namespace fs = boost::filesystem;
 

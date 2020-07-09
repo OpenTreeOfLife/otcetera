@@ -98,7 +98,7 @@ void CompressedTrie::init(const ctrie_init_set_t & keys, const stored_str_t & le
     std::set<stored_char_t> let_set{letter_var.begin(), letter_var.end()};
     letters = stored_str_t{let_set.begin(), let_set.end()};
     stored_str_t rev_letters = stored_str_t{letters.rbegin(), letters.rend()};
-    if (letters.length() >= CTrieNode::END_LETTER_INDEX) {
+    if (letters.length() > 64) {
         throw OTCError() << "# of letters (" << letters.length() << ") exceeds size of CompressedTrie node type";
     }
     if (letters.length() > 253) {
