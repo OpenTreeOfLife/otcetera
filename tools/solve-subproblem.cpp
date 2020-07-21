@@ -12,6 +12,7 @@
 #include <sstream>
 #include <boost/filesystem.hpp>
 #include <optional>
+#include <unordered_map>
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -23,6 +24,7 @@ using std::list;
 using std::map;
 using std::string;
 using std::optional;
+using std::unordered_map;
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
@@ -64,7 +66,7 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e) {
 }
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s);
-int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& elements);
+void merge_components(int c1, int c2, vector<int>& component, unordered_map<int,list<int>>& elements);
 bool empty_intersection(const set<int>& xs, const vector<int>& ys);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
@@ -129,18 +131,23 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o;
 }
 
-/// Merge components c1 and c2 and return the component name that survived
-int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>& elements) {
-    std::size_t c1 = static_cast<std::size_t>(ic1);
-    std::size_t c2 = static_cast<std::size_t>(ic2);
-    if (elements[c2].size() > elements[c1].size()) {
+void merge_components(int c1, int c2, vector<int>& component, unordered_map<int,list<int>>& elements)
+{
+    auto e1 = &elements.at(c1);
+    auto e2 = &elements.at(c2);
+
+    if (e2->size() > e1->size())
+    {
+        std::swap(e1, e2);
         std::swap(c1, c2);
     }
-    for(int i: elements[c2]) {
-        component[static_cast<std::size_t>(i)] = static_cast<int>(c1);
-    }
-    elements[c1].splice(elements[c1].end(), elements[c2]);
-    return static_cast<int>(c1);
+
+    for(int i: *e2)
+        component[i] = c1;
+
+    e1->splice(e1->end(), *e2);
+
+    assert(elements.at(c2).empty());
 }
 
 bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
@@ -176,11 +183,11 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     }
     // 2. Initialize the mapping from elements to components
     vector<int> component;       // element index  -> component
-    vector<list<int> > elements;  // component -> element indices
+    unordered_map<int,list<int> > elements;  // component -> element indices
     for (int i=0;i<tips.size();i++) {
         indices[tips[i]] = i;
         component.push_back(i);
-        elements.push_back({i});
+        elements.insert({i,{i}});
     }
     // 3. For each split, all the leaves in the include group must be in the same component
     for(const auto& split: splits) {
@@ -195,7 +202,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         }
     }
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (elements[component[0]].size() == tips.size()) {
+    if (elements.at(component[0]).size() == tips.size()) {
         return {};
     }
     // 5. Make a vector of labels for the partition components
@@ -213,7 +220,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     for(int i=0;i<component_labels.size();i++) {
         vector<int>& s = subtips[i];
         int c = component_labels[i];
-        for (int j: elements[c]) {
+        for (int j: elements.at(c)) {
             s.push_back(tips[j]);
         }
     }
