@@ -66,7 +66,7 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e) {
 }
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s);
-void merge_components(int c1, int c2, vector<int>& component, unordered_map<int,list<int>>& elements);
+void merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements);
 bool empty_intersection(const set<int>& xs, const vector<int>& ys);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
@@ -131,7 +131,7 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o;
 }
 
-void merge_components(int c1, int c2, vector<int>& component, unordered_map<int,list<int>>& elements)
+void merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements)
 {
     auto e1 = &elements.at(c1);
     auto e2 = &elements.at(c2);
@@ -182,11 +182,11 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         return tree;
     }
     // 2. Initialize the mapping from elements to components
-    vector<int> component;       // element index  -> component
+    unordered_map<int,int> component;       // element index  -> component
     unordered_map<int,list<int> > elements;  // component -> element indices
     for (int i=0;i<tips.size();i++) {
         indices[tips[i]] = i;
-        component.push_back(i);
+        component.insert({i,i});
         elements.insert({i,{i}});
     }
     // 3. For each split, all the leaves in the include group must be in the same component
@@ -194,11 +194,11 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         int c1 = -1;
         for(int i: split->in) {
             int j = indices[i];
-            int c2 = component[j];
+            int c2 = component.at(j);
             if (c1 != -1 and c1 != c2) {
                 merge_components(c1,c2,component,elements);
             }
-            c1 = component[j];
+            c1 = component.at(j);
         }
     }
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
@@ -209,7 +209,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     vector<int> component_labels;                           // index -> component label
     vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
     for (int c=0;c<tips.size();c++) {
-        if (c == component[c]) {
+        if (c == component.at(c)) {
             int index = component_labels.size();
             component_labels.push_back(c);
             component_label_to_index[c] = index;
@@ -229,11 +229,11 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     for(const auto& split: splits) {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
-        int c = component[first];
+        int c = component.at(first);
         // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
         bool satisfied = true;
         for(int x: split->out){
-            if (indices[x] != -1 and component[indices[x]] == c) {
+            if (indices[x] != -1 and component.at(indices[x]) == c) {
                 satisfied = false;
                 break;
             }
