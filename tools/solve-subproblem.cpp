@@ -204,13 +204,14 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     }
     // 6. Create the vector of tips in each connected component 
     vector<vector<int>> subtips(component_labels.size());
-    for(int i=0;i<component_labels.size();i++) {
-        vector<int>& s = subtips[i];
-        int c = component_labels[i];
-        for (int j: elements[c]) {
-            s.push_back(tips[j]);
-        }
+    for(int tip_index=0;tip_index < tips.size();tip_index++)
+    {
+        int tip = tips[tip_index];
+        int component_label = component[tip_index];
+        int component_index = component_label_to_index[component_label];
+        subtips[component_index].push_back(tip);
     }
+
     // 7. Determine the splits that are not satisfied yet and go into each component
     vector<vector<const RSplit*>> subsplits(component_labels.size());
     for(const auto& split: splits) {
