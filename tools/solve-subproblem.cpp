@@ -13,6 +13,7 @@
 #include <boost/filesystem.hpp>
 #include <optional>
 #include <unordered_map>
+#include <robin_hood.h>
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -24,7 +25,8 @@ using std::list;
 using std::map;
 using std::string;
 using std::optional;
-using std::unordered_map;
+template <typename X,typename Y>
+using Map = robin_hood::unordered_map<X,Y>;
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
@@ -66,7 +68,7 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e) {
 }
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s);
-int merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements);
+int merge_components(int c1, int c2, Map<int,int>& component, Map<int,list<int>>& elements);
 bool empty_intersection(const set<int>& xs, const vector<int>& ys);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
@@ -131,7 +133,7 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o;
 }
 
-int merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements)
+int merge_components(int c1, int c2, Map<int,int>& component, Map<int,list<int>>& elements)
 {
     auto e1 = &elements.at(c1);
     auto e2 = &elements.at(c2);
@@ -182,12 +184,12 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         return tree;
     }
     // 2. Initialize the mapping from elements to components
-    unordered_map<int,int> component_for_tip;       // element index  -> component
-    unordered_map<int,list<int> > elements_for_component;  // component -> element indices
+    Map<int,int> component_for_tip;       // element index  -> component
+    Map<int,list<int> > elements_for_component;  // component -> element indices
     for (auto tip: tips)
     {
         component_for_tip.insert({tip,tip});
-        elements_for_component.insert({tip,{tip}});
+        elements_for_component[tip] = {tip};
     }
     // 3. For each split, all the leaves in the include group must be in the same component
     for(const auto& split: splits)
@@ -210,7 +212,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         return {};
 
     // 6. Create the vector of tips in each connected component 
-    unordered_map<int,vector<int>> subtips_for_component;
+    Map<int,vector<int>> subtips_for_component;
     for(auto& [component,subtips]: elements_for_component)
     {
         auto& s = subtips_for_component[component];
@@ -219,7 +221,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    unordered_map<int,vector<const RSplit*>> subsplits_for_component;
+    Map<int,vector<const RSplit*>> subsplits_for_component;
     for(const auto& split: splits)
     {
         int first = *split->in.begin();
