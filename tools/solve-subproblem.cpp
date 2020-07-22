@@ -148,6 +148,7 @@ void merge_components(int c1, int c2, unordered_map<int,int>& component, unorder
     e1->splice(e1->end(), *e2);
 
     assert(elements.at(c2).empty());
+    elements.erase(c2);
 }
 
 bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
@@ -158,8 +159,6 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     }
     return true;
 }
-
-static vector<int> indices;
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits) {
@@ -182,77 +181,67 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         return tree;
     }
     // 2. Initialize the mapping from elements to components
-    unordered_map<int,int> component;       // element index  -> component
-    unordered_map<int,list<int> > elements;  // component -> element indices
-    for (int i=0;i<tips.size();i++) {
-        indices[tips[i]] = i;
-        component.insert({i,i});
-        elements.insert({i,{i}});
+    unordered_map<int,int> component_for_tip;       // element index  -> component
+    unordered_map<int,list<int> > elements_for_component;  // component -> element indices
+    for (auto tip: tips)
+    {
+        component_for_tip.insert({tip,tip});
+        elements_for_component.insert({tip,{tip}});
     }
     // 3. For each split, all the leaves in the include group must be in the same component
-    for(const auto& split: splits) {
-        int c1 = -1;
-        for(int i: split->in) {
-            int j = indices[i];
-            int c2 = component.at(j);
-            if (c1 != -1 and c1 != c2) {
-                merge_components(c1,c2,component,elements);
+    for(const auto& split: splits)
+    {
+        optional<int> c1;
+        for(int i: split->in)
+        {
+            if (not component_for_tip.count(i)) continue;
+
+            int c2 = component_for_tip.at(i);
+            if (c1  and *c1 != c2) {
+                merge_components(*c1,c2,component_for_tip,elements_for_component);
             }
-            c1 = component.at(j);
+            c1 = component_for_tip.at(i);
         }
     }
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (elements.at(component[0]).size() == tips.size()) {
+    if (elements_for_component.size() <= 1)
         return {};
-    }
-    // 5. Make a vector of labels for the partition components
-    vector<int> component_labels;                           // index -> component label
-    vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
-    for (int c=0;c<tips.size();c++) {
-        if (c == component.at(c)) {
-            int index = component_labels.size();
-            component_labels.push_back(c);
-            component_label_to_index[c] = index;
-        }
-    }
+
     // 6. Create the vector of tips in each connected component 
-    vector<vector<int>> subtips(component_labels.size());
-    for(int i=0;i<component_labels.size();i++) {
-        vector<int>& s = subtips[i];
-        int c = component_labels[i];
-        for (int j: elements.at(c)) {
-            s.push_back(tips[j]);
-        }
+    unordered_map<int,vector<int>> subtips_for_component;
+    for(auto& [component,subtips]: elements_for_component)
+    {
+        auto& s = subtips_for_component[component];
+        for (int tip: subtips)
+            s.push_back(tip);
     }
+
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<const RSplit*>> subsplits(component_labels.size());
-    for(const auto& split: splits) {
-        int first = indices[*split->in.begin()];
+    unordered_map<int,vector<const RSplit*>> subsplits_for_component;
+    for(const auto& split: splits)
+    {
+        int first = *split->in.begin();
         assert(first >= 0);
-        int c = component.at(first);
+        int c = component_for_tip.at(first);
         // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
         bool satisfied = true;
-        for(int x: split->out){
-            if (indices[x] != -1 and component.at(indices[x]) == c) {
+        for(int x: split->out)
+        {
+            if (component_for_tip.count(x) and component_for_tip.at(x) == c)
+            {
                 satisfied = false;
                 break;
             }
         }
-        if (not satisfied) {
-            int i = component_label_to_index[c];
-            subsplits[i].push_back(split);
-        }
+        if (not satisfied)
+            subsplits_for_component[c].push_back(split);
     }
-    // 8. Clear our map from id -> index, for use by subproblems.
-    for(int id: tips) {
-        indices[id] = -1;
-    }
-    // 9. Recursively solve the sub-problems of the partition components
-    for(int i=0;i<subtips.size();i++) {
-        auto subtree = BUILD(subtips[i], subsplits[i]);
-        if (not subtree) {
+    // 8. Recursively solve the sub-problems of the partition components
+    for(auto& [component,subtips]: subtips_for_component)
+    {
+        auto subtree = BUILD(subtips, subsplits_for_component[component]);
+        if (not subtree)
             return {};
-        }
         add_subtree(tree->get_root(), *subtree);
     }
     return tree;
@@ -553,10 +542,6 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     vector<int> all_leaves_indices;
     for(int i=0;i<all_leaves.size();i++) {
         all_leaves_indices.push_back(i);
-    }
-    indices.resize(all_leaves.size());
-    for(auto& i: indices) {
-        i=-1;
     }
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<RSplit> consistent;
