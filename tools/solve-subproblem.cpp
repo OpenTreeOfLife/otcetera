@@ -66,7 +66,7 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e) {
 }
 
 std::ostream& operator<<(std::ostream& o, const RSplit& s);
-void merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements);
+int merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements);
 bool empty_intersection(const set<int>& xs, const vector<int>& ys);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
 unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
@@ -131,7 +131,7 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o;
 }
 
-void merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements)
+int merge_components(int c1, int c2, unordered_map<int,int>& component, unordered_map<int,list<int>>& elements)
 {
     auto e1 = &elements.at(c1);
     auto e2 = &elements.at(c2);
@@ -149,6 +149,7 @@ void merge_components(int c1, int c2, unordered_map<int,int>& component, unorder
 
     assert(elements.at(c2).empty());
     elements.erase(c2);
+    return c1;
 }
 
 bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
@@ -194,13 +195,14 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         optional<int> c1;
         for(int i: split->in)
         {
-            if (not component_for_tip.count(i)) continue;
+            auto it = component_for_tip.find(i);
+            if (it == component_for_tip.end()) continue;
 
-            int c2 = component_for_tip.at(i);
-            if (c1  and *c1 != c2) {
-                merge_components(*c1,c2,component_for_tip,elements_for_component);
-            }
-            c1 = component_for_tip.at(i);
+            int c2 = it->second;
+            if (c1  and *c1 != c2)
+                c1 = merge_components(*c1,c2,component_for_tip,elements_for_component);
+            else
+                c1 = c2;
         }
     }
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
@@ -227,7 +229,8 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         bool satisfied = true;
         for(int x: split->out)
         {
-            if (component_for_tip.count(x) and component_for_tip.at(x) == c)
+            auto it = component_for_tip.find(x);
+            if (it != component_for_tip.end() and it->second == c)
             {
                 satisfied = false;
                 break;
