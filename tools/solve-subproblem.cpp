@@ -63,16 +63,6 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e) {
     return s;
 }
 
-std::ostream& operator<<(std::ostream& o, const RSplit& s);
-int merge_components(int c1, int c2, vector<int>& component, vector<list<int>>& elements);
-bool empty_intersection(const set<int>& xs, const vector<int>& ys);
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits);
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits);
-void add_names(Tree_t& tree, const vector<Tree_t::node_type const*>& taxa);
-set<int> remap_ids(const set<OttId>& s1, const map<OttId,int>& id_map);
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t> >& trees, const set<OttId>&, bool verbose);
-unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees, bool use_ids);
-
 namespace po = boost::program_options;
 using po::variables_map;
 
