@@ -177,6 +177,8 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     // 2. Initialize the mapping from elements to components
     vector<int> component;       // element index  -> component
     vector<list<int> > elements;  // component -> element indices
+    for(int k=0;k<indices.size();k++)
+        assert(indices[k] == -1);
     for (int i=0;i<tips.size();i++) {
         indices[tips[i]] = i;
         component.push_back(i);
@@ -196,6 +198,8 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     }
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (elements[component[0]].size() == tips.size()) {
+        for(int id: tips)
+            indices[id] = -1;
         return {};
     }
     // 5. Make a vector of labels for the partition components
