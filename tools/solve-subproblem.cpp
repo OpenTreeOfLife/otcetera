@@ -230,6 +230,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
         // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
         bool satisfied = true;
         for(int x: split->out){
+            // indices[i] != -1 checks if x is in the current tip set.
             if (indices[x] != -1 and component[indices[x]] == c) {
                 satisfied = false;
                 break;
