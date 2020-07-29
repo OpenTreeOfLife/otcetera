@@ -42,12 +42,39 @@ vector<T> set_to_vector(const set<T>& s) {
     return v;
 }
 
-struct RSplit {
+struct RSplitObj
+{
+    mutable int _refs = 0;
+
+    friend inline void intrusive_ptr_release(RSplitObj* pThis)
+    {
+        if (--pThis->_refs == 0 ) {
+            delete pThis;
+        }
+    }
+
+    friend inline void intrusive_ptr_add_ref(RSplitObj* pThis)
+    {
+        pThis->_refs++;
+    }
+
+    friend inline void intrusive_ptr_release(const RSplitObj* pThis)
+    {
+        if(--const_cast<RSplitObj*>(pThis)->_refs == 0 ) {
+            delete const_cast<RSplitObj*>(pThis);
+        }
+    }
+
+    friend inline void intrusive_ptr_add_ref(const RSplitObj* pThis)
+    {
+        const_cast<RSplitObj*>(pThis)->_refs++;
+    }
+
     vector<int> in;
     vector<int> out;
     vector<int> all;
-    RSplit() = default;
-    RSplit(const set<int>& i, const set<int>& a) {
+    RSplitObj() = default;
+    RSplitObj(const set<int>& i, const set<int>& a) {
         in  = set_to_vector(i);
         all = set_to_vector(a);
         set_difference(begin(all), end(all), begin(in), end(in), std::inserter(out, out.end()));
@@ -55,11 +82,15 @@ struct RSplit {
     }
 };
 
-RSplit split_from_include_exclude(const set<int>& i, const set<int>& e) {
-    RSplit s;
-    s.in = set_to_vector(i);
-    s.out = set_to_vector(e);
-    set_union(begin(i),end(i),begin(e),end(e),std::inserter(s.all,s.all.end()));
+using RSplit = boost::intrusive_ptr<RSplitObj>;
+using ConstRSplit = boost::intrusive_ptr<const RSplitObj>;
+
+RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
+{
+    RSplit s(new RSplitObj);
+    s->in = set_to_vector(i);
+    s->out = set_to_vector(e);
+    set_union(begin(i),end(i),begin(e),end(e),std::inserter(s->all,s->all.end()));
     return s;
 }
 
@@ -105,18 +136,22 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     return vm;
 }
 
-std::ostream& operator<<(std::ostream& o, const RSplit& s) {
-    write_separated_collection(o, s.in, " ") <<" | ";
-    if (s.out.size() < 100) {
-        write_separated_collection(o, s.out, " ");
+std::ostream& operator<<(std::ostream& o, const ConstRSplit& s) {
+    write_separated_collection(o, s->in, " ") <<" | ";
+    if (s->out.size() < 100) {
+        write_separated_collection(o, s->out, " ");
     } else {
-        auto it = s.out.begin();
+        auto it = s->out.begin();
         for(int i=0;i<100;i++) {
             o << *it++ <<" ";
         }
         o << "...";
     }
     return o;
+}
+
+std::ostream& operator<<(std::ostream& o, const RSplit& s) {
+    return o<<(ConstRSplit(s));
 }
 
 /// Merge components c1 and c2 and return the component name that survived
@@ -145,7 +180,7 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
 static vector<int> indices;
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits) {
+unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<ConstRSplit>& splits) {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
@@ -213,7 +248,7 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<const RSplit*>> subsplits(component_labels.size());
+    vector<vector<ConstRSplit>> subsplits(component_labels.size());
     for(const auto& split: splits) {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
@@ -247,16 +282,8 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& s
     return tree;
 }
 
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits) {
-    vector<const RSplit*> split_ptrs;
-    for(const auto& split: splits) {
-        split_ptrs.push_back(&split);
-    }
-    return BUILD(tips, split_ptrs);
-}
-
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-bool BUILD2(const vector<int>& tips, const vector<const RSplit*>& splits) {
+bool BUILD2(const vector<int>& tips, const vector<ConstRSplit>& splits) {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
@@ -315,7 +342,7 @@ bool BUILD2(const vector<int>& tips, const vector<const RSplit*>& splits) {
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<const RSplit*>> subsplits(component_labels.size());
+    vector<vector<ConstRSplit>> subsplits(component_labels.size());
     for(const auto& split: splits) {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
@@ -344,14 +371,6 @@ bool BUILD2(const vector<int>& tips, const vector<const RSplit*>& splits) {
         if (not ok) return false;
     }
     return true;
-}
-
-bool BUILD2(const vector<int>& tips, const vector<RSplit>& splits) {
-    vector<const RSplit*> split_ptrs;
-    for(const auto& split: splits) {
-        split_ptrs.push_back(&split);
-    }
-    return BUILD2(tips, split_ptrs);
 }
 
 template <typename T>
@@ -647,8 +666,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         i=-1;
     }
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
-    vector<RSplit> consistent;
-    auto add_split_if_consistent = [&all_leaves_indices,verbose,&consistent](auto nd, RSplit&& split) {
+    vector<ConstRSplit> consistent;
+    auto add_split_if_consistent = [&](auto nd, RSplit&& split) {
             consistent.push_back(std::move(split));
 
             auto result = BUILD2(all_leaves_indices, consistent);
@@ -694,7 +713,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             for(auto nd: iter_post_const(*tree)) {
                 if (not nd->is_tip() and nd != root) {
                     const auto descendants = remap(nd->get_data().des_ids);
-                    if (add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices})) {
+                    if (add_split_if_consistent(nd, RSplit(new RSplitObj{descendants, leafTaxaIndices}))) {
                         compatible_taxa.push_back(nd);
                     }
                 }
@@ -703,7 +722,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             for(auto nd: iter_post_const(*tree)) {
                 if (not nd->is_tip() and nd != root) {
                     const auto descendants = remap(nd->get_data().des_ids);
-                    add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
+                    add_split_if_consistent(nd, RSplit(new RSplitObj{descendants, leafTaxaIndices}));
                 }
             }
         }
