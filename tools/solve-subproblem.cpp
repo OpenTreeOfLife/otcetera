@@ -44,6 +44,8 @@ vector<T> set_to_vector(const set<T>& s) {
 
 struct RSplitObj
 {
+    static std::size_t num;
+
     mutable int _refs = 0;
 
     friend inline void intrusive_ptr_release(RSplitObj* pThis)
@@ -73,14 +75,24 @@ struct RSplitObj
     vector<int> in;
     vector<int> out;
     vector<int> all;
-    RSplitObj() = default;
-    RSplitObj(const set<int>& i, const set<int>& a) {
+    optional<std::size_t> id;
+
+    RSplitObj()
+    {
+        id = num++;
+    }
+
+    RSplitObj(const set<int>& i, const set<int>& a)
+    {
+        id = num++;
         in  = set_to_vector(i);
         all = set_to_vector(a);
         set_difference(begin(all), end(all), begin(in), end(in), std::inserter(out, out.end()));
         assert(in.size() + out.size() == all.size());
     }
 };
+
+std::size_t RSplitObj::num = 0;
 
 using RSplit = boost::intrusive_ptr<RSplitObj>;
 using ConstRSplit = boost::intrusive_ptr<const RSplitObj>;
@@ -176,6 +188,93 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     }
     return true;
 }
+
+
+struct BUILD_args_ref
+{
+    const vector<int>& tips;
+    const vector<ConstRSplit>& splits;
+    BUILD_args_ref(const vector<int>& v1, const vector<ConstRSplit>& v2): tips(v1), splits(v2) {}
+};
+
+struct BUILD_args
+{
+    const vector<int> tips;
+    const vector<ConstRSplit> splits;
+    BUILD_args(const vector<int>& v1, const vector<ConstRSplit>& v2): tips(v1), splits(v2) {}
+};
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
+bool vec_split_equals(const vector<ConstRSplit>& splits1, const vector<ConstRSplit>& splits2)
+{
+    if (splits1.size() != splits2.size()) return false;
+    for(int i=0;i<splits1.size();i++)
+        if (splits1[i]->id != splits2[i]->id) return false;
+    return true;
+}
+
+namespace std {
+    template <>
+    struct hash < BUILD_args > {
+        public:
+        typedef bool is_transparent ;
+
+            size_t operator() ( const BUILD_args_ref & args ) const noexcept
+            {
+                std::size_t seed = 0;
+                for(auto& tip: args.tips)
+                    hash_combine(seed, tip);
+                for(auto& split: args.splits)
+                {
+                    assert(split->id);
+                    hash_combine(seed, *split->id);
+                }
+                return seed;
+            }
+
+            size_t operator() ( const BUILD_args & args ) const noexcept
+            {
+                std::size_t seed = 0;
+                for(auto& tip: args.tips)
+                    hash_combine(seed, tip);
+                for(auto& split: args.splits)
+                {
+                    assert(split->id);
+                    hash_combine(seed, *split->id);
+                }
+                return seed;
+            }
+    };
+
+    template <>
+    struct equal_to < BUILD_args >
+    {
+        typedef bool is_transparent;
+        bool operator ( ) ( const BUILD_args & args1, const BUILD_args & args2 ) const
+        {
+            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
+        }
+        bool operator ( ) ( const BUILD_args_ref & args1, const BUILD_args & args2 ) const
+        {
+            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
+        }
+        bool operator ( ) ( const BUILD_args & args1, const BUILD_args_ref & args2 ) const
+        {
+            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
+        }
+        bool operator ( ) ( const BUILD_args_ref & args1, const BUILD_args_ref & args2 ) const
+        {
+            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
+        }
+    };
+}
+
 
 static vector<int> indices;
 
