@@ -256,25 +256,16 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits) 
 }
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD2(const vector<int>& tips, const vector<const RSplit*>& splits) {
+bool BUILD2(const vector<int>& tips, const vector<const RSplit*>& splits) {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
-    std::unique_ptr<Tree_t> tree(new Tree_t());
-    tree->create_root();
+
     // 1. First handle trees of size 1 and 2
-    if (tips.size() == 1) {
-        tree->get_root()->set_ott_id(*tips.begin());
-        return tree;
-    } else if (tips.size() == 2) {
-        auto Node1a = tree->create_child(tree->get_root());
-        auto Node1b = tree->create_child(tree->get_root());
-        auto it = tips.begin();
-        Node1a->set_ott_id(*it++);
-        Node1b->set_ott_id(*it++);
-        return tree;
-    }
+    if (tips.size() <= 2)
+        return true;
+
     // 2. Initialize the mapping from elements to components
     vector<int> component;       // element index  -> component
     vector<list<int> > elements;  // component -> element indices
@@ -301,7 +292,7 @@ unique_ptr<Tree_t> BUILD2(const vector<int>& tips, const vector<const RSplit*>& 
     if (elements[component[0]].size() == tips.size()) {
         for(int id: tips)
             indices[id] = -1;
-        return {};
+        return false;
     }
     // 5. Make a vector of labels for the partition components
     vector<int> component_labels;                           // index -> component label
@@ -349,16 +340,13 @@ unique_ptr<Tree_t> BUILD2(const vector<int>& tips, const vector<const RSplit*>& 
     }
     // 9. Recursively solve the sub-problems of the partition components
     for(int i=0;i<subtips.size();i++) {
-        auto subtree = BUILD2(subtips[i], subsplits[i]);
-        if (not subtree) {
-            return {};
-        }
-        add_subtree(tree->get_root(), *subtree);
+        auto ok = BUILD2(subtips[i], subsplits[i]);
+        if (not ok) return false;
     }
-    return tree;
+    return true;
 }
 
-unique_ptr<Tree_t> BUILD2(const vector<int>& tips, const vector<RSplit>& splits) {
+bool BUILD2(const vector<int>& tips, const vector<RSplit>& splits) {
     vector<const RSplit*> split_ptrs;
     for(const auto& split: splits) {
         split_ptrs.push_back(&split);
