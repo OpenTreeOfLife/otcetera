@@ -255,6 +255,117 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits) 
     return BUILD(tips, split_ptrs);
 }
 
+/// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
+unique_ptr<Tree_t> BUILD2(const vector<int>& tips, const vector<const RSplit*>& splits) {
+#pragma clang diagnostic ignored  "-Wsign-conversion"
+#pragma clang diagnostic ignored  "-Wsign-compare"
+#pragma clang diagnostic ignored  "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored  "-Wsign-compare"
+    std::unique_ptr<Tree_t> tree(new Tree_t());
+    tree->create_root();
+    // 1. First handle trees of size 1 and 2
+    if (tips.size() == 1) {
+        tree->get_root()->set_ott_id(*tips.begin());
+        return tree;
+    } else if (tips.size() == 2) {
+        auto Node1a = tree->create_child(tree->get_root());
+        auto Node1b = tree->create_child(tree->get_root());
+        auto it = tips.begin();
+        Node1a->set_ott_id(*it++);
+        Node1b->set_ott_id(*it++);
+        return tree;
+    }
+    // 2. Initialize the mapping from elements to components
+    vector<int> component;       // element index  -> component
+    vector<list<int> > elements;  // component -> element indices
+    for(int k=0;k<indices.size();k++)
+        assert(indices[k] == -1);
+    for (int i=0;i<tips.size();i++) {
+        indices[tips[i]] = i;
+        component.push_back(i);
+        elements.push_back({i});
+    }
+    // 3. For each split, all the leaves in the include group must be in the same component
+    for(const auto& split: splits) {
+        int c1 = -1;
+        for(int i: split->in) {
+            int j = indices[i];
+            int c2 = component[j];
+            if (c1 != -1 and c1 != c2) {
+                merge_components(c1,c2,component,elements);
+            }
+            c1 = component[j];
+        }
+    }
+    // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
+    if (elements[component[0]].size() == tips.size()) {
+        for(int id: tips)
+            indices[id] = -1;
+        return {};
+    }
+    // 5. Make a vector of labels for the partition components
+    vector<int> component_labels;                           // index -> component label
+    vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
+    for (int c=0;c<tips.size();c++) {
+        if (c == component[c]) {
+            int index = component_labels.size();
+            component_labels.push_back(c);
+            component_label_to_index[c] = index;
+        }
+    }
+    // 6. Create the vector of tips in each connected component 
+    vector<vector<int>> subtips(component_labels.size());
+    for(int tip_index=0;tip_index < tips.size();tip_index++)
+    {
+        int tip = tips[tip_index];
+        int component_label = component[tip_index];
+        int component_index = component_label_to_index[component_label];
+        subtips[component_index].push_back(tip);
+    }
+
+    // 7. Determine the splits that are not satisfied yet and go into each component
+    vector<vector<const RSplit*>> subsplits(component_labels.size());
+    for(const auto& split: splits) {
+        int first = indices[*split->in.begin()];
+        assert(first >= 0);
+        int c = component[first];
+        // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
+        bool satisfied = true;
+        for(int x: split->out){
+            // indices[i] != -1 checks if x is in the current tip set.
+            if (indices[x] != -1 and component[indices[x]] == c) {
+                satisfied = false;
+                break;
+            }
+        }
+        if (not satisfied) {
+            int i = component_label_to_index[c];
+            subsplits[i].push_back(split);
+        }
+    }
+    // 8. Clear our map from id -> index, for use by subproblems.
+    for(int id: tips) {
+        indices[id] = -1;
+    }
+    // 9. Recursively solve the sub-problems of the partition components
+    for(int i=0;i<subtips.size();i++) {
+        auto subtree = BUILD2(subtips[i], subsplits[i]);
+        if (not subtree) {
+            return {};
+        }
+        add_subtree(tree->get_root(), *subtree);
+    }
+    return tree;
+}
+
+unique_ptr<Tree_t> BUILD2(const vector<int>& tips, const vector<RSplit>& splits) {
+    vector<const RSplit*> split_ptrs;
+    for(const auto& split: splits) {
+        split_ptrs.push_back(&split);
+    }
+    return BUILD2(tips, split_ptrs);
+}
+
 template <typename T>
 bool is_subset(const std::set<T>& set_two, const std::set<T>& set_one) {
     return std::includes(set_one.begin(), set_one.end(), set_two.begin(), set_two.end());
@@ -552,7 +663,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     auto add_split_if_consistent = [&all_leaves_indices,verbose,&consistent](auto nd, RSplit&& split) {
             consistent.push_back(std::move(split));
 
-            auto result = BUILD(all_leaves_indices, consistent);
+            auto result = BUILD2(all_leaves_indices, consistent);
             if (not result) {
                 consistent.pop_back();
                 if (verbose and nd->has_ott_id()) {
