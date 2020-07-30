@@ -12,6 +12,7 @@
 #include <sstream>
 #include <boost/filesystem.hpp>
 #include <optional>
+#include <robin_hood.h>
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -23,6 +24,10 @@ using std::list;
 using std::map;
 using std::string;
 using std::optional;
+
+template <typename X>
+using Set = robin_hood::unordered_set<X>;
+
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
@@ -381,8 +386,15 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<ConstRSplit>& spl
     return tree;
 }
 
-/// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-bool BUILD2(const vector<int>& tips, const vector<ConstRSplit>& splits) {
+typedef Set<BUILD_args> BUILD_cache;
+
+static std::size_t cache_hits = 0;
+static std::size_t cache_misses = 0;
+
+bool BUILD2_(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSplit>& splits);
+
+bool BUILD2(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSplit>& splits)
+{
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
@@ -391,6 +403,27 @@ bool BUILD2(const vector<int>& tips, const vector<ConstRSplit>& splits) {
     // 1. First handle trees of size 1 and 2
     if (tips.size() <= 2)
         return true;
+
+    if (splits.size() <= 1)
+        return true;
+
+    auto args = BUILD_args_ref(tips, splits);
+
+    cache_misses++;
+
+    return BUILD2_(cache, tips, splits);
+}
+
+/// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
+bool BUILD2_(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSplit>& splits)
+{
+#pragma clang diagnostic ignored  "-Wsign-conversion"
+#pragma clang diagnostic ignored  "-Wsign-compare"
+#pragma clang diagnostic ignored  "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored  "-Wsign-compare"
+
+    assert(tips.size() > 2);
+    assert(splits.size() > 1);
 
     // 2. Initialize the mapping from elements to components
     vector<int> component;       // element index  -> component
@@ -466,7 +499,7 @@ bool BUILD2(const vector<int>& tips, const vector<ConstRSplit>& splits) {
     }
     // 9. Recursively solve the sub-problems of the partition components
     for(int i=0;i<subtips.size();i++) {
-        auto ok = BUILD2(subtips[i], subsplits[i]);
+        auto ok = BUILD2(cache,subtips[i], subsplits[i]);
         if (not ok) return false;
     }
     return true;
@@ -766,10 +799,11 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     }
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<ConstRSplit> consistent;
+    BUILD_cache cache;
     auto add_split_if_consistent = [&](auto nd, RSplit&& split) {
             consistent.push_back(std::move(split));
 
-            auto result = BUILD2(all_leaves_indices, consistent);
+            auto result = BUILD2(cache, all_leaves_indices, consistent);
             if (not result) {
                 consistent.pop_back();
                 if (verbose and nd->has_ott_id()) {
@@ -973,6 +1007,8 @@ int main(int argc, char *argv[]) {
         auto & taxonomy = *trees.back();
         compute_depth(taxonomy);
         auto tree = combine(trees, incertae_sedis, verbose);
+        LOG(INFO) << "cache hits = "<<cache_hits;
+        LOG(INFO) << "cache misses = "<<cache_misses;
         // 8. Set the root name (if asked)
         // FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
         if (setRootName) {
