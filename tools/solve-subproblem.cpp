@@ -284,7 +284,7 @@ namespace std
                 return seed;
             }
     };
-};
+}
 
 
 enum edge_type_t {tree_edge = 0, non_tree_edge = 1};
@@ -367,6 +367,12 @@ public:
 
     auto add_edge(Vertex u, Vertex v)
     {
+        {
+            auto [_,found] = boost::edge(u,v,G);
+            assert(not found);
+            auto [_2,found2] = boost::edge(v,u,G);
+            assert(not found2);
+        }
         auto e = boost::add_edge(u,v,G);
 
         int cu = component_for_vertex(u);
@@ -419,8 +425,52 @@ public:
         return is_tree_edge(source(e), target(e));
     }
 
+    vector<Vertex> find_spanning_tree_for_vertex(Vertex u) const
+    {
+        vector<Vertex> nodes;
+
+        // Return true if vertices are in the same component
+        auto try_add = [&](Vertex uu)
+                           {
+                               if (not flags(uu))
+                               {
+                                   flags(uu) = 1;
+                                   nodes.push_back(uu);
+                               }
+                           };
+
+        try_add(u);
+
+        int i=0;
+        for(;i<nodes.size();i++)
+        {
+            auto uu = nodes[i];
+
+            for(auto [e, e_end] = in_edges(uu); e != e_end; e++)
+                if (is_tree_edge(*e))
+                    try_add( source(*e) );
+
+            for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
+                if (is_tree_edge(*e))
+                    try_add( target(*e) );
+        }
+
+        for(auto& node: nodes)
+            flags(node) = 0;
+
+        return nodes;
+    }
+
+    // if the edge is a non-tree edge:
+    //    we don't have to do anything
+    // else
+    //    find a replacement non-tree edge if one exists
+    //    mark it as a tree edge
     bool remove_edge(Vertex u, Vertex v)
     {
+        for(int v = 0; v < num_vertices(); v++)
+            assert(flags(v) == 0);
+
         int c1 = component_for_vertex(u);
         boost::remove_edge(u,v,G);
         vector<Vertex> from_u;
@@ -505,9 +555,72 @@ public:
         for(int v = 0; v < num_vertices(); v++)
             assert(flags(v) == 0);
 
+        edge E(u,v);
+        bool was_tree_edge = true;
+        optional<edge> connecting_tree_edge;
+        if (is_tree_edge(E))
+        {
+            auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
+            auto spanning_tree_for_v = find_spanning_tree_for_vertex(v);
+            assert(spanning_tree_for_u.size() + spanning_tree_for_v.size() == vertices_for_component(c1).size());
+
+            if (spanning_tree_for_u.size() > spanning_tree_for_v.size())
+            {
+                std::swap(u,v);
+                std::swap(spanning_tree_for_u, spanning_tree_for_v);
+            }
+
+            for(auto& uu: spanning_tree_for_u)
+                assert(flags(uu) == 0);
+            for(auto& uu: spanning_tree_for_u)
+                flags(uu) = 1;
+            for(auto& vv: spanning_tree_for_v)
+                assert(flags(vv) == 0);
+
+            for(auto& uu: spanning_tree_for_u)
+            {
+                for(auto [e, e_end] = in_edges(uu); e != e_end; e++)
+                {
+                    if (not is_tree_edge(*e) and flags(source(*e)) == 0)
+                    {
+                        connecting_tree_edge = edge(source(*e), target(*e));
+                        break;
+                    }
+                }
+                for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
+                {
+                    if (not is_tree_edge(*e) and flags(target(*e)) == 0)
+                    {
+                        connecting_tree_edge = edge(source(*e), target(*e));
+                        break;
+                    }
+                }
+            }
+
+            for(auto& uu: spanning_tree_for_u)
+                flags(uu) = 0;
+        }
+        else
+            was_tree_edge = false;
+        assert(edge_type_for_edge.count(E));
+        edge_type_for_edge.erase(E);
+
         // Quit here if we didn't split a component
         if (same_component)
+        {
+            assert(not was_tree_edge or connecting_tree_edge);
+            if (was_tree_edge)
+            {
+                assert(connecting_tree_edge);
+                assert(edge_type_for_edge.at(*connecting_tree_edge) == non_tree_edge);
+                edge_type_for_edge.at(*connecting_tree_edge) = tree_edge;
+            }
             return false;
+        }
+        else
+        {
+            assert(was_tree_edge and not connecting_tree_edge);
+        }
 
         // Move vertices from the smaller group to a new component
         if (i < from_u.size())
