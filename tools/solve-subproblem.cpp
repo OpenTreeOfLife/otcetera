@@ -373,18 +373,33 @@ public:
         int cu = component_for_vertex(u);
         int cv = component_for_vertex(v);
 
+        // 1. If the vertices are in different components, it is a tree edge.
+        //    Otherwise, it is a non-tree edge.
+        edge_type_t edge_type = (cu == cv) ? non_tree_edge : tree_edge;
+        edge E(u,v);
+        assert(not edge_type_for_edge.count(E));
+        edge_type_for_edge.insert({E, edge_type});
+
+        // 2. Merge the components if they are different
         if (cu != cv)
         {
+            // 2a. Ensure that cu is smaller, or equal.
             if (size_of_component(cu) > size_of_component(cv)) std::swap(cu,cv);
 
-            // Now cu is smaller, or equal.
             auto& lu = vertices_for_component(cu);
             auto& lv = vertices_for_component(cv);
+
+            // 2b. Mark all the vertices in cu as no being in cv
             for(auto uu: lu)
                 component_for_vertex(uu) = cv;
+
+            // 2c. Move the vertex list from cu to the cv component.
             lv.splice(lv.end(), lu);
+
+            // 2d. There is no longer a cu component.
             vertices_for_component_.erase(cu);
         }
+
         return e;
     }
 
