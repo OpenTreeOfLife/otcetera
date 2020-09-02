@@ -12,6 +12,7 @@
 #include <queue>
 #include <sstream>
 #include <boost/filesystem.hpp>
+#include "robin_hood.h"
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -234,6 +235,61 @@ public:
     connected_component_t* get_component() const {assert(component); return component;}
 };
 
+/*
+ * Q: Do we need to remove the map from each vertex to its component index?
+ * A: ??
+ *    Probably, since then splitting a component would require walking every vertex in the smaller piece?
+ *
+ * Q: How do we know if each edge is a tree edge or a non-tree edge?
+ * A: ??
+ *    We could put all tree edges in a tree_edge hash?
+ *
+ * Q: Can we store component info on the root of each spanning tree?
+ *
+ * 1. OK, so every vertex is part of a spanning tree.
+ * 2. We need to know if each edge is a tree edge or not
+ *
+ */
+template<typename T> void hash_combine(size_t & seed, T const& v)
+{
+    seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+struct edge
+{
+    int v1;
+    int v2;
+public:
+    int source() const {return v1;}
+    int target() const {return v2;}
+
+    bool operator==(const edge& e2) const { return v1 == e2.v1 and v2 == e2.v2;}
+
+    edge(int x1, int x2)
+        :v1(x1),v2(x2)
+        {
+            if (v1 > v2) std::swap(v1,v2);
+        }
+};
+
+namespace std
+{
+    template<>
+    class hash<edge> {
+    public:
+        size_t operator()(const edge &e) const
+            {
+                size_t seed = std::hash<int>()(e.source());
+                hash_combine(seed, std::hash<int>()(e.target()));
+                return seed;
+            }
+    };
+};
+
+
+enum edge_type_t {tree_edge = 0, non_tree_edge = 1};
+
+
 class dynamic_graph
 {
     Graph G;
@@ -243,6 +299,9 @@ class dynamic_graph
     int next_component = 0;
 
     vector<vertex_info_t> info_for_vertex;
+
+    // Probably this should be an edge property.
+    robin_hood::unordered_map<edge, edge_type_t> edge_type_for_edge;
 
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
