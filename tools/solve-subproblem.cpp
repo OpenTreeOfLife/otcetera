@@ -402,6 +402,23 @@ public:
         return e;
     }
 
+    bool is_tree_edge(const edge& e) const
+    {
+        edge E(e.source(), e.target());
+        assert(edge_type_for_edge.count(E));
+        return edge_type_for_edge.at(E) == tree_edge;
+    }
+
+    bool is_tree_edge(Vertex u, Vertex v) const
+    {
+        return is_tree_edge(edge(u,v));
+    }
+
+    bool is_tree_edge(const Edge& e) const
+    {
+        return is_tree_edge(source(e), target(e));
+    }
+
     bool remove_edge(Vertex u, Vertex v)
     {
         int c1 = component_for_vertex(u);
