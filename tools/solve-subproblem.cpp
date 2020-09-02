@@ -222,7 +222,7 @@ public:
 
     optional<OttId> label;
 
-    char flags;
+    mutable char flags;
 
     int component_index;
 
@@ -310,8 +310,7 @@ public:
 
     int new_component() {return next_component++;}
 
-    char& flags(Vertex v)       {return vertex_info(v).flags;}
-    char  flags(Vertex v) const {return vertex_info(v).flags;}
+    char& flags(Vertex v) const {return vertex_info(v).flags;}
 
     int n_components() const {return vertices_for_component_.size();}
 
