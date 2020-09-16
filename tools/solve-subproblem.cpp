@@ -2,6 +2,7 @@
 #include <set>
 #include <list>
 #include <iterator>
+#include <random>
 
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
@@ -205,6 +206,23 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys)
 
 struct connected_component_t;
 
+
+struct euler_tour_tree_node_t
+{
+    static std::default_random_engine generator;
+
+    euler_tour_tree_node_t* parent = nullptr;
+    euler_tour_tree_node_t* left = nullptr;
+    euler_tour_tree_node_t* right = nullptr;
+    int vertex;
+    double treap_order;
+
+    euler_tour_tree_node_t(int v)
+        :vertex(v), treap_order( std::uniform_real_distribution(0.0, 1.0)(generator) )
+        { }
+};
+
+
 class vertex_info_t
 {
     // We store a pointer to the component for every marked node.
@@ -227,6 +245,9 @@ public:
     int component_index;
 
     std::list<Vertex>::iterator list_entry;
+
+    euler_tour_tree_node_t* first = nullptr;
+    euler_tour_tree_node_t* last = nullptr;
 
     bool is_marked() const {return component;}
     void unmark_node() {component = nullptr;}
