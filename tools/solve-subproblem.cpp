@@ -216,12 +216,14 @@ struct euler_tour_tree_node_t
     euler_tour_tree_node_t* right = nullptr;
     int vertex;
     double treap_order;
+    int n_subtree_nodes = 0;
 
     euler_tour_tree_node_t(int v)
         :vertex(v), treap_order( std::uniform_real_distribution(0.0, 1.0)(generator) )
         { }
 };
 
+std::default_random_engine euler_tour_tree_node_t::generator;
 
 class vertex_info_t
 {
@@ -701,6 +703,10 @@ Vertex dynamic_graph::add_vertex()
     vertices_for_component_[c] = {v};
     assert(component_for_vertex(v) == c);
 
+    auto enode = new euler_tour_tree_node_t(v);
+    enode->n_subtree_nodes = 1;
+    vertex_info(v).first = enode;
+    vertex_info(v).last = enode;
     vertex_info(v).list_entry = vertices_for_component_[c].begin();
 
     assert(*vertex_info(v).list_entry == v);
