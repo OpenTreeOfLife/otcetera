@@ -392,6 +392,22 @@ public:
 
     Vertex add_vertex();
 
+    bool same_component(Vertex u, Vertex v) const
+    {
+        int cu = component_for_vertex(u);
+        int cv = component_for_vertex(v);
+
+        return (cu == cv);
+    }
+
+    bool component_smaller(Vertex u, Vertex v) const
+    {
+        int cu = component_for_vertex(u);
+        int cv = component_for_vertex(v);
+
+        return size_of_component(cu) < size_of_component(cv);
+    }
+
     auto add_edge(Vertex u, Vertex v)
     {
         {
@@ -402,21 +418,22 @@ public:
         }
         auto e = boost::add_edge(u,v,G);
 
-        int cu = component_for_vertex(u);
-        int cv = component_for_vertex(v);
-
         // 1. If the vertices are in different components, it is a tree edge.
         //    Otherwise, it is a non-tree edge.
-        edge_type_t edge_type = (cu == cv) ? non_tree_edge : tree_edge;
+        bool same_comp = same_component(u,v);
+        edge_type_t edge_type = same_comp ? non_tree_edge : tree_edge;
         edge E(u,v);
         assert(not edge_info.count(E));
         edge_info.insert({E, edge_info_t{edge_type,nullptr}});
 
         // 2. Merge the components if they are different
-        if (cu != cv)
+        if (not same_comp)
         {
             // 2a. Ensure that cu is smaller, or equal.
-            if (size_of_component(cu) > size_of_component(cv)) std::swap(cu,cv);
+            if (component_smaller(v,u)) std::swap(u,v);
+
+            int cu = component_for_vertex(u);
+            int cv = component_for_vertex(v);
 
             auto& lu = vertices_for_component(cu);
             auto& lv = vertices_for_component(cv);
