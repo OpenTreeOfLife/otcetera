@@ -222,8 +222,139 @@ struct euler_tour_tree_node_t
     euler_tour_tree_node_t(int s, int d)
         :source(s), dest(d), treap_priority( std::uniform_real_distribution(0.0, 1.0)(generator) )
         { }
+
 };
 
+
+struct forest
+{
+    typedef euler_tour_tree_node_t* node_t;
+
+    // Find the root node in a tour
+    node_t root(node_t v1)
+    {
+        assert(v1);
+        while (v1->parent)
+            v1 = v1->parent;
+        return v1;
+    }
+
+    node_t last_in_subtree(node_t v1)
+    {
+        assert(v1);
+        while(v1->right)
+            v1 = v1->right;
+        return v1;
+    }
+
+    node_t first_in_subtree(node_t v1)
+    {
+        assert(v1);
+        while(v1->left)
+            v1 = v1->left;
+        return v1;
+    }
+
+    // Find the first node in a tour
+    node_t first_in_tour(node_t v1)
+    {
+        return first_in_subtree(root(v1));
+    }
+
+    // Find the last node in a tour
+    node_t last(node_t v1)
+    {
+        return last_in_subtree(root(v1));
+    }
+
+    void rotate(node_t parent, node_t child)
+    {
+        assert(child->parent == parent);
+
+        if (child == parent->right)
+        {
+            auto a = child->left;
+            child->left = parent; parent->parent = child;
+            parent->right = a; a->parent = parent;
+        }
+        else
+        {
+            assert(child == parent->left);
+            auto a = child->right;
+            child->right = parent; parent->parent = child;
+            parent->left = a; a->parent = parent;
+        }
+    }
+
+    pair<node_t,node_t> split_dummy(node_t dummy)
+    {
+        // 1. Rotate the dummy up to the root
+        while(auto parent = dummy->parent)
+            rotate(parent, dummy);
+
+        // 2. Clear pointers from children to dummy
+        dummy->left->parent = nullptr;
+        dummy->right->parent = nullptr;
+
+        // 3. Return the two children trees.
+        return {dummy->left, dummy->right};
+    }
+
+    pair<node_t,node_t> split_left(node_t v1)
+    {
+        // 1. Make a dummy tree node
+        euler_tour_tree_node_t _dummy(-1,-1);
+        node_t dummy = &_dummy;
+
+        // 2. Insert dummy node on the left of v1
+        if (v1->left)
+        {
+            auto pred = last_in_subtree(v1->left);
+            pred->right = dummy;
+            dummy->parent = pred;
+        }
+        else
+        {
+            v1->left = dummy;
+            dummy->parent = v1;
+        }
+
+        return split_dummy(dummy);
+    }
+
+    pair<node_t,node_t> split_right(node_t v1)
+    {
+        // 1. Make a dummy tree node
+        euler_tour_tree_node_t _dummy(-1,-1);
+        node_t dummy = &_dummy;
+
+        // 2. Insert dummy node on the left of v1
+        if (v1->right)
+        {
+            auto succ = first_in_subtree(v1->right);
+            succ->left = dummy;
+            dummy->parent = succ;
+        }
+        else
+        {
+            v1->right = dummy;
+            dummy->parent = v1;
+        }
+
+        return split_dummy(dummy);
+    }
+
+    void make_first(node_t v1)
+    {
+        auto r = root(v1);
+        auto w1 = first_in_tour(r);
+
+        // If v1 is already first, then quit here
+        if (v1 == w1) return;
+
+        
+    }
+};
 std::default_random_engine euler_tour_tree_node_t::generator;
 
 class vertex_info_t
