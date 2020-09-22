@@ -310,6 +310,12 @@ namespace std
 
 enum edge_type_t {tree_edge = 0, non_tree_edge = 1};
 
+struct edge_info_t
+{
+    edge_type_t type;
+    euler_tour_tree_node_t* euler_tour_node;
+};
+
 
 class dynamic_graph
 {
@@ -322,7 +328,7 @@ class dynamic_graph
     vector<vertex_info_t> info_for_vertex;
 
     // Probably this should be an edge property.
-    robin_hood::unordered_map<edge, edge_type_t> edge_type_for_edge;
+    robin_hood::unordered_map<edge, edge_info_t> edge_info;
 
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
@@ -403,8 +409,8 @@ public:
         //    Otherwise, it is a non-tree edge.
         edge_type_t edge_type = (cu == cv) ? non_tree_edge : tree_edge;
         edge E(u,v);
-        assert(not edge_type_for_edge.count(E));
-        edge_type_for_edge.insert({E, edge_type});
+        assert(not edge_info.count(E));
+        edge_info.insert({E, edge_info_t{edge_type,nullptr}});
 
         // 2. Merge the components if they are different
         if (cu != cv)
@@ -432,8 +438,8 @@ public:
     bool is_tree_edge(const edge& e) const
     {
         edge E(e.source(), e.target());
-        assert(edge_type_for_edge.count(E));
-        return edge_type_for_edge.at(E) == tree_edge;
+        assert(edge_info.count(E));
+        return edge_info.at(E).type == tree_edge;
     }
 
     bool is_tree_edge(Vertex u, Vertex v) const
@@ -623,8 +629,8 @@ public:
         }
         else
             was_tree_edge = false;
-        assert(edge_type_for_edge.count(E));
-        edge_type_for_edge.erase(E);
+        assert(edge_info.count(E));
+        edge_info.erase(E);
 
         // Quit here if we didn't split a component
         if (same_component)
@@ -633,8 +639,8 @@ public:
             if (was_tree_edge)
             {
                 assert(connecting_tree_edge);
-                assert(edge_type_for_edge.at(*connecting_tree_edge) == non_tree_edge);
-                edge_type_for_edge.at(*connecting_tree_edge) = tree_edge;
+                assert(edge_info.at(*connecting_tree_edge).type == non_tree_edge);
+                edge_info.at(*connecting_tree_edge).type = tree_edge;
             }
             return false;
         }
