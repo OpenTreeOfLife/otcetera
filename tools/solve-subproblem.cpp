@@ -214,12 +214,13 @@ struct euler_tour_tree_node_t
     euler_tour_tree_node_t* parent = nullptr;
     euler_tour_tree_node_t* left = nullptr;
     euler_tour_tree_node_t* right = nullptr;
-    int vertex;
-    double treap_order;
+    int source;
+    int dest;
+    const double treap_priority;
     int n_subtree_nodes = 0;
 
-    euler_tour_tree_node_t(int v)
-        :vertex(v), treap_order( std::uniform_real_distribution(0.0, 1.0)(generator) )
+    euler_tour_tree_node_t(int s, int d)
+        :source(s), dest(d), treap_priority( std::uniform_real_distribution(0.0, 1.0)(generator) )
         { }
 };
 
@@ -247,9 +248,6 @@ public:
     int component_index;
 
     std::list<Vertex>::iterator list_entry;
-
-    euler_tour_tree_node_t* first = nullptr;
-    euler_tour_tree_node_t* last = nullptr;
 
     bool is_marked() const {return component;}
     void unmark_node() {component = nullptr;}
@@ -703,10 +701,6 @@ Vertex dynamic_graph::add_vertex()
     vertices_for_component_[c] = {v};
     assert(component_for_vertex(v) == c);
 
-    auto enode = new euler_tour_tree_node_t(v);
-    enode->n_subtree_nodes = 1;
-    vertex_info(v).first = enode;
-    vertex_info(v).last = enode;
     vertex_info(v).list_entry = vertices_for_component_[c].begin();
 
     assert(*vertex_info(v).list_entry == v);
