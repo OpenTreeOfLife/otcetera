@@ -2,7 +2,6 @@
 #include <set>
 #include <list>
 #include <iterator>
-#include <random>
 
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
@@ -209,26 +208,194 @@ struct connected_component_t;
 
 struct euler_tour_tree_node_t
 {
-    static std::default_random_engine generator;
-
     euler_tour_tree_node_t* parent = nullptr;
     euler_tour_tree_node_t* left = nullptr;
     euler_tour_tree_node_t* right = nullptr;
     int source;
     int dest;
-    const double treap_priority;
+    int level = 0;
     int n_subtree_nodes = 0;
 
     euler_tour_tree_node_t(int s, int d)
-        :source(s), dest(d), treap_priority( std::uniform_real_distribution(0.0, 1.0)(generator) )
+        :source(s), dest(d)
         { }
 
 };
 
-
-struct forest
+// https://en.wikipedia.org/wiki/AA_tree
+struct aa_forest
 {
     typedef euler_tour_tree_node_t* node_t;
+
+    typedef const euler_tour_tree_node_t* const_node_t;
+
+
+    bool is_leaf_node(const_node_t node)
+    {
+        return ((not node->left) and (not node->right));
+    }
+
+    bool node_is_valid(const_node_t node)
+    {
+        // 1. The level of every leaf node is 1.
+        if (is_leaf_node(node))
+            return (node->level == 1);
+
+        // 2. The level of every left child is exactly one less than that of its parent.
+        if (node->left and (node->level - node->left->level != 1)) return false;
+
+        // 3. The level of every right child is equal to or one less than that of its parent.
+        if (node->right)
+        {
+            int rdiff = node->level - node->right->level;
+            if (rdiff < 0 or  rdiff > 1) return false;
+        }
+
+        // 4. The level of every right grandchild is strictly less than that of its grandparent.
+        if (node->right and node->right->right and node->level <= node->right->right->level)
+            return false;
+
+        // 5. Every node of level greater than one has two children.
+        if ((node->level > 1) and ((not node->left) or (not node->right)))
+            return false;
+
+        return true;
+    }
+
+    /* Replace left horizontal link with right horizontal link.
+     *
+     *                   parent                 parent
+     *                     |                      |
+     *                     |                      |
+     *  left <----------- node            =>     left ------------> node
+     *  /  \                 \                   /                  /  \
+     *     left_right                                      left_right
+     *
+     */
+    node_t skew_node(node_t node)
+    {
+        if (not node) return nullptr;
+
+        auto level = node->level;
+        auto left  = node->left;
+        auto left_level = left->level;
+
+        if (level == left_level)
+        {
+            auto left_right = left->right;
+
+            // 1. Change (parent,node) to (parent,left)
+            auto parent = node->parent;
+            if (parent->left == node)
+                parent->left = left;
+            else
+                parent->right = left;
+            left->parent = parent;
+
+            // 2. Change (node,left) to (left,node)
+            left->right = node;  node->parent = left;
+
+            // 3. Change (left, left_right) to (node, left_right)
+            node->left = left_right; left_right->parent = node;
+
+            return left;
+        }
+        else
+            return node;
+    }
+
+
+    /*
+     *   parent                    parent
+     *     |                          |
+     *     |                          |
+     *   node --> right --> X       right
+     *    /        /                 / \
+     *   A        B               node  X
+     *                             / \
+     *                            A   B
+     */
+    node_t split_node(node_t node)
+    {
+        if (not node)
+            return nullptr;
+
+        if (not node->right or not node->right->right)
+            return node;
+
+        if (node->level == node->right->right->level)
+        {
+            auto right = node->right;
+
+            // 1. Change (parent,node) to (parent,right)
+            auto parent = node->parent;
+            if (parent->left == node)
+                parent->left = right;
+            else
+                parent->right = right;
+            right->parent = parent;
+
+            // 2. Change (node,right) to (node,B)
+            node->right = right->left; node->right->parent = node;
+
+            // 3. Change (right,B) to (right,node)
+            right->left = node;  node->parent = right;
+
+            right->level++;
+
+            return right;
+        }
+        else
+            return node;
+    }
+
+    node_t prev_from_subtree(node_t node)
+    {
+        auto prev = node->left;
+        while (prev->right)
+            prev = prev->right;
+        return prev;
+    }
+
+    node_t next_from_subtree(node_t node)
+    {
+        auto next = node->right;
+        while (next->left)
+            next = next->left;
+        return next;
+    }
+
+    node_t prev(node_t node)
+    {
+        if (auto p = prev_from_subtree(node))
+            return p;
+
+        while (auto parent = node->parent)
+        {
+            if (parent->right == node)
+                return parent;
+
+            node = parent;
+        }
+
+        return nullptr;
+    }
+
+    node_t next(node_t node)
+    {
+        if (auto n = next_from_subtree(node))
+            return n;
+
+        while (auto parent = node->parent)
+        {
+            if (parent->left == node)
+                return parent;
+
+            node = parent;
+        }
+
+        return nullptr;
+    }
 
     // Find the root node in a tour
     node_t root(node_t v1)
@@ -237,6 +404,19 @@ struct forest
         while (v1->parent)
             v1 = v1->parent;
         return v1;
+    }
+
+    // Find the root node in a tour
+    pair<node_t,int> root_and_height(node_t v1)
+    {
+        assert(v1);
+        int height = 0;
+        while (v1->parent)
+        {
+            v1 = v1->parent;
+            height++;
+        }
+        return {v1,height};
     }
 
     node_t last_in_subtree(node_t v1)
@@ -262,13 +442,35 @@ struct forest
     }
 
     // Find the last node in a tour
-    node_t last(node_t v1)
+    node_t last_in_tour(node_t v1)
     {
         return last_in_subtree(root(v1));
     }
 
+    std::uint64_t directions_to_root(node_t node)
+    {
+        std::uint64_t path = 0;
+        std::uint64_t bit = 1UL<<63;
+        while(auto parent = node->parent)
+        {
+            if (parent->right == node)
+                path |= bit;
+            path >>= 1;
+        }
+        return path;
+    }
+
+    // Wy
+    node_t isolate(node_t node);
+
+    node_t fix_node_balance(node_t node);
+
+    node_t join_at(node_t at, node_t left, node_t right);
+
     void rotate(node_t parent, node_t child)
     {
+        assert(child);
+        assert(child->parent);
         assert(child->parent == parent);
 
         if (child == parent->right)
@@ -344,6 +546,32 @@ struct forest
         return split_dummy(dummy);
     }
 
+    node_t append(node_t u1, node_t v1)
+    {
+        // 1. Handle one of both sequences being empty
+        if (u1 and not v1) return u1;
+        if (v1 and not u1) return v1;
+        if (not u1 and not v1) return nullptr;
+
+        // 2. Make a dummy tree node with u and v and left children.
+        assert(u1 and v1);
+        auto root_u = root(u1);
+        auto root_v = root(v1);
+
+        euler_tour_tree_node_t _dummy(-1,-1);
+        node_t dummy = &_dummy;
+        dummy->left = root_u ; root_u->parent = dummy;
+        dummy->right = root_v ; root_v->parent = dummy;
+
+        dummy->n_subtree_nodes = 1;
+        if (dummy->left)
+            dummy->n_subtree_nodes += dummy->left->n_subtree_nodes;
+        if (dummy->right)
+            dummy->n_subtree_nodes += dummy->right->n_subtree_nodes;
+
+        // 3. Move dummy down to a leaf
+    }
+
     void make_first(node_t v1)
     {
         auto r = root(v1);
@@ -352,10 +580,11 @@ struct forest
         // If v1 is already first, then quit here
         if (v1 == w1) return;
 
-        
+        auto [prefix,postfix] = split_left(v1);
+
+        append(postfix,prefix);
     }
 };
-std::default_random_engine euler_tour_tree_node_t::generator;
 
 class vertex_info_t
 {
