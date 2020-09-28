@@ -46,7 +46,6 @@ std::pair<int,int> prune_unmapped_leaves(Tree& tree, const BaseTaxonomy& tax)
                 tree._set_root(nullptr);
             }
         }
-        assert(tree.get_root());
     }
     return {mapped_leaves, unmapped_leaves};
 }
