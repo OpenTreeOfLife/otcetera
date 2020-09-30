@@ -10,9 +10,8 @@ template <typename Tree>
 std::pair<int,int> prune_unmapped_leaves(Tree& tree, const BaseTaxonomy& tax)
 {
     int mapped_leaves = 0;
-    int unmapped_leaves = 0;
 
-    std::vector<typename Tree::node_type*> leaves;
+    std::vector<typename Tree::node_type*> unmapped_leaves;
     for(auto leaf: iter_leaf(tree))
     {
         if (leaf->has_ott_id())
@@ -31,23 +30,13 @@ std::pair<int,int> prune_unmapped_leaves(Tree& tree, const BaseTaxonomy& tax)
             }
         }
         // Mark leaf for deletion
-        leaves.push_back(leaf);
-        unmapped_leaves++;
+        unmapped_leaves.push_back(leaf);
     }
-    for(auto leaf: leaves) {
-        while (leaf and leaf->is_tip()) {
-            auto parent = leaf->get_parent();
-            if (parent) {
-                leaf->detach_this_node();
-                delete leaf;
-                leaf = parent;
-            } else {
-                delete leaf;
-                tree._set_root(nullptr);
-            }
-        }
-    }
-    return {mapped_leaves, unmapped_leaves};
+
+    for(auto unmapped_leaf: unmapped_leaves)
+        delete_tip_and_monotypic_ancestors(tree, unmapped_leaf);
+
+    return {mapped_leaves, (int)unmapped_leaves.size()};
 }
 
 template <typename Tree>
