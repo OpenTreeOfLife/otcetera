@@ -205,6 +205,7 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys)
 
 struct connected_component_t;
 
+enum dir_on_tree_t {left_dir, right_dir};
 
 struct euler_tour_tree_node_t
 {
@@ -278,18 +279,20 @@ struct aa_forest
 
         auto level = node->level;
         auto left  = node->left;
-        auto left_level = left->level;
 
-        if (level == left_level)
+        if (level == left->level)
         {
             auto left_right = left->right;
 
             // 1. Change (parent,node) to (parent,left)
             auto parent = node->parent;
-            if (parent->left == node)
-                parent->left = left;
-            else
-                parent->right = left;
+            if (parent)
+            {
+                if (parent->left == node)
+                    parent->left = left;
+                else
+                    parent->right = left;
+            }
             left->parent = parent;
 
             // 2. Change (node,left) to (left,node)
@@ -329,10 +332,13 @@ struct aa_forest
 
             // 1. Change (parent,node) to (parent,right)
             auto parent = node->parent;
-            if (parent->left == node)
-                parent->left = right;
-            else
-                parent->right = right;
+            if (parent)
+            {
+                if (parent->left == node)
+                    parent->left = right;
+                else
+                    parent->right = right;
+            }
             right->parent = parent;
 
             // 2. Change (node,right) to (node,B)
@@ -349,20 +355,40 @@ struct aa_forest
             return node;
     }
 
+    node_t last_in_subtree(node_t v1)
+    {
+        while(v1->right)
+            v1 = v1->right;
+        return v1;
+    }
+
     node_t prev_from_subtree(node_t node)
     {
-        auto prev = node->left;
-        while (prev->right)
-            prev = prev->right;
-        return prev;
+        return last_in_subtree(node->left);
+    }
+
+    node_t first_in_subtree(node_t v1)
+    {
+        while(v1->left)
+            v1 = v1->left;
+        return v1;
     }
 
     node_t next_from_subtree(node_t node)
     {
-        auto next = node->right;
-        while (next->left)
-            next = next->left;
-        return next;
+        return first_in_subtree(node->right);
+    }
+
+    // Find the first node in a tour
+    node_t first_in_tour(node_t v1)
+    {
+        return first_in_subtree(root(v1));
+    }
+
+    // Find the last node in a tour
+    node_t last_in_tour(node_t v1)
+    {
+        return last_in_subtree(root(v1));
     }
 
     node_t prev(node_t node)
@@ -419,34 +445,6 @@ struct aa_forest
         return {v1,height};
     }
 
-    node_t last_in_subtree(node_t v1)
-    {
-        assert(v1);
-        while(v1->right)
-            v1 = v1->right;
-        return v1;
-    }
-
-    node_t first_in_subtree(node_t v1)
-    {
-        assert(v1);
-        while(v1->left)
-            v1 = v1->left;
-        return v1;
-    }
-
-    // Find the first node in a tour
-    node_t first_in_tour(node_t v1)
-    {
-        return first_in_subtree(root(v1));
-    }
-
-    // Find the last node in a tour
-    node_t last_in_tour(node_t v1)
-    {
-        return last_in_subtree(root(v1));
-    }
-
     std::uint64_t directions_to_root(node_t node)
     {
         std::uint64_t path = 0;
@@ -456,22 +454,164 @@ struct aa_forest
             if (parent->right == node)
                 path |= bit;
             path >>= 1;
+            node = parent;
         }
         return path;
     }
 
-    // Wy
-    node_t isolate(node_t node);
+    node_t unlink_parent(node_t node)
+    {
+        auto parent = node->parent;
+        if (not parent) return node;
 
-    node_t fix_node_balance(node_t node);
+        if (parent->left == node)
+            parent->left = nullptr;
+        else if (parent->right == node)
+            parent->right = nullptr;
+        else
+            std::abort();
+        node->parent = nullptr;
+        return node;
+    }
 
-    node_t join_at(node_t at, node_t left, node_t right);
+    void link_parent_child(node_t parent, node_t child, dir_on_tree_t dir)
+    {
+        assert(not child->parent);
+        if (dir == left_dir)
+        {
+            assert(not parent->left);
+            parent->left = child;
+        }
+        else
+        {
+            assert(not parent->right);
+            parent->right = child;
+        }
+    }
+
+    auto parent_child_dir(node_t parent, node_t child)
+    {
+        if (parent->left == child)
+            return left_dir;
+        else if (parent->right == child)
+            return right_dir;
+        std::abort();
+    }
+
+    
+    // Remove a node in preparation for deleting it.
+    node_t isolate(node_t node)
+    {
+        // 1. Handle nullptr
+        if (not node) return node;
+
+        // 2. Unlink the child from the tree, but remember its neighbors
+        const auto parent = node->parent;
+        const auto dir    = parent_child_dir(parent, node);
+        const auto left   = unlink_parent(node->left);
+        const auto right  = unlink_parent(node->right);
+        unlink_parent(node);
+
+        node_t child = nullptr;
+
+        // 3a. Node to isolate has 0 children
+        if (not left and not right)
+            child = parent;
+        // 3b. Node to isolate has 1 child (on right)
+        else if (not left)
+        {
+            child = right;
+            link_parent_child(parent, child, dir);
+            child->level = node->level;
+        }
+        // 3c. Node to isolate has 1 child (on left)
+        else if (not right)
+        {
+            child = left;
+            link_parent_child(parent, child, dir);
+            child->level = node->level;
+        }
+        // 3d. Node to isolate has 2 children
+        else
+        {
+            auto heir = prev_from_subtree(left);
+            assert(not heir->right);
+            if (auto heir_parent = heir->parent)
+            {
+                // we went left, then right.
+
+                // cut link (heir_parent,heir)
+                unlink_parent(heir);
+                // cut link (heir, heir->left)
+                auto heir_left = unlink_parent(heir->left);
+                // the right child must be empty.
+                assert(not heir->right);
+                // connect (heir_parent, heir_left)
+                if (heir_left)
+                    link_parent_child(heir_parent, heir_left, right_dir);
+
+                child = heir_parent;
+            }
+            // split the removed heir in where the isolated node was.
+            link_parent_child(parent, heir, dir);
+            link_parent_child(heir, left, left_dir);
+            link_parent_child(heir, right, right_dir);
+            heir->level = node->level;
+        }
+
+        // 4. rebalance the tree.
+        auto parent2 = child->parent;
+        while(true)
+        {
+            child = fix_node_balance(child);
+
+            if (not parent) return child;
+
+            child = parent2;
+            parent2 = child->parent;
+        }
+    }
+
+    node_t fix_node_balance(node_t node)
+    {
+        auto parent = node;
+
+        if (parent->left->level + 1 < parent->level or parent->right->level + 1 > parent->level)
+        {
+            parent->level--;
+            auto right = parent->right;
+            if (right->level > parent->level)
+                right->level = parent->level;
+
+            parent = skew_node(parent);
+            right = parent->right;
+            right = skew_node(right);
+            right = right->right;
+            skew_node(right);
+            parent = split_node(parent);
+            right = parent->right;
+            split_node(right);
+        }
+
+        return parent;
+    }
+
+    node_t join_at(node_t at, node_t left, node_t right)
+    {
+        at->level = 1;
+        auto parent = append(left,at);
+        parent = append(parent,right);
+        return parent;
+    }
 
     void rotate(node_t parent, node_t child)
     {
         assert(child);
         assert(child->parent);
         assert(child->parent == parent);
+
+        auto grandparent = parent->parent;
+        auto parent_dir = parent_child_dir(grandparent, parent);
 
         if (child == parent->right)
         {
@@ -486,6 +626,22 @@ struct aa_forest
             child->right = parent; parent->parent = child;
             parent->left = a; a->parent = parent;
         }
+
+        link_parent_child(grandparent, child, parent_dir);
+    }
+
+    bool is_smaller(node_t u, node_t v)
+    {
+        assert(root(u) == root(v));
+
+        return directions_to_root(u) < directions_to_root(v);
+    }
+
+    void remove(node_t node)
+    {
+        assert(node);
+        isolate(node);
+        delete node;
     }
 
     pair<node_t,node_t> split_dummy(node_t dummy)
@@ -502,6 +658,7 @@ struct aa_forest
         return {dummy->left, dummy->right};
     }
 
+    // Q: This seems to completely ignore levels and rebalancing!
     pair<node_t,node_t> split_left(node_t v1)
     {
         // 1. Make a dummy tree node
@@ -548,6 +705,7 @@ struct aa_forest
 
     node_t append(node_t u1, node_t v1)
     {
+        assert(root(u1) != root(v1));
         // 1. Handle one of both sequences being empty
         if (u1 and not v1) return u1;
         if (v1 and not u1) return v1;
