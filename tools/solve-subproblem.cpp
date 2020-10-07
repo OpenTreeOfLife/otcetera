@@ -362,6 +362,7 @@ struct treap_forest
 
     node_t last_in_subtree(node_t v1)
     {
+        assert(v1);
         while(v1->right)
             v1 = v1->right;
         return v1;
@@ -369,11 +370,16 @@ struct treap_forest
 
     node_t prev_from_subtree(node_t node)
     {
-        return last_in_subtree(node->left);
+        assert(node);
+        if (node->left)
+            return last_in_subtree(node->left);
+        else
+            return nullptr;
     }
 
     node_t first_in_subtree(node_t v1)
     {
+        assert(v1);
         while(v1->left)
             v1 = v1->left;
         return v1;
@@ -381,7 +387,11 @@ struct treap_forest
 
     node_t next_from_subtree(node_t node)
     {
-        return first_in_subtree(node->right);
+        assert(node);
+        if (node->right)
+            return first_in_subtree(node->right);
+        else
+            return nullptr;
     }
 
     // Find the first node in a tour
