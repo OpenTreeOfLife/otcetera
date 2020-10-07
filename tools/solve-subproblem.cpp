@@ -229,13 +229,13 @@ struct treap_node
     treap_node<V>* parent = nullptr;
     treap_node<V>* left = nullptr;
     treap_node<V>* right = nullptr;
-    const unsigned int treap_priority;
+    const unsigned int priority;
     int n_subtree_nodes = 1;
 
     const V value;
 
     treap_node(const V& v)
-        :treap_priority(priority_dist(gen)), value(v)
+        :priority(priority_dist(gen)), value(v)
         { }
 };
 
@@ -258,7 +258,7 @@ struct treap_forest
 
     bool node_is_valid(const_node_t node)
     {
-        if (node->parent and node->parent->treap_priority < node->treap_priority) return false;
+        if (node->parent and node->parent->priority < node->priority) return false;
 
         int n = 0;
         if (node->left) n += node->left->n_subtree_nodes;
@@ -307,7 +307,9 @@ struct treap_forest
             }
         }
         else if (child)
-            child->parent = nullptr;
+        {
+            assert(not child->parent);
+        }
     }
 
     tree_dir parent_child_dir(node_t parent, node_t child)
@@ -337,8 +339,11 @@ struct treap_forest
         assert(child->parent);
         assert(child->parent == parent);
 
+        // grandparent could be NULL.
         auto grandparent = parent->parent;
-        auto parent_dir = parent_child_dir(grandparent, parent);
+        tree_dir parent_dir;
+        if (grandparent)
+            parent_dir = parent_child_dir(grandparent, parent);
         auto child_dir = parent_child_dir(parent, child);
         auto A_dir = inverse(child_dir);
         node_t A = get_child(child, A_dir);
@@ -488,14 +493,14 @@ struct treap_forest
                 pos2 = last_in_subtree(pos2);
             else
                 pos2 = first_in_subtree(pos2);
-            link(pos2, inverse(dir), node);
+            link(pos2, node, inverse(dir));
         }
         else
-            link(pos, dir, node);
+            link(pos, node, dir);
 
         // 2. Rebalance the treap
         while(node->parent and node->parent->priority < node->priority)
-            rotate(node);
+            rotate(node->parent, node);
     }
 
     void remove(node_t node)
@@ -601,6 +606,18 @@ struct treap_forest
         auto [prefix,postfix] = split_left(v1);
 
         append(postfix,prefix);
+    }
+
+    void show_treap(node_t v)
+    {
+        v = first_in_tour(v);
+        while(v)
+        {
+            assert(node_is_valid(v));
+            std::cout<<v->value<<" ";
+            v = next(v);
+        }
+        std::cout<<"\n";
     }
 };
 
