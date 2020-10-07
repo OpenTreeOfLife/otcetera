@@ -220,33 +220,35 @@ dir_on_tree_t other_dir(dir_on_tree_t dir)
 constexpr unsigned int min_priority = 0;
 constexpr unsigned int max_priority = std::numeric_limits<unsigned int>::max();
 
-struct euler_tour_tree_node_t
+template <typename V>
+struct treap_node
 {
     static std::mt19937 gen;
     static std::uniform_int_distribution<> priority_dist;
 
-    euler_tour_tree_node_t* parent = nullptr;
-    euler_tour_tree_node_t* left = nullptr;
-    euler_tour_tree_node_t* right = nullptr;
-    int source;
-    int dest;
-    unsigned int treap_priority;
+    treap_node<V>* parent = nullptr;
+    treap_node<V>* left = nullptr;
+    treap_node<V>* right = nullptr;
+    const unsigned int treap_priority;
     int n_subtree_nodes = 1;
 
-    euler_tour_tree_node_t(int s, int d)
-        :source(s), dest(d), treap_priority(priority_dist(gen))
+    const V value;
+
+    treap_node(const V& v)
+        :treap_priority(priority_dist(gen)), value(v)
         { }
 };
 
-std::mt19937 euler_tour_tree_node_t::gen(0);
-std::uniform_int_distribution<> euler_tour_tree_node_t::priority_dist(min_priority+1,max_priority-1);
+template <typename V> std::mt19937 treap_node<V>::gen(0);
+template <typename V> std::uniform_int_distribution<> treap_node<V>::priority_dist(min_priority+1,max_priority-1);
 
 // https://en.wikipedia.org/wiki/AA_tree
+template <typename V>
 struct treap_forest
 {
-    typedef euler_tour_tree_node_t* node_t;
+    typedef treap_node<V>* node_t;
 
-    typedef const euler_tour_tree_node_t* const_node_t;
+    typedef const treap_node<V>* const_node_t;
 
 
     bool is_leaf_node(const_node_t node)
@@ -345,8 +347,8 @@ struct treap_forest
         auto x = parent->n_subtree_nodes;
 #endif
 
-        // Link and unlink in the correct order so that the number of subtree nodes
-        // is handled correctly.
+        // Link and unlink IN THE CORRECT ORDER so that the number
+        // of subtree nodes is handled correctly.
         unlink(grandparent, parent, parent_dir);
         unlink(parent, child, child_dir);
         unlink(child, A, A_dir);
@@ -426,6 +428,14 @@ struct treap_forest
         return nullptr;
     }
 
+    node_t next(node_t node, dir_on_tree_t dir)
+    {
+        if (dir == right_dir)
+            return next(node);
+        else
+            return prev(node);
+    }
+
     // Find the root node in a tour
     node_t root(node_t v1)
     {
@@ -456,6 +466,28 @@ struct treap_forest
         return directions_to_root(u) < directions_to_root(v);
     }
 
+    void insert(node_t pos, dir_on_tree_t dir, node_t node)
+    {
+        // 0. If the treap is empty, just return the node.
+        if (not pos) return;
+
+        // 1. Insert the node at the correct position
+        if (auto pos2 = get_child(pos,dir))
+        {
+            if (dir == left_dir)
+                pos2 = last_in_subtree(pos2);
+            else
+                pos2 = first_in_subtree(pos2);
+            link(pos2, other_dir(dir), node);
+        }
+        else
+            link(pos, dir, node);
+
+        // 2. Rebalance the treap
+        while(node->parent and node->parent->priority < node->priority)
+            rotate(node);
+    }
+
     void remove(node_t node)
     {
         assert(node);
@@ -480,7 +512,7 @@ struct treap_forest
     pair<node_t,node_t> split_left(node_t v1)
     {
         // 1. Make a dummy tree node
-        euler_tour_tree_node_t _dummy(-1,-1);
+        treap_node<V> _dummy(-1,-1);
         node_t dummy = &_dummy;
 
         // 2. Insert dummy node on the left of v1
@@ -502,7 +534,7 @@ struct treap_forest
     pair<node_t,node_t> split_right(node_t v1)
     {
         // 1. Make a dummy tree node
-        euler_tour_tree_node_t _dummy(-1,-1);
+        treap_node<V> _dummy(-1,-1);
         node_t dummy = &_dummy;
 
         // 2. Insert dummy node on the left of v1
@@ -534,7 +566,7 @@ struct treap_forest
         auto root_v = root(v1);
         assert(root(u1) != root(v1));
 
-        euler_tour_tree_node_t _dummy(-1,-1);
+        treap_node<V> _dummy(-1,-1);
         node_t dummy = &_dummy;
         dummy->left = root_u ; root_u->parent = dummy;
         dummy->right = root_v ; root_v->parent = dummy;
@@ -649,7 +681,7 @@ enum edge_type_t {tree_edge = 0, non_tree_edge = 1};
 struct edge_info_t
 {
     edge_type_t type;
-    euler_tour_tree_node_t* euler_tour_node;
+    treap_node<pair<int,int>>* euler_tour_node;
 };
 
 
