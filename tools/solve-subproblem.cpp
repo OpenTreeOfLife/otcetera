@@ -286,7 +286,6 @@ struct treap_forest
         if (child)
         {
             assert(child->parent == parent);
-            parent->n_subtree_nodes -= child->n_subtree_nodes;
             child->parent = nullptr;
         }
     }
@@ -301,14 +300,28 @@ struct treap_forest
             assert(not get_child(parent,dir));
             get_child(parent,dir) = child;
             if (child)
-            {
                 child->parent = parent;
-                parent->n_subtree_nodes += child->n_subtree_nodes;
-            }
         }
         else if (child)
         {
             assert(not child->parent);
+        }
+    }
+
+    void update_subtree_nodes(node_t node)
+    {
+        auto& n = node->n_subtree_nodes;
+        n = 1;
+        if (node->left) n += node->left->n_subtree_nodes;
+        if (node->right) n += node->right->n_subtree_nodes;
+    }
+
+    void inc_subtree_nodes(node_t node, int n)
+    {
+        while (node)
+        {
+            node->n_subtree_nodes += n;
+            node = node->parent;
         }
     }
 
@@ -352,8 +365,6 @@ struct treap_forest
         auto x = parent->n_subtree_nodes;
 #endif
 
-        // Link and unlink IN THE CORRECT ORDER so that the number
-        // of subtree nodes is handled correctly.
         unlink(grandparent, parent, parent_dir);
         unlink(parent, child, child_dir);
         unlink(child, A, A_dir);
@@ -361,6 +372,9 @@ struct treap_forest
         link(parent, A, child_dir);
         link(child, parent, A_dir);
         link(grandparent, child, parent_dir);
+
+        update_subtree_nodes(parent);
+        update_subtree_nodes(child);
 
         assert(x == child->n_subtree_nodes);
     }
@@ -498,7 +512,10 @@ struct treap_forest
         else
             link(pos, node, dir);
 
-        // 2. Rebalance the treap
+        // 2. Update the number of subtree nodes
+        inc_subtree_nodes(node->parent, 1);
+
+        // 3. Rebalance the treap
         while(node->parent and node->parent->priority < node->priority)
             rotate(node->parent, node);
     }
