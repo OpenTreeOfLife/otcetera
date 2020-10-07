@@ -218,7 +218,7 @@ tree_dir inverse(tree_dir dir)
 }
 
 constexpr unsigned int min_priority = 0;
-constexpr unsigned int max_priority = std::numeric_limits<unsigned int>::max();
+constexpr unsigned int max_priority = std::numeric_limits<int>::max();
 
 template <typename V>
 struct treap_node
