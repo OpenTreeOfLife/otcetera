@@ -13,6 +13,8 @@
 #include <sstream>
 #include <boost/filesystem.hpp>
 #include "robin_hood.h"
+#include <random>
+#include <limits>
 
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -207,24 +209,40 @@ struct connected_component_t;
 
 enum dir_on_tree_t {left_dir, right_dir};
 
+dir_on_tree_t other_dir(dir_on_tree_t dir)
+{
+    if (dir == left_dir)
+        return right_dir;
+    else
+        return left_dir;
+}
+
+constexpr unsigned int min_priority = 0;
+constexpr unsigned int max_priority = std::numeric_limits<unsigned int>::max();
+
 struct euler_tour_tree_node_t
 {
+    static std::mt19937 gen;
+    static std::uniform_int_distribution<> priority_dist;
+
     euler_tour_tree_node_t* parent = nullptr;
     euler_tour_tree_node_t* left = nullptr;
     euler_tour_tree_node_t* right = nullptr;
     int source;
     int dest;
-    int level = 0;
-    int n_subtree_nodes = 0;
+    unsigned int treap_priority;
+    int n_subtree_nodes = 1;
 
     euler_tour_tree_node_t(int s, int d)
-        :source(s), dest(d)
+        :source(s), dest(d), treap_priority(priority_dist(gen))
         { }
-
 };
 
+std::mt19937 euler_tour_tree_node_t::gen(0);
+std::uniform_int_distribution<> euler_tour_tree_node_t::priority_dist(min_priority+1,max_priority-1);
+
 // https://en.wikipedia.org/wiki/AA_tree
-struct aa_forest
+struct treap_forest
 {
     typedef euler_tour_tree_node_t* node_t;
 
@@ -238,121 +256,106 @@ struct aa_forest
 
     bool node_is_valid(const_node_t node)
     {
-        // 1. The level of every leaf node is 1.
-        if (is_leaf_node(node))
-            return (node->level == 1);
+        if (node->parent and node->parent->treap_priority < node->treap_priority) return false;
 
-        // 2. The level of every left child is exactly one less than that of its parent.
-        if (node->left and (node->level - node->left->level != 1)) return false;
-
-        // 3. The level of every right child is equal to or one less than that of its parent.
-        if (node->right)
-        {
-            int rdiff = node->level - node->right->level;
-            if (rdiff < 0 or  rdiff > 1) return false;
-        }
-
-        // 4. The level of every right grandchild is strictly less than that of its grandparent.
-        if (node->right and node->right->right and node->level <= node->right->right->level)
-            return false;
-
-        // 5. Every node of level greater than one has two children.
-        if ((node->level > 1) and ((not node->left) or (not node->right)))
-            return false;
+        int n = 0;
+        if (node->left) n += node->left->n_subtree_nodes;
+        if (node->right) n += node->right->n_subtree_nodes;
+        if (node->n_subtree_nodes != 1+n) return false;
 
         return true;
     }
 
-    /* Replace left horizontal link with right horizontal link.
-     *
-     *                   parent                 parent
-     *                     |                      |
-     *                     |                      |
-     *  left <----------- node            =>     left ------------> node
-     *  /  \                 \                   /                  /  \
-     *     left_right                                      left_right
-     *
-     */
-    node_t skew_node(node_t node)
+    node_t& get_child(node_t node, dir_on_tree_t dir)
     {
-        if (not node) return nullptr;
-
-        auto level = node->level;
-        auto left  = node->left;
-
-        if (level == left->level)
-        {
-            auto left_right = left->right;
-
-            // 1. Change (parent,node) to (parent,left)
-            auto parent = node->parent;
-            if (parent)
-            {
-                if (parent->left == node)
-                    parent->left = left;
-                else
-                    parent->right = left;
-            }
-            left->parent = parent;
-
-            // 2. Change (node,left) to (left,node)
-            left->right = node;  node->parent = left;
-
-            // 3. Change (left, left_right) to (node, left_right)
-            node->left = left_right; left_right->parent = node;
-
-            return left;
-        }
+        if (dir == left_dir)
+            return node->left;
         else
-            return node;
+            return node->right;
     }
 
+    void unlink(node_t parent, node_t child, dir_on_tree_t dir)
+    {
+        if (not parent) return;
+
+        assert(parent != child);
+
+        get_child(parent,dir) = nullptr;
+        if (child)
+        {
+            assert(child->parent == parent);
+            parent->n_subtree_nodes -= child->n_subtree_nodes;
+            child->parent = nullptr;
+        }
+    }
+
+    // Check that we aren't overwriting any links.
+    void link(node_t parent, node_t child, dir_on_tree_t dir)
+    {
+        if (parent)
+        {
+            assert(parent != child);
+            // there is not already a child here
+            assert(not get_child(parent,dir));
+            get_child(parent,dir) = child;
+            if (child)
+            {
+                child->parent = parent;
+                parent->n_subtree_nodes += child->n_subtree_nodes;
+            }
+        }
+        else if (child)
+            child->parent = nullptr;
+    }
+
+    dir_on_tree_t parent_child_dir(node_t parent, node_t child)
+    {
+        assert(parent->left == child or parent->right == child);
+        if (parent->left == child)
+            return left_dir;
+        else if (parent->right == child)
+            return right_dir;
+        std::abort();
+    }
 
     /*
-     *   parent                    parent
-     *     |                          |
-     *     |                          |
-     *   node --> right --> X       right
-     *    /        /                 / \
-     *   A        B               node  X
-     *                             / \
-     *                            A   B
-     */
-    node_t split_node(node_t node)
+    //   grandparent           grandparent
+    //       /                      /
+    //    parent                 child
+    //    //  \          ->      /   \\
+    //    X   child           parent  Y
+    //        /   \\          //  \
+    //       A     Y          X    A
+    */
+
+    // Moves the child up to the parent's position
+    void rotate(node_t parent, node_t child)
     {
-        if (not node)
-            return nullptr;
+        assert(child);
+        assert(child->parent);
+        assert(child->parent == parent);
 
-        if (not node->right or not node->right->right)
-            return node;
+        auto grandparent = parent->parent;
+        auto parent_dir = parent_child_dir(grandparent, parent);
+        auto child_dir = parent_child_dir(parent, child);
+        auto A_dir = other_dir(child_dir);
+        node_t A = get_child(child, A_dir);
 
-        if (node->level == node->right->right->level)
-        {
-            auto right = node->right;
+#ifndef NDEBUG
+        auto x = parent->n_subtree_nodes;
+#endif
 
-            // 1. Change (parent,node) to (parent,right)
-            auto parent = node->parent;
-            if (parent)
-            {
-                if (parent->left == node)
-                    parent->left = right;
-                else
-                    parent->right = right;
-            }
-            right->parent = parent;
+        // Link and unlink in the correct order so that the number of subtree nodes
+        // is handled correctly.
+        unlink(grandparent, parent, parent_dir);
+        unlink(parent, child, child_dir);
+        unlink(child, A, A_dir);
 
-            // 2. Change (node,right) to (node,B)
-            node->right = right->left; node->right->parent = node;
+        link(parent, A, child_dir);
+        link(child, parent, A_dir);
+        link(grandparent, child, parent_dir);
 
-            // 3. Change (right,B) to (right,node)
-            right->left = node;  node->parent = right;
-
-            right->level++;
-
-            return right;
-        }
-        else
-            return node;
+        assert(x == child->n_subtree_nodes);
     }
 
     node_t last_in_subtree(node_t v1)
@@ -432,19 +435,6 @@ struct aa_forest
         return v1;
     }
 
-    // Find the root node in a tour
-    pair<node_t,int> root_and_height(node_t v1)
-    {
-        assert(v1);
-        int height = 0;
-        while (v1->parent)
-        {
-            v1 = v1->parent;
-            height++;
-        }
-        return {v1,height};
-    }
-
     std::uint64_t directions_to_root(node_t node)
     {
         std::uint64_t path = 0;
@@ -459,177 +449,6 @@ struct aa_forest
         return path;
     }
 
-    node_t unlink_parent(node_t node)
-    {
-        auto parent = node->parent;
-        if (not parent) return node;
-
-        if (parent->left == node)
-            parent->left = nullptr;
-        else if (parent->right == node)
-            parent->right = nullptr;
-        else
-            std::abort();
-        node->parent = nullptr;
-        return node;
-    }
-
-    void link_parent_child(node_t parent, node_t child, dir_on_tree_t dir)
-    {
-        assert(not child->parent);
-        if (dir == left_dir)
-        {
-            assert(not parent->left);
-            parent->left = child;
-        }
-        else
-        {
-            assert(not parent->right);
-            parent->right = child;
-        }
-    }
-
-    auto parent_child_dir(node_t parent, node_t child)
-    {
-        if (parent->left == child)
-            return left_dir;
-        else if (parent->right == child)
-            return right_dir;
-        std::abort();
-    }
-
-    
-    // Remove a node in preparation for deleting it.
-    node_t isolate(node_t node)
-    {
-        // 1. Handle nullptr
-        if (not node) return node;
-
-        // 2. Unlink the child from the tree, but remember its neighbors
-        const auto parent = node->parent;
-        const auto dir    = parent_child_dir(parent, node);
-        const auto left   = unlink_parent(node->left);
-        const auto right  = unlink_parent(node->right);
-        unlink_parent(node);
-
-        node_t child = nullptr;
-
-        // 3a. Node to isolate has 0 children
-        if (not left and not right)
-            child = parent;
-        // 3b. Node to isolate has 1 child (on right)
-        else if (not left)
-        {
-            child = right;
-            link_parent_child(parent, child, dir);
-            child->level = node->level;
-        }
-        // 3c. Node to isolate has 1 child (on left)
-        else if (not right)
-        {
-            child = left;
-            link_parent_child(parent, child, dir);
-            child->level = node->level;
-        }
-        // 3d. Node to isolate has 2 children
-        else
-        {
-            auto heir = prev_from_subtree(left);
-            assert(not heir->right);
-            if (auto heir_parent = heir->parent)
-            {
-                // we went left, then right.
-
-                // cut link (heir_parent,heir)
-                unlink_parent(heir);
-                // cut link (heir, heir->left)
-                auto heir_left = unlink_parent(heir->left);
-                // the right child must be empty.
-                assert(not heir->right);
-                // connect (heir_parent, heir_left)
-                if (heir_left)
-                    link_parent_child(heir_parent, heir_left, right_dir);
-
-                child = heir_parent;
-            }
-            // split the removed heir in where the isolated node was.
-            link_parent_child(parent, heir, dir);
-            link_parent_child(heir, left, left_dir);
-            link_parent_child(heir, right, right_dir);
-            heir->level = node->level;
-        }
-
-        // 4. rebalance the tree.
-        auto parent2 = child->parent;
-        while(true)
-        {
-            child = fix_node_balance(child);
-
-            if (not parent) return child;
-
-            child = parent2;
-            parent2 = child->parent;
-        }
-    }
-
-    node_t fix_node_balance(node_t node)
-    {
-        auto parent = node;
-
-        if (parent->left->level + 1 < parent->level or parent->right->level + 1 > parent->level)
-        {
-            parent->level--;
-            auto right = parent->right;
-            if (right->level > parent->level)
-                right->level = parent->level;
-
-            parent = skew_node(parent);
-            right = parent->right;
-            right = skew_node(right);
-            right = right->right;
-            skew_node(right);
-            parent = split_node(parent);
-            right = parent->right;
-            split_node(right);
-        }
-
-        return parent;
-    }
-
-    node_t join_at(node_t at, node_t left, node_t right)
-    {
-        at->level = 1;
-        auto parent = append(left,at);
-        parent = append(parent,right);
-        return parent;
-    }
-
-    void rotate(node_t parent, node_t child)
-    {
-        assert(child);
-        assert(child->parent);
-        assert(child->parent == parent);
-
-        auto grandparent = parent->parent;
-        auto parent_dir = parent_child_dir(grandparent, parent);
-
-        if (child == parent->right)
-        {
-            auto a = child->left;
-            child->left = parent; parent->parent = child;
-            parent->right = a; a->parent = parent;
-        }
-        else
-        {
-            assert(child == parent->left);
-            auto a = child->right;
-            child->right = parent; parent->parent = child;
-            parent->left = a; a->parent = parent;
-        }
-
-        link_parent_child(grandparent, child, parent_dir);
-    }
-
     bool is_smaller(node_t u, node_t v)
     {
         assert(root(u) == root(v));
@@ -640,7 +459,6 @@ struct aa_forest
     void remove(node_t node)
     {
         assert(node);
-        isolate(node);
         delete node;
     }
 
@@ -705,7 +523,6 @@ struct aa_forest
 
     node_t append(node_t u1, node_t v1)
     {
-        assert(root(u1) != root(v1));
         // 1. Handle one of both sequences being empty
         if (u1 and not v1) return u1;
         if (v1 and not u1) return v1;
@@ -715,6 +532,7 @@ struct aa_forest
         assert(u1 and v1);
         auto root_u = root(u1);
         auto root_v = root(v1);
+        assert(root(u1) != root(v1));
 
         euler_tour_tree_node_t _dummy(-1,-1);
         node_t dummy = &_dummy;
