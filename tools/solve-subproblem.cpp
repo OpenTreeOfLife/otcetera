@@ -207,14 +207,14 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys)
 
 struct connected_component_t;
 
-enum dir_on_tree_t {left_dir, right_dir};
+enum class tree_dir {left, right};
 
-dir_on_tree_t other_dir(dir_on_tree_t dir)
+tree_dir inverse(tree_dir dir)
 {
-    if (dir == left_dir)
-        return right_dir;
+    if (dir == tree_dir::left)
+        return tree_dir::right;
     else
-        return left_dir;
+        return tree_dir::left;
 }
 
 constexpr unsigned int min_priority = 0;
@@ -268,15 +268,15 @@ struct treap_forest
         return true;
     }
 
-    node_t& get_child(node_t node, dir_on_tree_t dir)
+    node_t& get_child(node_t node, tree_dir dir)
     {
-        if (dir == left_dir)
+        if (dir == tree_dir::left)
             return node->left;
         else
             return node->right;
     }
 
-    void unlink(node_t parent, node_t child, dir_on_tree_t dir)
+    void unlink(node_t parent, node_t child, tree_dir dir)
     {
         if (not parent) return;
 
@@ -292,7 +292,7 @@ struct treap_forest
     }
 
     // Check that we aren't overwriting any links.
-    void link(node_t parent, node_t child, dir_on_tree_t dir)
+    void link(node_t parent, node_t child, tree_dir dir)
     {
         if (parent)
         {
@@ -310,13 +310,13 @@ struct treap_forest
             child->parent = nullptr;
     }
 
-    dir_on_tree_t parent_child_dir(node_t parent, node_t child)
+    tree_dir parent_child_dir(node_t parent, node_t child)
     {
         assert(parent->left == child or parent->right == child);
         if (parent->left == child)
-            return left_dir;
+            return tree_dir::left;
         else if (parent->right == child)
-            return right_dir;
+            return tree_dir::right;
         std::abort();
     }
 
@@ -340,7 +340,7 @@ struct treap_forest
         auto grandparent = parent->parent;
         auto parent_dir = parent_child_dir(grandparent, parent);
         auto child_dir = parent_child_dir(parent, child);
-        auto A_dir = other_dir(child_dir);
+        auto A_dir = inverse(child_dir);
         node_t A = get_child(child, A_dir);
 
 #ifndef NDEBUG
@@ -428,9 +428,9 @@ struct treap_forest
         return nullptr;
     }
 
-    node_t next(node_t node, dir_on_tree_t dir)
+    node_t next(node_t node, tree_dir dir)
     {
-        if (dir == right_dir)
+        if (dir == tree_dir::right)
             return next(node);
         else
             return prev(node);
@@ -466,7 +466,7 @@ struct treap_forest
         return directions_to_root(u) < directions_to_root(v);
     }
 
-    void insert(node_t pos, dir_on_tree_t dir, node_t node)
+    void insert(node_t pos, tree_dir dir, node_t node)
     {
         // 0. If the treap is empty, just return the node.
         if (not pos) return;
@@ -474,11 +474,11 @@ struct treap_forest
         // 1. Insert the node at the correct position
         if (auto pos2 = get_child(pos,dir))
         {
-            if (dir == left_dir)
+            if (dir == tree_dir::left)
                 pos2 = last_in_subtree(pos2);
             else
                 pos2 = first_in_subtree(pos2);
-            link(pos2, other_dir(dir), node);
+            link(pos2, inverse(dir), node);
         }
         else
             link(pos, dir, node);
@@ -2265,6 +2265,8 @@ inline vector<const node_t *> vec_ptr_to_anc(const node_t * des, const node_t * 
 }
 
 int main(int argc, char *argv[]) {
+    
+
     try {
         // 1. Parse command line arguments
         variables_map args = parse_cmd_line(argc,argv);
