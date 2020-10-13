@@ -580,7 +580,7 @@ public:
         while (node->left and node->right)
         {
             auto child = node->left;
-            if (node->left->priority > node->right->priority)
+            if (node->right->priority > node->left->priority)
                 child = node->right;
             rotate(node,child);
         }
