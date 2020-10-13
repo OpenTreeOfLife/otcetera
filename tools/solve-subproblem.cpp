@@ -628,24 +628,30 @@ public:
 
     node_t join(node_t left, node_t right)
     {
+        // 1. If one treap is empty, just return the other.
         if (not right)
             return left;
         if (not left)
             return right;
 
-        // 1. Make a dummy tree node
+        // 2. Find the roots of the two trees
+        left = root(left);
+
+        right = root(right);
+
+        // 3. Make a dummy tree node
         treap_node<V> _dummy({}, min_priority);
         node_t dummy = &_dummy;
 
-        // 2. Connect dummy to left and right subtrees
+        // 4. Connect dummy to left and right subtrees
         link(dummy, left, tree_dir::left);
         link(dummy, right, tree_dir::right);
         update_subtree_nodes_one(dummy);
 
-        // 3. Remove the dummy from the treap
+        // 5. Remove the dummy from the treap
         isolate(dummy);
 
-        return root(left);
+        return left;
     }
 
     node_t make_first(node_t v1)
@@ -656,7 +662,7 @@ public:
         // If v1 is already first, then quit here
         if (v1 == w1) return r;
 
-        auto [prefix,postfix] = split_left(v1);
+        auto [prefix,postfix] = split(v1, tree_dir::left);
 
         return join(postfix,prefix);
     }
@@ -2350,7 +2356,7 @@ int main(int argc, char *argv[])
     treap_node<int>* treap = nullptr;
 
     vector<treap_node<int>*> nodes;
-    for(int i=0;i<16; i++)
+    for(int i=0;i<20; i++)
     {
         treap = F.insert(treap, tree_dir::right, i);
         nodes.push_back(treap);
@@ -2358,7 +2364,7 @@ int main(int argc, char *argv[])
 
     F.show_treap(treap);
 
-    F.remove(nodes[4]);
+    F.make_first(nodes[6]);
 
     F.show_treap(treap);
 
