@@ -495,12 +495,12 @@ struct treap_forest
         return directions_to_root(u) < directions_to_root(v);
     }
 
-    void insert(node_t pos, tree_dir dir, node_t node)
+private:
+    void place_node(node_t pos, tree_dir dir, node_t node)
     {
-        // 0. If the treap is empty, just return the node.
-        if (not pos) return;
-
-        // 1. Insert the node at the correct position
+        assert(pos);
+        assert(node);
+        // 2. Insert the node at the correct position
         if (auto pos2 = get_child(pos,dir))
         {
             if (dir == tree_dir::left)
@@ -511,8 +511,20 @@ struct treap_forest
         }
         else
             link(pos, node, dir);
+    }
 
-        // 2. Update the number of subtree nodes
+public:
+    void insert(node_t pos, tree_dir dir, node_t node)
+    {
+        assert(node);
+
+        // 1. If the treap is empty, just return the node.
+        if (not pos) return;
+
+        // 2. Add the node
+        place_node(pos, dir, node);
+
+        // 2. Update the number of subtree nodes in all ancestors
         inc_subtree_nodes(node->parent, 1);
 
         // 3. Rebalance the treap
@@ -2308,8 +2320,24 @@ inline vector<const node_t *> vec_ptr_to_anc(const node_t * des, const node_t * 
     return ret;
 }
 
-int main(int argc, char *argv[]) {
-    
+int main(int argc, char *argv[])
+{
+    treap_forest<int> F;
+    treap_node<int>* treap = nullptr;
+
+    auto x1 = new treap_node<int>(1);
+    auto x2 = new treap_node<int>(2);
+    auto x3 = new treap_node<int>(3);
+    auto x4 = new treap_node<int>(4);
+    auto x5 = new treap_node<int>(5);
+
+    F.insert(x1,tree_dir::right,x2);
+    F.insert(x2,tree_dir::right,x3);
+    F.insert(x3,tree_dir::right,x4);
+    F.insert(x4,tree_dir::right,x5);
+    F.show_treap(x1);
+
+    exit(0);
 
     try {
         // 1. Parse command line arguments
