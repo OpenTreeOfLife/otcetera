@@ -572,7 +572,7 @@ public:
         return node;
     }
 
-    void remove(node_t node)
+    void isolate(node_t node)
     {
         assert(node);
 
@@ -602,8 +602,11 @@ public:
 
         // 3. Update subtree nodes count
         update_subtree_nodes(parent);
+    }
 
-        // 4. Destroy the node.
+    void remove(node_t node)
+    {
+        isolate(node);
         delete node;
     }
 
@@ -634,10 +637,13 @@ public:
         treap_node<V> _dummy({}, min_priority);
         node_t dummy = &_dummy;
 
+        // 2. Connect dummy to left and right subtrees
         link(dummy, left, tree_dir::left);
         link(dummy, right, tree_dir::right);
+        update_subtree_nodes_one(dummy);
 
-        remove(dummy);
+        // 3. Remove the dummy from the treap
+        isolate(dummy);
 
         return root(left);
     }
