@@ -614,11 +614,11 @@ public:
         node_t dummy = &_dummy;
 
         insert(node, dir, dummy);
-        auto left = node->left;
-        auto right = node->right;
+        auto left = dummy->left;
+        auto right = dummy->right;
 
-        left->parent = nullptr;
-        right->parent = nullptr;
+        unlink(dummy, left , tree_dir::left );
+        unlink(dummy, right, tree_dir::right);
 
         return {left, right};
     }
