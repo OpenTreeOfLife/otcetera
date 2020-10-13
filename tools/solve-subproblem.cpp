@@ -237,6 +237,10 @@ struct treap_node
     treap_node(const V& v)
         :priority(priority_dist(gen)), value(v)
         { }
+
+    treap_node(const V& v, unsigned int p)
+        :priority(p), value(v)
+        { }
 };
 
 template <typename V> std::mt19937 treap_node<V>::gen(0);
@@ -290,6 +294,17 @@ struct treap_forest
         }
     }
 
+    optional<tree_dir> unlink_from_parent(node_t child)
+    {
+        auto parent = child->parent;
+
+        if (not parent) return {};
+
+        auto dir = parent_child_dir(parent, child);
+        unlink(parent, child, dir);
+        return dir;
+    }
+
     // Check that we aren't overwriting any links.
     void link(node_t parent, node_t child, tree_dir dir)
     {
@@ -308,7 +323,25 @@ struct treap_forest
         }
     }
 
-    void update_subtree_nodes(node_t node)
+    void swap_subtrees(node_t sub1, node_t sub2)
+    {
+        assert(sub2);
+        assert(not sub2->parent);
+
+        auto parent1 = sub1->parent;
+        auto dir1 = unlink_from_parent(sub1);
+
+        auto parent2 = sub2->parent;
+        auto dir2 = unlink_from_parent(sub2);
+
+        if (dir1)
+            link(parent1, sub2, *dir1);
+
+        if (dir2)
+            link(parent2, sub2, *dir2);
+    }
+
+    void update_subtree_nodes_one(node_t node)
     {
         auto& n = node->n_subtree_nodes;
         n = 1;
@@ -316,11 +349,11 @@ struct treap_forest
         if (node->right) n += node->right->n_subtree_nodes;
     }
 
-    void inc_subtree_nodes(node_t node, int n)
+    void update_subtree_nodes(node_t node)
     {
         while (node)
         {
-            node->n_subtree_nodes += n;
+            update_subtree_nodes_one(node);
             node = node->parent;
         }
     }
@@ -373,8 +406,8 @@ struct treap_forest
         link(child, parent, A_dir);
         link(grandparent, child, parent_dir);
 
-        update_subtree_nodes(parent);
-        update_subtree_nodes(child);
+        update_subtree_nodes_one(parent);
+        update_subtree_nodes_one(child);
 
         assert(x == child->n_subtree_nodes);
     }
@@ -524,117 +557,102 @@ public:
         // 2. Add the node
         place_node(pos, dir, node);
 
-        // 2. Update the number of subtree nodes in all ancestors
-        inc_subtree_nodes(node->parent, 1);
+        // 3. Update the number of subtree nodes in all ancestors
+        update_subtree_nodes(node->parent);
 
-        // 3. Rebalance the treap
+        // 4. Rebalance the treap
         while(node->parent and node->parent->priority < node->priority)
             rotate(node->parent, node);
+    }
+
+    node_t insert(node_t pos, tree_dir dir, const V& value)
+    {
+        auto node = new treap_node<V>(value);
+        insert(pos, dir, node);
+        return node;
     }
 
     void remove(node_t node)
     {
         assert(node);
+
+        // 1. Rotate node down until it has < 2 children.
+        while (node->left and node->right)
+        {
+            auto child = node->left;
+            if (node->left->priority > node->right->priority)
+                child = node->right;
+            rotate(node,child);
+        }
+
+        // 2. Unlink the node if it is not a leaf.
+        auto parent = node->parent;
+        if (auto left = node->left)
+        {
+            unlink(node, left, tree_dir::left);
+            swap_subtrees(node, left);
+        }
+        else if (auto right = node->right)
+        {
+            unlink(node, right, tree_dir::right);
+            swap_subtrees(node, right);
+        }
+        else
+            unlink_from_parent(node);
+
+        // 3. Update subtree nodes count
+        update_subtree_nodes(parent);
+
+        // 4. Destroy the node.
         delete node;
     }
 
-    pair<node_t,node_t> split_dummy(node_t dummy)
-    {
-        // 1. Rotate the dummy up to the root
-        while(auto parent = dummy->parent)
-            rotate(parent, dummy);
-
-        // 2. Clear pointers from children to dummy
-        dummy->left->parent = nullptr;
-        dummy->right->parent = nullptr;
-
-        // 3. Return the two children trees.
-        return {dummy->left, dummy->right};
-    }
-
-    // Q: This seems to completely ignore levels and rebalancing!
-    pair<node_t,node_t> split_left(node_t v1)
+    pair<node_t,node_t> split(node_t node, tree_dir dir)
     {
         // 1. Make a dummy tree node
-        treap_node<V> _dummy(-1,-1);
+        treap_node<V> _dummy({}, max_priority);
         node_t dummy = &_dummy;
 
-        // 2. Insert dummy node on the left of v1
-        if (v1->left)
-        {
-            auto pred = last_in_subtree(v1->left);
-            pred->right = dummy;
-            dummy->parent = pred;
-        }
-        else
-        {
-            v1->left = dummy;
-            dummy->parent = v1;
-        }
+        insert(node, dir, dummy);
+        auto left = node->left;
+        auto right = node->right;
 
-        return split_dummy(dummy);
+        left->parent = nullptr;
+        right->parent = nullptr;
+
+        return {left, right};
     }
 
-    pair<node_t,node_t> split_right(node_t v1)
+    node_t join(node_t left, node_t right)
     {
+        if (not right)
+            return left;
+        if (not left)
+            return right;
+
         // 1. Make a dummy tree node
-        treap_node<V> _dummy(-1,-1);
+        treap_node<V> _dummy({}, min_priority);
         node_t dummy = &_dummy;
 
-        // 2. Insert dummy node on the left of v1
-        if (v1->right)
-        {
-            auto succ = first_in_subtree(v1->right);
-            succ->left = dummy;
-            dummy->parent = succ;
-        }
-        else
-        {
-            v1->right = dummy;
-            dummy->parent = v1;
-        }
+        link(dummy, left, tree_dir::left);
+        link(dummy, right, tree_dir::right);
 
-        return split_dummy(dummy);
+        remove(dummy);
+
+        return root(left);
     }
 
-    node_t append(node_t u1, node_t v1)
-    {
-        // 1. Handle one of both sequences being empty
-        if (u1 and not v1) return u1;
-        if (v1 and not u1) return v1;
-        if (not u1 and not v1) return nullptr;
-
-        // 2. Make a dummy tree node with u and v and left children.
-        assert(u1 and v1);
-        auto root_u = root(u1);
-        auto root_v = root(v1);
-        assert(root(u1) != root(v1));
-
-        treap_node<V> _dummy(-1,-1);
-        node_t dummy = &_dummy;
-        dummy->left = root_u ; root_u->parent = dummy;
-        dummy->right = root_v ; root_v->parent = dummy;
-
-        dummy->n_subtree_nodes = 1;
-        if (dummy->left)
-            dummy->n_subtree_nodes += dummy->left->n_subtree_nodes;
-        if (dummy->right)
-            dummy->n_subtree_nodes += dummy->right->n_subtree_nodes;
-
-        // 3. Move dummy down to a leaf
-    }
-
-    void make_first(node_t v1)
+    node_t make_first(node_t v1)
     {
         auto r = root(v1);
         auto w1 = first_in_tour(r);
 
         // If v1 is already first, then quit here
-        if (v1 == w1) return;
+        if (v1 == w1) return r;
 
         auto [prefix,postfix] = split_left(v1);
 
-        append(postfix,prefix);
+        return join(postfix,prefix);
     }
 
     void show_treap(node_t v)
@@ -2325,17 +2343,18 @@ int main(int argc, char *argv[])
     treap_forest<int> F;
     treap_node<int>* treap = nullptr;
 
-    auto x1 = new treap_node<int>(1);
-    auto x2 = new treap_node<int>(2);
-    auto x3 = new treap_node<int>(3);
-    auto x4 = new treap_node<int>(4);
-    auto x5 = new treap_node<int>(5);
+    vector<treap_node<int>*> nodes;
+    for(int i=0;i<16; i++)
+    {
+        treap = F.insert(treap, tree_dir::right, i);
+        nodes.push_back(treap);
+    }
 
-    F.insert(x1,tree_dir::right,x2);
-    F.insert(x2,tree_dir::right,x3);
-    F.insert(x3,tree_dir::right,x4);
-    F.insert(x4,tree_dir::right,x5);
-    F.show_treap(x1);
+    F.show_treap(treap);
+
+    F.remove(nodes[4]);
+
+    F.show_treap(treap);
 
     exit(0);
 
