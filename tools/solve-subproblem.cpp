@@ -900,28 +900,21 @@ public:
             return some_edge_to(u);
     }
     
-
     bool same_component2(Vertex u, Vertex v) const
     {
         // 1. If u and v are the same vertex, then return true.
         if (u == v) return true;
 
-        auto E_u = some_edge_from_to(u);
-        if (not E_u) return false;
-        edge e_u{source(*E_u),target(*E_u)};
+        // 2. Get pointers to Euler tour entries for each component
+        auto node_u = to_euler_tour_node(some_edge_to(u));
 
-        auto E_v = some_edge_from_to(v);
-        if (not E_v) return false;
-        edge e_v{source(*E_v),target(*E_v)};
+        auto node_v = to_euler_tour_node(some_edge_to(v));
 
-        auto node_u = edge_info.at(e_u).euler_tour_node;
+        // 3. If vertex has no Euler tour entries, then that vertex has no edges, and is in its own unique component.
+        if (not node_u or not node_v)
+            return false;
 
-        auto node_v = edge_info.at(e_v).euler_tour_node;
-
-        // If they are both nullptr, that doesn't mean they are in the same component!
-        assert(node_u);
-        assert(node_v);
-
+        // 4. If both vertices have adjacent edges, then check if they are in the same Euler tour tree.
         return F.root(node_u) == F.root(node_v);
     }
 
