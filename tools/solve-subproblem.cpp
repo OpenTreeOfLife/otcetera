@@ -747,6 +747,8 @@ public:
         {
             if (v1 > v2) std::swap(v1,v2);
         }
+
+    edge():edge(-1,-1) {}
 };
 
 edge edge::reverse() const
