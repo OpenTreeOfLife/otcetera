@@ -774,7 +774,7 @@ enum edge_type_t {tree_edge = 0, non_tree_edge = 1};
 struct edge_info_t
 {
     edge_type_t type;
-    treap_node<pair<int,int>>* euler_tour_node;
+    treap_node<edge>* euler_tour_node;
 };
 
 
@@ -791,7 +791,7 @@ class dynamic_graph
     // Probably this should be an edge property.
     robin_hood::unordered_map<edge, edge_info_t> edge_info;
 
-    static treap_forest<pair<int,int>> F;
+    static treap_forest<edge> F;
 
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
@@ -1195,7 +1195,7 @@ public:
     }
 };
 
-treap_forest<pair<int,int>> dynamic_graph::F;
+treap_forest<edge> dynamic_graph::F;
 
 bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
 {
