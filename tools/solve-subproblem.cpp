@@ -740,12 +740,19 @@ public:
 
     bool operator==(const edge& e2) const { return v1 == e2.v1 and v2 == e2.v2;}
 
+    [[nodiscard]] edge reverse() const;
+
     edge(long unsigned int x1, long unsigned int x2)
         :v1(x1),v2(x2)
         {
             if (v1 > v2) std::swap(v1,v2);
         }
 };
+
+edge edge::reverse() const
+{
+    return edge(target(), source());
+}
 
 namespace std
 {
