@@ -920,25 +920,39 @@ public:
 
     auto add_edge(Vertex u, Vertex v)
     {
+        // 1. Check that we don't already have an edge (u,v) or (v,u)
         {
             auto [_,found] = boost::edge(u,v,G);
             assert(not found);
             auto [_2,found2] = boost::edge(v,u,G);
             assert(not found2);
         }
-        auto e = boost::add_edge(u,v,G);
 
-        // 1. If the vertices are in different components, it is a tree edge.
+        // 2. If the vertices are in different components, it is a tree edge.
         //    Otherwise, it is a non-tree edge.
         bool same_comp = same_component(u,v);
-        edge_type_t edge_type = same_comp ? non_tree_edge : tree_edge;
-        edge E(u,v);
-        assert(not edge_info.count(E));
-        edge_info.insert({E, edge_info_t{edge_type,nullptr}});
+        bool same_comp2 = same_component2(u,v);
+
+        edge E1(u,v);
+        edge E2(v,u);
+        assert(not edge_info.count(E1));
+        assert(not edge_info.count(E2));
+
+        auto e = boost::add_edge(u,v,G);
 
         // 2. Merge the components if they are different
-        if (not same_comp)
+        if (same_comp)
         {
+            edge_info.insert({E1, edge_info_t{non_tree_edge,nullptr}});
+            edge_info.insert({E2, edge_info_t{non_tree_edge,nullptr}});
+        }
+        else if (not same_comp)
+        {
+            auto node1 = F.insert(nullptr, tree_dir::right, E1);
+            auto node2 = F.insert(nullptr, tree_dir::right, E2);
+            edge_info.insert({E1, edge_info_t{tree_edge, node1}});
+            edge_info.insert({E2, edge_info_t{tree_edge, node2}});
+
             // 2a. Ensure that cu is smaller, or equal.
             if (component_smaller(v,u)) std::swap(u,v);
 
