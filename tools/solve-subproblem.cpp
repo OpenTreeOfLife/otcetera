@@ -515,6 +515,13 @@ struct treap_forest
             return 0;
     }
 
+    bool same_component(node_t node1, node_t node2)
+    {
+        assert(node1);
+        assert(node2);
+        return root(node1) == root(node2);
+    }
+
     std::uint64_t directions_to_root(node_t node)
     {
         std::uint64_t path = 0;
@@ -664,6 +671,8 @@ public:
 
     node_t make_first(node_t v1)
     {
+        if (not v1) return nullptr;
+
         auto r = root(v1);
         auto w1 = first_in_tour(r);
 
@@ -675,18 +684,31 @@ public:
         return join(postfix,prefix);
     }
 
-    void show_treap(node_t v)
-    {
-        v = first_in_tour(v);
-        while(v)
-        {
-            assert(node_is_valid(v));
-            std::cout<<v->value<<" ";
-            v = next(v);
-        }
-        std::cout<<"\n";
-    }
+    string show_treap(node_t v);
 };
+
+template <typename V>
+std::ostream& operator<<(std::ostream& o, treap_node<V>* v)
+{
+    treap_forest<V> F;
+    o<<" ";
+    v = F.first_in_tour(v);
+    while(v)
+    {
+        assert(F.node_is_valid(v));
+        o<<v->value<<" ";
+        v = F.next(v);
+    }
+    return o;
+}
+
+template <typename V>
+string treap_forest<V>::show_treap(treap_forest<V>::node_t node)
+{
+    std::ostringstream o;
+    o<<node;
+    return o.str();
+}
 
 class vertex_info_t
 {
@@ -752,12 +774,16 @@ public:
 
     edge(long unsigned int x1, long unsigned int x2)
         :v1(x1),v2(x2)
-        {
-            if (v1 > v2) std::swap(v1,v2);
-        }
+        { }
 
     edge():edge(-1,-1) {}
 };
+
+std::ostream& operator<<(std::ostream& o, const edge& e)
+{
+    o<<"{"<<e.source()<<","<<e.target()<<"}";
+    return o;
+}
 
 edge edge::reverse() const
 {
@@ -925,8 +951,10 @@ public:
             return false;
 
         // 4. If both vertices have adjacent edges, then check if they are in the same Euler tour tree.
-        return F.root(node_u) == F.root(node_v);
+        return F.same_component(node_u, node_v);
     }
+
+    string show_tour(euler_tour_node_t node) const;
 
     bool component_smaller(Vertex u, Vertex v) const
     {
@@ -963,36 +991,49 @@ public:
         //    Otherwise, it is a non-tree edge.
         bool same_comp = same_component(u,v);
         bool same_comp2 = same_component2(u,v);
+        assert(same_comp == same_comp2);
 
         edge E1(u,v);
         edge E2(v,u);
         assert(not edge_info.count(E1));
         assert(not edge_info.count(E2));
 
-        auto e = boost::add_edge(u,v,G);
+        assert(size_of_component(component_for_vertex(u)) == size_of_component2(u));
+        assert(size_of_component(component_for_vertex(v)) == size_of_component2(v));
+        assert(component_smaller(v,u) == component_smaller2(v,u));
 
-        // 2. Merge the components if they are different
+        // 3a. Add a non-tree edge if both vertices in same component
         if (same_comp)
         {
             edge_info.insert({E1, edge_info_t{non_tree_edge,nullptr}});
             edge_info.insert({E2, edge_info_t{non_tree_edge,nullptr}});
+            auto e = boost::add_edge(u,v,G);
+            return e;
         }
-        else if (not same_comp)
+        // 3b. Merge the components if they are different
+        else
         {
-            auto node1 = F.insert(nullptr, tree_dir::right, E1);
-            auto node2 = F.insert(nullptr, tree_dir::right, E2);
-            edge_info.insert({E1, edge_info_t{tree_edge, node1}});
-            edge_info.insert({E2, edge_info_t{tree_edge, node2}});
+            auto Eu = to_euler_tour_node(some_edge_from(u));
+            F.make_first(Eu);
 
-            assert(size_of_component(u) == size_of_component2(u));
-            assert(size_of_component(v) == size_of_component2(v));
-            assert(component_smaller(v,u) == component_smaller2(v,u));
+            auto Ev = to_euler_tour_node(some_edge_from(v));
+            F.make_first(Ev);
+
+            auto e = boost::add_edge(u,v,G);
+            auto node_uv = F.insert(nullptr, tree_dir::right, E1);
+            auto node_vu = F.insert(nullptr, tree_dir::right, E2);
+            edge_info.insert({E1, edge_info_t{tree_edge, node_uv}});
+            edge_info.insert({E2, edge_info_t{tree_edge, node_vu}});
 
             // 2a. Ensure that cu is smaller, or equal.
             if (component_smaller(v,u)) std::swap(u,v);
 
+            auto Euv = F.join(F.join(F.join(Eu,node_uv),Ev), node_vu);
+
             int cu = component_for_vertex(u);
             int cv = component_for_vertex(v);
+
+            int newsize = size_of_component(cu)+size_of_component(cv);
 
             auto& lu = vertices_for_component(cu);
             auto& lv = vertices_for_component(cv);
@@ -1006,9 +1047,15 @@ public:
 
             // 2d. There is no longer a cu component.
             vertices_for_component_.erase(cu);
-        }
 
-        return e;
+            assert(same_component(u,v));
+            assert(same_component2(u,v));
+
+            assert(size_of_component2(u) == newsize);
+            assert(size_of_component2(v) == newsize);
+            assert(size_of_component(cv) == newsize);
+            return e;
+        }
     }
 
     bool is_tree_edge(const edge& e) const
@@ -1245,6 +1292,11 @@ public:
 };
 
 treap_forest<edge> dynamic_graph::F;
+
+string dynamic_graph::show_tour(euler_tour_node_t node) const
+{
+    return F.show_treap(node);
+}
 
 bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
 {
@@ -2458,24 +2510,6 @@ inline vector<const node_t *> vec_ptr_to_anc(const node_t * des, const node_t * 
 
 int main(int argc, char *argv[])
 {
-    treap_forest<int> F;
-    treap_node<int>* treap = nullptr;
-
-    vector<treap_node<int>*> nodes;
-    for(int i=0;i<20; i++)
-    {
-        treap = F.insert(treap, tree_dir::right, i);
-        nodes.push_back(treap);
-    }
-
-    F.show_treap(treap);
-
-    F.make_first(nodes[6]);
-
-    F.show_treap(treap);
-
-    exit(0);
-
     try {
         // 1. Parse command line arguments
         variables_map args = parse_cmd_line(argc,argv);
