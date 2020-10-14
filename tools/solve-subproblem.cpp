@@ -793,6 +793,10 @@ class dynamic_graph
 
     static treap_forest<edge> F;
 
+    typedef treap_node<edge>* euler_tour_node_t;
+
+    typedef const treap_node<edge>* const_euler_tour_node_t;
+
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
 
@@ -861,6 +865,17 @@ public:
         int cv = component_for_vertex(v);
 
         return (cu == cv);
+    }
+
+    euler_tour_node_t to_euler_tour_node(const optional<Edge> E) const
+    {
+        if (E)
+        {
+            edge e{source(*E),target(*E)};
+            return edge_info.at(e).euler_tour_node;
+        }
+        else
+            return nullptr;
     }
 
     optional<Edge> some_edge_from(Vertex u) const
