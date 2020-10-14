@@ -732,15 +732,15 @@ template<typename T> void hash_combine(size_t & seed, T const& v)
 
 struct edge
 {
-    int v1;
-    int v2;
+    long unsigned int v1;
+    long unsigned int v2;
 public:
-    int source() const {return v1;}
-    int target() const {return v2;}
+    long unsigned int source() const {return v1;}
+    long unsigned int target() const {return v2;}
 
     bool operator==(const edge& e2) const { return v1 == e2.v1 and v2 == e2.v2;}
 
-    edge(int x1, int x2)
+    edge(long unsigned int x1, long unsigned int x2)
         :v1(x1),v2(x2)
         {
             if (v1 > v2) std::swap(v1,v2);
@@ -783,6 +783,8 @@ class dynamic_graph
 
     // Probably this should be an edge property.
     robin_hood::unordered_map<edge, edge_info_t> edge_info;
+
+    static treap_forest<pair<int,int>> F;
 
 public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
@@ -852,6 +854,53 @@ public:
         int cv = component_for_vertex(v);
 
         return (cu == cv);
+    }
+
+    optional<Edge> some_edge_from(Vertex u) const
+    {
+        for(auto [e, e_end] = out_edges(u); e != e_end; e++)
+            return *e;
+        return {};
+    }
+
+    optional<Edge> some_edge_to(Vertex u) const
+    {
+        for(auto [e, e_end] = in_edges(u); e != e_end; e++)
+            return *e;
+        return {};
+    }
+
+    optional<Edge> some_edge_from_to(Vertex u) const
+    {
+        if (auto e = some_edge_from(u))
+            return e;
+        else
+            return some_edge_to(u);
+    }
+    
+
+    bool same_component2(Vertex u, Vertex v) const
+    {
+        // 1. If u and v are the same vertex, then return true.
+        if (u == v) return true;
+
+        auto E_u = some_edge_from_to(u);
+        if (not E_u) return false;
+        edge e_u{source(*E_u),target(*E_u)};
+
+        auto E_v = some_edge_from_to(v);
+        if (not E_v) return false;
+        edge e_v{source(*E_v),target(*E_v)};
+
+        auto node_u = edge_info.at(e_u).euler_tour_node;
+
+        auto node_v = edge_info.at(e_v).euler_tour_node;
+
+        // If they are both nullptr, that doesn't mean they are in the same component!
+        assert(node_u);
+        assert(node_v);
+
+        return F.root(node_u) == F.root(node_v);
     }
 
     bool component_smaller(Vertex u, Vertex v) const
@@ -1139,6 +1188,7 @@ public:
     }
 };
 
+treap_forest<pair<int,int>> dynamic_graph::F;
 
 bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
 {
