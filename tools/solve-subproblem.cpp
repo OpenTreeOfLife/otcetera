@@ -938,14 +938,10 @@ public:
 
     int size_of_component2(Vertex u) const
     {
-        if (auto E = some_edge_from(u))
-        {
-            auto e = edge(source(*E),target(*E));
-            auto n_edges = F.root(edge_info.at(e).euler_tour_node)->n_subtree_nodes/2;
-            return (n_edges+1);
-        }
-        else
-            return 1;
+        auto e = to_euler_tour_node(some_edge_from(u));
+        auto n_edges = F.size_of_component(e);
+        assert(n_edges%2 == 0);
+        return 1 + (n_edges/2);
     }
 
     bool component_smaller2(Vertex u, Vertex v) const
