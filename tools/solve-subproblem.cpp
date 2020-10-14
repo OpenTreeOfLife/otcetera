@@ -918,6 +918,23 @@ public:
         return size_of_component(cu) < size_of_component(cv);
     }
 
+    int size_of_component2(Vertex u) const
+    {
+        if (auto E = some_edge_from(u))
+        {
+            auto e = edge(source(*E),target(*E));
+            auto n_edges = F.root(edge_info.at(e).euler_tour_node)->n_subtree_nodes/2;
+            return (n_edges+1);
+        }
+        else
+            return 1;
+    }
+
+    bool component_smaller2(Vertex u, Vertex v) const
+    {
+        return size_of_component2(u) < size_of_component2(v);
+    }
+
     auto add_edge(Vertex u, Vertex v)
     {
         // 1. Check that we don't already have an edge (u,v) or (v,u)
@@ -952,6 +969,10 @@ public:
             auto node2 = F.insert(nullptr, tree_dir::right, E2);
             edge_info.insert({E1, edge_info_t{tree_edge, node1}});
             edge_info.insert({E2, edge_info_t{tree_edge, node2}});
+
+            assert(size_of_component(u) == size_of_component2(u));
+            assert(size_of_component(v) == size_of_component2(v));
+            assert(component_smaller(v,u) == component_smaller2(v,u));
 
             // 2a. Ensure that cu is smaller, or equal.
             if (component_smaller(v,u)) std::swap(u,v);
