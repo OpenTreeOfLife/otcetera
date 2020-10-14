@@ -507,6 +507,14 @@ struct treap_forest
         return v1;
     }
 
+    int size_of_component(node_t node)
+    {
+        if (node)
+            return root(node)->n_subtree_nodes;
+        else
+            return 0;
+    }
+
     std::uint64_t directions_to_root(node_t node)
     {
         std::uint64_t path = 0;
