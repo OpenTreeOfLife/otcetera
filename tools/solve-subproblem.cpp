@@ -914,6 +914,17 @@ public:
             return nullptr;
     }
 
+    euler_tour_node_t to_reverse_euler_tour_node(const optional<Edge> E) const
+    {
+        if (E)
+        {
+            edge e{target(*E),source(*E)};
+            return edge_info.at(e).euler_tour_node;
+        }
+        else
+            return nullptr;
+    }
+
     optional<Edge> some_edge_from(Vertex u) const
     {
         for(auto [e, e_end] = out_edges(u); e != e_end; e++)
@@ -935,6 +946,22 @@ public:
         else
             return some_edge_to(u);
     }
+
+    euler_tour_node_t some_node_to(Vertex v) const
+    {
+        if (auto E = some_edge_to(v))
+            return to_euler_tour_node(*E);
+        else
+            return to_reverse_euler_tour_node(some_edge_from(v));
+    }
+
+    euler_tour_node_t some_node_from(Vertex v) const
+    {
+        if (auto E = some_edge_from(v))
+            return to_euler_tour_node(*E);
+        else
+            return to_reverse_euler_tour_node(some_edge_to(v));
+    }
     
     bool same_component2(Vertex u, Vertex v) const
     {
@@ -942,9 +969,9 @@ public:
         if (u == v) return true;
 
         // 2. Get pointers to Euler tour entries for each component
-        auto node_u = to_euler_tour_node(some_edge_to(u));
+        auto node_u = some_node_to(u);
 
-        auto node_v = to_euler_tour_node(some_edge_to(v));
+        auto node_v = some_node_to(v);
 
         // 3. If vertex has no Euler tour entries, then that vertex has no edges, and is in its own unique component.
         if (not node_u or not node_v)
@@ -966,7 +993,7 @@ public:
 
     int size_of_component2(Vertex u) const
     {
-        auto e = to_euler_tour_node(some_edge_from(u));
+        auto e = some_node_from(u);
         auto n_edges = F.size_of_component(e);
         assert(n_edges%2 == 0);
         return 1 + (n_edges/2);
@@ -1013,10 +1040,10 @@ public:
         // 3b. Merge the components if they are different
         else
         {
-            auto Eu = to_euler_tour_node(some_edge_from(u));
+            auto Eu = some_node_from(u);
             F.make_first(Eu);
 
-            auto Ev = to_euler_tour_node(some_edge_from(v));
+            auto Ev = some_node_from(v);
             F.make_first(Ev);
 
             auto e = boost::add_edge(u,v,G);
