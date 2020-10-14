@@ -654,6 +654,8 @@ public:
 
         right = root(right);
 
+        assert(left != right);
+
         // 3. Make a dummy tree node
         treap_node<V> _dummy({}, min_priority);
         node_t dummy = &_dummy;
