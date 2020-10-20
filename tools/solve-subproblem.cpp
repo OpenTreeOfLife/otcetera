@@ -1117,6 +1117,31 @@ public:
         return is_tree_edge(source(e), target(e));
     }
 
+    vector<Vertex> find_spanning_tree_for_vertex2(Vertex u) const
+    {
+        auto node = some_node_from(u);
+        if (not node)
+            return {u};
+
+        vector<Vertex> vertices;
+
+        // For each edge in the tour, consider its target node.
+        for(node = F.first_in_tour(node); node; node = F.next(node))
+        {
+            auto v = node->value.target();
+            if (not flags(v))
+            {
+                flags(v) = 1;
+                vertices.push_back(v);
+            }
+        }
+
+        for(auto& v: vertices)
+            flags(v) = 0;
+
+        return vertices;
+    }
+
     vector<Vertex> find_spanning_tree_for_vertex(Vertex u) const
     {
         vector<Vertex> nodes;
@@ -1289,6 +1314,8 @@ public:
         if (was_tree_edge)
         {
             auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
+            auto spanning_tree_for_u2 = find_spanning_tree_for_vertex2(u);
+            assert(spanning_tree_for_u.size() == spanning_tree_for_u2.size());
             auto spanning_tree_for_v = find_spanning_tree_for_vertex(v);
             assert(spanning_tree_for_u.size() + spanning_tree_for_v.size() == vertices_for_component(c1).size());
 
