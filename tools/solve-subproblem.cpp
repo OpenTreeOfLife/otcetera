@@ -1000,6 +1000,28 @@ public:
         return size_of_component2(u) < size_of_component2(v);
     }
 
+    void add_tree_edge(Vertex u, Vertex v)
+    {
+        edge E1(u,v);
+        edge E2(v,u);
+        assert(not edge_info.count(E1));
+        assert(not edge_info.count(E2));
+
+        // Finding Eu and Ev has to happen before we add the (u,v) edge to the graph.
+        auto Eu = some_node_from(u);
+        F.make_first(Eu);
+
+        auto Ev = some_node_from(v);
+        F.make_first(Ev);
+
+        auto node_uv = F.insert(nullptr, tree_dir::right, E1);
+        auto node_vu = F.insert(nullptr, tree_dir::right, E2);
+        edge_info.insert({E1, edge_info_t{tree_edge, node_uv}});
+        edge_info.insert({E2, edge_info_t{tree_edge, node_vu}});
+
+        auto Euv = F.join(F.join(F.join(Eu,node_uv),Ev), node_vu);
+    }
+
     auto add_edge(Vertex u, Vertex v)
     {
         // 1. Check that we don't already have an edge (u,v) or (v,u)
@@ -1016,11 +1038,6 @@ public:
         bool same_comp2 = same_component2(u,v);
         assert(same_comp == same_comp2);
 
-        edge E1(u,v);
-        edge E2(v,u);
-        assert(not edge_info.count(E1));
-        assert(not edge_info.count(E2));
-
         assert(size_of_component(component_for_vertex(u)) == size_of_component2(u));
         assert(size_of_component(component_for_vertex(v)) == size_of_component2(v));
         assert(component_smaller(v,u) == component_smaller2(v,u));
@@ -1028,6 +1045,11 @@ public:
         // 3a. Add a non-tree edge if both vertices in same component
         if (same_comp)
         {
+            edge E1(u,v);
+            edge E2(v,u);
+            assert(not edge_info.count(E1));
+            assert(not edge_info.count(E2));
+
             edge_info.insert({E1, edge_info_t{non_tree_edge,nullptr}});
             edge_info.insert({E2, edge_info_t{non_tree_edge,nullptr}});
             auto e = boost::add_edge(u,v,G);
@@ -1036,22 +1058,13 @@ public:
         // 3b. Merge the components if they are different
         else
         {
-            auto Eu = some_node_from(u);
-            F.make_first(Eu);
-
-            auto Ev = some_node_from(v);
-            F.make_first(Ev);
+            // Join the two euler tour paths.
+            add_tree_edge(u,v);
 
             auto e = boost::add_edge(u,v,G);
-            auto node_uv = F.insert(nullptr, tree_dir::right, E1);
-            auto node_vu = F.insert(nullptr, tree_dir::right, E2);
-            edge_info.insert({E1, edge_info_t{tree_edge, node_uv}});
-            edge_info.insert({E2, edge_info_t{tree_edge, node_vu}});
 
             // 2a. Ensure that cu is smaller, or equal.
             if (component_smaller(v,u)) std::swap(u,v);
-
-            auto Euv = F.join(F.join(F.join(Eu,node_uv),Ev), node_vu);
 
             int cu = component_for_vertex(u);
             int cv = component_for_vertex(v);
