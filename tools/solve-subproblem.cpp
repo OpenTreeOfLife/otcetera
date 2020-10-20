@@ -1152,6 +1152,28 @@ public:
         return nodes;
     }
 
+    pair<euler_tour_node_t, euler_tour_node_t>
+    remove_tree_edge(Vertex u, Vertex v)
+    {
+        edge edge_uv(u,v);
+        edge edge_vu(v,u);
+        auto node_uv = edge_info.at(edge_uv).euler_tour_node;
+        auto node_vu = edge_info.at(edge_vu).euler_tour_node;
+        assert(node_uv);
+        assert(node_vu);
+
+        F.make_first(node_uv);
+        auto [Ev,Eu] =  F.split(node_vu, tree_dir::left);
+
+        Ev = F.remove(node_uv);
+        Eu = F.remove(node_vu);
+
+        edge_info.erase(edge_uv);
+        edge_info.erase(edge_vu);
+
+        return {Eu,Ev};
+    }
+
     // if the edge is a non-tree edge:
     //    we don't have to do anything
     // else
