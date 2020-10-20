@@ -964,7 +964,7 @@ public:
             return to_reverse_euler_tour_node(some_tree_edge_to(v));
     }
     
-    bool same_component2(Vertex u, Vertex v) const
+    bool same_spanning_tree(Vertex u, Vertex v) const
     {
         // 1. If u and v are the same vertex, then return true.
         if (u == v) return true;
@@ -1041,7 +1041,7 @@ public:
         // 2. If the vertices are in different components, it is a tree edge.
         //    Otherwise, it is a non-tree edge.
         bool same_comp = same_component(u,v);
-        bool same_comp2 = same_component2(u,v);
+        bool same_comp2 = same_spanning_tree(u,v);
         assert(same_comp == same_comp2);
 
         assert(size_of_component(component_for_vertex(u)) == size_of_component2(u));
@@ -1091,7 +1091,7 @@ public:
             vertices_for_component_.erase(cu);
 
             assert(same_component(u,v));
-            assert(same_component2(u,v));
+            assert(same_spanning_tree(u,v));
 
             assert(size_of_component2(u) == newsize);
             assert(size_of_component2(v) == newsize);
@@ -1193,7 +1193,7 @@ public:
         edge E(u,v);
         bool was_tree_edge = is_tree_edge(E);
 
-        assert(same_component2(u,v));
+        assert(same_spanning_tree(u,v));
 
         if (was_tree_edge)
             remove_tree_edge(u,v);
