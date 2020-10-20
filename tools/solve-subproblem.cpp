@@ -927,42 +927,36 @@ public:
             return nullptr;
     }
 
-    optional<Edge> some_edge_from(Vertex u) const
+    optional<Edge> some_tree_edge_from(Vertex u) const
     {
         for(auto [e, e_end] = out_edges(u); e != e_end; e++)
-            return *e;
+            if (is_tree_edge(*e))
+                return *e;
         return {};
     }
 
-    optional<Edge> some_edge_to(Vertex u) const
+    optional<Edge> some_tree_edge_to(Vertex u) const
     {
         for(auto [e, e_end] = in_edges(u); e != e_end; e++)
-            return *e;
+            if (is_tree_edge(*e))
+                return *e;
         return {};
-    }
-
-    optional<Edge> some_edge_from_to(Vertex u) const
-    {
-        if (auto e = some_edge_from(u))
-            return e;
-        else
-            return some_edge_to(u);
     }
 
     euler_tour_node_t some_node_to(Vertex v) const
     {
-        if (auto E = some_edge_to(v))
+        if (auto E = some_tree_edge_to(v))
             return to_euler_tour_node(*E);
         else
-            return to_reverse_euler_tour_node(some_edge_from(v));
+            return to_reverse_euler_tour_node(some_tree_edge_from(v));
     }
 
     euler_tour_node_t some_node_from(Vertex v) const
     {
-        if (auto E = some_edge_from(v))
+        if (auto E = some_tree_edge_from(v))
             return to_euler_tour_node(*E);
         else
-            return to_reverse_euler_tour_node(some_edge_to(v));
+            return to_reverse_euler_tour_node(some_tree_edge_to(v));
     }
     
     bool same_component2(Vertex u, Vertex v) const
