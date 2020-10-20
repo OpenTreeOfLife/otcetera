@@ -1185,10 +1185,19 @@ public:
     // if the edge is a non-tree edge:
     //    we don't have to do anything
     // else
+    //    cut the tree edge
     //    find a replacement non-tree edge if one exists
     //    mark it as a tree edge
     bool remove_edge(Vertex u, Vertex v)
     {
+        edge E(u,v);
+        bool was_tree_edge = is_tree_edge(E);
+
+        assert(same_component2(u,v));
+
+        if (was_tree_edge)
+            remove_tree_edge(u,v);
+
         for(int v = 0; v < num_vertices(); v++)
             assert(flags(v) == 0);
 
@@ -1276,10 +1285,8 @@ public:
         for(int v = 0; v < num_vertices(); v++)
             assert(flags(v) == 0);
 
-        edge E(u,v);
-        bool was_tree_edge = true;
         optional<edge> connecting_tree_edge;
-        if (is_tree_edge(E))
+        if (was_tree_edge)
         {
             auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
             auto spanning_tree_for_v = find_spanning_tree_for_vertex(v);
@@ -1321,10 +1328,6 @@ public:
             for(auto& uu: spanning_tree_for_u)
                 flags(uu) = 0;
         }
-        else
-            was_tree_edge = false;
-        assert(edge_info.count(E));
-        edge_info.erase(E);
 
         // Quit here if we didn't split a component
         if (same_component)
@@ -1333,8 +1336,15 @@ public:
             if (was_tree_edge)
             {
                 assert(connecting_tree_edge);
-                assert(edge_info.at(*connecting_tree_edge).type == non_tree_edge);
-                edge_info.at(*connecting_tree_edge).type = tree_edge;
+                auto edge_wx = *connecting_tree_edge;
+
+                assert(edge_info.count(edge_wx));
+                assert(edge_info.count(edge_wx.reverse()));
+
+                auto w = edge_wx.source();
+                auto x = edge_wx.target();
+
+                add_tree_edge(w,x);
             }
             return false;
         }
