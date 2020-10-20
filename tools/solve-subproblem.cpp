@@ -1009,8 +1009,8 @@ public:
     {
         edge E1(u,v);
         edge E2(v,u);
-        assert(not edge_info.count(E1));
-        assert(not edge_info.count(E2));
+        assert(not edge_info.count(E1) or edge_info.at(E1).type == edge_type_t::non_tree_edge);
+        assert(not edge_info.count(E2) or edge_info.at(E2).type == edge_type_t::non_tree_edge);
 
         // Finding Eu and Ev has to happen before we add the (u,v) edge to the graph.
         auto Eu = some_node_from(u);
@@ -1021,8 +1021,9 @@ public:
 
         auto node_uv = F.insert(nullptr, tree_dir::right, E1);
         auto node_vu = F.insert(nullptr, tree_dir::right, E2);
-        edge_info.insert({E1, edge_info_t{tree_edge, node_uv}});
-        edge_info.insert({E2, edge_info_t{tree_edge, node_vu}});
+        // This overwrites any previous status.  Previously it might have been a non-tree edge.
+        edge_info[E1] = edge_info_t{tree_edge, node_uv};
+        edge_info[E2] = edge_info_t{tree_edge, node_vu};
 
         auto Euv = F.join(F.join(F.join(Eu,node_uv),Ev), node_vu);
     }
