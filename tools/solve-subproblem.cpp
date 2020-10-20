@@ -1156,6 +1156,7 @@ public:
     pair<euler_tour_node_t, euler_tour_node_t>
     remove_tree_edge(Vertex u, Vertex v)
     {
+        // 1. Find the nodes for (u,v) and (v,u) in the tour.
         edge edge_uv(u,v);
         edge edge_vu(v,u);
         auto node_uv = edge_info.at(edge_uv).euler_tour_node;
@@ -1163,12 +1164,18 @@ public:
         assert(node_uv);
         assert(node_vu);
 
+        // 2. Make the tour start at (u,v)
         F.make_first(node_uv);
+
+        // 3. Split into a tour beginning with (u,v) and a tour beginning with (v,u)
         auto [Ev,Eu] =  F.split(node_vu, tree_dir::left);
 
+        // 4a. Remove (u,v) to get the tour beginning and ending with v
         Ev = F.remove(node_uv);
+        // 4b. Remove (v,u) to get the tour beginning and ending with u
         Eu = F.remove(node_vu);
 
+        // 5. Remove edge annotations.
         edge_info.erase(edge_uv);
         edge_info.erase(edge_vu);
 
