@@ -587,7 +587,7 @@ public:
         return node;
     }
 
-    void isolate(node_t node)
+    node_t isolate(node_t node)
     {
         assert(node);
 
@@ -602,13 +602,16 @@ public:
 
         // 2. Unlink the node if it is not a leaf.
         auto parent = node->parent;
+        node_t other = parent;
         if (auto left = node->left)
         {
+            if (not parent) other = left;
             unlink(node, left, tree_dir::left);
             swap_subtrees(node, left);
         }
         else if (auto right = node->right)
         {
+            if (not parent) other = right;
             unlink(node, right, tree_dir::right);
             swap_subtrees(node, right);
         }
@@ -617,12 +620,14 @@ public:
 
         // 3. Update subtree nodes count
         update_subtree_nodes(parent);
+        return other;
     }
 
-    void remove(node_t node)
+    node_t remove(node_t node)
     {
-        isolate(node);
+        auto other = isolate(node);
         delete node;
+        return other;
     }
 
     pair<node_t,node_t> split(node_t node, tree_dir dir)
