@@ -1597,7 +1597,7 @@ vector<const node_t*> leaves_not_under(const node_t* avoid)
 }
 
 
-unique_ptr<dynamic_graph>
+pair<unique_ptr<dynamic_graph>,vector<unique_ptr<connected_component_t>>>
 display_graph_from_profile(const vector<const node_t*>& profile)
 {
     unique_ptr<dynamic_graph> H(new dynamic_graph);
@@ -1619,6 +1619,7 @@ display_graph_from_profile(const vector<const node_t*>& profile)
                                     return Labels.at(id);
                                 };
 
+    // 1. Construct the display graph
     for(int i=0; i< profile.size(); i++)
     {
         // The root should be an actual root now (no parent).
@@ -1648,6 +1649,57 @@ display_graph_from_profile(const vector<const node_t*>& profile)
         }
     }
 
+    // 2. Construct the Y_inits
+
+    // 2a. Function to find which component should contain a particular tree root.
+    vector<unique_ptr<connected_component_t>> Y_inits;
+    auto find_component = [&](Vertex u) -> optional<int>
+    {
+        for(int i=0;i<Y_inits.size();i++)
+        {
+            auto& Y_init = Y_inits[i];
+
+            // 1. Find a vertex in the component
+            optional<Vertex> v;
+            for(auto& [tree_index,vertices]: Y_init->marked_vertices_for_tree)
+            {
+                assert(not vertices.empty());
+                v = *vertices.begin();
+                break;
+            }
+            assert(v);
+
+            // 2. If u is connected to v, then u is in component i.
+            if (H->same_spanning_tree(u, *v))
+                return i;
+        }
+        return {};
+    };
+
+    // 2b. Find the component for each tree
+    vector<int> component_for_tree;
+    for(int i=0; i< profile.size(); i++)
+    {
+        auto root_vertex = node_to_vertex.at(profile[i]);
+        auto component_index = find_component(root_vertex);
+        if (not component_index)
+        {
+            component_index = Y_inits.size();
+            Y_inits.push_back(unique_ptr<connected_component_t>(new connected_component_t(&*H)));
+        }
+        Y_inits[*component_index]->insert_marked_vertex(root_vertex);
+        component_for_tree.push_back( *component_index );
+    }
+
+    // 2c. Assign each label to a component
+    for(auto& [ottid,vertex]: Labels)
+    {
+        auto c = find_component(vertex);
+        assert(c);
+        Y_inits[*c]->count++;
+    }
+
+    
     LOG(DEBUG)<<"Labels";
     for(auto [id,_]: Labels)
     {
@@ -1655,37 +1707,8 @@ display_graph_from_profile(const vector<const node_t*>& profile)
     }
     LOG(DEBUG)<<"";
 
-    return H;
+    return pair{std::move(H),std::move(Y_inits)};
 }
-
-vector<unique_ptr<connected_component_t>> get_connected_components(dynamic_graph& H)
-{
-    // The paper says that there is initially only one connected component, but
-    // actually there could be more.
-    vector<unique_ptr<connected_component_t>> Y_inits;
-
-    for(auto& [c, vertices]: H.vertices_for_components())
-    {
-        unique_ptr<connected_component_t> Y_init(new connected_component_t(&H));
-
-        for(auto v: vertices)
-        {
-            if (H.in_degree(v) == 0)
-                Y_init->insert_marked_vertex(v);
-            if (H.out_degree(v) == 0)
-            {
-                assert(H.vertex_info(v).label);
-                Y_init->count++;
-            }
-        }
-
-        // Find the number of labels in this component
-        Y_inits.push_back(std::move(Y_init));
-    }
-
-    return Y_inits;
-}
-
 
 // Walk the component Y2 containing node. Move marked nodes from Y1 to Y2.
 void split_component(connected_component_t* Y1, connected_component_t* Y2, Vertex node1)
@@ -1806,8 +1829,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 //FIXME: info_for_vertex should be replaced with O(1)-lookup vertex attributes.
 
 // L1. Construct display graph H_P(U_init)
-    auto H = display_graph_from_profile(profile);
-    auto Y_inits = get_connected_components(*H);
+    auto [H, Y_inits] = display_graph_from_profile(profile);
 
 // L2.  ENQUEUE(Q, (U_init, null) )
     for(auto& Y_init: Y_inits)
