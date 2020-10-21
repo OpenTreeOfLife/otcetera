@@ -2410,12 +2410,59 @@ vector<const node_t*> add_node_remove_children(const vector<const node_t*>& node
         if (node->get_parent() != focal_node)
             nodes2.push_back(node);
 
-    assert(nodes.size() - nodes2.size() == non_leaf_children(focal_node));
-
     nodes2.push_back(focal_node);
     return nodes2;
 }
 
+node_t* copy_subtree(const node_t* subtree)
+{
+    // 1. Copy all the nodes and record the correspondence.
+    std::unordered_map<const node_t*, node_t*> node_map;
+    for(auto nd: iter_post_n_const(*subtree))
+    {
+        auto nd2 = new node_t(nullptr);
+
+        if (nd->has_ott_id())
+            nd2->set_ott_id(nd->get_ott_id());
+
+        if (nd->get_name().size())
+            nd2->set_name(nd->get_name());
+
+        node_map.insert({nd, nd2});
+    }
+
+    // 2. Link corresponding nodes to their corresponding parents
+    for(auto& [nd,nd2]: node_map)
+    {
+        auto p = nd->get_parent();
+        auto p2_it = node_map.find(p);
+
+        if (p2_it == node_map.end())
+        {
+            assert(nd == subtree);
+        }
+        else
+        {
+            auto p2 = p2_it->second;
+            p2->add_child(nd2);
+        }
+    }
+
+    // 3. Return the node corresponding to the top of the subtree
+    return node_map.at(subtree);
+}
+
+unique_ptr<Tree_t> merge_subtrees(const vector<const node_t*>& subtree_nodes)
+{
+    assert(not subtree_nodes.empty());
+
+    auto root = new node_t(nullptr);
+
+    for(auto node: subtree_nodes)
+        root->add_child(copy_subtree(node));
+
+    return unique_ptr<Tree_t>(new Tree_t(root));
+}
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
@@ -2460,13 +2507,21 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             return true;
         };
     vector<const node_t*> consistent_trees;
-    auto remove_split_if_inconsistent = [&](auto focal_node, vector<const node_t*>& consistent_nodes)
+    auto remove_split_if_inconsistent = [&](auto focal_node, vector<const node_t*>& consistent_nodes, int nl)
                                         {
                                             // 1. Append the focal node and remove its descendants. There should only have DIRECT descendants.
                                             auto consistent_nodes2 = add_node_remove_children(consistent_nodes, focal_node);
 
-                                            // 2. Append consistent_trees + consistent_nodes2.
-                                            auto tree = BUILD_ST( append(consistent_trees, consistent_nodes2) );
+                                            // 2. This is a single tree containing all checked and puried subtrees of the current tree, PLUS the focal node.
+                                            auto current_tree = merge_subtrees(consistent_nodes2);
+                                            assert(n_leaves(*current_tree) == nl);
+                                            // This tree will be destroyed at the end of this routine.
+
+                                            // 3. Check compatibility
+                                            consistent_trees.push_back(current_tree->get_root());
+                                            auto tree = BUILD_ST( consistent_trees );
+                                            consistent_trees.pop_back();
+
                                             if (not tree)
                                                 collapse_split_and_del_node(focal_node);
                                             else
@@ -2513,15 +2568,24 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             }
         } else {
             int consistent_count = 0;
+
             vector<node_t*> nodes_to_check;
+            vector<const node_t*> consistent_nodes;
+            // The POST order here means that we always visit a node after all of its children and before any of its ancestors.
+            // Therefore we consistent_nodes will always contain all the tips of this tree, if we use add_node_remove_children( ).
             for(auto nd: iter_post(*tree))
-                if (not nd->is_tip() and nd != root)
+            {
+                if (nd == root) continue;
+
+                if (nd->is_tip())
+                    consistent_nodes.push_back(nd);
+                else
                     nodes_to_check.push_back(nd);
+            }
 
             // There are sibling subtrees that have been checked before us.
             // When checking consistency we need to include these.
-            vector<const node_t*> consistent_nodes;
-
+            int nl = n_leaves(*tree);
             for(auto nd: nodes_to_check)
             {
                 const auto descendants = remap(nd->get_data().des_ids);
@@ -2530,7 +2594,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 for(auto d: descendants)
                     LOG(DEBUG)<<"    "<<ids[d]<<"  ("<<d<<")";
 
-                bool is_consistent2 = (bool)remove_split_if_inconsistent(nd, consistent_nodes);
+                bool is_consistent2 = (bool)remove_split_if_inconsistent(nd, consistent_nodes,nl);
                 assert(is_consistent == is_consistent2);
                 if (is_consistent != is_consistent2)
                     throw OTCError() << "is_consistent != is_consistent2";
