@@ -2509,10 +2509,11 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     vector<const node_t*> consistent_trees;
     auto remove_split_if_inconsistent = [&](auto focal_node, vector<const node_t*>& consistent_nodes, int nl)
                                         {
-                                            // 1. Append the focal node and remove its descendants. There should only have DIRECT descendants.
+                                            // 1. Append the focal node and remove its descendants.
+                                            //    There should only be DIRECT descendants on the `consistent_nodes` list.
                                             auto consistent_nodes2 = add_node_remove_children(consistent_nodes, focal_node);
 
-                                            // 2. This is a single tree containing all checked and puried subtrees of the current tree, PLUS the focal node.
+                                            // 2. This is a single tree containing all checked and purified subtrees of the current tree, PLUS the focal node.
                                             auto current_tree = merge_subtrees(consistent_nodes2);
                                             assert(n_leaves(*current_tree) == nl);
                                             // This tree will be destroyed at the end of this routine.
