@@ -877,22 +877,6 @@ public:
 
     Vertex target(Edge e) const {return boost::target(e,G);}
 
-    int in_degree(Vertex v) const
-    {
-        int count = 0;
-        for(auto [e, e_end] = in_edges(v); e != e_end; e++)
-            count++;
-        return count;
-    }
-
-    int out_degree(Vertex v) const
-    {
-        int count = 0;
-        for(auto [e, e_end] = out_edges(v); e != e_end; e++)
-            count++;
-        return count;
-    }
-
     bool is_tip_node(Vertex v) const;
 
     bool is_internal_node(Vertex v) const
@@ -1917,7 +1901,6 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             assert(U_i.size() == 1);
 
 // L17. | U = (U \ {v}) \cup Ch(v)
-            assert(H->in_degree(parent) == 0);
             for(auto [e,e_end]=  H->out_edges(parent); e != e_end; e++)
             {
                 auto child = H->target( *e );
