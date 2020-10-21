@@ -1621,13 +1621,12 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
     for(int i=0; i< profile.size(); i++)
     {
+        // The root should be an actual root now (no parent).
         auto root = profile[i];
+        assert(not root->get_parent());
 
         // FIXME!  How should we handle incertae sedis taxa?
 
-        /* If profile[i] is not actually the root of the tree, then the nodes below it do not include
-         * all the leaves.
-         */
         // Walk nodes in the subtree below profile[i] in pre-order (parent before child) so that we can connect children to parents.
         for(auto nd: iter_pre_n_const(root))
         {
@@ -1647,40 +1646,6 @@ display_graph_from_profile(const vector<const node_t*>& profile)
             if (nd->is_tip())
                 H->add_edge(v, vertex_for_label(nd));
         }
-
-        auto root_vertex = node_to_vertex.at(root);
-
-
-        /* If profile[i] is not actually the root of the tree, then the nodes below it do not include
-         * all the leaves.
-         *
-         * In order to propertly represent exclude sets, we need to create vertices for tips that are NOT
-         * within the subtree of profile[i], and then connect all the tips AND the root of the subtree to 
-         * a fake root node.
-         */
-        auto other_leaves = leaves_not_under(root);
-        if (not other_leaves.empty())
-        {
-            auto fake_root = H->add_vertex();
-            H->vertex_info(fake_root).tree_index = i;
-
-            for(auto leaf_node: other_leaves)
-            {
-                // Create a vertex for the leaf
-                auto leaf_vertex = H->add_vertex();
-                H->vertex_info(leaf_vertex).tree_index = i;
-
-                // Mark the vertex as part of tree i
-                H->add_edge(fake_root, leaf_vertex);
-
-                // Connect the leaf to the vertex for its label
-                H->add_edge(leaf_vertex, vertex_for_label(leaf_node));
-            }
-
-            H->add_edge(fake_root, root_vertex);
-            root_vertex = fake_root;
-        }
-
     }
 
     LOG(DEBUG)<<"Labels";
