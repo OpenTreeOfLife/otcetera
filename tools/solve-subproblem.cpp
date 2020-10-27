@@ -730,10 +730,6 @@ public:
 
     mutable char flags;
 
-    int component_index;
-
-    std::list<Vertex>::iterator list_entry;
-
     bool is_marked() const {return component;}
     void unmark_node() {component = nullptr;}
     void mark_node(connected_component_t* c) {component = c;}
@@ -987,12 +983,6 @@ class dynamic_graph
 {
     Graph<vertex_info_t, edge_info_t> G;
 
-    map<int,list<Vertex>> vertices_for_component_;
-
-    int next_component = 0;
-
-    vector<vertex_info_t> info_for_vertex;
-
     static treap_forest<edge> F;
 
     typedef treap_node<edge>* euler_tour_node_t;
@@ -1008,25 +998,7 @@ public:
 
           edge_info_t& edge_info(Edge v)       {return G.edge_info(v);}
 
-    int new_component() {return next_component++;}
-
     char& flags(Vertex v) const {return vertex_info(v).flags;}
-
-    int n_components() const {return vertices_for_component_.size();}
-
-    int& component_for_vertex(Vertex v)       {return vertex_info(v).component_index;}
-
-    int  component_for_vertex(Vertex v) const {return vertex_info(v).component_index;}
-
-    const map<int,list<Vertex>>& vertices_for_components() const {return vertices_for_component_;}
-
-          map<int,list<Vertex>>& vertices_for_components()       {return vertices_for_component_;}
-
-    const list<Vertex>& vertices_for_component(int c) const {return vertices_for_component_.at(c);}
-
-          list<Vertex>& vertices_for_component(int c)       {return vertices_for_component_.at(c);}
-
-    int size_of_component(int c) const {return vertices_for_component(c).size();}
 
     auto& in_edges(Vertex v) const {return G.in_edges(v);}
 
@@ -1104,14 +1076,6 @@ public:
     }
 
     string show_tour(euler_tour_node_t node) const;
-
-    bool component_smaller(Vertex u, Vertex v) const
-    {
-        int cu = component_for_vertex(u);
-        int cv = component_for_vertex(v);
-
-        return size_of_component(cu) < size_of_component(cv);
-    }
 
     int size_of_component2(Vertex u) const
     {
@@ -1382,19 +1346,7 @@ bool dynamic_graph::is_tip_node(Vertex v) const
 
 Vertex dynamic_graph::add_vertex()
 {
-    auto v = G.add_vertex();
-    info_for_vertex.push_back({});
-    int c = new_component();
-    component_for_vertex(v) = c;
-    vertices_for_component_[c] = {v};
-    assert(component_for_vertex(v) == c);
-
-    vertex_info(v).list_entry = vertices_for_component_[c].begin();
-
-    assert(*vertex_info(v).list_entry == v);
-    assert(info_for_vertex.size() == num_vertices());
-
-    return v;
+    return G.add_vertex();
 }
 
 struct connected_component_t
