@@ -1025,9 +1025,9 @@ public:
     {
         // 1. Check that we don't already have an edge (u,v) or (v,u)
         {
-            auto [_,found] = boost::edge(u,v,G);
+            auto found = find_edge(u,v);
             assert(not found);
-            auto [_2,found2] = boost::edge(v,u,G);
+            auto found2 = find_edge(v,u);
             assert(not found2);
         }
 
