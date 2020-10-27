@@ -1435,11 +1435,14 @@ public:
             auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
             auto spanning_tree_for_u2 = find_spanning_tree_for_vertex2(u);
             assert(spanning_tree_for_u.size() == spanning_tree_for_u2.size());
+            assert(size_of_component2(u) == spanning_tree_for_u.size());
+
             auto spanning_tree_for_v = find_spanning_tree_for_vertex(v);
             assert(spanning_tree_for_u.size() + spanning_tree_for_v.size() == vertices_for_component(c1).size());
 
-            if (spanning_tree_for_u.size() > spanning_tree_for_v.size())
+            if (component_smaller2(v,u))
             {
+                assert(spanning_tree_for_v.size() < spanning_tree_for_u.size());
                 std::swap(u,v);
                 std::swap(spanning_tree_for_u, spanning_tree_for_v);
             }
