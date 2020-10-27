@@ -845,6 +845,14 @@ public:
 
           vertex_info_t& vertex_info(Vertex v)       {return info_for_vertex[v];}
 
+    optional<Edge> find_edge(Vertex u, Vertex v) const {
+        auto [e,found] = boost::edge(u,v,G);
+        if (found)
+            return e;
+        else
+            return {};
+    };
+
     int new_component() {return next_component++;}
 
     char& flags(Vertex v) const {return vertex_info(v).flags;}
@@ -983,12 +991,14 @@ public:
         return size_of_component2(u) < size_of_component2(v);
     }
 
-    void add_tree_edge(Vertex u, Vertex v)
+    Edge add_tree_edge(Vertex u, Vertex v)
     {
         edge E1(u,v);
         edge E2(v,u);
-        assert(not edge_info.count(E1) or edge_info.at(E1).type == edge_type_t::non_tree_edge);
-        assert(not edge_info.count(E2) or edge_info.at(E2).type == edge_type_t::non_tree_edge);
+        assert(not edge_info.count(E1));
+        assert(not edge_info.count(E2));
+        assert(not find_edge(u,v));
+        assert(not find_edge(v,u));
 
         // Finding Eu and Ev has to happen before we add the (u,v) edge to the graph.
         auto Eu = some_node_from(u);
@@ -997,6 +1007,9 @@ public:
         auto Ev = some_node_from(v);
         F.make_first(Ev);
 
+        auto [e,_] = boost::add_edge(u,v,G);
+        boost::add_edge(v,u,G);
+
         auto node_uv = F.insert(nullptr, tree_dir::right, E1);
         auto node_vu = F.insert(nullptr, tree_dir::right, E2);
         // This overwrites any previous status.  Previously it might have been a non-tree edge.
@@ -1004,9 +1017,11 @@ public:
         edge_info[E2] = edge_info_t{tree_edge, node_vu};
 
         auto Euv = F.join(F.join(F.join(Eu,node_uv),Ev), node_vu);
+
+        return e;
     }
 
-    auto add_edge(Vertex u, Vertex v)
+    Edge add_edge(Vertex u, Vertex v)
     {
         // 1. Check that we don't already have an edge (u,v) or (v,u)
         {
@@ -1031,23 +1046,18 @@ public:
         {
             edge E1(u,v);
             edge E2(v,u);
-            assert(not edge_info.count(E1));
-            assert(not edge_info.count(E2));
 
-            edge_info.insert({E1, edge_info_t{non_tree_edge,nullptr}});
-            edge_info.insert({E2, edge_info_t{non_tree_edge,nullptr}});
-            auto e = boost::add_edge(u,v,G);
-            auto e2 = boost::add_edge(v,u,G);
+            edge_info[E1] = edge_info_t{non_tree_edge,nullptr};
+            edge_info[E2] = edge_info_t{non_tree_edge,nullptr};
+            auto [e,_] = boost::add_edge(u,v,G);
+            boost::add_edge(v,u,G);
             return e;
         }
         // 3b. Merge the components if they are different
         else
         {
             // Join the two euler tour paths.
-            add_tree_edge(u,v);
-
-            auto e = boost::add_edge(u,v,G);
-            auto e2 = boost::add_edge(v,u,G);
+            auto e = add_tree_edge(u,v);
 
             // 2a. Ensure that cu is smaller, or equal.
             if (component_smaller(v,u)) std::swap(u,v);
@@ -1327,6 +1337,11 @@ public:
 
                 auto w = edge_wx.source();
                 auto x = edge_wx.target();
+
+                boost::remove_edge(w,x,G);
+                boost::remove_edge(x,w,G);
+                edge_info.erase(edge_wx);
+                edge_info.erase(edge_wx.reverse());
 
                 add_tree_edge(w,x);
             }
