@@ -844,16 +844,26 @@ private:
         Vertex source;
         Vertex target;
         Edge reverse;
-        bool is_alive = true;
-        EdgeInfo info;
+        optional<EdgeInfo> info;
+        bool is_alive() const {return info.has_value();}
+        void die() {info.reset();}
+        EdgeAttributes()
+        {
+            info = EdgeInfo();
+        }
     };
 
     struct VertexAttributes
     {
         std::vector<Edge> out_edges;
         std::vector<Edge> in_edges;
-        bool is_alive = true;
-        VertexInfo info;
+        optional<VertexInfo> info;
+        bool is_alive() const {return info.has_value();}
+        void die() {info.reset();}
+        VertexAttributes()
+        {
+            info = VertexInfo();
+        }
     };
 
     std::vector<VertexAttributes> Vertices;
@@ -890,15 +900,15 @@ public:
     Edge reverse(Edge e) const
     {
         assert(e < Edges.size());
-        assert(Edges[e].is_alive);
+        assert(Edges[e].is_alive());
         return Edges[e].reverse;
     }
 
-          VertexInfo& vertex_info(Vertex v)       {assert(Vertices[v].is_alive); return Vertices[v].info;}
-    const VertexInfo& vertex_info(Vertex v) const {assert(Vertices[v].is_alive); return Vertices[v].info;}
+          VertexInfo& vertex_info(Vertex v)       {assert(Vertices[v].info); return *Vertices[v].info;}
+    const VertexInfo& vertex_info(Vertex v) const {assert(Vertices[v].info); return *Vertices[v].info;}
 
-          EdgeInfo& edge_info(Edge e)       {assert(Edges[e].is_alive); return Edges[e].info;}
-    const EdgeInfo& edge_info(Edge e) const {assert(Edges[e].is_alive); return Edges[e].info;}
+          EdgeInfo& edge_info(Edge e)       {assert(Edges[e].info); return *Edges[e].info;}
+    const EdgeInfo& edge_info(Edge e) const {assert(Edges[e].info); return *Edges[e].info;}
 
     Vertex add_vertex()
     {
@@ -910,8 +920,8 @@ public:
 
     optional<Edge> find_edge(Vertex u, Vertex v) const
     {
-        assert(Vertices[u].is_alive);
-        assert(Vertices[v].is_alive);
+        assert(Vertices[u].is_alive());
+        assert(Vertices[v].is_alive());
         for(auto E: Vertices[u].out_edges)
             if (target(E) == v)
                 return E;
@@ -954,10 +964,10 @@ public:
         auto e1 = *e1_;
         auto e2 = reverse(e1);
 
-        assert(Edges[e1].is_alive);
-        assert(Edges[e2].is_alive);
-        Edges[e1].is_alive = false;
-        Edges[e2].is_alive = false;
+        assert(Edges[e1].is_alive());
+        assert(Edges[e2].is_alive());
+        Edges[e1].die();
+        Edges[e2].die();
 
         unordered_erase(Vertices[u].out_edges, e1);
         unordered_erase(Vertices[u].in_edges, e2);
