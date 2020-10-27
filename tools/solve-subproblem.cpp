@@ -1402,21 +1402,10 @@ bool semi_universal_position(const dynamic_graph& G, const set<Vertex>& vs)
 
 bool dynamic_graph::is_tip_node(Vertex v) const
 {
+    // If the node has a tree index and a label, then it is a tip node.
+    // If it has a label, but no tree index, then it is a label node.
     assert(vertex_info(v).tree_index);
-    auto [e, e_end] = out_edges(v);
-    
-    // We shouldn't have any out-degree-0 nodes.
-    assert(e != e_end);
-    auto f = e;
-    f++;
-    if (f == e_end)
-    {
-        // Degree-1 node
-        assert(vertex_info(boost::target(*e,G)).label);
-        return true;
-    }
-    else
-        return false;
+    return vertex_info(v).label.has_value();
 }
 
 Vertex dynamic_graph::add_vertex()
@@ -1539,8 +1528,12 @@ struct connected_component_t
         vector<OttId> labels;
         auto vs = vertices_in_component();
         for(auto v: vs)
-            if (auto l = G->vertex_info(v).label)
+            if (not G->vertex_info(v).tree_index.has_value())
+            {
+                auto l = G->vertex_info(v).label;
+                assert(l.has_value());
                 labels.push_back(*l);
+            }
         return labels;
     }
 
@@ -1629,7 +1622,11 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 
             // Add an edge from the node for the label to the tip
             if (nd->is_tip())
+            {
                 H->add_edge(v, vertex_for_label(nd));
+                H->vertex_info(v).label = nd->get_ott_id();
+                assert(H->vertex_info(v).label.has_value());
+            }
         }
     }
 
