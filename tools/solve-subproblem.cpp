@@ -1361,21 +1361,10 @@ public:
         G.remove_edge(u,v);
         assert(not same_spanning_tree(u,v));
 
-        optional<edge> connecting_tree_edge;
-        auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
-        auto spanning_tree_for_u2 = find_spanning_tree_for_vertex2(u);
-        assert(spanning_tree_for_u.size() == spanning_tree_for_u2.size());
-        assert(size_of_component2(u) == spanning_tree_for_u.size());
-
-        auto spanning_tree_for_v = find_spanning_tree_for_vertex(v);
-        assert(spanning_tree_for_u.size() + spanning_tree_for_v.size() == vertices_for_component(c1).size());
-
         if (component_smaller2(v,u))
-        {
-            assert(spanning_tree_for_v.size() < spanning_tree_for_u.size());
             std::swap(u,v);
-            std::swap(spanning_tree_for_u, spanning_tree_for_v);
-        }
+
+        auto spanning_tree_for_u = find_spanning_tree_for_vertex2(u);
 
         optional<Edge> connecting_tree_edge2;
         for(auto uu: spanning_tree_for_u)
