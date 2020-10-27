@@ -1486,14 +1486,10 @@ public:
             assert(not same_component);
         }
 
-        // Move vertices from the smaller group to a new component
-        if (i < from_u.size())
-            std::swap(from_u, from_v);
-
         int c2 = new_component();
         auto& nodes1 = vertices_for_component(c1);
         list<Vertex> nodes2;
-        for(auto uu: from_u)
+        for(auto uu: spanning_tree_for_u)
         {
             component_for_vertex(uu) = c2;
             auto it = vertex_info(uu).list_entry;
