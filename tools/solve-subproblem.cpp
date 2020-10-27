@@ -1189,36 +1189,7 @@ public:
         else
         {
             // Join the two euler tour paths.
-            auto e = add_tree_edge(u,v);
-            auto e2 = G.reverse(e);
-
-            // 2a. Ensure that cu is smaller, or equal.
-            if (component_smaller(v,u)) std::swap(u,v);
-
-            int cu = component_for_vertex(u);
-            int cv = component_for_vertex(v);
-
-            int newsize = size_of_component(cu)+size_of_component(cv);
-
-            auto& lu = vertices_for_component(cu);
-            auto& lv = vertices_for_component(cv);
-
-            // 2b. Mark all the vertices in cu as no being in cv
-            for(auto uu: lu)
-                component_for_vertex(uu) = cv;
-
-            // 2c. Move the vertex list from cu to the cv component.
-            lv.splice(lv.end(), lu);
-
-            // 2d. There is no longer a cu component.
-            vertices_for_component_.erase(cu);
-
-            assert(same_spanning_tree(u,v));
-
-            assert(size_of_component2(u) == newsize);
-            assert(size_of_component2(v) == newsize);
-            assert(size_of_component(cv) == newsize);
-            return e;
+            return add_tree_edge(u,v);
         }
     }
 
