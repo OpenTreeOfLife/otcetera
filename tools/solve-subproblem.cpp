@@ -1049,14 +1049,6 @@ public:
 
     Vertex add_vertex();
 
-    bool same_component(Vertex u, Vertex v) const
-    {
-        int cu = component_for_vertex(u);
-        int cv = component_for_vertex(v);
-
-        return (cu == cv);
-    }
-
     euler_tour_node_t to_euler_tour_node(const optional<Edge> E) const
     {
         if (E)
@@ -1175,13 +1167,7 @@ public:
 
         // 2. If the vertices are in different components, it is a tree edge.
         //    Otherwise, it is a non-tree edge.
-        bool same_comp = same_component(u,v);
-        bool same_comp2 = same_spanning_tree(u,v);
-        assert(same_comp == same_comp2);
-
-        assert(size_of_component(component_for_vertex(u)) == size_of_component2(u));
-        assert(size_of_component(component_for_vertex(v)) == size_of_component2(v));
-        assert(component_smaller(v,u) == component_smaller2(v,u));
+        bool same_comp = same_spanning_tree(u,v);
 
         // 3a. Add a non-tree edge if both vertices in same component
         if (same_comp)
@@ -1227,7 +1213,6 @@ public:
             // 2d. There is no longer a cu component.
             vertices_for_component_.erase(cu);
 
-            assert(same_component(u,v));
             assert(same_spanning_tree(u,v));
 
             assert(size_of_component2(u) == newsize);
