@@ -934,18 +934,12 @@ public:
 
     euler_tour_node_t some_node_to(Vertex v) const
     {
-        if (auto E = some_tree_edge_to(v))
-            return to_euler_tour_node(*E);
-        else
-            return to_reverse_euler_tour_node(some_tree_edge_from(v));
+        return to_euler_tour_node( some_tree_edge_to(v) );
     }
 
     euler_tour_node_t some_node_from(Vertex v) const
     {
-        if (auto E = some_tree_edge_from(v))
-            return to_euler_tour_node(*E);
-        else
-            return to_reverse_euler_tour_node(some_tree_edge_to(v));
+        return to_euler_tour_node( some_tree_edge_from(v) );
     }
     
     bool same_spanning_tree(Vertex u, Vertex v) const
@@ -1043,6 +1037,7 @@ public:
             edge_info.insert({E1, edge_info_t{non_tree_edge,nullptr}});
             edge_info.insert({E2, edge_info_t{non_tree_edge,nullptr}});
             auto e = boost::add_edge(u,v,G);
+            auto e2 = boost::add_edge(v,u,G);
             return e;
         }
         // 3b. Merge the components if they are different
@@ -1052,6 +1047,7 @@ public:
             add_tree_edge(u,v);
 
             auto e = boost::add_edge(u,v,G);
+            auto e2 = boost::add_edge(v,u,G);
 
             // 2a. Ensure that cu is smaller, or equal.
             if (component_smaller(v,u)) std::swap(u,v);
@@ -1147,10 +1143,6 @@ public:
         {
             auto uu = nodes[i];
 
-            for(auto [e, e_end] = in_edges(uu); e != e_end; e++)
-                if (is_tree_edge(*e))
-                    try_add( source(*e) );
-
             for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
                 if (is_tree_edge(*e))
                     try_add( target(*e) );
@@ -1212,6 +1204,7 @@ public:
 
         int c1 = component_for_vertex(u);
         boost::remove_edge(u,v,G);
+        boost::remove_edge(v,u,G);
         vector<Vertex> from_u;
         vector<Vertex> from_v;
 
@@ -1255,12 +1248,6 @@ public:
         {
             // Check 1 entry from u
             auto uu = from_u[i++];
-            for(auto [e, e_end] = in_edges(uu); e != e_end; e++)
-                if (try_add_u( source( *e ) ))
-                {
-                    same_component = true;
-                    break;
-                }
             for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
                 if (try_add_u( target( *e ) ))
                 {
@@ -1270,12 +1257,6 @@ public:
 
             // Check 1 entry from v
             auto vv = from_v[j++];
-            for(auto [e, e_end] = in_edges(vv); e != e_end; e++)
-                if (try_add_v( source( *e ) ))
-                {
-                    same_component = true;
-                    break;
-                }
             for(auto [e, e_end] = out_edges(vv); e != e_end; e++)
                 if (try_add_v( target( *e ) ))
                 {
@@ -1318,14 +1299,6 @@ public:
 
             for(auto& uu: spanning_tree_for_u)
             {
-                for(auto [e, e_end] = in_edges(uu); e != e_end; e++)
-                {
-                    if (not is_tree_edge(*e) and flags(source(*e)) == 0)
-                    {
-                        connecting_tree_edge = edge(source(*e), target(*e));
-                        break;
-                    }
-                }
                 for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
                 {
                     if (not is_tree_edge(*e) and flags(target(*e)) == 0)
@@ -1500,15 +1473,6 @@ struct connected_component_t
 
         for(int i=0;i<vertices.size();i++)
         {
-            for(auto [e, e_end] = G->in_edges(vertices[i]); e != e_end; e++)
-            {
-                auto v = G->source( *e );
-                if (not visited.count(v))
-                {
-                    visited.insert(v);
-                    vertices.push_back(v);
-                }
-            }
             for(auto [e, e_end] = G->out_edges(vertices[i]); e != e_end; e++)
             {
                 auto v = G->target( *e );
