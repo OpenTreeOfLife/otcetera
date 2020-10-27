@@ -12,12 +12,8 @@
 #include <queue>
 #include <sstream>
 #include <boost/filesystem.hpp>
-#include "robin_hood.h"
 #include <random>
 #include <limits>
-
-#include <boost/graph/graph_traits.hpp>
-#include <boost/graph/adjacency_list.hpp>
 
 #include <optional>
 
@@ -65,11 +61,6 @@
  */
 
 
-
-// bidirectionalS indicates a DIRECTED graph where we can iterate over both in_edges and out_edges
-typedef boost::adjacency_list< boost::vecS, boost::vecS, boost::bidirectionalS> Graph; 
-typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
-typedef boost::graph_traits<Graph>::edge_descriptor Edge;
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -717,6 +708,9 @@ string treap_forest<V>::show_treap(treap_forest<V>::node_t node)
     return o.str();
 }
 
+typedef long unsigned int Vertex;
+typedef long unsigned int Edge;
+
 class vertex_info_t
 {
     // We store a pointer to the component for every marked node.
@@ -820,19 +814,174 @@ struct edge_info_t
     treap_node<edge>* euler_tour_node;
 };
 
+template<typename T>
+optional<int> find_first_index(const std::vector<T>& v, const T& t)
+{
+    for(int i=0;i<v.size();i++)
+        if (v[i] == t)
+            return i;
+    return {};
+}
+
+template<typename T>
+void unordered_erase(std::vector<T>& v, const T& t)
+{
+    auto index = find_first_index(v,t);
+    assert(index);
+    int i = *index;
+    if (i + 1 < v.size())
+        std::swap(v[i], v.back());
+    v.pop_back();
+}
+
+template <typename VertexInfo, typename EdgeInfo>
+class Graph
+{
+public:
+private:
+    struct EdgeAttributes
+    {
+        Vertex source;
+        Vertex target;
+        Edge reverse;
+        bool is_alive = true;
+        EdgeInfo info;
+    };
+
+    struct VertexAttributes
+    {
+        std::vector<Edge> out_edges;
+        std::vector<Edge> in_edges;
+        bool is_alive = true;
+        VertexInfo info;
+    };
+
+    std::vector<VertexAttributes> Vertices;
+    std::vector<EdgeAttributes> Edges;
+    int n_vertices = 0;
+    int n_edges = 0;
+
+public:
+
+    Vertex source(Edge e) const {return Edges[e].source;}
+    Vertex target(Edge e) const {return Edges[e].target;}
+
+    int num_edges() const {return n_edges;}
+    int num_vertices() const {return n_vertices;}
+
+    const std::vector<Edge>& out_edges(Vertex u) const
+    {
+        return Vertices[u].out_edges;
+    }
+
+    const std::vector<Edge>& in_edges(Vertex u) const
+    {
+        return Vertices[u].in_edges;
+    }
+
+    vector<Vertex> neighbors(Vertex u) const
+    {
+        vector<Vertex> n;
+        for(auto e: out_edges(u))
+            n.push_back(target(e));
+        return n;
+    }
+
+    Edge reverse(Edge e) const
+    {
+        assert(e < Edges.size());
+        assert(Edges[e].is_alive);
+        return Edges[e].reverse;
+    }
+
+          VertexInfo& vertex_info(Vertex v)       {assert(Vertices[v].is_alive); return Vertices[v].info;}
+    const VertexInfo& vertex_info(Vertex v) const {assert(Vertices[v].is_alive); return Vertices[v].info;}
+
+          EdgeInfo& edge_info(Edge e)       {assert(Edges[e].is_alive); return Edges[e].info;}
+    const EdgeInfo& edge_info(Edge e) const {assert(Edges[e].is_alive); return Edges[e].info;}
+
+    Vertex add_vertex()
+    {
+        Vertex v = Vertices.size();
+        Vertices.push_back({});
+        n_vertices++;
+        return v;
+    }
+
+    optional<Edge> find_edge(Vertex u, Vertex v) const
+    {
+        assert(Vertices[u].is_alive);
+        assert(Vertices[v].is_alive);
+        for(auto E: Vertices[u].out_edges)
+            if (target(E) == v)
+                return E;
+        return {};
+    }
+
+    Edge add_edge(Vertex u, Vertex v)
+    {
+        assert(not find_edge(u,v));
+
+        Edge E1 = Edges.size();
+        Edges.push_back({});
+        Edge E2 = Edges.size();
+        Edges.push_back({});
+
+        Edges[E1].source = u;
+        Edges[E1].target = v;
+        Edges[E1].reverse = E2;
+
+        Edges[E2].source = v;
+        Edges[E2].target = u;
+        Edges[E2].reverse = E1;
+
+        Vertices[u].out_edges.push_back(E1);
+        Vertices[u].in_edges.push_back(E2);
+
+        Vertices[v].in_edges.push_back(E1);
+        Vertices[v].out_edges.push_back(E2);
+
+        n_edges++;
+
+        return E1;
+    }
+
+    void remove_edge(Vertex u, Vertex v)
+    {
+        auto e1_ = find_edge(u,v);
+        assert(e1_);
+
+        auto e1 = *e1_;
+        auto e2 = reverse(e1);
+
+        assert(Edges[e1].is_alive);
+        assert(Edges[e2].is_alive);
+        Edges[e1].is_alive = false;
+        Edges[e2].is_alive = false;
+
+        unordered_erase(Vertices[u].out_edges, e1);
+        unordered_erase(Vertices[u].in_edges, e2);
+
+        unordered_erase(Vertices[v].out_edges, e2);
+        unordered_erase(Vertices[v].in_edges, e1);
+
+        assert(not find_edge(u,v));
+        assert(not find_edge(v,u));
+
+        n_edges--;
+    }
+};
+
 
 class dynamic_graph
 {
-    Graph G;
+    Graph<vertex_info_t, edge_info_t> G;
 
     map<int,list<Vertex>> vertices_for_component_;
 
     int next_component = 0;
 
     vector<vertex_info_t> info_for_vertex;
-
-    // Probably this should be an edge property.
-    robin_hood::unordered_map<edge, edge_info_t> info_for_edge;
 
     static treap_forest<edge> F;
 
@@ -841,21 +990,13 @@ class dynamic_graph
     typedef const treap_node<edge>* const_euler_tour_node_t;
 
 public:
-    const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
+    const vertex_info_t& vertex_info(Vertex v) const {return G.vertex_info(v);}
 
-          vertex_info_t& vertex_info(Vertex v)       {return info_for_vertex[v];}
+          vertex_info_t& vertex_info(Vertex v)       {return G.vertex_info(v);}
 
-    const edge_info_t& edge_info(const edge& e) const {return info_for_edge.at(e);}
+    const edge_info_t& edge_info(Edge v) const {return G.edge_info(v);}
 
-          edge_info_t& edge_info(const edge& e)       {return info_for_edge[e];}
-
-    optional<Edge> find_edge(Vertex u, Vertex v) const {
-        auto [e,found] = boost::edge(u,v,G);
-        if (found)
-            return e;
-        else
-            return {};
-    };
+          edge_info_t& edge_info(Edge v)       {return G.edge_info(v);}
 
     int new_component() {return next_component++;}
 
@@ -877,17 +1018,17 @@ public:
 
     int size_of_component(int c) const {return vertices_for_component(c).size();}
 
-    auto in_edges(Vertex v) const {return boost::in_edges(v,G);}
+    auto& in_edges(Vertex v) const {return G.in_edges(v);}
 
-    auto out_edges(Vertex v) const {return boost::out_edges(v,G);}
+    auto& out_edges(Vertex v) const {return G.out_edges(v);}
 
-    int num_vertices() const {return boost::num_vertices(G);}
+    int num_vertices() const {return G.num_vertices();}
 
-    int num_edges() const {return boost::num_edges(G);}
+    int num_edges() const {return G.num_edges();}
 
-    Vertex source(Edge e) const {return boost::source(e,G);}
+    Vertex source(Edge e) const {return G.source(e);}
 
-    Vertex target(Edge e) const {return boost::target(e,G);}
+    Vertex target(Edge e) const {return G.target(e);}
 
     bool is_tip_node(Vertex v) const;
 
@@ -910,19 +1051,7 @@ public:
     {
         if (E)
         {
-            edge e{source(*E),target(*E)};
-            return edge_info(e).euler_tour_node;
-        }
-        else
-            return nullptr;
-    }
-
-    euler_tour_node_t to_reverse_euler_tour_node(const optional<Edge> E) const
-    {
-        if (E)
-        {
-            edge e{target(*E),source(*E)};
-            return edge_info(e).euler_tour_node;
+            return edge_info(*E).euler_tour_node;
         }
         else
             return nullptr;
@@ -930,17 +1059,17 @@ public:
 
     optional<Edge> some_tree_edge_from(Vertex u) const
     {
-        for(auto [e, e_end] = out_edges(u); e != e_end; e++)
-            if (is_tree_edge(*e))
-                return *e;
+        for(auto e: G.out_edges(u))
+            if (is_tree_edge(e))
+                return e;
         return {};
     }
 
     optional<Edge> some_tree_edge_to(Vertex u) const
     {
-        for(auto [e, e_end] = in_edges(u); e != e_end; e++)
-            if (is_tree_edge(*e))
-                return *e;
+        for(auto e: G.in_edges(u))
+            if (is_tree_edge(e))
+                return e;
         return {};
     }
 
@@ -999,8 +1128,8 @@ public:
     {
         edge E1(u,v);
         edge E2(v,u);
-        assert(not find_edge(u,v));
-        assert(not find_edge(v,u));
+        assert(not G.find_edge(u,v));
+        assert(not G.find_edge(v,u));
 
         // Finding Eu and Ev has to happen before we add the (u,v) edge to the graph.
         auto Eu = some_node_from(u);
@@ -1009,27 +1138,28 @@ public:
         auto Ev = some_node_from(v);
         F.make_first(Ev);
 
-        auto [e,_] = boost::add_edge(u,v,G);
-        boost::add_edge(v,u,G);
-
         auto node_uv = F.insert(nullptr, tree_dir::right, E1);
         auto node_vu = F.insert(nullptr, tree_dir::right, E2);
+
+        auto e1 = G.add_edge(u,v);
+        auto e2 = G.reverse(e1);
+
         // This overwrites any previous status.  Previously it might have been a non-tree edge.
-        edge_info(E1) = edge_info_t{tree_edge, node_uv};
-        edge_info(E2) = edge_info_t{tree_edge, node_vu};
+        edge_info(e1) = edge_info_t{tree_edge, node_uv};
+        edge_info(e2) = edge_info_t{tree_edge, node_vu};
 
         auto Euv = F.join(F.join(F.join(Eu,node_uv),Ev), node_vu);
 
-        return e;
+        return e1;
     }
 
     Edge add_edge(Vertex u, Vertex v)
     {
         // 1. Check that we don't already have an edge (u,v) or (v,u)
         {
-            auto found = find_edge(u,v);
+            auto found = G.find_edge(u,v);
             assert(not found);
-            auto found2 = find_edge(v,u);
+            auto found2 = G.find_edge(v,u);
             assert(not found2);
         }
 
@@ -1048,18 +1178,23 @@ public:
         {
             edge E1(u,v);
             edge E2(v,u);
+            assert(not G.find_edge(u,v));
+            assert(not G.find_edge(v,u));
 
-            edge_info(E1) = edge_info_t{non_tree_edge,nullptr};
-            edge_info(E2) = edge_info_t{non_tree_edge,nullptr};
-            auto [e,_] = boost::add_edge(u,v,G);
-            boost::add_edge(v,u,G);
-            return e;
+            auto e1 = G.add_edge(u,v);
+            auto e2 = G.reverse(e1);
+
+            edge_info(e1) = edge_info_t{non_tree_edge,nullptr};
+            edge_info(e2) = edge_info_t{non_tree_edge,nullptr};
+
+            return e1;
         }
         // 3b. Merge the components if they are different
         else
         {
             // Join the two euler tour paths.
             auto e = add_tree_edge(u,v);
+            auto e2 = G.reverse(e);
 
             // 2a. Ensure that cu is smaller, or equal.
             if (component_smaller(v,u)) std::swap(u,v);
@@ -1092,20 +1227,21 @@ public:
         }
     }
 
-    bool is_tree_edge(const edge& e) const
+    bool is_tree_edge(Edge e) const
     {
-        edge E(e.source(), e.target());
-        return edge_info(E).type == tree_edge;
+        return edge_info(e).type == tree_edge;
     }
 
     bool is_tree_edge(Vertex u, Vertex v) const
     {
-        return is_tree_edge(edge(u,v));
+        auto E = G.find_edge(u,v);
+        assert(E);
+        return is_tree_edge(*E);
     }
 
-    bool is_tree_edge(const Edge& e) const
+    bool is_tree_edge(const edge& e) const
     {
-        return is_tree_edge(source(e), target(e));
+        return is_tree_edge(e.source(), e.target());
     }
 
     vector<Vertex> find_spanning_tree_for_vertex2(Vertex u) const
@@ -1154,9 +1290,9 @@ public:
         {
             auto uu = nodes[i];
 
-            for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
-                if (is_tree_edge(*e))
-                    try_add( target(*e) );
+            for(auto e: out_edges(uu))
+                if (is_tree_edge(e))
+                    try_add( target(e) );
         }
 
         for(auto& node: nodes)
@@ -1169,8 +1305,9 @@ public:
     remove_tree_edge(Vertex u, Vertex v)
     {
         // 1. Find the nodes for (u,v) and (v,u) in the tour.
-        edge edge_uv(u,v);
-        edge edge_vu(v,u);
+        auto edge_uv = *G.find_edge(u,v);
+        auto edge_vu = G.reverse(edge_uv);
+
         auto node_uv = edge_info(edge_uv).euler_tour_node;
         auto node_vu = edge_info(edge_vu).euler_tour_node;
         assert(node_uv);
@@ -1186,10 +1323,6 @@ public:
         Ev = F.remove(node_uv);
         // 4b. Remove (v,u) to get the tour beginning and ending with u
         Eu = F.remove(node_vu);
-
-        // 5. Remove edge annotations.
-        info_for_edge.erase(edge_uv);
-        info_for_edge.erase(edge_vu);
 
         return {Eu,Ev};
     }
@@ -1214,8 +1347,8 @@ public:
             assert(flags(v) == 0);
 
         int c1 = component_for_vertex(u);
-        boost::remove_edge(u,v,G);
-        boost::remove_edge(v,u,G);
+        G.remove_edge(u,v);
+
         vector<Vertex> from_u;
         vector<Vertex> from_v;
 
@@ -1259,8 +1392,8 @@ public:
         {
             // Check 1 entry from u
             auto uu = from_u[i++];
-            for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
-                if (try_add_u( target( *e ) ))
+            for(auto e: out_edges(uu))
+                if (try_add_u( target( e ) ))
                 {
                     same_component = true;
                     break;
@@ -1268,8 +1401,8 @@ public:
 
             // Check 1 entry from v
             auto vv = from_v[j++];
-            for(auto [e, e_end] = out_edges(vv); e != e_end; e++)
-                if (try_add_v( target( *e ) ))
+            for(auto e: out_edges(vv))
+                if (try_add_v( target( e ) ))
                 {
                     same_component = true;
                     break;
@@ -1310,11 +1443,11 @@ public:
 
             for(auto& uu: spanning_tree_for_u)
             {
-                for(auto [e, e_end] = out_edges(uu); e != e_end; e++)
+                for(auto e: out_edges(uu))
                 {
-                    if (not is_tree_edge(*e) and flags(target(*e)) == 0)
+                    if (not is_tree_edge(e) and flags(target(e)) == 0)
                     {
-                        connecting_tree_edge = edge(source(*e), target(*e));
+                        connecting_tree_edge = edge(source(e), target(e));
                         break;
                     }
                 }
@@ -1336,11 +1469,9 @@ public:
                 auto w = edge_wx.source();
                 auto x = edge_wx.target();
 
-                boost::remove_edge(w,x,G);
-                boost::remove_edge(x,w,G);
-                info_for_edge.erase(edge_wx);
-                info_for_edge.erase(edge_wx.reverse());
+                assert(G.find_edge(w,x));
 
+                G.remove_edge(w,x);
                 add_tree_edge(w,x);
             }
             return false;
@@ -1396,7 +1527,7 @@ bool dynamic_graph::is_tip_node(Vertex v) const
 
 Vertex dynamic_graph::add_vertex()
 {
-    auto v = boost::add_vertex(G);
+    auto v = G.add_vertex();
     info_for_vertex.push_back({});
     int c = new_component();
     component_for_vertex(v) = c;
@@ -1486,9 +1617,9 @@ struct connected_component_t
 
         for(int i=0;i<vertices.size();i++)
         {
-            for(auto [e, e_end] = G->out_edges(vertices[i]); e != e_end; e++)
+            for(auto e: G->out_edges(vertices[i]))
             {
-                auto v = G->target( *e );
+                auto v = G->target( e );
                 if (not visited.count(v))
                 {
                     visited.insert(v);
@@ -1875,9 +2006,9 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
             assert(U_i.size() == 1);
 
 // L17. | U = (U \ {v}) \cup Ch(v)
-            for(auto [e,e_end]=  H->out_edges(parent); e != e_end; e++)
+            for(auto e: H->out_edges(parent))
             {
-                auto child = H->target( *e );
+                auto child = H->target( e );
                 Y1->insert_marked_vertex(child);
             }
             Y1->erase_marked_vertex(parent);
