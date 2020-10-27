@@ -1199,38 +1199,6 @@ public:
         return vertices;
     }
 
-    vector<Vertex> find_spanning_tree_for_vertex(Vertex u) const
-    {
-        vector<Vertex> nodes;
-
-        // Return true if vertices are in the same component
-        auto try_add = [&](Vertex uu)
-                           {
-                               if (not flags(uu))
-                               {
-                                   flags(uu) = 1;
-                                   nodes.push_back(uu);
-                               }
-                           };
-
-        try_add(u);
-
-        int i=0;
-        for(;i<nodes.size();i++)
-        {
-            auto uu = nodes[i];
-
-            for(auto e: out_edges(uu))
-                if (is_tree_edge(e))
-                    try_add( target(e) );
-        }
-
-        for(auto& node: nodes)
-            flags(node) = 0;
-
-        return nodes;
-    }
-
     pair<euler_tour_node_t, euler_tour_node_t>
     remove_tree_edge(Vertex u, Vertex v)
     {
