@@ -1735,10 +1735,7 @@ unique_ptr<connected_component_t> split_component(connected_component_t* Y1, Ver
     auto Y2 = W.get();
 
 //    assert(Y1->count == Y1->labels_for_component().size());
-    int cparent = G->component_for_vertex(parent);
-    int cchild = G->component_for_vertex(child);
-
-    if (G->size_of_component(cchild) > G->size_of_component(cparent))
+    if (G->component_smaller2(parent,child))
         // Move marked nodes connected to parent (parent) to Y2
         split_component(Y1, Y2, parent);
     else
