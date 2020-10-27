@@ -1340,8 +1340,6 @@ public:
             return false;
         }
 
-        int c1 = component_for_vertex(u);
-
         remove_tree_edge(u,v);
         G.remove_edge(u,v);
         assert(not same_spanning_tree(u,v));
@@ -1381,17 +1379,6 @@ public:
             add_tree_edge(w,x);
             return false;
         }
-
-        int c2 = new_component();
-        auto& nodes1 = vertices_for_component(c1);
-        list<Vertex> nodes2;
-        for(auto uu: spanning_tree_for_u)
-        {
-            component_for_vertex(uu) = c2;
-            auto it = vertex_info(uu).list_entry;
-            nodes2.splice(nodes2.end(), nodes1, it);
-        }
-        vertices_for_component_[c2] = std::move(nodes2);
 
         return true;
     }
