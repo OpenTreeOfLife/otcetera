@@ -832,7 +832,7 @@ class dynamic_graph
     vector<vertex_info_t> info_for_vertex;
 
     // Probably this should be an edge property.
-    robin_hood::unordered_map<edge, edge_info_t> edge_info;
+    robin_hood::unordered_map<edge, edge_info_t> info_for_edge;
 
     static treap_forest<edge> F;
 
@@ -844,6 +844,10 @@ public:
     const vertex_info_t& vertex_info(Vertex v) const {return info_for_vertex[v];}
 
           vertex_info_t& vertex_info(Vertex v)       {return info_for_vertex[v];}
+
+    const edge_info_t& edge_info(const edge& e) const {return info_for_edge.at(e);}
+
+          edge_info_t& edge_info(const edge& e)       {return info_for_edge[e];}
 
     optional<Edge> find_edge(Vertex u, Vertex v) const {
         auto [e,found] = boost::edge(u,v,G);
@@ -907,7 +911,7 @@ public:
         if (E)
         {
             edge e{source(*E),target(*E)};
-            return edge_info.at(e).euler_tour_node;
+            return edge_info(e).euler_tour_node;
         }
         else
             return nullptr;
@@ -918,7 +922,7 @@ public:
         if (E)
         {
             edge e{target(*E),source(*E)};
-            return edge_info.at(e).euler_tour_node;
+            return edge_info(e).euler_tour_node;
         }
         else
             return nullptr;
@@ -995,8 +999,6 @@ public:
     {
         edge E1(u,v);
         edge E2(v,u);
-        assert(not edge_info.count(E1));
-        assert(not edge_info.count(E2));
         assert(not find_edge(u,v));
         assert(not find_edge(v,u));
 
@@ -1013,8 +1015,8 @@ public:
         auto node_uv = F.insert(nullptr, tree_dir::right, E1);
         auto node_vu = F.insert(nullptr, tree_dir::right, E2);
         // This overwrites any previous status.  Previously it might have been a non-tree edge.
-        edge_info[E1] = edge_info_t{tree_edge, node_uv};
-        edge_info[E2] = edge_info_t{tree_edge, node_vu};
+        edge_info(E1) = edge_info_t{tree_edge, node_uv};
+        edge_info(E2) = edge_info_t{tree_edge, node_vu};
 
         auto Euv = F.join(F.join(F.join(Eu,node_uv),Ev), node_vu);
 
@@ -1047,8 +1049,8 @@ public:
             edge E1(u,v);
             edge E2(v,u);
 
-            edge_info[E1] = edge_info_t{non_tree_edge,nullptr};
-            edge_info[E2] = edge_info_t{non_tree_edge,nullptr};
+            edge_info(E1) = edge_info_t{non_tree_edge,nullptr};
+            edge_info(E2) = edge_info_t{non_tree_edge,nullptr};
             auto [e,_] = boost::add_edge(u,v,G);
             boost::add_edge(v,u,G);
             return e;
@@ -1093,8 +1095,7 @@ public:
     bool is_tree_edge(const edge& e) const
     {
         edge E(e.source(), e.target());
-        assert(edge_info.count(E));
-        return edge_info.at(E).type == tree_edge;
+        return edge_info(E).type == tree_edge;
     }
 
     bool is_tree_edge(Vertex u, Vertex v) const
@@ -1170,8 +1171,8 @@ public:
         // 1. Find the nodes for (u,v) and (v,u) in the tour.
         edge edge_uv(u,v);
         edge edge_vu(v,u);
-        auto node_uv = edge_info.at(edge_uv).euler_tour_node;
-        auto node_vu = edge_info.at(edge_vu).euler_tour_node;
+        auto node_uv = edge_info(edge_uv).euler_tour_node;
+        auto node_vu = edge_info(edge_vu).euler_tour_node;
         assert(node_uv);
         assert(node_vu);
 
@@ -1187,8 +1188,8 @@ public:
         Eu = F.remove(node_vu);
 
         // 5. Remove edge annotations.
-        edge_info.erase(edge_uv);
-        edge_info.erase(edge_vu);
+        info_for_edge.erase(edge_uv);
+        info_for_edge.erase(edge_vu);
 
         return {Eu,Ev};
     }
@@ -1332,16 +1333,13 @@ public:
                 assert(connecting_tree_edge);
                 auto edge_wx = *connecting_tree_edge;
 
-                assert(edge_info.count(edge_wx));
-                assert(edge_info.count(edge_wx.reverse()));
-
                 auto w = edge_wx.source();
                 auto x = edge_wx.target();
 
                 boost::remove_edge(w,x,G);
                 boost::remove_edge(x,w,G);
-                edge_info.erase(edge_wx);
-                edge_info.erase(edge_wx.reverse());
+                info_for_edge.erase(edge_wx);
+                info_for_edge.erase(edge_wx.reverse());
 
                 add_tree_edge(w,x);
             }
