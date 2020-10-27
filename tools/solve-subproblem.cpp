@@ -1450,25 +1450,6 @@ public:
             std::swap(spanning_tree_for_u, spanning_tree_for_v);
         }
 
-        for(auto& uu: spanning_tree_for_u)
-            assert(flags(uu) == 0);
-        for(auto& uu: spanning_tree_for_u)
-            flags(uu) = 1;
-        for(auto& vv: spanning_tree_for_v)
-            assert(flags(vv) == 0);
-
-        for(auto& uu: spanning_tree_for_u)
-        {
-            for(auto e: out_edges(uu))
-            {
-                if (not is_tree_edge(e) and flags(target(e)) == 0)
-                {
-                    connecting_tree_edge = edge(source(e), target(e));
-                    break;
-                }
-            }
-        }
-
         optional<Edge> connecting_tree_edge2;
         for(auto uu: spanning_tree_for_u)
         {
@@ -1485,14 +1466,10 @@ public:
             }
         }
 
-        for(auto& uu: spanning_tree_for_u)
-            flags(uu) = 0;
-
         // Quit here if we didn't split a component
         if (connecting_tree_edge2)
         {
             assert(same_component);
-            assert(connecting_tree_edge2);
             auto edge_wx = *connecting_tree_edge2;
 
             auto w = G.source(edge_wx);
@@ -1507,7 +1484,6 @@ public:
         else
         {
             assert(not same_component);
-            assert(not connecting_tree_edge2);
         }
 
         // Move vertices from the smaller group to a new component
