@@ -1700,12 +1700,11 @@ display_graph_from_profile(const vector<const node_t*>& profile)
 void split_component(connected_component_t* Y1, connected_component_t* Y2, Vertex node1)
 {
     auto G = Y1->get_graph();
-    int cnode1 = G->component_for_vertex(node1);
 
     assert(Y1->count >  0);
     assert(Y2->count == 0);
     
-    for(auto node2: G->vertices_for_component(cnode1))
+    for(auto node2: G->find_spanning_tree_for_vertex2(node1))
     {
         auto& info = G->vertex_info(node2);
         if (not info.tree_index)
