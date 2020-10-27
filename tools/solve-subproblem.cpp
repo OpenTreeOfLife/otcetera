@@ -1362,6 +1362,7 @@ public:
 
         remove_tree_edge(u,v);
         G.remove_edge(u,v);
+        assert(not same_spanning_tree(u,v));
 
         vector<Vertex> from_u;
         vector<Vertex> from_v;
@@ -1468,6 +1469,22 @@ public:
             }
         }
 
+        optional<edge> connecting_tree_edge2;
+        for(auto uu: spanning_tree_for_u)
+        {
+            assert(same_spanning_tree(uu,u));
+            assert(not same_spanning_tree(uu,v));
+
+            for(auto e: out_edges(uu))
+            {
+                if (not is_tree_edge(e) and same_spanning_tree(target(e),v))
+                {
+                    connecting_tree_edge2 = edge(source(e), target(e));
+                    break;
+                }
+            }
+        }
+
         for(auto& uu: spanning_tree_for_u)
             flags(uu) = 0;
 
@@ -1475,6 +1492,7 @@ public:
         if (same_component)
         {
             assert(connecting_tree_edge);
+            assert(connecting_tree_edge2);
             auto edge_wx = *connecting_tree_edge;
 
             auto w = edge_wx.source();
@@ -1489,6 +1507,7 @@ public:
         else
         {
             assert(not connecting_tree_edge);
+            assert(not connecting_tree_edge2);
         }
 
         // Move vertices from the smaller group to a new component
