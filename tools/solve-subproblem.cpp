@@ -1355,84 +1355,11 @@ public:
             return false;
         }
 
-        for(int v = 0; v < num_vertices(); v++)
-            assert(flags(v) == 0);
-
         int c1 = component_for_vertex(u);
 
         remove_tree_edge(u,v);
         G.remove_edge(u,v);
         assert(not same_spanning_tree(u,v));
-
-        vector<Vertex> from_u;
-        vector<Vertex> from_v;
-
-        // Return true if vertices are in the same component
-        auto try_add_u = [&](Vertex uu)
-                             {
-                                 if (not flags(uu))
-                                 {
-                                     flags(uu) = 1;
-                                     from_u.push_back(uu);
-                                     return false;
-                                 }
-                                 else if (flags(uu) != 1)
-                                     return true;
-                                 else
-                                     return false;
-                             };
-
-        auto try_add_v = [&](Vertex vv)
-                             {
-                                 if (not flags(vv))
-                                 {
-                                     flags(vv) = 2;
-                                     from_v.push_back(vv);
-                                     return false;
-                                 }
-                                 else if (flags(vv) != 2)
-                                     return true;
-                                 else
-                                     return false;
-                             };
-
-        try_add_u(u);
-        try_add_v(v);
-
-        int i=0,j=0;
-
-        bool same_component = false;
-
-        while(i < from_u.size() and j < from_v.size())
-        {
-            // Check 1 entry from u
-            auto uu = from_u[i++];
-            for(auto e: out_edges(uu))
-                if (try_add_u( target( e ) ))
-                {
-                    same_component = true;
-                    break;
-                }
-
-            // Check 1 entry from v
-            auto vv = from_v[j++];
-            for(auto e: out_edges(vv))
-                if (try_add_v( target( e ) ))
-                {
-                    same_component = true;
-                    break;
-                }
-        }
-
-        // Clear the seen flags
-        for(auto u: from_u)
-            flags(u) = 0;
-
-        for(auto v: from_v)
-            flags(v) = 0;
-
-        for(int v = 0; v < num_vertices(); v++)
-            assert(flags(v) == 0);
 
         optional<edge> connecting_tree_edge;
         auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
@@ -1469,7 +1396,6 @@ public:
         // Quit here if we didn't split a component
         if (connecting_tree_edge2)
         {
-            assert(same_component);
             auto edge_wx = *connecting_tree_edge2;
 
             auto w = G.source(edge_wx);
@@ -1480,10 +1406,6 @@ public:
             G.remove_edge(w,x);
             add_tree_edge(w,x);
             return false;
-        }
-        else
-        {
-            assert(not same_component);
         }
 
         int c2 = new_component();
