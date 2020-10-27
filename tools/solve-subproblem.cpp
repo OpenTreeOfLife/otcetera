@@ -1469,7 +1469,7 @@ public:
             }
         }
 
-        optional<edge> connecting_tree_edge2;
+        optional<Edge> connecting_tree_edge2;
         for(auto uu: spanning_tree_for_u)
         {
             assert(same_spanning_tree(uu,u));
@@ -1479,7 +1479,7 @@ public:
             {
                 if (not is_tree_edge(e) and same_spanning_tree(target(e),v))
                 {
-                    connecting_tree_edge2 = edge(source(e), target(e));
+                    connecting_tree_edge2 = e;
                     break;
                 }
             }
@@ -1489,14 +1489,14 @@ public:
             flags(uu) = 0;
 
         // Quit here if we didn't split a component
-        if (same_component)
+        if (connecting_tree_edge2)
         {
-            assert(connecting_tree_edge);
+            assert(same_component);
             assert(connecting_tree_edge2);
-            auto edge_wx = *connecting_tree_edge;
+            auto edge_wx = *connecting_tree_edge2;
 
-            auto w = edge_wx.source();
-            auto x = edge_wx.target();
+            auto w = G.source(edge_wx);
+            auto x = G.target(edge_wx);
 
             assert(G.find_edge(w,x));
 
@@ -1506,7 +1506,7 @@ public:
         }
         else
         {
-            assert(not connecting_tree_edge);
+            assert(not same_component);
             assert(not connecting_tree_edge2);
         }
 
