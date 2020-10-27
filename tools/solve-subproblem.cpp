@@ -1346,17 +1346,21 @@ public:
     bool remove_edge(Vertex u, Vertex v)
     {
         edge E(u,v);
-        bool was_tree_edge = is_tree_edge(E);
 
         assert(same_spanning_tree(u,v));
 
-        if (was_tree_edge)
-            remove_tree_edge(u,v);
+        if (not is_tree_edge(E))
+        {
+            G.remove_edge(u,v);
+            return false;
+        }
 
         for(int v = 0; v < num_vertices(); v++)
             assert(flags(v) == 0);
 
         int c1 = component_for_vertex(u);
+
+        remove_tree_edge(u,v);
         G.remove_edge(u,v);
 
         vector<Vertex> from_u;
@@ -1430,68 +1434,61 @@ public:
             assert(flags(v) == 0);
 
         optional<edge> connecting_tree_edge;
-        if (was_tree_edge)
+        auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
+        auto spanning_tree_for_u2 = find_spanning_tree_for_vertex2(u);
+        assert(spanning_tree_for_u.size() == spanning_tree_for_u2.size());
+        assert(size_of_component2(u) == spanning_tree_for_u.size());
+
+        auto spanning_tree_for_v = find_spanning_tree_for_vertex(v);
+        assert(spanning_tree_for_u.size() + spanning_tree_for_v.size() == vertices_for_component(c1).size());
+
+        if (component_smaller2(v,u))
         {
-            auto spanning_tree_for_u = find_spanning_tree_for_vertex(u);
-            auto spanning_tree_for_u2 = find_spanning_tree_for_vertex2(u);
-            assert(spanning_tree_for_u.size() == spanning_tree_for_u2.size());
-            assert(size_of_component2(u) == spanning_tree_for_u.size());
+            assert(spanning_tree_for_v.size() < spanning_tree_for_u.size());
+            std::swap(u,v);
+            std::swap(spanning_tree_for_u, spanning_tree_for_v);
+        }
 
-            auto spanning_tree_for_v = find_spanning_tree_for_vertex(v);
-            assert(spanning_tree_for_u.size() + spanning_tree_for_v.size() == vertices_for_component(c1).size());
+        for(auto& uu: spanning_tree_for_u)
+            assert(flags(uu) == 0);
+        for(auto& uu: spanning_tree_for_u)
+            flags(uu) = 1;
+        for(auto& vv: spanning_tree_for_v)
+            assert(flags(vv) == 0);
 
-            if (component_smaller2(v,u))
+        for(auto& uu: spanning_tree_for_u)
+        {
+            for(auto e: out_edges(uu))
             {
-                assert(spanning_tree_for_v.size() < spanning_tree_for_u.size());
-                std::swap(u,v);
-                std::swap(spanning_tree_for_u, spanning_tree_for_v);
-            }
-
-            for(auto& uu: spanning_tree_for_u)
-                assert(flags(uu) == 0);
-            for(auto& uu: spanning_tree_for_u)
-                flags(uu) = 1;
-            for(auto& vv: spanning_tree_for_v)
-                assert(flags(vv) == 0);
-
-            for(auto& uu: spanning_tree_for_u)
-            {
-                for(auto e: out_edges(uu))
+                if (not is_tree_edge(e) and flags(target(e)) == 0)
                 {
-                    if (not is_tree_edge(e) and flags(target(e)) == 0)
-                    {
-                        connecting_tree_edge = edge(source(e), target(e));
-                        break;
-                    }
+                    connecting_tree_edge = edge(source(e), target(e));
+                    break;
                 }
             }
-
-            for(auto& uu: spanning_tree_for_u)
-                flags(uu) = 0;
         }
+
+        for(auto& uu: spanning_tree_for_u)
+            flags(uu) = 0;
 
         // Quit here if we didn't split a component
         if (same_component)
         {
-            assert(not was_tree_edge or connecting_tree_edge);
-            if (was_tree_edge)
-            {
-                assert(connecting_tree_edge);
-                auto edge_wx = *connecting_tree_edge;
+            assert(connecting_tree_edge);
+            auto edge_wx = *connecting_tree_edge;
 
-                auto w = edge_wx.source();
-                auto x = edge_wx.target();
+            auto w = edge_wx.source();
+            auto x = edge_wx.target();
 
-                assert(G.find_edge(w,x));
+            assert(G.find_edge(w,x));
 
-                G.remove_edge(w,x);
-                add_tree_edge(w,x);
-            }
+            G.remove_edge(w,x);
+            add_tree_edge(w,x);
             return false;
         }
         else
         {
-            assert(was_tree_edge and not connecting_tree_edge);
+            assert(not connecting_tree_edge);
         }
 
         // Move vertices from the smaller group to a new component
