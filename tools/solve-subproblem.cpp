@@ -2438,16 +2438,9 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             int nl = n_leaves(*tree);
             for(auto nd: nodes_to_check)
             {
-                const auto descendants = remap(nd->get_data().des_ids);
-                bool is_consistent = add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
-                LOG(WARNING)<<"Trying partition "<<nd<<" in tree "<<i<<": "<<is_consistent;
-                for(auto d: descendants)
-                    LOG(DEBUG)<<"    "<<ids[d]<<"  ("<<d<<")";
+                bool is_consistent = (bool)remove_split_if_inconsistent(nd, consistent_nodes,nl);
 
-                bool is_consistent2 = (bool)remove_split_if_inconsistent(nd, consistent_nodes,nl);
-                assert(is_consistent == is_consistent2);
-                if (is_consistent != is_consistent2)
-                    throw OTCError() << "is_consistent != is_consistent2";
+                LOG(WARNING)<<"Trying partition "<<nd<<" in tree "<<i<<": "<<is_consistent;
                 if (is_consistent) consistent_count++;
             }
             if (consistent_count > 0)
@@ -2463,13 +2456,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
     }
     // 2. Construct final tree and add names
-    auto tree = BUILD(all_leaves_indices, consistent);
-    for(auto nd: iter_pre(*tree)) {
-        if (nd->is_tip()) {
-            int index = nd->get_ott_id();
-            nd->set_ott_id(ids[index]);
-        }
-    }
+    auto tree = BUILD_ST( consistent_trees );
+
     add_root_and_tip_names(*tree, *taxonomy);
     add_names(*tree, compatible_taxa);
     return tree;
