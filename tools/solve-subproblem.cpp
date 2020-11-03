@@ -1709,6 +1709,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
         {
             // Create a new node pointing to a higher-level problem.
             r_U = new node_t(pred);
+            pred->add_child(r_U);
         }
         else
         {
@@ -1742,6 +1743,7 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
 // L13. | | | Create a node r_j, labelled l_j
 // L14. | | | Set parent(r_j) = r_J                
                 auto r = new node_t(r_U);
+                r_U->add_child(r);
                 r->set_ott_id(label);
             }
 // L15. | | continue
