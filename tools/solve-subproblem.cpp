@@ -2449,14 +2449,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             if (i == trees.size() - 1)
             {
                 for(auto nd: iter_post(*tree))
-                {
-                    if (nd == root) continue;
-
-                    if (nd->is_tip())
-                        consistent_nodes.push_back(nd);
-                    else
+                    if (nd != root and not nd->is_tip())
                         compatible_taxa.push_back(nd);
-                }
             }
         }
     }
