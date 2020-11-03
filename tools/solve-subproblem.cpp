@@ -2404,16 +2404,9 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                     }
                 }
             }
-        } else if (i == trees.size()-1) {
-            for(auto nd: iter_post_const(*tree)) {
-                if (not nd->is_tip() and nd != root) {
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    if (add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices})) {
-                        compatible_taxa.push_back(nd);
-                    }
-                }
-            }
-        } else {
+        }
+        else
+        {
             int consistent_count = 0;
 
             vector<node_t*> nodes_to_check;
@@ -2449,6 +2442,20 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             }
             if (consistent_count > 0)
                 consistent_trees.push_back(tree->get_root());
+
+            // Record compatible taxa.
+            if (i == trees.size() - 1)
+            {
+                for(auto nd: iter_post(*tree))
+                {
+                    if (nd == root) continue;
+
+                    if (nd->is_tip())
+                        consistent_nodes.push_back(nd);
+                    else
+                        compatible_taxa.push_back(nd);
+                }
+            }
         }
     }
     // 2. Construct final tree and add names
