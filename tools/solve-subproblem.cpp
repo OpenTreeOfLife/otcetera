@@ -1820,7 +1820,15 @@ unique_ptr<Tree_t> BUILD_ST(const vector<const node_t*>& profile)
     }
 
 // L23. return the tree with root r_{U_unit}
-    return unique_ptr<Tree_t>{new Tree_t(root)};
+    auto tree = unique_ptr<Tree_t>{new Tree_t(root)};
+
+#ifndef NDEBUG
+    for(auto nd: iter_pre(*tree))
+        if (nd->is_tip())
+            assert(nd->has_ott_id());
+#endif
+
+    return tree;
 }
 
 static vector<int> indices;
