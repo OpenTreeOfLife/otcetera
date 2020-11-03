@@ -323,24 +323,39 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy
         // Get the OTT ID
         long raw_ott_id = long_ott_id_from_name(node_id);
 
-        // Try to find the OTT ID in the summary tree.
-        if (raw_ott_id >= 0) {
-            OttId ott_id = check_ott_id_size(raw_ott_id);
-            auto i2nit = tree_data.id_to_node.find(ott_id);
-            if (i2nit != tree_data.id_to_node.end()) {
-                return {i2nit->second};
-            }
-            LOG(WARNING) << "not finding " << ott_id << " extracted from " << node_id;
+        // 1. Check that the ID is not negative
+        if (raw_ott_id < 0)
+        {
+            LOG(WARNING) << "OTT ID " << raw_ott_id << " (from '"<<node_id<<"') is negative!";
+            return {};
         }
 
-        // We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
+        // 2. Try and forward the ID.
+        OttId ott_id = check_ott_id_size(raw_ott_id);
+        if (auto ott_id2 = taxonomy.get_unforwarded_id(ott_id))
+            ott_id = *ott_id2;
+        else
+        {
+            LOG(WARNING) << "OTT ID " << ott_id << " (from '"<<node_id<<"') is neither a current ID nor a forwarded ID.";
+            return {};
+        }
+
+        // 3. Try to find the OTT ID in the summary tree.
+        auto i2nit = tree_data.id_to_node.find(ott_id);
+        if (i2nit != tree_data.id_to_node.end())
+            return {i2nit->second};
+
+        // 4. We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
         if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
         {
-            // if found we return the MRCA pointer in the first slot of the pair.
+            // if found, we return the MRCA pointer in the first slot of the pair.
             return broken_taxon(bt_it->second.first);
         }
         else
+        {
+            LOG(WARNING) << "OTT ID" << ott_id << " (from '"<<node_id<<"') is not in the synth tree, and is not listed as broken.";
             return {};
+        }
     }
 
     if (std::regex_match(node_id, matches, mrca_id_pattern))
