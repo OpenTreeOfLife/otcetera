@@ -257,7 +257,7 @@ struct node_lookup_t
     node_lookup_t(const SumTreeNode_t* n):node(n) {}
 };
 
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const std::string & node_id);
+node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy&, const std::string & node_id);
 
 class TreesToServe;
 
