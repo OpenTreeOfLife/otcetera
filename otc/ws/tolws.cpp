@@ -319,7 +319,7 @@ TaxonToSynth find_node_by_valid_ottid(const SummaryTree_t & tree, OttId id, cons
     if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
     {
         // if found it listed as broken, we return the MRCA pointer in the first slot of the pair.
-        return TaxonBroken{i2nit->second};
+        return TaxonBroken{bt_it->second.first};
     }
     else
     {
