@@ -370,24 +370,7 @@ struct NameToSynth: public std::variant<NoMatchName, OTTNameToSynth, MRCANameToS
     using std::variant<NoMatchName,OTTNameToSynth,MRCANameToSynth>::variant;
 };
 
-class node_lookup_t
-{
-    const SumTreeNode_t* node_ = nullptr;
-    bool was_broken = false;
-
-public:
-    NameToSynth lookup_result;
-    const SumTreeNode_t * node() const {return node_;}
-    bool broken() const {return was_broken;}
-    void set_broken() {was_broken = true;}
-    // technically, this includes: {too large, never valid, deprecated (once valid), and PRUNED}
-    bool invalid() const {return node() == nullptr and not was_broken;}
-
-    node_lookup_t() {};
-    node_lookup_t(const SumTreeNode_t* n):node_(n) {}
-};
-
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy&, const std::string & node_id);
+NameToSynth find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy&, const std::string & node_id);
 
 class TreesToServe;
 

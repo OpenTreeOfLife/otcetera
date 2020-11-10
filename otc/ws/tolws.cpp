@@ -296,13 +296,6 @@ optional<OttId> is_ott_id(const string& node_id)
 
 const std::regex mrca_id_pattern("^mrca(ott\\d+)(ott\\d+)$");
 
-node_lookup_t broken_taxon(const SumTreeNode_t* n)
-{
-    node_lookup_t result(n);
-    result.set_broken();
-    return result;
-}
-
 template<typename N>
 bool is_ancestor_of(N* f, N* s)
 {
@@ -313,13 +306,8 @@ bool is_ancestor_of(N* f, N* s)
     return (sec_ind >= fdata->trav_enter and sec_ind <= fdata->trav_exit);
 }
 
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
+NameToSynth find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
-    node_lookup_t result;
-    NameToSynth& name_to_synth = result.lookup_result;
-
-    name_to_synth = NameToSynth{NoMatchName()};
-
     const auto & tree_data = tree.get_data();
 
     std::smatch matches;
@@ -332,8 +320,7 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy
         if (not ott_id)
         {
             LOG(WARNING) << "OTT ID from "<<node_id<<"' is too large!";
-            name_to_synth = {BadID{}};
-            return result;
+            return {BadID{}};
         }
 
         // 2. Try and forward the ID.
@@ -342,8 +329,7 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy
         if (not ott_id)
         {
             LOG(WARNING) << "OTT ID " << *ott_id << " (from '"<<node_id<<"') is neither a current ID nor a forwarded ID.";
-            name_to_synth = {InvalidID{*ott_id}};
-            return result;
+            return {InvalidID{*ott_id}};
         }
         if (*forwarded_from == *ott_id)
             forwarded_from = {};
@@ -352,57 +338,48 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy
         auto i2nit = tree_data.id_to_node.find(*ott_id);
         if (i2nit != tree_data.id_to_node.end())
         {
-            result = {i2nit->second};
-            name_to_synth = OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonFound{i2nit->second}}};
-            return result;
+            return {OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonFound{i2nit->second}}}};
         }
 
         // 4. We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
         if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
         {
             // if found, we return the MRCA pointer in the first slot of the pair.
-            result = broken_taxon(bt_it->second.first);
-            name_to_synth = OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonBroken{i2nit->second}}};
-            return result;
+            return {OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonBroken{i2nit->second}}}};
         }
         else
         {
             LOG(WARNING) << "OTT ID" << *ott_id << " (from '"<<node_id<<"') is not in the synth tree, and is not listed as broken.";
-            name_to_synth = OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonPruned{}}};
-            return result;
+            return {OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonPruned{}}}};
         }
     }
 
     if (std::regex_match(node_id, matches, mrca_id_pattern))
     {
         // Does this match a canonical mrcaottXottY name?
-        auto n2nit = tree_data.broken_name_to_node.find(node_id);
-        if (n2nit != tree_data.broken_name_to_node.end()) {
-            return {n2nit->second};
-        }
+//        auto n2nit = tree_data.broken_name_to_node.find(node_id);
+//        if (n2nit != tree_data.broken_name_to_node.end()) {
+//            return {n2nit->second};
+//        }
 
         // If it does not match a canonical name, then lookup ottX and ottY
         assert(matches.size() >= 2);
         std::string first_id = matches[1];
         std::string second_id = matches[2];
         auto result1 = find_node_by_id_str(tree, taxonomy, first_id);
-        if (result1.node() == nullptr) {
-            return result1;
-        }
         auto result2 = find_node_by_id_str(tree, taxonomy, second_id);
-        if (result2.node() == nullptr) {
-            return result2;
-        }
-        auto mrca = find_mrca_via_traversal_indices(result1.node(), result2.node());
 
-        result = {mrca};
-        name_to_synth = MRCANameToSynth{result1.lookup_result.ott_name_lookup(), result2.lookup_result.ott_name_lookup(), mrca};
-        return result;
+        const SumTreeNode_t* mrca = nullptr;
+        if (result1.node() and result2.node())
+            mrca = find_mrca_via_traversal_indices(result1.node(), result2.node());
+
+        return {MRCANameToSynth{result1.ott_name_lookup(), result2.ott_name_lookup(), mrca}};
     }
-    return {};
+
+    return {NoMatchName()};
 }
 
-node_lookup_t find_required_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
+NameToSynth find_required_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
     auto result = find_node_by_id_str(tree, taxonomy, node_id);
     if (not result.node()) {
