@@ -346,19 +346,18 @@ OTTNameToSynth find_node_by_ottid_str(const SummaryTree_t & tree, const RichTaxo
     }
 
     // 2. Try and forward the ID.
-    auto forwarded_from = ott_id;
-    ott_id = taxonomy.get_unforwarded_id(*ott_id);
-    if (not ott_id)
+    auto valid_ott_id = taxonomy.get_unforwarded_id(*ott_id);
+    if (not valid_ott_id)
     {
         LOG(WARNING) << "OTT ID " << *ott_id << " (from '"<<node_id<<"') is neither a current ID nor a forwarded ID.";
-        return {InvalidID{*ott_id}};
+        return InvalidID{*ott_id};
     }
-
-    // 3. Map the valid ottid to the summary tree.
-    if (*forwarded_from == *ott_id)
+    auto forwarded_from = ott_id;
+    if (*ott_id == *valid_ott_id)
         forwarded_from = {};
 
-    return OTTNameToSynth{ValidID{*ott_id, forwarded_from, find_node_by_valid_ottid(tree, *ott_id, node_id)}};
+    // 3. Map the valid ottid to the summary tree.
+    return OTTNameToSynth{ValidID{*valid_ott_id, forwarded_from, find_node_by_valid_ottid(tree, *valid_ott_id, node_id)}};
 }
 
 NameToSynth find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
