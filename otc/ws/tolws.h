@@ -238,15 +238,122 @@ void index_by_name_or_id(T & tree) {
     }
 }
 
-/// The complete taxonomy of looking up is like:
-///    ottX -> {too large, _ -> {never valid, _ -> {deprecated (previously valid), _ -> {pruned, _ -> {broken, OK!}}}}}
-///     mrcaottXottY -> OK | BadOTT (ReasonOTTMissing) | BadMRCA (ReasonOTTMissing)
-///       In this case if X or Y has a "broken" result, then we needn't fail.
+// BEGIN ******* data TaxonToSynth = TaxonPruned | TaxonBroken | TaxonFound ********** //
+
+struct TaxonPruned { };
+
+struct TaxonBroken
+{
+    const SumTreeNode_t* mrca = nullptr;
+    const SumTreeNode_t* node() const {return mrca;}
+};
+
+struct TaxonFound
+{
+    const SumTreeNode_t* found = nullptr;
+    const SumTreeNode_t* node() const {return found;}
+};
+
+struct TaxonToSynth: public std::variant<TaxonPruned, TaxonBroken, TaxonFound>
+{
+    const SumTreeNode_t* node() const
+    {
+        switch (index())
+        {
+        case 1: return std::get<TaxonBroken>(*this).node(); break;
+        case 2: return std::get<TaxonFound>(*this).node(); break;
+        default: return nullptr; break;
+        }
+        std::abort();
+    }
+    bool ok() const {return node();}
+
+    bool is_pruned() const {return index() == 0;}
+    bool is_broken() const {return index() == 1;}
+    bool is_found() const {return index() == 2;}
+
+    using std::variant<TaxonPruned, TaxonBroken, TaxonFound>::variant;
+};
+
+// BEGIN       data OTTNameToSynth = BadID | InvalidID OttID | ValidID ID (Maybe ID) TaxonToSynth      //
+
+// NOTE: For too-big, we should probably directly check if we can read the result into a long.
+// See https://stackoverflow.com/questions/194465/how-to-parse-a-string-to-an-int-in-c
+struct BadID { };
+
+struct InvalidID
+{
+    OttId id;
+};
+
+struct ValidID
+{
+    OttId id;
+    std::optional<OttId> forwarded_from;
+    TaxonToSynth to_synth;
+    const SumTreeNode_t* node() const
+    {
+        return to_synth.node();
+    }
+    bool ok() const { return node();}
+};
+
+// BEGIN NameToSynth = NoMatchName | OTTNameToSynth | MRCANameToSynth
+
+struct NoMatchName { };
+
+struct OTTNameToSynth : public std::variant<BadID,InvalidID,ValidID>
+{
+    const SumTreeNode_t* node() const
+    {
+        if (index() == 2)
+            return std::get<ValidID>(*this).node();
+        else
+            return nullptr;
+    }
+    bool ok() const {return node();}
+
+    using std::variant<BadID,InvalidID,ValidID>::variant;
+};
+
+
+struct MRCANameToSynth
+{
+    OTTNameToSynth node1;
+    OTTNameToSynth node2;
+    const SumTreeNode_t* mrca = nullptr;
+    const SumTreeNode_t* node() const {return mrca;}
+    bool ok() const {return node();}
+};
+
+struct NameToSynth: public std::variant<NoMatchName, OTTNameToSynth, MRCANameToSynth>
+{
+    const SumTreeNode_t* node() const
+    {
+        switch (index())
+        {
+        case 1: return std::get<OTTNameToSynth>(*this).node(); break;
+        case 2: return std::get<MRCANameToSynth>(*this).node(); break;
+        default: return nullptr; break;
+        }
+        std::abort();
+    }
+    bool ok() const { return node();}
+
+    bool is_ott_name() const {return index() == 1;}
+    bool is_mrca_name() const {return index() == 2;}
+
+    const OTTNameToSynth& ott_name_lookup() const {return std::get<OTTNameToSynth>(*this);}
+
+    using std::variant<NoMatchName,OTTNameToSynth,MRCANameToSynth>::variant;
+};
 
 struct node_lookup_t
 {
     const SumTreeNode_t* node = nullptr;
     bool was_broken = false;
+
+    NameToSynth lookup_result;
 
     bool broken() const {return was_broken;}
     bool present() const {return node and not was_broken;}

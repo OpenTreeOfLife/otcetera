@@ -1331,7 +1331,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
                 vector<const SumTreeNode_t *> avec;
                 avec.reserve(attach_id_list.size());
                 for (auto attach_id : attach_id_list) {
-                    auto [anptr, _] = find_node_by_id_str(tree, taxonomy, attach_id);
+                    auto anptr = find_node_by_id_str(tree, taxonomy, attach_id).node;
                     assert(anptr != nullptr);
                     avec.push_back(anptr);
                 }

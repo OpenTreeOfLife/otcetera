@@ -315,46 +315,61 @@ bool is_ancestor_of(N* f, N* s)
 
 node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
+    node_lookup_t result;
+    NameToSynth& name_to_synth = result.lookup_result;
+
+    name_to_synth = NameToSynth{NoMatchName()};
+
     const auto & tree_data = tree.get_data();
 
     std::smatch matches;
     if (std::regex_match(node_id, matches, ott_id_pattern))
     {
         // Get the OTT ID
-        long raw_ott_id = long_ott_id_from_name(node_id);
+        auto ott_id = is_ott_id(node_id);
 
         // 1. Check that the ID is not negative
-        if (raw_ott_id < 0)
+        if (not ott_id)
         {
-            LOG(WARNING) << "OTT ID " << raw_ott_id << " (from '"<<node_id<<"') is negative!";
-            return {};
+            LOG(WARNING) << "OTT ID from "<<node_id<<"' is too large!";
+            name_to_synth = {BadID{}};
+            return result;
         }
 
         // 2. Try and forward the ID.
-        OttId ott_id = check_ott_id_size(raw_ott_id);
-        if (auto ott_id2 = taxonomy.get_unforwarded_id(ott_id))
-            ott_id = *ott_id2;
-        else
+        auto forwarded_from = ott_id;
+        ott_id = taxonomy.get_unforwarded_id(*ott_id);
+        if (not ott_id)
         {
-            LOG(WARNING) << "OTT ID " << ott_id << " (from '"<<node_id<<"') is neither a current ID nor a forwarded ID.";
-            return {};
+            LOG(WARNING) << "OTT ID " << *ott_id << " (from '"<<node_id<<"') is neither a current ID nor a forwarded ID.";
+            name_to_synth = {InvalidID{*ott_id}};
+            return result;
         }
+        if (*forwarded_from == *ott_id)
+            forwarded_from = {};
 
         // 3. Try to find the OTT ID in the summary tree.
-        auto i2nit = tree_data.id_to_node.find(ott_id);
+        auto i2nit = tree_data.id_to_node.find(*ott_id);
         if (i2nit != tree_data.id_to_node.end())
-            return {i2nit->second};
+        {
+            result.node = i2nit->second;
+            name_to_synth = OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonFound{i2nit->second}}};
+            return result;
+        }
 
         // 4. We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
         if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
         {
             // if found, we return the MRCA pointer in the first slot of the pair.
-            return broken_taxon(bt_it->second.first);
+            result = broken_taxon(bt_it->second.first);
+            name_to_synth = OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonBroken{i2nit->second}}};
+            return result;
         }
         else
         {
-            LOG(WARNING) << "OTT ID" << ott_id << " (from '"<<node_id<<"') is not in the synth tree, and is not listed as broken.";
-            return {};
+            LOG(WARNING) << "OTT ID" << *ott_id << " (from '"<<node_id<<"') is not in the synth tree, and is not listed as broken.";
+            name_to_synth = OTTNameToSynth{ValidID{*ott_id,forwarded_from,TaxonPruned{}}};
+            return result;
         }
     }
 
@@ -378,7 +393,11 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy
         if (result2.node == nullptr) {
             return result2;
         }
-        return {find_mrca_via_traversal_indices(result1.node, result2.node)};
+        auto mrca = find_mrca_via_traversal_indices(result1.node, result2.node);
+
+        result.node = mrca;
+        name_to_synth = MRCANameToSynth{result1.lookup_result.ott_name_lookup(), result2.lookup_result.ott_name_lookup(), mrca};
+        return result;
     }
     return {};
 }
