@@ -360,35 +360,41 @@ OTTNameToSynth find_node_by_ottid_str(const SummaryTree_t & tree, const RichTaxo
     return OTTNameToSynth{ValidID{*valid_ott_id, forwarded_from, find_node_by_valid_ottid(tree, *valid_ott_id, node_id)}};
 }
 
-NameToSynth find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
+MRCANameToSynth find_node_by_mrca_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
     const auto & tree_data = tree.get_data();
 
     std::smatch matches;
+    assert(std::regex_match(node_id, matches, mrca_id_pattern));
+    assert(matches.size() >= 2);
+
+    // We used to look up the canonical name, which would be faster...
+    //        auto n2nit = tree_data.broken_name_to_node.find(node_id);
+    //        if (n2nit != tree_data.broken_name_to_node.end()) {
+    //            return {n2nit->second};
+    //        }
+
+    std::string first_id = matches[1];
+    std::string second_id = matches[2];
+    auto result1 = find_node_by_ottid_str(tree, taxonomy, first_id);
+    auto result2 = find_node_by_ottid_str(tree, taxonomy, second_id);
+
+    const SumTreeNode_t* mrca = nullptr;
+    if (result1.node() and result2.node())
+        mrca = find_mrca_via_traversal_indices(result1.node(), result2.node());
+
+    return MRCANameToSynth{result1, result2, mrca};
+}
+
+NameToSynth find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
+{
+    std::smatch matches;
+
     if (std::regex_match(node_id, matches, ott_id_pattern))
         return find_node_by_ottid_str(tree, taxonomy, node_id);
 
     else if (std::regex_match(node_id, matches, mrca_id_pattern))
-    {
-        // Does this match a canonical mrcaottXottY name?
-//        auto n2nit = tree_data.broken_name_to_node.find(node_id);
-//        if (n2nit != tree_data.broken_name_to_node.end()) {
-//            return {n2nit->second};
-//        }
-
-        // If it does not match a canonical name, then lookup ottX and ottY
-        assert(matches.size() >= 2);
-        std::string first_id = matches[1];
-        std::string second_id = matches[2];
-        auto result1 = find_node_by_ottid_str(tree, taxonomy, first_id);
-        auto result2 = find_node_by_ottid_str(tree, taxonomy, second_id);
-
-        const SumTreeNode_t* mrca = nullptr;
-        if (result1.node() and result2.node())
-            mrca = find_mrca_via_traversal_indices(result1.node(), result2.node());
-
-        return MRCANameToSynth{result1, result2, mrca};
-    }
+        return find_node_by_mrca_str(tree, taxonomy, node_id);
 
     else
         return NoMatchName{};
