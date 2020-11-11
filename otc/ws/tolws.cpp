@@ -556,34 +556,47 @@ string node_info_ws_method(const TreesToServe & tts,
 pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
                                                                   const SummaryTree_t* tree_ptr,
                                                                   const vector<string>& node_ids,
-                                                                  bool fail_broken = false) {
+                                                                  bool fail_broken = false)
+{
     vector<const SumTreeNode_t *> nodes;
     json unknown;
     json broken = json::object();
     optional<string> bad_node_id;
-    for (auto node_id : node_ids) {
+    for (auto node_id : node_ids)
+    {
         auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
-        if (not result.node() or (result.broken() and fail_broken)) {
+
+        if (not result.node() or (result.broken() and fail_broken))
+        {
             // Possible statuses:
-            //  - invalid    (never minted id)
-            //  - pruned     (valid but not in synth)
-            //  - deprecated (previously valid, not forwarded)
+            //  "unknown_id"        (The number in the ottid is too big)
+            //  "unknown_id"        (Deprecated: previously valid ottid, no longer forwarded)
+            //  "unknown_id"        (For an mrca where anything goes wrong at all"
+            //  "invalid_ott_id"    (Not in current ott, and not forwarded)
+            //  "pruned_ott_id"     (In OTT, but pruned from synth)
+            //  "broken"            (In OTT, not pruned, but broken taxon and fail_broken = true)
+
             string reason = "unknown_id";
-            if (result.node() and result.broken()) {
+
+            if (result.node() and result.broken())
                 reason = "broken";
-            } else if (auto id = is_ott_id(node_id)) {
+
+            else if (auto id = is_ott_id(node_id))
+            {
                 auto taxon = taxonomy.included_taxon_from_id(*id);
                 // Not currently implemented...
                 // if (id == -2)
                 //  reason = "deprecated";
                 reason = (not taxon ? "invalid_ott_id": "pruned_ott_id");
             }
+
             unknown[node_id] = reason;
             bad_node_id = node_id;
         }
-        if (result.broken()) {
+
+        if (result.broken())
             broken[node_id] = node_id_for_summary_tree_node(*result.node());
-        }
+
         // Current default strategy means that we include MRCAs for broken taxa.
         nodes.push_back(result.node());
     }
