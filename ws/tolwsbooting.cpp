@@ -11,6 +11,7 @@
 #include <fstream>
 #include <cstdlib>
 #include "otc/ws/tolwsadaptors.h"
+#include "otc/ws/find_node.h"
 #include "otc/otcli.h"
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
