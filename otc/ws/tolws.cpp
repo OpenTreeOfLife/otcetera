@@ -578,17 +578,12 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
 
             string reason = "unknown_id";
 
-            if (result.node() and result.broken())
+            if (result.broken())
                 reason = "broken";
-
-            else if (auto id = is_ott_id(node_id))
-            {
-                auto taxon = taxonomy.included_taxon_from_id(*id);
-                // Not currently implemented...
-                // if (id == -2)
-                //  reason = "deprecated";
-                reason = (not taxon ? "invalid_ott_id": "pruned_ott_id");
-            }
+            else if (result.pruned())
+                reason = "pruned_ott_id";
+            else if (result.invalid())
+                reason = "invalid_ott_id";
 
             unknown[node_id] = reason;
             bad_node_id = node_id;
