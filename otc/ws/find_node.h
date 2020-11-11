@@ -2,6 +2,7 @@
 #define FIND_NODE_H
 
 #include "tolws.h"
+#include <tuple>
 
 namespace otc {
 
@@ -134,10 +135,8 @@ MRCANameToSynth find_node_by_mrca_str(const SummaryTree_t & tree, const RichTaxo
 NameToSynth find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy&, const std::string & node_id);
 NameToSynth find_required_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const std::string & node_id);
 
-std::pair<std::vector<const SumTreeNode_t*>,nlohmann::json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
-                                                                                      const SummaryTree_t* tree_ptr,
-                                                                                      const std::vector<std::string>& node_ids,
-                                                                                      bool fail_broken = false);
-
+std::tuple<std::vector<const SumTreeNode_t*>,nlohmann::json,nlohmann::json>
+find_nodes_for_id_strings(const RichTaxonomy& taxonomy, const SummaryTree_t* tree_ptr, const std::vector<std::string>& node_ids,
+                          bool fail_broken = false, bool = false, bool = false, bool = false);
 }
 #endif

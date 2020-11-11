@@ -5,6 +5,7 @@
 using std::vector;
 using std::map;
 using std::pair;
+using std::tuple;
 using std::set;
 using std::string;
 using std::string_view;
@@ -139,20 +140,20 @@ NameToSynth find_required_node_by_id_str(const SummaryTree_t & tree, const RichT
     return result;
 }
 
-pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
-                                                                  const SummaryTree_t* tree_ptr,
-                                                                  const vector<string>& node_ids,
-                                                                  bool fail_broken)
+tuple<vector<const SumTreeNode_t*>,json,json>
+find_nodes_for_id_strings(const RichTaxonomy& taxonomy, const SummaryTree_t* tree_ptr, const vector<string>& node_ids,
+                          bool fail_broken, bool filter_invalid, bool filter_pruned, bool filter_broken)
 {
     vector<const SumTreeNode_t *> nodes;
     json unknown;
     json broken = json::object();
+    json filtered = json::object();
     optional<string> bad_node_id;
     for (auto node_id : node_ids)
     {
         auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
 
-        if (not result.node() or (result.broken() and fail_broken))
+        if (not result.node() or (result.broken() and (fail_broken or filter_broken)))
         {
             // Possible statuses:
             //  "unknown_id"        (The number in the ottid is too big)
@@ -163,16 +164,31 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
             //  "broken"            (In OTT, not pruned, but broken taxon and fail_broken = true)
 
             string reason = "unknown_id";
+            bool filter = false;
 
-            if (result.broken())
-                reason = "broken";
-            else if (result.pruned())
-                reason = "pruned_ott_id";
-            else if (result.invalid())
+            if (result.invalid())
+            {
                 reason = "invalid_ott_id";
+                filter = filter_invalid;
+            }
+            else if (result.pruned())
+            {
+                reason = "pruned_ott_id";
+                filter = filter_pruned;
+            }
+            else if (result.broken())
+            {
+                reason = "broken";
+                filter = filter_broken;
+            }
 
-            unknown[node_id] = reason;
-            bad_node_id = node_id;
+            if (filter)
+                filtered[node_id] = reason;
+            else
+            {
+                unknown[node_id] = reason;
+                bad_node_id = node_id;
+            }
         }
 
         if (result.broken())
@@ -182,9 +198,9 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
         nodes.push_back(result.node());
     }
     if (unknown.size()) {
-        throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown} };
+        throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown}, {"filtered",filtered} };
     }
-    return {nodes, broken};
+    return {nodes, broken, filtered};
 }
 
 }
