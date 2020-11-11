@@ -270,7 +270,7 @@ struct TaxonToSynth: public std::variant<TaxonPruned, TaxonBroken, TaxonFound>
 
     bool pruned() const {return index() == 0;}
     bool broken() const {return index() == 1;}
-    bool present() const {return index() == 2;}
+    bool found() const {return index() == 2;}
 
     using std::variant<TaxonPruned, TaxonBroken, TaxonFound>::variant;
 };
@@ -298,7 +298,7 @@ struct ValidID
     bool ok() const { return node();}
     bool pruned() const {return to_synth.pruned();}
     bool broken() const {return to_synth.broken();}
-    bool present() const {return to_synth.present();}
+    bool found() const {return to_synth.found();}
 };
 
 // BEGIN NameToSynth = NoMatchName | OTTNameToSynth | MRCANameToSynth
@@ -316,24 +316,12 @@ struct OTTNameToSynth : public std::variant<BadID,InvalidID,ValidID>
     }
     bool ok() const {return node();}
 
-    using std::variant<BadID,InvalidID,ValidID>::variant;
+    bool invalid() const {return index() == 1;}
+    bool pruned() const {return index() == 2 and std::get<ValidID>(*this).pruned();}
+    bool broken() const {return index() == 2 and std::get<ValidID>(*this).broken();}
+    bool found() const {return index() == 2 and std::get<ValidID>(*this).found();}
 
-    bool invalid() const
-    {
-        return index() == 0 or index() == 1;
-    }
-    bool broken() const
-    {
-        return index() == 2 and std::get<ValidID>(*this).broken();
-    }
-    bool present() const
-    {
-        return index() == 2 and std::get<ValidID>(*this).present();
-    }
-    bool pruned() const
-    {
-        return index() == 2 and std::get<ValidID>(*this).pruned();
-    }
+    using std::variant<BadID,InvalidID,ValidID>::variant;
 };
 
 
@@ -364,8 +352,10 @@ struct NameToSynth: public std::variant<NoMatchName, OTTNameToSynth, MRCANameToS
 
     bool is_ott_name() const {return index() == 1;}
     bool is_mrca_name() const {return index() == 2;}
-    bool broken() const {return index() == 1 and ott_name_lookup().broken();}
-    bool invalid() const {return node() == nullptr and not broken();}
+    bool invalid() const {return is_ott_name() and ott_name_lookup().invalid();}
+    bool pruned() const {return is_ott_name() and ott_name_lookup().pruned();}
+    bool broken() const {return is_ott_name() and ott_name_lookup().broken();}
+    bool found() const {return is_ott_name() and ott_name_lookup().found();}
 
     using std::variant<NoMatchName,OTTNameToSynth,MRCANameToSynth>::variant;
 };
