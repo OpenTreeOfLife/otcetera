@@ -313,7 +313,7 @@ bool is_ancestor_of(N* f, N* s)
     return (sec_ind >= fdata->trav_enter and sec_ind <= fdata->trav_exit);
 }
 
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const string & node_id)
+node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
     const auto & tree_data = tree.get_data();
 
@@ -323,24 +323,39 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const string & nod
         // Get the OTT ID
         long raw_ott_id = long_ott_id_from_name(node_id);
 
-        // Try to find the OTT ID in the summary tree.
-        if (raw_ott_id >= 0) {
-            OttId ott_id = check_ott_id_size(raw_ott_id);
-            auto i2nit = tree_data.id_to_node.find(ott_id);
-            if (i2nit != tree_data.id_to_node.end()) {
-                return {i2nit->second};
-            }
-            LOG(WARNING) << "not finding " << ott_id << " extracted from " << node_id;
+        // 1. Check that the ID is not negative
+        if (raw_ott_id < 0)
+        {
+            LOG(WARNING) << "OTT ID " << raw_ott_id << " (from '"<<node_id<<"') is negative!";
+            return {};
         }
 
-        // We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
+        // 2. Try and forward the ID.
+        OttId ott_id = check_ott_id_size(raw_ott_id);
+        if (auto ott_id2 = taxonomy.get_unforwarded_id(ott_id))
+            ott_id = *ott_id2;
+        else
+        {
+            LOG(WARNING) << "OTT ID " << ott_id << " (from '"<<node_id<<"') is neither a current ID nor a forwarded ID.";
+            return {};
+        }
+
+        // 3. Try to find the OTT ID in the summary tree.
+        auto i2nit = tree_data.id_to_node.find(ott_id);
+        if (i2nit != tree_data.id_to_node.end())
+            return {i2nit->second};
+
+        // 4. We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
         if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
         {
-            // if found we return the MRCA pointer in the first slot of the pair.
+            // if found, we return the MRCA pointer in the first slot of the pair.
             return broken_taxon(bt_it->second.first);
         }
         else
+        {
+            LOG(WARNING) << "OTT ID" << ott_id << " (from '"<<node_id<<"') is not in the synth tree, and is not listed as broken.";
             return {};
+        }
     }
 
     if (std::regex_match(node_id, matches, mrca_id_pattern))
@@ -355,11 +370,11 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const string & nod
         assert(matches.size() >= 2);
         std::string first_id = matches[1];
         std::string second_id = matches[2];
-        auto result1 = find_node_by_id_str(tree, first_id);
+        auto result1 = find_node_by_id_str(tree, taxonomy, first_id);
         if (result1.node == nullptr) {
             return result1;
         }
-        auto result2 = find_node_by_id_str(tree, second_id);
+        auto result2 = find_node_by_id_str(tree, taxonomy, second_id);
         if (result2.node == nullptr) {
             return result2;
         }
@@ -368,9 +383,9 @@ node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const string & nod
     return {};
 }
 
-node_lookup_t find_required_node_by_id_str(const SummaryTree_t & tree, const string & node_id)
+node_lookup_t find_required_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
-    auto result = find_node_by_id_str(tree, node_id);
+    auto result = find_node_by_id_str(tree, taxonomy, node_id);
     if (not result.node) {
         throw OTCBadRequest() << "node_id '" << node_id << "' was not found!";
     }
@@ -512,7 +527,9 @@ string node_info_ws_method(const TreesToServe & tts,
                            bool include_lineage) {
     LOG(DEBUG)<<"Got to node_info_ws_method( )";
 
-    auto result = find_required_node_by_id_str(*tree_ptr, node_id);
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    auto result = find_required_node_by_id_str(*tree_ptr, taxonomy, node_id);
 
     auto response = node_info_json(tts, sta, result.node, include_lineage);
     response["query"] = node_id;
@@ -528,7 +545,7 @@ pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxo
     json broken = json::object();
     optional<string> bad_node_id;
     for (auto node_id : node_ids) {
-        auto result = find_node_by_id_str(*tree_ptr, node_id);
+        auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
         if (not result.node or (result.was_broken and fail_broken)) {
             // Possible statuses:
             //  - invalid    (never minted id)
@@ -718,12 +735,13 @@ auto lookup(const Map& m, const Key& k)
 
 
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
-                                           const string & node_id, 
+                                           const string & node_id,
+                                           const RichTaxonomy& taxonomy,
                                            int height_limit,
                                            uint32_t tip_limit)
 {
     assert(tree_ptr != nullptr);
-    auto result = find_required_node_by_id_str(*tree_ptr, node_id);
+    auto result = find_required_node_by_id_str(*tree_ptr, taxonomy, node_id);
     if (result.was_broken) {
         json broken;
         broken["mrca"] = get_synth_node_label(result.node);
@@ -849,9 +867,9 @@ string newick_subtree_ws_method(const TreesToServe & tts,
                                 int height_limit)
 {
     const uint32_t NEWICK_TIP_LIMIT = 100000;
-    auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
+    auto focal = get_node_for_subtree(tree_ptr, node_id, taxonomy, height_limit, NEWICK_TIP_LIMIT);
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy, tts);
     ostringstream out;
     write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, include_all_node_labels, height_limit);
@@ -891,7 +909,9 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
                                  const string & node_id,
                                  int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
-    auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    auto focal = get_node_for_subtree(tree_ptr, node_id, taxonomy, height_limit, NEWICK_TIP_LIMIT);
     json response;
     response["synth_id"] = sta->synth_id;
     set<string> usedSrcIds;
