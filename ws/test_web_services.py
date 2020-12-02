@@ -425,6 +425,7 @@ if __name__ == '__main__':
         recheck = 0
         checks_per_sec = 3
         while recheck < checks_per_sec*args.secs_to_recheck_pid_file:
+            recheck += 1
             time.sleep(1.0/checks_per_sec)
             if not os.path.exists(pidfile_path):
                 break
