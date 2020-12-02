@@ -204,7 +204,6 @@ class WebServiceTestJob(object):
                     self.status_str = "Expected status {} but got {}.  response body = {}\n".format(self.expected_status, response.status_code, response.text)
                 except:
                     pass
-                return
 
             # 3. Check JSON body
             _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
@@ -228,9 +227,12 @@ class WebServiceTestJob(object):
                         else:
                             m = ''
                         self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
-                        return
-            self.passed = True
-            self.status_str = "Completed"
+
+            if self.failed:
+                return
+            else:
+                self.passed = True
+                self.status_str = "Completed"
         except Exception as x:
             self.erred = True
             _LOG.exception('writing exception to status string')
