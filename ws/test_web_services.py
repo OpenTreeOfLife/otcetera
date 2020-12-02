@@ -201,7 +201,7 @@ class WebServiceTestJob(object):
             elif response.status_code != self.expected_status:
                 self.failed = True
                 try:
-                    self.status_str = "Expected status {} but got {}.  response body = {}\n".format(self.expected_status, response.status_code, response.text)
+                    self.status_str = "Expected status {} but got {}.  response body = \n{}\n".format(self.expected_status, response.status_code, response.text)
                 except:
                     pass
 
@@ -226,7 +226,7 @@ class WebServiceTestJob(object):
                             m = 'Response written to {}'.format(dbout_observed)
                         else:
                             m = ''
-                        self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
+                        self.status_str += "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
 
             if self.failed:
                 return
