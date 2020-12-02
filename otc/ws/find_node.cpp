@@ -96,7 +96,8 @@ MRCANameToSynth find_node_by_mrca_str(const SummaryTree_t & tree, const RichTaxo
     const auto & tree_data = tree.get_data();
 
     std::smatch matches;
-    assert(std::regex_match(node_id, matches, mrca_id_pattern));
+    auto match = std::regex_match(node_id, matches, mrca_id_pattern);
+    assert(match);
     assert(matches.size() >= 2);
 
     // We used to look up the canonical name, which would be faster...
