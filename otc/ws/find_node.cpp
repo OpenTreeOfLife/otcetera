@@ -199,7 +199,9 @@ find_nodes_for_id_strings(const RichTaxonomy& taxonomy, const SummaryTree_t* tre
         nodes.push_back(result.node());
     }
     if (unknown.size()) {
-        throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown}, {"filtered",filtered} };
+        // Also add {"filtered", filtered} here, if we decide to allow filtering.
+        // Probability we should report "filtered": {} when nothing is filtered, but could report filtered only if non-empty.
+        throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown} };
     }
     return {nodes, broken, filtered};
 }
