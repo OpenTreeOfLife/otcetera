@@ -172,6 +172,17 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
 }
 
 /// Merge components c1 and c2 and return the component name that survived
+int merge_component_with_trivial(int ic1, int index2, vector<int>& component, vector<list<int>>& elements)
+{
+    std::size_t c1 = static_cast<std::size_t>(ic1);
+
+    component[static_cast<std::size_t>(index2)] = static_cast<int>(c1);
+
+    elements[c1].push_back(index2);
+    return static_cast<int>(c1);
+}
+
+/// Merge components c1 and c2 and return the component name that survived
 int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>& elements) {
     std::size_t c1 = static_cast<std::size_t>(ic1);
     std::size_t c2 = static_cast<std::size_t>(ic2);
@@ -446,16 +457,33 @@ bool BUILD2_(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSpl
         assert(indices[k] == -1);
     for (int i=0;i<tips.size();i++) {
         indices[tips[i]] = i;
-        component.push_back(i);
-        elements.push_back({i});
+        component.push_back(-1);
     }
     // 3. For each split, all the leaves in the include group must be in the same component
-    for(const auto& split: splits) {
+    for(const auto& split: splits)
+    {
         int c1 = -1;
-        for(int i: split->in) {
+        for(int i: split->in)
+        {
             int j = indices[i];
             int c2 = component[j];
-            if (c1 != -1 and c1 != c2) {
+
+            if (c1 == -1)
+            {
+                if (c2 == -1)
+                {
+                    c2 = elements.size();
+                    elements.push_back({j});
+                    component[j] = c2;
+                }
+                c1 = c2;
+            }
+            else if (c2 == -1)
+            {
+                merge_component_with_trivial(c1,j,component,elements);
+            }
+            else if (c1 != c2)
+            {
                 merge_components(c1,c2,component,elements);
             }
             c1 = component[j];
@@ -467,45 +495,36 @@ bool BUILD2_(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSpl
             indices[id] = -1;
         return false;
     }
-    // 5. Make a vector of labels for the partition components
-    vector<int> component_labels;                           // index -> component label
-    vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
-    for (int c=0;c<tips.size();c++) {
-        if (c == component[c]) {
-            int index = component_labels.size();
-            component_labels.push_back(c);
-            component_label_to_index[c] = index;
-        }
-    }
+
     // 6. Create the vector of tips in each connected component 
-    vector<vector<int>> subtips(component_labels.size());
-    for(int tip_index=0;tip_index < tips.size();tip_index++)
+    vector<vector<int>> subtips(elements.size());
+    for(int index=0;index < tips.size();index++)
     {
-        int tip = tips[tip_index];
-        int component_label = component[tip_index];
-        int component_index = component_label_to_index[component_label];
-        subtips[component_index].push_back(tip);
+        int taxon = tips[index];
+        int c = component[index];
+        if (c != -1)
+            subtips[c].push_back(taxon);
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<ConstRSplit>> subsplits(component_labels.size());
-    for(const auto& split: splits) {
+    vector<vector<ConstRSplit>> subsplits(elements.size());
+    for(const auto& split: splits)
+    {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
         int c = component[first];
         // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
         bool satisfied = true;
-        for(int x: split->out){
+        for(int x: split->out)
+        {
             // indices[i] != -1 checks if x is in the current tip set.
             if (indices[x] != -1 and component[indices[x]] == c) {
                 satisfied = false;
                 break;
             }
         }
-        if (not satisfied) {
-            int i = component_label_to_index[c];
-            subsplits[i].push_back(split);
-        }
+        if (not satisfied)
+            subsplits[c].push_back(split);
     }
     // 8. Clear our map from id -> index, for use by subproblems.
     for(int id: tips) {
