@@ -409,9 +409,23 @@ bool BUILD2(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSpli
 
     auto args = BUILD_args_ref(tips, splits);
 
+#ifdef DO_CACHE
+    if (cache.count(args))
+    {
+        cache_hits++;
+        return true;
+    }
+#endif
+
     cache_misses++;
 
-    return BUILD2_(cache, tips, splits);
+    bool result =  BUILD2_(cache, tips, splits);
+#ifdef DO_CACHE
+    if (result)
+        cache.insert(BUILD_args(tips,splits));
+#endif
+
+    return result;
 }
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
