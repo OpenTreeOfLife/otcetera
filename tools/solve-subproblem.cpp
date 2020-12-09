@@ -846,7 +846,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         if (i == trees.size()-1 and not incertae_sedis.empty()) {
             auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
 
-            for(auto nd: iter_post_const(*tree)) {
+            for(auto nd: iter_pre_const(*tree)) {
                 if (not nd->is_tip() and nd != root) {
                     // construct split
                     const auto descendants = remap(nd->get_data().des_ids);
@@ -857,7 +857,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 }
             }
         } else if (i == trees.size()-1) {
-            for(auto nd: iter_post_const(*tree)) {
+            for(auto nd: iter_pre_const(*tree)) {
                 if (not nd->is_tip() and nd != root) {
                     const auto descendants = remap(nd->get_data().des_ids);
                     if (add_split_if_consistent(nd, RSplit(new RSplitObj{descendants, leafTaxaIndices}))) {
@@ -866,7 +866,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
                 }
             }
         } else {
-            for(auto nd: iter_post_const(*tree)) {
+            for(auto nd: iter_pre_const(*tree)) {
                 if (not nd->is_tip() and nd != root) {
                     const auto descendants = remap(nd->get_data().des_ids);
                     add_split_if_consistent(nd, RSplit(new RSplitObj{descendants, leafTaxaIndices}));
