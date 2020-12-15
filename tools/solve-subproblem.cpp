@@ -386,17 +386,17 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     // 5. Make a vector of labels for the partition components
     // We need to pack the components from 0..n-1.
     // Component INDICES are packed, but component LABELS are not.
-    vector<int> component_labels;                           // component index -> component label
+    vector<int> component_index_to_label;                   // component index -> component label
     vector<int> component_label_to_index(tips.size(),-1);   // component label -> component index
     for (int c=0;c<tips.size();c++) {
         if (c == component_for_index[c]) {
-            int index = component_labels.size();
-            component_labels.push_back(c);
+            int index = component_index_to_label.size();
+            component_index_to_label.push_back(c);
             component_label_to_index[c] = index;
         }
     }
     // 6. Create the vector of tips in each connected component 
-    vector<vector<int>> subtips(component_labels.size());
+    vector<vector<int>> subtips(component_index_to_label.size());
     for(int tip_index=0;tip_index < tips.size();tip_index++)
     {
         int tip = tips[tip_index];
@@ -406,7 +406,7 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<ConstRSplit>> subsplits(component_labels.size());
+    vector<vector<ConstRSplit>> subsplits(component_index_to_label.size());
     for(const auto& split: splits) {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
