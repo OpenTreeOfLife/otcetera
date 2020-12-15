@@ -361,7 +361,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& splits)
+shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& splits)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -372,7 +372,7 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
 
     if (splits.empty())
     {
-        solution->trivial_taxa = tips;
+        solution->trivial_taxa = taxa;
         return solution;
     }
 
@@ -383,9 +383,9 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     for(int k=0;k<indices.size();k++)
         assert(indices[k] == -1);
 
-    for (int i=0;i<tips.size();i++)
+    for (int i=0;i<taxa.size();i++)
     {
-        indices[tips[i]] = i;
+        indices[taxa[i]] = i;
 
         components.push_back( std::make_unique<component_for_merging>() );
         components.back()->elements.push_back(i);
@@ -408,9 +408,9 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     }
 
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (component_for_index[0]->elements.size() == tips.size())
+    if (component_for_index[0]->elements.size() == taxa.size())
     {
-        for(int id: tips)
+        for(int id: taxa)
             indices[id] = -1;
         return {};
     }
@@ -431,13 +431,13 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
         i++;
     }
 
-    // 6. Create the vector of tips in each connected component 
-    vector<vector<int>> subtips(components.size());
-    for(int index=0;index < tips.size();index++)
+    // 6. Create the vector of taxa in each connected component 
+    vector<vector<int>> subtaxa(components.size());
+    for(int index=0;index < taxa.size();index++)
     {
         int component_index = *component_for_index[index]->index;
-        auto taxon = tips[index];
-        subtips[component_index].push_back(taxon);
+        auto taxon = taxa[index];
+        subtaxa[component_index].push_back(taxon);
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
@@ -467,17 +467,17 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
             subsplits[*component->index].push_back(split);
     }
     // 8. Clear our map from id -> index, for use by subproblems.
-    for(int id: tips) {
+    for(int id: taxa) {
         indices[id] = -1;
     }
     // 9. Recursively solve the sub-problems of the partition components
-    for(int i=0;i<subtips.size();i++)
+    for(int i=0;i<subtaxa.size();i++)
     {
-        if (subtips[i].size() == 1)
-            solution->trivial_taxa.push_back(subtips[i][0]);
+        if (subtaxa[i].size() == 1)
+            solution->trivial_taxa.push_back(subtaxa[i][0]);
         else
         {
-            auto subsolution = BUILD(subtips[i], subsplits[i]);
+            auto subsolution = BUILD(subtaxa[i], subsplits[i]);
             if (not subsolution) return {};
 
             solution->non_trivial_components.push_back({});
