@@ -355,29 +355,29 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     }
 
     // 2. Initialize the mapping from elements to components
-    vector<int> component;       // element index  -> component
-    vector<list<int> > elements;  // component -> element indices
+    vector<int> component_for_index;       // element index  -> component
+    vector<list<int> > elements_for_component;  // component -> element indices
     for(int k=0;k<indices.size();k++)
         assert(indices[k] == -1);
     for (int i=0;i<tips.size();i++) {
         indices[tips[i]] = i;
-        component.push_back(i);
-        elements.push_back({i});
+        component_for_index.push_back(i);
+        elements_for_component.push_back({i});
     }
     // 3. For each split, all the leaves in the include group must be in the same component
     for(const auto& split: splits) {
         int c1 = -1;
-        for(int i: split->in) {
-            int j = indices[i];
-            int c2 = component[j];
+        for(int taxon: split->in) {
+            int index = indices[taxon];
+            int c2 = component_for_index[index];
             if (c1 != -1 and c1 != c2) {
-                merge_components(c1,c2,component,elements);
+                merge_components(c1,c2,component_for_index,elements_for_component);
             }
-            c1 = component[j];
+            c1 = component_for_index[index];
         }
     }
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (elements[component[0]].size() == tips.size()) {
+    if (elements_for_component[component_for_index[0]].size() == tips.size()) {
         for(int id: tips)
             indices[id] = -1;
         return {};
@@ -386,7 +386,7 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     vector<int> component_labels;                           // index -> component label
     vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
     for (int c=0;c<tips.size();c++) {
-        if (c == component[c]) {
+        if (c == component_for_index[c]) {
             int index = component_labels.size();
             component_labels.push_back(c);
             component_label_to_index[c] = index;
@@ -397,7 +397,7 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     for(int tip_index=0;tip_index < tips.size();tip_index++)
     {
         int tip = tips[tip_index];
-        int component_label = component[tip_index];
+        int component_label = component_for_index[tip_index];
         int component_index = component_label_to_index[component_label];
         subtips[component_index].push_back(tip);
     }
@@ -407,12 +407,12 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     for(const auto& split: splits) {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
-        int c = component[first];
+        int c = component_for_index[first];
         // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
         bool satisfied = true;
         for(int x: split->out){
             // indices[i] != -1 checks if x is in the current tip set.
-            if (indices[x] != -1 and component[indices[x]] == c) {
+            if (indices[x] != -1 and component_for_index[indices[x]] == c) {
                 satisfied = false;
                 break;
             }
