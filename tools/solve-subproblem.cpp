@@ -878,10 +878,12 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<ConstRSplit> consistent;
     BUILD_cache cache;
-    auto add_split_if_consistent = [&](auto nd, RSplit&& split) {
+    auto add_split_if_consistent = [&](auto nd, RSplit&& split)
+        {
             consistent.push_back(std::move(split));
 
-            auto result = BUILD2(cache, all_leaves_indices, consistent);
+            // auto result = BUILD2(cache, all_leaves_indices, consistent);
+            auto result = BUILD(all_leaves_indices, consistent);
             if (not result) {
                 consistent.pop_back();
                 if (verbose and nd->has_ott_id()) {
