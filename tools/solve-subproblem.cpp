@@ -24,6 +24,7 @@ using std::list;
 using std::map;
 using std::string;
 using std::optional;
+using std::shared_ptr;
 
 template <typename X>
 using Set = robin_hood::unordered_set<X>;
@@ -294,8 +295,52 @@ namespace std {
 
 static vector<int> indices;
 
+struct Solution
+{
+    vector<int> tips;
+    vector<ConstRSplit> splits;
+
+    struct component
+    {
+        vector<int> tips;
+        vector<ConstRSplit> finished_splits;
+        vector<ConstRSplit> unfinished_splits;
+        shared_ptr<Solution> solution;
+    };
+
+    vector<component> non_trivial_components;
+    vector<int> trivial_taxa;
+
+    unique_ptr<Tree_t> get_tree() const;
+};
+
+unique_ptr<Tree_t> Solution::get_tree() const
+{
+//    assert(tips.size() > 1);
+    assert(non_trivial_components.size() + trivial_taxa.size() > 1);
+
+    // 1. Make a tree with just a root node
+    std::unique_ptr<Tree_t> tree(new Tree_t());
+    tree->create_root();
+
+    // 2. Add children for non-trivial components
+    for(auto& c: non_trivial_components)
+        add_subtree(tree->get_root(), *c.solution->get_tree());
+
+    // 3. Add children for trivial components
+    for(auto& taxon: trivial_taxa)
+    {
+        auto node = tree->create_child(tree->get_root());
+        node->set_ott_id(taxon);
+    }
+
+    return tree;
+}
+
+
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<ConstRSplit>& splits) {
+unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<ConstRSplit>& splits)
+{
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
