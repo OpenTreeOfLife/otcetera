@@ -339,26 +339,21 @@ unique_ptr<Tree_t> Solution::get_tree() const
 
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<ConstRSplit>& splits)
+shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& splits)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
-    std::unique_ptr<Tree_t> tree(new Tree_t());
-    tree->create_root();
-    // 1. First handle trees of size 1 and 2
-    if (tips.size() == 1) {
-        tree->get_root()->set_ott_id(*tips.begin());
-        return tree;
-    } else if (tips.size() == 2) {
-        auto Node1a = tree->create_child(tree->get_root());
-        auto Node1b = tree->create_child(tree->get_root());
-        auto it = tips.begin();
-        Node1a->set_ott_id(*it++);
-        Node1b->set_ott_id(*it++);
-        return tree;
+
+    auto solution = std::make_shared<Solution>();
+
+    if (splits.empty())
+    {
+        solution->trivial_taxa = tips;
+        return solution;
     }
+
     // 2. Initialize the mapping from elements to components
     vector<int> component;       // element index  -> component
     vector<list<int> > elements;  // component -> element indices
@@ -432,14 +427,20 @@ unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<ConstRSplit>& spl
         indices[id] = -1;
     }
     // 9. Recursively solve the sub-problems of the partition components
-    for(int i=0;i<subtips.size();i++) {
-        auto subtree = BUILD(subtips[i], subsplits[i]);
-        if (not subtree) {
-            return {};
+    for(int i=0;i<subtips.size();i++)
+    {
+        if (subtips[i].size() == 1)
+            solution->trivial_taxa.push_back(subtips[i][0]);
+        else
+        {
+            auto subsolution = BUILD(subtips[i], subsplits[i]);
+            if (not subsolution) return {};
+
+            solution->non_trivial_components.push_back({});
+            solution->non_trivial_components.back().solution = subsolution;
         }
-        add_subtree(tree->get_root(), *subtree);
     }
-    return tree;
+    return solution;
 }
 
 typedef Set<BUILD_args> BUILD_cache;
@@ -941,7 +942,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
     }
     // 2. Construct final tree and add names
-    auto tree = BUILD(all_leaves_indices, consistent);
+    auto tree = BUILD(all_leaves_indices, consistent)->get_tree();
     for(auto nd: iter_pre(*tree)) {
         if (nd->is_tip()) {
             int index = nd->get_ott_id();
