@@ -382,9 +382,12 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
             indices[id] = -1;
         return {};
     }
+
     // 5. Make a vector of labels for the partition components
-    vector<int> component_labels;                           // index -> component label
-    vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
+    // We need to pack the components from 0..n-1.
+    // Component INDICES are packed, but component LABELS are not.
+    vector<int> component_labels;                           // component index -> component label
+    vector<int> component_label_to_index(tips.size(),-1);   // component label -> component index
     for (int c=0;c<tips.size();c++) {
         if (c == component_for_index[c]) {
             int index = component_labels.size();
