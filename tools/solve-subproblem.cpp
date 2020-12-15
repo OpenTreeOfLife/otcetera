@@ -197,6 +197,28 @@ int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>
     return static_cast<int>(c1);
 }
 
+struct component_for_merging
+{
+    list<int> elements;
+    optional<int> index;
+};
+
+typedef component_for_merging* component_ref;
+
+/// Merge components c1 and c2 and return the component name that survived
+component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component)
+{
+    if (c2->elements.size() > c1->elements.size())
+        std::swap(c1, c2);
+
+    for(int i: c2->elements)
+        component[i] = c1;
+
+    c1->elements.splice(c1->elements.end(), c2->elements);
+
+    return c1;
+}
+
 bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     for (int y: ys){
         if (xs.count(y)) {
@@ -355,29 +377,39 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     }
 
     // 2. Initialize the mapping from elements to components
-    vector<int> component_for_index;       // element index  -> component
-    vector<list<int> > elements_for_component;  // component -> element indices
+    vector< component_ref > component_for_index;       // element index  -> component
+    vector< unique_ptr<component_for_merging> > components;  // component -> element indices
+
     for(int k=0;k<indices.size();k++)
         assert(indices[k] == -1);
-    for (int i=0;i<tips.size();i++) {
+
+    for (int i=0;i<tips.size();i++)
+    {
         indices[tips[i]] = i;
-        component_for_index.push_back(i);
-        elements_for_component.push_back({i});
+
+        components.push_back( std::make_unique<component_for_merging>() );
+        components.back()->elements.push_back(i);
+
+        component_for_index.push_back( components.back().get() );
     }
+
     // 3. For each split, all the leaves in the include group must be in the same component
-    for(const auto& split: splits) {
-        int c1 = -1;
-        for(int taxon: split->in) {
+    for(const auto& split: splits)
+    {
+        component_ref c1 = nullptr;
+        for(int taxon: split->in)
+        {
             int index = indices[taxon];
-            int c2 = component_for_index[index];
-            if (c1 != -1 and c1 != c2) {
-                merge_components(c1,c2,component_for_index,elements_for_component);
-            }
+            auto c2 = component_for_index[index];
+            if (c1 and c1 != c2)
+                merge_components(c1,c2,component_for_index);
             c1 = component_for_index[index];
         }
     }
+
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (elements_for_component[component_for_index[0]].size() == tips.size()) {
+    if (component_for_index[0]->elements.size() == tips.size())
+    {
         for(int id: tips)
             indices[id] = -1;
         return {};
@@ -386,44 +418,53 @@ shared_ptr<Solution> BUILD(const vector<int>& tips, const vector<ConstRSplit>& s
     // 5. Make a vector of labels for the partition components
     // We need to pack the components from 0..n-1.
     // Component INDICES are packed, but component LABELS are not.
-    vector<int> component_index_to_label;                   // component index -> component label
-    vector<int> component_label_to_index(tips.size(),-1);   // component label -> component index
-    for (int c=0;c<tips.size();c++) {
-        if (c == component_for_index[c]) {
-            int index = component_index_to_label.size();
-            component_index_to_label.push_back(c);
-            component_label_to_index[c] = index;
-        }
-    }
-    // 6. Create the vector of tips in each connected component 
-    vector<vector<int>> subtips(component_index_to_label.size());
-    for(int tip_index=0;tip_index < tips.size();tip_index++)
+    vector<unique_ptr<component_for_merging>> packed_components;
+    for(auto& component:components)
+        if (not component->elements.empty())
+            packed_components.push_back( std::move(component) );
+    std::swap(components, packed_components);
+
+    int i=0;
+    for(const auto& component: components)
     {
-        int tip = tips[tip_index];
-        int component_label = component_for_index[tip_index];
-        int component_index = component_label_to_index[component_label];
-        subtips[component_index].push_back(tip);
+        component->index = i;
+        i++;
+    }
+
+    // 6. Create the vector of tips in each connected component 
+    vector<vector<int>> subtips(components.size());
+    for(int index=0;index < tips.size();index++)
+    {
+        int component_index = *component_for_index[index]->index;
+        auto taxon = tips[index];
+        subtips[component_index].push_back(taxon);
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<ConstRSplit>> subsplits(component_index_to_label.size());
-    for(const auto& split: splits) {
+    vector<vector<ConstRSplit>> subsplits(components.size());
+    for(const auto& split: splits)
+    {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
-        int c = component_for_index[first];
+        auto component = component_for_index[first];
         // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
         bool satisfied = true;
-        for(int x: split->out){
+        for(int taxon: split->out)
+        {
+            int index = indices[taxon];
+
+            // This taxon isn't in this subproblem.
+            if (index == -1) continue;
+
             // indices[i] != -1 checks if x is in the current tip set.
-            if (indices[x] != -1 and component_for_index[indices[x]] == c) {
+            if (component_for_index[index] == component)
+            {
                 satisfied = false;
                 break;
             }
         }
-        if (not satisfied) {
-            int i = component_label_to_index[c];
-            subsplits[i].push_back(split);
-        }
+        if (not satisfied)
+            subsplits[*component->index].push_back(split);
     }
     // 8. Clear our map from id -> index, for use by subproblems.
     for(int id: tips) {
