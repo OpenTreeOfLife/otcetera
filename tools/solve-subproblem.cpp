@@ -204,6 +204,7 @@ struct component_t
     list<int> elements;
     optional<int> index;
 
+    bool unchanged = false;
     shared_ptr<Solution> solution;
 };
 
@@ -214,6 +215,7 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
 {
     component[index2] = c1;
     c1->elements.push_back(index2);
+    c1->unchanged = false;
 }
 
 /// Merge components c1 and c2 and return the component name that survived
@@ -227,6 +229,8 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     c1->elements.splice(c1->elements.end(), c2->elements);
 
+    c1->unchanged = false;
+    c2->unchanged = false;
     return c1;
 }
 
@@ -387,6 +391,8 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
     component_for_index.resize(taxa.size());
+    for(auto& component: components)
+        component->unchanged = true;
 
     // 1. If there are no splits, then we are consistent.
     if (splits.empty())
