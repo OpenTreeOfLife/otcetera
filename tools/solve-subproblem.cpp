@@ -326,18 +326,14 @@ static vector<int> indices;
 
 struct Solution
 {
-    vector<int> tips;
+    vector<int> taxa;
     vector<ConstRSplit> splits;
 
-    struct component
-    {
-        vector<int> tips;
-        vector<ConstRSplit> finished_splits;
-        vector<ConstRSplit> unfinished_splits;
-        shared_ptr<Solution> solution;
-    };
+    vector< component_ref > component_for_index;
+    vector< unique_ptr<component_for_merging> > components;
 
-    vector<component> non_trivial_components;
+    vector<shared_ptr<Solution>> subsolutions;
+
     vector<int> trivial_taxa;
 
     unique_ptr<Tree_t> get_tree() const;
@@ -353,8 +349,8 @@ unique_ptr<Tree_t> Solution::get_tree() const
     tree->create_root();
 
     // 2. Add children for non-trivial components
-    for(auto& c: non_trivial_components)
-        add_subtree(tree->get_root(), *c.solution->get_tree());
+    for(auto& subsolution: subsolutions)
+        add_subtree(tree->get_root(), *subsolution->get_tree());
 
     // 3. Add children for trivial components
     for(auto& taxon: trivial_taxa)
@@ -366,9 +362,11 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
+//FIXME - eliminate trivial_taxa?
+// instead infer it from component_for_index on demand?
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& splits)
+shared_ptr<Solution> BUILD(const Solution& prev_solution, const vector<int>& new_taxa, const vector<ConstRSplit>& new_splits)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -377,25 +375,29 @@ shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& s
 
     auto solution = std::make_shared<Solution>();
 
+    auto& taxa = solution->taxa;
+    for(auto taxon: new_taxa)
+        taxa.push_back(taxon);
+
+    auto& splits = solution->splits;
+    for(auto& new_split: new_splits)
+        splits.push_back(new_split);
+
+    auto& component_for_index = solution->component_for_index;
+    auto& components = solution->components;
+    component_for_index.resize(taxa.size());
+
     if (splits.empty())
     {
         solution->trivial_taxa = taxa;
         return solution;
     }
 
-    // 2. Initialize the mapping from elements to components
-    vector< component_ref > component_for_index;       // element index  -> component
-    vector< unique_ptr<component_for_merging> > components;  // component -> element indices
-
+    // 2. Initialize the mapping from taxa to indices.
     for(int k=0;k<indices.size();k++)
         assert(indices[k] == -1);
-
     for (int i=0;i<taxa.size();i++)
-    {
         indices[taxa[i]] = i;
-
-        component_for_index.push_back( nullptr );
-    }
 
     // 3. For each split, all the leaves in the include group must be in the same component
     for(const auto& split: splits)
@@ -498,11 +500,10 @@ shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& s
     {
         assert(subtaxa[i].size() >= 2);
 
-        auto subsolution = BUILD(subtaxa[i], subsplits[i]);
+        auto subsolution = BUILD({}, subtaxa[i], subsplits[i]);
         if (not subsolution) return {};
 
-        solution->non_trivial_components.push_back({});
-        solution->non_trivial_components.back().solution = subsolution;
+        solution->subsolutions.push_back(subsolution);
     }
     return solution;
 }
@@ -948,7 +949,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             consistent.push_back(std::move(split));
 
             // auto result = BUILD2(cache, all_leaves_indices, consistent);
-            auto result = BUILD(all_leaves_indices, consistent);
+            auto result = BUILD({}, all_leaves_indices, consistent);
             if (not result) {
                 consistent.pop_back();
                 if (verbose and nd->has_ott_id()) {
@@ -1006,7 +1007,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
     }
     // 2. Construct final tree and add names
-    auto tree = BUILD(all_leaves_indices, consistent)->get_tree();
+    auto tree = BUILD({}, all_leaves_indices, consistent)->get_tree();
     for(auto nd: iter_pre(*tree)) {
         if (nd->is_tip()) {
             int index = nd->get_ott_id();
