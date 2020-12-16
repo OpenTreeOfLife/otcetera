@@ -206,6 +206,9 @@ struct component_t
 
     bool unchanged = false;
     shared_ptr<Solution> solution;
+
+    vector<int> taxa;
+    vector<ConstRSplit> splits;
 };
 
 typedef component_t* component_ref;
@@ -368,20 +371,16 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     }
 
     // 6. Create the vector of taxa in each connected component 
-    vector<vector<int>> subtaxa(components.size());
     for(int index=0;index < taxa.size();index++)
     {
-        // Record the taxa that are not in any component
-        if (component_for_index[index])
+        if (auto component = component_for_index[index])
         {
-            int component_index = *component_for_index[index]->index;
             auto taxon = taxa[index];
-            subtaxa[component_index].push_back(taxon);
+            component->taxa.push_back(taxon);
         }
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<ConstRSplit>> subsplits(components.size());
     for(const auto& split: splits)
     {
         int first = indices[*split->in.begin()];
@@ -404,22 +403,31 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             }
         }
         if (not satisfied)
-            subsplits[*component->index].push_back(split);
+            component->splits.push_back(split);
     }
     // 8. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
         indices[id] = -1;
     }
     // 9. Recursively solve the sub-problems of the partition components
-    for(int i=0;i<subtaxa.size();i++)
+    for(auto& component: components)
     {
-        assert(subtaxa[i].size() >= 2);
+        assert(component->taxa.size() >= 2);
 
-        auto subsolution = std::make_shared<Solution>();
-        if (not BUILD(*subsolution, subtaxa[i], subsplits[i]))
-            return false;
+        if (component->unchanged)
+        {
+            // FIXME: If no new taxa and no new splits, just continue!
 
-        components[i]->solution = subsolution;
+            if (not BUILD(*component->solution, {}, component->splits))
+                return false;
+        }
+        else
+        {
+            auto subsolution = std::make_shared<Solution>();
+            if (not BUILD(*subsolution, component->taxa, component->splits))
+                return false;
+            component->solution = subsolution;
+        }
     }
     return true;
 }
