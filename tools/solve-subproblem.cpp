@@ -34,6 +34,8 @@ using namespace otc;
 typedef TreeMappedWithSplits Tree_t;
 typedef Tree_t::node_type node_t;
 
+static vector<int> indices;
+
 int depth(const Tree_t::node_type* nd)
 {
     return nd->get_data().depth;
@@ -197,6 +199,19 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
     c1->unchanged = false;
 }
 
+bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref> component_for_index)
+{
+    for(int taxon: split->out)
+    {
+        int index = indices[taxon];
+
+        if (index == -1) continue;
+
+        if (component_for_index[index] == component) return true;
+    }
+    return false;
+}
+
 /// Merge components c1 and c2 and return the component name that survived
 component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component)
 {
@@ -222,8 +237,6 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     return true;
 }
 
-
-static vector<int> indices;
 
 struct Solution
 {
@@ -355,25 +368,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         assert(first >= 0);
         auto component = component_for_index[first];
         // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-        bool satisfied = true;
-        for(int taxon: split->out)
-        {
-            int index = indices[taxon];
+        bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
 
-            // This taxon isn't in this subproblem.
-            if (index == -1) continue;
-
-            // indices[i] != -1 checks if x is in the current tip set.
-            if (component_for_index[index] == component)
-            {
-                satisfied = false;
-                break;
-            }
-        }
         component->splits.push_back(split);
         if (satisfied)
             component->splits_implied.push_back(split);
-        if (not satisfied)
+        else
             component->splits_nonimplied.push_back(split);
     }
     // 8. Clear our map from id -> index, for use by subproblems.
