@@ -334,15 +334,12 @@ struct Solution
 
     vector<shared_ptr<Solution>> subsolutions;
 
-    vector<int> trivial_taxa;
-
     unique_ptr<Tree_t> get_tree() const;
 };
 
 unique_ptr<Tree_t> Solution::get_tree() const
 {
-//    assert(tips.size() > 1);
-    assert(non_trivial_components.size() + trivial_taxa.size() > 1);
+    assert(taxa.size() > 1);
 
     // 1. Make a tree with just a root node
     std::unique_ptr<Tree_t> tree(new Tree_t());
@@ -353,10 +350,14 @@ unique_ptr<Tree_t> Solution::get_tree() const
         add_subtree(tree->get_root(), *subsolution->get_tree());
 
     // 3. Add children for trivial components
-    for(auto& taxon: trivial_taxa)
+    for(int index=0;index<taxa.size();index++)
     {
-        auto node = tree->create_child(tree->get_root());
-        node->set_ott_id(taxon);
+        if (not component_for_index[index])
+        {
+            auto taxon = taxa[index];
+            auto node = tree->create_child(tree->get_root());
+            node->set_ott_id(taxon);
+        }
     }
 
     return tree;
@@ -389,7 +390,6 @@ shared_ptr<Solution> BUILD(const Solution& prev_solution, const vector<int>& new
 
     if (splits.empty())
     {
-        solution->trivial_taxa = taxa;
         return solution;
     }
 
@@ -453,11 +453,7 @@ shared_ptr<Solution> BUILD(const Solution& prev_solution, const vector<int>& new
     for(int index=0;index < taxa.size();index++)
     {
         // Record the taxa that are not in any component
-        if (not component_for_index[index])
-        {
-            solution->trivial_taxa.push_back(taxa[index]);
-        }
-        else
+        if (component_for_index[index])
         {
             int component_index = *component_for_index[index]->index;
             auto taxon = taxa[index];
