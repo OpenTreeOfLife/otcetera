@@ -202,7 +202,6 @@ struct Solution;
 struct component_t
 {
     list<int> elements;
-    optional<int> index;
 
     bool unchanged = false;
     shared_ptr<Solution> solution;
@@ -355,20 +354,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         return false;
     }
 
-    // 5. Pack the components and label then with an index.
+    // 5. Pack the components
     vector<unique_ptr<component_t>> packed_components;
     for(auto& component: components)
         if (not component->elements.empty())
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
-
-    int i=0;
-    for(const auto& component: components)
-    {
-        assert(component->elements.size() >= 2);
-        component->index = i;
-        i++;
-    }
 
     // 6. Create the vector of taxa in each connected component 
     for(int index=0;index < taxa.size();index++)
