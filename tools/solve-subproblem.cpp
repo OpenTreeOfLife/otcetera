@@ -417,7 +417,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     // 9. Recursively solve the sub-problems of the partition components
     for(auto& component: components)
     {
-        assert(component->taxa.size() >= 2);
+        assert(component->elements.size() >= 2);
 
         if (component->unchanged)
         {
