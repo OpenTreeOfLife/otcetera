@@ -206,6 +206,13 @@ struct component_for_merging
 typedef component_for_merging* component_ref;
 
 /// Merge components c1 and c2 and return the component name that survived
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
+{
+    component[index2] = c1;
+    c1->elements.push_back(index2);
+}
+
+/// Merge components c1 and c2 and return the component name that survived
 component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component)
 {
     if (c2->elements.size() > c1->elements.size())
@@ -387,10 +394,7 @@ shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& s
     {
         indices[taxa[i]] = i;
 
-        components.push_back( std::make_unique<component_for_merging>() );
-        components.back()->elements.push_back(i);
-
-        component_for_index.push_back( components.back().get() );
+        component_for_index.push_back( nullptr );
     }
 
     // 3. For each split, all the leaves in the include group must be in the same component
@@ -401,25 +405,35 @@ shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& s
         {
             int index = indices[taxon];
             auto c2 = component_for_index[index];
-            if (c1 and c1 != c2)
+            if (not c1)
+            {
+                if (not c2)
+                {
+                    components.push_back(std::make_unique<component_for_merging>());
+                    c2 = components.back().get();
+                    c2->elements.push_back(index);
+                    component_for_index[index] = c2;
+                }
+            }
+            else if (not c2)
+                merge_component_with_trivial(c1, index, component_for_index);
+            else if (c1 != c2)
                 merge_components(c1,c2,component_for_index);
             c1 = component_for_index[index];
         }
     }
 
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (component_for_index[0]->elements.size() == taxa.size())
+    if (component_for_index[0] and component_for_index[0]->elements.size() == taxa.size())
     {
         for(int id: taxa)
             indices[id] = -1;
         return {};
     }
 
-    // 5. Make a vector of labels for the partition components
-    // We need to pack the components from 0..n-1.
-    // Component INDICES are packed, but component LABELS are not.
+    // 5. Pack the components and label then with an index.
     vector<unique_ptr<component_for_merging>> packed_components;
-    for(auto& component:components)
+    for(auto& component: components)
         if (not component->elements.empty())
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
@@ -427,6 +441,7 @@ shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& s
     int i=0;
     for(const auto& component: components)
     {
+        assert(component->elements.size() >= 2);
         component->index = i;
         i++;
     }
@@ -435,9 +450,17 @@ shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& s
     vector<vector<int>> subtaxa(components.size());
     for(int index=0;index < taxa.size();index++)
     {
-        int component_index = *component_for_index[index]->index;
-        auto taxon = taxa[index];
-        subtaxa[component_index].push_back(taxon);
+        // Record the taxa that are not in any component
+        if (not component_for_index[index])
+        {
+            solution->trivial_taxa.push_back(taxa[index]);
+        }
+        else
+        {
+            int component_index = *component_for_index[index]->index;
+            auto taxon = taxa[index];
+            subtaxa[component_index].push_back(taxon);
+        }
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
@@ -473,16 +496,13 @@ shared_ptr<Solution> BUILD(const vector<int>& taxa, const vector<ConstRSplit>& s
     // 9. Recursively solve the sub-problems of the partition components
     for(int i=0;i<subtaxa.size();i++)
     {
-        if (subtaxa[i].size() == 1)
-            solution->trivial_taxa.push_back(subtaxa[i][0]);
-        else
-        {
-            auto subsolution = BUILD(subtaxa[i], subsplits[i]);
-            if (not subsolution) return {};
+        assert(subtaxa[i].size() >= 2);
 
-            solution->non_trivial_components.push_back({});
-            solution->non_trivial_components.back().solution = subsolution;
-        }
+        auto subsolution = BUILD(subtaxa[i], subsplits[i]);
+        if (not subsolution) return {};
+
+        solution->non_trivial_components.push_back({});
+        solution->non_trivial_components.back().solution = subsolution;
     }
     return solution;
 }
