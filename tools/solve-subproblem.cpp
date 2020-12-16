@@ -287,10 +287,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
     auto& taxa = solution.taxa;
+    int orig_n_taxa = taxa.size();
     for(auto taxon: new_taxa)
         taxa.push_back(taxon);
 
     auto& splits = solution.splits;
+    int orig_n_splits = splits.size();
     for(auto& new_split: new_splits)
         splits.push_back(new_split);
 
@@ -351,30 +353,62 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
+    // 5b. Clear any staged work for each component.
+    for(auto& component: components)
+    {
+        component->taxa.clear();
+        component->splits.clear();
+        component->splits_implied.clear();
+        component->splits_nonimplied.clear();
+
+        if (not component->unchanged)
+            component->solution = std::make_shared<Solution>();
+        else
+            assert(component->solution);
+    }
+
     // 6. Create the vector of taxa in each connected component 
     for(int index=0;index < taxa.size();index++)
     {
         if (auto component = component_for_index[index])
         {
             auto taxon = taxa[index];
-            component->taxa.push_back(taxon);
+            if (component->unchanged)
+            {
+                // Only add NEW taxa.
+                if (index >= orig_n_taxa)
+                    component->taxa.push_back(taxon);
+            }
+            else
+            {
+                // All taxa are NEW taxa, because we are doing the solution from scratch.
+                component->taxa.push_back(taxon);
+            }
         }
     }
 
     // 7. Determine the splits that are not satisfied yet and go into each component
-    for(const auto& split: splits)
+    for(int j=0;j<splits.size();j++)
     {
+        const auto& split = splits[j];
         int first = indices[*split->in.begin()];
         assert(first >= 0);
         auto component = component_for_index[first];
-        // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-        bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
 
-        component->splits.push_back(split);
-        if (satisfied)
-            component->splits_implied.push_back(split);
+        if (component->unchanged)
+        {
+            if (j >= orig_n_splits)
+            {
+                bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
+                component->splits_nonimplied.push_back(split);
+            }
+        }
         else
-            component->splits_nonimplied.push_back(split);
+        {
+            bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
+            if (not satisfied)
+                component->splits_nonimplied.push_back(split);
+        }
     }
     // 8. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
@@ -388,7 +422,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         if (component->unchanged)
         {
             // FIXME: If no new taxa and no new splits, just continue!
-
+            assert(component->solution);
             if (not BUILD(*component->solution, {}, component->splits_nonimplied))
                 return false;
         }
