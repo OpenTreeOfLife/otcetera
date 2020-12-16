@@ -197,10 +197,14 @@ int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>
     return static_cast<int>(c1);
 }
 
+struct Solution;
+
 struct component_for_merging
 {
     list<int> elements;
     optional<int> index;
+
+    shared_ptr<Solution> solution;
 };
 
 typedef component_for_merging* component_ref;
@@ -332,8 +336,6 @@ struct Solution
     vector< component_ref > component_for_index;
     vector< unique_ptr<component_for_merging> > components;
 
-    vector<shared_ptr<Solution>> subsolutions;
-
     unique_ptr<Tree_t> get_tree() const;
 };
 
@@ -346,8 +348,8 @@ unique_ptr<Tree_t> Solution::get_tree() const
     tree->create_root();
 
     // 2. Add children for non-trivial components
-    for(auto& subsolution: subsolutions)
-        add_subtree(tree->get_root(), *subsolution->get_tree());
+    for(auto& component: components)
+        add_subtree(tree->get_root(), *component->solution->get_tree());
 
     // 3. Add children for trivial components
     for(int index=0;index<taxa.size();index++)
@@ -497,7 +499,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         if (not BUILD(*subsolution, subtaxa[i], subsplits[i]))
             return false;
 
-        solution.subsolutions.push_back(subsolution);
+        components[i]->solution = subsolution;
     }
     return true;
 }
