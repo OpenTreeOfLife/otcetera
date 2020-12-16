@@ -367,31 +367,28 @@ unique_ptr<Tree_t> Solution::get_tree() const
 // instead infer it from component_for_index on demand?
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-shared_ptr<Solution> BUILD(const Solution& prev_solution, const vector<int>& new_taxa, const vector<ConstRSplit>& new_splits)
+bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRSplit>& new_splits)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    auto solution = std::make_shared<Solution>();
-
-    auto& taxa = solution->taxa;
+    auto& taxa = solution.taxa;
     for(auto taxon: new_taxa)
         taxa.push_back(taxon);
 
-    auto& splits = solution->splits;
+    auto& splits = solution.splits;
     for(auto& new_split: new_splits)
         splits.push_back(new_split);
 
-    auto& component_for_index = solution->component_for_index;
-    auto& components = solution->components;
+    auto& component_for_index = solution.component_for_index;
+    auto& components = solution.components;
     component_for_index.resize(taxa.size());
 
+    // 1. If there are no splits, then we are consistent.
     if (splits.empty())
-    {
-        return solution;
-    }
+        return true;
 
     // 2. Initialize the mapping from taxa to indices.
     for(int k=0;k<indices.size();k++)
@@ -430,7 +427,7 @@ shared_ptr<Solution> BUILD(const Solution& prev_solution, const vector<int>& new
     {
         for(int id: taxa)
             indices[id] = -1;
-        return {};
+        return false;
     }
 
     // 5. Pack the components and label then with an index.
@@ -496,12 +493,13 @@ shared_ptr<Solution> BUILD(const Solution& prev_solution, const vector<int>& new
     {
         assert(subtaxa[i].size() >= 2);
 
-        auto subsolution = BUILD({}, subtaxa[i], subsplits[i]);
-        if (not subsolution) return {};
+        auto subsolution = std::make_shared<Solution>();
+        if (not BUILD(*subsolution, subtaxa[i], subsplits[i]))
+            return false;
 
-        solution->subsolutions.push_back(subsolution);
+        solution.subsolutions.push_back(subsolution);
     }
-    return solution;
+    return true;
 }
 
 typedef Set<BUILD_args> BUILD_cache;
@@ -945,11 +943,16 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         {
             consistent.push_back(std::move(split));
 
-            // auto result = BUILD2(cache, all_leaves_indices, consistent);
-            auto newsolution = BUILD(*solution, all_leaves_indices, consistent);
+            // Always create a new solution, discarding previous solution.
+            solution = std::make_shared<Solution>();
 
-            if (not newsolution)
+            auto result = BUILD(*solution, all_leaves_indices, consistent);
+
+            if (not result)
             {
+                // Throw away damaged solution.
+                solution = {};
+
                 consistent.pop_back();
                 if (verbose and nd->has_ott_id())
                     LOG(INFO) << "Reject: ott" << nd->get_ott_id() << "\n";
@@ -958,7 +961,6 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
             else if (verbose and nd->has_ott_id())
             {
                 LOG(INFO) << "Keep: ott" << nd->get_ott_id() << "\n";
-                solution = newsolution;
             }
             return true;
         };
@@ -1009,7 +1011,12 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
     }
     // 2. Construct final tree and add names
-    auto tree = BUILD(*solution, all_leaves_indices, consistent)->get_tree();
+
+    //FIXME - discard previous solution;
+    solution = std::make_shared<Solution>();
+    auto result = BUILD(*solution, all_leaves_indices, consistent);;
+    assert(result);
+    auto tree = solution->get_tree();
     for(auto nd: iter_pre(*tree))
     {
         if (nd->is_tip())
