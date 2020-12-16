@@ -940,26 +940,32 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<ConstRSplit> consistent;
     BUILD_cache cache;
+    auto solution = std::make_shared<Solution>();
     auto add_split_if_consistent = [&](auto nd, RSplit&& split)
         {
             consistent.push_back(std::move(split));
 
             // auto result = BUILD2(cache, all_leaves_indices, consistent);
-            auto result = BUILD({}, all_leaves_indices, consistent);
-            if (not result) {
+            auto newsolution = BUILD(*solution, all_leaves_indices, consistent);
+
+            if (not newsolution)
+            {
                 consistent.pop_back();
-                if (verbose and nd->has_ott_id()) {
+                if (verbose and nd->has_ott_id())
                     LOG(INFO) << "Reject: ott" << nd->get_ott_id() << "\n";
-                }
                 return false;
-            } else if (verbose and nd->has_ott_id()) {
+            }
+            else if (verbose and nd->has_ott_id())
+            {
                 LOG(INFO) << "Keep: ott" << nd->get_ott_id() << "\n";
+                solution = newsolution;
             }
             return true;
         };
     // 1. Find splits in order of input trees
     vector<Tree_t::node_type const*> compatible_taxa;
-    for(int i=0;i<trees.size();i++) {
+    for(int i=0;i<trees.size();i++)
+    {
         const auto& tree = trees[i];
         auto root = tree->get_root();
         const auto leafTaxa = root->get_data().des_ids;
@@ -1003,9 +1009,11 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
     }
     // 2. Construct final tree and add names
-    auto tree = BUILD({}, all_leaves_indices, consistent)->get_tree();
-    for(auto nd: iter_pre(*tree)) {
-        if (nd->is_tip()) {
+    auto tree = BUILD(*solution, all_leaves_indices, consistent)->get_tree();
+    for(auto nd: iter_pre(*tree))
+    {
+        if (nd->is_tip())
+        {
             int index = nd->get_ott_id();
             nd->set_ott_id(ids[index]);
         }
