@@ -244,92 +244,6 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
 }
 
 
-struct BUILD_args_ref
-{
-    const vector<int>& tips;
-    const vector<ConstRSplit>& splits;
-    BUILD_args_ref(const vector<int>& v1, const vector<ConstRSplit>& v2): tips(v1), splits(v2) {}
-};
-
-struct BUILD_args
-{
-    const vector<int> tips;
-    const vector<ConstRSplit> splits;
-    BUILD_args(const vector<int>& v1, const vector<ConstRSplit>& v2): tips(v1), splits(v2) {}
-};
-
-template <class T>
-inline void hash_combine(std::size_t& seed, const T& v)
-{
-    std::hash<T> hasher;
-    seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-}
-
-bool vec_split_equals(const vector<ConstRSplit>& splits1, const vector<ConstRSplit>& splits2)
-{
-    if (splits1.size() != splits2.size()) return false;
-    for(int i=0;i<splits1.size();i++)
-        if (splits1[i]->id != splits2[i]->id) return false;
-    return true;
-}
-
-namespace std {
-    template <>
-    struct hash < BUILD_args > {
-        public:
-        typedef bool is_transparent ;
-
-            size_t operator() ( const BUILD_args_ref & args ) const noexcept
-            {
-                std::size_t seed = 0;
-                for(auto& tip: args.tips)
-                    hash_combine(seed, tip);
-                for(auto& split: args.splits)
-                {
-                    assert(split->id);
-                    hash_combine(seed, *split->id);
-                }
-                return seed;
-            }
-
-            size_t operator() ( const BUILD_args & args ) const noexcept
-            {
-                std::size_t seed = 0;
-                for(auto& tip: args.tips)
-                    hash_combine(seed, tip);
-                for(auto& split: args.splits)
-                {
-                    assert(split->id);
-                    hash_combine(seed, *split->id);
-                }
-                return seed;
-            }
-    };
-
-    template <>
-    struct equal_to < BUILD_args >
-    {
-        typedef bool is_transparent;
-        bool operator ( ) ( const BUILD_args & args1, const BUILD_args & args2 ) const
-        {
-            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
-        }
-        bool operator ( ) ( const BUILD_args_ref & args1, const BUILD_args & args2 ) const
-        {
-            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
-        }
-        bool operator ( ) ( const BUILD_args & args1, const BUILD_args_ref & args2 ) const
-        {
-            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
-        }
-        bool operator ( ) ( const BUILD_args_ref & args1, const BUILD_args_ref & args2 ) const
-        {
-            return args1.tips == args2.tips and vec_split_equals(args1.splits,args2.splits);
-        }
-    };
-}
-
-
 static vector<int> indices;
 
 struct Solution
@@ -506,147 +420,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             return false;
 
         components[i]->solution = subsolution;
-    }
-    return true;
-}
-
-typedef Set<BUILD_args> BUILD_cache;
-
-static std::size_t cache_hits = 0;
-static std::size_t cache_misses = 0;
-
-bool BUILD2_(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSplit>& splits);
-
-bool BUILD2(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSplit>& splits)
-{
-#pragma clang diagnostic ignored  "-Wsign-conversion"
-#pragma clang diagnostic ignored  "-Wsign-compare"
-#pragma clang diagnostic ignored  "-Wshorten-64-to-32"
-#pragma GCC diagnostic ignored  "-Wsign-compare"
-
-    // 1. First handle trees of size 1 and 2
-    if (tips.size() <= 2)
-        return true;
-
-    if (splits.size() <= 1)
-        return true;
-
-    auto args = BUILD_args_ref(tips, splits);
-
-#ifdef DO_CACHE
-    if (cache.count(args))
-    {
-        cache_hits++;
-        return true;
-    }
-#endif
-
-    cache_misses++;
-
-    bool result =  BUILD2_(cache, tips, splits);
-#ifdef DO_CACHE
-    if (result)
-        cache.insert(BUILD_args(tips,splits));
-#endif
-
-    return result;
-}
-
-/// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-bool BUILD2_(BUILD_cache& cache, const vector<int>& tips, const vector<ConstRSplit>& splits)
-{
-#pragma clang diagnostic ignored  "-Wsign-conversion"
-#pragma clang diagnostic ignored  "-Wsign-compare"
-#pragma clang diagnostic ignored  "-Wshorten-64-to-32"
-#pragma GCC diagnostic ignored  "-Wsign-compare"
-
-    assert(tips.size() > 2);
-    assert(splits.size() > 1);
-
-    // 2. Initialize the mapping from elements to components
-    vector<int> component_for_index;       // element index  -> component
-    vector<list<int> > elements_for_component;  // component -> element indices
-    for(int k=0;k<indices.size();k++)
-        assert(indices[k] == -1);
-    for (int i=0;i<tips.size();i++) {
-        indices[tips[i]] = i;
-        component_for_index.push_back(-1);
-    }
-    // 3. For each split, all the leaves in the include group must be in the same component
-    for(const auto& split: splits)
-    {
-        int c1 = -1;
-        for(int taxon: split->in)
-        {
-            int index = indices[taxon];
-            int c2 = component_for_index[index];
-
-            if (c1 == -1)
-            {
-                if (c2 == -1)
-                {
-                    c2 = elements_for_component.size();
-                    elements_for_component.push_back({index});
-                    component_for_index[index] = c2;
-                }
-                c1 = c2;
-            }
-            else if (c2 == -1)
-            {
-                merge_component_with_trivial(c1,index,component_for_index,elements_for_component);
-            }
-            else if (c1 != c2)
-            {
-                merge_components(c1,c2,component_for_index,elements_for_component);
-            }
-            c1 = component_for_index[index];
-        }
-    }
-    // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (elements_for_component[component_for_index[0]].size() == tips.size()) {
-        for(int id: tips)
-            indices[id] = -1;
-        return false;
-    }
-
-    // 6. Create the vector of tips in each connected component 
-    vector<vector<int>> subtips(elements_for_component.size());
-    for(int index=0;index < tips.size();index++)
-    {
-        int taxon = tips[index];
-        int c = component_for_index[index];
-        if (c != -1)
-            subtips[c].push_back(taxon);
-    }
-
-    // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<ConstRSplit>> subsplits(elements_for_component.size());
-    for(const auto& split: splits)
-    {
-        int first = indices[*split->in.begin()];
-        assert(first >= 0);
-        int c = component_for_index[first];
-        // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-        bool satisfied = true;
-        for(int x: split->out)
-        {
-            // indices[i] != -1 checks if x is in the current tip set.
-            if (indices[x] != -1 and component_for_index[indices[x]] == c) {
-                satisfied = false;
-                break;
-            }
-        }
-        if (not satisfied)
-            subsplits[c].push_back(split);
-    }
-    // 8. Clear our map from id -> index, for use by subproblems.
-    for(int id: tips) {
-        indices[id] = -1;
-    }
-    // 9. Recursively solve the sub-problems of the partition components
-    for(int i=0;i<subtips.size();i++) {
-        auto ok = BUILD2(cache,subtips[i], subsplits[i]);
-        if (not ok) return false;
     }
     return true;
 }
@@ -945,7 +718,6 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     }
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<ConstRSplit> consistent;
-    BUILD_cache cache;
     auto solution = std::make_shared<Solution>();
     auto add_split_if_consistent = [&](auto nd, RSplit&& split)
         {
@@ -1172,8 +944,6 @@ int main(int argc, char *argv[]) {
         auto & taxonomy = *trees.back();
         compute_depth(taxonomy);
         auto tree = combine(trees, incertae_sedis, verbose);
-        LOG(INFO) << "cache hits = "<<cache_hits;
-        LOG(INFO) << "cache misses = "<<cache_misses;
         // 8. Set the root name (if asked)
         // FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
         if (setRootName) {
