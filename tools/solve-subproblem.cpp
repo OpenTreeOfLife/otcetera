@@ -391,15 +391,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         assert(first >= 0);
         auto component = component_for_index[first];
 
-        if (component->unchanged)
-        {
-            if (j >= orig_n_splits)
-            {
-                bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
-                component->new_splits.push_back(split);
-            }
-        }
-        else
+        if (not component->unchanged or j >= orig_n_splits)
         {
             bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
             if (not satisfied)
