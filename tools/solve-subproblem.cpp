@@ -183,6 +183,8 @@ struct component_t
 
     vector<int> taxa;
     vector<ConstRSplit> splits;
+    vector<ConstRSplit> splits_implied;
+    vector<ConstRSplit> splits_nonimplied;
 };
 
 typedef component_t* component_ref;
@@ -368,8 +370,11 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
                 break;
             }
         }
+        component->splits.push_back(split);
+        if (satisfied)
+            component->splits_implied.push_back(split);
         if (not satisfied)
-            component->splits.push_back(split);
+            component->splits_nonimplied.push_back(split);
     }
     // 8. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
@@ -384,13 +389,13 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         {
             // FIXME: If no new taxa and no new splits, just continue!
 
-            if (not BUILD(*component->solution, {}, component->splits))
+            if (not BUILD(*component->solution, {}, component->splits_nonimplied))
                 return false;
         }
         else
         {
             auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, component->taxa, component->splits))
+            if (not BUILD(*subsolution, component->taxa, component->splits_nonimplied))
                 return false;
             component->solution = subsolution;
         }
