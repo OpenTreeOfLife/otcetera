@@ -172,31 +172,6 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o<<(ConstRSplit(s));
 }
 
-/// Merge components c1 and c2 and return the component name that survived
-int merge_component_with_trivial(int ic1, int index2, vector<int>& component, vector<list<int>>& elements)
-{
-    std::size_t c1 = static_cast<std::size_t>(ic1);
-
-    component[static_cast<std::size_t>(index2)] = static_cast<int>(c1);
-
-    elements[c1].push_back(index2);
-    return static_cast<int>(c1);
-}
-
-/// Merge components c1 and c2 and return the component name that survived
-int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>& elements) {
-    std::size_t c1 = static_cast<std::size_t>(ic1);
-    std::size_t c2 = static_cast<std::size_t>(ic2);
-    if (elements[c2].size() > elements[c1].size()) {
-        std::swap(c1, c2);
-    }
-    for(int i: elements[c2]) {
-        component[static_cast<std::size_t>(i)] = static_cast<int>(c1);
-    }
-    elements[c1].splice(elements[c1].end(), elements[c2]);
-    return static_cast<int>(c1);
-}
-
 struct Solution;
 
 struct component_t
