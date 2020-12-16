@@ -733,31 +733,41 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     }
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<ConstRSplit> consistent;
-    auto solution = std::make_shared<Solution>();
+
+    shared_ptr<Solution> solution;
+
     auto add_split_if_consistent = [&](auto nd, RSplit&& split)
         {
-            consistent.push_back(std::move(split));
+            bool result = false;
+            if (solution)
+            {
+                result = BUILD(*solution, {}, {split});
+                if (result)
+                    consistent.push_back(std::move(split));
+            }
+            else
+            {
+                consistent.push_back(std::move(split));
 
-            // Always create a new solution, discarding previous solution.
-            solution = std::make_shared<Solution>();
+                // If we have no solution, make an empty one.
+                solution = std::make_shared<Solution>();
 
-            auto result = BUILD(*solution, all_leaves_indices, consistent);
+                result = BUILD(*solution, all_leaves_indices, consistent);
 
+                if (not result)
+                    consistent.pop_back();
+            }
             if (not result)
             {
-                // Throw away damaged solution.
-                solution = {};
-
-                consistent.pop_back();
                 if (verbose and nd->has_ott_id())
                     LOG(INFO) << "Reject: ott" << nd->get_ott_id() << "\n";
-                return false;
             }
             else if (verbose and nd->has_ott_id())
             {
                 LOG(INFO) << "Keep: ott" << nd->get_ott_id() << "\n";
             }
-            return true;
+            if (not result) solution = {};
+            return result;
         };
     // 1. Find splits in order of input trees
     vector<Tree_t::node_type const*> compatible_taxa;
