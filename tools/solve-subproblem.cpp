@@ -199,7 +199,7 @@ int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>
 
 struct Solution;
 
-struct component_for_merging
+struct component_t
 {
     list<int> elements;
     optional<int> index;
@@ -207,7 +207,7 @@ struct component_for_merging
     shared_ptr<Solution> solution;
 };
 
-typedef component_for_merging* component_ref;
+typedef component_t* component_ref;
 
 /// Merge components c1 and c2 and return the component name that survived
 void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
@@ -334,7 +334,7 @@ struct Solution
     vector<ConstRSplit> splits;
 
     vector< component_ref > component_for_index;
-    vector< unique_ptr<component_for_merging> > components;
+    vector< unique_ptr<component_t> > components;
 
     unique_ptr<Tree_t> get_tree() const;
 };
@@ -410,7 +410,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             {
                 if (not c2)
                 {
-                    components.push_back(std::make_unique<component_for_merging>());
+                    components.push_back(std::make_unique<component_t>());
                     c2 = components.back().get();
                     c2->elements.push_back(index);
                     component_for_index[index] = c2;
@@ -433,7 +433,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     }
 
     // 5. Pack the components and label then with an index.
-    vector<unique_ptr<component_for_merging>> packed_components;
+    vector<unique_ptr<component_t>> packed_components;
     for(auto& component: components)
         if (not component->elements.empty())
             packed_components.push_back( std::move(component) );
