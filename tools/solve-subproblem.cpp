@@ -273,8 +273,8 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
-//FIXME - eliminate trivial_taxa?
-// instead infer it from component_for_index on demand?
+// Each new component should have a list of pointers to previous .. components? solutions?
+// We could get their splits/taxa all at once, instead of copying them multiple times.
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
 bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRSplit>& new_splits)
