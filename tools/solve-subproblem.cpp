@@ -183,10 +183,8 @@ struct component_t
     bool unchanged = false;
     shared_ptr<Solution> solution;
 
-    vector<int> taxa;
-    vector<ConstRSplit> splits;
-    vector<ConstRSplit> splits_implied;
-    vector<ConstRSplit> splits_nonimplied;
+    vector<int> new_taxa;
+    vector<ConstRSplit> new_splits;
 };
 
 typedef component_t* component_ref;
@@ -199,7 +197,7 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
     c1->unchanged = false;
 }
 
-bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref> component_for_index)
+bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
 {
     for(int taxon: split->out)
     {
@@ -313,7 +311,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         indices[taxa[i]] = i;
 
     // 3. For each split, all the leaves in the include group must be in the same component
-    for(const auto& split: splits)
+    for(const auto& split: new_splits)
     {
         component_ref c1 = nullptr;
         for(int taxon: split->in)
@@ -356,10 +354,8 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     // 5b. Clear any staged work for each component.
     for(auto& component: components)
     {
-        component->taxa.clear();
-        component->splits.clear();
-        component->splits_implied.clear();
-        component->splits_nonimplied.clear();
+        component->new_taxa.clear();
+        component->new_splits.clear();
 
         if (not component->unchanged)
             component->solution = std::make_shared<Solution>();
@@ -377,12 +373,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             {
                 // Only add NEW taxa.
                 if (index >= orig_n_taxa)
-                    component->taxa.push_back(taxon);
+                    component->new_taxa.push_back(taxon);
             }
             else
             {
                 // All taxa are NEW taxa, because we are doing the solution from scratch.
-                component->taxa.push_back(taxon);
+                component->new_taxa.push_back(taxon);
             }
         }
     }
@@ -400,14 +396,14 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             if (j >= orig_n_splits)
             {
                 bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
-                component->splits_nonimplied.push_back(split);
+                component->new_splits.push_back(split);
             }
         }
         else
         {
             bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
             if (not satisfied)
-                component->splits_nonimplied.push_back(split);
+                component->new_splits.push_back(split);
         }
     }
     // 8. Clear our map from id -> index, for use by subproblems.
@@ -422,20 +418,20 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         if (component->unchanged)
         {
             assert(component->solution);
-            assert(component->taxa.empty());
+            assert(component->new_taxa.empty());
 
             // If no new taxa and no new splits, just continue.
-            if (component->splits_nonimplied.empty() and component->taxa.empty())
+            if (component->new_splits.empty() and component->new_taxa.empty())
                 continue;
 
             // Otherwise try adding the new taxa and splits to the existing solution.
-            else if (not BUILD(*component->solution, component->taxa, component->splits_nonimplied))
+            else if (not BUILD(*component->solution, component->new_taxa, component->new_splits))
                 return false;
         }
         else
         {
             auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, component->taxa, component->splits_nonimplied))
+            if (not BUILD(*subsolution, component->new_taxa, component->new_splits))
                 return false;
             component->solution = subsolution;
         }
