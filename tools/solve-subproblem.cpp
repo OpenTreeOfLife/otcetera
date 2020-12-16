@@ -421,9 +421,15 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         if (component->unchanged)
         {
-            // FIXME: If no new taxa and no new splits, just continue!
             assert(component->solution);
-            if (not BUILD(*component->solution, {}, component->splits_nonimplied))
+            assert(component->taxa.empty());
+
+            // If no new taxa and no new splits, just continue.
+            if (component->splits_nonimplied.empty() and component->taxa.empty())
+                continue;
+
+            // Otherwise try adding the new taxa and splits to the existing solution.
+            else if (not BUILD(*component->solution, component->taxa, component->splits_nonimplied))
                 return false;
         }
         else
