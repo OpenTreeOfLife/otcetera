@@ -269,10 +269,9 @@ std::string remove_ott_suffix(std::string name) {
 
 void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree) {
     fs::path new_dir = dirname;
-    if (fs::exists(new_dir)) {
-        throw OTCError() << "File '" << dirname << "' already exists!";
+    if (! fs::exists(new_dir)) {
+        fs::create_directories(new_dir);
     }
-    fs::create_directories(new_dir);
     // Create empty files
     for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "weaklog.csv"}) {
         create_file(new_dir / name, "");
