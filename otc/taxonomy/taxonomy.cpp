@@ -591,6 +591,8 @@ Taxonomy load_taxonomy(const variables_map& args) {
     OttId keep_root = -1;
     if (args.count("root")) {
         keep_root = args["root"].as<OttId>();
+    } else if (args.count("xroot")) {
+        keep_root = args["xroot"].as<OttId>();
     } else if (args.count("config")) {
         keep_root = root_ott_id_from_file(args["config"].as<string>());
     }
