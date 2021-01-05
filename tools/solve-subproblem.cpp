@@ -409,23 +409,22 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             assert(component->solution);
     }
 
-    // 6. Create the vector of taxa in each connected component 
+    // 6a. Create the vector of taxa in each connected component
     for(int index=0;index < taxa.size();index++)
     {
         if (auto component = component_for_index[index])
         {
             auto taxon = taxa[index];
-            if (component->unchanged)
-            {
-                // Only add NEW taxa.
-                if (index >= orig_n_taxa)
-                    component->new_taxa.push_back(taxon);
-            }
-            else
-            {
-                // All taxa are NEW taxa, because we are doing the solution from scratch.
-                component->new_taxa.push_back(taxon);
-            }
+            component->all_taxa.push_back(taxon);
+        }
+    }
+    // 6b. Create a vector of NEW taxa in each component.
+    for(int index=orig_n_taxa; index < taxa.size(); index++)
+    {
+        if (auto component = component_for_index[index])
+        {
+            auto taxon = taxa[index];
+            component->new_taxa.push_back(taxon);
         }
     }
 
@@ -437,11 +436,36 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         assert(first >= 0);
         auto component = component_for_index[first];
 
-        if (not component->unchanged)
+        bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
+        if (not satisfied)
+            component->all_splits.push_back(split);
+    }
+
+    // 7a. Check implied splits to see if they are STILL implied.
+    for(auto& component: components)
+    {
+        auto& implied_splits = component->old_implied_splits;
+        auto& non_implied_splits = component->old_non_implied_splits;
+        auto& new_splits = component->new_splits;
+        for(int i=0;i<implied_splits.size();)
         {
-            bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
-            if (not satisfied)
-                component->new_splits.push_back(split);
+            auto& split = implied_splits[i];
+
+#ifndef NDEBUG
+            int first = indices[*split->in.begin()];
+            assert(first >= 0);
+            assert(component_for_index[first] == component.get());
+#endif
+
+            bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
+            if (not implied)
+            {
+                auto split = remove_unordered(implied_splits,i);
+                non_implied_splits.push_back(split);
+                new_splits.push_back(split);
+            }
+            else
+                i++;
         }
     }
 
@@ -458,8 +482,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         else
         {
             component->old_non_implied_splits.push_back(split);
-            if (component->unchanged)
-                component->new_splits.push_back(split);
+            component->new_splits.push_back(split);
         }
     }
 
@@ -471,6 +494,8 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     for(auto& component: components)
     {
         assert(component->elements.size() >= 2);
+
+        assert(component->all_splits.size() == component->old_non_implied_splits.size());
 
         if (component->unchanged)
         {
@@ -488,7 +513,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         else
         {
             auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, component->new_taxa, component->new_splits))
+            if (not BUILD(*subsolution, component->all_taxa, component->all_splits))
                 return false;
             component->solution = subsolution;
         }
