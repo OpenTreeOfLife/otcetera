@@ -189,6 +189,9 @@ struct component_t
 
     vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
+
+    vector<int> all_taxa;
+    vector<ConstRSplit> all_splits;
 };
 
 typedef component_t* component_ref;
