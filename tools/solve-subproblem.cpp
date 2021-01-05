@@ -180,8 +180,6 @@ struct component_t
 {
     list<int> elements;
 
-    bool unchanged = false;
-
     vector<ConstRSplit> old_implied_splits;      // alpha
     vector<ConstRSplit> old_non_implied_splits;  // beta
 
@@ -201,7 +199,7 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
 {
     component[index2] = c1;
     c1->elements.push_back(index2);
-    c1->unchanged = false;
+    c1->solution = {};
 }
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
@@ -244,8 +242,8 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     c2->old_non_implied_splits.clear();
     c2->old_implied_splits.clear();
 
-    c1->unchanged = false;
-    c2->unchanged = false;
+    c1->solution = {};
+    c2->solution = {};
     return c1;
 }
 
@@ -340,8 +338,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
     component_for_index.resize(taxa.size());
-    for(auto& component: components)
-        component->unchanged = true;
 
     // 1. If there are no splits, then we are consistent.
     if (splits.empty())
@@ -402,11 +398,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         component->all_taxa.clear();
         component->all_splits.clear();
-
-        if (not component->unchanged)
-            component->solution = std::make_shared<Solution>();
-        else
-            assert(component->solution);
     }
 
     // 6a. Create the vector of taxa in each connected component
@@ -497,9 +488,8 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         assert(component->all_splits.size() == component->old_non_implied_splits.size());
 
-        if (component->unchanged)
+        if (component->solution)
         {
-            assert(component->solution);
             assert(component->new_taxa.empty());
 
             // If no new taxa and no new splits, just continue.
