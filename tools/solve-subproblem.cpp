@@ -181,6 +181,10 @@ struct component_t
     list<int> elements;
 
     bool unchanged = false;
+
+    vector<ConstRSplit> old_implied_splits;      // alpha
+    vector<ConstRSplit> old_non_implied_splits;  // beta
+
     shared_ptr<Solution> solution;
 
     vector<int> new_taxa;
@@ -210,6 +214,16 @@ bool exclude_group_intersects_component(const ConstRSplit& split, const componen
     return false;
 }
 
+vector<ConstRSplit> concatenate(vector<ConstRSplit>&& splits1, vector<ConstRSplit>&& splits2)
+{
+    if (splits1.size() < splits2.size())
+        std::swap(splits1,splits2);
+
+    vector<ConstRSplit> splits12 = std::move(splits1);
+    splits12.insert(splits12.end(), splits2.begin(), splits2.end());
+    return splits12;
+}
+
 /// Merge components c1 and c2 and return the component name that survived
 component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component)
 {
@@ -220,6 +234,12 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
         component[i] = c1;
 
     c1->elements.splice(c1->elements.end(), c2->elements);
+
+    c1->old_non_implied_splits = concatenate(std::move(c1->old_non_implied_splits), std::move(c2->old_non_implied_splits));
+    c1->old_implied_splits     = concatenate(std::move(c1->old_implied_splits),     std::move(c2->old_implied_splits));
+
+    c2->old_non_implied_splits.clear();
+    c2->old_implied_splits.clear();
 
     c1->unchanged = false;
     c2->unchanged = false;
@@ -273,8 +293,16 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
-// Each new component should have a list of pointers to previous .. components? solutions?
+// 0. Update doc?
+
+// 1. Handle adding trivial taxa to a component.
+
+// 2. When merging components, we need to consider moving splits from implied -> non_implied.
+// Should we do this from scratch?
+
+// 3. Each new component should have a list of pointers to previous .. components? solutions?
 // We could get their splits/taxa all at once, instead of copying them multiple times.
+
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
 bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRSplit>& new_splits)
@@ -391,13 +419,32 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         assert(first >= 0);
         auto component = component_for_index[first];
 
-        if (not component->unchanged or j >= orig_n_splits)
+        if (not component->unchanged)
         {
             bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
             if (not satisfied)
                 component->new_splits.push_back(split);
         }
     }
+
+    // 7b. Determine the splits that are not satisfied yet and go into each component
+    for(auto& split: new_splits)
+    {
+        int first = indices[*split->in.begin()];
+        assert(first >= 0);
+        auto component = component_for_index[first];
+
+        bool implied = not exclude_group_intersects_component(split, component, component_for_index);
+        if (implied)
+            component->old_implied_splits.push_back(split);
+        else
+        {
+            component->old_non_implied_splits.push_back(split);
+            if (component->unchanged)
+                component->new_splits.push_back(split);
+        }
+    }
+
     // 8. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
         indices[id] = -1;
