@@ -195,11 +195,12 @@ struct component_t
 typedef component_t* component_ref;
 
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
+void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vector<component_ref>& component)
 {
     component[index2] = c1;
     c1->elements.push_back(index2);
-    c1->solution = {};
+
+    c1->new_taxa.push_back(taxon2);
 }
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
@@ -339,6 +340,16 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     auto& components = solution.components;
     component_for_index.resize(taxa.size());
 
+    // 0. Clear any staged work for each component.
+    for(auto& component: components)
+    {
+        component->new_taxa.clear();
+        component->new_splits.clear();
+
+        component->all_taxa.clear();
+        component->all_splits.clear();
+    }
+
     // 1. If there are no splits, then we are consistent.
     if (splits.empty())
         return true;
@@ -356,6 +367,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         for(int taxon: split->in)
         {
             int index = indices[taxon];
+            assert(index != -1);
             auto c2 = component_for_index[index];
             if (not c1)
             {
@@ -368,7 +380,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
                 }
             }
             else if (not c2)
-                merge_component_with_trivial(c1, index, component_for_index);
+                merge_component_with_trivial(c1, taxon, index, component_for_index);
             else if (c1 != c2)
                 merge_components(c1,c2,component_for_index);
             c1 = component_for_index[index];
@@ -390,16 +402,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 5b. Clear any staged work for each component.
-    for(auto& component: components)
-    {
-        component->new_taxa.clear();
-        component->new_splits.clear();
-
-        component->all_taxa.clear();
-        component->all_splits.clear();
-    }
-
     // 6a. Create the vector of taxa in each connected component
     for(int index=0;index < taxa.size();index++)
     {
@@ -407,15 +409,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         {
             auto taxon = taxa[index];
             component->all_taxa.push_back(taxon);
-        }
-    }
-    // 6b. Create a vector of NEW taxa in each component.
-    for(int index=orig_n_taxa; index < taxa.size(); index++)
-    {
-        if (auto component = component_for_index[index])
-        {
-            auto taxon = taxa[index];
-            component->new_taxa.push_back(taxon);
         }
     }
 
@@ -475,7 +468,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         if (has_old_solution)
         {
-            assert(component->new_taxa.empty());
+            assert(component->all_taxa.size() == component->solution->taxa.size() + component->new_taxa.size());
 
             // If no new taxa and no new splits, just continue.
             if (component->new_splits.empty() and component->new_taxa.empty())
