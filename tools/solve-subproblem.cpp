@@ -419,19 +419,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         }
     }
 
-    // 7. Determine the splits that are not satisfied yet and go into each component
-    for(int j=0;j<splits.size();j++)
-    {
-        const auto& split = splits[j];
-        int first = indices[*split->in.begin()];
-        assert(first >= 0);
-        auto component = component_for_index[first];
-
-        bool satisfied = not exclude_group_intersects_component(split, component, component_for_index);
-        if (not satisfied)
-            component->all_splits.push_back(split);
-    }
-
     // 7a. Check implied splits to see if they are STILL implied.
     for(auto& component: components)
     {
@@ -452,7 +439,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             if (not implied)
             {
                 auto split = remove_unordered(implied_splits,i);
-                non_implied_splits.push_back(split);
                 new_splits.push_back(split);
             }
             else
@@ -472,7 +458,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             component->old_implied_splits.push_back(split);
         else
         {
-            component->old_non_implied_splits.push_back(split);
             component->new_splits.push_back(split);
         }
     }
@@ -486,9 +471,9 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     {
         assert(component->elements.size() >= 2);
 
-        assert(component->all_splits.size() == component->old_non_implied_splits.size());
+        bool has_old_solution = (bool)component->solution;
 
-        if (component->solution)
+        if (has_old_solution)
         {
             assert(component->new_taxa.empty());
 
@@ -499,11 +484,17 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             // Otherwise try adding the new taxa and splits to the existing solution.
             else if (not BUILD(*component->solution, component->new_taxa, component->new_splits))
                 return false;
+
         }
-        else
+
+        auto& old_splits = component->old_non_implied_splits;
+        auto& new_splits = component->new_splits;
+        old_splits.insert(old_splits.end(), new_splits.begin(), new_splits.end());
+
+        if (not has_old_solution)
         {
             auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, component->all_taxa, component->all_splits))
+            if (not BUILD(*subsolution, component->all_taxa, component->old_non_implied_splits))
                 return false;
             component->solution = subsolution;
         }
