@@ -400,6 +400,9 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         component->new_taxa.clear();
         component->new_splits.clear();
 
+        component->all_taxa.clear();
+        component->all_splits.clear();
+
         if (not component->unchanged)
             component->solution = std::make_shared<Solution>();
         else
