@@ -258,6 +258,18 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     return true;
 }
 
+template <typename T>
+T remove_unordered(std::vector<T>& v, int i)
+{
+    assert(0 <= i and i < v.size());
+
+    auto t = v[i];
+    if (i < int(v.size())-1)
+        std::swap(v[i], v.back());
+    v.pop_back();
+
+    return t;
+}
 
 struct Solution
 {
