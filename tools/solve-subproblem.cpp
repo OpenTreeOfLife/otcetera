@@ -184,6 +184,7 @@ struct component_t
     vector<ConstRSplit> old_non_implied_splits;  // beta
 
     shared_ptr<Solution> solution;
+    vector<shared_ptr<Solution>> old_solutions;
 
     vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
@@ -216,12 +217,13 @@ bool exclude_group_intersects_component(const ConstRSplit& split, const componen
     return false;
 }
 
-vector<ConstRSplit> concatenate(vector<ConstRSplit>&& splits1, vector<ConstRSplit>&& splits2)
+template <typename T>
+vector<T> concatenate(vector<T>&& splits1, vector<T>&& splits2)
 {
     if (splits1.size() < splits2.size())
         std::swap(splits1,splits2);
 
-    vector<ConstRSplit> splits12 = std::move(splits1);
+    vector<T> splits12 = std::move(splits1);
     splits12.insert(splits12.end(), splits2.begin(), splits2.end());
     return splits12;
 }
@@ -245,6 +247,13 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     c1->solution = {};
     c2->solution = {};
+
+    if (c1->solution)
+        c1->old_solutions.push_back(c1->solution);
+    if (c2->solution)
+        c2->old_solutions.push_back(c2->solution);
+    c1->old_solutions = concatenate(std::move(c1->old_solutions), std::move(c2->old_solutions));
+    
     return c1;
 }
 
