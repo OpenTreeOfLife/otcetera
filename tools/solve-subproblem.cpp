@@ -387,12 +387,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
                     taxon_comp = components.back().get();
                     merge_component_with_trivial(taxon_comp, taxon, index, component_for_index);
                 }
+                split_comp = taxon_comp;
             }
             else if (not taxon_comp)
                 merge_component_with_trivial(split_comp, taxon, index, component_for_index);
             else if (split_comp != taxon_comp)
-                merge_components(split_comp,taxon_comp,component_for_index);
-            split_comp = component_for_index[index];
+                split_comp = merge_components(split_comp,taxon_comp,component_for_index);
         }
     }
 
