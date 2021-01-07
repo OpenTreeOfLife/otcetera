@@ -373,26 +373,26 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     // 3. For each split, all the leaves in the include group must be in the same component
     for(const auto& split: new_splits)
     {
-        component_ref c1 = nullptr;
+        component_ref split_comp = nullptr;
         for(int taxon: split->in)
         {
             int index = indices[taxon];
             assert(index != -1);
-            auto c2 = component_for_index[index];
-            if (not c1)
+            auto taxon_comp = component_for_index[index];
+            if (not split_comp)
             {
-                if (not c2)
+                if (not taxon_comp)
                 {
                     components.push_back(std::make_unique<component_t>());
-                    c2 = components.back().get();
-                    merge_component_with_trivial(c2, taxon, index, component_for_index);
+                    taxon_comp = components.back().get();
+                    merge_component_with_trivial(taxon_comp, taxon, index, component_for_index);
                 }
             }
-            else if (not c2)
-                merge_component_with_trivial(c1, taxon, index, component_for_index);
-            else if (c1 != c2)
-                merge_components(c1,c2,component_for_index);
-            c1 = component_for_index[index];
+            else if (not taxon_comp)
+                merge_component_with_trivial(split_comp, taxon, index, component_for_index);
+            else if (split_comp != taxon_comp)
+                merge_components(split_comp,taxon_comp,component_for_index);
+            split_comp = component_for_index[index];
         }
     }
 
