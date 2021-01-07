@@ -183,8 +183,12 @@ struct component_t
     vector<ConstRSplit> old_implied_splits;      // alpha
     vector<ConstRSplit> old_non_implied_splits;  // beta
 
-    shared_ptr<Solution> solution;
-    vector<shared_ptr<Solution>> old_solutions;
+    shared_ptr<Solution> solution() const {
+        assert(solutions.size() == 1);
+        return solutions.front();
+    }
+
+    vector<shared_ptr<Solution>> solutions;
 
     vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
@@ -245,14 +249,11 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     c2->old_non_implied_splits.clear();
     c2->old_implied_splits.clear();
 
-    c1->solution = {};
-    c2->solution = {};
+    // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
+    c1->new_taxa = concatenate(std::move(c1->new_taxa), std::move(c2->new_taxa));
 
-    if (c1->solution)
-        c1->old_solutions.push_back(c1->solution);
-    if (c2->solution)
-        c2->old_solutions.push_back(c2->solution);
-    c1->old_solutions = concatenate(std::move(c1->old_solutions), std::move(c2->old_solutions));
+    // One of these components could be new -- that is, composed only of previously-trivial components.
+    c1->solutions = concatenate(std::move(c1->solutions), std::move(c2->solutions));
     
     return c1;
 }
@@ -300,7 +301,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 
     // 2. Add children for non-trivial components
     for(auto& component: components)
-        add_subtree(tree->get_root(), *component->solution->get_tree());
+        add_subtree(tree->get_root(), *component->solution()->get_tree());
 
     // 3. Add children for trivial components
     for(int index=0;index<taxa.size();index++)
@@ -384,8 +385,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
                 {
                     components.push_back(std::make_unique<component_t>());
                     c2 = components.back().get();
-                    c2->elements.push_back(index);
-                    component_for_index[index] = c2;
+                    merge_component_with_trivial(c2, taxon, index, component_for_index);
                 }
             }
             else if (not c2)
@@ -473,18 +473,18 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     {
         assert(component->elements.size() >= 2);
 
-        bool has_old_solution = (bool)component->solution;
+        bool has_old_solution = component->solutions.size() == 1;
 
         if (has_old_solution)
         {
-            assert(component->all_taxa.size() == component->solution->taxa.size() + component->new_taxa.size());
+            assert(component->all_taxa.size() == component->solution()->taxa.size() + component->new_taxa.size());
 
             // If no new taxa and no new splits, just continue.
             if (component->new_splits.empty() and component->new_taxa.empty())
                 continue;
 
             // Otherwise try adding the new taxa and splits to the existing solution.
-            else if (not BUILD(*component->solution, component->new_taxa, component->new_splits))
+            else if (not BUILD(*component->solution(), component->new_taxa, component->new_splits))
                 return false;
 
         }
@@ -498,7 +498,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             auto subsolution = std::make_shared<Solution>();
             if (not BUILD(*subsolution, component->all_taxa, component->old_non_implied_splits))
                 return false;
-            component->solution = subsolution;
+            component->solutions = { subsolution };
         }
     }
     return true;
