@@ -20,6 +20,7 @@ namespace fs = boost::filesystem;
 using std::vector;
 using std::unique_ptr;
 using std::set;
+using std::pair;
 using std::list;
 using std::map;
 using std::string;
@@ -836,6 +837,8 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         };
     // 1. Find splits in order of input trees
     vector<Tree_t::node_type const*> compatible_taxa;
+    vector<pair<Tree_t::node_type const*,RSplit>> splits;
+
     for(int i=0;i<trees.size();i++)
     {
         const auto& tree = trees[i];
@@ -849,37 +852,63 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
 #endif
         // Handle the taxonomy tree specially when it has Incertae sedis taxa.
-        if (i == trees.size()-1 and not incertae_sedis.empty()) {
+        if (i == trees.size()-1 and not incertae_sedis.empty())
+        {
             auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
 
-            for(auto nd: iter_pre_const(*tree)) {
+            for(auto nd: iter_pre_const(*tree))
+            {
                 if (not nd->is_tip() and nd != root) {
                     // construct split
                     const auto descendants = remap(nd->get_data().des_ids);
                     const auto nondescendants = remap(exclude[nd]);
-                    if (add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants))) {
-                        compatible_taxa.push_back(nd);
-                    }
+                    splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
                 }
             }
-        } else if (i == trees.size()-1) {
-            for(auto nd: iter_pre_const(*tree)) {
-                if (not nd->is_tip() and nd != root) {
+        }
+        else
+        {
+            for(auto nd: iter_pre_const(*tree))
+            {
+                if (not nd->is_tip() and nd != root)
+                {
+                    auto nd2 = nd;
+                    if (i != trees.size()-1) nd2 = nullptr;
                     const auto descendants = remap(nd->get_data().des_ids);
-                    if (add_split_if_consistent(nd, RSplit(new RSplitObj{descendants, leafTaxaIndices}))) {
-                        compatible_taxa.push_back(nd);
-                    }
-                }
-            }
-        } else {
-            for(auto nd: iter_pre_const(*tree)) {
-                if (not nd->is_tip() and nd != root) {
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    add_split_if_consistent(nd, RSplit(new RSplitObj{descendants, leafTaxaIndices}));
+                    splits.push_back({nd2,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
                 }
             }
         }
     }
+
+    auto add_splits_if_consistent = [&](vector<pair<Tree_t::node_type const*,RSplit>>& splits, int start, int n)
+        {
+            bool result = false;
+
+            auto solution_temp = std::make_shared<Solution>();
+
+            for(int i=0;i<n;i++)
+                consistent.push_back(splits[start+i].second);
+
+            result = BUILD(*solution_temp, all_leaves_indices, consistent);
+
+            if (not result)
+                for(int i=0;i<n;i++)
+                    consistent.pop_back();
+
+            return result;
+        };
+
+    for(int i=0;i<splits.size();i++)
+    {
+        auto nd = splits[i].first;
+        if (add_splits_if_consistent(splits, i, 1) and nd)
+        {
+            assert((not nd->get_parent()) or (depth(nd) > 0));
+            compatible_taxa.push_back(nd);
+        }
+    }
+
     // 2. Construct final tree and add names
 
     //FIXME - discard previous solution;
