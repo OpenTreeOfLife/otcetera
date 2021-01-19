@@ -892,21 +892,38 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
 
             result = BUILD(*solution_temp, all_leaves_indices, consistent);
 
-            if (not result)
+            if (result)
+            {
+                for(int i=0;i<n;i++)
+                    if (auto nd = splits[start+i].first)
+                        compatible_taxa.push_back(nd);
+            }
+            else
                 for(int i=0;i<n;i++)
                     consistent.pop_back();
 
             return result;
         };
 
-    for(int i=0;i<splits.size();i++)
-    {
-        auto nd = splits[i].first;
-        if (add_splits_if_consistent(splits, i, 1) and nd)
+    std::function<void(vector<pair<Tree_t::node_type const*,RSplit>>&,int,int)> add_splits_if_consistent_batch;
+    add_splits_if_consistent_batch = [&](vector<pair<Tree_t::node_type const*,RSplit>>& splits, int start, int n)
         {
-            assert((not nd->get_parent()) or (depth(nd) > 0));
-            compatible_taxa.push_back(nd);
-        }
+            auto result = add_splits_if_consistent(splits, start, n);
+            if (not result and n > 1)
+            {
+                int n1 = n/2;
+                int n2 = n - n1;
+                add_splits_if_consistent_batch(splits, start   , n1);
+                add_splits_if_consistent_batch(splits, start+n1, n2);
+            }
+        };
+
+
+    constexpr int blocksize = 16;
+    for(int i=0;i<splits.size();i+=blocksize)
+    {
+        int n = std::min(blocksize, (int)splits.size()-i);
+        add_splits_if_consistent_batch(splits, i, n);
     }
 
     // 2. Construct final tree and add names
