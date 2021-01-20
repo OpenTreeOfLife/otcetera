@@ -816,23 +816,35 @@ incertae_sedis_splits_for_tree(const Tree_t& tree, const std::function< set<int>
     return splits;
 }
 
-
-/// Get the list of splits, and add them one at a time if they are consistent with previous splits
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
-    // 0. Standardize names to 0..n-1 for this subproblem
-    const auto& taxonomy = trees.back();
-    auto all_leaves = taxonomy->get_root()->get_data().des_ids;
-    // index -> id
-    vector<OttId> ids;
-    // id -> index
-    map<OttId,int> id_map;
-    for(OttId id: all_leaves) {
+template <typename T>
+pair<vector<T>,map<T,int>> make_index_map(const set<T>& s)
+{
+    pair<vector<T>,map<T,int>> x;
+    // ids:    index -> id
+    // id_map: id    -> index
+    auto& [ids,id_map] = x;
+    for(auto& id: s)
+    {
         int i = ids.size();
         id_map[id] = i;
         ids.push_back(id);
         assert(id_map[ids[i]] == i);
         assert(ids[id_map[id]] == id);
     }
+    return x;
+}
+
+/// Get the list of splits, and add them one at a time if they are consistent with previous splits
+unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose)
+{
+    // 0. Standardize names to 0..n-1 for this subproblem
+    const auto& taxonomy = trees.back();
+    auto all_leaves = taxonomy->get_root()->get_data().des_ids;
+
+    // ids:    index -> id
+    // id_map: id    -> index
+    auto [ids, id_map] = make_index_map(all_leaves);
+
     std::function< set<int>(const set<OttId>&) > remap = [&id_map](const set<OttId>& argIds) {return remap_ids(argIds, id_map);};
     vector<int> all_leaves_indices;
     for(int i=0;i<all_leaves.size();i++) {
@@ -842,6 +854,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     for(auto& i: indices) {
         i=-1;
     }
+
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<ConstRSplit> consistent;
 
