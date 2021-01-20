@@ -772,6 +772,26 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
     return exclude;
 }
 
+vector<pair<Tree_t::node_type const*,RSplit>> splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, bool keep_taxa)
+{
+    vector<pair<Tree_t::node_type const*,RSplit>> splits;
+    auto root = tree.get_root();
+    const auto leafTaxa = root->get_data().des_ids;
+    const auto leafTaxaIndices = remap(leafTaxa);
+    for(auto nd: iter_pre_const(tree))
+    {
+        if (not nd->is_tip() and nd != root)
+        {
+            auto nd2 = nd;
+            if (not keep_taxa) nd2 = nullptr;
+            const auto descendants = remap(nd->get_data().des_ids);
+            splits.push_back({nd2,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
+        }
+    }
+    return splits;
+}
+
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
     // 0. Standardize names to 0..n-1 for this subproblem
@@ -788,7 +808,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         assert(id_map[ids[i]] == i);
         assert(ids[id_map[id]] == id);
     }
-    auto remap = [&id_map](const set<OttId>& argIds) {return remap_ids(argIds, id_map);};
+    std::function< set<int>(const set<OttId>&) > remap = [&id_map](const set<OttId>& argIds) {return remap_ids(argIds, id_map);};
     vector<int> all_leaves_indices;
     for(int i=0;i<all_leaves.size();i++) {
         all_leaves_indices.push_back(i);
@@ -868,16 +888,10 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
         else
         {
-            for(auto nd: iter_pre_const(*tree))
-            {
-                if (not nd->is_tip() and nd != root)
-                {
-                    auto nd2 = nd;
-                    if (i != trees.size()-1) nd2 = nullptr;
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    splits.push_back({nd2,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
-                }
-            }
+            bool keep_taxa = (i == trees.size()-1);
+            auto splits2 = splits_for_tree(*tree, remap, keep_taxa);
+            for(auto& split: splits2)
+                splits.push_back( std::move(split) );
         }
     }
 
