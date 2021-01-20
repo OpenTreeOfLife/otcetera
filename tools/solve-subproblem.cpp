@@ -773,28 +773,7 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 }
 
 vector<pair<Tree_t::node_type const*,RSplit>>
-incertae_sedis_splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
-{
-    vector<pair<Tree_t::node_type const*,RSplit>> splits;
-    auto root = tree.get_root();
-
-    auto exclude = construct_exclude_sets<Tree_t>(tree, incertae_sedis);
-
-    for(auto nd: iter_pre_const(tree))
-    {
-        if (not nd->is_tip() and nd != root) {
-            // construct split
-            const auto descendants = remap(nd->get_data().des_ids);
-            const auto nondescendants = remap(exclude[nd]);
-            splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
-        }
-    }
-
-    return splits;
-}
-
-vector<pair<Tree_t::node_type const*,RSplit>>
-splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, bool keep_taxa)
+splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, bool keep_taxa = false)
 {
     vector<pair<Tree_t::node_type const*,RSplit>> splits;
     auto root = tree.get_root();
@@ -810,6 +789,30 @@ splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttI
             splits.push_back({nd2,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
         }
     }
+    return splits;
+}
+
+vector<pair<Tree_t::node_type const*,RSplit>>
+incertae_sedis_splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
+{
+    if (incertae_sedis.empty())
+        return splits_for_tree(tree, remap, true);
+
+    vector<pair<Tree_t::node_type const*,RSplit>> splits;
+    auto root = tree.get_root();
+
+    auto exclude = construct_exclude_sets<Tree_t>(tree, incertae_sedis);
+
+    for(auto nd: iter_pre_const(tree))
+    {
+        if (not nd->is_tip() and nd != root) {
+            // construct split
+            const auto descendants = remap(nd->get_data().des_ids);
+            const auto nondescendants = remap(exclude[nd]);
+            splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
+        }
+    }
+
     return splits;
 }
 
@@ -886,7 +889,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         const auto& tree = trees[i];
 
         // Handle the taxonomy tree specially when it has Incertae sedis taxa.
-        if (i == trees.size()-1 and not incertae_sedis.empty())
+        if (i == trees.size()-1)
         {
             auto splits2 = incertae_sedis_splits_for_tree(*tree, remap, incertae_sedis);
             for(auto& split: splits2)
@@ -894,8 +897,7 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
         }
         else
         {
-            bool keep_taxa = (i == trees.size()-1);
-            auto splits2 = splits_for_tree(*tree, remap, keep_taxa);
+            auto splits2 = splits_for_tree(*tree, remap);
             for(auto& split: splits2)
                 splits.push_back( std::move(split) );
         }
