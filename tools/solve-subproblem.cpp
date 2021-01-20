@@ -793,7 +793,7 @@ splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttI
 }
 
 vector<pair<Tree_t::node_type const*,RSplit>>
-incertae_sedis_splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
+splits_for_taxonomy_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
 {
     if (incertae_sedis.empty())
         return splits_for_tree(tree, remap, true);
@@ -901,10 +901,10 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     {
         const auto& tree = trees[i];
 
-        // Handle the taxonomy tree specially when it has Incertae sedis taxa.
+        // Handle the taxonomy tree specially
         if (i == trees.size()-1)
         {
-            auto splits2 = incertae_sedis_splits_for_tree(*tree, remap, incertae_sedis);
+            auto splits2 = splits_for_taxonomy_tree(*tree, remap, incertae_sedis);
             for(auto& split: splits2)
                 splits.push_back( std::move(split) );
         }
