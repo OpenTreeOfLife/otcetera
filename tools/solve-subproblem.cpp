@@ -772,7 +772,29 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
     return exclude;
 }
 
-vector<pair<Tree_t::node_type const*,RSplit>> splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, bool keep_taxa)
+vector<pair<Tree_t::node_type const*,RSplit>>
+incertae_sedis_splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
+{
+    vector<pair<Tree_t::node_type const*,RSplit>> splits;
+    auto root = tree.get_root();
+
+    auto exclude = construct_exclude_sets<Tree_t>(tree, incertae_sedis);
+
+    for(auto nd: iter_pre_const(tree))
+    {
+        if (not nd->is_tip() and nd != root) {
+            // construct split
+            const auto descendants = remap(nd->get_data().des_ids);
+            const auto nondescendants = remap(exclude[nd]);
+            splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
+        }
+    }
+
+    return splits;
+}
+
+vector<pair<Tree_t::node_type const*,RSplit>>
+splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, bool keep_taxa)
 {
     vector<pair<Tree_t::node_type const*,RSplit>> splits;
     auto root = tree.get_root();
@@ -862,29 +884,13 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     for(int i=0;i<trees.size();i++)
     {
         const auto& tree = trees[i];
-        auto root = tree->get_root();
-        const auto leafTaxa = root->get_data().des_ids;
-        const auto leafTaxaIndices = remap(leafTaxa);
-#ifndef NDEBUG
-#pragma clang diagnostic ignored  "-Wunreachable-code-loop-increment"
-        for(const auto& leaf: set_difference_as_set(leafTaxa, all_leaves)) {
-            throw OTCError() << "OTT Id " << leaf << " not in taxonomy!";
-        }
-#endif
+
         // Handle the taxonomy tree specially when it has Incertae sedis taxa.
         if (i == trees.size()-1 and not incertae_sedis.empty())
         {
-            auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
-
-            for(auto nd: iter_pre_const(*tree))
-            {
-                if (not nd->is_tip() and nd != root) {
-                    // construct split
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    const auto nondescendants = remap(exclude[nd]);
-                    splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
-                }
-            }
+            auto splits2 = incertae_sedis_splits_for_tree(*tree, remap, incertae_sedis);
+            for(auto& split: splits2)
+                splits.push_back( std::move(split) );
         }
         else
         {
