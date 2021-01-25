@@ -201,10 +201,9 @@ class WebServiceTestJob(object):
             elif response.status_code != self.expected_status:
                 self.failed = True
                 try:
-                    self.status_str = "Expected status {} but got {}.  response body = {}\n".format(self.expected_status, response.status_code, response.text)
+                    self.status_str = "Expected status {} but got {}.  response body = \n{}\n".format(self.expected_status, response.status_code, response.text)
                 except:
                     pass
-                return
 
             # 3. Check JSON body
             _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
@@ -227,10 +226,13 @@ class WebServiceTestJob(object):
                             m = 'Response written to {}'.format(dbout_observed)
                         else:
                             m = ''
-                        self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
-                        return
-            self.passed = True
-            self.status_str = "Completed"
+                        self.status_str += "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
+
+            if self.failed:
+                return
+            else:
+                self.passed = True
+                self.status_str = "Completed"
         except Exception as x:
             self.erred = True
             _LOG.exception('writing exception to status string')
@@ -425,6 +427,7 @@ if __name__ == '__main__':
         recheck = 0
         checks_per_sec = 3
         while recheck < checks_per_sec*args.secs_to_recheck_pid_file:
+            recheck += 1
             time.sleep(1.0/checks_per_sec)
             if not os.path.exists(pidfile_path):
                 break

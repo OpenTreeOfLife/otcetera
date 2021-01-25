@@ -1,0 +1,6 @@
+{
+  "message": "[/v3/tree_of_life/induced_subtree] Error: node_id 'ott111111111111111111111111111111' was not found!",
+  "unknown": {
+    "ott111111111111111111111111111111": "unknown_id"
+  }
+}

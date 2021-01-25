@@ -71,10 +71,10 @@ executable('otc-version-reporter', ['version-reporter.cpp',git_version_h], depen
 
 
 
-test_otc_tools = find_program(join_paths(meson.source_root(),'tools/test_otc_tools.py'))
-data_dir = join_paths(meson.source_root(),'data')
-expected_dir = join_paths(meson.source_root(),'expected')
-tools_dir = join_paths(meson.build_root(),'tools')
+test_otc_tools = find_program(meson.source_root()/'tools/test_otc_tools.py')
+data_dir =     meson.source_root()/'data'
+expected_dir = meson.source_root()/'expected'
+tools_dir =    meson.build_root()/'tools'
 
 test('otc tools test',
      test_otc_tools,
