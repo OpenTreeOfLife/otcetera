@@ -1,0 +1,6 @@
+{
+  "message": "[/v3/tree_of_life/induced_subtree] Error: node_id 'ott671092' was not found!",
+  "unknown": {
+    "ott671092": "pruned_ott_id"
+  }
+}

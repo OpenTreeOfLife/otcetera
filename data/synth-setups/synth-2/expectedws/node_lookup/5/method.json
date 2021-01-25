@@ -1,0 +1,10 @@
+{
+  "url_fragment": "v3/tree_of_life/induced_subtree",
+  "verb": "POST",
+  "arguments": {
+    "node_ids": ["ott916750", "ott81461", "ott1007062"],
+    "height_limit": 10,
+    "label_format": "name_and_id",
+    "format": "newick"
+  }
+}

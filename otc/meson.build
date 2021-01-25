@@ -30,6 +30,7 @@ libotcetera_ws_sources = [
   'ws/taxonomyws.cpp',
   'ws/tnrsws.cpp',
   'ws/tolws.cpp',
+  'ws/find_node.cpp',
   'ws/trees_to_serve.cpp', 
   'ws/nexson/nexson.cpp',
 ]

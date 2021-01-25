@@ -238,27 +238,6 @@ void index_by_name_or_id(T & tree) {
     }
 }
 
-/// The complete taxonomy of looking up is like:
-///    ottX -> {too large, _ -> {never valid, _ -> {deprecated (previously valid), _ -> {pruned, _ -> {broken, OK!}}}}}
-///     mrcaottXottY -> OK | BadOTT (ReasonOTTMissing) | BadMRCA (ReasonOTTMissing)
-///       In this case if X or Y has a "broken" result, then we needn't fail.
-
-struct node_lookup_t
-{
-    const SumTreeNode_t* node = nullptr;
-    bool was_broken = false;
-
-    bool broken() const {return was_broken;}
-    bool present() const {return node and not was_broken;}
-    // technically, this includes: {too large, never valid, deprecated (once valid), and PRUNED}
-    bool invalid() const {return node == nullptr and not was_broken;}
-
-    node_lookup_t() {};
-    node_lookup_t(const SumTreeNode_t* n):node(n) {}
-};
-
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy&, const std::string & node_id);
-
 class TreesToServe;
 
 std::string available_trees_ws_method(const TreesToServe &tts);
