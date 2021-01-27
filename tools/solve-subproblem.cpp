@@ -803,7 +803,7 @@ splits_for_taxonomy_tree(const Tree_t& tree, const std::function< set<int>(const
     vector<pair<Tree_t::node_type const*,RSplit>> splits;
     auto root = tree.get_root();
 
-    auto exclude = construct_exclude_sets<Tree_t>(tree, incertae_sedis);
+    auto exclude = construct_exclude_sets(tree, incertae_sedis);
 
     for(auto nd: iter_pre(tree))
     {
