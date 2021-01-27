@@ -30,12 +30,12 @@ using cnode_type = ConflictTree::node_type;
 
 
 // Get the subtree of T1 connecting the leaves of T1 that are also in T2.
-template <typename Tree1, typename Tree2, typename Tree_Out_t>
+template <typename Tree_Out_t, typename Tree1, typename Tree2>
 pair<unique_ptr<Tree_Out_t>,unique_ptr<Tree_Out_t>>
-get_induced_trees2(const Tree1& T1,
-                  std::function<const typename Tree1::node_type*(const typename Tree1::node_type*,const typename Tree1::node_type*)> MRCA_of_pair1,
-                  const Tree2& T2,
-                  std::function<const typename Tree2::node_type*(const typename Tree2::node_type*,const typename Tree2::node_type*)> MRCA_of_pair2)
+get_induced_trees2(Tree1& T1,
+                   std::function<const typename Tree1::node_type*(const typename Tree1::node_type*,const typename Tree1::node_type*)> MRCA_of_pair1,
+                   Tree2& T2,
+                   std::function<const typename Tree2::node_type*(const typename Tree2::node_type*,const typename Tree2::node_type*)> MRCA_of_pair2)
 {
     LOG(WARNING)<<"T1 = "<<newick_string(T1);
     LOG(WARNING)<<"n_leaves(T1) = "<<n_leaves(T1);
@@ -344,7 +344,7 @@ json conflict_with_tree_impl(const QT & query_tree,
     };
 
     {
-        auto induced_trees = get_induced_trees2<const QT,const TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
 
         perform_conflict_analysis(*induced_trees.first,
                                   *induced_trees.second,
@@ -377,7 +377,7 @@ json conflict_with_tree_impl(const QT & query_tree,
 */
 
     {
-        auto induced_trees = get_induced_trees2<const QT,const TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
         return stats.get_json(*induced_trees.first, Tax);
     }
 }
