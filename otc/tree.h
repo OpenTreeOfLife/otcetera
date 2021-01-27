@@ -465,6 +465,9 @@ class RootedTree {
         RootedTree<T, U> & operator=(const RootedTree<T, U> &) = delete;
 };
 
+template <typename T>
+using node_type = typename std::conditional<std::is_const<T>::value, const typename T::node_type, typename T::node_type>::type;
+
 class RTNodeNoData{};
 class RTreeNoData{};
 
