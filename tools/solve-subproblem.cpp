@@ -14,6 +14,8 @@
 #include <optional>
 #include <robin_hood.h>
 
+#include "otc/conflict.h"
+
 using namespace otc;
 namespace fs = boost::filesystem;
 
@@ -834,10 +836,80 @@ pair<vector<T>,map<T,int>> make_index_map(const set<T>& s)
     return x;
 }
 
-/// Get the list of splits, and add them one at a time if they are consistent with previous splits
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose)
+
+vector<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, unique_ptr<Tree_t>& tree_to_clean)
 {
-    // 0. Standardize names to 0..n-1 for this subproblem
+    vector<node_t*> conflicting_nodes;
+
+    typedef Tree_t::node_type node_t;
+    typedef ConflictTree::node_type cnode_t;
+    std::function<node_t*(node_t*,node_t*)> mrca_of_pair = [](node_t* n1, node_t* n2) {return mrca_from_depth(n1,n2);};
+
+    auto tree_to_clean_ottid_to_node = get_ottid_to_node_map(*tree_to_clean);
+
+    auto ok_tree_ottid_to_node = get_ottid_to_node_map(*ok_tree);
+
+    auto induced_tree_to_clean = get_induced_tree<ConflictTree>(*tree_to_clean,
+                                                                tree_to_clean_ottid_to_node,
+                                                                mrca_of_pair,
+                                                                *ok_tree,
+                                                                ok_tree_ottid_to_node);
+
+    auto induced_ok_tree = get_induced_tree<ConflictTree>(*ok_tree,
+                                                          ok_tree_ottid_to_node,
+                                                          mrca_of_pair,
+                                                          *tree_to_clean,
+                                                          tree_to_clean_ottid_to_node);
+
+    std::unordered_map<const cnode_t*, node_t*> from_induced;
+
+    auto log_supported_by    = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+    auto log_partial_path_of = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+    auto log_resolved_by     = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+    auto log_terminal        = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+    auto log_conflicts_with  = [&](const cnode_t* /* node2 */, const cnode_t* node1 )
+    {
+        conflicting_nodes.push_back(from_induced.at(node1));
+    };
+
+    perform_conflict_analysis(*induced_tree_to_clean, *induced_ok_tree, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
+
+    return conflicting_nodes;
+}
+
+template<typename N>
+inline void collapse_node_(N* nd)
+{
+    assert(nd);
+    assert(not nd->has_ott_id());
+    assert(nd->has_children());
+
+    while(nd->has_children())
+    {
+        auto child = nd->get_first_child();
+        child->detach_this_node();
+        nd->add_sib_on_left(child);
+    }
+    nd->detach_this_node();
+}
+
+
+void remove_conflicting_splits_from_tree(unique_ptr<Tree_t>& ok_tree, unique_ptr<Tree_t>& tree_to_clean)
+{
+    for(auto& node: find_conflicting_nodes(ok_tree, tree_to_clean))
+        collapse_node_(node);
+}
+
+void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int k)
+{
+    for(int i=0;i<k;i++)
+        remove_conflicting_splits_from_tree(trees[i],trees[k]);
+}
+
+/// Get the list of splits, and add them one at a time if they are consistent with previous splits
+unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose)
+{
+    // 1. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
     auto all_leaves = taxonomy->get_root()->get_data().des_ids;
 
