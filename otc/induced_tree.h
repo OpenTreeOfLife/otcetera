@@ -138,15 +138,16 @@ get_induced_tree(const std::vector<const typename Tree_In_t::node_type*>& leaves
 }
 
 // Get a list of leaves of tree 1 that are also in tree 2.
-template <typename Tree1_t, typename Tree2_t>
-std::vector<const typename Tree1_t::node_type*> get_induced_leaves(
-                    const Tree1_t& T1,
-                    const std::unordered_map<OttId, const typename Tree1_t::node_type*>& nodes1,
-                    const Tree2_t& T2,
-                    const std::unordered_map<OttId, const typename Tree2_t::node_type*>& nodes2) {
-  std::vector<const typename Tree1_t::node_type*> leaves;
+template <typename Tree1_t, typename Tree2_t=Tree1_t>
+std::vector<node_type<Tree1_t>*> get_induced_leaves(
+                    Tree1_t& T1,
+                    const std::unordered_map<OttId, node_type<Tree1_t>*>& nodes1,
+                    Tree2_t& T2,
+                    const std::unordered_map<OttId, node_type<Tree2_t>*>& nodes2)
+{
+  std::vector<node_type<Tree1_t>*> leaves;
     if (nodes2.size() < nodes1.size()) {
-        for(auto leaf: iter_leaf_const(T2)) {
+        for(auto leaf: iter_leaf(T2)) {
             auto id = leaf->get_ott_id();
             auto it = nodes1.find(id);
             if (it != nodes1.end()) {
@@ -154,7 +155,7 @@ std::vector<const typename Tree1_t::node_type*> get_induced_leaves(
             }
         }
     } else {
-        for(auto leaf: iter_leaf_const(T1)) {
+        for(auto leaf: iter_leaf(T1)) {
             auto id = leaf->get_ott_id();
             if (nodes2.find(id) != nodes2.end()) {
                 leaves.push_back(leaf);
