@@ -774,10 +774,10 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
     return exclude;
 }
 
-vector<pair<Tree_t::node_type const*,RSplit>>
-splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, bool keep_taxa = false)
+vector<pair<node_type<Tree_t>*,RSplit>>
+splits_for_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap)
 {
-    vector<pair<Tree_t::node_type const*,RSplit>> splits;
+    vector<pair<node_type<Tree_t>*,RSplit>> splits;
     auto root = tree.get_root();
     const auto leafTaxa = root->get_data().des_ids;
     const auto leafTaxaIndices = remap(leafTaxa);
@@ -794,13 +794,13 @@ splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttI
     return splits;
 }
 
-vector<pair<Tree_t::node_type const*,RSplit>>
-splits_for_taxonomy_tree(const Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
+vector<pair<node_type<Tree_t>*,RSplit>>
+splits_for_taxonomy_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
 {
     if (incertae_sedis.empty())
         return splits_for_tree(tree, remap, true);
 
-    vector<pair<Tree_t::node_type const*,RSplit>> splits;
+    vector<pair<node_type<Tree_t>*,RSplit>> splits;
     auto root = tree.get_root();
 
     auto exclude = construct_exclude_sets(tree, incertae_sedis);
