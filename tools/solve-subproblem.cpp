@@ -749,7 +749,7 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const 
     return include;
 }
 
-template<typename Tree_T>
+template<typename Tree_t>
 map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const Tree_t& tree, const set<OttId>& incertae_sedis) {
     map<typename Tree_t::node_type const*, set<OttId>> exclude;
     // 1. Set exclude set for root node to the empty set.
