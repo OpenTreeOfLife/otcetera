@@ -287,16 +287,16 @@ void perform_conflict_analysis(Tree1_t& tree1,
                                node_logger_t log_conflicts_with,
                                node_logger_t log_resolved_by,
                                node_logger_t log_terminal) {
-    auto induced_tree1 = get_induced_tree<Tree1_t,Tree2_t,ConflictTree>(tree1,
-                                                                        ottid_to_node1,
-                                                                        MRCA_of_pair1,
-                                                                        tree2,
-                                                                        ottid_to_node2);
-    auto induced_tree2 = get_induced_tree<Tree2_t,Tree1_t,ConflictTree>(tree2,
-                                                                        ottid_to_node2,
-                                                                        MRCA_of_pair2,
-                                                                        tree1,
-                                                                        ottid_to_node1);
+    auto induced_tree1 = get_induced_tree<ConflictTree>(tree1,
+                                                        ottid_to_node1,
+                                                        MRCA_of_pair1,
+                                                        tree2,
+                                                        ottid_to_node2);
+    auto induced_tree2 = get_induced_tree<ConflictTree>(tree2,
+                                                        ottid_to_node2,
+                                                        MRCA_of_pair2,
+                                                        tree1,
+                                                        ottid_to_node1);
 
     return perform_conflict_analysis(*induced_tree1, *induced_tree2, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
 }
