@@ -181,7 +181,7 @@ void prune_ancestral_leaves(Tree_t& query_tree, const Tree_t& taxonomy_tree, con
     auto query_id_to_node = get_ottid_to_const_node_map(query_tree);
     auto induced_leaves = get_induced_leaves<const Tree_t,const Tree_t>(taxonomy_tree, tax_id_to_node, query_tree, query_id_to_node);
     auto mrca = [](const Tree_t::node_type* n1, const Tree_t::node_type* n2) {return mrca_from_depth(n1,n2);};
-    auto induced_taxonomy = get_induced_tree<Tree_t,Tree_t>(induced_leaves, mrca);
+    auto induced_taxonomy = get_induced_tree<const Tree_t,Tree_t>(induced_leaves, mrca);
 
     // 2. Find the query tree leaves that are not tips on the induced taxonomy
     auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);

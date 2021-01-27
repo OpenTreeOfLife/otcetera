@@ -344,7 +344,7 @@ json conflict_with_tree_impl(const QT & query_tree,
     };
 
     {
-        auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto induced_trees = get_induced_trees2<const QT,const TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
 
         perform_conflict_analysis(*induced_trees.first,
                                   *induced_trees.second,
@@ -377,7 +377,7 @@ json conflict_with_tree_impl(const QT & query_tree,
 */
 
     {
-        auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto induced_trees = get_induced_trees2<const QT,const TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
         return stats.get_json(*induced_trees.first, Tax);
     }
 }
@@ -419,9 +419,9 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
     };
 
     auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
-    auto induced_taxonomy = get_induced_tree<RichTaxTree, ConflictTree>(taxonomy_nodes_from_query_leaves,
-                                                                        taxonomy_mrca);
-    auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);
+    auto induced_taxonomy = get_induced_tree<const RichTaxTree, ConflictTree>(taxonomy_nodes_from_query_leaves,
+                                                                              taxonomy_mrca);
+    auto ottid_to_induced_tax_node = get_ottid_to_node_map(*induced_taxonomy);
 
     LOG(WARNING)<<"induced taxonomy has "<<n_leaves(*induced_taxonomy)<<" leaves.";
 
