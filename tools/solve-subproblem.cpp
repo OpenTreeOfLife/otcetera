@@ -534,7 +534,7 @@ void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy) {
     }
     // name tips
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
-    for(auto nd: iter_leaf_const(taxonomy)) {
+    for(auto nd: iter_leaf(taxonomy)) {
         auto id = nd->get_ott_id();
         auto nd2 = summaryOttIdToNode.at(id);
         nd2->set_name( nd->get_name());
@@ -624,7 +624,7 @@ bool is_ancestral_to(const Tree_t::node_type* anc, const Tree_t::node_type* n1) 
 
 map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tree_t& summary,
                                                                        const Tree_t& taxonomy) {
-    for(auto nd: iter_post_const(summary)) {
+    for(auto nd: iter_post(summary)) {
         if (nd->get_parent() and nd->get_name().size() and not nd->has_ott_id()) {
             LOG(WARNING)<<"Named taxonomy node has no OTTID!  Not checking for incertae sedis placement.";
             return {};
@@ -632,7 +632,7 @@ map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tre
     }
     map<const Tree_t::node_type*,const Tree_t::node_type*> placements;
     auto node_from_id = get_ottid_to_const_node_map(taxonomy);
-    for(auto nd: iter_post_const(summary)) {
+    for(auto nd: iter_post(summary)) {
         if (nd->get_parent() and nd->has_ott_id()) {
             auto id = nd->get_ott_id();
             auto anc_id = find_ancestor_id(nd);
@@ -729,7 +729,7 @@ template<typename Tree_T>
 map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const Tree_t& tree, const set<OttId>& incertae_sedis)
 {
     map<typename Tree_t::node_type const*, set<OttId>> include;
-    for(auto nd: iter_post_const(tree)) {
+    for(auto nd: iter_post(tree)) {
         // 1. Initialize set for this node.
         auto & inc = include[nd];
         // 2. Add OttId for tip nodes
@@ -739,7 +739,7 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const 
             continue;
         }
         // 3. Add Ids of children only if they are NOT incertae sedis
-        for(auto nd2: iter_child_const(*nd)) {
+        for(auto nd2: iter_child(*nd)) {
             if (not incertae_sedis.count(nd2->get_ott_id())) {
                 auto& inc_child = nd2->get_data().des_ids;
                 inc.insert(begin(inc_child),end(inc_child));
@@ -754,7 +754,7 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
     map<typename Tree_t::node_type const*, set<OttId>> exclude;
     // 1. Set exclude set for root node to the empty set.
     exclude[tree.get_root()];
-    for(auto nd: iter_pre_const(tree)) {
+    for(auto nd: iter_pre(tree)) {
         // 2. Skip tips and the root node.
         if (nd->is_tip() || nd == tree.get_root()) {
             continue;
@@ -781,7 +781,7 @@ splits_for_tree(const Tree_t& tree, const std::function< set<int>(const set<OttI
     auto root = tree.get_root();
     const auto leafTaxa = root->get_data().des_ids;
     const auto leafTaxaIndices = remap(leafTaxa);
-    for(auto nd: iter_pre_const(tree))
+    for(auto nd: iter_pre(tree))
     {
         if (not nd->is_tip() and nd != root)
         {
@@ -805,7 +805,7 @@ splits_for_taxonomy_tree(const Tree_t& tree, const std::function< set<int>(const
 
     auto exclude = construct_exclude_sets<Tree_t>(tree, incertae_sedis);
 
-    for(auto nd: iter_pre_const(tree))
+    for(auto nd: iter_pre(tree))
     {
         if (not nd->is_tip() and nd != root) {
             // construct split
@@ -1060,7 +1060,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     if (use_ids) {
         map<OttId,string> names;
         for(const auto& tree: trees) {
-            for(auto nd: iter_pre_const(*tree)) {
+            for(auto nd: iter_pre(*tree)) {
                 if (nd->is_tip()) {
                     OttId id = nd->get_ott_id();
                     auto it = names.find(id);
@@ -1079,7 +1079,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     } else {
         set<string> names;
         for(const auto& tree: trees) {
-            for(auto nd: iter_pre_const(*tree)) {
+            for(auto nd: iter_pre(*tree)) {
                 if (nd->is_tip()) {
                     names.insert(nd->get_name());
                 }
