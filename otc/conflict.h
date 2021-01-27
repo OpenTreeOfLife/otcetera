@@ -276,12 +276,12 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
 }
 
 template <typename Tree1_t, typename Tree2_t>
-void perform_conflict_analysis(const Tree1_t& tree1,
-                               const std::unordered_map<OttId, const typename Tree1_t::node_type*>& ottid_to_node1,
-                               std::function<const typename Tree1_t::node_type*(const typename Tree1_t::node_type*,const typename Tree1_t::node_type*)> MRCA_of_pair1,
-                               const Tree2_t& tree2,
-                               const std::unordered_map<OttId, const typename Tree2_t::node_type*>& ottid_to_node2,
-                               std::function<const typename Tree2_t::node_type*(const typename Tree2_t::node_type*,const typename Tree2_t::node_type*)> MRCA_of_pair2,
+void perform_conflict_analysis(Tree1_t& tree1,
+                               const std::unordered_map<OttId, node_type<Tree1_t>*>& ottid_to_node1,
+                               std::function<node_type<Tree1_t>*(node_type<Tree1_t>*,node_type<Tree1_t>*)> MRCA_of_pair1,
+                               Tree2_t& tree2,
+                               const std::unordered_map<OttId, node_type<Tree2_t>*>& ottid_to_node2,
+                               std::function<node_type<Tree2_t>*(node_type<Tree2_t>*,node_type<Tree2_t>*)> MRCA_of_pair2,
                                node_logger_t log_supported_by,
                                node_logger_t log_partial_path_of,
                                node_logger_t log_conflicts_with,
