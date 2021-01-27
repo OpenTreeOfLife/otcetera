@@ -54,15 +54,16 @@ std::vector<N*> leaf_nodes_below(N* node) {
 }
 
 template <typename N>
-std::vector<N*> map_to_summary(const std::vector<const N*>& nodes) {
+auto map_to_summary(const std::vector<const N*>& nodes)
+{
     std::vector<N*> nodes2(nodes.size(),nullptr);
-    for(int i=0;i<(int)nodes2.size();i++) {
+    for(int i=0;i<(int)nodes2.size();i++)
         nodes2[i] = summary_node(nodes[i]);
-    }
     return nodes2;
 }
 
-struct ConflictNode {
+struct ConflictNode
+{
     int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
     int n_tips = 0;
     int n_include_tips = 0;
@@ -73,31 +74,22 @@ using ConflictTree = otc::RootedTree<ConflictNode, otc::RTreeNoData>;
 
 using node_logger_t = std::function<void(const ConflictTree::node_type* node2, const ConflictTree::node_type* node1)>;
 
-inline ConflictTree::node_type* summary_node(const ConflictTree::node_type* node) {
+inline ConflictTree::node_type* summary_node(const ConflictTree::node_type* node)
+{
     return node->get_data().summary_node;
 }
 
-inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node) {
+inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node)
+{
     return node->get_data().summary_node;
 }
 
 template <typename T>
-std::vector<typename T::node_type*> all_nodes_postorder(T& tree)
+auto all_nodes_postorder(T& tree)
 {
-    std::vector<typename T::node_type*> tree_nodes;
-    for(auto nd: iter_post(tree)) {
+    std::vector<node_type<T>*> tree_nodes;
+    for(auto nd: iter_post(tree))
         tree_nodes.push_back(nd);
-    }
-    return tree_nodes;
-}
-
-template <typename T>
-std::vector<const typename T::node_type*> all_nodes_postorder(const T& tree)
-{
-    std::vector<const typename T::node_type*> tree_nodes;
-    for(auto nd: iter_post_const(tree)) {
-        tree_nodes.push_back(nd);
-    }
     return tree_nodes;
 }
 
