@@ -95,10 +95,14 @@ std::set<N*> find_induced_nodes(const std::vector<N*>& leaves, N* MRCA) {
 }
 
 template <typename Tree_Out_t, typename Node_In_t>
-std::unique_ptr<Tree_Out_t>
+std::pair<std::unique_ptr<Tree_Out_t>,std::unordered_map<Node_In_t*, non_const_node_type<Tree_Out_t>*>>
 get_induced_tree_from_leaves_and_MRCA(const std::vector<Node_In_t*>& leaves,
-                                      Node_In_t* MRCA) {
+                                      Node_In_t* MRCA)
+{
+    // 0. If there are no leaves, return an empty tree.
     std::unique_ptr<Tree_Out_t> induced_tree(new Tree_Out_t());
+    if (leaves.empty()) return {std::move(induced_tree),{}};
+
     // 1. Find all nodes in the tree
     auto nodes = find_induced_nodes(leaves, MRCA);;
     // 2. Construct duplicate nodes for the induced tree, recording correspondence
@@ -128,7 +132,14 @@ get_induced_tree_from_leaves_and_MRCA(const std::vector<Node_In_t*>& leaves,
     }
     // 4. Set the root of the induced tree to node corresponding to the MRCA
     induced_tree->_set_root( to_induced_tree.at(MRCA) );
-    return induced_tree;
+    return {std::move(induced_tree), to_induced_tree};
+}
+
+template <typename Tree_Out_t, typename Node_In_t, typename F>
+auto get_induced_tree_and_node_map(const std::vector<Node_In_t*>& leaves,
+                                   const F& MRCA_of_pair)
+{
+    return get_induced_tree_from_leaves_and_MRCA<Tree_Out_t>(leaves, MRCA_of_group(leaves, MRCA_of_pair));
 }
 
 template <typename Tree_Out_t, typename Node_In_t, typename F>
@@ -136,7 +147,7 @@ std::unique_ptr<Tree_Out_t>
 get_induced_tree(const std::vector<Node_In_t*>& leaves,
                  const F& MRCA_of_pair)
 {
-    return get_induced_tree_from_leaves_and_MRCA<Tree_Out_t>(leaves, MRCA_of_group(leaves, MRCA_of_pair));
+    return get_induced_tree_and_node_map<Tree_Out_t>(leaves, MRCA_of_pair).first;
 }
 
 // Get a list of leaves of tree 1 that are also in tree 2.
@@ -169,19 +180,30 @@ std::vector<node_type<Tree1_t>*> get_induced_leaves(
 
 // Get the subtree of T1 connecting the leaves of T1 that are also in T2.
 template <typename Tree_Out_t, typename Tree_In1_t, typename Tree_In2_t, typename F>
+auto
+get_induced_tree_and_node_map(Tree_In1_t& T1,
+                                   const std::unordered_map<OttId, node_type<Tree_In1_t>*>& nodes1,
+                                   const F& MRCA_of_pair,
+                                   Tree_In2_t& T2,
+                                   const std::unordered_map<OttId, node_type<Tree_In2_t>*>& nodes2)
+{
+    auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
+
+    auto tree_and_node_map = get_induced_tree_and_node_map<Tree_Out_t>(induced_leaves, MRCA_of_pair);
+    auto& induced_tree = tree_and_node_map.first;
+    induced_tree->set_name(T1.get_name());
+    return tree_and_node_map;
+}
+
+// Get the subtree of T1 connecting the leaves of T1 that are also in T2.
+template <typename Tree_Out_t, typename Tree_In1_t, typename Tree_In2_t, typename F>
 std::unique_ptr<Tree_Out_t> get_induced_tree(Tree_In1_t& T1,
                                              const std::unordered_map<OttId, node_type<Tree_In1_t>*>& nodes1,
                                              const F& MRCA_of_pair,
                                              Tree_In2_t& T2,
                                              const std::unordered_map<OttId, node_type<Tree_In2_t>*>& nodes2)
 {
-    auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
-
-    if (induced_leaves.empty()) return nullptr;
-
-    auto induced_tree = get_induced_tree<Tree_Out_t>(induced_leaves, MRCA_of_pair);
-    induced_tree->set_name(T1.get_name());
-    return induced_tree;
+    return get_induced_tree_and_node_map<Tree_Out_t,Tree_In1_t,Tree_In2_t>(T1, nodes1, MRCA_of_pair, T2, nodes2).first;
 }
 
 // Get a list of nodes in T2 that are leaves in T1.
