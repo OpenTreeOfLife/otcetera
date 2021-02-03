@@ -176,6 +176,9 @@ std::unique_ptr<Tree_Out_t> get_induced_tree(Tree_In1_t& T1,
                                              const std::unordered_map<OttId, node_type<Tree_In2_t>*>& nodes2)
 {
     auto induced_leaves = get_induced_leaves(T1, nodes1, T2, nodes2);
+
+    if (induced_leaves.empty()) return nullptr;
+
     auto induced_tree = get_induced_tree<Tree_Out_t>(induced_leaves, MRCA_of_pair);
     induced_tree->set_name(T1.get_name());
     return induced_tree;
