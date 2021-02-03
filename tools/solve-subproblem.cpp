@@ -785,10 +785,8 @@ splits_for_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >
     {
         if (not nd->is_tip() and nd != root)
         {
-            auto nd2 = nd;
-            if (not keep_taxa) nd2 = nullptr;
-            const auto descendants = remap(nd->get_data().des_ids);
-            splits.push_back({nd2,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
+            auto descendants = remap(nd->get_data().des_ids);
+            splits.push_back({nd,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
         }
     }
     return splits;
@@ -798,7 +796,7 @@ vector<pair<node_type<Tree_t>*,RSplit>>
 splits_for_taxonomy_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
 {
     if (incertae_sedis.empty())
-        return splits_for_tree(tree, remap, true);
+        return splits_for_tree(tree, remap);
 
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
     auto root = tree.get_root();
@@ -837,9 +835,9 @@ pair<vector<T>,map<T,int>> make_index_map(const set<T>& s)
 }
 
 
-vector<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, unique_ptr<Tree_t>& tree_to_clean)
+set<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, unique_ptr<Tree_t>& tree_to_clean)
 {
-    vector<node_t*> conflicting_nodes;
+    set<node_t*> conflicting_nodes;
 
     typedef Tree_t::node_type node_t;
     typedef ConflictTree::node_type cnode_t;
@@ -849,11 +847,15 @@ vector<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, u
 
     auto ok_tree_ottid_to_node = get_ottid_to_node_map(*ok_tree);
 
-    auto induced_tree_to_clean = get_induced_tree<ConflictTree>(*tree_to_clean,
-                                                                tree_to_clean_ottid_to_node,
-                                                                mrca_of_pair,
-                                                                *ok_tree,
-                                                                ok_tree_ottid_to_node);
+    compute_depth(*ok_tree);
+
+    compute_depth(*tree_to_clean);
+
+    auto [induced_tree_to_clean,to_induced] = get_induced_tree_and_node_map<ConflictTree>(*tree_to_clean,
+                                                                                          tree_to_clean_ottid_to_node,
+                                                                                          mrca_of_pair,
+                                                                                          *ok_tree,
+                                                                                          ok_tree_ottid_to_node);
 
     auto induced_ok_tree = get_induced_tree<ConflictTree>(*ok_tree,
                                                           ok_tree_ottid_to_node,
@@ -861,18 +863,28 @@ vector<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, u
                                                           *tree_to_clean,
                                                           tree_to_clean_ottid_to_node);
 
-    std::unordered_map<const cnode_t*, node_t*> from_induced;
-
-    auto log_supported_by    = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
-    auto log_partial_path_of = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
-    auto log_resolved_by     = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
-    auto log_terminal        = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
-    auto log_conflicts_with  = [&](const cnode_t* /* node2 */, const cnode_t* node1 )
+    if (induced_tree_to_clean->get_root() and induced_ok_tree->get_root())
     {
-        conflicting_nodes.push_back(from_induced.at(node1));
-    };
+        std::unordered_map<const cnode_t*, node_t*> from_induced;
+        for(auto& [non_induced,induced]: to_induced)
+        {
+            from_induced[induced] = non_induced;
+        }
 
-    perform_conflict_analysis(*induced_tree_to_clean, *induced_ok_tree, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
+        auto log_supported_by    = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_partial_path_of = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_resolved_by     = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_terminal        = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_conflicts_with  = [&](const cnode_t* /* node2 */, const cnode_t* node1 )
+        {
+            assert(node1->has_children());
+            auto node2 = from_induced.at(node1);
+            assert(node2->has_children());
+            conflicting_nodes.insert(node2);
+        };
+
+        perform_conflict_analysis(*induced_tree_to_clean, *induced_ok_tree, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
+    }
 
     return conflicting_nodes;
 }
@@ -881,7 +893,6 @@ template<typename N>
 inline void collapse_node_(N* nd)
 {
     assert(nd);
-    assert(not nd->has_ott_id());
     assert(nd->has_children());
 
     while(nd->has_children())
@@ -965,56 +976,35 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             if (not result) solution = {};
             return result;
         };
-    // 1. Find splits in order of input trees
-    vector<Tree_t::node_type const*> compatible_taxa;
-    vector<pair<Tree_t::node_type const*,RSplit>> splits;
 
-    for(int i=0;i<trees.size();i++)
-    {
-        const auto& tree = trees[i];
-
-        // Handle the taxonomy tree specially
-        if (i == trees.size()-1)
+    int total_build_calls = 0;
+    auto add_splits_if_consistent = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
         {
-            auto splits2 = splits_for_taxonomy_tree(*tree, remap, incertae_sedis);
-            for(auto& split: splits2)
-                splits.push_back( std::move(split) );
-        }
-        else
-        {
-            auto splits2 = splits_for_tree(*tree, remap);
-            for(auto& split: splits2)
-                splits.push_back( std::move(split) );
-        }
-    }
-
-    auto add_splits_if_consistent = [&](vector<pair<Tree_t::node_type const*,RSplit>>& splits, int start, int n)
-        {
-            bool result = false;
-
             auto solution_temp = std::make_shared<Solution>();
 
             for(int i=0;i<n;i++)
                 consistent.push_back(splits[start+i].second);
 
-            result = BUILD(*solution_temp, all_leaves_indices, consistent);
+            auto result = BUILD(*solution_temp, all_leaves_indices, consistent);
 
-            if (result)
+            total_build_calls ++;
+
+            if (not result)
             {
                 for(int i=0;i<n;i++)
-                    if (auto nd = splits[start+i].first)
-                        compatible_taxa.push_back(nd);
-            }
-            else
-                for(int i=0;i<n;i++)
                     consistent.pop_back();
+                if (n==1)
+                    collapse_node_(splits[start].first);
+            }
 
             return result;
         };
 
-    std::function<void(vector<pair<Tree_t::node_type const*,RSplit>>&,int,int)> add_splits_if_consistent_batch;
-    add_splits_if_consistent_batch = [&](vector<pair<Tree_t::node_type const*,RSplit>>& splits, int start, int n)
+    std::function<void(vector<pair<node_type<Tree_t>*,RSplit>>&,int,int)> add_splits_if_consistent_batch;
+    add_splits_if_consistent_batch = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
         {
+            assert(n >= 1);
+            assert(start+n <= splits.size());
             auto result = add_splits_if_consistent(splits, start, n);
             if (not result and n > 1)
             {
@@ -1025,12 +1015,35 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             }
         };
 
-
     constexpr int blocksize = 16;
-    for(int i=0;i<splits.size();i+=blocksize)
+
+    // 1. Find splits in order of input trees
+    vector<pair<node_type<Tree_t>*,RSplit>> splits;
+    for(int i=0;i<trees.size();i++)
     {
-        int n = std::min(blocksize, (int)splits.size()-i);
-        add_splits_if_consistent_batch(splits, i, n);
+        // 1. Remove splits from tree i that directly conflict with previous TREES.
+        remove_conflicting_splits_from_tree(trees,i);
+
+        // 2. Get remaining splits
+        const auto& tree = trees[i];
+
+        auto splits2 = (i<trees.size()-1)
+            ?splits_for_tree(*tree, remap)
+            :splits_for_taxonomy_tree(*tree, remap, incertae_sedis);
+
+        if (splits2.empty()) continue;
+
+        // 3. Add compatible splits to `splits` and remove incompatible nodes from `trees[i]`;
+        add_splits_if_consistent_batch(splits2, 0, splits2.size());
+
+        LOG(INFO)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
+    }
+
+    vector<const_node_type<Tree_t>*> compatible_taxa;
+    for(auto node: iter_pre(*trees.back()))
+    {
+        if (node->get_parent() and not node->is_tip())
+            compatible_taxa.push_back(node);
     }
 
     // 2. Construct final tree and add names
@@ -1048,6 +1061,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             nd->set_ott_id(ids[index]);
         }
     }
+
+    LOG(INFO) << "Block size = "<<blocksize<<"  Number of BUILD calls = "<<total_build_calls<<"\n";
     add_root_and_tip_names(*tree, *taxonomy);
     add_names(*tree, compatible_taxa);
     return tree;
