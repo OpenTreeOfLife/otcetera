@@ -45,6 +45,7 @@ programs = [
   ['name-unnamed-nodes',  'name-unnamed-nodes'],
   ['annotate-synth',  'annotate-synth'],
   ['conflict-stats',  'conflict-stats'],
+  ['contrast-astral-runs',  'contrast-astral-runs'],
   ['taxonomy-parser',  'taxonomy-parser'],
   ['regrafttaxonomygenerator',  'regraft-taxonomy-generator'],
   ['relabel-tree',  'relabel-tree'],
