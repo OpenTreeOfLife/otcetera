@@ -578,6 +578,26 @@ inline AncIter<T, true> iter_anc_const(const T & node) {
     return AncIter<T, true>(node);
 }
 
+template <typename T>
+inline std::vector<typename T::node_type*> all_nodes_postorder(T& tree)
+{
+    std::vector<typename T::node_type*> tree_nodes;
+    for(auto nd: iter_post(tree)) {
+        tree_nodes.push_back(nd);
+    }
+    return tree_nodes;
+}
+
+template <typename T>
+inline std::vector<const typename T::node_type*> all_nodes_postorder(const T& tree)
+{
+    std::vector<const typename T::node_type*> tree_nodes;
+    for(auto nd: iter_post_const(tree)) {
+        tree_nodes.push_back(nd);
+    }
+    return tree_nodes;
+}
+
 } // namespace otc
 #endif
 

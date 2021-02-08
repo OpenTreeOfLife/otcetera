@@ -5,10 +5,14 @@
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
+#include "json.hpp"
 #include "otc/conflict.h"
 #include "otc/otcli.h"
 #include "otc/supertree_util.h"
 #include "otc/tree_operations.h"
+
+using json=nlohmann::json;
+
 
 using namespace otc;
 using std::vector;
@@ -36,8 +40,8 @@ variables_map parse_cmd_line(int argc,char* argv[])
     // named options
     options_description invisible("Invisible options");
     invisible.add_options()
-        ("first", value<string>(),"First assembled astral tree file (output followed by inputs in newick).")
-        ("second", value<string>(),"Second assembled astral tree file (output followed by inputs in newick).")
+        ("first", value<vector<string>>()->composing(),"First assembled astral tree file (output followed by inputs in newick).")
+        ("second", value<vector<string>>()->composing(),"Second assembled astral tree file (output followed by inputs in newick).")
         ;
 
     options_description reporting("Reporting options");
@@ -78,187 +82,216 @@ struct hash<pair<T,U>> {
 using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
 
-void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& summaryOttIdToNode);
-string get_source_node_name_if_available(const Tree_t::node_type* node);
+using str_set = std::set<std::string>;
+    
+class TreeAsSplits {
+    public:
+    std::map<string, const node_t *> leaf_label_to_nd;
+    std::map<const node_t *, str_set> nd_to_taxset;
+    std::map<str_set, const node_t *> inf_taxset_to_nd;
+    str_set leaf_labels;
 
-// uses the OTT Ids in `tree` to fill in the `summary_node` field of each leaf
-void compute_summary_leaves(Tree_t& tree, const map<OttId,Tree_t::node_type*>& summaryOttIdToNode) {
-    for(auto leaf: iter_leaf(tree)) {
-        summary_node(leaf) = summaryOttIdToNode.at(leaf->get_ott_id());
-    }
-}
-
-string get_source_node_name_if_available(const Tree_t::node_type* node) {
-    string name = node->get_name();
-    if (name.empty()) {
-        throw OTCError() << "Cannot get name for unnamed node!";
-    }
-    auto source = get_source_node_name(name);
-    if (source){
-        return *source;
-    } else {
-        return name;
-    }
-}
-
-map<string,string> suppress_and_record_monotypic(Tree_t& tree) {
-    map<string,string> to_child;
-    std::vector<Tree_t::node_type*> remove;
-    for (auto nd:iter_post(tree)) {
-        if (nd->is_outdegree_one_node()) {
-            remove.push_back(nd);
+    TreeAsSplits(const Tree_t & tree) {
+        auto nodes = all_nodes_postorder(tree);
+        for (auto nd : nodes) {
+            str_set ts;
+            if (nd->is_tip()) {
+                auto & nl = nd->get_name();
+                //std::cerr << nl << '\n';
+                ts.insert(nl);
+                leaf_labels.insert(nl);
+                leaf_label_to_nd[nl] = nd;
+            } else {
+                for (auto c : iter_child_const(*nd)) {
+                    auto cts = nd_to_taxset[c];
+                    ts.insert(cts.begin(), cts.end());
+                }
+                if (nd->get_parent() != nullptr) {
+                    inf_taxset_to_nd[ts] = nd;
+                }
+            }
+            nd_to_taxset[nd] = ts;
         }
     }
-
-    for (auto nd: remove) {
-        if (nd->get_name().size()) {
-            auto child = nd->get_first_child();
-            assert(not child->is_outdegree_one_node());
-            assert(child->get_name().size());
-            assert(to_child.count(nd->get_name()) == 0);
-            to_child[nd->get_name()] = child->get_name();
-        }
-        del_monotypic_node(nd,tree);
-    }
-    return to_child;
-}
-
-struct stats
-{
-    set<pair<string,string>> supported_by;
-    set<pair<string,string>> partial_path_of;
-    set<pair<string,string>> terminal;
-    set<pair<string,string>> conflicts_with;
-    set<pair<string,string>> resolves;
-    set<pair<string,string>> resolved_by;
 };
 
-int numErrors = 0;
-bool headerEmitted = false;
 
-void add_element(set<pair<string, string>>& s,
-                 const Tree_t::node_type*,
-                 const Tree_t::node_type* input_node,
-                 const string& source) {
-    // We only care about non-monotypic nodes.
-    if (input_node->is_outdegree_one_node()) {
-        return;
+enum in_full_status {IN_NEITHER = 0,
+                     IN_ONE = 1,
+                     IN_TWO =2,
+                     IN_BOTH = 3
+                    };
+
+enum CONFLICT_STATUS {IRRELEVANT = 0,
+                      CONFLICTS = 1,
+                      COMPATIBLE = 2,
+                      SUPPORTS = 6    // COMPATIBLE + PARENT's unions bigger
+                     };
+
+class SummaryOfSplit {
+    public:
+    using conf_pair = std::pair<CONFLICT_STATUS, CONFLICT_STATUS>;
+    using list_conf = std::list<conf_pair>;
+    in_full_status in_full;
+    list_conf in_inputs;
+    
+    SummaryOfSplit(const in_full_status & full_stat_arg) 
+      :in_full(full_stat_arg) {
     }
-    string node = get_source_node_name_if_available(input_node);
-    s.insert({source, node});
-}
+};
 
-void mapNextTree1(const Tree_t& summaryTree,
-                  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
-                  const Tree_t & tree,
-                  stats& s) {
-    typedef Tree_t::node_type node_type;
-    std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
-    string source_name = source_from_tree_name(tree.get_name());
-    auto ottid_to_node = get_ottid_to_const_node_map(tree);
-    {
-        auto log_supported_by    = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.supported_by,node2,node1,source_name);};
-        auto log_partial_path_of = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.partial_path_of,node2,node1,source_name);};
-        auto log_conflicts_with  = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.conflicts_with,node2,node1,source_name);};
-        auto log_resolved_by     = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.resolved_by,node2,node1,source_name);};
-        auto log_terminal        = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.terminal,node2,node1,source_name);};
+using split_to_summary = std::map<str_set, SummaryOfSplit>;
 
-        perform_conflict_analysis(tree, ottid_to_node, mrca_of_pair,
-                                  summaryTree, constSummaryOttIdToNode, mrca_of_pair,
-                                  log_supported_by,
-                                  log_partial_path_of,
-                                  log_conflicts_with,
-                                  log_resolved_by,
-                                  log_terminal);
+
+CONFLICT_STATUS calc_conf_status(const TreeAsSplits &full_tas, 
+                                 const TreeAsSplits &inp_tas,
+                                 const str_set & full_tax_set,
+                                 const str_set & inp_tax_set,
+                                 const str_set & restricted,
+                                 bool rooted) {
+    if (contains(inp_tas.inf_taxset_to_nd, restricted)) {
+        return CONFLICT_STATUS::SUPPORTS;
     }
-    {
-        auto nothing    = [](const node_t*, const node_t*) {};
-        auto log_resolved_by     = [&source_name,&s](const node_t* node2, const node_t* node1) {add_element(s.resolves,node1,node2,source_name);};
-
-        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode, mrca_of_pair,
-                                  tree, ottid_to_node, mrca_of_pair,
-                                  nothing,
-                                  nothing,
-                                  nothing,
-                                  log_resolved_by,
-                                  nothing);
-    }
-}
-
-void mapNextTree2(const Tree_t& summaryTree,
-                  const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
-                  const Tree_t & tree,
-                  stats& s) {
-    typedef Tree_t::node_type node_type;
-    std::function<const node_type*(const node_type*,const node_type*)> mrca_of_pair = [](const node_type* n1, const node_type* n2) {return mrca_from_depth(n1,n2);};
-    string source_name = source_from_tree_name(summaryTree.get_name());
-    auto ottid_to_node = get_ottid_to_const_node_map(tree);
-    {
-        auto log_supported_by    = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.supported_by,node2,node1,source_name);};
-        auto log_partial_path_of = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.partial_path_of,node2,node1,source_name);};
-        auto log_conflicts_with  = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.conflicts_with,node2,node1,source_name);};
-        auto log_resolved_by     = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.resolved_by,node2,node1,source_name);};
-        auto log_terminal        = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.terminal,node2,node1,source_name);};
-
-        perform_conflict_analysis(tree, ottid_to_node, mrca_of_pair,
-                                  summaryTree, constSummaryOttIdToNode, mrca_of_pair,
-                                  log_supported_by,
-                                  log_partial_path_of,
-                                  log_conflicts_with,
-                                  log_resolved_by,
-                                  log_terminal);
-    }
-    {
-        auto nothing    = [](const node_t*, const node_t*) {};
-        auto log_resolved_by     = [&source_name,&s](const node_t* node1, const node_t* node2) {add_element(s.resolves,node1,node2,source_name);};
-        perform_conflict_analysis(summaryTree, constSummaryOttIdToNode, mrca_of_pair,
-                                  tree, ottid_to_node, mrca_of_pair,
-                                  nothing,
-                                  nothing,
-                                  nothing,
-                                  log_resolved_by,
-                                  nothing);
-    }
-}
-
-void mapNextTree(const Tree_t& summaryTree,
-                 const map<OttId, const Tree_t::node_type*>& constSummaryOttIdToNode,
-                 const Tree_t & tree,
-                 stats& s, //isTaxoComp is third param
-                 bool sw) {
-    if (not sw) {
-        mapNextTree1(summaryTree, constSummaryOttIdToNode, tree, s);
+    if (rooted) {
+        for (const auto & ts2nd_el : inp_tas.inf_taxset_to_nd) {
+            const auto & inp_nd_ts = ts2nd_el.first;
+            if (!have_intersection(inp_nd_ts, restricted)) {
+                continue;
+            }
+            if (inp_nd_ts == restricted) {
+               return CONFLICT_STATUS::SUPPORTS; // should be caught above...
+            }
+            if (is_subset(inp_nd_ts, restricted)) {
+                continue;
+            }
+            if (is_subset(restricted, inp_nd_ts)) {
+                continue;
+            }
+            return CONFLICT_STATUS::CONFLICTS;
+        }
     } else {
-        mapNextTree2(summaryTree, constSummaryOttIdToNode, tree, s);
+        auto other = set_difference_as_set(inp_tax_set, restricted);
+        if (contains(inp_tas.inf_taxset_to_nd, other)) {
+            return CONFLICT_STATUS::SUPPORTS;
+        }
+        for (const auto & ts2nd_el : inp_tas.inf_taxset_to_nd) {
+            const auto & inp_nd_ts = ts2nd_el.first;
+            if (!have_intersection(inp_nd_ts, restricted)) {
+                continue;
+            }
+            if (!have_intersection(inp_nd_ts, other)) {
+                continue;
+            }
+            if (is_subset(inp_nd_ts, restricted)) {
+                continue;
+            }
+            if (is_subset(restricted, inp_nd_ts)) {
+                continue;
+            }
+            if (is_subset(inp_nd_ts, other)) {
+                continue;
+            }
+            if (is_subset(other, inp_nd_ts)) {
+                continue;
+            }
+            return CONFLICT_STATUS::CONFLICTS;
+        }
+    }
+    return CONFLICT_STATUS::IRRELEVANT;
+}
+
+void analyze_inp_tree_pair(const TreeAsSplits & tas_1,
+                           const TreeAsSplits & tas_2,
+                           const Tree_t & inp_tre1,
+                           const Tree_t & inp_tre2, 
+                           split_to_summary & s2ss,
+                           unsigned int tree_ind,
+                           bool rooted) {
+    const TreeAsSplits tas_inp1(inp_tre1);
+    const TreeAsSplits tas_inp2(inp_tre2);
+    const auto & inp_labels = tas_inp1.leaf_labels;
+    if (tas_inp2.leaf_labels != inp_labels) {
+        auto d = set_sym_difference_as_set(tas_inp2.leaf_labels, inp_labels);
+        std::cerr << "otc-contrast-astral-runs: Some labels uniq to one tree from index " << tree_ind << std::endl;
+        std::cerr << " size of diff set = " << d.size() << "\n";
+        for (auto item : d) {
+            std::cerr << "  " << item << "\n";
+        }
+        exit(1);
+    }
+    unsigned int split_index = 0;
+    for (auto & m_el: s2ss) {
+        std::cerr << "tree " << tree_ind << " split " << split_index++ << std::endl;
+        const auto & full_tax_set = m_el.first;
+        auto & sos = m_el.second;
+        auto restricted = set_intersection_as_set(full_tax_set, inp_labels);
+        if (restricted.size() == inp_labels.size() || restricted.size() < 2) {
+            sos.in_inputs.emplace_back(CONFLICT_STATUS::IRRELEVANT, CONFLICT_STATUS::IRRELEVANT);
+        } else {
+            auto cs1 = calc_conf_status(tas_1, tas_inp1, full_tax_set, inp_labels, restricted, rooted);
+            auto cs2 = calc_conf_status(tas_2, tas_inp2, full_tax_set, inp_labels, restricted, rooted);
+            sos.in_inputs.emplace_back(cs1, cs2);
+        }
     }
 }
 
-void show_header(std::ostream& o) {
-    o << "supported_by" << "\t" << "partial_path_of" << "\t" << "terminal" << "\t" << "conflicts_with" << "\t" << "resolves" << "\t" << "resolved_by" << "\tname\n";
-}
-
-void show_stats(std::ostream& o, const stats& s, const string& name) {
-    o << s.supported_by.size() << "\t" << s.partial_path_of.size() << "\t" << s.terminal.size() << "\t" << s.conflicts_with.size() << "\t" << s.resolves.size() << "\t" << s.resolved_by.size() << "\t" << name << "\n";
-}
-
-void show_group(std::ostream& o, const set<pair<string,string>>& group, const string& relation, const string& name) {
-    for(auto& x: group) {
-        o << "relation = " << relation << "   tree = " << x.first << "   node = " << x.second << "   group = " << name << "\n";
+inline char conf_stat_out(const CONFLICT_STATUS cs) {
+    if (cs == CONFLICT_STATUS::IRRELEVANT) {
+        return 'I';
     }
+    if (cs == CONFLICT_STATUS::CONFLICTS) {
+        return 'X';
+    }
+    if (cs == CONFLICT_STATUS::SUPPORTS) {
+        return 'S';
+    }
+    return 'C';
 }
 
-void show_names(std::ostream& o, const stats& s, const string& name)
-{
-    show_group(o, s.supported_by, "supported_by", name);
-    show_group(o, s.partial_path_of, "partial_path_of", name);
-    show_group(o, s.terminal, "terminal", name);
-    show_group(o, s.conflicts_with, "conflicts_with", name);
-    show_group(o, s.resolves, "resolves", name);
-    show_group(o, s.resolved_by, "resolved_by", name);
-    return;
+void report_summaries(const split_to_summary &s2ss, 
+                     const std::string & json_fp,
+                     const std::string & summary_tsv) {
+    auto split_key_content = json::array();
+    unsigned int index = 0;
+    std::ofstream summ_out;
+    summ_out.open(summary_tsv);
+    unsigned shared = 0;
+    unsigned unshared = 0;
+    for (const auto & m_el: s2ss) {
+        const auto & tax_set = m_el.first;
+        const auto & sos = m_el.second;
+        auto curr_tax_set = json::array();
+        for (auto & name : tax_set) {
+            curr_tax_set.push_back(name);
+
+        }
+        summ_out << index ; 
+        if (sos.in_full == in_full_status::IN_BOTH) {
+            summ_out << "\t+\t+";
+            shared++;
+        } else if (sos.in_full == in_full_status::IN_ONE) {
+            summ_out << "\t+\t-";
+            unshared++;
+        } else if (sos.in_full == in_full_status::IN_TWO) {
+            summ_out << "\t-\t+";
+            unshared++;
+        } else {
+            std::cerr << "split " << index << " in neither full tree!\n";
+            exit(1);
+        }
+        for (const auto & lit : sos.in_inputs) {
+            summ_out << '\t' << conf_stat_out(lit.first) << '/' << conf_stat_out(lit.second);
+        }
+        summ_out << '\n';
+        index += 1;
+        split_key_content.push_back(curr_tax_set);
+    }
+    std::cerr << "full tree symm diff = " << unshared << " / " << unshared + 2*shared << '\n';
+    std::ofstream kout;
+    kout.open(json_fp);
+    kout << split_key_content.dump(1) << std::endl;
+    kout.close();
 }
-
-
 int main(int argc, char *argv[]) {
     try {
         variables_map args = parse_cmd_line(argc, argv);
@@ -268,21 +301,56 @@ int main(int argc, char *argv[]) {
         // 1. Load and process summary tree.
         auto fir_trees = get_trees<Tree_t>(fir_astral, rules);
         auto sec_trees = get_trees<Tree_t>(sec_astral, rules);
-        // auto summaryOttIdToNode = get_ottid_to_node_map(*summaryTree);
-        // auto constSummaryOttIdToNode = get_ottid_to_const_node_map(*summaryTree);
-        // auto monotypic_nodes = suppress_and_record_monotypic(*summaryTree);
-        // compute_depth(*summaryTree);
-        // stats global;
-        // // 2. Load and process input trees.
-        // if (not names) {
-        //     show_header(std::cout);
-        // }
-        // for(const auto& filename: inputs) {
-        //     auto tree = get_tree<Tree_t>(filename);
-        //     compute_depth(*tree);
-        //     compute_summary_leaves(*tree, summaryOttIdToNode);
-        //     string source_name = source_from_tree_name(tree->get_name());
-        // }
+        std::cerr << fir_trees.size() << " trees in " << fir_astral[0] << std::endl;
+        std::cerr << sec_trees.size() << " trees in " << sec_astral[0] << std::endl;
+        if (fir_trees.size() != sec_trees.size()) {
+            std::cerr << "otc-contrast-astral-runs: Error tree files must have the same number of trees" << std::endl;
+            exit(1);
+        }
+        if (fir_trees.size() < 2) {
+            std::cerr << "otc-contrast-astral-runs: Error tree files must have at least 2 trees" << std::endl;
+            exit(1);
+        }
+        const Tree_t & fir_sp_tree = *(fir_trees[0]);
+        const TreeAsSplits tas_1(fir_sp_tree);
+        const Tree_t & sec_sp_tree = *(sec_trees[0]);
+        const TreeAsSplits tas_2(sec_sp_tree);
+        if (tas_2.leaf_labels != tas_1.leaf_labels) {
+            auto d = set_sym_difference_as_set(tas_2.leaf_labels, tas_1.leaf_labels);
+            std::cerr << "otc-contrast-astral-runs: Some labels uniq to one tree:" << std::endl;
+            std::cerr << " size of diff set = " << d.size() << "\n";
+            for (auto item : d) {
+                std::cerr << "  " << item << "\n";
+            }
+            exit(1);
+        }
+        const auto & full_leaf_set = tas_1.leaf_labels;
+        const auto & to_inf_1 = tas_1.inf_taxset_to_nd;
+        const auto & to_inf_2 = tas_2.inf_taxset_to_nd;
+        auto all_splits = set_union_as_set(keys(to_inf_1), keys(to_inf_2));
+        split_to_summary s2ss;
+        for (const auto & sp : all_splits) {
+            if (contains(to_inf_1, sp)) {
+                if (contains(to_inf_2, sp)) {
+                    s2ss.emplace(sp, in_full_status::IN_BOTH);
+                } else {
+                    s2ss.emplace(sp, in_full_status::IN_ONE);
+                }
+            } else {
+                s2ss.emplace(sp, in_full_status::IN_TWO);
+            }
+        }
+
+        unsigned inp_tree_index = 1;
+        while (inp_tree_index < fir_trees.size()) {
+            const auto & inp_tre1 = *(fir_trees[inp_tree_index]);
+            const auto & inp_tre2 = *(sec_trees[inp_tree_index]);
+            analyze_inp_tree_pair(tas_1, tas_2, inp_tre1, inp_tre2, s2ss, inp_tree_index, false);
+            inp_tree_index++;
+        }
+        report_summaries(s2ss, "splits-key.json", "split-summary.tsv");
+
+
     } catch (std::exception& e) {
         std::cerr << "otc-contrast-astral-runs: Error! " << e.what() << std::endl;
         exit(1);
