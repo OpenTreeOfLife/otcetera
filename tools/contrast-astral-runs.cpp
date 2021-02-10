@@ -293,7 +293,7 @@ void analyze_inp_tree_pair(const TreeAsSplits & tas_1,
     }
     unsigned int split_index = 0;
     for (auto & m_el: s2ss) {
-        std::cerr << "tree " << tree_ind << " split " << split_index++ << std::endl;
+        //std::cerr << "tree " << tree_ind << " split " << split_index++ << std::endl;
         const auto & full_tax_set = m_el.first;
         auto & sos = m_el.second;
         auto restricted = set_intersection_as_set(full_tax_set, inp_labels);
