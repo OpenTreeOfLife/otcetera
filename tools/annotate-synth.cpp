@@ -36,8 +36,8 @@ variables_map parse_cmd_line(int argc,char* argv[])  {
     // named options
     options_description invisible("Invisible options");
     invisible.add_options()
-        ("synth", value<vector<string>>()->composing(),"Filename for the synthesis tree")
-        ("input", value<vector<string>>()->composing(),"Filename for input trees")
+        ("synth", value<string>(),"Filename for the synthesis tree")
+        ("input", value<vector<string>>(),"Filename for input trees")
         ;
 
     options_description reporting("Reporting options");
