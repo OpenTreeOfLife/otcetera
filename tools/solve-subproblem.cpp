@@ -1212,9 +1212,8 @@ int main(int argc, char *argv[]) {
         std::cout << "\n";
         // 10. Find placements
         auto placements = check_placement(*tree, taxonomy);
-        for(auto & p: placements) {
-            auto placed = p.first;
-            auto parent = p.second;
+        for(auto& [placed, parent]: placements)
+        {
             auto mrca = mrca_from_depth(placed, parent);
             vector<const node_t*> placement_path = vec_ptr_to_anc(parent, mrca);
             vector<const node_t*> is_path = vec_ptr_to_anc(placed, mrca);
