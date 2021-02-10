@@ -1053,12 +1053,14 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
     for(int i=0;i<trees.size();i++)
     {
-        // 1. Remove splits from tree i that directly conflict with previous TREES.
-        remove_conflicting_splits_from_tree(trees,i);
-
-        // 2. Get remaining splits
         const auto& tree = trees[i];
 
+        // 1. Remove splits from tree i that directly conflict with previous TREES.
+        //    Unless this is the taxonomy tree and there are incertae sedis taxa.
+        if (i<int(trees.size())-1 or incertae_sedis.empty())
+            remove_conflicting_splits_from_tree(trees,i);
+
+        // 2. Get remaining splits
         auto splits2 = (i<trees.size()-1)
             ?splits_for_tree(*tree, remap)
             :splits_for_taxonomy_tree(*tree, remap, incertae_sedis);
