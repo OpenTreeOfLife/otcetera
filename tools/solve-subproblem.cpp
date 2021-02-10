@@ -53,6 +53,40 @@ vector<T> set_to_vector(const set<T>& s) {
     return v;
 }
 
+template <typename Tree_Out_t, typename Tree_In_t>
+unique_ptr<Tree_Out_t> copy_tree(const Tree_In_t& tree)
+{
+    std::unique_ptr<Tree_Out_t> new_tree(new Tree_Out_t());
+
+    // 1. Construct duplicate nodes for the new tree, recording correspondence
+    std::unordered_map<const_node_type<Tree_In_t>*, non_const_node_type<Tree_Out_t>*> to_new_tree;
+    for(auto nd: iter_post(tree))
+    {
+        auto nd2 = new_tree->create_node(nullptr);
+        to_new_tree[nd] = nd2;
+
+        if (nd->has_ott_id())
+            nd2->set_ott_id(nd->get_ott_id());
+
+        if (nd->get_name().size())
+            nd2->set_name(nd->get_name());
+    }
+
+    // 2. Link corresponding nodes to their corresponding parents
+    for(auto nd: iter_post(tree))
+    {
+        if (auto p = nd->get_parent())
+        {
+            auto nd2 = to_new_tree.at(nd);
+            auto p2 = to_new_tree.at(p);
+            p2->add_child(nd2);
+        }
+    }
+    // 3. Set the root of the new tree to node corresponding to the MRCA
+    new_tree->_set_root( to_new_tree.at(tree.get_root()) );
+    return new_tree;
+}
+
 struct RSplitObj
 {
     static std::size_t num;
@@ -1195,9 +1229,11 @@ int main(int argc, char *argv[]) {
                 require_tips_to_be_mapped_to_terminal_taxa(*trees[i], *trees.back());
             }
         }
+        // 6.5 Make a copy of the taxonomy so that "combine" doesn't modify it.
+        auto taxonomy = copy_tree<Tree_t>(*trees.back());
+        compute_depth(*taxonomy);
+
         // 7. Perform the synthesis
-        auto & taxonomy = *trees.back();
-        compute_depth(taxonomy);
         auto tree = combine(trees, incertae_sedis, verbose);
         // 8. Set the root name (if asked)
         // FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
@@ -1208,7 +1244,7 @@ int main(int argc, char *argv[]) {
         write_tree_as_newick(std::cout, *tree);
         std::cout << "\n";
         // 10. Find placements
-        auto placements = check_placement(*tree, taxonomy);
+        auto placements = check_placement(*tree, *taxonomy);
         for(auto& [placed, parent]: placements)
         {
             auto mrca = mrca_from_depth(placed, parent);
