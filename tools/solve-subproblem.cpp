@@ -1015,8 +1015,6 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             }
         };
 
-    constexpr int blocksize = 16;
-
     // 1. Find splits in order of input trees
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
     for(int i=0;i<trees.size();i++)
@@ -1062,7 +1060,6 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
         }
     }
 
-    LOG(INFO) << "Block size = "<<blocksize<<"  Number of BUILD calls = "<<total_build_calls<<"\n";
     add_root_and_tip_names(*tree, *taxonomy);
     add_names(*tree, compatible_taxa);
     return tree;
