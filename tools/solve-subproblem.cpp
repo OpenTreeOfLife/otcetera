@@ -1096,6 +1096,9 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
         }
     }
 
+    // We've modified the local copy of the taxonomy, so recompute depths.
+    // "compatible_taxa" has pointers into it, but should only have pointers to surviving nodes.
+    compute_depth(*taxonomy);
     add_root_and_tip_names(*tree, *taxonomy);
     add_names(*tree, compatible_taxa);
     return tree;
