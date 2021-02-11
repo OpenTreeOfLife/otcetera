@@ -449,8 +449,8 @@ using NodeIter = PostorderIter<T, isConst>;
 
 // the public interface
 template<typename T>
-inline PostorderIter<typename T::node_type, false> iter_post(T & tree) {
-    return PostorderIter<typename T::node_type, false>(tree.get_root(), nullptr);
+inline PostorderIter<typename T::node_type, std::is_const<T>::value> iter_post(T & tree) {
+    return PostorderIter<typename T::node_type, std::is_const<T>::value>(tree.get_root(), nullptr);
 }
 
 template<typename T>
@@ -458,8 +458,8 @@ inline PostorderIter<typename T::node_type, true> iter_post_const(const T & tree
     return PostorderIter<typename T::node_type, true>(tree.get_root(), nullptr);
 }
 template<typename T>
-inline PostorderIter<T, false> iter_post_n(T & node) {
-    return PostorderIter<T, false>(&node, nullptr);
+inline PostorderIter<T, std::is_const<T>::value> iter_post_n(T & node) {
+    return PostorderIter<T, std::is_const<T>::value>(&node, nullptr);
 }
 
 template<typename T>
@@ -468,8 +468,8 @@ inline PostorderIter<T, true> iter_post_n_const(const T & node) {
 }
 
 template<typename T>
-inline PostorderIter<typename T::node_type, false> iter_post_internal(T & tree) {
-    PostorderIter<typename T::node_type, false> i{tree.get_root(), is_internal_node<typename T::node_type>};
+inline PostorderIter<typename T::node_type, std::is_const<T>::value> iter_post_internal(T & tree) {
+    PostorderIter<typename T::node_type, std::is_const<T>::value> i{tree.get_root(), is_internal_node<typename T::node_type>};
     return i;
 }
 
@@ -479,8 +479,8 @@ inline PostorderIter<typename T::node_type, true> iter_post_internal_const(const
 }
 
 template<typename T>
-inline NodeIter<typename T::node_type, false> iter_node(T & tree) {
-    return NodeIter<typename T::node_type, false>(tree.get_root(), nullptr);
+inline NodeIter<typename T::node_type, std::is_const<T>::value> iter_node(T & tree) {
+    return NodeIter<typename T::node_type, std::is_const<T>::value>(tree.get_root(), nullptr);
 }
 
 template<typename T>
@@ -489,8 +489,8 @@ inline NodeIter<typename T::node_type, true> iter_node_const(const T & tree) {
 }
 
 template<typename T>
-inline NodeIter<typename T::node_type, false> iter_node_internal(T & tree) {
-    return NodeIter<typename T::node_type, false>(tree.get_root(), is_internal_node<typename T::node_type>);
+inline NodeIter<typename T::node_type, std::is_const<T>::value> iter_node_internal(T & tree) {
+    return NodeIter<typename T::node_type, std::is_const<T>::value>(tree.get_root(), is_internal_node<typename T::node_type>);
 }
 
 template<typename T>
@@ -499,8 +499,8 @@ inline NodeIter<typename T::node_type, true> iter_node_internal_const(const T & 
 }
 
 template<typename T>
-inline PreorderIter<typename T::node_type, false> iter_pre_internal(T & tree) {
-    return PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr);
+inline PreorderIter<typename T::node_type, std::is_const<T>::value> iter_pre_internal(T & tree) {
+    return PreorderIter<typename T::node_type, std::is_const<T>::value>(tree.get_root(), nullptr, is_internal_node<typename T::node_type>, nullptr);
 }
 
 template<typename T>
@@ -509,8 +509,8 @@ inline PreorderIter<typename T::node_type, true> iter_pre_internal_const(const T
 }
 
 template<typename T>
-inline PreorderIter<typename T::node_type, false> iter_pre(T & tree) {
-    return PreorderIter<typename T::node_type, false>(tree.get_root(), nullptr, nullptr, nullptr);
+inline PreorderIter<typename T::node_type, std::is_const<T>::value> iter_pre(T & tree) {
+    return PreorderIter<typename T::node_type, std::is_const<T>::value>(tree.get_root(), nullptr, nullptr, nullptr);
 }
 
 template<typename T>
@@ -519,8 +519,8 @@ inline PreorderIter<typename T::node_type, true> iter_pre_const(const T & tree) 
 }
 
 template<typename T>
-inline PreorderIter<T, false> iter_pre_n(T * node) {
-    return PreorderIter<T, false>(node, node, nullptr, nullptr);
+inline PreorderIter<T, std::is_const<T>::value> iter_pre_n(T * node) {
+    return PreorderIter<T, std::is_const<T>::value>(node, node, nullptr, nullptr);
 }
 
 template<typename T>
@@ -529,8 +529,8 @@ inline PreorderIter<T, true> iter_pre_n_const(const T * node) {
 }
 
 template<typename T>
-inline PreorderIter<T, false> iter_pre_filter_n(T * node, std::function<bool(const T &)> f) {
-    return PreorderIter<T, false>(node, node, nullptr, f);
+inline PreorderIter<T, std::is_const<T>::value> iter_pre_filter_n(T * node, std::function<bool(const T &)> f) {
+    return PreorderIter<T, std::is_const<T>::value>(node, node, nullptr, f);
 }
 
 template<typename T>
@@ -539,8 +539,8 @@ inline PreorderIter<T, true> iter_pre_filter_n_const(const T * node, std::functi
 }
 
 template<typename T>
-inline ChildIter<T, false> iter_child(T & node) {
-    return ChildIter<T, false>(node);
+inline ChildIter<T, std::is_const<T>::value> iter_child(T & node) {
+    return ChildIter<T, std::is_const<T>::value>(node);
 }
 
 template<typename T>
@@ -549,8 +549,8 @@ inline ChildIter<T, true> iter_child_const(const T & node) {
 }
 
 template<typename T>
-inline LeafIter<typename T::node_type, false> iter_leaf(T & tree) {
-    return LeafIter<typename T::node_type, false>(tree.get_root());
+inline LeafIter<typename T::node_type, std::is_const<T>::value> iter_leaf(T & tree) {
+    return LeafIter<typename T::node_type, std::is_const<T>::value>(tree.get_root());
 }
 
 template<typename T>
@@ -559,8 +559,8 @@ inline LeafIter<typename T::node_type, true> iter_leaf_const(const T & tree) {
 }
 
 template<typename T>
-inline LeafIter<T, false> iter_leaf_n(T & node) {
-    return LeafIter<T, false>(&node);
+inline LeafIter<T, std::is_const<T>::value> iter_leaf_n(T & node) {
+    return LeafIter<T, std::is_const<T>::value>(&node);
 }
 
 template<typename T>
@@ -569,8 +569,8 @@ inline LeafIter<T, true> iter_leaf_n_const(const T & node) {
 }
 
 template<typename T>
-inline AncIter<T, false> iter_anc(T & node) {
-    return AncIter<T, false>(node);
+inline AncIter<T, std::is_const<T>::value> iter_anc(T & node) {
+    return AncIter<T, std::is_const<T>::value>(node);
 }
 
 template<typename T>
