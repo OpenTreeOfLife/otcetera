@@ -77,8 +77,8 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     options_description output("Standard options");
     output.add_options()
-        ("incertae-sedis,I",value<string>(),"File containing Incertae sedis ids")
-        ("root-name,n",value<string>(), "Rename the root to this name")
+        ("incertae-sedis,I", value<string>(), "File containing Incertae sedis ids")
+        ("root-name,n", value<string>(), "Rename the root to this name")
         ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
         ("prune-unrecognized,p","Prune unrecognized tips");
     
@@ -87,6 +87,8 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("synthesize-taxonomy,T","Make unresolved taxonomy from input tips.")
         ("allow-no-ids,a", "Allow problems w/o OTT ids")
         ("standardize,S", "Write out a standardized subproblem and exit.")
+        ("input-deg-dist", value<string>(), "Write input trees degree distribution to filepath.")
+        ("output-deg-dist", value<string>(), "Write output trees degree distribution to filepath.")
         ;
 
     options_description visible;
@@ -709,6 +711,16 @@ int main(int argc, char *argv[]) {
         if (trees.empty()) {
             throw OTCError("No trees loaded!");
         }
+        if (args.count("input-deg-dist")) {
+            auto filename = args["input-deg-dist"].as<string>();
+            std::ofstream file(filename); 
+            if (not file) {
+                throw OTCError() << "Cannot open input-deg-dist file '" << fs::absolute(filename) << "'";
+            }
+            for(const auto & tree: trees) {
+                writeDegDist(file, nullptr, *tree);
+            }
+        }
         //2.5 Load Incertae Sedis info
         OttIdSet incertae_sedis;
         if (args.count("incertae-sedis")) {
@@ -763,6 +775,16 @@ int main(int argc, char *argv[]) {
         // 9. Write out the summary tree.
         write_tree_as_newick(std::cout, *tree);
         std::cout << "\n";
+
+        if (args.count("output-deg-dist")) {
+            auto filename = args["output-deg-dist"].as<string>();
+            std::ofstream file(filename); 
+            if (not file) {
+                throw OTCError() << "Cannot open output-deg-dist file '" << fs::absolute(filename) << "'";
+            }
+            writeDegDist(file, nullptr, *tree);
+        }
+
         // 10. Find placements
         auto placements = check_placement(*tree, taxonomy);
         for(auto & p: placements) {
