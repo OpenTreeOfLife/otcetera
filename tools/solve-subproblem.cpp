@@ -1026,13 +1026,14 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     int total_build_calls = 0;
     auto add_splits_if_consistent = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
         {
+            bool result;
             if (incremental and solution)
             {
                 vector<ConstRSplit> new_splits;
                 for(int i=0;i<n;i++)
                     new_splits.push_back(splits[start+i].second);
 
-                auto result = BUILD(*solution, {}, new_splits);
+                result = BUILD(*solution, {}, new_splits);
 
                 total_build_calls ++;
 
@@ -1047,26 +1048,27 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                     if (n==1)
                         collapse_node_(splits[start].first);
                 }
-                return result;
             }
-
-            solution = std::make_shared<Solution>();
-
-            for(int i=0;i<n;i++)
-                consistent.push_back(splits[start+i].second);
-
-            auto result = BUILD(*solution, all_leaves_indices, consistent);
-
-            if (not result or not incremental) solution = {};
-
-            total_build_calls ++;
-
-            if (not result)
+            else
             {
+                solution = std::make_shared<Solution>();
+
                 for(int i=0;i<n;i++)
-                    consistent.pop_back();
-                if (n==1)
-                    collapse_node_(splits[start].first);
+                    consistent.push_back(splits[start+i].second);
+
+                result = BUILD(*solution, all_leaves_indices, consistent);
+
+                if (not result or not incremental) solution = {};
+
+                total_build_calls ++;
+
+                if (not result)
+                {
+                    for(int i=0;i<n;i++)
+                        consistent.pop_back();
+                    if (n==1)
+                        collapse_node_(splits[start].first);
+                }
             }
             return result;
         };
