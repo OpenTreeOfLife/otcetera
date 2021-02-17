@@ -170,6 +170,13 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
         ("prune-unrecognized,p","Prune unrecognized tips");
     
+    options_description strategies("Solver strategies");
+    strategies.add_options()
+        ("batching",value<bool>()->default_value(true), "Make unresolved taxonomy from input tips.")
+        ("oracle", value<bool>()->default_value(true), "Predict conflicting splits before BUILD.")
+        ("incremental", value<bool>()->default_value(false),"Reuse work from previous BUILD.")
+        ;
+
     options_description other("Other options");
     other.add_options()
         ("synthesize-taxonomy,T","Make unresolved taxonomy from input tips.")
@@ -178,7 +185,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ;
 
     options_description visible;
-    visible.add(output).add(other).add(otc::standard_options());
+    visible.add(output).add(strategies).add(other).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -952,8 +959,13 @@ void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int 
 }
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
-unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose)
+unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, variables_map& args)
 {
+    bool verbose = (bool)args.count("verbose");
+    bool batching = args["batching"].as<bool>();
+    bool oracle = args["oracle"].as<bool>();
+    bool incremental = args["incremental"].as<bool>();
+
     // 1. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
     auto all_leaves = taxonomy->get_root()->get_data().des_ids;
@@ -1014,12 +1026,38 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     int total_build_calls = 0;
     auto add_splits_if_consistent = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
         {
-            auto solution_temp = std::make_shared<Solution>();
+            if (incremental and solution)
+            {
+                vector<ConstRSplit> new_splits;
+                for(int i=0;i<n;i++)
+                    new_splits.push_back(splits[start+i].second);
+
+                auto result = BUILD(*solution, {}, new_splits);
+
+                total_build_calls ++;
+
+                if (result)
+                {
+                    for(auto& new_split: new_splits)
+                        consistent.push_back(new_split);
+                }
+                else
+                {
+                    solution = {};
+                    if (n==1)
+                        collapse_node_(splits[start].first);
+                }
+                return result;
+            }
+
+            solution = std::make_shared<Solution>();
 
             for(int i=0;i<n;i++)
                 consistent.push_back(splits[start+i].second);
 
-            auto result = BUILD(*solution_temp, all_leaves_indices, consistent);
+            auto result = BUILD(*solution, all_leaves_indices, consistent);
+
+            if (not result or not incremental) solution = {};
 
             total_build_calls ++;
 
@@ -1030,7 +1068,6 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 if (n==1)
                     collapse_node_(splits[start].first);
             }
-
             return result;
         };
 
@@ -1057,7 +1094,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
         // 1. Remove splits from tree i that directly conflict with previous TREES.
         //    Unless this is the taxonomy tree and there are incertae sedis taxa.
-        if (i<int(trees.size())-1 or incertae_sedis.empty())
+        if (oracle and (i<int(trees.size())-1 or incertae_sedis.empty()))
             remove_conflicting_splits_from_tree(trees,i);
 
         // 2. Get remaining splits
@@ -1068,7 +1105,13 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
         if (splits2.empty()) continue;
 
         // 3. Add compatible splits to `splits` and remove incompatible nodes from `trees[i]`;
-        add_splits_if_consistent_batch(splits2, 0, splits2.size());
+        if (batching)
+            add_splits_if_consistent_batch(splits2, 0, splits2.size());
+        else
+        {
+            for(int i=0;i<splits2.size();i++)
+                add_splits_if_consistent_batch(splits2,i,1);
+        }
 
         LOG(INFO)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
     }
@@ -1168,7 +1211,10 @@ inline vector<const node_t *> vec_ptr_to_anc(const node_t * des, const node_t * 
     return ret;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
+    std::cout<<std::boolalpha;
+    std::cerr<<std::boolalpha;
     try {
         // 1. Parse command line arguments
         variables_map args = parse_cmd_line(argc,argv);
@@ -1239,7 +1285,7 @@ int main(int argc, char *argv[]) {
         compute_depth(*taxonomy);
 
         // 7. Perform the synthesis
-        auto tree = combine(trees, incertae_sedis, verbose);
+        auto tree = combine(trees, incertae_sedis, args);
         // 8. Set the root name (if asked)
         // FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
         if (setRootName) {
