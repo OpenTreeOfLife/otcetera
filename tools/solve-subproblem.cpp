@@ -989,40 +989,6 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
     shared_ptr<Solution> solution;
 
-    auto add_split_if_consistent = [&](auto nd, RSplit&& split)
-        {
-            bool result = false;
-            if (solution)
-            {
-                result = BUILD(*solution, {}, {split});
-                if (result)
-                    consistent.push_back(std::move(split));
-            }
-            else
-            {
-                consistent.push_back(std::move(split));
-
-                // If we have no solution, make an empty one.
-                solution = std::make_shared<Solution>();
-
-                result = BUILD(*solution, all_leaves_indices, consistent);
-
-                if (not result)
-                    consistent.pop_back();
-            }
-            if (not result)
-            {
-                if (verbose and nd->has_ott_id())
-                    LOG(INFO) << "Reject: ott" << nd->get_ott_id() << "\n";
-            }
-            else if (verbose and nd->has_ott_id())
-            {
-                LOG(INFO) << "Keep: ott" << nd->get_ott_id() << "\n";
-            }
-            if (not result) solution = {};
-            return result;
-        };
-
     // A non-null solution means that consistent splits are already part of the solution.
 
     int total_build_calls = 0;
