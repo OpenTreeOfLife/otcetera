@@ -1023,6 +1023,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             return result;
         };
 
+    // A non-null solution means that consistent splits are already part of the solution.
+
     int total_build_calls = 0;
     auto add_splits_if_consistent = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
         {
@@ -1035,18 +1037,10 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
                 result = BUILD(*solution, {}, new_splits);
 
-                total_build_calls ++;
-
                 if (result)
                 {
                     for(auto& new_split: new_splits)
                         consistent.push_back(new_split);
-                }
-                else
-                {
-                    solution = {};
-                    if (n==1)
-                        collapse_node_(splits[start].first);
                 }
             }
             else
@@ -1058,18 +1052,19 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
                 result = BUILD(*solution, all_leaves_indices, consistent);
 
-                if (not result or not incremental) solution = {};
-
-                total_build_calls ++;
-
                 if (not result)
                 {
                     for(int i=0;i<n;i++)
                         consistent.pop_back();
-                    if (n==1)
-                        collapse_node_(splits[start].first);
                 }
             }
+
+            total_build_calls ++;
+
+            if (not incremental or not result) solution = {};
+
+            if (n==1 and not result) collapse_node_(splits[start].first);
+
             return result;
         };
 
