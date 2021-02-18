@@ -14,7 +14,7 @@ jobs:
       matrix:
         name: [ubuntu-gcc-9,
                ubuntu-gcc-10,
-               ubuntu-clang-9,
+#               ubuntu-clang-9,
 #               macos-xcode-12.3,
                ]
 
@@ -34,10 +34,10 @@ jobs:
             compiler: clang
             version: "9"
 
-#          - name: macos-xcode-12.3
-#            os: macos-latest
-#            compiler: xcode
-#            version: "12.3"
+          - name: macos-xcode-12.3
+            os: macos-latest
+            compiler: xcode
+            version: "12.3"
 
     runs-on: ${{ matrix.os }}
     steps:
