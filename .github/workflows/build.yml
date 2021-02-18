@@ -95,11 +95,21 @@ jobs:
          restore-keys: |
            ${{ matrix.name }}-ccache-
 
-    - name: Configure
+    - name: build restbed
       run: |
+        cd
+        git clone --recursive https://github.com/corvusoft/restbed.git
+        mkdir restbed/build
+        ( cd restbed/build ; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
+        echo "CPPFLAGS=-I${HOME}/local/include" >> $GITHUB_ENV
+        echo "LDFLAGS=-L${HOME}/local/lib -L${HOME}/local/library" >> $GITHUB_ENV
+
+    - name: Configure otcetera
+      run: |
+        cd ${GITHUB_WORKSPACE}
         meson build --prefix=$HOME/local --buildtype=release ${ARGS}
 
-    - name: Build
+    - name: Build otcetera
       run: |
         ccache -p
         ninja -C build install -j4
