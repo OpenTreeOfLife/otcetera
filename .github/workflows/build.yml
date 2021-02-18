@@ -29,15 +29,15 @@ jobs:
             compiler: gcc
             version: "10"
 
-          - name: ubuntu-clang-9
-            os: ubuntu-20.04
-            compiler: clang
-            version: "9"
+#          - name: ubuntu-clang-9
+#            os: ubuntu-20.04
+#            compiler: clang
+#            version: "9"
 
-          - name: macos-xcode-12.3
-            os: macos-latest
-            compiler: xcode
-            version: "12.3"
+#          - name: macos-xcode-12.3
+#            os: macos-latest
+#            compiler: xcode
+#            version: "12.3"
 
     runs-on: ${{ matrix.os }}
     steps:
