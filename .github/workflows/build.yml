@@ -115,7 +115,7 @@ jobs:
         ninja -C build install -j4
         ccache -s
 
-    - name:
+    - name: Run otcetera tests
       run: |
         python3 -mpip install requests
         ninja -C build test
