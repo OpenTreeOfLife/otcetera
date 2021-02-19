@@ -215,39 +215,99 @@ variables_map cmd_line_set_logging(const po::variables_map& vm) {
     return vm;
 }
 
+vector<string> read_response_file_content(const char * fn) {
+    vector<string> args;
+    std::ifstream ifs(fn);
+    if (not ifs) {
+        throw OTCError() << "Could not open the response file \"" << fn << "\" !";
+    }
+    // Read the whole file into a string
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    // Split the file content
+    boost::char_separator<char> sep(" \n\r");
+    std::string ResponsefileContents( ss.str() );
+    boost::tokenizer<boost::char_separator<char> > tok(ResponsefileContents, sep);
+    copy(tok.begin(), tok.end(), back_inserter(args));
+    return args;
+}
+
 vector<string> cmd_line_response_file_contents(const po::variables_map& vm) {
     vector<string> args;
     if (vm.count("response-file")) {
-        // Load the file and tokenize it
-        std::ifstream ifs(vm["response-file"].as<string>().c_str());
-        if (not ifs) {
-            throw OTCError() << "Could not open the response file\n";
-        }
-        // Read the whole file into a string
-        std::stringstream ss;
-        ss << ifs.rdbuf();
-        // Split the file content
-        boost::char_separator<char> sep(" \n\r");
-        std::string ResponsefileContents( ss.str() );
-        boost::tokenizer<boost::char_separator<char> > tok(ResponsefileContents, sep);
-        copy(tok.begin(), tok.end(), back_inserter(args));
+        return read_response_file_content(vm["response-file"].as<string>().c_str());
     }
     return args;
 }
+
+vector<string> expand_for_response_file(int argc, char* argv[]) {
+    vector<string> args;
+    for (int i = 1; i < argc; ++i) {
+        std::string na = argv[i];
+        bool insert_file_flag = false;
+        std::string rfp;
+        if (na.size() > 1) {
+            if (na[0] == '-') {
+                if (na[1] == 'f') {
+                    insert_file_flag = true;
+                    if (na.size() > 2) {
+                        rfp = na.substr(2);
+                    } else {
+                        ++i;
+                        if (i >= argc) {
+                            throw OTCError() << "command line cannot end with -f\n";
+                        }
+                        rfp = string(argv[i]);
+                    }
+                } else {
+                    auto pos = na.find("--response-file");
+                    if (pos == 0) {
+                        insert_file_flag = true;
+                        if (pos != std::string::npos) {
+                            std::size_t fchar = 15;
+                            if (na.size() > 15) {
+                                if (na[fchar] == '=') {
+                                    ++fchar;
+                                }
+                            }
+                            if (na.size() > fchar) {
+                                rfp = na.substr(fchar);
+                            } else {
+                                ++i;
+                                if (i >= argc) {
+                                    throw OTCError() << "command line cannot end with --response-file\n";
+                                }
+                                rfp = string(argv[i]);                   
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (insert_file_flag) {
+            if (rfp.size() < 1) {
+                throw OTCError() << "cannot have an empty string as a --response-file\n";
+            }
+            auto a = read_response_file_content(rfp.c_str());
+            args.insert(args.end(), a.begin(), a.end());
+        } else {
+            args.push_back(na);
+        }
+    }
+    return args;
+}
+
 
 variables_map parse_cmd_line_response_file(int argc, char* argv[],
                                            po::options_description visible,
                                            po::options_description invisible,
                                            po::positional_options_description p) {
     using namespace po;
+    auto expandedargs = expand_for_response_file(argc, argv);
     variables_map vm;
     options_description all;
     all.add(invisible).add(visible);
-    store(command_line_parser(argc, argv).options(all).positional(p).run(), vm);
-    notify(vm);
-
-    std::vector<string> args = cmd_line_response_file_contents(vm);
-    store(command_line_parser(args).options(all).positional(p).run(), vm);
+    store(command_line_parser(expandedargs).options(all).positional(p).run(), vm);
     notify(vm);
     return vm;
 }
