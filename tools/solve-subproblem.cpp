@@ -2,6 +2,7 @@
 #include <set>
 #include <list>
 #include <iterator>
+#include <boost/smart_ptr/intrusive_ptr.hpp>
 
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
