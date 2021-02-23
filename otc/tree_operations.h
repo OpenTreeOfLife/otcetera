@@ -1413,8 +1413,8 @@ std::unordered_map<OttId, const typename Tree_t::node_type*> get_ottid_to_const_
 }
 
 template <typename Tree_t>
-std::unordered_map<OttId, typename Tree_t::node_type*> get_ottid_to_node_map(Tree_t& T) {
-    std::unordered_map<OttId, typename Tree_t::node_type*> ottid;
+std::unordered_map<OttId, node_type<Tree_t>*> get_ottid_to_node_map(Tree_t& T) {
+    std::unordered_map<OttId, node_type<Tree_t>*> ottid;
     for(auto nd: iter_pre(T)) {
         if (nd->has_ott_id()) {
             ottid[nd->get_ott_id()] = nd;

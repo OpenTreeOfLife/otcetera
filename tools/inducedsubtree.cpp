@@ -28,7 +28,7 @@ struct InducedSubtreeState
         }
         compute_depth(*taxonomy);
         auto mrca = [](const Tree_t::node_type* n1, const Tree_t::node_type* n2) {return mrca_from_depth(n1,n2);};
-        auto induced_tree = get_induced_tree<Tree_t,Tree_t>(leaves, mrca);
+        auto induced_tree = get_induced_tree<Tree_t>(leaves, mrca);
         write_tree_as_newick(otCLI.out, *induced_tree);
         otCLI.out << std::endl;
         return true;

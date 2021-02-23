@@ -30,12 +30,12 @@ using cnode_type = ConflictTree::node_type;
 
 
 // Get the subtree of T1 connecting the leaves of T1 that are also in T2.
-template <typename Tree1, typename Tree2, typename Tree_Out_t>
+template <typename Tree_Out_t, typename Tree1, typename Tree2>
 pair<unique_ptr<Tree_Out_t>,unique_ptr<Tree_Out_t>>
-get_induced_trees2(const Tree1& T1,
-                  std::function<const typename Tree1::node_type*(const typename Tree1::node_type*,const typename Tree1::node_type*)> MRCA_of_pair1,
-                  const Tree2& T2,
-                  std::function<const typename Tree2::node_type*(const typename Tree2::node_type*,const typename Tree2::node_type*)> MRCA_of_pair2)
+get_induced_trees2(Tree1& T1,
+                   std::function<const typename Tree1::node_type*(const typename Tree1::node_type*,const typename Tree1::node_type*)> MRCA_of_pair1,
+                   Tree2& T2,
+                   std::function<const typename Tree2::node_type*(const typename Tree2::node_type*,const typename Tree2::node_type*)> MRCA_of_pair2)
 {
     LOG(WARNING)<<"T1 = "<<newick_string(T1);
     LOG(WARNING)<<"n_leaves(T1) = "<<n_leaves(T1);
@@ -50,7 +50,7 @@ get_induced_trees2(const Tree1& T1,
 
     // 1b. Actually construct the induced tree for T2.
     //     It might have fewer leaves than in T2_nodes_from_T1_leaves, if some of the nodes are ancestral to others.
-    auto induced_tree2 = get_induced_tree<Tree2, Tree_Out_t>(T2_nodes_from_T1_leaves, MRCA_of_pair2);
+    auto induced_tree2 = get_induced_tree<Tree_Out_t>(T2_nodes_from_T1_leaves, MRCA_of_pair2);
     LOG(WARNING)<<"n_leaves(induced_tree2) = "<<n_leaves(*induced_tree2);
     LOG(WARNING)<<"induced-tree2a = "<<newick_string(*induced_tree2);
 
@@ -87,7 +87,7 @@ get_induced_trees2(const Tree1& T1,
     LOG(WARNING)<<"keeping "<<induced_leaves1.size()<<" leaves from T1";
 
     // 3. Construct the induced tree for T1
-    auto induced_tree1 = get_induced_tree<Tree1, Tree_Out_t>(induced_leaves1, MRCA_of_pair1);
+    auto induced_tree1 = get_induced_tree<Tree_Out_t>(induced_leaves1, MRCA_of_pair1);
     LOG(WARNING) << "n_leaves(induced_tree1) = " << n_leaves(*induced_tree1);
     LOG(WARNING) << "induced_tree1 = " << newick_string(*induced_tree1);
     assert(n_leaves(*induced_tree1) == n_leaves(*induced_tree2));
@@ -344,7 +344,7 @@ json conflict_with_tree_impl(const QT & query_tree,
     };
 
     {
-        auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
 
         perform_conflict_analysis(*induced_trees.first,
                                   *induced_trees.second,
@@ -377,7 +377,7 @@ json conflict_with_tree_impl(const QT & query_tree,
 */
 
     {
-        auto induced_trees = get_induced_trees2<QT,TT,ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
         return stats.get_json(*induced_trees.first, Tax);
     }
 }
@@ -419,9 +419,9 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
     };
 
     auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
-    auto induced_taxonomy = get_induced_tree<RichTaxTree, ConflictTree>(taxonomy_nodes_from_query_leaves,
-                                                                        taxonomy_mrca);
-    auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);
+    auto induced_taxonomy = get_induced_tree<ConflictTree>(taxonomy_nodes_from_query_leaves,
+                                                           taxonomy_mrca);
+    auto ottid_to_induced_tax_node = get_ottid_to_node_map(*induced_taxonomy);
 
     LOG(WARNING)<<"induced taxonomy has "<<n_leaves(*induced_taxonomy)<<" leaves.";
 
