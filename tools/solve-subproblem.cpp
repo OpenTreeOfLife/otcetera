@@ -267,14 +267,9 @@ bool exclude_group_intersects_component(const ConstRSplit& split, const componen
 }
 
 template <typename T>
-vector<T> concatenate(vector<T>&& splits1, vector<T>&& splits2)
+void append(vector<T>& v1, const vector<T>& v2)
 {
-    if (splits1.size() < splits2.size())
-        std::swap(splits1,splits2);
-
-    vector<T> splits12 = std::move(splits1);
-    splits12.insert(splits12.end(), splits2.begin(), splits2.end());
-    return splits12;
+    v1.insert(v1.end(), v2.begin(), v2.end());
 }
 
 /// Merge components c1 and c2 and return the component name that survived
@@ -288,17 +283,14 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     c1->elements.splice(c1->elements.end(), c2->elements);
 
-    c1->old_non_implied_splits = concatenate(std::move(c1->old_non_implied_splits), std::move(c2->old_non_implied_splits));
-    c1->old_implied_splits     = concatenate(std::move(c1->old_implied_splits),     std::move(c2->old_implied_splits));
-
-    c2->old_non_implied_splits.clear();
-    c2->old_implied_splits.clear();
+    append(c1->old_non_implied_splits, c2->old_non_implied_splits);
+    append(c1->old_implied_splits, c2->old_implied_splits);
 
     // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
-    c1->new_taxa = concatenate(std::move(c1->new_taxa), std::move(c2->new_taxa));
+    append(c1->new_taxa, c2->new_taxa);
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
-    c1->solutions = concatenate(std::move(c1->solutions), std::move(c2->solutions));
+    append(c1->solutions, c2->solutions);
     
     return c1;
 }
