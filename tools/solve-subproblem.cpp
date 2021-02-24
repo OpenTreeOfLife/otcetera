@@ -236,6 +236,8 @@ struct component_t
 
     vector<shared_ptr<Solution>> solutions;
 
+    // Do these make sense if there is more than 1 solution?
+    // If not, should these be added to the single solution instead?
     vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
 };
@@ -376,6 +378,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
+    // This copying seems wasteful.
     auto& taxa = solution.taxa;
     int orig_n_taxa = taxa.size();
     for(auto taxon: new_taxa)
@@ -389,6 +392,10 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
     component_for_index.resize(taxa.size());
+
+    // component->new_splits and component->new_taxa seem only to make sense if
+    // the component has exactly 1 solution.  Should these fields be part of the
+    // (single) solution then?
 
     // 0. Clear any staged work for each component.
     for(auto& component: components)
