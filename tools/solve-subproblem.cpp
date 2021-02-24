@@ -238,9 +238,6 @@ struct component_t
 
     vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
-
-    // Only used if we are NOT updating a previous solution.
-    vector<int> all_taxa;
 };
 
 typedef component_t* component_ref;
@@ -398,9 +395,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     {
         component->new_taxa.clear();
         component->new_splits.clear();
-
-        // Only used if we are NOT updating a previous solution.
-        component->all_taxa.clear();
     }
 
     // 1. If there are no splits, then we are consistent.
@@ -454,17 +448,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 6. Create the vector of taxa in each connected component
-    for(int index=0;index < taxa.size();index++)
-    {
-        if (auto component = component_for_index[index])
-        {
-            auto taxon = taxa[index];
-            component->all_taxa.push_back(taxon);
-        }
-    }
-
-    // 7a. Check implied splits to see if they are STILL implied.
+    // 6. Check implied splits to see if they are STILL implied.
     for(auto& component: components)
     {
         // We don't need to re-check implied_splits if the taxon set hasn't changed.
@@ -502,7 +486,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     // NOTE: If all new splits are implied and no OLD splits are implied, then perhaps
     //       all the old components will be sub-problems of the merged component?
 
-    // 7b. Determine the splits that are not satisfied yet and go into each component
+    // 7. Determine the splits that are not satisfied yet and go into each component
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
@@ -531,7 +515,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         if (has_old_solution)
         {
-            assert(component->all_taxa.size() == component->solution()->taxa.size() + component->new_taxa.size());
+            assert(component->elements.size() == component->solution()->taxa.size() + component->new_taxa.size());
 
             // If no new taxa and no new splits, just continue.
             if (component->new_splits.empty() and component->new_taxa.empty())
@@ -549,8 +533,13 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         if (not has_old_solution)
         {
+            vector<int> all_taxa;
+            all_taxa.reserve(component->elements.size());
+            for (auto& index: component->elements)
+                all_taxa.push_back(taxa[index]);
+
             auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, component->all_taxa, component->old_non_implied_splits))
+            if (not BUILD(*subsolution, all_taxa, component->old_non_implied_splits))
                 return false;
             component->solutions = { subsolution };
         }
