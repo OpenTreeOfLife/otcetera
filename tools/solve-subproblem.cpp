@@ -239,7 +239,6 @@ struct component_t
     vector<ConstRSplit> new_splits;
 
     vector<int> all_taxa;
-    vector<ConstRSplit> all_splits;
 };
 
 typedef component_t* component_ref;
@@ -394,7 +393,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         component->new_splits.clear();
 
         component->all_taxa.clear();
-        component->all_splits.clear();
     }
 
     // 1. If there are no splits, then we are consistent.
