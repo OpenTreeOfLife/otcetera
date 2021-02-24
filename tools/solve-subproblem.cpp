@@ -225,6 +225,7 @@ struct component_t
 {
     list<int> elements;
 
+    bool implied_splits_have_been_checked = false;
     vector<ConstRSplit> old_implied_splits;      // alpha
     vector<ConstRSplit> old_non_implied_splits;  // beta
 
@@ -238,6 +239,7 @@ struct component_t
     vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
 
+    // Only used if we are NOT updating a previous solution.
     vector<int> all_taxa;
 };
 
@@ -250,6 +252,8 @@ void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vect
     c1->elements.push_back(index2);
 
     c1->new_taxa.push_back(taxon2);
+
+    c1->implied_splits_have_been_checked = false;
 }
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
@@ -286,11 +290,14 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     append(c1->old_implied_splits, c2->old_implied_splits);
 
     // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
+    // Does this mean anything if both components are non-trivial?
     append(c1->new_taxa, c2->new_taxa);
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
     append(c1->solutions, c2->solutions);
     
+    c1->implied_splits_have_been_checked = false;
+
     return c1;
 }
 
@@ -392,6 +399,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         component->new_taxa.clear();
         component->new_splits.clear();
 
+        // Only used if we are NOT updating a previous solution.
         component->all_taxa.clear();
     }
 
@@ -446,7 +454,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 6a. Create the vector of taxa in each connected component
+    // 6. Create the vector of taxa in each connected component
     for(int index=0;index < taxa.size();index++)
     {
         if (auto component = component_for_index[index])
@@ -459,9 +467,15 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     // 7a. Check implied splits to see if they are STILL implied.
     for(auto& component: components)
     {
+        // We don't need to re-check implied_splits if the taxon set hasn't changed.
+        if (component->implied_splits_have_been_checked) continue;
+
         auto& implied_splits = component->old_implied_splits;
         auto& non_implied_splits = component->old_non_implied_splits;
         auto& new_splits = component->new_splits;
+
+        // It is cheaper to do this check once after adding taxa, instead of multiple times if we add multiple taxa.
+        // That is because we have to scan the entire exclude set, even if we only add 1 taxon to the components :-(.
         for(int i=0;i<implied_splits.size();)
         {
             auto& split = implied_splits[i];
@@ -481,7 +495,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             else
                 i++;
         }
+
+        component->implied_splits_have_been_checked = true;
     }
+
+    // NOTE: If all new splits are implied and no OLD splits are implied, then perhaps
+    //       all the old components will be sub-problems of the merged component?
 
     // 7b. Determine the splits that are not satisfied yet and go into each component
     for(auto& split: new_splits)
