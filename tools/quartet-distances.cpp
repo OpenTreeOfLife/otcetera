@@ -93,6 +93,30 @@ enum QUARTET_TYPE {UNKNOWN = 0,
                    NOT_Q = 5
                    };
 
+enum Q_COMP {BOTH_UNRES = 0,
+             COMPAT = 1,
+             SAME_RES = 2,
+             CONFLICT_RES = 3,
+             NO_COMP = 4
+            };
+
+inline Q_COMP comp_qt(const QUARTET_TYPE & qt1, const QUARTET_TYPE & qt2) {
+    if (qt1 == QUARTET_TYPE::UNKNOWN || qt2 == QUARTET_TYPE::UNKNOWN
+        || qt1 == QUARTET_TYPE::NOT_Q || qt2 == QUARTET_TYPE::NOT_Q) {
+        return Q_COMP::NO_COMP;
+    }
+    if (qt1 == QUARTET_TYPE::POLYTOMY) {
+        if (qt2 == QUARTET_TYPE::POLYTOMY) {
+            return Q_COMP::BOTH_UNRES;
+        }
+        return Q_COMP::COMPAT;
+    }
+    if (qt1 == qt2) {
+        return Q_COMP::SAME_RES;
+    }
+    return Q_COMP::CONFLICT_RES;
+}
+
 inline void write_qt(std::ostream & out, const QUARTET_TYPE & qt) {
     switch(qt) {
         case QUARTET_TYPE::UNKNOWN : out << "?" ; break;
@@ -104,78 +128,86 @@ inline void write_qt(std::ostream & out, const QUARTET_TYPE & qt) {
     }
 }
 
+
+template<typename T>
+inline std::vector<T> 
+gen_by_fourth(std::size_t num_tax, std::size_t third_index, const T & def) {
+    //std::cerr << "    gen_by_fourth(" << num_tax << ", " << third_index << ")\n";
+    const std::size_t min_real_ind = third_index + 1;
+    assert(min_real_ind < num_tax);
+    // N - 1 (for the zero-based ind)
+    const std::size_t max_real_ind = num_tax - 1;
+    //  std::cerr << "  max_real_ind=" << max_real_ind << " min_real_ind=" << min_real_ind << "\n";
+    assert(max_real_ind >= min_real_ind);
+    const std::size_t my_size = 1 + max_real_ind - min_real_ind;
+    std::vector<T> ret{my_size, def};
+    return ret;
+}
+
+template<typename T>
+inline std::vector<std::vector<T> >
+gen_by_third(std::size_t num_tax, std::size_t sec_index, const T & def ) {
+    //std::cerr << "  gen_by_third(" << num_tax << ", " << sec_index << ")\n";
+    std::vector<std::vector<T> > ret;
+    const std::size_t min_real_ind = sec_index + 1;
+    assert(min_real_ind < num_tax);
+    // N - 1 (for 2 more indices) - 1 (for the zero-based ind)
+    const std::size_t max_real_ind = num_tax - 2;
+    // std::cerr << "  max_real_ind=" << max_real_ind << " min_real_ind=" << min_real_ind << "\n";
+    assert(max_real_ind >= min_real_ind);
+    const std::size_t my_size = 1 + max_real_ind - min_real_ind;
+    ret.reserve(my_size);
+    for (std::size_t my_real_ind = min_real_ind; my_real_ind <=  max_real_ind; ++my_real_ind) {
+        ret.push_back(gen_by_fourth(num_tax, my_real_ind, def));
+    }
+    return ret;
+}
+
+template<typename T>
+inline std::vector<std::vector<std::vector<T> > >
+gen_by_sec(std::size_t num_tax, std::size_t first_ind, const T & def) {
+    //std::cerr << "gen_by_sec(" << num_tax << ", " << first_ind << ")\n";
+    std::vector<std::vector<std::vector<T> > > ret;
+    const std::size_t min_real_ind = first_ind + 1;
+    assert(min_real_ind < num_tax);
+    // N - 2 (for 2 more indices) - 1 (for the zero-based ind)
+    const std::size_t max_real_ind = num_tax - 3;
+    // std::cerr << "  max_real_ind=" << max_real_ind << " min_real_ind=" << min_real_ind << "\n";
+    assert(max_real_ind >= min_real_ind);
+    const std::size_t my_size = 1 + max_real_ind - min_real_ind;
+    ret.reserve(my_size);
+    for (std::size_t my_real_ind = min_real_ind; my_real_ind <=  max_real_ind; ++my_real_ind) {
+        ret.push_back(gen_by_third(num_tax, my_real_ind, def));
+    }
+    return ret;
+}
+
 class AllQuartets {
     using off_by_3_v = std::vector<QUARTET_TYPE> ;
     using off_by_2_v = std::vector<off_by_3_v>;
     using off_by_1_v = std::vector<off_by_2_v>;
     using top_level = std::vector<off_by_1_v>;
 
-    
-    off_by_3_v gen_by_fourth(std::size_t num_tax, std::size_t third_index) {
-        std::cerr << "    gen_by_fourth(" << num_tax << ", " << third_index << ")\n";
-        const std::size_t min_real_ind = third_index + 1;
-        assert(min_real_ind < num_tax);
-        // N - 1 (for the zero-based ind)
-        const std::size_t max_real_ind = num_tax - 1;
-        //  std::cerr << "  max_real_ind=" << max_real_ind << " min_real_ind=" << min_real_ind << "\n";
-        assert(max_real_ind >= min_real_ind);
-        const std::size_t my_size = 1 + max_real_ind - min_real_ind;
-        off_by_3_v ret{my_size, QUARTET_TYPE::UNKNOWN};
-        return ret;
-    }
-
-    off_by_2_v gen_by_third(std::size_t num_tax, std::size_t sec_index) {
-        std::cerr << "  gen_by_third(" << num_tax << ", " << sec_index << ")\n";
-        off_by_2_v ret;
-        const std::size_t min_real_ind = sec_index + 1;
-        assert(min_real_ind < num_tax);
-        // N - 1 (for 2 more indices) - 1 (for the zero-based ind)
-        const std::size_t max_real_ind = num_tax - 2;
-        // std::cerr << "  max_real_ind=" << max_real_ind << " min_real_ind=" << min_real_ind << "\n";
-        assert(max_real_ind >= min_real_ind);
-        const std::size_t my_size = 1 + max_real_ind - min_real_ind;
-        ret.reserve(my_size);
-        for (std::size_t my_real_ind = min_real_ind; my_real_ind <=  max_real_ind; ++my_real_ind) {
-            ret.push_back(this->gen_by_fourth(num_tax, my_real_ind));
-        }
-        return ret;
-    }
-
-    off_by_1_v gen_by_sec(std::size_t num_tax, std::size_t first_ind) {
-        std::cerr << "gen_by_sec(" << num_tax << ", " << first_ind << ")\n";
-        off_by_1_v ret;
-        const std::size_t min_real_ind = first_ind + 1;
-        assert(min_real_ind < num_tax);
-        // N - 2 (for 2 more indices) - 1 (for the zero-based ind)
-        const std::size_t max_real_ind = num_tax - 3;
-        // std::cerr << "  max_real_ind=" << max_real_ind << " min_real_ind=" << min_real_ind << "\n";
-        assert(max_real_ind >= min_real_ind);
-        const std::size_t my_size = 1 + max_real_ind - min_real_ind;
-        ret.reserve(my_size);
-        for (std::size_t my_real_ind = min_real_ind; my_real_ind <=  max_real_ind; ++my_real_ind) {
-            ret.push_back(this->gen_by_third(num_tax, my_real_ind));
-        }
-        return ret;
-    }
-
     top_level by_lowest;
 
     public:
     using uint_set = std::set<std::size_t>;
+    std::size_t num_tips;
 
     AllQuartets(const TreeAsUIntSplits & tas) {
-        const::size_t num_tax = tas.ind_to_nd.size();
-        if (num_tax < 4) {
+        num_tips = tas.ind_to_nd.size();
+        if (num_tips < 4) {
             return;
         }
-        std::size_t n_r = static_cast<std::size_t>(static_cast<int>(num_tax) - 3);
+        std::size_t n_r = static_cast<std::size_t>(static_cast<int>(num_tips) - 3);
         by_lowest.reserve(n_r);
+        const QUARTET_TYPE def = QUARTET_TYPE::UNKNOWN;
         for (std::size_t row_n = 0; row_n < n_r; ++row_n) {
-            by_lowest.push_back(this->gen_by_sec(num_tax, row_n));
+            by_lowest.push_back(gen_by_sec<QUARTET_TYPE>(num_tips, row_n, def));
         }
         
         uint_set full_ind_set;
-        for (std::size_t i = 0; i < num_tax; ++i) {
+        for (std::size_t i = 0; i < num_tips; ++i) {
             full_ind_set.insert(i);
         }
         for (auto inf_indset_nd_pair : tas.inf_taxset_to_nd) {
@@ -187,7 +219,6 @@ class AllQuartets {
         uint_set empty_set;
         this->register_nd(tas.root, empty_set, tas);
     }
-
 
 
     void write(std::ostream & out) const {
@@ -402,6 +433,113 @@ class AllQuartets {
         }
         out << '\n';
     }
+
+    friend class QuartDist;
+};
+
+inline double frac_diff_from_pair(const std::pair<std::size_t, std::size_t> & p) {
+    const double n = static_cast<double>(p.first);
+    const double d = static_cast<double>(p.second);
+    return n/d;
+}
+
+class QuartDist {
+    const AllQuartets & qtree1;
+    const AllQuartets & qtree2;
+    std::size_t num_tips;
+    std::size_t round;
+    std::size_t num_diffs;
+    std::size_t num_comp;
+
+    std::vector<std::size_t> diff_by_taxon;
+    std::vector<std::size_t> comp_by_taxon;
+    
+    using off_by_3_cmp_v = std::vector<Q_COMP> ;
+    using off_by_2_cmp_v = std::vector<off_by_3_cmp_v>;
+    using off_by_1_cpm_v = std::vector<off_by_2_cmp_v>;
+    using top_level_cmp = std::vector<off_by_1_cpm_v>;
+
+    top_level_cmp by_lowest;
+    public:
+
+    QuartDist(const AllQuartets & q1,
+              const AllQuartets & q2)
+    :qtree1(q1),
+    qtree2(q2),
+    round(0) {
+        num_tips = q1.num_tips;
+        assert(num_tips == q2.num_tips);
+        this->calc_diffs_mat();
+    }
+
+    std::pair<std::size_t, std::size_t> get_diff_comp() const {
+        return {num_diffs, num_comp};
+    }
+
+
+    private:
+    void calc_diffs_mat() {
+        std::size_t n_r = static_cast<std::size_t>(static_cast<int>(num_tips) - 3);
+        by_lowest.reserve(n_r);
+        const Q_COMP def = Q_COMP::NO_COMP;
+        for (std::size_t row_n = 0; row_n < n_r; ++row_n) {
+            by_lowest.push_back(gen_by_sec<Q_COMP>(num_tips, row_n, def));
+        }
+
+        diff_by_taxon.assign(num_tips, 0);
+        comp_by_taxon.assign(num_tips, 0);
+        const auto & bl1 = qtree1.by_lowest;
+        const auto & bl2 = qtree2.by_lowest;
+        const std::size_t ie = num_tips - 3;
+        const std::size_t je = num_tips - 2;
+        const std::size_t ke = num_tips - 1;
+        const std::size_t le = num_tips;
+        num_diffs = num_comp = 0;
+        for (std::size_t i = 0; i < ie; ++i) {
+            const auto & ibl1 = bl1.at(i);
+            const auto & ibl2 = bl2.at(i);
+            auto & idbl = by_lowest.at(i);
+
+            for (std::size_t j = i + 1; j < je; ++j) {
+                const auto rel_j = j - i - 1; 
+                const auto & jbl1 = ibl1.at(rel_j);
+                const auto & jbl2 = ibl2.at(rel_j);
+                auto & jdbl = idbl.at(rel_j);
+
+                for (std::size_t k = j + 1; k < ke; ++k) {
+                    const auto rel_k = k - j - 1;
+                    const auto & kbl1 = jbl1.at(rel_k);
+                    const auto & kbl2 = jbl2.at(rel_k);
+                    auto & kdbl = jdbl.at(rel_k);
+
+                    for (std::size_t l = k + 1; l < le; ++l) {
+                        const auto rel_l = l - k - 1;
+                        const auto & el1 = kbl1.at(rel_l);
+                        const auto & el2 = kbl2.at(rel_l);
+                        const auto qcmp = comp_qt(el1, el2);
+                        kdbl.at(rel_l) = qcmp;
+                        if (qcmp == Q_COMP::NO_COMP) {
+                            continue;
+                        }
+                        // here we'll just count conflicts as distances,
+                        //  so polytomy, compat or same all count as no diff
+                        if (qcmp == Q_COMP::CONFLICT_RES) {
+                            diff_by_taxon.at(i) += 1;
+                            diff_by_taxon.at(j) += 1;
+                            diff_by_taxon.at(k) += 1;
+                            diff_by_taxon.at(l) += 1;
+                            num_diffs += 1;
+                        }
+                        num_comp += 1;
+                        comp_by_taxon.at(i) += 1;
+                        comp_by_taxon.at(j) += 1;
+                        comp_by_taxon.at(k) += 1;
+                        comp_by_taxon.at(l) += 1;                        
+                    }
+                }
+            }
+        }
+    }
 };
 
 void quartet_dist_analysis(const Tree_t & inp_tre1,
@@ -412,7 +550,11 @@ void quartet_dist_analysis(const Tree_t & inp_tre1,
         throw OTCError() << "trees must have the same leaf label set.\n";
     }
     AllQuartets t_1_q{tas_1};
-    t_1_q.write(std::cout);
+    AllQuartets t_2_q{tas_2};
+    //t_1_q.write(std::cout);
+    QuartDist qdist{t_1_q, t_2_q};
+    const auto dc = qdist.get_diff_comp();
+    std::cout << dc.first << "\t" << dc.second << "\t" << frac_diff_from_pair(dc) << std::endl;
     throw OTCError() << "Early exit.\n";
     
 }
