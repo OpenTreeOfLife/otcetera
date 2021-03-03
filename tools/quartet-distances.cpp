@@ -184,6 +184,8 @@ class AllQuartets {
             const node_t * par_nd = inf_indset_nd_pair.second;
             this->register_nd(par_nd, outgroup, tas);
         }
+        uint_set empty_set;
+        this->register_nd(tas.root, empty_set, tas);
     }
 
 
@@ -211,6 +213,93 @@ class AllQuartets {
             }
             curr_ch = curr_ch->get_next_sib();
         }
+        const auto nd_out_deg = par_nd->get_out_degree();
+        if (nd_out_deg > 2) {
+            register_polytomy(par_nd, outgroup, tas);
+        }
+    }
+
+    void register_polytomy(const node_t * par_nd, 
+                           const uint_set & outgroup,
+                           const TreeAsUIntSplits & tas) {
+        const auto & nd_to_taxset = tas.nd_to_taxset;
+        const node_t * curr_ch = par_nd->get_first_child();
+        while (curr_ch != nullptr) {
+            const node_t * curr_f_sib = curr_ch->get_next_sib();
+            const auto & cc_ind_set = nd_to_taxset.at(curr_ch);
+            while (curr_f_sib != nullptr) {
+                const auto & cf_ind_set = nd_to_taxset.at(curr_f_sib);
+                const node_t * curr_s_sib = curr_f_sib->get_next_sib();
+                while (curr_s_sib != nullptr) {
+                    const auto & cs_ind_set = nd_to_taxset.at(curr_s_sib);
+                    this->register_poly_out(cc_ind_set, cf_ind_set, cs_ind_set, outgroup);
+                    const node_t * curr_t_sib = curr_s_sib->get_next_sib();
+                    while (curr_t_sib != nullptr) {
+                        const auto & ct_ind_set = nd_to_taxset.at(curr_t_sib);
+                        this->register_poly_out(cc_ind_set, cf_ind_set, cs_ind_set, ct_ind_set);
+                        curr_t_sib = curr_t_sib->get_next_sib();
+                    }
+                    curr_s_sib = curr_s_sib->get_next_sib();
+                }
+                curr_f_sib = curr_f_sib->get_next_sib();
+            }
+            curr_ch = curr_ch->get_next_sib();
+        }
+    }
+    void register_poly_out(const uint_set & f_ind_set, 
+                       const uint_set & s_ind_set,
+                       const uint_set & t_ind_set,
+                       const uint_set & out_ind_set) {
+        std::size_t fs_small, fs_large;
+        std::size_t fst_small, fst_mid, fst_large;
+        for (auto fci : f_ind_set) {
+            for (auto sci : s_ind_set) {
+                fs_small = fci;
+                fs_large = sci;
+                if (fs_small > fs_large) {
+                    std::swap(fs_small, fs_large);
+                }
+                for (auto tci : t_ind_set) {
+                    if (tci < fs_small) {
+                        fst_small = tci;
+                        fst_mid = fs_small;
+                        fst_large = fs_large;
+                    } else if (tci < fs_large) {
+                        fst_small = fs_small;
+                        fst_mid = tci;
+                        fst_large = fs_large;
+                    } else {
+                        fst_small = fs_small;
+                        fst_mid = fs_large;
+                        fst_large = tci;
+                    }
+                    for (auto oci : out_ind_set) {
+                        this->register_poly_last_unsorted(fst_small, fst_mid, fst_large, oci);
+                    }
+                }
+            }
+        }   
+    }
+
+    void register_poly_last_unsorted(std::size_t u1, std::size_t u2,
+                          std::size_t u3, std::size_t uu) {
+        std::size_t s1, s2, s3, s4;
+        if (uu < u2) {
+            s3 = u2; s4 = u3;
+            if (uu < u1) {
+                s1 = uu; s2 = u1; 
+            } else {
+                s1 = u1; s2 = uu; 
+            }
+        } else {
+            s1 = u1; s2 = u2;
+            if (uu < u3) {
+                s3 = uu ; s4 = u3;
+            } else {
+                s3 = u3 ; s4 = uu;
+            }
+        }
+        this->register_sorted(QUARTET_TYPE::POLYTOMY, s1, s2, s3, s4);
     }
 
     void register_sibs(const uint_set & lc_ind_set, 

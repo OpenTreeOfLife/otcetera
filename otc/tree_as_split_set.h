@@ -54,8 +54,10 @@ class GenTreeAsUIntSplits {
     std::vector<const node_t *> ind_to_nd;
     std::map<const node_t *, uint_set> nd_to_taxset;
     std::map<uint_set, const node_t *> inf_taxset_to_nd;
+    const node_t * root;
 
     GenTreeAsUIntSplits(const T & tree) {
+        root = tree.get_root();
         const GenTreeAsSplits<T> str_tas{tree};
         std::size_t ind = 0;
         this->ind_to_nd.reserve(str_tas.leaf_labels.size());
