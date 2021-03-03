@@ -10,6 +10,7 @@
 #include "otc/otcli.h"
 #include "otc/supertree_util.h"
 #include "otc/tree_operations.h"
+#include "otc/tree_as_split_set.h"
 
 using json=nlohmann::json;
 
@@ -83,37 +84,8 @@ using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
 
 using str_set = std::set<std::string>;
-    
-class TreeAsSplits {
-    public:
-    std::map<string, const node_t *> leaf_label_to_nd;
-    std::map<const node_t *, str_set> nd_to_taxset;
-    std::map<str_set, const node_t *> inf_taxset_to_nd;
-    str_set leaf_labels;
+using TreeAsSplits = GenTreeAsSplits<ConflictTree>;
 
-    TreeAsSplits(const Tree_t & tree) {
-        auto nodes = all_nodes_postorder(tree);
-        for (auto nd : nodes) {
-            str_set ts;
-            if (nd->is_tip()) {
-                auto & nl = nd->get_name();
-                //std::cerr << nl << '\n';
-                ts.insert(nl);
-                leaf_labels.insert(nl);
-                leaf_label_to_nd[nl] = nd;
-            } else {
-                for (auto c : iter_child_const(*nd)) {
-                    auto cts = nd_to_taxset[c];
-                    ts.insert(cts.begin(), cts.end());
-                }
-                if (nd->get_parent() != nullptr) {
-                    inf_taxset_to_nd[ts] = nd;
-                }
-            }
-            nd_to_taxset[nd] = ts;
-        }
-    }
-};
 
 
 enum in_full_status {IN_NEITHER = 0,
