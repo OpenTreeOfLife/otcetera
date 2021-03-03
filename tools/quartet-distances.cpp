@@ -161,6 +161,7 @@ class AllQuartets {
     top_level by_lowest;
 
     public:
+    using uint_set = std::set<std::size_t>;
 
     AllQuartets(const TreeAsUIntSplits & tas) {
         const::size_t num_tax = tas.ind_to_nd.size();
@@ -172,7 +173,20 @@ class AllQuartets {
         for (std::size_t row_n = 0; row_n < n_r; ++row_n) {
             by_lowest.push_back(this->gen_by_sec(num_tax, row_n));
         }
+        
+        uint_set full_ind_set;
+        for (std::size_t i = 0; i < num_tax; ++i) {
+            full_ind_set.insert(i);
+        }
+        for (auto inf_indset_nd_pair : tas.inf_taxset_to_nd) {
+            const uint_set & inf_ind_set = inf_indset_nd_pair.first;
+            const auto outgroup = set_difference_as_set(full_ind_set, inf_ind_set);
+            const node_t * par_nd = inf_indset_nd_pair.second;
+            this->register_nd(par_nd, outgroup, tas);
+        }
     }
+
+
 
     void write(std::ostream & out) const {
         std::size_t i = 0;
@@ -182,6 +196,93 @@ class AllQuartets {
         }
     }
     private:
+
+    void register_nd(const node_t * par_nd, 
+                     const uint_set & outgroup,
+                     const TreeAsUIntSplits & tas) {
+        const node_t * curr_ch = par_nd->get_first_child();
+        while (curr_ch != nullptr) {
+            const auto & cc_ind_set = tas.nd_to_taxset.at(curr_ch);
+            const node_t * curr_sib = curr_ch->get_next_sib();
+            while (curr_sib != nullptr) {
+                const auto & cs_ind_set = tas.nd_to_taxset.at(curr_sib);
+                this->register_sibs(cc_ind_set, cs_ind_set, outgroup);
+                curr_sib = curr_sib->get_next_sib();
+            }
+            curr_ch = curr_ch->get_next_sib();
+        }
+    }
+
+    void register_sibs(const uint_set & lc_ind_set, 
+                       const uint_set & nc_ind_set,
+                       const uint_set & out_ind_set) {
+        std::size_t in_small, in_large;
+        for (auto lci : lc_ind_set) {
+            for (auto nci : nc_ind_set) {
+                if (lci < nci) {
+                    in_small = lci;
+                    in_large = nci;
+                } else {
+                    in_small = nci;
+                    in_large = lci;
+                }
+                for (auto oi_it = out_ind_set.begin(); oi_it != out_ind_set.end(); ++oi_it) {
+                    auto noi_it = oi_it;
+                    for (++noi_it; noi_it != out_ind_set.end(); ++noi_it) {
+                        register_quartet(in_small, in_large, *oi_it, *noi_it);
+                    }
+                }
+            }
+        }
+    }
+
+    void register_quartet(std::size_t in_small, std::size_t in_large,
+                          std::size_t out_small, std::size_t out_large) {
+        assert(in_small < in_large);
+        assert(out_small < out_large);
+        if (in_small < out_small) {
+            if (in_large < out_small) {
+                this->register_sorted(QUARTET_TYPE::ONE_TWO, in_small, in_large, out_small, out_large);
+            } else if (in_large < out_large) {
+                assert(in_large != out_small);
+                this->register_sorted(QUARTET_TYPE::ONE_THREE, in_small, out_small, in_large, out_large);
+            } else {
+                assert(out_large < in_large);
+                this->register_sorted(QUARTET_TYPE::ONE_FOUR, in_small, out_small, out_large, in_large);
+            }
+        } else if (in_small < out_large) {
+            assert(out_small < in_small);
+            if (in_large < out_large) {
+                this->register_sorted(QUARTET_TYPE::ONE_FOUR, out_small, in_small, in_large, out_large);
+            } else {
+                assert(out_large < in_large);
+                this->register_sorted(QUARTET_TYPE::ONE_THREE, out_small, in_small, out_large, in_large);
+            }
+        } else {
+            assert(out_large < in_small);
+            this->register_sorted(QUARTET_TYPE::ONE_TWO, out_small, out_large, in_small, in_large);
+        }
+    }
+
+    void register_sorted(QUARTET_TYPE qt, std::size_t fir_ind, std::size_t sec_ind,
+                          std::size_t thi_ind, std::size_t fou_ind) {
+        assert(fou_ind > thi_ind);
+        std::size_t rel_fou = fou_ind - thi_ind - 1;
+        assert(thi_ind > sec_ind);    
+        std::size_t rel_thi = thi_ind - sec_ind - 1;
+        assert(sec_ind > fir_ind);
+        std::size_t rel_sec = sec_ind - fir_ind - 1;
+        try {
+            this->by_lowest.at(fir_ind).at(rel_sec).at(rel_thi).at(rel_fou) = qt;
+        } catch (...) {
+            std::cerr << "Error registering ";
+            write_qt(std::cerr, qt);
+            std::cerr << " at (" << fir_ind << ", " << sec_ind << ", " << thi_ind << ", " << fou_ind << ")" << std::endl;
+            throw;
+        }
+    }
+    
+
     void write_by_sec(std::ostream & out, const off_by_1_v & by_sec, std::size_t first) const {
         std::size_t i = first + 1;
         // out << by_sec.size() << " 2nd-level rows\n";

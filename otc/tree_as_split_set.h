@@ -76,6 +76,12 @@ class GenTreeAsUIntSplits {
             this->nd_to_taxset[nd_ptr] = ind_set;
             this->inf_taxset_to_nd[ind_set] = nd_ptr;
         }
+        std::size_t leaf_ind = 0;
+        for (auto leaf_ptr : this->ind_to_nd) {
+            uint_set single_ind_set;
+            single_ind_set.insert(leaf_ind++);
+            this->nd_to_taxset[leaf_ptr] = single_ind_set;
+        }
     }
 };
 
