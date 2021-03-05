@@ -28,6 +28,7 @@ programs = [
   ['detectcontested', 'detect-contested'],
   ['displayedstats', 'displayed-stats'],
   ['distance', 'distance'],
+  ['explain-phylo-diffs', 'explain-phylo-diffs'],
   ['findresolution', 'find-resolution'],
   ['graft-solutions', 'graft-solutions'],
   ['inducedsubtree', 'induced-subtree'],
