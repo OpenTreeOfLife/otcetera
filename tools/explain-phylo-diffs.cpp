@@ -5,6 +5,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
+#include <stack>
 #include "json.hpp"
 #include "otc/conflict.h"
 #include "otc/otcli.h"
@@ -13,12 +14,14 @@
 #include "otc/quartet_dist.h"
 
 
-using json=nlohmann::json;
+using json = nlohmann::json;
 
 
 using namespace otc;
 using std::vector;
+using std::to_string;
 using std::string;
+using std::stack;
 
 namespace po = boost::program_options;
 using po::variables_map;
@@ -33,7 +36,10 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("second", value<string>(),"Second tree filepath.")
         ;
 
-    options_description reporting("Reporting options");
+    
+    options_description output("Output options");
+    output.add_options()
+        ("out,O",value<string>(),"output JSON filepath");
     // reporting.add_options()
     //     ("each",value<bool>()->default_value(false),"Show separate results for each input tree")
     //     ("all",value<bool>()->default_value(true),"Show accumulated over all input trees")
@@ -42,7 +48,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     //     ;
 
     options_description visible;
-    visible.add(reporting).add(otc::standard_options());
+    visible.add(output).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -50,32 +56,305 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     p.add("second", -1);
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
-                                                    "Usage: otc-quartet-distances <first> <second> [OPTIONS]\n"
-                                                    "Reports stats based on tree differences using quartet distances.",
+                                                    "Usage: otc-explain-phylo-diffs <first> <second> [OPTIONS]\n"
+                                                    "Writes a JSON summary of the difference between 2 rooted trees ",
                                                     visible, invisible, p);
 
     return vm;
 }
 
-using Tree_t = ConflictTree;
+
+enum IniNodePhyloStatus {IDENTICAL_SUBTREE,    // this subtree rooted at this node is found in both trees
+                         SAME_CLADE_DIFF_TOPO, // this cluster is found, but at least on descendant has different topology
+                         NO_COMMON_CLADE,
+                         UNKNOWN_STATUS
+                        };
+
+const std::size_t MAX_SIZE_T = std::numeric_limits<std::size_t>::max();
+
+struct ExplTreeDiffNode
+{
+   /* int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
+    int n_tips = 0;
+    int n_include_tips = 0; */
+    otc::RootedTreeNode<ExplTreeDiffNode> * partner;
+    IniNodePhyloStatus ini_stat;
+    std::size_t node_index;
+
+    ExplTreeDiffNode()
+        :partner(nullptr),
+        ini_stat(IniNodePhyloStatus::UNKNOWN_STATUS),
+        node_index(MAX_SIZE_T) {
+        }
+
+};
+
+
+using Tree_t = otc::RootedTree<ExplTreeDiffNode, otc::RTreeNoData>;
 using node_t = Tree_t::node_type;
 using str_set = std::set<std::string>;
 using TreeAsUIntSplits = GenTreeAsUIntSplits<Tree_t>;
 using AllConflictQuartets = AllQuartets<Tree_t>;
+template <typename T, typename U>
+using map = std::unordered_map<T,U>;
 
-void quartet_dist_analysis(const Tree_t & inp_tre1,
-                           const Tree_t & inp_tre2) {
+
+
+using ini_stat_ptr = std::pair<IniNodePhyloStatus, const node_t *>;
+
+inline std::ostream & write_ini_phy_stat_pair(std::ostream & out, const ini_stat_ptr & isp) {
+    if (isp.first == IniNodePhyloStatus::IDENTICAL_SUBTREE) {
+        out << "<IDENTICAL_SUBTREE," << isp.second << '>';
+    } else if (isp.first == IniNodePhyloStatus::SAME_CLADE_DIFF_TOPO) {
+        out << "<SAME_CLADE_DIFF_TOPO," << isp.second << '>';
+    } else {
+        out << "NO_COMMON_CLADE";
+    }
+    return out;
+}
+
+template<typename T>
+inline void add_node_data(const T *nd,
+                          TreeAsUIntSplits & tas,
+                          json & node_data) {
+    json cd = json::object();
+    const auto & ndo = nd->get_data();
+    bool add_to_blob = false;
+    if (nd->is_tip()) {
+        add_to_blob = true;
+        cd["label"] = nd->get_name();
+    }
+
+    if (add_to_blob) {
+        node_data[to_string(ndo.node_index)] = cd;
+    }
+    
+}
+
+template<typename T>
+inline void write_ind_labelled_closing_newick(std::ostream & out,
+                                              const T *nd,
+                                              const T * r,
+                                              TreeAsUIntSplits & tas,
+                                              json & node_data) {
+    out << ')';
+    auto n = nd->get_parent();
+    out << n->get_data().node_index;
+    add_node_data(n, tas, node_data);
+    if (n == r) {
+        return;
+    }
+    while (n->get_next_sib() == nullptr) {
+        out << ')';
+        add_node_data(n, tas, node_data);
+        n = n->get_parent();
+        assert(n != nullptr);
+        out << n->get_data().node_index;
+        if (n == r) {
+            return;
+        }
+    }
+    out << ',';
+}
+
+
+
+
+template<typename T>
+inline void write_ind_labelled_newick_subtree(std::ostream & out,
+                                                const T *nd,
+                                                TreeAsUIntSplits & tas,
+                                                std::set<std::size_t> & leaf_inds,
+                                                const std::set<std::size_t> & boundaries,
+                                                json & node_data) {
+    assert(nd != nullptr);
+    auto & ndata = nd->get_data();
+    auto nind = ndata.node_index;
+    if (nd->is_tip() || contains(boundaries, nind)) {
+        leaf_inds.insert(ndata.node_index);
+    } else {
+        out << '(';
+        int cnum = 0;
+        for (auto c : iter_child_const(*nd)) {
+            if (cnum++ > 0) {
+                out << ',';
+            }
+            write_ind_labelled_newick_subtree(out, c, tas, leaf_inds, boundaries, node_data);
+        }
+        out << ')';
+    }
+    out << nind;
+    add_node_data(nd, tas, node_data);
+}
+
+
+inline json get_tree_comp_slice(node_t * nd,
+                         TreeAsUIntSplits & tas,
+                         std::set<std::size_t> & leaf_inds, 
+                         const std::set<std::size_t> boundaries) {
+    std::ostringstream s;
+    json node_data = json::object();
+    write_ind_labelled_newick_subtree(s, nd, tas, leaf_inds, boundaries, node_data);
+    s << ';';
+    json iltree = json::object();
+    iltree["newick"] = s.str();
+    iltree["node_data"] = node_data;
+    return iltree;   
+}
+
+inline json get_ident_tree_comp_slice(node_t * nd, TreeAsUIntSplits & tas) {
+    std::set<std::size_t> boundaries;
+    std::set<std::size_t> leaf_inds;
+    return get_tree_comp_slice(nd, tas, leaf_inds, boundaries);
+}
+
+
+
+inline json get_tree_comp_slice(node_t * t1nd,
+                         TreeAsUIntSplits & tas_1,
+                         TreeAsUIntSplits & tas_2, 
+                         stack<node_t *> & to_do) {
+    assert(t1nd);
+    const auto & t1nd_data = t1nd->get_data();
+    node_t * t2nd = t1nd_data.partner;
+    if (t2nd == nullptr) {
+        throw OTCError() << "Node \"" << t1nd_data.node_index << "\" cannot start a slice because it has no paired node.\n";
+    }
+    json outer = json::object();
+    if (t1nd_data.ini_stat == IniNodePhyloStatus::IDENTICAL_SUBTREE) {
+        outer["both_trees"] = get_ident_tree_comp_slice(t1nd, tas_1);
+        return outer;
+    }
+    stack<node_t *> curr_slice_to_do;
+    for (auto c : iter_child(*t1nd)) {
+        curr_slice_to_do.push(c);
+    }
+    std::set<std::size_t> boundaries;
+    while (!curr_slice_to_do.empty()) {
+        node_t * curr = curr_slice_to_do.top();
+        curr_slice_to_do.pop();
+        const auto & currd = curr->get_data();
+        if (currd.ini_stat == IniNodePhyloStatus::NO_COMMON_CLADE) {
+            for (auto c : iter_child(*curr)) {
+                curr_slice_to_do.push(c);
+            }
+        } else {
+            if (currd.ini_stat == IniNodePhyloStatus::UNKNOWN_STATUS) {
+                throw OTCError() << "Node \"" << currd.node_index << "\" in a slice but with uninitialized ini_stat field.\n";
+            }
+            boundaries.insert(currd.node_index);
+            if (!curr->is_tip()) {
+                to_do.push(curr);
+            }
+        }
+    }
+    std::set<std::size_t> leaf1_inds, leaf2_inds;
+    outer["tree_1"] = get_tree_comp_slice(t1nd, tas_1, leaf1_inds, boundaries);
+    outer["tree_2"] = get_tree_comp_slice(t2nd, tas_2, leaf2_inds, boundaries);
+    assert(leaf1_inds == leaf2_inds);
+
+    return outer;
+}
+
+void explain_phylo_diffs(std::ostream & out,
+                         Tree_t & inp_tre1,
+                         Tree_t & inp_tre2) {
     TreeAsUIntSplits tas_1{inp_tre1};
     TreeAsUIntSplits tas_2{inp_tre2};
     if (tas_1.leaf_label_to_ind != tas_2.leaf_label_to_ind) {
         throw OTCError() << "trees must have the same leaf label set.\n";
     }
-    AllConflictQuartets t_1_q{tas_1};
-    AllConflictQuartets t_2_q{tas_2};
-    QuartDist qdist{t_1_q, t_2_q};
-    const auto dc = qdist.get_diff_comp();
-    std::cout << dc.first << "\t" << dc.second << "\t" << frac_diff_from_pair(dc) << std::endl;
-    throw OTCError() << "Early exit.\n";    
+    
+    std::size_t num_tips = tas_1.ind_to_nd.size();
+    
+    std::size_t matched_node_index = tas_1.ind_to_nd.size();
+    tas_1.ind_to_nd.reserve(3*matched_node_index);
+    tas_2.ind_to_nd.reserve(3*matched_node_index);
+    std::list<node_t *> unmatched;
+
+    for (auto nd1 : all_nodes_postorder(inp_tre1)) {
+        auto & data1 = nd1->get_data();
+        data1.ini_stat = IniNodePhyloStatus::IDENTICAL_SUBTREE;
+        const auto & t1_ind_set = tas_1.nd_to_taxset[nd1]; 
+        if (nd1->is_tip()) {
+            data1.node_index = *t1_ind_set.begin();
+            std::cerr << data1.node_index << " " << nd1->get_name() << '\n';
+            data1.partner = const_cast<node_t *>(tas_2.ind_to_nd[data1.node_index]);
+        } else {
+            if (nd1 == tas_1.root) {
+                data1.partner = const_cast<node_t *>(tas_2.root);
+            } else {
+                const auto t2_ind_set_it = tas_2.inf_taxset_to_nd.find(t1_ind_set);
+                if (t2_ind_set_it == tas_2.inf_taxset_to_nd.end()) {
+                    data1.ini_stat = IniNodePhyloStatus::NO_COMMON_CLADE;
+                    unmatched.push_back(nd1);
+                } else {
+                    data1.partner = const_cast<node_t *>(t2_ind_set_it->second);
+                }
+            }
+            if (data1.partner != nullptr) {
+                for (auto c : iter_child_const(*nd1)) {
+                    const auto & cdata = c->get_data();
+                    if (cdata.ini_stat != IniNodePhyloStatus::IDENTICAL_SUBTREE) {
+                        data1.ini_stat = IniNodePhyloStatus::SAME_CLADE_DIFF_TOPO;
+                        break;
+                    }
+                }
+            }
+            if (data1.ini_stat != IniNodePhyloStatus::NO_COMMON_CLADE) {
+                data1.node_index = matched_node_index++;
+            }
+        }
+
+        if (data1.ini_stat == IniNodePhyloStatus::IDENTICAL_SUBTREE
+            || data1.ini_stat == IniNodePhyloStatus::SAME_CLADE_DIFF_TOPO) {
+            assert(data1.partner);
+            auto & data2 = data1.partner->get_data();
+            data2.partner = nd1;
+            data2.ini_stat = data1.ini_stat;
+            data2.node_index = data1.node_index;
+            if (data1.node_index >= num_tips) {
+                assert(tas_1.ind_to_nd.size() == data1.node_index);
+                assert(tas_2.ind_to_nd.size() == data1.node_index);
+                tas_1.ind_to_nd.push_back(nd1);
+                tas_2.ind_to_nd.push_back(data2.partner);
+            }
+        }
+    }
+    for (auto ndp : unmatched) {
+        auto & data1 = ndp->get_data();
+        data1.node_index = matched_node_index++;
+        assert(tas_1.ind_to_nd.size() == data1.node_index);
+        assert(tas_2.ind_to_nd.size() == data1.node_index);
+        tas_1.ind_to_nd.push_back(ndp);
+        tas_2.ind_to_nd.push_back(nullptr);
+    }
+    for (auto nd2 : all_nodes_postorder(inp_tre2)) {
+        auto & data2 = nd2->get_data();
+        if (data2.ini_stat == IniNodePhyloStatus::UNKNOWN_STATUS) {
+            data2.ini_stat = IniNodePhyloStatus::NO_COMMON_CLADE;
+            data2.node_index = matched_node_index++;
+            assert(tas_1.ind_to_nd.size() == data2.node_index);
+            assert(tas_2.ind_to_nd.size() == data2.node_index);
+            tas_1.ind_to_nd.push_back(nullptr);
+            tas_2.ind_to_nd.push_back(nd2);
+        }
+    }
+    const auto & rd = tas_1.root->get_data();
+
+    node_t * root1 = const_cast<node_t *>(tas_1.root);
+    json document;
+    document["root_id"] = to_string(root1->get_data().node_index);
+    json tree_slices = json::array();
+    std::stack<node_t *> to_do;
+    to_do.push(root1);
+    while (!to_do.empty()) {
+        auto next = to_do.top();
+        to_do.pop();
+        tree_slices.push_back(get_tree_comp_slice(next, tas_1, tas_2, to_do));
+    }
+    document["tree_comp_slices"] = tree_slices;
+    out << document.dump(1) << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -83,6 +362,21 @@ int main(int argc, char *argv[]) {
         variables_map args = parse_cmd_line(argc, argv);
         string first = args["first"].as<string>();
         string second = args["second"].as<string>();
+        string jsonfp;
+        if (args.count("out")) {
+            jsonfp = args["out"].as<string>();
+        }
+        std::cerr << "out = \"" << jsonfp << "\"\n";
+        std::ostream * outptr = &(std::cout);
+        std::ofstream jsonoutstream;
+        if (jsonfp.size() > 0) {
+            jsonoutstream.open(jsonfp);
+            if (!jsonoutstream.good()) {
+                std::cerr << "Could not open \"" << jsonfp << "\"\n";
+                return 1;
+            }
+            outptr = &jsonoutstream;
+        }
         ParsingRules rules;
         // 1. Load and process summary tree.
         auto fir_trees = get_trees<Tree_t>(first, rules);
@@ -90,16 +384,29 @@ int main(int argc, char *argv[]) {
         std::cerr << fir_trees.size() << " trees in " << first << std::endl;
         std::cerr << sec_trees.size() << " trees in " << second << std::endl;
         if (fir_trees.size() != sec_trees.size()) {
-            std::cerr << "otc-quartet-distances: Error tree files must have the same number of trees" << std::endl;
+            std::cerr << "otc-explain-phylo-diffs: Error tree files must have the same number of trees" << std::endl;
             exit(1);
         }
+
         for (std::size_t ind = 0 ; ind < fir_trees.size(); ++ind) {
-            const Tree_t & fir_tree = *(fir_trees.at(ind));
-            const Tree_t & sec_tree = *(sec_trees.at(ind));
-            quartet_dist_analysis(fir_tree, sec_tree);
+            if (ind > 0 && jsonfp.size() > 0) {
+                string nfp = jsonfp;
+                nfp += "-";
+                nfp += std::to_string(ind);
+                jsonoutstream.close();
+                jsonoutstream.open(nfp);
+                if (!jsonoutstream.good()) {
+                    std::cerr << "Could not open \"" << nfp << "\"\n";
+                    return 1;
+                }
+                outptr = &jsonoutstream;
+            }
+            Tree_t & fir_tree = *(fir_trees.at(ind));
+            Tree_t & sec_tree = *(sec_trees.at(ind));
+            explain_phylo_diffs(*outptr, fir_tree, sec_tree);
         }
     } catch (std::exception& e) {
-        std::cerr << "otc-quartet-distances: Error! " << e.what() << std::endl;
+        std::cerr << "otc-explain-phylo-diffs: Error! " << e.what() << std::endl;
         exit(1);
     }
 }

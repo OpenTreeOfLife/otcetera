@@ -74,8 +74,7 @@ void quartet_dist_analysis(const Tree_t & inp_tre1,
     AllConflictQuartets t_2_q{tas_2};
     QuartDist qdist{t_1_q, t_2_q};
     const auto dc = qdist.get_diff_comp();
-    std::cout << dc.first << "\t" << dc.second << "\t" << frac_diff_from_pair(dc) << std::endl;
-    throw OTCError() << "Early exit.\n";    
+    std::cout << dc.first << "\t" << dc.second << "\t" << frac_diff_from_pair(dc) << std::endl; 
 }
 
 int main(int argc, char *argv[]) {
