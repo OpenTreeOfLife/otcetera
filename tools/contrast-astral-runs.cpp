@@ -71,15 +71,6 @@ variables_map parse_cmd_line(int argc,char* argv[])
     return vm;
 }
 
-namespace std {
-
-template<typename T, typename U>
-struct hash<pair<T,U>> {
-    std::size_t operator()(const std::pair<T,U>& p) const noexcept {return std::hash<T>()(p.first) * std::hash<U>()(p.second);}
-};
-
-} // namespace std
-
 using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
 
