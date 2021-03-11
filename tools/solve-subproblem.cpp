@@ -120,7 +120,6 @@ struct RSplitObj
 
     vector<int> in;
     vector<int> out;
-    vector<int> all;
     optional<std::size_t> id;
 
     RSplitObj()
@@ -132,9 +131,7 @@ struct RSplitObj
     {
         id = num++;
         in  = set_to_vector(i);
-        all = set_to_vector(a);
-        set_difference(begin(all), end(all), begin(in), end(in), std::inserter(out, out.end()));
-        assert(in.size() + out.size() == all.size());
+        set_difference(begin(a), end(a), begin(in), end(in), std::inserter(out, out.end()));
     }
 };
 
@@ -148,7 +145,6 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
     RSplit s(new RSplitObj);
     s->in = set_to_vector(i);
     s->out = set_to_vector(e);
-    set_union(begin(i),end(i),begin(e),end(e),std::inserter(s->all,s->all.end()));
     return s;
 }
 
