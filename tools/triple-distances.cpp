@@ -74,8 +74,25 @@ void triplet_dist_analysis(const Tree_t & inp_tre1,
     AllConflictTriplets t_1_rt{tas_1};
     AllConflictTriplets t_2_rt{tas_2};
     TripletDist rtdist{t_1_rt, t_2_rt};
-    const auto dc = rtdist.get_diff_comp();
-    std::cout << dc.first << "\t" << dc.second << "\t" << frac_diff_from_pair(dc) << std::endl; 
+    std::set<std::size_t> pruned;
+    std::size_t most_rec_pruned = 0;
+    std::ostream & out =std::cout;
+    out << "ndiff\tncomp\tfdiff\tpruned\tnpruned" << std::endl;
+    for (;;) {
+        const auto dc = rtdist.calc_diff_comp(pruned);
+        out << dc.first << '\t' << dc.second << '\t' << frac_diff_from_pair(dc) << '\t';
+        if (pruned.size() > 0) {
+            out << most_rec_pruned;
+        }
+        out << '\t' << pruned.size() << std::endl; 
+        if (dc.first < 1) {
+            break;
+        }
+        const auto hds = rtdist.get_highest_dist(pruned);
+        assert(!hds.empty());
+        most_rec_pruned = *(hds.begin());
+        pruned.insert(most_rec_pruned);
+    }
 }
 
 int main(int argc, char *argv[]) {
