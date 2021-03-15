@@ -12,6 +12,7 @@
 #include "otc/supertree_util.h"
 #include "otc/tree_operations.h"
 #include "otc/quartet_dist.h"
+#include "otc/triplet_analysis.h"
 
 
 using json = nlohmann::json;
@@ -94,7 +95,6 @@ using Tree_t = otc::RootedTree<ExplTreeDiffNode, otc::RTreeNoData>;
 using node_t = Tree_t::node_type;
 using str_set = std::set<std::string>;
 using TreeAsUIntSplits = GenTreeAsUIntSplits<Tree_t>;
-using AllConflictQuartets = AllQuartets<Tree_t>;
 template <typename T, typename U>
 using map = std::unordered_map<T,U>;
 
@@ -115,7 +115,7 @@ inline std::ostream & write_ini_phy_stat_pair(std::ostream & out, const ini_stat
 
 template<typename T>
 inline void add_node_data(const T *nd,
-                          TreeAsUIntSplits & tas,
+                          TreeAsUIntSplits & ,
                           json & node_data) {
     json cd = json::object();
     const auto & ndo = nd->get_data();
@@ -188,7 +188,7 @@ inline void write_ind_labelled_newick_subtree(std::ostream & out,
 }
 
 
-inline json get_tree_comp_slice(node_t * nd,
+inline json get_tree_for_slice(node_t * nd,
                          TreeAsUIntSplits & tas,
                          std::set<std::size_t> & leaf_inds, 
                          const std::set<std::size_t> boundaries) {
@@ -205,7 +205,7 @@ inline json get_tree_comp_slice(node_t * nd,
 inline json get_ident_tree_comp_slice(node_t * nd, TreeAsUIntSplits & tas) {
     std::set<std::size_t> boundaries;
     std::set<std::size_t> leaf_inds;
-    return get_tree_comp_slice(nd, tas, leaf_inds, boundaries);
+    return get_tree_for_slice(nd, tas, leaf_inds, boundaries);
 }
 
 
@@ -217,12 +217,40 @@ inline json get_comparison(const std::string & t1newick,
                            TreeAsUIntSplits & ,
                            const std::set<std::size_t> & ) {
     json iltree = json::object();
-    iltree["t1newick"] = t1newick;
-    iltree["t2newick"] = t2newick;
+    //iltree["t1newick"] = t1newick;
+    //iltree["t2newick"] = t2newick;
+
+    std::unique_ptr<ConflictTree> tree1 = tree_from_newick_string<ConflictTree>(t1newick);
+    std::unique_ptr<ConflictTree> tree2 = tree_from_newick_string<ConflictTree>(t2newick);
+
+    TripletDistAnalysis<ConflictTree> tda{*tree1, *tree2};
+    int int_num_prunings = 0;
+    json pruning_rounds = json::array();
+    const auto n_rounds = tda.get_num_rounds();
+    int_num_prunings = n_rounds - 1;
+    for (std::size_t round_i = 0; round_i < n_rounds; ++round_i) {
+        json curr = json::object();
+        const auto dc = tda.get_tot_diff_comp_for_round(round_i);
+        curr["num_triplets_diff"] = dc.first;
+        curr["num_triplets_comp"] = dc.second;
+        if (dc.second > 0) {
+            curr["prop_triplets_differing"] = frac_diff_from_pair(dc);
+        }
+        if (round_i > 0) {
+            const auto pn = tda.get_nodes_paired_after_round(round_i - 1);
+            const auto fnp = pn.first;
+            std::string nn = fnp->get_name();
+            curr["pruned"] = nn;
+        }
+        pruning_rounds.push_back(curr);
+    }
+    iltree["comp_pruning_rounds"] = pruning_rounds;
+    iltree["num_prunings"] = int_num_prunings;
     return iltree;
 }
 
-inline json get_tree_comp_slice(node_t * t1nd,
+using json_num_edits_pair = std::pair<json, std::size_t>;
+inline json_num_edits_pair get_tree_comp_slice(node_t * t1nd,
                                 TreeAsUIntSplits & tas_1,
                                 TreeAsUIntSplits & tas_2, 
                                 stack<node_t *> & to_do) {
@@ -235,7 +263,7 @@ inline json get_tree_comp_slice(node_t * t1nd,
     json outer = json::object();
     if (t1nd_data.ini_stat == IniNodePhyloStatus::IDENTICAL_SUBTREE) {
         outer["both_trees"] = get_ident_tree_comp_slice(t1nd, tas_1);
-        return outer;
+        return json_num_edits_pair{outer, 0};
     }
     stack<node_t *> curr_slice_to_do;
     for (auto c : iter_child(*t1nd)) {
@@ -261,15 +289,17 @@ inline json get_tree_comp_slice(node_t * t1nd,
         }
     }
     std::set<std::size_t> leaf1_inds, leaf2_inds;
-    outer["tree_1"] = get_tree_comp_slice(t1nd, tas_1, leaf1_inds, boundaries);
-    outer["tree_2"] = get_tree_comp_slice(t2nd, tas_2, leaf2_inds, boundaries);
+    outer["tree_1"] = get_tree_for_slice(t1nd, tas_1, leaf1_inds, boundaries);
+    outer["tree_2"] = get_tree_for_slice(t2nd, tas_2, leaf2_inds, boundaries);
     assert(leaf1_inds == leaf2_inds);
     assert(leaf1_inds == boundaries);
     const std::string & t1n = outer["tree_1"]["newick"].get<std::string>();
     const std::string & t2n = outer["tree_2"]["newick"].get<std::string>();
     outer["comparison"] = get_comparison(t1n, t1nd, tas_1, t2n, t2nd, tas_2, boundaries);
-    
-    return outer;
+    int npi = outer["comparison"]["num_prunings"].get<int>();
+    assert(npi > 0);
+    std::size_t npst = npi;
+    return json_num_edits_pair{outer, npst};
 }
 
 void explain_phylo_diffs(std::ostream & out,
@@ -364,13 +394,17 @@ void explain_phylo_diffs(std::ostream & out,
     json tree_slices = json::object();
     std::stack<node_t *> to_do;
     to_do.push(root1);
+    int tot_num_prunings = 0;
     while (!to_do.empty()) {
         auto next = to_do.top();
         to_do.pop();
         auto next_id_str = to_string(next->get_data().node_index);
-        tree_slices[next_id_str] = get_tree_comp_slice(next, tas_1, tas_2, to_do);
+        auto jnpp = get_tree_comp_slice(next, tas_1, tas_2, to_do);
+        tree_slices[next_id_str] = jnpp.first;
+        tot_num_prunings += jnpp.second;
     }
     document["tree_comp_slices_by_root"] = tree_slices;
+    document["tot_num_prunings_all_slices"] = tot_num_prunings;
     out << document.dump() << std::endl;
 }
 

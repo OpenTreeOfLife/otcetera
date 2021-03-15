@@ -64,7 +64,7 @@ void triplet_dist_analysis(const Tree_t & inp_tre1,
                            const Tree_t & inp_tre2) {
     TripletDistAnalysis<Tree_t> tda{inp_tre1, inp_tre2};
     std::ostream & out =std::cout;
-    out << "ndiff\tncomp\tfdiff\tpruned\tnpruned" << std::endl;
+    out << "num_diff\tnum_comp\tfrac_diff\tpruned\tnum_pruned" << std::endl;
     const auto n_rounds = tda.get_num_rounds();
     for (std::size_t round_i = 0; round_i < n_rounds; ++round_i) {
         const auto dc = tda.get_tot_diff_comp_for_round(round_i);

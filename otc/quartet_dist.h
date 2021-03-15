@@ -4,16 +4,12 @@
 #include <vector>
 #include "otc/otc_base_includes.h"
 #include "otc/all_quartets.h"
+#include "otc/phy_comp.h"
 
 namespace otc {
 
+using Q_COMP = PHY_COMP;
 
-enum Q_COMP {BOTH_UNRES = 0,
-             COMPAT = 1,
-             SAME_RES = 2,
-             CONFLICT_RES = 3,
-             NO_COMP = 4
-            };
 Q_COMP comp_qt(const QUARTET_TYPE & qt1, const QUARTET_TYPE & qt2);
 
 inline Q_COMP comp_qt(const QUARTET_TYPE & qt1, const QUARTET_TYPE & qt2) {

@@ -5,26 +5,22 @@
 #include "otc/otc_base_includes.h"
 #include "otc/all_triplets.h"
 #include "otc/util.h"
+#include "otc/phy_comp.h"
 
 namespace otc {
 
 
-enum RT_COMP {BOTH_UNRES = 0,
-              COMPAT = 1,
-              SAME_RES = 2,
-              CONFLICT_RES = 3,
-              NO_COMP = 4
-            };
+using RT_COMP = PHY_COMP;
 
 RT_COMP comp_tt(const TRIPLET_TYPE & qt1, const TRIPLET_TYPE & qt2);
 
 inline RT_COMP comp_tt(const TRIPLET_TYPE & qt1, const TRIPLET_TYPE & qt2) {
-    if (qt1 == TRIPLET_TYPE::UNKNOWN || qt2 == TRIPLET_TYPE::UNKNOWN
-        || qt1 == TRIPLET_TYPE::NOT_Q || qt2 == TRIPLET_TYPE::NOT_Q) {
+    if (qt1 == TRIPLET_TYPE::UNKNOWN_TT || qt2 == TRIPLET_TYPE::UNKNOWN_TT
+        || qt1 == TRIPLET_TYPE::NOT_TT || qt2 == TRIPLET_TYPE::NOT_TT) {
         return RT_COMP::NO_COMP;
     }
-    if (qt1 == TRIPLET_TYPE::POLYTOMY) {
-        if (qt2 == TRIPLET_TYPE::POLYTOMY) {
+    if (qt1 == TRIPLET_TYPE::POLYTOMY_TT) {
+        if (qt2 == TRIPLET_TYPE::POLYTOMY_TT) {
             return RT_COMP::BOTH_UNRES;
         }
         return RT_COMP::COMPAT;

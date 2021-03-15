@@ -77,8 +77,8 @@ class OTCLI {
 
 template<typename T>
 inline bool process_trees(const std::string& filename,
-                         const ParsingRules& parsingRules,
-                         std::function<bool (std::unique_ptr<T>)> treePtr) {
+                          const ParsingRules& parsingRules,
+                          std::function<bool (std::unique_ptr<T>)> treePtr) {
     std::ifstream inp;
     if (!open_utf8_file(filename, inp)) {
         throw OTCError("Could not open \"" + filename + "\"");

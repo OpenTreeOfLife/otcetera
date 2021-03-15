@@ -10,12 +10,12 @@
 namespace otc {
 
 template <typename T> class TripletDist;
-enum TRIPLET_TYPE {UNKNOWN = 0,
-                   POLYTOMY = 1,
-                   ONE_TWO = 2,
-                   ONE_THREE = 3,
-                   TWO_THREE = 4,
-                   NOT_Q = 5
+enum TRIPLET_TYPE {UNKNOWN_TT = 0,
+                   POLYTOMY_TT = 1,
+                   ONE_TWO_TT = 2,
+                   ONE_THREE_TT = 3,
+                   TWO_THREE_TT = 4,
+                   NOT_TT = 5
                    };
 
 void write_tt(std::ostream & out, const TRIPLET_TYPE & qt);
@@ -33,12 +33,12 @@ std::vector<std::vector<T> > gen_tm_by_sec(std::size_t num_tax,
 
 inline void write_tt(std::ostream & out, const TRIPLET_TYPE & qt) {
     switch(qt) {
-        case TRIPLET_TYPE::UNKNOWN : out << "?" ; break;
-        case TRIPLET_TYPE::POLYTOMY : out << "*" ; break;
-        case TRIPLET_TYPE::NOT_Q : out << "X" ; break;
-        case TRIPLET_TYPE::ONE_TWO : out << "12" ; break;
-        case TRIPLET_TYPE::ONE_THREE : out << "13" ; break;
-        case TRIPLET_TYPE::TWO_THREE : out << "23" ; break;
+        case TRIPLET_TYPE::UNKNOWN_TT : out << "?" ; break;
+        case TRIPLET_TYPE::POLYTOMY_TT : out << "*" ; break;
+        case TRIPLET_TYPE::NOT_TT : out << "X" ; break;
+        case TRIPLET_TYPE::ONE_TWO_TT : out << "12" ; break;
+        case TRIPLET_TYPE::ONE_THREE_TT : out << "13" ; break;
+        case TRIPLET_TYPE::TWO_THREE_TT : out << "23" ; break;
     }
 }
 
@@ -93,7 +93,7 @@ class AllTriplets {
         }
         std::size_t n_r = static_cast<std::size_t>(static_cast<int>(num_tips) - 2);
         by_lowest.reserve(n_r);
-        const TRIPLET_TYPE def = TRIPLET_TYPE::UNKNOWN;
+        const TRIPLET_TYPE def = TRIPLET_TYPE::UNKNOWN_TT;
         for (std::size_t row_n = 0; row_n < n_r; ++row_n) {
             by_lowest.push_back(gen_tm_by_sec<TRIPLET_TYPE>(num_tips, row_n, def));
         }
@@ -191,7 +191,7 @@ class AllTriplets {
                         fst_mid = fs_large;
                         fst_large = tci;
                     }
-                    this->register_sorted(TRIPLET_TYPE::POLYTOMY, fst_small, fst_mid, fst_large);
+                    this->register_sorted(TRIPLET_TYPE::POLYTOMY_TT, fst_small, fst_mid, fst_large);
                 }
             }
         }   
@@ -221,13 +221,13 @@ class AllTriplets {
         assert(in_small < in_large);
         if (in_small < out_small) {
             if (in_large < out_small) {
-                this->register_sorted(TRIPLET_TYPE::ONE_TWO, in_small, in_large, out_small);
+                this->register_sorted(TRIPLET_TYPE::ONE_TWO_TT, in_small, in_large, out_small);
             } else {
-                this->register_sorted(TRIPLET_TYPE::ONE_THREE, in_small, out_small, in_large);
+                this->register_sorted(TRIPLET_TYPE::ONE_THREE_TT, in_small, out_small, in_large);
             }
         } else {
             assert(out_small < in_small);
-            this->register_sorted(TRIPLET_TYPE::TWO_THREE, out_small, in_small, in_large);
+            this->register_sorted(TRIPLET_TYPE::TWO_THREE_TT, out_small, in_small, in_large);
         }
     }
 
