@@ -8,10 +8,10 @@
 #include "json.hpp"
 #include "otc/conflict.h"
 #include "otc/otcli.h"
+#include "otc/util.h"
 #include "otc/supertree_util.h"
 #include "otc/tree_operations.h"
-#include "otc/quartet_dist.h"
-#include "otc/util.h"
+#include "otc/triple_dist.h"
 
 
 using json=nlohmann::json;
@@ -51,8 +51,8 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     p.add("second", -1);
 
     variables_map vm = otc::parse_cmd_line_standard(argc, argv,
-                                                    "Usage: otc-quartet-distances <first> <second> [OPTIONS]\n"
-                                                    "Reports stats based on tree differences using quartet distances.",
+                                                    "Usage: otc-triple-distances <first> <second> [OPTIONS]\n"
+                                                    "Reports stats based on tree differences using rooted-triple distances.",
                                                     visible, invisible, p);
 
     return vm;
@@ -62,19 +62,19 @@ using Tree_t = ConflictTree;
 using node_t = Tree_t::node_type;
 using str_set = std::set<std::string>;
 using TreeAsUIntSplits = GenTreeAsUIntSplits<Tree_t>;
-using AllConflictQuartets = AllQuartets<Tree_t>;
+using AllConflictTriplets = AllTriplets<Tree_t>;
 
-void quartet_dist_analysis(const Tree_t & inp_tre1,
+void triplet_dist_analysis(const Tree_t & inp_tre1,
                            const Tree_t & inp_tre2) {
     TreeAsUIntSplits tas_1{inp_tre1};
     TreeAsUIntSplits tas_2{inp_tre2};
     if (tas_1.leaf_label_to_ind != tas_2.leaf_label_to_ind) {
         throw OTCError() << "trees must have the same leaf label set.\n";
     }
-    AllConflictQuartets t_1_q{tas_1};
-    AllConflictQuartets t_2_q{tas_2};
-    QuartDist qdist{t_1_q, t_2_q};
-    const auto dc = qdist.get_diff_comp();
+    AllConflictTriplets t_1_rt{tas_1};
+    AllConflictTriplets t_2_rt{tas_2};
+    TripletDist rtdist{t_1_rt, t_2_rt};
+    const auto dc = rtdist.get_diff_comp();
     std::cout << dc.first << "\t" << dc.second << "\t" << frac_diff_from_pair(dc) << std::endl; 
 }
 
@@ -90,16 +90,16 @@ int main(int argc, char *argv[]) {
         std::cerr << fir_trees.size() << " trees in " << first << std::endl;
         std::cerr << sec_trees.size() << " trees in " << second << std::endl;
         if (fir_trees.size() != sec_trees.size()) {
-            std::cerr << "otc-quartet-distances: Error tree files must have the same number of trees" << std::endl;
+            std::cerr << "otc-triplet-distances: Error tree files must have the same number of trees" << std::endl;
             exit(1);
         }
         for (std::size_t ind = 0 ; ind < fir_trees.size(); ++ind) {
             const Tree_t & fir_tree = *(fir_trees.at(ind));
             const Tree_t & sec_tree = *(sec_trees.at(ind));
-            quartet_dist_analysis(fir_tree, sec_tree);
+            triplet_dist_analysis(fir_tree, sec_tree);
         }
     } catch (std::exception& e) {
-        std::cerr << "otc-quartet-distances: Error! " << e.what() << std::endl;
+        std::cerr << "otc-triplet-distances: Error! " << e.what() << std::endl;
         exit(1);
     }
 }

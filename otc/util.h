@@ -572,5 +572,13 @@ inline bool lcase_match_prefix(const std::string_view& s, const std::string_view
     return lcase_string_equals(s.substr(0, prefix.size()), prefix);
 }
 
+double frac_diff_from_pair(const std::pair<std::size_t, std::size_t> & p);
+
+inline double frac_diff_from_pair(const std::pair<std::size_t, std::size_t> & p) {
+    const double n = static_cast<double>(p.first);
+    const double d = static_cast<double>(p.second);
+    return n/d;
+}
+
 } //namespace otc
 #endif

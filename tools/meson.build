@@ -52,6 +52,7 @@ programs = [
   ['taxonconflictreport', 'taxon-conflict-report'],
   ['taxonomy-parser', 'taxonomy-parser'],
   ['tree-tool', 'tree-tool'],
+  ['triple-distances', 'triple-distances'],
   ['uncontesteddecompose', 'uncontested-decompose'],
   ['unprune-solution', 'unprune-solution'],
   ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],

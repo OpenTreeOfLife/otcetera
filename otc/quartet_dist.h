@@ -15,7 +15,6 @@ enum Q_COMP {BOTH_UNRES = 0,
              NO_COMP = 4
             };
 Q_COMP comp_qt(const QUARTET_TYPE & qt1, const QUARTET_TYPE & qt2);
-double frac_diff_from_pair(const std::pair<std::size_t, std::size_t> & p);
 
 inline Q_COMP comp_qt(const QUARTET_TYPE & qt1, const QUARTET_TYPE & qt2) {
     if (qt1 == QUARTET_TYPE::UNKNOWN || qt2 == QUARTET_TYPE::UNKNOWN
@@ -34,12 +33,6 @@ inline Q_COMP comp_qt(const QUARTET_TYPE & qt1, const QUARTET_TYPE & qt2) {
     return Q_COMP::CONFLICT_RES;
 }
 
-
-inline double frac_diff_from_pair(const std::pair<std::size_t, std::size_t> & p) {
-    const double n = static_cast<double>(p.first);
-    const double d = static_cast<double>(p.second);
-    return n/d;
-}
 
 template <typename T>
 class QuartDist {
