@@ -297,7 +297,12 @@ inline json_num_edits_pair get_tree_comp_slice(node_t * t1nd,
     const std::string & t2n = outer["tree_2"]["newick"].get<std::string>();
     outer["comparison"] = get_comparison(t1n, t1nd, tas_1, t2n, t2nd, tas_2, boundaries);
     int npi = outer["comparison"]["num_prunings"].get<int>();
-    assert(npi > 0);
+    assert(npi > -1);
+    if (npi == 0) {
+        json rewrite = json::object();
+        rewrite["both_trees"] = outer["tree_1"];
+        return json_num_edits_pair{rewrite, 0};
+    }
     std::size_t npst = npi;
     return json_num_edits_pair{outer, npst};
 }
