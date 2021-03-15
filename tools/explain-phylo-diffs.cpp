@@ -209,11 +209,23 @@ inline json get_ident_tree_comp_slice(node_t * nd, TreeAsUIntSplits & tas) {
 }
 
 
+inline json get_comparison(const std::string & t1newick,
+                           node_t * ,
+                           TreeAsUIntSplits & ,
+                           const std::string & t2newick,
+                           node_t * ,
+                           TreeAsUIntSplits & ,
+                           const std::set<std::size_t> & ) {
+    json iltree = json::object();
+    iltree["t1newick"] = t1newick;
+    iltree["t2newick"] = t2newick;
+    return iltree;
+}
 
 inline json get_tree_comp_slice(node_t * t1nd,
-                         TreeAsUIntSplits & tas_1,
-                         TreeAsUIntSplits & tas_2, 
-                         stack<node_t *> & to_do) {
+                                TreeAsUIntSplits & tas_1,
+                                TreeAsUIntSplits & tas_2, 
+                                stack<node_t *> & to_do) {
     assert(t1nd);
     const auto & t1nd_data = t1nd->get_data();
     node_t * t2nd = t1nd_data.partner;
@@ -252,7 +264,11 @@ inline json get_tree_comp_slice(node_t * t1nd,
     outer["tree_1"] = get_tree_comp_slice(t1nd, tas_1, leaf1_inds, boundaries);
     outer["tree_2"] = get_tree_comp_slice(t2nd, tas_2, leaf2_inds, boundaries);
     assert(leaf1_inds == leaf2_inds);
-
+    assert(leaf1_inds == boundaries);
+    const std::string & t1n = outer["tree_1"]["newick"].get<std::string>();
+    const std::string & t2n = outer["tree_2"]["newick"].get<std::string>();
+    outer["comparison"] = get_comparison(t1n, t1nd, tas_1, t2n, t2nd, tas_2, boundaries);
+    
     return outer;
 }
 
@@ -345,16 +361,17 @@ void explain_phylo_diffs(std::ostream & out,
     node_t * root1 = const_cast<node_t *>(tas_1.root);
     json document;
     document["root_id"] = to_string(root1->get_data().node_index);
-    json tree_slices = json::array();
+    json tree_slices = json::object();
     std::stack<node_t *> to_do;
     to_do.push(root1);
     while (!to_do.empty()) {
         auto next = to_do.top();
         to_do.pop();
-        tree_slices.push_back(get_tree_comp_slice(next, tas_1, tas_2, to_do));
+        auto next_id_str = to_string(next->get_data().node_index);
+        tree_slices[next_id_str] = get_tree_comp_slice(next, tas_1, tas_2, to_do);
     }
-    document["tree_comp_slices"] = tree_slices;
-    out << document.dump(1) << std::endl;
+    document["tree_comp_slices_by_root"] = tree_slices;
+    out << document.dump() << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -366,7 +383,6 @@ int main(int argc, char *argv[]) {
         if (args.count("out")) {
             jsonfp = args["out"].as<string>();
         }
-        std::cerr << "out = \"" << jsonfp << "\"\n";
         std::ostream * outptr = &(std::cout);
         std::ofstream jsonoutstream;
         if (jsonfp.size() > 0) {
