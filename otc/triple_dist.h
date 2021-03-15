@@ -72,6 +72,11 @@ class TripletDist {
         return {num_diffs, num_comp};
     }
 
+    pair_indices get_diff_comp_for_index(std::size_t ind) const {
+        return {diff_by_taxon.at(ind), comp_by_taxon.at(ind)};
+    }
+
+
     std::set<std::size_t> get_highest_dist(std::set<std::size_t> & taboo) const {
         std::set<std::size_t> biggest_dist_inds;
         double frac_diff = -1;

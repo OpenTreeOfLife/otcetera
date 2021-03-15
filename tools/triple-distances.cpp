@@ -11,7 +11,7 @@
 #include "otc/util.h"
 #include "otc/supertree_util.h"
 #include "otc/tree_operations.h"
-#include "otc/triple_dist.h"
+#include "otc/triplet_analysis.h"
 
 
 using json=nlohmann::json;
@@ -59,39 +59,22 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 }
 
 using Tree_t = ConflictTree;
-using node_t = Tree_t::node_type;
-using str_set = std::set<std::string>;
-using TreeAsUIntSplits = GenTreeAsUIntSplits<Tree_t>;
-using AllConflictTriplets = AllTriplets<Tree_t>;
 
 void triplet_dist_analysis(const Tree_t & inp_tre1,
                            const Tree_t & inp_tre2) {
-    TreeAsUIntSplits tas_1{inp_tre1};
-    TreeAsUIntSplits tas_2{inp_tre2};
-    if (tas_1.leaf_label_to_ind != tas_2.leaf_label_to_ind) {
-        throw OTCError() << "trees must have the same leaf label set.\n";
-    }
-    AllConflictTriplets t_1_rt{tas_1};
-    AllConflictTriplets t_2_rt{tas_2};
-    TripletDist rtdist{t_1_rt, t_2_rt};
-    std::set<std::size_t> pruned;
-    std::size_t most_rec_pruned = 0;
+    TripletDistAnalysis<Tree_t> tda{inp_tre1, inp_tre2};
     std::ostream & out =std::cout;
     out << "ndiff\tncomp\tfdiff\tpruned\tnpruned" << std::endl;
-    for (;;) {
-        const auto dc = rtdist.calc_diff_comp(pruned);
+    const auto n_rounds = tda.get_num_rounds();
+    for (std::size_t round_i = 0; round_i < n_rounds; ++round_i) {
+        const auto dc = tda.get_tot_diff_comp_for_round(round_i);
         out << dc.first << '\t' << dc.second << '\t' << frac_diff_from_pair(dc) << '\t';
-        if (pruned.size() > 0) {
-            out << most_rec_pruned;
+        if (round_i > 0) {
+            const auto pn = tda.get_nodes_paired_after_round(round_i - 1);
+            const auto fnp = pn.first;
+            out << fnp->get_name();
         }
-        out << '\t' << pruned.size() << std::endl; 
-        if (dc.first < 1) {
-            break;
-        }
-        const auto hds = rtdist.get_highest_dist(pruned);
-        assert(!hds.empty());
-        most_rec_pruned = *(hds.begin());
-        pruned.insert(most_rec_pruned);
+        out << '\t' << round_i << std::endl; 
     }
 }
 
