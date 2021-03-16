@@ -157,9 +157,6 @@ inline void write_ind_labelled_closing_newick(std::ostream & out,
     out << ',';
 }
 
-
-
-
 template<typename T>
 inline void write_ind_labelled_newick_subtree(std::ostream & out,
                                                 const T *nd,
@@ -187,7 +184,6 @@ inline void write_ind_labelled_newick_subtree(std::ostream & out,
     add_node_data(nd, tas, node_data);
 }
 
-
 inline json get_tree_for_slice(node_t * nd,
                          TreeAsUIntSplits & tas,
                          std::set<std::size_t> & leaf_inds, 
@@ -198,7 +194,9 @@ inline json get_tree_for_slice(node_t * nd,
     s << ';';
     json iltree = json::object();
     iltree["newick"] = s.str();
-    iltree["node_data"] = node_data;
+    if (!node_data.empty()) {
+        iltree["node_data"] = node_data;
+    }
     return iltree;   
 }
 
