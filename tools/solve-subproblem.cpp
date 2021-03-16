@@ -1151,6 +1151,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
     vector<ConstRSplit> consistent;
+    vector<RSplit> consistent_extended;
+
 
     shared_ptr<Solution> solution;
 
@@ -1188,6 +1190,13 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                     for(int i=0;i<n;i++)
                         consistent.pop_back();
                 }
+            }
+
+            if (result)
+            {
+                for(int i=0;i<n;i++)
+                    consistent_extended.push_back(splits[start+i].second);
+                z_close(consistent_extended);
             }
 
             total_build_calls ++;
