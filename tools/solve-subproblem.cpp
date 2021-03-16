@@ -960,6 +960,169 @@ void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int 
         remove_conflicting_splits_from_tree(trees[i],trees[k]);
 }
 
+bool is_sorted(const vector<int>& v)
+{
+    for(int i=0;i+1<v.size();i++)
+        if (v[i] > v[i+1]) return false;
+    return true;
+}
+
+bool empty_intersection(const vector<int>& v1, const vector<int>& v2)
+{
+    assert(is_sorted(v1));
+    assert(is_sorted(v2));
+
+    int i=0;
+    int j=0;
+    while(i < v1.size() and j < v2.size())
+    {
+        if (v1[i] < v2[j])
+            i++;
+        else if (v1[i] > v2[j])
+            j++;
+        else
+            return false;
+    }
+    return true;
+}
+
+bool merge(vector<int>& v1, const vector<int>& v2)
+{
+    assert(is_sorted(v1));
+    assert(is_sorted(v2));
+
+    vector<int> v3;
+    v3.reserve(v1.size() + v2.size());
+
+    bool changed = false;
+    int i=0;
+    int j=0;
+    while(i < v1.size() and j < v2.size())
+    {
+        if (v1[i] < v2[j])
+        {
+            v3.push_back(v1[i]);
+            i++;
+        }
+        else if (v1[i] > v2[j])
+        {
+            changed = true;
+            v3.push_back(v2[j]);
+            j++;
+        }
+        else
+        {
+            v3.push_back(v1[i]);
+            i++;
+            j++;
+        }
+    }
+    std::swap(v1, v3);
+    return changed;
+}
+
+bool are_consistent(RSplit A, RSplit B)
+{
+    int A1_B1 = not empty_intersection(A->in, B->in);
+    int A1_B2 = not empty_intersection(A->in, B->out);
+    int A2_B1 = not empty_intersection(A->out, B->in);
+
+    return (A1_B1 + A1_B2 + A2_B1 < 3);
+}
+
+bool z_rule(RSplit A, RSplit B)
+{
+    int A1_B1 = not empty_intersection(A->in, B->in);
+    int A1_B2 = not empty_intersection(A->in, B->out);
+    int A2_B1 = not empty_intersection(A->out, B->in);
+
+    assert(A1_B1 + A1_B2 + A2_B1 < 3);
+
+    if (A1_B1 + A1_B2 + A2_B1 != 2)
+        return false;
+
+    bool changed = false;
+    if (not A1_B1) // A1_B2 + A2_B1 + A2_B2
+    {
+        // A < B^t
+        // A1 A2
+        //   B2 B1
+        // The left  branch = A' = A1 |* A2 + B1
+        // The right branch = B' = B2 + A1 *| B1
+
+        // A2 += B1
+        if (merge(A->out, B->in))
+            changed = true;
+
+        // B2 += A1
+        if (merge(B->out, A->in))
+            changed = true;
+    }
+    else if (not A1_B2)
+    {
+        // A < B
+        // A1 A2
+        //   B1 B2
+        // The left  branch = A' = A1 |* A2 + B2
+        // The right branch = B' = B1 + A1 |* B2
+
+        // A2 += B2
+        if (merge(A->out, B->out))
+            changed = true;
+
+        // B1 += A1
+        if (merge(B->in, A->in))
+            changed = true;
+    }
+    else if (not A2_B1)
+    {
+        // B < A
+        //   A1 A2
+        // B1 B2
+        // The left  branch = B' = B1 |* A2 + B2
+        // The right branch = A' = A1 + B1 |* A2
+
+        // B2 += A2
+        if (merge(B->out, A->out))
+            changed = true;
+
+        // A1 += B1
+        if (merge(A->in, B->in))
+            changed = true;
+    }
+
+    return changed;
+}
+
+bool z_close(vector<RSplit>& splits)
+{
+    int iterations=0;
+    bool changed = true;
+    while (changed)
+    {
+        iterations++;
+        changed = false;
+        for(int i=0;i<splits.size();i++)
+            for(int j=0;j<i;j++)
+            {
+                assert(0 <= i and i < splits.size());
+                assert(0 <= j and j < splits.size());
+                assert(splits[i]);
+                assert(splits[j]);
+                if (z_rule(splits[i], splits[j]))
+                    changed = true;
+            }
+    }
+    return (iterations > 1);
+}
+
+void add_split_and_z_close(vector<RSplit>& splits, ConstRSplit S_)
+{
+    auto S = new RSplitObj(*S_);
+    splits.push_back(S);
+    z_close(splits);
+}
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, variables_map& args)
 {
