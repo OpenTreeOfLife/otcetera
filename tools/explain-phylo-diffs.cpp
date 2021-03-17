@@ -364,12 +364,30 @@ void compose_json_explanation(std::ostream & out,
     document["tree_comp_slices_by_root"] = tree_slices;
     document["tot_num_prunings_all_slices"] = tot_num_prunings;
     json lis_arr = json::array();
-    for (std::size_t i = 0 ; i < tas_1.leaf_label_to_ind.size(); ++i) {
-        json tax_obj = json::object();
-        tax_obj["index"] = i;
-        tax_obj["label"] = tas_1.ind_to_nd.at(i)->get_name();
-        tax_obj["fraction_pruning_incompat_score"] = leaf_incompat_scores.at(i);
-        lis_arr.push_back(tax_obj);
+    if (tas_1.leaf_label_to_ind.size() > 0) {
+        double min_lis = leaf_incompat_scores.at(0);
+        double max_lis = leaf_incompat_scores.at(0);
+        for (std::size_t i = 1 ; i < tas_1.leaf_label_to_ind.size(); ++i) {
+            const double lis = leaf_incompat_scores.at(i);
+            if (lis < min_lis) {
+                min_lis = lis;
+            }
+            if (lis > max_lis) {
+                max_lis = lis;
+            }
+        }
+        const double norm_denom = max_lis - min_lis;
+        //std::cerr << "min_lis = " << min_lis << "  max_lis = " << max_lis << " norm_denom = " << norm_denom << '\n';
+        for (std::size_t i = 0 ; i < tas_1.leaf_label_to_ind.size(); ++i) {
+            json tax_obj = json::object();
+            tax_obj["index"] = i;
+            tax_obj["label"] = tas_1.ind_to_nd.at(i)->get_name();
+            tax_obj["fraction_pruning_incompat_score"] = leaf_incompat_scores.at(i);
+            double norm_num = leaf_incompat_scores.at(i) - min_lis ;
+            const double norm_lis = norm_num/norm_denom;
+            tax_obj["norm_pruning_incompat_score"] = norm_lis;
+            lis_arr.push_back(tax_obj);
+        }
     }
     document["incompat_scores_by_leaf"] = lis_arr;
     out << document.dump() << std::endl;
@@ -398,7 +416,7 @@ void explain_phylo_diffs(std::ostream & out,
         const auto & t1_ind_set = tas_1.nd_to_taxset[nd1]; 
         if (nd1->is_tip()) {
             data1.node_index = *t1_ind_set.begin();
-            std::cerr << data1.node_index << " " << nd1->get_name() << '\n';
+            // std::cerr << data1.node_index << " " << nd1->get_name() << '\n';
             data1.partner = const_cast<node_t *>(tas_2.ind_to_nd[data1.node_index]);
         } else {
             if (nd1 == tas_1.root) {
