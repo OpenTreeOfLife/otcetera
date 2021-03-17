@@ -10,6 +10,7 @@
 #include <list>
 #include <unordered_map>
 #include <string_view>
+#include <sstream>
 #include "otc/otc_base_includes.h"
 #include "otc/error.h"
 
@@ -579,6 +580,10 @@ inline double frac_diff_from_pair(const std::pair<std::size_t, std::size_t> & p)
     const double d = static_cast<double>(p.second);
     return n/d;
 }
+
+
+std::size_t str_to_size_t(const std::string & srep);
+
 
 } //namespace otc
 #endif

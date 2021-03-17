@@ -226,5 +226,15 @@ std::string filepath_to_filename(const std::string &filepath) {
     return filepath.substr(1 + p);
 }
 
+std::size_t str_to_size_t(const std::string & srep) {
+    std::stringstream stream{srep};
+    std::size_t x;
+    stream >> x;
+    std::string rrep = std::to_string(x);
+    if (rrep != srep) {
+        throw OTCError() << "string \"" << srep << "\" could not be read as a positive integer";
+    }
+    return x;
+}
 
 }//namespace otc

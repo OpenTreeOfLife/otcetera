@@ -115,7 +115,7 @@ inline std::ostream & write_ini_phy_stat_pair(std::ostream & out, const ini_stat
 
 template<typename T>
 inline void add_node_data(const T *nd,
-                          TreeAsUIntSplits & ,
+                          const TreeAsUIntSplits & ,
                           json & node_data) {
     json cd = json::object();
     const auto & ndo = nd->get_data();
@@ -135,7 +135,7 @@ template<typename T>
 inline void write_ind_labelled_closing_newick(std::ostream & out,
                                               const T *nd,
                                               const T * r,
-                                              TreeAsUIntSplits & tas,
+                                              const TreeAsUIntSplits & tas,
                                               json & node_data) {
     out << ')';
     auto n = nd->get_parent();
@@ -159,11 +159,11 @@ inline void write_ind_labelled_closing_newick(std::ostream & out,
 
 template<typename T>
 inline void write_ind_labelled_newick_subtree(std::ostream & out,
-                                                const T *nd,
-                                                TreeAsUIntSplits & tas,
-                                                std::set<std::size_t> & leaf_inds,
-                                                const std::set<std::size_t> & boundaries,
-                                                json & node_data) {
+                                              const T *nd,
+                                              const TreeAsUIntSplits & tas,
+                                              std::set<std::size_t> & leaf_inds,
+                                              const std::set<std::size_t> & boundaries,
+                                              json & node_data) {
     assert(nd != nullptr);
     auto & ndata = nd->get_data();
     auto nind = ndata.node_index;
@@ -185,9 +185,9 @@ inline void write_ind_labelled_newick_subtree(std::ostream & out,
 }
 
 inline json get_tree_for_slice(node_t * nd,
-                         TreeAsUIntSplits & tas,
-                         std::set<std::size_t> & leaf_inds, 
-                         const std::set<std::size_t> boundaries) {
+                               const TreeAsUIntSplits & tas,
+                               std::set<std::size_t> & leaf_inds, 
+                               const std::set<std::size_t> boundaries) {
     std::ostringstream s;
     json node_data = json::object();
     write_ind_labelled_newick_subtree(s, nd, tas, leaf_inds, boundaries, node_data);
@@ -200,20 +200,47 @@ inline json get_tree_for_slice(node_t * nd,
     return iltree;   
 }
 
-inline json get_ident_tree_comp_slice(node_t * nd, TreeAsUIntSplits & tas) {
+inline json get_ident_tree_comp_slice(node_t * nd,
+                                      const TreeAsUIntSplits & tas) {
     std::set<std::size_t> boundaries;
     std::set<std::size_t> leaf_inds;
     return get_tree_for_slice(nd, tas, leaf_inds, boundaries);
 }
 
+using leaf_incompat_scores_t = std::vector<double>;
+
+inline void add_pruning_effect(const node_t * pruned_node,
+                               const TreeAsUIntSplits & tas_1,
+                               leaf_incompat_scores_t & leaf_incompat_scores) {
+    using uint_set = std::set<std::size_t>;
+    assert(tas_1.root != pruned_node);
+    const uint_set & full_leaf_ind_set = tas_1.nd_to_taxset.at(tas_1.root);
+    const uint_set & ingroup_leaf_ind_set = tas_1.nd_to_taxset.at(pruned_node);
+    const auto num_leaves = full_leaf_ind_set.size();
+    const auto num_include = ingroup_leaf_ind_set.size();
+    assert(num_include < num_leaves);
+    assert(num_include > 0);
+    const auto num_exclude = num_leaves - num_include;
+    assert(num_exclude > 0);
+    const double to_add_for_inc = 1.0/(static_cast<double>(num_include));
+    const double to_add_for_exc = 1.0/(static_cast<double>(num_exclude));
+    const uint_set exc_i_s = set_difference_as_set(full_leaf_ind_set, ingroup_leaf_ind_set);
+    for (auto out_ind : exc_i_s) {
+        leaf_incompat_scores.at(out_ind) += to_add_for_exc;
+    }
+    for (auto out_ind : ingroup_leaf_ind_set) {
+        leaf_incompat_scores.at(out_ind) += to_add_for_inc;
+    }
+}
 
 inline json get_comparison(const std::string & t1newick,
                            node_t * ,
-                           TreeAsUIntSplits & ,
+                           const TreeAsUIntSplits & tas_1,
                            const std::string & t2newick,
                            node_t * ,
-                           TreeAsUIntSplits & ,
-                           const std::set<std::size_t> & ) {
+                           const TreeAsUIntSplits & ,
+                           const std::set<std::size_t> & ,
+                           leaf_incompat_scores_t & leaf_incompat_scores) {
     json iltree = json::object();
     //iltree["t1newick"] = t1newick;
     //iltree["t2newick"] = t2newick;
@@ -239,6 +266,9 @@ inline json get_comparison(const std::string & t1newick,
             const auto fnp = pn.first;
             std::string nn = fnp->get_name();
             curr["pruned"] = nn;
+            std::size_t index_from_name = str_to_size_t(nn);
+            auto orig_tree_nd = tas_1.ind_to_nd.at(index_from_name);
+            add_pruning_effect(orig_tree_nd, tas_1, leaf_incompat_scores);
         }
         pruning_rounds.push_back(curr);
     }
@@ -249,9 +279,10 @@ inline json get_comparison(const std::string & t1newick,
 
 using json_num_edits_pair = std::pair<json, std::size_t>;
 inline json_num_edits_pair get_tree_comp_slice(node_t * t1nd,
-                                TreeAsUIntSplits & tas_1,
-                                TreeAsUIntSplits & tas_2, 
-                                stack<node_t *> & to_do) {
+                                               const TreeAsUIntSplits & tas_1,
+                                               const TreeAsUIntSplits & tas_2, 
+                                               stack<node_t *> & to_do,
+                                               leaf_incompat_scores_t & leaf_incompat_scores) {
     assert(t1nd);
     const auto & t1nd_data = t1nd->get_data();
     node_t * t2nd = t1nd_data.partner;
@@ -293,7 +324,10 @@ inline json_num_edits_pair get_tree_comp_slice(node_t * t1nd,
     assert(leaf1_inds == boundaries);
     const std::string & t1n = outer["tree_1"]["newick"].get<std::string>();
     const std::string & t2n = outer["tree_2"]["newick"].get<std::string>();
-    outer["comparison"] = get_comparison(t1n, t1nd, tas_1, t2n, t2nd, tas_2, boundaries);
+    outer["comparison"] = get_comparison(t1n, t1nd, tas_1,
+                                         t2n, t2nd, tas_2,
+                                         boundaries,
+                                         leaf_incompat_scores);
     int npi = outer["comparison"]["num_prunings"].get<int>();
     assert(npi > -1);
     if (npi == 0) {
@@ -304,6 +338,43 @@ inline json_num_edits_pair get_tree_comp_slice(node_t * t1nd,
     std::size_t npst = npi;
     return json_num_edits_pair{outer, npst};
 }
+
+
+void compose_json_explanation(std::ostream & out,
+                              const TreeAsUIntSplits & tas_1,
+                              const TreeAsUIntSplits & tas_2) {
+    const auto & rd = tas_1.root->get_data();
+    node_t * root1 = const_cast<node_t *>(tas_1.root);
+    json document;
+    document["root_id"] = to_string(root1->get_data().node_index);
+    json tree_slices = json::object();
+    std::stack<node_t *> to_do;
+    leaf_incompat_scores_t leaf_incompat_scores;
+    leaf_incompat_scores.assign(tas_1.leaf_label_to_ind.size(), 0.0);
+    to_do.push(root1);
+    int tot_num_prunings = 0;
+    while (!to_do.empty()) {
+        auto next = to_do.top();
+        to_do.pop();
+        auto next_id_str = to_string(next->get_data().node_index);
+        auto jnpp = get_tree_comp_slice(next, tas_1, tas_2, to_do, leaf_incompat_scores);
+        tree_slices[next_id_str] = jnpp.first;
+        tot_num_prunings += jnpp.second;
+    }
+    document["tree_comp_slices_by_root"] = tree_slices;
+    document["tot_num_prunings_all_slices"] = tot_num_prunings;
+    json lis_arr = json::array();
+    for (std::size_t i = 0 ; i < tas_1.leaf_label_to_ind.size(); ++i) {
+        json tax_obj = json::object();
+        tax_obj["index"] = i;
+        tax_obj["label"] = tas_1.ind_to_nd.at(i)->get_name();
+        tax_obj["fraction_pruning_incompat_score"] = leaf_incompat_scores.at(i);
+        lis_arr.push_back(tax_obj);
+    }
+    document["incompat_scores_by_leaf"] = lis_arr;
+    out << document.dump() << std::endl;
+}
+
 
 void explain_phylo_diffs(std::ostream & out,
                          Tree_t & inp_tre1,
@@ -389,27 +460,9 @@ void explain_phylo_diffs(std::ostream & out,
             tas_2.ind_to_nd.push_back(nd2);
         }
     }
-    const auto & rd = tas_1.root->get_data();
-
-    node_t * root1 = const_cast<node_t *>(tas_1.root);
-    json document;
-    document["root_id"] = to_string(root1->get_data().node_index);
-    json tree_slices = json::object();
-    std::stack<node_t *> to_do;
-    to_do.push(root1);
-    int tot_num_prunings = 0;
-    while (!to_do.empty()) {
-        auto next = to_do.top();
-        to_do.pop();
-        auto next_id_str = to_string(next->get_data().node_index);
-        auto jnpp = get_tree_comp_slice(next, tas_1, tas_2, to_do);
-        tree_slices[next_id_str] = jnpp.first;
-        tot_num_prunings += jnpp.second;
-    }
-    document["tree_comp_slices_by_root"] = tree_slices;
-    document["tot_num_prunings_all_slices"] = tot_num_prunings;
-    out << document.dump() << std::endl;
+    compose_json_explanation(out, tas_1, tas_2);
 }
+
 
 int main(int argc, char *argv[]) {
     try {

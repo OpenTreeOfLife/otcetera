@@ -35,7 +35,7 @@ class GenTreeAsSplits {
                     auto cts = nd_to_taxset[c];
                     ts.insert(cts.begin(), cts.end());
                 }
-                if (nd->get_parent() != nullptr) {
+                if (true || nd->get_parent() != nullptr) {
                     inf_taxset_to_nd[ts] = nd;
                 }
             }
