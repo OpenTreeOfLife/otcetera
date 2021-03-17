@@ -1021,7 +1021,7 @@ bool merge(vector<int>& v1, const vector<int>& v2)
     return changed;
 }
 
-bool are_consistent(RSplit A, RSplit B)
+bool are_consistent(ConstRSplit A, ConstRSplit B)
 {
     int A1_B1 = not empty_intersection(A->in, B->in);
     int A1_B2 = not empty_intersection(A->in, B->out);
@@ -1029,6 +1029,28 @@ bool are_consistent(RSplit A, RSplit B)
 
     return (A1_B1 + A1_B2 + A2_B1 < 3);
 }
+
+bool conflicts(ConstRSplit A, ConstRSplit B)
+{
+    return not are_consistent(A,B);
+}
+
+bool conflicts(const vector<RSplit>& splits, ConstRSplit A)
+{
+    for(auto& split: splits)
+        if (conflicts(splits,A))
+            return true;
+    return false;
+}
+
+bool conflicts(const vector<ConstRSplit>& splits, ConstRSplit A)
+{
+    for(auto& split: splits)
+        if (conflicts(splits,A))
+            return true;
+    return false;
+}
+
 
 bool z_rule(RSplit A, RSplit B)
 {
