@@ -1096,6 +1096,8 @@ bool z_rule(RSplit A, RSplit B)
 
 bool z_close(vector<RSplit>& splits)
 {
+    // FIXME -- This is simple, but not efficient.
+    // When we iterate, we should only z-extend pairs of splits where at least one has changed.
     int iterations=0;
     bool changed = true;
     while (changed)
@@ -1105,10 +1107,6 @@ bool z_close(vector<RSplit>& splits)
         for(int i=0;i<splits.size();i++)
             for(int j=0;j<i;j++)
             {
-                assert(0 <= i and i < splits.size());
-                assert(0 <= j and j < splits.size());
-                assert(splits[i]);
-                assert(splits[j]);
                 if (z_rule(splits[i], splits[j]))
                     changed = true;
             }
@@ -1120,6 +1118,7 @@ void add_split_and_z_close(vector<RSplit>& splits, ConstRSplit S_)
 {
     auto S = new RSplitObj(*S_);
     splits.push_back(S);
+    // FIXME -- This is simple, but not efficient.
     z_close(splits);
 }
 
