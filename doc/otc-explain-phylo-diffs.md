@@ -105,6 +105,9 @@ will be in `tag.json-1`, the JSON for the third pair will be in
 The schema of the JSON object comparing trees is an object holding
 slices of the tree:
 
+  * `"incompat_scores_by_leaf"` holds an array of objects (one per leaf) summarizing
+  the index for the leaf in the tree slices, the label, and the taxon-specific
+  incompatibility scores mentioned above.
   * `"root_id"` -> a string key in tree_comp_slices_by_root valid label is a SimpleNewick tree.
   * `"tot_num_prunings_all_slices"` -> an integer. The number of node prunings to needed to make each retained backbone in a slice identical.
   * `"tree_comp_slices_by_root"` -> an object with keys that are valid label for a SimpleNewick tree. The label indicated by root_id must be present as  a key. The values are objects. Each object is one of 2 types: "same tree" or "differing trees" types.
