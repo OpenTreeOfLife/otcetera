@@ -5,11 +5,22 @@ filepath name for the JSON
 representation of the differences between the phylogenetic trees.
 
 The motivating use case is that each treefile has a collection of
-trees inferred using different methods. 
+trees inferred using different methods.
+The tool conducts a quick (greedy) analysis of the branches that
+can be cut convert the two rooted trees to forests of rooted trees
+that are isomorphic to each other.
 
-## handling of multiple trees for each file.
+## Algorithm
+### Division of the trees into slices.
+To improve the performance of the tree comparisons, the trees are 
+divided into slices by identifying nodes that are parents to the
+same sets of leaves.
+
+## Handling of multiple trees for each file.
 The tool compares the trees on line #1 of each file, then if there
 are more lines to each file, compares the trees from line #2, etc.
+
+Each pair of trees must have the same leaf label set.
 
 Each tree comparison produces a object describing the differences
 represented as JSON.
