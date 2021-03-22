@@ -16,6 +16,13 @@ To improve the performance of the tree comparisons, the trees are
 divided into slices by identifying nodes that are parents to the
 same sets of leaves.
 
+If the children of a node `X` in tree 1 have the same descendant sets
+as the children of a node `Y` in tree 2, then the the children 
+of node `X` will be merged into the same slice as node `X`.
+Similarly node `Y` will be merged into a slice with its children.
+In this way contiguous sections of the tree that are isomorphic
+with each other will be placed in a single slice.
+
 ## Handling of multiple trees for each file.
 The tool compares the trees on line #1 of each file, then if there
 are more lines to each file, compares the trees from line #2, etc.
