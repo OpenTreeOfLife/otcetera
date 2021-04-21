@@ -960,6 +960,71 @@ void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int 
         remove_conflicting_splits_from_tree(trees[i],trees[k]);
 }
 
+bool conflicting(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits)
+{
+    auto solution = std::make_shared<Solution>();
+    auto result = BUILD(*solution, all_leaves_indices, splits);
+    return not result;
+}
+
+bool conflicts_with(const vector<int>& all_leaves_indices, vector<ConstRSplit> splits1, const vector<ConstRSplit>& splits2)
+{
+    auto solution = std::make_shared<Solution>();
+    splits1.insert(splits1.end(), splits2.begin(), splits2.end());
+    return conflicting(all_leaves_indices, splits1);
+}
+
+// Trying to find a conflicting set of splits where if you remove one split, then there is no longer a conflict.
+// The first set of splits that conflicts?  Thinned from the back end to remove things that do not contribute to the conflict?
+// Alternatively:
+// Alternatively: the smallest set of splits that conflicts?
+
+template<typename T>
+std::vector<T> concat(const std::vector<T>& v1, const std::vector<T>& v2)
+{
+    auto v3 = v1;
+    v3.insert(v3.end(), v2.begin(), v2.end());
+    return v3;
+}
+
+
+std::vector<ConstRSplit> find_minimal_conflict_set(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits1, const vector<ConstRSplit>& splits2)
+{
+    assert(not conflicting(all_leaves_indices, splits1));
+    assert(not conflicting(all_leaves_indices, splits2));
+    assert(conflicts_with(all_leaves_indices, splits1, splits2));
+
+    if (splits1.size() == 1)
+    {
+        return {splits1[0]};
+    }
+    int n_half = splits1.size()/2;
+
+    // 1. If the first half conflicts, we can drop the last half.
+    vector<ConstRSplit> splits1a;
+    for(int i=0;i<n_half;i++)
+        splits1a.push_back(splits1[i]);
+
+    if (conflicts_with(all_leaves_indices, splits1a, splits2))
+        return find_minimal_conflict_set(all_leaves_indices, splits1a, splits2);
+
+    // 2. If the second half conflicts, we can drop the first half
+    vector<ConstRSplit> splits1b;
+    for(int i=n_half;i<splits1.size();i++)
+        splits1b.push_back(splits1[i]);
+
+    if (conflicts_with(all_leaves_indices, splits1b, splits2))
+        return find_minimal_conflict_set(all_leaves_indices, splits1b, splits2);
+
+    // 3. Find a minimal subset of splits1b to conflict with splits1a + splits2
+    auto splits1b_conflicting = find_minimal_conflict_set(all_leaves_indices, splits1b, concat(splits1a, splits2));
+
+    // 4. Find a minimal subset of splits1a to conflict with splits1b_conflicting + splits2;
+    auto splits1a_conflicting = find_minimal_conflict_set(all_leaves_indices, splits1a, concat(splits1b_conflicting, splits2));
+
+    return concat(splits1a_conflicting, splits1b_conflicting);
+}
+
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
 unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, variables_map& args)
 {
