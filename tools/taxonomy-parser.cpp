@@ -52,6 +52,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("clean",value<string>(),"Comma-separated string of flags to filter")
         ("root,r", value<OttId>(), "OTT id of root node of subtree to keep")
         ("xroot,x", value<OttId>(), "OTT id of root node of subtree to keep and detach from parent by writing empty parent id (this is only relevant when the --write-taxonomy option in effect)")
+        ("edits", value<string>(), "filepath of JSON file with terse taxonomy edits (this is only relevant when the --write-taxonomy option in effect)")
         ;
 
     options_description selection("Selection options");
@@ -179,6 +180,10 @@ bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags) {
     return true;
 }
 
+void edit_taxonomy(Taxonomy & taxonomy, const std::string & edits_json_fp) {
+    std::cerr << "edit_taxonomy\n";
+}
+
 void flag_extinct_clade_as_incertae_sedis(Taxonomy & taxonomy) {
     auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};
     auto tree = taxonomy.get_tree<RichTaxTree>(nodeNamer);
@@ -296,6 +301,11 @@ int main(int argc, char* argv[]) {
         const bool detach_root = bool(args.count("xroot"));
         if (detach_root) {
             taxonomy[0].parent_id = 0;
+        }
+        const bool do_json_edits = bool(args.count("edits"));
+        if (do_json_edits) {
+            string edit_fp = args["edits"].as<string>();
+            edit_taxonomy(taxonomy, edit_fp);
         }
         if (args.count("extinct-to-incert")) {
             flag_extinct_clade_as_incertae_sedis(taxonomy);
