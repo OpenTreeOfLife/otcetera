@@ -99,11 +99,14 @@ inline const std::string & rank_to_string(const TaxonomicRank &r) {
 }
 
 
-inline TaxonomicRank string_to_rank(const std::string_view& s)
+inline TaxonomicRank string_to_rank(const std::string_view& s, bool must_match_if_nonempty = false)
 {
     // FIXME! 
     auto rank = rank_name_to_enum.find(s);
     if (rank == rank_name_to_enum.end()) {
+        if (must_match_if_nonempty and !s.empty()) {
+            throw OTCError() << "rank \"" << s << "\" not recognized.";
+        }
         LOG(WARNING)<<"unknown rank '"<<s<<"'";
         return RANK_NO_RANK;
     }
