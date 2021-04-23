@@ -120,7 +120,6 @@ struct RSplitObj
 
     vector<int> in;
     vector<int> out;
-    vector<int> all;
     optional<std::size_t> id;
 
     RSplitObj()
@@ -132,9 +131,7 @@ struct RSplitObj
     {
         id = num++;
         in  = set_to_vector(i);
-        all = set_to_vector(a);
-        set_difference(begin(all), end(all), begin(in), end(in), std::inserter(out, out.end()));
-        assert(in.size() + out.size() == all.size());
+        set_difference(begin(a), end(a), begin(in), end(in), std::inserter(out, out.end()));
     }
 };
 
@@ -148,7 +145,6 @@ RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
     RSplit s(new RSplitObj);
     s->in = set_to_vector(i);
     s->out = set_to_vector(e);
-    set_union(begin(i),end(i),begin(e),end(e),std::inserter(s->all,s->all.end()));
     return s;
 }
 
@@ -227,6 +223,7 @@ struct component_t
 {
     list<int> elements;
 
+    bool implied_splits_have_been_checked = false;
     vector<ConstRSplit> old_implied_splits;      // alpha
     vector<ConstRSplit> old_non_implied_splits;  // beta
 
@@ -237,11 +234,10 @@ struct component_t
 
     vector<shared_ptr<Solution>> solutions;
 
+    // Do these make sense if there is more than 1 solution?
+    // If not, should these be added to the single solution instead?
     vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
-
-    vector<int> all_taxa;
-    vector<ConstRSplit> all_splits;
 };
 
 typedef component_t* component_ref;
@@ -253,6 +249,8 @@ void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vect
     c1->elements.push_back(index2);
 
     c1->new_taxa.push_back(taxon2);
+
+    c1->implied_splits_have_been_checked = false;
 }
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
@@ -269,14 +267,9 @@ bool exclude_group_intersects_component(const ConstRSplit& split, const componen
 }
 
 template <typename T>
-vector<T> concatenate(vector<T>&& splits1, vector<T>&& splits2)
+void append(vector<T>& v1, const vector<T>& v2)
 {
-    if (splits1.size() < splits2.size())
-        std::swap(splits1,splits2);
-
-    vector<T> splits12 = std::move(splits1);
-    splits12.insert(splits12.end(), splits2.begin(), splits2.end());
-    return splits12;
+    v1.insert(v1.end(), v2.begin(), v2.end());
 }
 
 /// Merge components c1 and c2 and return the component name that survived
@@ -290,18 +283,18 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     c1->elements.splice(c1->elements.end(), c2->elements);
 
-    c1->old_non_implied_splits = concatenate(std::move(c1->old_non_implied_splits), std::move(c2->old_non_implied_splits));
-    c1->old_implied_splits     = concatenate(std::move(c1->old_implied_splits),     std::move(c2->old_implied_splits));
-
-    c2->old_non_implied_splits.clear();
-    c2->old_implied_splits.clear();
+    append(c1->old_non_implied_splits, c2->old_non_implied_splits);
+    append(c1->old_implied_splits, c2->old_implied_splits);
 
     // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
-    c1->new_taxa = concatenate(std::move(c1->new_taxa), std::move(c2->new_taxa));
+    // Does this mean anything if both components are non-trivial?
+    append(c1->new_taxa, c2->new_taxa);
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
-    c1->solutions = concatenate(std::move(c1->solutions), std::move(c2->solutions));
+    append(c1->solutions, c2->solutions);
     
+    c1->implied_splits_have_been_checked = false;
+
     return c1;
 }
 
@@ -383,6 +376,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
+    // This copying seems wasteful.
     auto& taxa = solution.taxa;
     int orig_n_taxa = taxa.size();
     for(auto taxon: new_taxa)
@@ -397,14 +391,15 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     auto& components = solution.components;
     component_for_index.resize(taxa.size());
 
+    // component->new_splits and component->new_taxa seem only to make sense if
+    // the component has exactly 1 solution.  Should these fields be part of the
+    // (single) solution then?
+
     // 0. Clear any staged work for each component.
     for(auto& component: components)
     {
         component->new_taxa.clear();
         component->new_splits.clear();
-
-        component->all_taxa.clear();
-        component->all_splits.clear();
     }
 
     // 1. If there are no splits, then we are consistent.
@@ -458,22 +453,18 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 6a. Create the vector of taxa in each connected component
-    for(int index=0;index < taxa.size();index++)
-    {
-        if (auto component = component_for_index[index])
-        {
-            auto taxon = taxa[index];
-            component->all_taxa.push_back(taxon);
-        }
-    }
-
-    // 7a. Check implied splits to see if they are STILL implied.
+    // 6. Check implied splits to see if they are STILL implied.
     for(auto& component: components)
     {
+        // We don't need to re-check implied_splits if the taxon set hasn't changed.
+        if (component->implied_splits_have_been_checked) continue;
+
         auto& implied_splits = component->old_implied_splits;
         auto& non_implied_splits = component->old_non_implied_splits;
         auto& new_splits = component->new_splits;
+
+        // It is cheaper to do this check once after adding taxa, instead of multiple times if we add multiple taxa.
+        // That is because we have to scan the entire exclude set, even if we only add 1 taxon to the components :-(.
         for(int i=0;i<implied_splits.size();)
         {
             auto& split = implied_splits[i];
@@ -493,9 +484,14 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             else
                 i++;
         }
+
+        component->implied_splits_have_been_checked = true;
     }
 
-    // 7b. Determine the splits that are not satisfied yet and go into each component
+    // NOTE: If all new splits are implied and no OLD splits are implied, then perhaps
+    //       all the old components will be sub-problems of the merged component?
+
+    // 7. Determine the splits that are not satisfied yet and go into each component
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
@@ -524,7 +520,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         if (has_old_solution)
         {
-            assert(component->all_taxa.size() == component->solution()->taxa.size() + component->new_taxa.size());
+            assert(component->elements.size() == component->solution()->taxa.size() + component->new_taxa.size());
 
             // If no new taxa and no new splits, just continue.
             if (component->new_splits.empty() and component->new_taxa.empty())
@@ -542,8 +538,13 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         if (not has_old_solution)
         {
+            vector<int> all_taxa;
+            all_taxa.reserve(component->elements.size());
+            for (auto& index: component->elements)
+                all_taxa.push_back(taxa[index]);
+
             auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, component->all_taxa, component->old_non_implied_splits))
+            if (not BUILD(*subsolution, all_taxa, component->old_non_implied_splits))
                 return false;
             component->solutions = { subsolution };
         }
@@ -959,6 +960,71 @@ void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int 
 {
     for(int i=0;i<k;i++)
         remove_conflicting_splits_from_tree(trees[i],trees[k]);
+}
+
+bool conflicting(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits)
+{
+    auto solution = std::make_shared<Solution>();
+    auto result = BUILD(*solution, all_leaves_indices, splits);
+    return not result;
+}
+
+bool conflicts_with(const vector<int>& all_leaves_indices, vector<ConstRSplit> splits1, const vector<ConstRSplit>& splits2)
+{
+    auto solution = std::make_shared<Solution>();
+    splits1.insert(splits1.end(), splits2.begin(), splits2.end());
+    return conflicting(all_leaves_indices, splits1);
+}
+
+// Trying to find a conflicting set of splits where if you remove one split, then there is no longer a conflict.
+// The first set of splits that conflicts?  Thinned from the back end to remove things that do not contribute to the conflict?
+// Alternatively:
+// Alternatively: the smallest set of splits that conflicts?
+
+template<typename T>
+std::vector<T> concat(const std::vector<T>& v1, const std::vector<T>& v2)
+{
+    auto v3 = v1;
+    v3.insert(v3.end(), v2.begin(), v2.end());
+    return v3;
+}
+
+
+std::vector<ConstRSplit> find_minimal_conflict_set(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits1, const vector<ConstRSplit>& splits2)
+{
+    assert(not conflicting(all_leaves_indices, splits1));
+    assert(not conflicting(all_leaves_indices, splits2));
+    assert(conflicts_with(all_leaves_indices, splits1, splits2));
+
+    if (splits1.size() == 1)
+    {
+        return {splits1[0]};
+    }
+    int n_half = splits1.size()/2;
+
+    // 1. If the first half conflicts, we can drop the last half.
+    vector<ConstRSplit> splits1a;
+    for(int i=0;i<n_half;i++)
+        splits1a.push_back(splits1[i]);
+
+    if (conflicts_with(all_leaves_indices, splits1a, splits2))
+        return find_minimal_conflict_set(all_leaves_indices, splits1a, splits2);
+
+    // 2. If the second half conflicts, we can drop the first half
+    vector<ConstRSplit> splits1b;
+    for(int i=n_half;i<splits1.size();i++)
+        splits1b.push_back(splits1[i]);
+
+    if (conflicts_with(all_leaves_indices, splits1b, splits2))
+        return find_minimal_conflict_set(all_leaves_indices, splits1b, splits2);
+
+    // 3. Find a minimal subset of splits1b to conflict with splits1a + splits2
+    auto splits1b_conflicting = find_minimal_conflict_set(all_leaves_indices, splits1b, concat(splits1a, splits2));
+
+    // 4. Find a minimal subset of splits1a to conflict with splits1b_conflicting + splits2;
+    auto splits1a_conflicting = find_minimal_conflict_set(all_leaves_indices, splits1a, concat(splits1b_conflicting, splits2));
+
+    return concat(splits1a_conflicting, splits1b_conflicting);
 }
 
 /// Get the list of splits, and add them one at a time if they are consistent with previous splits
