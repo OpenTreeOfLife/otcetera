@@ -170,7 +170,7 @@ std::pair<bool, unsigned> get_unsigned_property(const json & j,
 
 class TaxonAmendment {
     public:
-        virtual bool patch(Taxonomy &) = 0;
+        virtual std::pair<bool, std::string> patch(Taxonomy &) = 0;
         virtual ~TaxonAmendment(){
         }
 };
@@ -191,11 +191,12 @@ class TaxonAdditionAmendment: public TaxonAmendment {
             this->rank = string_to_rank(ri.second, true);
         }
     }
+    
     virtual ~TaxonAdditionAmendment(){
     }
-    virtual bool patch(Taxonomy &) {
-        return false;
-    }
+
+    virtual std::pair<bool, std::string> patch(Taxonomy &);
+    
     private:
         OttId taxon_id;
         OttId parent_id;
@@ -203,6 +204,14 @@ class TaxonAdditionAmendment: public TaxonAmendment {
         TaxonomicRank rank;
         std::string name;
 };
+
+
+inline std::pair<bool, std::string> TaxonAdditionAmendment::patch(Taxonomy &t) {
+    std::string empty;
+    auto rank_str = rank_enum_to_name.at(rank);
+    return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
+}
+
 
 typedef std::shared_ptr<TaxonAmendment> TaxonAmendmentPtr;
 
@@ -328,8 +337,19 @@ bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags) {
 }
 
 void edit_taxonomy(Taxonomy & taxonomy,
-                   const std::list<TaxonAmendmentPtr> & edits_json_fp) {
-    std::cerr << "edit_taxonomy\n";
+                   const std::list<TaxonAmendmentPtr> & edit_list) {
+    std::size_t num_attempts = 0;
+    std::size_t num_applied = 0;
+    for (auto tap : edit_list) {
+        ++num_attempts;
+        auto x = tap->patch(taxonomy);
+        if (x.first) {
+            ++num_applied;
+        } else {
+            std::cerr << "amendement #" << num_attempts << " not applied: " << x.second << std::endl;
+        }
+    }
+    std::cerr << num_applied << "/" << num_attempts << " amendments applied." << std::endl;
 }
 
 void flag_extinct_clade_as_incertae_sedis(Taxonomy & taxonomy) {

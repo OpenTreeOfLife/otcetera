@@ -295,6 +295,23 @@ void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines
                tf << flags_to_string(rec.flags) << sep;
                tf << '\n';
            }
+           for (auto& rec: added_records) {
+               tf << rec.id << sep;
+               if (rec.parent_id > 0) {
+                   tf << rec.parent_id;
+               }
+               tf << sep;
+               tf << rec.name << sep;
+               tf << rec.rank << sep;
+               tf << rec.sourceinfo << sep;
+               if (rec.uniqname != rec.name) {
+                   tf << rec.uniqname;
+               }
+               tf << sep;
+               tf << flags_to_string(rec.flags) << sep;
+               tf << '\n';
+           }
+           
         }
         tf.close();
     }
@@ -488,6 +505,33 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
 }
 
+std::pair<bool, std::string> Taxonomy::add_new_taxon(OttId oid,
+                                                         OttId parent_id,
+                                                         const std::string & name,
+                                                         const std::string & rank,
+                                                         const std::string & sourceinfo,
+                                                         const std::string & uniqname,
+                                                         const std::string & flags) {
+    vector<string> elements;
+    elements.reserve(8);
+    elements.push_back(std::to_string(oid));
+    elements.push_back(std::to_string(parent_id));
+    elements.push_back(name);
+    elements.push_back(rank);
+    elements.push_back(sourceinfo);
+    elements.push_back(uniqname);
+    elements.push_back(flags);
+    elements.push_back(string());
+    string fake_line = boost::algorithm::join(elements, "\t|\t");
+    return add_taxon_record(fake_line);
+}
+
+std::pair<bool, std::string> Taxonomy::add_taxon_record_for_stored_recort(
+    const std::string &line) {
+    added_records.push_back(TaxonomyRecord(line));
+    return std::pair<bool, std::string>(true, "");
+}
+    
 
 void Taxonomy::read_forwards_file(string filepath)
 {
