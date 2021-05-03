@@ -239,33 +239,8 @@ public:
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), OttId keep_root=-1);
 
-    std::pair<bool, std::string> add_new_taxon(OttId oid,
-                  OttId parent_id,
-                  const std::string & name,
-                  const std::string & rank,
-                  const std::string & sourceinfo,
-                  const std::string & uniqname,
-                  const std::string & flags) ;
     private:
-    std::pair<bool, std::string> add_taxon_record_for_stored_recort(const std::string &line);
-    
-    std::pair<bool, std::string> add_taxon_record(std::string line) {
-        added_record_lines.push_back(line);
-        try {
-            auto y = add_taxon_record_for_stored_recort(*added_record_lines.rend());
-            if (y.first) {
-                return y;
-            }
-            added_record_lines.pop_back();
-            return y;
-        } catch(const std::exception & x) {
-            return std::pair<bool, std::string>(false, x.what());
-        }
-    }
-    
 
-    std::list<std::string> added_record_lines;
-    std::list<TaxonomyRecord> added_records;
     friend class RichTaxonomy;
 };
 
@@ -411,6 +386,15 @@ class RichTaxonomy: public BaseTaxonomy {
         fuzzy_match_db = match_db;
     }
     
+    void write(const std::string& dirname);
+    std::pair<bool, std::string> add_new_taxon(OttId oid,
+                  OttId parent_id,
+                  const std::string & name,
+                  const std::string & rank,
+                  const std::string & sourceinfo,
+                  const std::string & uniqname,
+                  const std::string & flags) ;
+
     private:
     std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;

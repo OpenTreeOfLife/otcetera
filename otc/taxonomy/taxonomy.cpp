@@ -238,6 +238,11 @@ OttId Taxonomy::map(OttId old_id) const {
     return -1;
 }
 
+
+void RichTaxonomy::write(const std::string& newdirname) {
+
+}
+
 void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines_raw) {
     fs::path old_dir = path;
     fs::path new_dir = newdirname;
@@ -247,10 +252,10 @@ void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines
     
     // Copy the other files.
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
-                "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
-    {
-        if (fs::exists(old_dir/name))
+                "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"}) {
+        if (fs::exists(old_dir/name)) {
             fs::copy_file(old_dir/name,new_dir/name);
+        }
     }
     // Write the new version file.
     {
@@ -295,22 +300,7 @@ void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines
                tf << flags_to_string(rec.flags) << sep;
                tf << '\n';
            }
-           for (auto& rec: added_records) {
-               tf << rec.id << sep;
-               if (rec.parent_id > 0) {
-                   tf << rec.parent_id;
-               }
-               tf << sep;
-               tf << rec.name << sep;
-               tf << rec.rank << sep;
-               tf << rec.sourceinfo << sep;
-               if (rec.uniqname != rec.name) {
-                   tf << rec.uniqname;
-               }
-               tf << sep;
-               tf << flags_to_string(rec.flags) << sep;
-               tf << '\n';
-           }
+
            
         }
         tf.close();
@@ -505,7 +495,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
 }
 
-std::pair<bool, std::string> Taxonomy::add_new_taxon(OttId oid,
+std::pair<bool, std::string> RichTaxonomy::add_new_taxon(OttId oid,
                                                          OttId parent_id,
                                                          const std::string & name,
                                                          const std::string & rank,
@@ -523,16 +513,10 @@ std::pair<bool, std::string> Taxonomy::add_new_taxon(OttId oid,
     elements.push_back(flags);
     elements.push_back(string());
     string fake_line = boost::algorithm::join(elements, "\t|\t");
-    return add_taxon_record(fake_line);
+    return std::pair<bool, std::string>{false, "not implemented"}; //add_taxon_record(fake_line);
 }
 
-std::pair<bool, std::string> Taxonomy::add_taxon_record_for_stored_recort(
-    const std::string &line) {
-    added_records.push_back(TaxonomyRecord(line));
-    return std::pair<bool, std::string>(true, "");
-}
     
-
 void Taxonomy::read_forwards_file(string filepath)
 {
     // 1. Read forwards file and create id -> forwarded_id map
