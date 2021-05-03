@@ -338,7 +338,9 @@ class RichTaxonomy: public BaseTaxonomy {
         return *tree;
     }
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-    RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), OttId kr = -1);
+    RichTaxonomy(const std::string& dir,
+                 std::bitset<32> cf = std::bitset<32>(),
+                 OttId kr = -1);
     RichTaxonomy(RichTaxonomy &&) = default;
 
     std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;
@@ -356,16 +358,18 @@ class RichTaxonomy: public BaseTaxonomy {
         }
         return i2n_it->second;
     }
+
     void add_taxonomic_addition_string(const std::string &s);
+    
     const OttIdSet & get_ids_to_suppress_from_tnrs() const {
         return ids_to_suppress_from_tnrs;
     }
+    
     void set_ids_suppressed_from_summary_tree_alias(const OttIdSet * ott_id_set_ptr) {
         is_suppressed_from_synth = ott_id_set_ptr;
     }
 
-    bool node_is_suppressed_from_tnrs(const RTRichTaxNode* nd) const
-    {
+    bool node_is_suppressed_from_tnrs(const RTRichTaxNode* nd) const {
         auto& tree_data = tree->get_data();
         const auto& tax_record_flags = nd->get_data().get_flags();
         return (tree_data.suppress_flags & tax_record_flags).any();
@@ -374,6 +378,7 @@ class RichTaxonomy: public BaseTaxonomy {
     const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {
         return is_suppressed_from_synth;
     }
+
     const std::list<TaxonomicJuniorSynonym> & get_synonyms_list() const {
         return synonyms;
     }
@@ -387,6 +392,7 @@ class RichTaxonomy: public BaseTaxonomy {
     }
     
     void write(const std::string& dirname);
+    
     std::pair<bool, std::string> add_new_taxon(OttId oid,
                   OttId parent_id,
                   const std::string & name,
@@ -412,7 +418,15 @@ class RichTaxonomy: public BaseTaxonomy {
     RichTaxonomy(const RichTaxonomy &) = delete;
 };
 
+class PatchableTaxonomy: public RichTaxonomy {
+    public:
+    /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
+    PatchableTaxonomy(const std::string& dir,
+                      std::bitset<32> cf = std::bitset<32>(),
+                      OttId kr = -1);
+    PatchableTaxonomy(PatchableTaxonomy &&) = default;
 
+};
 
 //class RTTaxNodeData {
 //    public:
@@ -596,6 +610,7 @@ OttId root_ott_id_from_file(const std::string& filename);
 std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
 Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
 RichTaxonomy load_rich_taxonomy(const boost::program_options::variables_map& args);
+PatchableTaxonomy load_patchable_taxonomy(const boost::program_options::variables_map& args);
 
 
 const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes);

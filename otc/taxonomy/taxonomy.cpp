@@ -451,6 +451,7 @@ std::variant<OttId,reason_missing> RichTaxonomy::get_unforwarded_id_or_reason(Ot
     return reason_missing::unknown;
 }
 
+
 RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     :BaseTaxonomy(dir, cf, kr) {
     { //braced to reduce scope of light_taxonomy to reduced memory
@@ -649,6 +650,13 @@ RichTaxonomy load_rich_taxonomy(const variables_map& args) {
     if (args.count("clean")) {
         cleaning_flags = flags_from_string(args["clean"].as<string>());
     }
+    return {taxonomy_dir, cleaning_flags, keep_root};
+}
+
+PatchableTaxonomy load_patchable_taxonomy(const boost::program_options::variables_map& args) {
+    string taxonomy_dir = get_taxonomy_dir(args);
+    OttId keep_root = -1;
+    bitset<32> cleaning_flags = 0;
     return {taxonomy_dir, cleaning_flags, keep_root};
 }
 
@@ -974,6 +982,14 @@ vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
 #endif
 
     return hits;
+}
+
+
+
+PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
+                                     std::bitset<32> cf,
+                                     OttId kr)
+    :RichTaxonomy(dir, cf, kr) {
 }
 
 

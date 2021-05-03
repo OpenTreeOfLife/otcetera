@@ -141,7 +141,7 @@ std::pair<bool, unsigned> get_unsigned_property(const json & j,
 
 class TaxonAmendment {
     public:
-        virtual std::pair<bool, std::string> patch(RichTaxonomy &) = 0;
+        virtual std::pair<bool, std::string> patch(PatchableTaxonomy &) = 0;
         virtual ~TaxonAmendment(){
         }
 };
@@ -166,7 +166,7 @@ class TaxonAdditionAmendment: public TaxonAmendment {
     virtual ~TaxonAdditionAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(RichTaxonomy &);
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &);
     
     private:
         OttId taxon_id;
@@ -177,7 +177,7 @@ class TaxonAdditionAmendment: public TaxonAmendment {
 };
 
 
-inline std::pair<bool, std::string> TaxonAdditionAmendment::patch(RichTaxonomy &t) {
+inline std::pair<bool, std::string> TaxonAdditionAmendment::patch(PatchableTaxonomy &t) {
     std::string empty;
     auto rank_str = rank_enum_to_name.at(rank);
     return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
@@ -230,7 +230,7 @@ std::list<TaxonAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) {
 
 
 
-void edit_taxonomy(RichTaxonomy & taxonomy,
+void edit_taxonomy(PatchableTaxonomy & taxonomy,
                    const std::list<TaxonAmendmentPtr> & edit_list) {
     std::size_t num_attempts = 0;
     std::size_t num_applied = 0;
@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
                 throw;
             }
         }
-        auto taxonomy = load_rich_taxonomy(args);
+        auto taxonomy = load_patchable_taxonomy(args);
         if (do_json_edits) {
             string edit_fp = args["edits"].as<string>();
             edit_taxonomy(taxonomy, edits);
