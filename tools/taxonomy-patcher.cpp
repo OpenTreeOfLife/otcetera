@@ -12,8 +12,7 @@
 #include "otc/tree.h"
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
-#include "otc/taxonomy/taxonomy.h"
-#include "otc/taxonomy/flags.h"
+#include "otc/taxonomy/patching.h"
 #include "otc/config_file.h"
 
 INITIALIZE_EASYLOGGINGPP

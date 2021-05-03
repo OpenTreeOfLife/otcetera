@@ -421,15 +421,6 @@ class RichTaxonomy: public BaseTaxonomy {
     RichTaxonomy(const RichTaxonomy &) = delete;
 };
 
-class PatchableTaxonomy: public RichTaxonomy {
-    public:
-    /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-    PatchableTaxonomy(const std::string& dir,
-                      std::bitset<32> cf = std::bitset<32>(),
-                      OttId kr = -1);
-    PatchableTaxonomy(PatchableTaxonomy &&) = default;
-
-};
 
 //class RTTaxNodeData {
 //    public:
@@ -613,7 +604,6 @@ OttId root_ott_id_from_file(const std::string& filename);
 std::string get_taxonomy_dir(const boost::program_options::variables_map& args);
 Taxonomy load_taxonomy(const boost::program_options::variables_map& args);
 RichTaxonomy load_rich_taxonomy(const boost::program_options::variables_map& args);
-PatchableTaxonomy load_patchable_taxonomy(const boost::program_options::variables_map& args);
 
 
 const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& nodes);
