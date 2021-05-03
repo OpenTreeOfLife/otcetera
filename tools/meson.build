@@ -46,6 +46,7 @@ programs = [
   ['annotate-synth',  'annotate-synth'],
   ['conflict-stats',  'conflict-stats'],
   ['taxonomy-parser',  'taxonomy-parser'],
+  ['taxonomy-patcher',  'taxonomy-patcher'],
   ['regrafttaxonomygenerator',  'regraft-taxonomy-generator'],
   ['relabel-tree',  'relabel-tree'],
   ['tree-tool',  'tree-tool'],

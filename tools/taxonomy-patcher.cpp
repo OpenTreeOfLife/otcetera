@@ -28,6 +28,7 @@ using std::endl;
 using std::bitset;
 using std::unique_ptr;
 using std::set;
+using json = nlohmann::json;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
@@ -52,6 +53,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("clean",value<string>(),"Comma-separated string of flags to filter")
         ("root,r", value<OttId>(), "OTT id of root node of subtree to keep")
         ("xroot,x", value<OttId>(), "OTT id of root node of subtree to keep and detach from parent by writing empty parent id (this is only relevant when the --write-taxonomy option in effect)")
+        ("edits", value<string>(), "filepath of JSON file with terse taxonomy edits (this is only relevant when the --write-taxonomy option in effect)")
         ;
 
     options_description selection("Selection options");
@@ -98,6 +100,161 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     return vm;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// possible content for a JSON parsing helpers
+////////////////////////////////////////////////////////////////////////////////
+
+const json * find_object_ptr(const json & j,
+                             const std::string & prop_name,
+                             bool required) {
+    auto aIt = j.find(prop_name);
+    if (aIt == j.end()) {
+        if (required) {
+            throw OTCError() << "Expecting a \"" << prop_name << "\" property in JSON object";
+        }
+        return nullptr;
+    }
+    return &(*aIt);
+}
+
+std::pair<bool, std::string> get_string_property(const json & j,
+                                                 const std::string & prop_name,
+                                                 bool required=false) {
+    auto jp = find_object_ptr(j, prop_name, required);
+    if (jp != nullptr) {
+        try {
+            std::string str_form = jp->get<std::string>();
+            return std::pair<bool, std::string>(true, str_form);
+        } catch (...) {
+            throw OTCError() << "Expecting \"" << prop_name << "\" property to be a string";
+        }
+    }
+    return std::pair<bool, std::string>(false, "");
+}
+
+
+std::pair<bool, const json *> get_object_property(const json & j,
+                                                  const std::string & prop_name,
+                                                  bool required) {
+    auto jp = find_object_ptr(j, prop_name, required);
+    if (jp != nullptr) {
+        if (!jp->is_object()) {
+            throw OTCError() << "Expecting \"" << prop_name << "\" property to be an object";
+        }
+        return std::pair<bool, const json *>(false, jp);
+    }
+    return std::pair<bool, const json *>(false, nullptr);
+}
+
+std::pair<bool, unsigned> get_unsigned_property(const json & j,
+                                                const std::string & prop_name,
+                                                bool required) {
+    auto jp = find_object_ptr(j, prop_name, required);
+    if (jp != nullptr) {
+        if (!jp->is_number_unsigned()) {
+            throw OTCError() << "Expecting \"" << prop_name << "\" property to be a non negative integer";
+        }
+        unsigned uint_form = jp->get<unsigned>();
+        return std::pair<bool, unsigned>(false, uint_form);
+    }
+    return std::pair<bool, unsigned>(false, UINT_MAX);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// end possible content for a JSON parsing helpers
+////////////////////////////////////////////////////////////////////////////////
+// possible content for an amendments header file
+////////////////////////////////////////////////////////////////////////////////
+
+class TaxonAmendment {
+    public:
+        virtual std::pair<bool, std::string> patch(Taxonomy &) = 0;
+        virtual ~TaxonAmendment(){
+        }
+};
+
+class TaxonAdditionAmendment: public TaxonAmendment {
+    public:
+    TaxonAdditionAmendment(const json & taxon_obj)
+        :rank(TaxonomicRank::RANK_NO_RANK) {
+        this->taxon_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
+        this->parent_id = get_unsigned_property(taxon_obj, "parent", true).second;
+        this->name = get_string_property(taxon_obj, "name", true).second;
+        auto si = get_string_property(taxon_obj, "sourceinfo", false);
+        if (si.first) {
+            this->source_info = si.second;
+        }
+        auto ri = get_string_property(taxon_obj, "rank", false);
+        if (ri.first) {
+            this->rank = string_to_rank(ri.second, true);
+        }
+    }
+    
+    virtual ~TaxonAdditionAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(Taxonomy &);
+    
+    private:
+        OttId taxon_id;
+        OttId parent_id;
+        std::string source_info;
+        TaxonomicRank rank;
+        std::string name;
+};
+
+
+inline std::pair<bool, std::string> TaxonAdditionAmendment::patch(Taxonomy &t) {
+    std::string empty;
+    auto rank_str = rank_enum_to_name.at(rank);
+    return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
+}
+
+
+typedef std::shared_ptr<TaxonAmendment> TaxonAmendmentPtr;
+
+TaxonAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
+    if (! edit_obj.is_object()) {
+        throw OTCError() << "Expecting a taxon amendment object";
+    }
+    auto action = get_string_property(edit_obj, "action", true).second;
+    if (action == "add") {
+        auto taxon_j = get_object_property(edit_obj, "taxon", true).second;
+        return std::make_shared<TaxonAdditionAmendment>(*taxon_j);
+    } else {
+        throw OTCError() << "Taxon amendment with action \"" << action << "\" not implemented.";
+    }
+    TaxonAmendmentPtr ta;
+    return ta;
+}
+
+
+std::list<TaxonAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) {
+    json edits_obj = json::parse(inp);
+    std::list<TaxonAmendmentPtr> edit_list;
+    if (edits_obj.is_object()) {
+        edit_list.push_back(parse_taxon_amendment_obj(edits_obj));
+    } else if (edits_obj.is_array()) {
+        unsigned obj_num = 0;
+        for (auto eo : edits_obj) {
+            if (eo.is_object()) {
+                edit_list.push_back(parse_taxon_amendment_obj(eo));
+            } else {
+                throw OTCError() << "Expecting amendment object, but element " << obj_num << " of array was not an object.";
+            }
+            ++obj_num;
+        }
+    } else {
+        throw OTCError() << "Expecting amendment array or object.";
+    }
+    return edit_list;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// end possible content for an amendments header file
+////////////////////////////////////////////////////////////////////////////////
 
 void report_lost_taxa(const Taxonomy& taxonomy, const string& filename) {
     vector<unique_ptr<Tree_t>> trees;
@@ -177,6 +334,22 @@ bool has_flags(tax_flags flags, tax_flags any_flags, tax_flags all_flags) {
         return false;
     }
     return true;
+}
+
+void edit_taxonomy(Taxonomy & taxonomy,
+                   const std::list<TaxonAmendmentPtr> & edit_list) {
+    std::size_t num_attempts = 0;
+    std::size_t num_applied = 0;
+    for (auto tap : edit_list) {
+        ++num_attempts;
+        auto x = tap->patch(taxonomy);
+        if (x.first) {
+            ++num_applied;
+        } else {
+            std::cerr << "amendement #" << num_attempts << " not applied: " << x.second << std::endl;
+        }
+    }
+    std::cerr << num_applied << "/" << num_attempts << " amendments applied." << std::endl;
 }
 
 void flag_extinct_clade_as_incertae_sedis(Taxonomy & taxonomy) {
@@ -292,10 +465,30 @@ int main(int argc, char* argv[]) {
         auto args = parse_cmd_line(argc, argv);
         auto format = args["format"].as<string>();
         auto flags_match = get_flags_match(args);
+        const bool do_json_edits = bool(args.count("edits"));
+        std::list<TaxonAmendmentPtr> edits;
+        if (do_json_edits) {
+            string edit_fp = args["edits"].as<string>();
+            std::ifstream edit_stream(edit_fp);
+            if (!edit_stream.good()) {
+                cerr << "otc-taxonomy-parser: Could not open \"" << edit_fp << "\"" << std::endl;
+                return 1;
+            }
+            try {
+                edits = parse_taxon_amendments_json(edit_stream);
+            } catch (...) {
+                cerr <<  "otc-taxonomy-parser: Could not parse \"" << edit_fp << "\"" << std::endl;
+                throw;
+            }
+        }
         auto taxonomy = load_taxonomy(args);
         const bool detach_root = bool(args.count("xroot"));
         if (detach_root) {
             taxonomy[0].parent_id = 0;
+        }
+        if (do_json_edits) {
+            string edit_fp = args["edits"].as<string>();
+            edit_taxonomy(taxonomy, edits);
         }
         if (args.count("extinct-to-incert")) {
             flag_extinct_clade_as_incertae_sedis(taxonomy);
