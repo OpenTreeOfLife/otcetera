@@ -404,7 +404,7 @@ class RichTaxonomy: public BaseTaxonomy {
                   const std::string & uniqname,
                   const std::string & flags) ;
 
-    private:
+    protected:
     std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;

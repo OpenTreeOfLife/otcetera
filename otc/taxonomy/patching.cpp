@@ -58,6 +58,7 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
                                      std::bitset<32> cf,
                                      OttId kr)
     :RichTaxonomy(dir, cf, kr) {
+    std::cerr << filtered_records.size() << " filtered_records" << std::endl;
 }
 
 
