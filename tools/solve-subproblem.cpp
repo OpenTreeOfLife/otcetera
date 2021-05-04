@@ -140,6 +140,17 @@ std::size_t RSplitObj::num = 0;
 using RSplit = boost::intrusive_ptr<RSplitObj>;
 using ConstRSplit = boost::intrusive_ptr<const RSplitObj>;
 
+std::ostream& operator<<(std::ostream& o, const RSplitObj& s)
+{
+    o<<"["<<s.in.size() + s.out.size()<<" tips] ";
+    for(auto& is: s.in)
+        o<<"ott"<<is<<" ";
+    o<<"| ";
+    for(auto& os: s.out)
+        o<<"ott"<<os<<" ";
+    return o;
+}
+
 RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
 {
     RSplit s(new RSplitObj);
