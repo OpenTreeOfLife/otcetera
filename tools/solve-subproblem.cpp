@@ -921,9 +921,17 @@ set<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, uniq
         auto log_conflicts_with  = [&](const cnode_t* /* node2 */, const cnode_t* node1 )
         {
             assert(node1->has_children());
-            auto node2 = from_induced.at(node1);
-            assert(node2->has_children());
-            conflicting_nodes.insert(node2);
+            // for each of node1 and all its monotypic ancestors.
+            do
+            {
+                // mark the corresponding node in the original (not induced) tree as conflicting.
+                auto node2 = from_induced.at(node1);
+                assert(node2->has_children());
+                conflicting_nodes.insert(node2);
+
+                node1 = node1->get_parent();
+            }
+            while(node1->is_outdegree_one_node());
         };
 
         perform_conflict_analysis(*induced_tree_to_clean, *induced_ok_tree, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
