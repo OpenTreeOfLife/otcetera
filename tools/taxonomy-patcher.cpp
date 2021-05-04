@@ -53,6 +53,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     options_description output("Output options");
     output.add_options()
+        ("write-to-stdout","Primarily for debugging. Writes contents of taxonomy output to stdout. Only used if write-taxonomy is not used.")
         ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
         ;
 
@@ -273,8 +274,8 @@ int main(int argc, char* argv[]) {
         }
         if (args.count("write-taxonomy")) {
             taxonomy.write(args["write-taxonomy"].as<string>());
-        } else {
-
+        } else if (args.count("write-to-stdout")) {
+            taxonomy.write_to_stream(std::cout);
         }
     } catch (std::exception& e) {
         cerr << "otc-taxonomy-parser: Error! " << e.what() << std::endl;

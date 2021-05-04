@@ -245,10 +245,6 @@ OttId Taxonomy::map(OttId old_id) const {
 }
 
 
-void RichTaxonomy::write(const std::string& newdirname) {
-
-}
-
 void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines_raw) {
     fs::path old_dir = path;
     fs::path new_dir = newdirname;
@@ -502,28 +498,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
 }
 
-std::pair<bool, std::string> RichTaxonomy::add_new_taxon(OttId oid,
-                                                         OttId parent_id,
-                                                         const std::string & name,
-                                                         const std::string & rank,
-                                                         const std::string & sourceinfo,
-                                                         const std::string & uniqname,
-                                                         const std::string & flags) {
-    vector<string> elements;
-    elements.reserve(8);
-    elements.push_back(std::to_string(oid));
-    elements.push_back(std::to_string(parent_id));
-    elements.push_back(name);
-    elements.push_back(rank);
-    elements.push_back(sourceinfo);
-    elements.push_back(uniqname);
-    elements.push_back(flags);
-    elements.push_back(string());
-    string fake_line = boost::algorithm::join(elements, "\t|\t");
-    return std::pair<bool, std::string>{false, "not implemented"}; //add_taxon_record(fake_line);
-}
 
-    
 void Taxonomy::read_forwards_file(string filepath)
 {
     // 1. Read forwards file and create id -> forwarded_id map

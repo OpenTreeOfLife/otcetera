@@ -13,6 +13,22 @@ class PatchableTaxonomy: public RichTaxonomy {
                       OttId kr = -1);
     PatchableTaxonomy(PatchableTaxonomy &&) = default;
 
+    void write(const std::string& newdirname) const;
+    void write_to_stream(std::ostream &) const;
+
+    std::pair<bool, std::string> add_new_taxon(OttId oid,
+                                               OttId parent_id,
+                                               const std::string & name,
+                                               const std::string & rank,
+                                               const std::string & sourceinfo,
+                                               const std::string & uniqname,
+                                               const std::string & flags) ;
+    protected:
+    void write_version_file_contents(std::ostream & out) const;
+    void write_taxonomy_file_contents(std::ostream & tf) const;
+    void write_synonyms_file_contents(std::ostream & sf) const;
+    void write_forwards_file_contents(std::ostream & ff) const;
+
 };
 
 PatchableTaxonomy load_patchable_taxonomy(const boost::program_options::variables_map& args);

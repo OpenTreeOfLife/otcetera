@@ -394,16 +394,7 @@ class RichTaxonomy: public BaseTaxonomy {
         fuzzy_match_db = match_db;
     }
     
-    void write(const std::string& dirname);
     
-    std::pair<bool, std::string> add_new_taxon(OttId oid,
-                  OttId parent_id,
-                  const std::string & name,
-                  const std::string & rank,
-                  const std::string & sourceinfo,
-                  const std::string & uniqname,
-                  const std::string & flags) ;
-
     protected:
     std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;
