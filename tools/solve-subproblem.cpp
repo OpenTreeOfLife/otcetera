@@ -140,6 +140,17 @@ std::size_t RSplitObj::num = 0;
 using RSplit = boost::intrusive_ptr<RSplitObj>;
 using ConstRSplit = boost::intrusive_ptr<const RSplitObj>;
 
+std::ostream& operator<<(std::ostream& o, const RSplitObj& s)
+{
+    o<<"["<<s.in.size() + s.out.size()<<" tips] ";
+    for(auto& is: s.in)
+        o<<"ott"<<is<<" ";
+    o<<"| ";
+    for(auto& os: s.out)
+        o<<"ott"<<os<<" ";
+    return o;
+}
+
 RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
 {
     RSplit s(new RSplitObj);
@@ -923,9 +934,17 @@ set<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, uniq
         auto log_conflicts_with  = [&](const cnode_t* /* node2 */, const cnode_t* node1 )
         {
             assert(node1->has_children());
-            auto node2 = from_induced.at(node1);
-            assert(node2->has_children());
-            conflicting_nodes.insert(node2);
+            // for each of node1 and all its monotypic ancestors.
+            do
+            {
+                // mark the corresponding node in the original (not induced) tree as conflicting.
+                auto node2 = from_induced.at(node1);
+                assert(node2->has_children());
+                conflicting_nodes.insert(node2);
+
+                node1 = node1->get_parent();
+            }
+            while(node1->is_outdegree_one_node());
         };
 
         perform_conflict_analysis(*induced_tree_to_clean, *induced_ok_tree, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
@@ -989,6 +1008,44 @@ std::vector<T> concat(const std::vector<T>& v1, const std::vector<T>& v2)
     return v3;
 }
 
+void simplify(RSplitObj& s1, RSplitObj& s2)
+{
+    std::set<OttId> include1;
+    std::set<OttId> exclude1;
+    for(auto& i: s1.in)
+        include1.insert(i);
+    for(auto& o: s1.out)
+        exclude1.insert(o);
+    std::set<OttId> taxa1 = set_union_as_set(include1, exclude1);
+
+    std::set<OttId> include2;
+    std::set<OttId> exclude2;
+    for(auto& i: s2.in)
+        include2.insert(i);
+    for(auto& o: s2.out)
+        exclude2.insert(o);
+    std::set<OttId> taxa2 = set_union_as_set(include2, exclude2);
+
+    auto common_taxa = set_intersection_as_set(taxa1, taxa2);
+
+    include1 = set_intersection_as_set(include1, common_taxa);
+    exclude1 = set_intersection_as_set(exclude1, common_taxa);
+    s1.in.clear();
+    for(auto& i: include1)
+        s1.in.push_back(i);
+    s1.out.clear();
+    for(auto& e: exclude1)
+        s1.out.push_back(e);
+
+    include2 = set_intersection_as_set(include2, common_taxa);
+    exclude2 = set_intersection_as_set(exclude2, common_taxa);
+    s2.in.clear();
+    for(auto& i: include2)
+        s2.in.push_back(i);
+    s2.out.clear();
+    for(auto& e: exclude2)
+        s2.out.push_back(e);
+}
 
 std::vector<ConstRSplit> find_minimal_conflict_set(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits1, const vector<ConstRSplit>& splits2)
 {
