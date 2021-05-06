@@ -372,7 +372,7 @@ class RichTaxonomy: public BaseTaxonomy {
         is_suppressed_from_synth = ott_id_set_ptr;
     }
 
-    bool node_is_suppressed_from_tnrs(const RTRichTaxNode* nd) const {
+    bool node_is_suppressed_from_tnrs(const RTRichTaxNode * nd) const {
         auto& tree_data = tree->get_data();
         const auto& tax_record_flags = nd->get_data().get_flags();
         return (tree_data.suppress_flags & tax_record_flags).any();

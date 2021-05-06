@@ -29,6 +29,9 @@ class PatchableTaxonomy: public RichTaxonomy {
     void write_synonyms_file_contents(std::ostream & sf) const;
     void write_forwards_file_contents(std::ostream & ff) const;
 
+    //std::map<const RTRichTaxNode * , std::string> node_to_uniqname;
+    std::map<std::string, std::vector<const RTRichTaxNode *> > synonym2node;
+
 };
 
 PatchableTaxonomy load_patchable_taxonomy(const boost::program_options::variables_map& args);

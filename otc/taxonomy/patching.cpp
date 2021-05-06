@@ -2,6 +2,7 @@
 #include <boost/filesystem/operations.hpp>
 namespace fs = boost::filesystem;
 #include "otc/taxonomy/patching.h"
+#include "otc/otc_base_includes.h"
 
 using namespace otc;
 
@@ -36,7 +37,20 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
                                      std::bitset<32> cf,
                                      OttId kr)
     :RichTaxonomy(dir, cf, kr) {
-    std::cerr << filtered_records.size() << " filtered_records" << std::endl;
+    const auto & rich_tax_tree = this->get_tax_tree();
+    const auto & rt_data = rich_tax_tree.get_data();
+    for (auto& [name, node] : rt_data.name_to_node) {
+        const auto & nd_data = node->get_data();
+        for (auto syn_ptr : nd_data.junior_synonyms) {
+            synonym2node[syn_ptr->name].push_back(node);
+            //std::cerr << "registered " << syn_ptr->name << " syn for "<< nd_data.get_nonuniqname() << '\n';
+        }
+        //     if (name != node->get_data().get_nonuniqname()) {
+        //         assert(!contains(node_to_uniqname, node));
+        //         node_to_uniqname[node] = name;
+        //     }
+    }
+    //std::cerr << filtered_records.size() << " filtered_records" << std::endl;
 }
 
 std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
@@ -66,8 +80,35 @@ void PatchableTaxonomy::write_version_file_contents(std::ostream & out) const {
 
 void PatchableTaxonomy::write_taxonomy_file_contents(std::ostream & tf) const {
     tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t" << std::endl;
-
-    // string sep = "\t|\t";
+    const auto & tax_tree = get_tax_tree();
+    const string sep = "\t|\t";
+    for (auto nd : iter_pre_const(tax_tree)) {
+        tf << nd->get_ott_id() << sep;
+        const auto par = nd->get_parent();
+        if (par) {
+            tf << par->get_ott_id();
+        }
+        tf << sep;
+        const auto & data = nd->get_data();
+        const auto nu_name = data.get_nonuniqname();
+        tf << nu_name << sep ;
+        tf << data.get_rank() << sep;
+        tf << data.source_info << sep;
+        const auto & nname = nd->get_name();
+        if (nu_name != nname) {
+            tf << nname;
+        }
+        tf << sep;
+        tf << flags_to_string(data.flags) << sep;
+        tf << '\n';
+    }
+    tf << "name2node\n";
+    const auto & rich_tax_tree = this->get_tax_tree();
+    const auto & rt_data = rich_tax_tree.get_data();
+    for (auto & [name, node] : rt_data.name_to_node) {
+        tf << name << sep << node->get_ott_id() << '\n';
+    }
+    // 
     // for (auto& rec: *this) {
     //    tf << rec.id << sep;
     //    if (rec.parent_id > 0) {
@@ -87,24 +128,24 @@ void PatchableTaxonomy::write_taxonomy_file_contents(std::ostream & tf) const {
 }
 
 void PatchableTaxonomy::write_synonyms_file_contents(std::ostream & sf) const {
+    const string sep = "\t|\t";
     sf << "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t" << std::endl;
-    // string sep = "\t|\t";
-    // for (auto& rec: *this) {
-    //    tf << rec.id << sep;
-    //    if (rec.parent_id > 0) {
-    //        tf << rec.parent_id;
-    //    }
-    //    tf << sep;
-    //    tf << rec.name << sep;
-    //    tf << rec.rank << sep;
-    //    tf << rec.sourceinfo << sep;
-    //    if (rec.uniqname != rec.name) {
-    //        tf << rec.uniqname;
-    //    }
-    //    tf << sep;
-    //    tf << flags_to_string(rec.flags) << sep;
-    //    tf << '\n';
-    // }
+    for (auto & [syn_name, vec_nd] : synonym2node) {
+        for (auto nd_ptr : vec_nd) {
+            const auto & jsv = nd_ptr->get_data().junior_synonyms;
+            for (auto jsp : jsv) {
+                if (jsp->name == syn_name) {
+                    sf << syn_name << sep 
+                       << nd_ptr->get_ott_id() << sep 
+                       << sep // we don't retain the type on parsing
+                       << sep // we don't retain the uniqname on parsing
+                       << jsp->source_string << sep << '\n';
+                    break;
+                }
+            }
+        }
+    }
+    sf.flush();
 }
 
 void PatchableTaxonomy::write_forwards_file_contents(std::ostream & ff) const {
@@ -150,7 +191,7 @@ void PatchableTaxonomy::write_to_stream(std::ostream & out) const {
     write_taxonomy_file_contents(out);
     out << "synonyms.tsv\n";
     write_synonyms_file_contents(out);
-    out << "forwards.tsv";
+    out << "forwards.tsv\n";
     write_forwards_file_contents(out);
 }
 
