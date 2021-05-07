@@ -490,12 +490,12 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     _fill_ids_to_suppress_set();
     this->read_synonyms();
     const auto & td = tree->get_data();
-    LOG(INFO) << "# of taxa stored in taxonomy, but filtered from taxonomy tree = " << filtered_records.size();
-    LOG(INFO) << "last # in ncbi_id_map = " << (td.ncbi_id_map.empty() ? 0 : max_numeric_key(td.ncbi_id_map));
-    LOG(INFO) << "last # in gbif_id_map = " <<  (td.gbif_id_map.empty() ? 0 : max_numeric_key(td.gbif_id_map));
-    LOG(INFO) << "last # in worms_id_map = " <<  (td.worms_id_map.empty() ? 0 : max_numeric_key(td.worms_id_map));
-    LOG(INFO) << "last # in if_id_map = " <<  (td.if_id_map.empty() ? 0 : max_numeric_key(td.if_id_map));
-    LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
+    // LOG(INFO) << "# of taxa stored in taxonomy, but filtered from taxonomy tree = " << filtered_records.size();
+    // LOG(INFO) << "last # in ncbi_id_map = " << (td.ncbi_id_map.empty() ? 0 : max_numeric_key(td.ncbi_id_map));
+    // LOG(INFO) << "last # in gbif_id_map = " <<  (td.gbif_id_map.empty() ? 0 : max_numeric_key(td.gbif_id_map));
+    // LOG(INFO) << "last # in worms_id_map = " <<  (td.worms_id_map.empty() ? 0 : max_numeric_key(td.worms_id_map));
+    // LOG(INFO) << "last # in if_id_map = " <<  (td.if_id_map.empty() ? 0 : max_numeric_key(td.if_id_map));
+    // LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
 }
 
 

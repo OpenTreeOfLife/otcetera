@@ -22,7 +22,8 @@ class PatchableTaxonomy: public RichTaxonomy {
                                                const std::string & rank,
                                                const std::string & sourceinfo,
                                                const std::string & uniqname,
-                                               const std::string & flags) ;
+                                               const std::string & flags,
+                                               OttId * homonym_of=nullptr) ;
     protected:
     void write_version_file_contents(std::ostream & out) const;
     void write_taxonomy_file_contents(std::ostream & tf) const;

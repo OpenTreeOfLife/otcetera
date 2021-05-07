@@ -53,13 +53,28 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
     //std::cerr << filtered_records.size() << " filtered_records" << std::endl;
 }
 
+
 std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
                                                          OttId parent_id,
                                                          const std::string & name,
                                                          const std::string & rank,
                                                          const std::string & sourceinfo,
                                                          const std::string & uniqname,
-                                                         const std::string & flags) {
+                                                         const std::string & flags,
+                                                         OttId * homonym_of) {
+    using bool_str_t = std::pair<bool, std::string>;
+    auto & rich_tax_tree = this->get_tax_tree();
+    auto & rt_data = rich_tax_tree.get_data();
+    auto nm_nd_it = rt_data.name_to_node.find(name);
+    if (nm_nd_it == rt_data.name_to_node.end()) {
+        if (homonym_of != nullptr) {
+            return bool_str_t{false, "not a homonym"};
+        }
+    } else if (homonym_of == nullptr) {
+        std::string expl = name;
+        expl += " is a homonym of " + std::to_string(nm_nd_it->second->get_ott_id());
+        return bool_str_t{false, expl};
+    }
     vector<string> elements;
     elements.reserve(8);
     elements.push_back(std::to_string(oid));
@@ -71,7 +86,8 @@ std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
     elements.push_back(flags);
     elements.push_back(string());
     string fake_line = boost::algorithm::join(elements, "\t|\t");
-    return std::pair<bool, std::string>{false, "not implemented"}; //add_taxon_record(fake_line);
+    std::cerr << fake_line << std::endl;
+    return bool_str_t{false, "not implemented"}; //add_taxon_record(fake_line);
 }
 
 void PatchableTaxonomy::write_version_file_contents(std::ostream & out) const {
@@ -102,12 +118,12 @@ void PatchableTaxonomy::write_taxonomy_file_contents(std::ostream & tf) const {
         tf << flags_to_string(data.flags) << sep;
         tf << '\n';
     }
-    tf << "name2node\n";
-    const auto & rich_tax_tree = this->get_tax_tree();
-    const auto & rt_data = rich_tax_tree.get_data();
-    for (auto & [name, node] : rt_data.name_to_node) {
-        tf << name << sep << node->get_ott_id() << '\n';
-    }
+    // tf << "name2node\n";
+    // const auto & rich_tax_tree = this->get_tax_tree();
+    // const auto & rt_data = rich_tax_tree.get_data();
+    // for (auto & [name, node] : rt_data.name_to_node) {
+    //     tf << name << sep << node->get_ott_id() << '\n';
+    // }
     // 
     // for (auto& rec: *this) {
     //    tf << rec.id << sep;

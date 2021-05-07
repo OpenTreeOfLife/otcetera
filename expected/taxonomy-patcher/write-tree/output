@@ -1,0 +1,27 @@
+amendement #1 not applied: Amaryllis minor is a homonym of 2
+0/1 amendments applied.
+version.txt
+0.0draft0
+taxonomy.tsv
+uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|	
+1000000	|		|	Exampleroot	|	no rank	|	ncbi:10239,gbif:8	|		|		|	
+999999	|	1000000	|	Nototuexample	|	no rank	|		|		|	not_otu	|	
+1001	|	1000000	|	Amaryllidaceae	|	no rank	|		|		|		|	
+100	|	1001	|	Amaryllis	|	no rank	|		|		|		|	
+1	|	100	|	Amaryllis belladonna	|	no rank	|		|		|		|	
+2	|	100	|	Amaryllis minor	|	no rank	|		|		|	edited,hybrid	|	
+3	|	100	|	Amaryllis someλodd	|	no rank	|		|		|		|	
+200	|	1001	|	Bamaryllis	|	no rank	|		|		|		|	
+11	|	200	|	Bamaryllis belladonna	|	no rank	|		|		|		|	
+12	|	200	|	Bamaryllis major	|	no rank	|		|		|		|	
+13	|	200	|	Bamarylis minor	|	no rank	|		|		|		|	
+300	|	1001	|	Amaryllis Amaryllis	|	no rank	|		|	Amaryllis (subgenus Amaryllis)	|		|	
+21	|	300	|	Amaryllis Amaryllis major	|	no rank	|		|		|		|	
+22	|	300	|	Amaryllis Amaryllis minor	|	no rank	|		|		|		|	
+23	|	300	|	Amaryllis somelodd	|	no rank	|		|		|		|	
+synonyms.tsv
+name	|	uid	|	type	|	uniqname	|	sourceinfo	|	
+Camaryllis major	|	21	|		|		|		|	
+forwards.tsv
+id	replacement
+2002	1001

@@ -53,6 +53,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     options_description output("Output options");
     output.add_options()
+        ("amend-status-to-stdout", "Primarily for debugging. Writes amendment status info to stdout rather than stderr.")
         ("write-to-stdout","Primarily for debugging. Writes contents of taxonomy output to stdout. Only used if write-taxonomy is not used.")
         ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
         ;
@@ -231,19 +232,21 @@ std::list<TaxonAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) {
 
 
 void edit_taxonomy(PatchableTaxonomy & taxonomy,
-                   const std::list<TaxonAmendmentPtr> & edit_list) {
+                   const std::list<TaxonAmendmentPtr> & edit_list,
+                   bool amend_status_to_stdout) {
     std::size_t num_attempts = 0;
     std::size_t num_applied = 0;
+    std::ostream & outp = (amend_status_to_stdout ? std::cout : std::cerr);
     for (auto tap : edit_list) {
         ++num_attempts;
         auto x = tap->patch(taxonomy);
         if (x.first) {
             ++num_applied;
         } else {
-            std::cerr << "amendement #" << num_attempts << " not applied: " << x.second << std::endl;
+            outp << "amendement #" << num_attempts << " not applied: " << x.second << std::endl;
         }
     }
-    std::cerr << num_applied << "/" << num_attempts << " amendments applied." << std::endl;
+    outp << num_applied << "/" << num_attempts << " amendments applied." << std::endl;
 }
 
 
@@ -252,6 +255,7 @@ int main(int argc, char* argv[]) {
     try {
         auto args = parse_cmd_line(argc, argv);
         const bool do_json_edits = bool(args.count("edits"));
+        const bool amend_status_to_stdout = bool(args.count("amend-status-to-stdout"));
         std::list<TaxonAmendmentPtr> edits;
         if (do_json_edits) {
             string edit_fp = args["edits"].as<string>();
@@ -270,7 +274,7 @@ int main(int argc, char* argv[]) {
         auto taxonomy = load_patchable_taxonomy(args);
         if (do_json_edits) {
             string edit_fp = args["edits"].as<string>();
-            edit_taxonomy(taxonomy, edits);
+            edit_taxonomy(taxonomy, edits, amend_status_to_stdout);
         }
         if (args.count("write-taxonomy")) {
             taxonomy.write(args["write-taxonomy"].as<string>());
