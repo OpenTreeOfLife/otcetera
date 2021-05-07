@@ -2,6 +2,11 @@
   {
     "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
     "infile_list": ["unmarked-homonym.json", "tnrs-taxonomy"],
-    "expected": "write-tree"
+    "expected": "unmarked-homonym"
+  },
+  {
+    "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
+    "infile_list": ["repeated-ott-id.json", "tnrs-taxonomy"],
+    "expected": "repeated-ott-id"
   }
 ]

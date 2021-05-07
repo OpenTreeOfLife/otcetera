@@ -75,6 +75,14 @@ std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
         expl += " is a homonym of " + std::to_string(nm_nd_it->second->get_ott_id());
         return bool_str_t{false, expl};
     }
+    auto itnit = rt_data.id_to_node.find(oid);
+    auto itrit = rt_data.id_to_record.find(oid);
+    if (itnit != rt_data.id_to_node.end() || itrit != rt_data.id_to_record.end()) {
+        std::string expl = "OTT ID " + std::to_string(oid);
+        expl += " is already used.";
+        return bool_str_t{false, expl};
+    }
+    std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
     vector<string> elements;
     elements.reserve(8);
     elements.push_back(std::to_string(oid));
