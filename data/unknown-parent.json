@@ -1,0 +1,12 @@
+[
+  {
+    "action": "add",
+    "taxon": {
+      "ott_id": 42011,
+      "sourceinfo": "additions-6520246-6520246:6520246",
+      "name": "Amaryllis somenewname",
+      "parent": 42013,
+      "rank": "species"
+    }
+  }
+]

@@ -8,5 +8,10 @@
     "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
     "infile_list": ["repeated-ott-id.json", "tnrs-taxonomy"],
     "expected": "repeated-ott-id"
+  },
+  {
+    "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
+    "infile_list": ["unknown-parent.json", "tnrs-taxonomy"],
+    "expected": "unknown-parent"
   }
 ]

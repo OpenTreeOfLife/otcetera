@@ -33,6 +33,7 @@ class PatchableTaxonomy: public RichTaxonomy {
     //std::map<const RTRichTaxNode * , std::string> node_to_uniqname;
     std::map<std::string, std::vector<const RTRichTaxNode *> > synonym2node;
 
+    std::list<TaxonomyRecord> added_records;
 };
 
 PatchableTaxonomy load_patchable_taxonomy(const boost::program_options::variables_map& args);

@@ -75,11 +75,22 @@ std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
         expl += " is a homonym of " + std::to_string(nm_nd_it->second->get_ott_id());
         return bool_str_t{false, expl};
     }
-    auto itnit = rt_data.id_to_node.find(oid);
+    auto itnit = included_taxon_from_id(oid);
     auto itrit = rt_data.id_to_record.find(oid);
-    if (itnit != rt_data.id_to_node.end() || itrit != rt_data.id_to_record.end()) {
+    if (itnit != nullptr || itrit != rt_data.id_to_record.end()) {
         std::string expl = "OTT ID " + std::to_string(oid);
         expl += " is already used.";
+        return bool_str_t{false, expl};
+    }
+    itnit = included_taxon_from_id(parent_id);
+    if (itnit == nullptr) {
+        itrit = rt_data.id_to_record.find(parent_id);
+        std::string expl = "Parent OTT ID " + std::to_string(parent_id);
+        if (itrit != rt_data.id_to_record.end()) {
+            expl += " refers to a filtered taxon.";
+        } else {
+            expl += " is unrecognized.";
+        }
         return bool_str_t{false, expl};
     }
     std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
