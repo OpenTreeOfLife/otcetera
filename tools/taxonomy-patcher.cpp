@@ -237,6 +237,7 @@ void edit_taxonomy(PatchableTaxonomy & taxonomy,
     std::size_t num_attempts = 0;
     std::size_t num_applied = 0;
     std::ostream & outp = (amend_status_to_stdout ? std::cout : std::cerr);
+    outp << edit_list.size() << " amendments to be processed." << std::endl;
     for (auto tap : edit_list) {
         ++num_attempts;
         auto x = tap->patch(taxonomy);
@@ -256,22 +257,25 @@ int main(int argc, char* argv[]) {
         auto args = parse_cmd_line(argc, argv);
         const bool do_json_edits = bool(args.count("edits"));
         const bool amend_status_to_stdout = bool(args.count("amend-status-to-stdout"));
+        std::ostream & out = (amend_status_to_stdout ? std::cout : std::cerr);
         std::list<TaxonAmendmentPtr> edits;
         if (do_json_edits) {
             string edit_fp = args["edits"].as<string>();
             std::ifstream edit_stream(edit_fp);
             if (!edit_stream.good()) {
-                cerr << "otc-taxonomy-parser: Could not open \"" << edit_fp << "\"" << std::endl;
+                out << "otc-taxonomy-parser: Could not open \"" << edit_fp << "\"" << std::endl;
                 return 1;
             }
             try {
                 edits = parse_taxon_amendments_json(edit_stream);
             } catch (...) {
-                cerr <<  "otc-taxonomy-parser: Could not parse \"" << edit_fp << "\"" << std::endl;
+                out <<  "otc-taxonomy-parser: Could not parse \"" << edit_fp << "\"" << std::endl;
                 throw;
             }
         }
+        out << "loading taxonomy" << std::endl;
         auto taxonomy = load_patchable_taxonomy(args);
+        out << "loaded" << std::endl;
         if (do_json_edits) {
             string edit_fp = args["edits"].as<string>();
             edit_taxonomy(taxonomy, edits, amend_status_to_stdout);

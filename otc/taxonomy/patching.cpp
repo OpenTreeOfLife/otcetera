@@ -40,6 +40,9 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
     const auto & rich_tax_tree = this->get_tax_tree();
     const auto & rt_data = rich_tax_tree.get_data();
     for (auto& [name, node] : rt_data.name_to_node) {
+        if (node == nullptr) {
+            continue;
+        }
         const auto & nd_data = node->get_data();
         for (auto syn_ptr : nd_data.junior_synonyms) {
             synonym2node[syn_ptr->name].push_back(node);
