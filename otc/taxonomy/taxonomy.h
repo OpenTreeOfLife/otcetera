@@ -146,7 +146,7 @@ struct TaxonomyRecord {
     std::string_view sourceinfo;
     std::string_view uniqname; // will point to name field, if empty in .tsv
     std::bitset<32> flags;
-    int depth = 0;
+    int depth = 0; // 1 for root, 2 for root's children, etc
     int out_degree = 0;
     TaxonomyRecord& operator=(TaxonomyRecord&& tr) = default;
     TaxonomyRecord& operator=(const TaxonomyRecord& tr) = delete;
@@ -396,6 +396,12 @@ class RichTaxonomy: public BaseTaxonomy {
     
     
     protected:
+    RichTaxTree & get_mutable_tax_tree() const {
+        return *tree;
+    }
+    void read_synonyms();
+    void _fill_ids_to_suppress_set();
+    
     std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
@@ -407,8 +413,6 @@ class RichTaxonomy: public BaseTaxonomy {
     //    will allow the services to report "is_suppressed_from_synth" option.
     const OttIdSet * is_suppressed_from_synth = nullptr;
     const ContextAwareCTrieBasedDB * fuzzy_match_db = nullptr;
-    void read_synonyms();
-    void _fill_ids_to_suppress_set();
     RichTaxonomy(const RichTaxonomy &) = delete;
 };
 
@@ -517,15 +521,32 @@ inline void process_source_info_vec(const std::vector<std::string> & vs,
     }
 }
 
+template<typename T, typename U> 
+inline void add_f_to_json_if_needed(T & flags2json,
+                                    U & flags) {
+    using std::string;
+    using std::vector;
+    using nlohmann::json;
+    
+    // If the flag combination is new, store the JSON representation
+    if (flags2json.count(flags) == 0) {
+        vector<string> vf = flags_to_string_vec(flags);
+        flags2json[flags] = json();
+        auto & fj = flags2json[flags];
+        for (auto fs : vf) {
+            fj.push_back(fs);
+        }
+    }
+}
+
 template <>
 inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
-                                              const TaxonomyRecord & tr,
+                                               const TaxonomyRecord & tr,
                                                std::function<std::string(const TaxonomyRecord&)> ,
                                                RichTaxTree & tree) {
     using std::string;
     using std::vector;
     using std::string_view;
-    using nlohmann::json;
     RTRichTaxNode * this_node = &nd;
     nd.set_ott_id(tr.id);
     auto & data = nd.get_data();
@@ -552,15 +573,7 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
                            this_node);
     auto flags = data.get_flags();
     //cout << "flags = " << flags << " name = " << this_node->get_name() << '\n';
-    // If the flag combination is new, store the JSON representation
-    if (tree_data.flags2json.count(flags) == 0) {
-        vector<string> vf = flags_to_string_vec(flags);
-        tree_data.flags2json[flags] = json();
-        auto & fj = tree_data.flags2json[flags];
-        for (auto fs : vf) {
-            fj.push_back(fs);
-        }
-    }
+    add_f_to_json_if_needed(tree_data.flags2json, flags);
     auto vs = tr.sourceinfoAsVec();
     data.source_info = string(tr.sourceinfo);
     process_source_info_vec(vs, tree_data, data, this_node);

@@ -53,18 +53,18 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
     //std::cerr << filtered_records.size() << " filtered_records" << std::endl;
 }
 
+using bool_str_t = std::pair<bool, std::string>;
 
-std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
-                                                         OttId parent_id,
-                                                         const std::string & name,
-                                                         const std::string & rank,
-                                                         const std::string & sourceinfo,
-                                                         const std::string & uniqname,
-                                                         const std::string & flags,
-                                                         OttId * homonym_of) {
-    using bool_str_t = std::pair<bool, std::string>;
-    auto & rich_tax_tree = this->get_tax_tree();
-    auto & rt_data = rich_tax_tree.get_data();
+bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
+                                            OttId parent_id,
+                                            const std::string & name,
+                                            const std::string & rank,
+                                            const std::string & sourceinfo,
+                                            const std::string & uniqname,
+                                            const std::string & flags,
+                                            OttId * homonym_of) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
     auto nm_nd_it = rt_data.name_to_node.find(name);
     if (nm_nd_it == rt_data.name_to_node.end()) {
         if (homonym_of != nullptr) {
@@ -82,8 +82,8 @@ std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
         expl += " is already used.";
         return bool_str_t{false, expl};
     }
-    itnit = included_taxon_from_id(parent_id);
-    if (itnit == nullptr) {
+    RTRichTaxNode * par_ptr = const_cast<RTRichTaxNode *>(included_taxon_from_id(parent_id));
+    if (par_ptr == nullptr) {
         itrit = rt_data.id_to_record.find(parent_id);
         std::string expl = "Parent OTT ID " + std::to_string(parent_id);
         if (itrit != rt_data.id_to_record.end()) {
@@ -93,6 +93,10 @@ std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
         }
         return bool_str_t{false, expl};
     }
+    if (uniqname.length() > 0) {
+        return bool_str_t{false, "handling of uniqname not supported"};
+    }
+
     std::unordered_map<OttId, const TaxonomyRecord *> id_to_record;
     vector<string> elements;
     elements.reserve(8);
@@ -105,8 +109,16 @@ std::pair<bool, std::string> PatchableTaxonomy::add_new_taxon(OttId oid,
     elements.push_back(flags);
     elements.push_back(string());
     string fake_line = boost::algorithm::join(elements, "\t|\t");
-    std::cerr << fake_line << std::endl;
-    return bool_str_t{false, "not implemented"}; //add_taxon_record(fake_line);
+
+    added_records.push_back(TaxonomyRecord(fake_line));
+    auto nnd = tree.create_child(par_ptr);
+    auto nodeNamer = [](const auto&){return string();};
+    const TaxonomyRecord & tr= *(added_records.rbegin());
+    populate_node_from_taxonomy_record(*nnd, tr, nodeNamer, tree);
+
+    rt_data.name_to_node[tr.name] = nnd;
+    rt_data.id_to_node[oid] =nnd;
+    return bool_str_t{true, ""};
 }
 
 void PatchableTaxonomy::write_version_file_contents(std::ostream & out) const {

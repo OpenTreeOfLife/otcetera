@@ -13,5 +13,10 @@
     "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
     "infile_list": ["unknown-parent.json", "tnrs-taxonomy"],
     "expected": "unknown-parent"
+  },
+  {
+    "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
+    "infile_list": ["terse-edits.json", "tnrs-taxonomy"],
+    "expected": "valid"
   }
 ]
