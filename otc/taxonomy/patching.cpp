@@ -58,6 +58,27 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
 
 using bool_str_t = std::pair<bool, std::string>;
 
+bool_str_t PatchableTaxonomy::add_forward(OttId former_id, OttId redirect_to_id) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    auto fnd = included_taxon_from_id(former_id);
+    auto itrit = rt_data.id_to_record.find(former_id);
+    if (fnd != nullptr || itrit != rt_data.id_to_record.end()) {
+        std::string expl = "OTT ID " + std::to_string(former_id);
+        expl += " is in use. It must be deleted before a forward from it is added.";
+        return bool_str_t{false, expl};
+    }
+    fnd = included_taxon_from_id(redirect_to_id);
+    itrit = rt_data.id_to_record.find(redirect_to_id);
+    if (fnd == nullptr && itrit == rt_data.id_to_record.end()) {
+        std::string expl = "OTT ID " + std::to_string(redirect_to_id);
+        expl += " not recognized. It cannot be a redirection target.";
+        return bool_str_t{false, expl};
+    }
+    forwards[former_id] = redirect_to_id;
+    return bool_str_t{true, ""};
+}
+
 bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
                                             OttId parent_id,
                                             const std::string & name,

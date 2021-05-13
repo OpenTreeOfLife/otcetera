@@ -115,7 +115,7 @@ std::pair<bool, const json *> get_object_property(const json & j,
         if (!jp->is_object()) {
             throw OTCError() << "Expecting \"" << prop_name << "\" property to be an object";
         }
-        return std::pair<bool, const json *>(false, jp);
+        return std::pair<bool, const json *>(true, jp);
     }
     return std::pair<bool, const json *>(false, nullptr);
 }
@@ -184,6 +184,24 @@ inline std::pair<bool, std::string> TaxonAdditionAmendment::patch(PatchableTaxon
     return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
 }
 
+class ForwardAdditionAmendment : public TaxonAmendment {
+    public:
+    ForwardAdditionAmendment(const json & taxon_obj) {
+        this->former_id = get_unsigned_property(taxon_obj, "former", true).second;
+        this->redirect_to_id = get_unsigned_property(taxon_obj, "redirect_to", true).second;
+    }
+    
+    virtual ~ForwardAdditionAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        return t.add_forward(former_id, redirect_to_id);
+    }
+    
+    private:
+        OttId former_id;
+        OttId redirect_to_id;
+};
 
 typedef std::shared_ptr<TaxonAmendment> TaxonAmendmentPtr;
 
@@ -193,8 +211,15 @@ TaxonAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
     }
     auto action = get_string_property(edit_obj, "action", true).second;
     if (action == "add") {
-        auto taxon_j = get_object_property(edit_obj, "taxon", true).second;
-        return std::make_shared<TaxonAdditionAmendment>(*taxon_j);
+        auto taxon_j = get_object_property(edit_obj, "taxon", false);
+        if (taxon_j.first) {
+            return std::make_shared<TaxonAdditionAmendment>(*(taxon_j.second));
+        }
+        auto forward_j = get_object_property(edit_obj, "forward", false);
+        if (forward_j.first) {
+           return std::make_shared<ForwardAdditionAmendment>(*(forward_j.second));
+        }
+        
     } else {
         throw OTCError() << "Taxon amendment with action \"" << action << "\" not implemented.";
     }

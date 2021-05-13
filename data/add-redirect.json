@@ -1,0 +1,9 @@
+[
+  {
+    "action": "add",
+    "forward": {
+      "former": 6520249,
+      "redirect_to": 100
+    }
+  }
+]

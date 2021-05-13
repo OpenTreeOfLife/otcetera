@@ -18,5 +18,10 @@
     "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
     "infile_list": ["terse-edits.json", "tnrs-taxonomy"],
     "expected": "valid"
+  },
+  {
+    "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
+    "infile_list": ["add-redirect.json", "tnrs-taxonomy"],
+    "expected": "add-redirect"
   }
 ]
