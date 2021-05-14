@@ -16,15 +16,28 @@ class PatchableTaxonomy: public RichTaxonomy {
     void write(const std::string& newdirname) const;
     void write_to_stream(std::ostream &) const;
 
-    std::pair<bool, std::string> add_new_taxon(OttId oid,
-                                               OttId parent_id,
-                                               const std::string & name,
-                                               const std::string & rank,
-                                               const std::string & sourceinfo,
-                                               const std::string & uniqname,
-                                               const std::string & flags,
-                                               OttId * homonym_of=nullptr) ;
-    std::pair<bool, std::string> add_forward(OttId former_id, OttId redirect_to_id);
+    using bool_str_t = std::pair<bool, std::string>;
+    bool_str_t add_new_taxon(OttId oid,
+                             OttId parent_id,
+                             const std::string & name,
+                             const std::string & rank,
+                             const std::string & sourceinfo,
+                             const std::string & uniqname,
+                             const std::string & flags,
+                             OttId * homonym_of=nullptr) ;
+    bool_str_t edit_taxon(OttId oid,
+                          OttId parent_id,
+                          const std::string & name,
+                          const std::string & rank,
+                          const std::string & sourceinfo,
+                          const std::string & uniqname,
+                          const std::string & flags,
+                          OttId * homonym_of=nullptr) ;
+    bool_str_t delete_taxon(OttId oid) ;
+    bool_str_t add_forward(OttId former_id, OttId redirect_to_id);
+    bool_str_t delete_forward(OttId former_id, OttId redirect_to_id);
+    bool_str_t add_synonym(const std::string & name, OttId ott_id);
+    bool_str_t delete_synonym(const std::string & name, OttId ott_id);
     protected:
     void write_version_file_contents(std::ostream & out) const;
     void write_taxonomy_file_contents(std::ostream & tf) const;

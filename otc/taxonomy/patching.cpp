@@ -58,6 +58,20 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
 
 using bool_str_t = std::pair<bool, std::string>;
 
+
+
+bool_str_t PatchableTaxonomy::add_synonym(const std::string & name, OttId ott_id) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    throw OTCError() << "add_synonym not implemented";
+}
+
+bool_str_t PatchableTaxonomy::delete_synonym(const std::string & name, OttId ott_id) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    throw OTCError() << "delete_synonym not implemented";
+}
+
 bool_str_t PatchableTaxonomy::add_forward(OttId former_id, OttId redirect_to_id) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
@@ -77,6 +91,31 @@ bool_str_t PatchableTaxonomy::add_forward(OttId former_id, OttId redirect_to_id)
     }
     forwards[former_id] = redirect_to_id;
     return bool_str_t{true, ""};
+}
+
+bool_str_t PatchableTaxonomy::delete_forward(OttId former_id, OttId redirect_to_id) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    throw OTCError() << "delete_forward not implemented";
+}
+
+bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    throw OTCError() << "delete_taxon not implemented";
+}
+
+bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
+                                         OttId parent_id,
+                                         const std::string & name,
+                                         const std::string & rank,
+                                         const std::string & sourceinfo,
+                                         const std::string & uniqname,
+                                         const std::string & flags,
+                                         OttId * homonym_of) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    throw OTCError() << "edit_taxon not implemented";
 }
 
 bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,

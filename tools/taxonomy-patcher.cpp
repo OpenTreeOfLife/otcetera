@@ -140,16 +140,47 @@ std::pair<bool, unsigned> get_unsigned_property(const json & j,
 // possible content for an amendments header file
 ////////////////////////////////////////////////////////////////////////////////
 
-class TaxonAmendment {
+class TaxonomyAmendment {
     public:
         virtual std::pair<bool, std::string> patch(PatchableTaxonomy &) = 0;
-        virtual ~TaxonAmendment(){
+        virtual ~TaxonomyAmendment(){
         }
 };
 
-class TaxonAdditionAmendment: public TaxonAmendment {
+class BaseForwardAmendment : public TaxonomyAmendment {
     public:
-    TaxonAdditionAmendment(const json & taxon_obj)
+    BaseForwardAmendment(const json & taxon_obj) {
+        this->former_id = get_unsigned_property(taxon_obj, "former", true).second;
+        this->redirect_to_id = get_unsigned_property(taxon_obj, "redirect_to", true).second;
+    }
+    
+    virtual ~BaseForwardAmendment(){
+    }
+
+    protected:
+        OttId former_id;
+        OttId redirect_to_id;
+};
+
+
+class BaseSynonymAmendment : public TaxonomyAmendment {
+    public:
+    BaseSynonymAmendment(const json & taxon_obj) {
+        this->ott_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
+        this->name = get_string_property(taxon_obj, "name", true).second;
+    }
+    
+    virtual ~BaseSynonymAmendment(){
+    }
+    
+    protected:
+        OttId ott_id;
+        std::string name;
+};
+
+class BaseTaxonAmendment: public TaxonomyAmendment {
+    public:
+    BaseTaxonAmendment(const json & taxon_obj)
         :rank(TaxonomicRank::RANK_NO_RANK) {
         this->taxon_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
         this->parent_id = get_unsigned_property(taxon_obj, "parent", true).second;
@@ -164,31 +195,69 @@ class TaxonAdditionAmendment: public TaxonAmendment {
         }
     }
     
-    virtual ~TaxonAdditionAmendment(){
+    virtual ~BaseTaxonAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &);
     
-    private:
-        OttId taxon_id;
-        OttId parent_id;
-        std::string source_info;
-        TaxonomicRank rank;
-        std::string name;
+    protected:
+    OttId taxon_id;
+    OttId parent_id;
+    std::string source_info;
+    TaxonomicRank rank;
+    std::string name;
 };
 
 
-inline std::pair<bool, std::string> TaxonAdditionAmendment::patch(PatchableTaxonomy &t) {
-    std::string empty;
-    auto rank_str = rank_enum_to_name.at(rank);
-    return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
-}
-
-class ForwardAdditionAmendment : public TaxonAmendment {
+class TaxonAdditionAmendment: public BaseTaxonAmendment {
     public:
-    ForwardAdditionAmendment(const json & taxon_obj) {
-        this->former_id = get_unsigned_property(taxon_obj, "former", true).second;
-        this->redirect_to_id = get_unsigned_property(taxon_obj, "redirect_to", true).second;
+    TaxonAdditionAmendment(const json & taxon_obj)
+        :BaseTaxonAmendment(taxon_obj) {
+    }
+    
+    virtual ~TaxonAdditionAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        std::string empty;
+        auto rank_str = rank_enum_to_name.at(rank);
+        return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
+    }
+};
+
+class TaxonEditAmendment: public BaseTaxonAmendment {
+    public:
+    TaxonEditAmendment(const json & taxon_obj)
+        :BaseTaxonAmendment(taxon_obj) {
+    }
+    
+    virtual ~TaxonEditAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        std::string empty;
+        auto rank_str = rank_enum_to_name.at(rank);
+        return t.edit_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
+    }
+};
+
+class TaxonDeletionAmendment: public BaseTaxonAmendment {
+    public:
+    TaxonDeletionAmendment(const json & taxon_obj)
+        :BaseTaxonAmendment(taxon_obj) {
+    }
+    
+    virtual ~TaxonDeletionAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        return t.delete_taxon(taxon_id);
+    }
+};
+
+class ForwardAdditionAmendment : public BaseForwardAmendment {
+    public:
+    ForwardAdditionAmendment(const json & taxon_obj)
+        :BaseForwardAmendment(taxon_obj) {
     }
     
     virtual ~ForwardAdditionAmendment(){
@@ -197,15 +266,54 @@ class ForwardAdditionAmendment : public TaxonAmendment {
     virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
         return t.add_forward(former_id, redirect_to_id);
     }
-    
-    private:
-        OttId former_id;
-        OttId redirect_to_id;
 };
 
-typedef std::shared_ptr<TaxonAmendment> TaxonAmendmentPtr;
+class ForwardDeletionAmendment : public BaseForwardAmendment {
+    public:
+    ForwardDeletionAmendment(const json & taxon_obj)
+        :BaseForwardAmendment(taxon_obj) {
+    }
+    
+    virtual ~ForwardDeletionAmendment(){
+    }
 
-TaxonAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        return t.delete_forward(former_id, redirect_to_id);
+    }
+};
+
+
+class SynonymAdditionAmendment : public BaseSynonymAmendment {
+    public:
+    SynonymAdditionAmendment(const json & taxon_obj)
+        :BaseSynonymAmendment(taxon_obj) {
+    }
+    
+    virtual ~SynonymAdditionAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        return t.add_synonym(name, ott_id);
+    }
+};
+
+class SynonymDeletionAmendment : public BaseSynonymAmendment {
+    public:
+    SynonymDeletionAmendment(const json & taxon_obj)
+        :BaseSynonymAmendment(taxon_obj) {
+    }
+    
+    virtual ~SynonymDeletionAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        return t.delete_synonym(name, ott_id);
+    }
+};
+
+typedef std::shared_ptr<TaxonomyAmendment> TaxonomyAmendmentPtr;
+
+TaxonomyAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
     if (! edit_obj.is_object()) {
         throw OTCError() << "Expecting a taxon amendment object";
     }
@@ -219,18 +327,42 @@ TaxonAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
         if (forward_j.first) {
            return std::make_shared<ForwardAdditionAmendment>(*(forward_j.second));
         }
-        
+        auto syn_j = get_object_property(edit_obj, "synonym", false);
+        if (syn_j.first) {
+           return std::make_shared<SynonymAdditionAmendment>(*(syn_j.second));
+        }
+        throw OTCError() << "Expecting add action to contain taxon, forward, or synonym object.";
+    } else if (action == "delete") {
+        auto taxon_j = get_object_property(edit_obj, "taxon", false);
+        if (taxon_j.first) {
+            return std::make_shared<TaxonDeletionAmendment>(*(taxon_j.second));
+        }
+        auto forward_j = get_object_property(edit_obj, "forward", false);
+        if (forward_j.first) {
+           return std::make_shared<ForwardDeletionAmendment>(*(forward_j.second));
+        }
+        auto syn_j = get_object_property(edit_obj, "synonym", false);
+        if (syn_j.first) {
+           return std::make_shared<SynonymDeletionAmendment>(*(syn_j.second));
+        }
+        throw OTCError() << "Expecting delete action to contain taxon, forward, or synonym object.";
+    } else if (action == "edit") {
+        auto taxon_j = get_object_property(edit_obj, "taxon", false);
+        if (taxon_j.first) {
+            return std::make_shared<TaxonEditAmendment>(*(taxon_j.second));
+        }
+        throw OTCError() << "Expecting edit action to contain taxon object.";
     } else {
         throw OTCError() << "Taxon amendment with action \"" << action << "\" not implemented.";
     }
-    TaxonAmendmentPtr ta;
+    TaxonomyAmendmentPtr ta;
     return ta;
 }
 
 
-std::list<TaxonAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) {
+std::list<TaxonomyAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) {
     json edits_obj = json::parse(inp);
-    std::list<TaxonAmendmentPtr> edit_list;
+    std::list<TaxonomyAmendmentPtr> edit_list;
     if (edits_obj.is_object()) {
         edit_list.push_back(parse_taxon_amendment_obj(edits_obj));
     } else if (edits_obj.is_array()) {
@@ -257,7 +389,7 @@ std::list<TaxonAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) {
 
 
 void edit_taxonomy(PatchableTaxonomy & taxonomy,
-                   const std::list<TaxonAmendmentPtr> & edit_list,
+                   const std::list<TaxonomyAmendmentPtr> & edit_list,
                    bool amend_status_to_stdout) {
     std::size_t num_attempts = 0;
     std::size_t num_applied = 0;
@@ -283,7 +415,7 @@ int main(int argc, char* argv[]) {
         const bool do_json_edits = bool(args.count("edits"));
         const bool amend_status_to_stdout = bool(args.count("amend-status-to-stdout"));
         std::ostream & out = (amend_status_to_stdout ? std::cout : std::cerr);
-        std::list<TaxonAmendmentPtr> edits;
+        std::list<TaxonomyAmendmentPtr> edits;
         if (do_json_edits) {
             string edit_fp = args["edits"].as<string>();
             std::ifstream edit_stream(edit_fp);
