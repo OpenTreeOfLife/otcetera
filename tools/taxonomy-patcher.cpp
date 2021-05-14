@@ -168,6 +168,7 @@ class BaseSynonymAmendment : public TaxonomyAmendment {
     BaseSynonymAmendment(const json & taxon_obj) {
         this->ott_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
         this->name = get_string_property(taxon_obj, "name", true).second;
+        this->source_info = get_string_property(taxon_obj, "sourceinfo", true).second;
     }
     
     virtual ~BaseSynonymAmendment(){
@@ -176,15 +177,17 @@ class BaseSynonymAmendment : public TaxonomyAmendment {
     protected:
         OttId ott_id;
         std::string name;
+        std::string source_info;
 };
 
 class BaseTaxonAmendment: public TaxonomyAmendment {
     public:
-    BaseTaxonAmendment(const json & taxon_obj)
-        :rank(TaxonomicRank::RANK_NO_RANK) {
+    BaseTaxonAmendment(const json & taxon_obj, bool all_req)
+        :parent_id(0),
+        rank(TaxonomicRank::RANK_NO_RANK) {
         this->taxon_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
-        this->parent_id = get_unsigned_property(taxon_obj, "parent", true).second;
-        this->name = get_string_property(taxon_obj, "name", true).second;
+        this->parent_id = get_unsigned_property(taxon_obj, "parent", all_req).second;
+        this->name = get_string_property(taxon_obj, "name", all_req).second;
         auto si = get_string_property(taxon_obj, "sourceinfo", false);
         if (si.first) {
             this->source_info = si.second;
@@ -211,7 +214,7 @@ class BaseTaxonAmendment: public TaxonomyAmendment {
 class TaxonAdditionAmendment: public BaseTaxonAmendment {
     public:
     TaxonAdditionAmendment(const json & taxon_obj)
-        :BaseTaxonAmendment(taxon_obj) {
+        :BaseTaxonAmendment(taxon_obj,true) {
     }
     
     virtual ~TaxonAdditionAmendment(){
@@ -227,7 +230,7 @@ class TaxonAdditionAmendment: public BaseTaxonAmendment {
 class TaxonEditAmendment: public BaseTaxonAmendment {
     public:
     TaxonEditAmendment(const json & taxon_obj)
-        :BaseTaxonAmendment(taxon_obj) {
+        :BaseTaxonAmendment(taxon_obj, false) {
     }
     
     virtual ~TaxonEditAmendment(){
@@ -243,7 +246,7 @@ class TaxonEditAmendment: public BaseTaxonAmendment {
 class TaxonDeletionAmendment: public BaseTaxonAmendment {
     public:
     TaxonDeletionAmendment(const json & taxon_obj)
-        :BaseTaxonAmendment(taxon_obj) {
+        :BaseTaxonAmendment(taxon_obj, false) {
     }
     
     virtual ~TaxonDeletionAmendment(){
@@ -293,7 +296,7 @@ class SynonymAdditionAmendment : public BaseSynonymAmendment {
     }
 
     virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
-        return t.add_synonym(name, ott_id);
+        return t.add_synonym(name, ott_id, source_info);
     }
 };
 

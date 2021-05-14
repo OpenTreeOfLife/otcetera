@@ -60,16 +60,96 @@ using bool_str_t = std::pair<bool, std::string>;
 
 
 
-bool_str_t PatchableTaxonomy::add_synonym(const std::string & name, OttId ott_id) {
+bool_str_t PatchableTaxonomy::add_synonym(const std::string & name,
+                                          OttId ott_id,
+                                          const std::string & sourceinfo) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
-    throw OTCError() << "add_synonym not implemented";
+    auto target_nd = included_taxon_from_id(ott_id); 
+    if (target_nd == nullptr) {
+        auto itrit = rt_data.id_to_record.find(ott_id);
+        if (itrit == rt_data.id_to_record.end()) {
+            std::string expl = "OTT ID " + std::to_string(ott_id) + " unrecognized.";
+            return bool_str_t{false, expl};
+        }
+        LightSynonym ls{name, sourceinfo};
+        auto tr = itrit->second;
+        rec_to_new_syn[tr].push_back(ls);
+        return bool_str_t{false, ""};
+    }
+}
+
+template<typename T>
+std::vector<T> copy_except(const std::vector<T> & src, const T & taboo) {
+    std::vector<T> ret;
+    ret.reserve(src.size());
+    for (auto i : src) {
+        if (i == taboo) {
+            continue;
+        }
+        ret.push_back(i);
+    }
+    return ret;
 }
 
 bool_str_t PatchableTaxonomy::delete_synonym(const std::string & name, OttId ott_id) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
-    throw OTCError() << "delete_synonym not implemented";
+    auto target_nd = included_taxon_from_id(ott_id); 
+    if (target_nd == nullptr) {
+        std::string expl = "OTT ID " + std::to_string(ott_id) + " unrecognized.";
+        return bool_str_t{false, expl};
+    }
+    RTRichTaxNodeData & nd_data = const_cast<RTRichTaxNodeData &>(target_nd->get_data());
+    unsigned njsm = 0;
+    std::vector<const TaxonomicJuniorSynonym *> njsv;
+    for (auto tjs : nd_data.junior_synonyms) {
+        if (tjs->name == name) {
+            ++njsm;
+        } else {
+            njsv.push_back(tjs);
+        }
+    }
+    if (njsm == 0) {
+        std::string expl = "No synonym of " + std::to_string(ott_id) + " had the name \"" + name + "\".";
+        return bool_str_t{false, expl};
+    }
+    nd_data.junior_synonyms == njsv;
+    remove_name_to_node_from_maps(name, target_nd);
+    return bool_str_t{true, ""};
+
+}
+
+
+void PatchableTaxonomy::remove_name_to_node_from_maps(const std::string & name,
+                                                      const RTRichTaxNode * target_nd) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    auto hit = rt_data.homonym_to_nodes.find(name);
+    auto sit = rt_data.name_to_node.find(name);
+    if (hit != rt_data.homonym_to_nodes.end()) {
+        assert(sit == rt_data.name_to_node.end());
+        auto nv = copy_except(hit->second, target_nd);
+        auto nvs = nv.size();
+        if (nvs == hit->second.size() || nvs == 0) {
+            return;
+        } else if (nvs == 1) {
+            auto nd_p = nv[0];
+            rt_data.name_to_node[name] = nd_p;
+            return;
+        } else {
+            rt_data.homonym_to_nodes[name] = nv;
+        }
+        return;
+    }
+    if (sit == rt_data.name_to_node.end()) {
+        // name must map to taxonrecord instead of a node
+        return ;
+    }
+    if (sit->second != target_nd) {
+        return ; // odd
+    }
+    rt_data.name_to_node.erase(sit);
 }
 
 bool_str_t PatchableTaxonomy::add_forward(OttId former_id, OttId redirect_to_id) {
@@ -253,6 +333,16 @@ void PatchableTaxonomy::write_synonyms_file_contents(std::ostream & sf) const {
                     break;
                 }
             }
+        }
+    }
+    for (auto tr_vsyn : rec_to_new_syn) {
+        auto tr = tr_vsyn.first;
+        for (auto new_syn : tr_vsyn.second) {
+            sf << new_syn.name << sep 
+                << tr->id << sep
+                << sep // we don't retain the type on parsing
+                << sep // we don't retain the uniqname on parsing
+                << new_syn.source_string << sep << '\n';       
         }
     }
     sf.flush();

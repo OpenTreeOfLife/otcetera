@@ -361,8 +361,6 @@ class RichTaxonomy: public BaseTaxonomy {
         }
         return i2n_it->second;
     }
-
-    void add_taxonomic_addition_string(const std::string &s);
     
     const OttIdSet & get_ids_to_suppress_from_tnrs() const {
         return ids_to_suppress_from_tnrs;
