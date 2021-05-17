@@ -82,6 +82,7 @@ bool_str_t PatchableTaxonomy::add_synonym(const std::string & name,
     RTRichTaxNodeData & nd_data = const_cast<RTRichTaxNodeData &>(target_nd->get_data());
     nd_data.junior_synonyms.push_back(syn_ptr);
     add_name_to_node_maps(name, target_nd);
+    synonym2node[name].push_back(target_nd);
     return bool_str_t{true, ""};
 }
 
@@ -122,6 +123,11 @@ bool_str_t PatchableTaxonomy::delete_synonym(const std::string & name, OttId ott
     }
     nd_data.junior_synonyms == njsv;
     remove_name_to_node_from_maps(name, target_nd);
+    auto & csv = synonym2node[name];
+    auto nv = copy_except(csv, target_nd);
+    if (nv.size() != csv.size()) {
+        synonym2node[name] = nv;
+    }
     return bool_str_t{true, ""};
 
 }
@@ -235,10 +241,16 @@ bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
         return bool_str_t{false, expl};
     }
     RTRichTaxNodeData & nd_data = nd_ptr->get_data();
-    if (parent_id != 0) {
-        auto par = nd_ptr->get_parent();
-        if (par == nullptr || par->get_ott_id() != parent_id) {
-            throw OTCError() << "edit_taxon to change the parent is not currently implemented";
+    if (parent_id != UINT_MAX && parent_id != 0) {
+        auto old_par = const_cast<RTRichTaxNode * >(included_taxon_from_id(parent_id));
+        if (old_par == nullptr) {
+            std::string expl = "Parent OTT ID " + std::to_string(parent_id) + " is not an included taxon.";
+            return bool_str_t{false, expl};
+        }
+        auto new_par = nd_ptr->get_parent();
+        if (new_par != old_par) {
+            old_par->remove_child(nd_ptr);
+            new_par->add_child(nd_ptr);
         }
     }
     const auto & tr = get_new_tax_rec(oid, parent_id,

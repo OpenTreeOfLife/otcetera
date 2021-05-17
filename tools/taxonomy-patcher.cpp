@@ -183,7 +183,7 @@ class BaseSynonymAmendment : public TaxonomyAmendment {
 class BaseTaxonAmendment: public TaxonomyAmendment {
     public:
     BaseTaxonAmendment(const json & taxon_obj, bool all_req)
-        :parent_id(0),
+        :parent_id(UINT_MAX),
         rank(TaxonomicRank::RANK_NO_RANK) {
         this->taxon_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
         this->parent_id = get_unsigned_property(taxon_obj, "parent", all_req).second;
