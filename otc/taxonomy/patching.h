@@ -54,12 +54,26 @@ class PatchableTaxonomy: public RichTaxonomy {
     void write_forwards_file_contents(std::ostream & ff) const;
     void remove_name_to_node_from_maps(const std::string & name,
                                        const RTRichTaxNode * target_nd);
+    void add_name_to_node_maps(const std::string & name,
+                                    const RTRichTaxNode * target_nd);
 
     //std::map<const RTRichTaxNode * , std::string> node_to_uniqname;
     std::map<std::string, std::vector<const RTRichTaxNode *> > synonym2node;
 
     std::list<TaxonomyRecord> added_records;
     std::map<const TaxonomyRecord *, std::vector<LightSynonym> > rec_to_new_syn;
+
+    TaxonomyRecord & get_new_tax_rec(OttId oid,
+                                     OttId parent_id,
+                                     const std::string & name,
+                                     const std::string & rank,
+                                     const std::string & sourceinfo,
+                                     const std::string & uniqname,
+                                     const std::string & flags);
+
+    void reg_or_rereg_nd(RTRichTaxNode * nnd,
+                         const TaxonomyRecord & tr,
+                         RichTaxTree & tree);
     
 };
 
