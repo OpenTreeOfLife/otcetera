@@ -11,7 +11,7 @@
 #define ELPP_THREAD_SAFE 1
 #define ELPP_STACKTRACE_ON_CRASH 1
 
-#include "otc/easylogging++.hpp"
+#include "otc/easylogging++.h"
 #include <optional>
 
 #define OTC_UNREACHABLE {LOG(ERROR)<<"Unreachable code reached!"; std::abort();}
