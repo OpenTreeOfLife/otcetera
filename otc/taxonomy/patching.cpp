@@ -232,6 +232,7 @@ bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
                                          const std::string & sourceinfo,
                                          const std::string & uniqname,
                                          const std::string & flags,
+                                         bool flags_edited,
                                          OttId * homonym_of) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
@@ -241,21 +242,28 @@ bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
         return bool_str_t{false, expl};
     }
     RTRichTaxNodeData & nd_data = nd_ptr->get_data();
+    auto old_par = nd_ptr->get_parent();
     if (parent_id != UINT_MAX && parent_id != 0) {
-        auto old_par = const_cast<RTRichTaxNode * >(included_taxon_from_id(parent_id));
-        if (old_par == nullptr) {
+        auto new_par = const_cast<RTRichTaxNode * >(included_taxon_from_id(parent_id));
+        if (new_par == nullptr) {
             std::string expl = "Parent OTT ID " + std::to_string(parent_id) + " is not an included taxon.";
             return bool_str_t{false, expl};
         }
-        auto new_par = nd_ptr->get_parent();
         if (new_par != old_par) {
             old_par->remove_child(nd_ptr);
             new_par->add_child(nd_ptr);
         }
+    } else if (old_par != nullptr) {
+        parent_id = old_par->get_ott_id();
     }
+    std::string fs = (flags_edited ? flags : flags_to_string(nd_data.get_flags()));
+    std::string name_str = (name.empty() ? std::string{nd_data.get_nonuniqname()} : name);
+    std::string rank_str = (rank.empty() ? nd_data.get_rank() : rank);
+    std::string src_str = (sourceinfo.empty() ? nd_data.get_sources_as_fmt_str() : sourceinfo);
+    std::string uname_str = uniqname;
     const auto & tr = get_new_tax_rec(oid, parent_id,
-                                      name, rank, sourceinfo,
-                                      uniqname, flags);
+                                      name_str, rank_str, src_str,
+                                      uname_str, fs);
     if (name != nd_ptr->get_name() && name != nd_data.get_nonuniqname()) {
         remove_name_to_node_from_maps(nd_ptr->get_name(), nd_ptr);
         string cp{nd_data.get_nonuniqname()};
@@ -330,7 +338,7 @@ void PatchableTaxonomy::reg_or_rereg_nd(RTRichTaxNode * nnd,
     populate_node_from_taxonomy_record(*nnd, tr, nodeNamer, tree);
     auto & rt_data = tree.get_data();
     rt_data.name_to_node[tr.name] = nnd;
-    rt_data.id_to_node[nnd->get_ott_id()] =nnd;
+    rt_data.id_to_node[nnd->get_ott_id()] = nnd;
 }
 
 TaxonomyRecord & PatchableTaxonomy::get_new_tax_rec(OttId oid,

@@ -184,7 +184,8 @@ class BaseTaxonAmendment: public TaxonomyAmendment {
     public:
     BaseTaxonAmendment(const json & taxon_obj, bool all_req)
         :parent_id(UINT_MAX),
-        rank(TaxonomicRank::RANK_NO_RANK) {
+        rank(TaxonomicRank::RANK_NO_RANK),
+        flags_set(false) {
         this->taxon_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
         this->parent_id = get_unsigned_property(taxon_obj, "parent", all_req).second;
         this->name = get_string_property(taxon_obj, "name", all_req).second;
@@ -195,6 +196,11 @@ class BaseTaxonAmendment: public TaxonomyAmendment {
         auto ri = get_string_property(taxon_obj, "rank", false);
         if (ri.first) {
             this->rank = string_to_rank(ri.second, true);
+        }
+        auto fi = get_string_property(taxon_obj, "flags", false);
+        if (fi.first) {
+            this->flags = flags_from_string(fi.second);
+            flags_set = true;
         }
     }
     
@@ -208,6 +214,8 @@ class BaseTaxonAmendment: public TaxonomyAmendment {
     std::string source_info;
     TaxonomicRank rank;
     std::string name;
+    tax_flags flags;
+    bool flags_set;
 };
 
 
@@ -222,8 +230,9 @@ class TaxonAdditionAmendment: public BaseTaxonAmendment {
 
     virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
         std::string empty;
+        std::string fs = flags_to_string(flags);
         auto rank_str = rank_enum_to_name.at(rank);
-        return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
+        return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, fs);
     }
 };
 
@@ -238,8 +247,14 @@ class TaxonEditAmendment: public BaseTaxonAmendment {
 
     virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
         std::string empty;
+        std::string fs;
         auto rank_str = rank_enum_to_name.at(rank);
-        return t.edit_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, empty);
+        if (flags_set) {
+            fs = flags_to_string(flags);
+        } else {
+            fs = empty;
+        }
+        return t.edit_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, fs, flags_set);
     }
 };
 

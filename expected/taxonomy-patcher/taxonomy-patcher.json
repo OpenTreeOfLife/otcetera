@@ -28,5 +28,10 @@
     "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
     "infile_list": ["rename.json", "tnrs-taxonomy"],
     "expected": "rename"
+  },
+  {
+    "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
+    "infile_list": ["add-hidden.json", "tnrs-taxonomy"],
+    "expected": "add-hidden"
   }
 ]

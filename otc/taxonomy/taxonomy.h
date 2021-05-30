@@ -273,6 +273,9 @@ class RTRichTaxNodeData {
     std::vector<std::string> sourceinfoAsVec() const {
         return comma_separated_as_vec(source_info);
     }
+    std::string get_sources_as_fmt_str() const {
+        return source_info;
+    }
     nlohmann::json get_sources_json() const {
         auto vs = this->sourceinfoAsVec();
         return sources_vec_as_json(vs);
