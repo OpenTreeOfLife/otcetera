@@ -48,12 +48,13 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     options_description taxonomy("Taxonomy options");
     taxonomy.add_options()
-        ("edits", value<string>(), "filepath of JSON file with terse taxonomy edits (this is only relevant when the --write-taxonomy option in effect)")
+        ("edits", value<vector<string>>()->composing(), "filepath of JSON file with terse taxonomy edits (this is only relevant when the --write-taxonomy option in effect)")
         ;
 
     options_description output("Output options");
     output.add_options()
         ("amend-status-to-stdout", "Primarily for debugging. Writes amendment status info to stdout rather than stderr.")
+        ("demand-all-applied", "Exits with an error code if any edit fails to be applied.")
         ("write-to-stdout","Primarily for debugging. Writes contents of taxonomy output to stdout. Only used if write-taxonomy is not used.")
         ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
         ;
@@ -168,7 +169,7 @@ class BaseSynonymAmendment : public TaxonomyAmendment {
     BaseSynonymAmendment(const json & taxon_obj) {
         this->ott_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
         this->name = get_string_property(taxon_obj, "name", true).second;
-        this->source_info = get_string_property(taxon_obj, "sourceinfo", true).second;
+        this->source_info = get_string_property(taxon_obj, "sourceinfo", false).second;
     }
     
     virtual ~BaseSynonymAmendment(){
@@ -406,7 +407,7 @@ std::list<TaxonomyAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) 
 
 
 
-void edit_taxonomy(PatchableTaxonomy & taxonomy,
+bool edit_taxonomy(PatchableTaxonomy & taxonomy,
                    const std::list<TaxonomyAmendmentPtr> & edit_list,
                    bool amend_status_to_stdout) {
     std::size_t num_attempts = 0;
@@ -423,6 +424,7 @@ void edit_taxonomy(PatchableTaxonomy & taxonomy,
         }
     }
     outp << num_applied << "/" << num_attempts << " amendments applied." << std::endl;
+    return num_applied == num_attempts;
 }
 
 
@@ -432,28 +434,42 @@ int main(int argc, char* argv[]) {
         auto args = parse_cmd_line(argc, argv);
         const bool do_json_edits = bool(args.count("edits"));
         const bool amend_status_to_stdout = bool(args.count("amend-status-to-stdout"));
+        const bool exit_on_failure = bool(args.count("demand-all-applied"));
         std::ostream & out = (amend_status_to_stdout ? std::cout : std::cerr);
-        std::list<TaxonomyAmendmentPtr> edits;
+        
+        using list_amend_t = std::list<TaxonomyAmendmentPtr>;
+        list_amend_t edits;
+        std::list<list_amend_t> amend_by_file;
         if (do_json_edits) {
-            string edit_fp = args["edits"].as<string>();
-            std::ifstream edit_stream(edit_fp);
-            if (!edit_stream.good()) {
-                out << "otc-taxonomy-parser: Could not open \"" << edit_fp << "\"" << std::endl;
-                return 1;
-            }
-            try {
-                edits = parse_taxon_amendments_json(edit_stream);
-            } catch (...) {
-                out <<  "otc-taxonomy-parser: Could not parse \"" << edit_fp << "\"" << std::endl;
-                throw;
+            std::vector<std::string> ej = args["edits"].as<std::vector<std::string> >();
+            for (auto edit_fp : ej) {
+                std::ifstream edit_stream(edit_fp);
+                if (!edit_stream.good()) {
+                    out << "otc-taxonomy-parser: Could not open \"" << edit_fp << "\"" << std::endl;
+                    return 1;
+                }
+                try {
+                    amend_by_file.emplace_back(parse_taxon_amendments_json(edit_stream));
+                } catch (...) {
+                    out <<  "otc-taxonomy-parser: Could not parse \"" << edit_fp << "\"" << std::endl;
+                    throw;
+                }
             }
         }
         out << "loading taxonomy" << std::endl;
         auto taxonomy = load_patchable_taxonomy(args);
         out << "loaded" << std::endl;
         if (do_json_edits) {
-            string edit_fp = args["edits"].as<string>();
-            edit_taxonomy(taxonomy, edits, amend_status_to_stdout);
+            std::vector<std::string> ej = args["edits"].as<std::vector<std::string> >();
+            auto a_by_f_it = amend_by_file.begin();
+            for (auto edit_fp : ej) {
+                const auto & edits = *a_by_f_it++;
+                if (!edit_taxonomy(taxonomy, edits, amend_status_to_stdout)) {
+                    if (exit_on_failure) {
+                        return 1;
+                    }
+                }
+            }
         }
         if (args.count("write-taxonomy")) {
             taxonomy.write(args["write-taxonomy"].as<string>());
