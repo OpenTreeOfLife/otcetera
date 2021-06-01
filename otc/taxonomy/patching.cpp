@@ -264,7 +264,7 @@ bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
     const auto & tr = get_new_tax_rec(oid, parent_id,
                                       name_str, rank_str, src_str,
                                       uname_str, fs);
-    if (name != nd_ptr->get_name() && name != nd_data.get_nonuniqname()) {
+    if (name_str != nd_ptr->get_name() && name_str != nd_data.get_nonuniqname()) {
         remove_name_to_node_from_maps(nd_ptr->get_name(), nd_ptr);
         string cp{nd_data.get_nonuniqname()};
         remove_name_to_node_from_maps(cp, nd_ptr);
