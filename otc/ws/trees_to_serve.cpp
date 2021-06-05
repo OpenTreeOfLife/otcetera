@@ -172,8 +172,12 @@ set<string> TreesToServe::get_available_trees() const
 
 const SummaryTreeAnnotation * TreesToServe::get_annotations(string synth_id) const {
     const auto & key = synth_id.empty() ? default_synth_id : synth_id;
+    LOG(DEBUG) << " key = \"" << key << "\" synth_id = \"" << synth_id << "\"";
     auto mit = id_to_annotations.find(key);
-    return mit == id_to_annotations.end() ? nullptr : mit->second;
+    if (mit == id_to_annotations.end()) {
+        return nullptr;
+    }
+    return mit->second;
 }
 
 const SummaryTree_t * TreesToServe::get_summary_tree(string synth_id) const {
