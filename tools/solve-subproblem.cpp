@@ -468,15 +468,11 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         // We don't need to re-check implied_splits if the taxon set hasn't changed.
         if (component->implied_splits_have_been_checked) continue;
 
-        auto& implied_splits = component->old_implied_splits;
-        auto& non_implied_splits = component->old_non_implied_splits;
-        auto& new_splits = component->new_splits;
-
         // It is cheaper to do this check once after adding taxa, instead of multiple times if we add multiple taxa.
         // That is because we have to scan the entire exclude set, even if we only add 1 taxon to the components :-(.
-        for(int i=0;i<implied_splits.size();)
+        for(int i=0;i<component->old_implied_splits.size();)
         {
-            auto& split = implied_splits[i];
+            auto& split = component->old_implied_splits[i];
 
 #ifndef NDEBUG
             int first = indices[*split->in.begin()];
@@ -487,8 +483,8 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
             if (not implied)
             {
-                auto split = remove_unordered(implied_splits,i);
-                new_splits.push_back(split);
+                auto split = remove_unordered(component->old_implied_splits,i);
+                component->new_splits.push_back(split);
             }
             else
                 i++;
