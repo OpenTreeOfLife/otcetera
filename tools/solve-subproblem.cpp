@@ -391,10 +391,10 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     for(auto taxon: new_taxa)
         taxa.push_back(taxon);
 
-    auto& splits = solution.splits;
-    int orig_n_splits = splits.size();
+    // Do we need to do this?
+    int orig_n_splits = solution.splits.size();
     for(auto& new_split: new_splits)
-        splits.push_back(new_split);
+        solution.splits.push_back(new_split);
 
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
@@ -412,7 +412,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     }
 
     // 1. If there are no splits, then we are consistent.
-    if (splits.empty())
+    if (solution.splits.empty())
         return true;
 
     // 2. Initialize the mapping from taxa to indices.
