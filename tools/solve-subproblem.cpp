@@ -462,6 +462,15 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
+
+    // OK, so can we change how component merges work?
+    // When do components first get (i) old_implied_splits, (ii) old_non_implied_splits, and (iii) new_splits?
+
+    // I would like to change how component merges work.
+    // - If we merge two components that already have solutions, then each solution/old component should keep its implied_splits + non_implied_splits.
+    // - When handling each component, we want to look at (a) new splits to the component and (b) splits for merged components.
+    // - So, maybe the implied_splits + non_implied_splits should be part of the solution object...
+
     // 6. Check implied splits to see if they are STILL implied.
     for(auto& component: components)
     {
@@ -537,9 +546,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         }
 
-        auto& old_splits = component->old_non_implied_splits;
-        auto& new_splits = component->new_splits;
-        old_splits.insert(old_splits.end(), new_splits.begin(), new_splits.end());
+        append(component->old_non_implied_splits, component->new_splits);
 
         if (not has_old_solution)
         {
