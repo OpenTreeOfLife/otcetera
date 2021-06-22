@@ -1,0 +1,124 @@
+name: Build and test
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+    - "*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        name: [ubuntu-gcc-9,
+               ubuntu-gcc-10,
+#               ubuntu-clang-9,
+#               macos-xcode-12.3,
+               ]
+
+        include:
+          - name: ubuntu-gcc-9
+            os: ubuntu-20.04
+            compiler: gcc
+            version: "9"
+
+          - name: ubuntu-gcc-10
+            os: ubuntu-20.04
+            compiler: gcc
+            version: "10"
+
+#          - name: ubuntu-clang-9
+#            os: ubuntu-20.04
+#            compiler: clang
+#            version: "9"
+
+#          - name: macos-xcode-12.3
+#            os: macos-latest
+#            compiler: xcode
+#            version: "12.3"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - name: Install (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt install -y ccache libboost-all-dev
+        sudo rm -rf /usr/local/share/boost
+        if [ "${{ matrix.compiler }}" = "gcc" ]; then
+          sudo apt-get install -y g++-${{ matrix.version }}
+          echo "CC=ccache gcc-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=ccache g++-${{ matrix.version }}" >> $GITHUB_ENV
+        else
+          sudo apt-get install -y clang-${{ matrix.version }}
+          echo "CC=ccache clang-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=ccache clang++-${{ matrix.version }}" >> $GITHUB_ENV
+        fi
+
+    - name: Install (macOS)
+      if: runner.os == 'macOS'
+      run: |
+          brew install pkg-config boost ccache coreutils
+          echo "DEVELOPER_DIR=/Applications/Xcode_${{ matrix.version }}.app/Contents/Developer" >> $GITHUB_ENV
+          echo "CC=ccache clang" >> $GITHUB_ENV
+          echo "CXX=ccache clang++" >> $GITHUB_ENV
+          ccache --set-config=cache_dir=$HOME/.ccache
+
+    - name: Install meson
+      run: |
+        python3 -mpip install meson ninja
+
+    # Caches for different branches are isolated, so we don't need to put the branch name into the key.
+
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          stamp=$(date '+%s')
+        else
+          stamp=$(gdate '+%s')
+        fi
+        echo "${stamp}"
+        echo "::set-output name=timestamp::${stamp}"
+
+    - name: ccache cache files
+      uses: actions/cache@v2
+      with:
+         path: ~/.ccache
+         key: ${{ matrix.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+         restore-keys: |
+           ${{ matrix.name }}-ccache-
+
+    - name: build restbed
+      run: |
+        cd
+        git clone --recursive https://github.com/corvusoft/restbed.git
+        mkdir restbed/build
+        ( cd restbed/build ; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
+        echo "CPPFLAGS=-I${HOME}/local/include" >> $GITHUB_ENV
+        echo "LDFLAGS=-L${HOME}/local/lib -L${HOME}/local/library" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=${HOME}/local/lib:${HOME}/local/library:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Configure otcetera
+      run: |
+        cd ${GITHUB_WORKSPACE}
+        meson build --prefix=$HOME/local --buildtype=release ${ARGS}
+
+    - name: Build otcetera
+      run: |
+        ccache -p
+        ninja -C build install -j4
+        ccache -s
+
+    - name: Run otcetera tests
+      run: |
+        python3 -mpip install requests
+        ninja -C build test
+
+

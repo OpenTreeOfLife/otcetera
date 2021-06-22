@@ -13,6 +13,7 @@
 #include <boost/tokenizer.hpp>
 #include <boost/program_options.hpp>
 #include <memory>
+#include "assert.hh"
 namespace otc {
 bool get_bool(const std::string& arg, const std::string& context);
 

@@ -11,6 +11,7 @@
 #include <fstream>
 #include <cstdlib>
 #include "otc/ws/tolwsadaptors.h"
+#include "otc/ws/find_node.h"
 #include "otc/otcli.h"
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
@@ -701,11 +702,16 @@ create_method_handler(const string& path, const std::function<std::string(const 
                     LOG(DEBUG)<<"request: DONE";
                     session->close( OK, rbody, request_headers(rbody) );
                 } catch (OTCWebError& e) {
+                    LOG(DEBUG) << "OTCWebError: " << e.what();
                     string rbody = error_response(path,e);
                     session->close( e.status_code(), rbody, request_headers(rbody) );
                 } catch (OTCError& e) {
+                    LOG(DEBUG) << "OTCError: " << e.what();
                     string rbody = error_response(path,e);
                     session->close( 500, rbody, request_headers(rbody) );
+                } catch (std::exception& e) {
+                    LOG(DEBUG) << "std::exception: " << e.what();
+                    throw;
                 }
             });
     };
@@ -1210,11 +1216,11 @@ bool read_tree_and_annotations(const fs::path & config_path,
             string k = nit.key();
             auto result = find_node_by_id_str(tree, taxonomy, k);
             //auto stnit = n2n.find(k);
-            if (result.node == nullptr) {
+            if (result.node() == nullptr) {
                 throw OTCError() << "Node " << k << " from annotations not found in tree.";
             }
             //const SumTreeNode_t * stn = stnit->second;
-            SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(result.node);
+            SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(result.node());
             SumTreeNodeData & mstnd = mstn->get_data();
             const auto & supportj = nit.value();
 #           if defined(JOINT_MAPPING_VEC)
@@ -1331,11 +1337,11 @@ bool read_tree_and_annotations(const fs::path & config_path,
                 vector<const SumTreeNode_t *> avec;
                 avec.reserve(attach_id_list.size());
                 for (auto attach_id : attach_id_list) {
-                    auto [anptr, _] = find_node_by_id_str(tree, taxonomy, attach_id);
+                    auto anptr = find_node_by_id_str(tree, taxonomy, attach_id).node();
                     assert(anptr != nullptr);
                     avec.push_back(anptr);
                 }
-                tree_broken_taxa[broken_ott] = BrokenMRCAAttachVec(mrca_result.node, avec);
+                tree_broken_taxa[broken_ott] = BrokenMRCAAttachVec(mrca_result.node(), avec);
             }
         }
         sta.initialized = true;

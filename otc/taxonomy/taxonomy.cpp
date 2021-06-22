@@ -241,10 +241,10 @@ OttId Taxonomy::map(OttId old_id) const {
 void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines_raw) {
     fs::path old_dir = path;
     fs::path new_dir = newdirname;
-    if (fs::exists(new_dir)) {
-        throw OTCError() << "File '" << newdirname << "' already exists!";
+    if (! fs::exists(new_dir)) {
+        fs::create_directories(new_dir);
     }
-    fs::create_directories(new_dir);
+    
     // Copy the other files.
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
                 "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
@@ -591,6 +591,8 @@ Taxonomy load_taxonomy(const variables_map& args) {
     OttId keep_root = -1;
     if (args.count("root")) {
         keep_root = args["root"].as<OttId>();
+    } else if (args.count("xroot")) {
+        keep_root = args["xroot"].as<OttId>();
     } else if (args.count("config")) {
         keep_root = root_ott_id_from_file(args["config"].as<string>());
     }

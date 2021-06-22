@@ -189,7 +189,7 @@ std::pair<bool, bool> RootedForest<T, U>::check_with_previously_added_statement(
         db_write_ott_id_set(" RootedForest::conflictsWithPreviouslyAddedStatement incGroup ", ps.include_group);
         db_write_ott_id_set(" leaf_set", ps.leaf_set);
     }
-    for (const auto sIt : added_splits_by_leaf_set) {
+    for (const auto& sIt : added_splits_by_leaf_set) {
         const auto & prevAddedLeafSet = sIt.first;
         const auto relLeafSet = set_intersection_as_set(prevAddedLeafSet, ps.leaf_set);
         const bool exactLS = relLeafSet.size() == ps.leaf_set.size();

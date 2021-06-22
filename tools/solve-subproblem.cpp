@@ -2,6 +2,7 @@
 #include <set>
 #include <list>
 #include <iterator>
+#include <boost/smart_ptr/intrusive_ptr.hpp>
 
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
@@ -12,6 +13,9 @@
 #include <sstream>
 #include <boost/filesystem.hpp>
 #include <optional>
+#include <robin_hood.h>
+
+#include "otc/conflict.h"
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -19,14 +23,22 @@ namespace fs = boost::filesystem;
 using std::vector;
 using std::unique_ptr;
 using std::set;
+using std::pair;
 using std::list;
 using std::map;
 using std::string;
 using std::optional;
+using std::shared_ptr;
+
+template <typename X>
+using Set = robin_hood::unordered_set<X>;
+
 using namespace otc;
 
 typedef TreeMappedWithSplits Tree_t;
 typedef Tree_t::node_type node_t;
+
+static vector<int> indices;
 
 int depth(const Tree_t::node_type* nd)
 {
@@ -42,24 +54,108 @@ vector<T> set_to_vector(const set<T>& s) {
     return v;
 }
 
-struct RSplit {
+template <typename Tree_Out_t, typename Tree_In_t>
+unique_ptr<Tree_Out_t> copy_tree(const Tree_In_t& tree)
+{
+    std::unique_ptr<Tree_Out_t> new_tree(new Tree_Out_t());
+
+    // 1. Construct duplicate nodes for the new tree, recording correspondence
+    std::unordered_map<const_node_type<Tree_In_t>*, non_const_node_type<Tree_Out_t>*> to_new_tree;
+    for(auto nd: iter_post(tree))
+    {
+        auto nd2 = new_tree->create_node(nullptr);
+        to_new_tree[nd] = nd2;
+
+        if (nd->has_ott_id())
+            nd2->set_ott_id(nd->get_ott_id());
+
+        if (nd->get_name().size())
+            nd2->set_name(nd->get_name());
+    }
+
+    // 2. Link corresponding nodes to their corresponding parents
+    for(auto nd: iter_post(tree))
+    {
+        if (auto p = nd->get_parent())
+        {
+            auto nd2 = to_new_tree.at(nd);
+            auto p2 = to_new_tree.at(p);
+            p2->add_child(nd2);
+        }
+    }
+    // 3. Set the root of the new tree to node corresponding to the MRCA
+    new_tree->_set_root( to_new_tree.at(tree.get_root()) );
+    return new_tree;
+}
+
+struct RSplitObj
+{
+    static std::size_t num;
+
+    mutable int _refs = 0;
+
+    friend inline void intrusive_ptr_release(RSplitObj* pThis)
+    {
+        if (--pThis->_refs == 0 ) {
+            delete pThis;
+        }
+    }
+
+    friend inline void intrusive_ptr_add_ref(RSplitObj* pThis)
+    {
+        pThis->_refs++;
+    }
+
+    friend inline void intrusive_ptr_release(const RSplitObj* pThis)
+    {
+        if(--const_cast<RSplitObj*>(pThis)->_refs == 0 ) {
+            delete const_cast<RSplitObj*>(pThis);
+        }
+    }
+
+    friend inline void intrusive_ptr_add_ref(const RSplitObj* pThis)
+    {
+        const_cast<RSplitObj*>(pThis)->_refs++;
+    }
+
     vector<int> in;
     vector<int> out;
-    vector<int> all;
-    RSplit() = default;
-    RSplit(const set<int>& i, const set<int>& a) {
+    optional<std::size_t> id;
+
+    RSplitObj()
+    {
+        id = num++;
+    }
+
+    RSplitObj(const set<int>& i, const set<int>& a)
+    {
+        id = num++;
         in  = set_to_vector(i);
-        all = set_to_vector(a);
-        set_difference(begin(all), end(all), begin(in), end(in), std::inserter(out, out.end()));
-        assert(in.size() + out.size() == all.size());
+        set_difference(begin(a), end(a), begin(in), end(in), std::inserter(out, out.end()));
     }
 };
 
-RSplit split_from_include_exclude(const set<int>& i, const set<int>& e) {
-    RSplit s;
-    s.in = set_to_vector(i);
-    s.out = set_to_vector(e);
-    set_union(begin(i),end(i),begin(e),end(e),std::inserter(s.all,s.all.end()));
+std::size_t RSplitObj::num = 0;
+
+using RSplit = boost::intrusive_ptr<RSplitObj>;
+using ConstRSplit = boost::intrusive_ptr<const RSplitObj>;
+
+std::ostream& operator<<(std::ostream& o, const RSplitObj& s)
+{
+    o<<"["<<s.in.size() + s.out.size()<<" tips] ";
+    for(auto& is: s.in)
+        o<<"ott"<<is<<" ";
+    o<<"| ";
+    for(auto& os: s.out)
+        o<<"ott"<<os<<" ";
+    return o;
+}
+
+RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
+{
+    RSplit s(new RSplitObj);
+    s->in = set_to_vector(i);
+    s->out = set_to_vector(e);
     return s;
 }
 
@@ -82,6 +178,13 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
         ("prune-unrecognized,p","Prune unrecognized tips");
     
+    options_description strategies("Solver strategies");
+    strategies.add_options()
+        ("batching",value<bool>()->default_value(true), "Make unresolved taxonomy from input tips.")
+        ("oracle", value<bool>()->default_value(true), "Predict conflicting splits before BUILD.")
+        ("incremental", value<bool>()->default_value(false),"Reuse work from previous BUILD.")
+        ;
+
     options_description other("Other options");
     other.add_options()
         ("synthesize-taxonomy,T","Make unresolved taxonomy from input tips.")
@@ -90,7 +193,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ;
 
     options_description visible;
-    visible.add(output).add(other).add(otc::standard_options());
+    visible.add(output).add(strategies).add(other).add(otc::standard_options());
 
     // positional options
     positional_options_description p;
@@ -105,12 +208,12 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     return vm;
 }
 
-std::ostream& operator<<(std::ostream& o, const RSplit& s) {
-    write_separated_collection(o, s.in, " ") <<" | ";
-    if (s.out.size() < 100) {
-        write_separated_collection(o, s.out, " ");
+std::ostream& operator<<(std::ostream& o, const ConstRSplit& s) {
+    write_separated_collection(o, s->in, " ") <<" | ";
+    if (s->out.size() < 100) {
+        write_separated_collection(o, s->out, " ");
     } else {
-        auto it = s.out.begin();
+        auto it = s->out.begin();
         for(int i=0;i<100;i++) {
             o << *it++ <<" ";
         }
@@ -119,18 +222,89 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o;
 }
 
+std::ostream& operator<<(std::ostream& o, const RSplit& s) {
+    return o<<(ConstRSplit(s));
+}
+
+struct Solution;
+
+struct component_t
+{
+    list<int> elements;
+
+    bool implied_splits_have_been_checked = false;
+    vector<ConstRSplit> old_implied_splits;      // alpha
+    vector<ConstRSplit> old_non_implied_splits;  // beta
+
+    shared_ptr<Solution> solution() const {
+        assert(solutions.size() == 1);
+        return solutions.front();
+    }
+
+    vector<shared_ptr<Solution>> solutions;
+
+    // Do these make sense if there is more than 1 solution?
+    // If not, should these be added to the single solution instead?
+    vector<int> new_taxa;
+    vector<ConstRSplit> new_splits;
+};
+
+typedef component_t* component_ref;
+
 /// Merge components c1 and c2 and return the component name that survived
-int merge_components(int ic1, int ic2, vector<int>& component, vector<list<int>>& elements) {
-    std::size_t c1 = static_cast<std::size_t>(ic1);
-    std::size_t c2 = static_cast<std::size_t>(ic2);
-    if (elements[c2].size() > elements[c1].size()) {
+void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vector<component_ref>& component)
+{
+    component[index2] = c1;
+    c1->elements.push_back(index2);
+
+    c1->new_taxa.push_back(taxon2);
+
+    c1->implied_splits_have_been_checked = false;
+}
+
+bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
+{
+    for(int taxon: split->out)
+    {
+        int index = indices[taxon];
+
+        if (index == -1) continue;
+
+        if (component_for_index[index] == component) return true;
+    }
+    return false;
+}
+
+template <typename T>
+void append(vector<T>& v1, const vector<T>& v2)
+{
+    v1.insert(v1.end(), v2.begin(), v2.end());
+}
+
+/// Merge components c1 and c2 and return the component name that survived
+component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component)
+{
+    if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
-    }
-    for(int i: elements[c2]) {
-        component[static_cast<std::size_t>(i)] = static_cast<int>(c1);
-    }
-    elements[c1].splice(elements[c1].end(), elements[c2]);
-    return static_cast<int>(c1);
+
+    for(int i: c2->elements)
+        component[i] = c1;
+
+    c1->elements.splice(c1->elements.end(), c2->elements);
+
+    append(c1->old_non_implied_splits, c2->old_non_implied_splits);
+    append(c1->old_implied_splits, c2->old_implied_splits);
+
+    // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
+    // Does this mean anything if both components are non-trivial?
+    append(c1->new_taxa, c2->new_taxa);
+
+    // One of these components could be new -- that is, composed only of previously-trivial components.
+    append(c1->solutions, c2->solutions);
+    
+    c1->implied_splits_have_been_checked = false;
+
+    return c1;
 }
 
 bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
@@ -142,116 +316,249 @@ bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
     return true;
 }
 
-static vector<int> indices;
+template <typename T>
+T remove_unordered(std::vector<T>& v, int i)
+{
+    assert(0 <= i and i < v.size());
+
+    auto t = v[i];
+    if (i < int(v.size())-1)
+        std::swap(v[i], v.back());
+    v.pop_back();
+
+    return t;
+}
+
+struct Solution
+{
+    vector<int> taxa;
+    vector<ConstRSplit> splits;
+
+    vector< component_ref > component_for_index;
+    vector< unique_ptr<component_t> > components;
+
+    unique_ptr<Tree_t> get_tree() const;
+};
+
+unique_ptr<Tree_t> Solution::get_tree() const
+{
+    assert(taxa.size() > 1);
+
+    // 1. Make a tree with just a root node
+    std::unique_ptr<Tree_t> tree(new Tree_t());
+    tree->create_root();
+
+    // 2. Add children for non-trivial components
+    for(auto& component: components)
+        add_subtree(tree->get_root(), *component->solution()->get_tree());
+
+    // 3. Add children for trivial components
+    for(int index=0;index<taxa.size();index++)
+    {
+        if (not component_for_index[index])
+        {
+            auto taxon = taxa[index];
+            auto node = tree->create_child(tree->get_root());
+            node->set_ott_id(taxon);
+        }
+    }
+
+    return tree;
+}
+
+// 0. Update doc?
+
+// 1. Handle adding trivial taxa to a component.
+
+// 2. When merging components, we need to consider moving splits from implied -> non_implied.
+// Should we do this from scratch?
+
+// 3. Each new component should have a list of pointers to previous .. components? solutions?
+// We could get their splits/taxa all at once, instead of copying them multiple times.
+
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<const RSplit*>& splits) {
+bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRSplit>& new_splits)
+{
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
-    std::unique_ptr<Tree_t> tree(new Tree_t());
-    tree->create_root();
-    // 1. First handle trees of size 1 and 2
-    if (tips.size() == 1) {
-        tree->get_root()->set_ott_id(*tips.begin());
-        return tree;
-    } else if (tips.size() == 2) {
-        auto Node1a = tree->create_child(tree->get_root());
-        auto Node1b = tree->create_child(tree->get_root());
-        auto it = tips.begin();
-        Node1a->set_ott_id(*it++);
-        Node1b->set_ott_id(*it++);
-        return tree;
+
+    // This copying seems wasteful.
+    auto& taxa = solution.taxa;
+    int orig_n_taxa = taxa.size();
+    for(auto taxon: new_taxa)
+        taxa.push_back(taxon);
+
+    auto& splits = solution.splits;
+    int orig_n_splits = splits.size();
+    for(auto& new_split: new_splits)
+        splits.push_back(new_split);
+
+    auto& component_for_index = solution.component_for_index;
+    auto& components = solution.components;
+    component_for_index.resize(taxa.size());
+
+    // component->new_splits and component->new_taxa seem only to make sense if
+    // the component has exactly 1 solution.  Should these fields be part of the
+    // (single) solution then?
+
+    // 0. Clear any staged work for each component.
+    for(auto& component: components)
+    {
+        component->new_taxa.clear();
+        component->new_splits.clear();
     }
-    // 2. Initialize the mapping from elements to components
-    vector<int> component;       // element index  -> component
-    vector<list<int> > elements;  // component -> element indices
+
+    // 1. If there are no splits, then we are consistent.
+    if (splits.empty())
+        return true;
+
+    // 2. Initialize the mapping from taxa to indices.
     for(int k=0;k<indices.size();k++)
         assert(indices[k] == -1);
-    for (int i=0;i<tips.size();i++) {
-        indices[tips[i]] = i;
-        component.push_back(i);
-        elements.push_back({i});
-    }
+    for (int i=0;i<taxa.size();i++)
+        indices[taxa[i]] = i;
+
     // 3. For each split, all the leaves in the include group must be in the same component
-    for(const auto& split: splits) {
-        int c1 = -1;
-        for(int i: split->in) {
-            int j = indices[i];
-            int c2 = component[j];
-            if (c1 != -1 and c1 != c2) {
-                merge_components(c1,c2,component,elements);
+    for(const auto& split: new_splits)
+    {
+        component_ref split_comp = nullptr;
+        for(int taxon: split->in)
+        {
+            int index = indices[taxon];
+            assert(index != -1);
+            auto taxon_comp = component_for_index[index];
+            if (not split_comp)
+            {
+                if (not taxon_comp)
+                {
+                    components.push_back(std::make_unique<component_t>());
+                    taxon_comp = components.back().get();
+                    merge_component_with_trivial(taxon_comp, taxon, index, component_for_index);
+                }
+                split_comp = taxon_comp;
             }
-            c1 = component[j];
+            else if (not taxon_comp)
+                merge_component_with_trivial(split_comp, taxon, index, component_for_index);
+            else if (split_comp != taxon_comp)
+                split_comp = merge_components(split_comp,taxon_comp,component_for_index);
         }
     }
+
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (elements[component[0]].size() == tips.size()) {
-        for(int id: tips)
+    if (component_for_index[0] and component_for_index[0]->elements.size() == taxa.size())
+    {
+        for(int id: taxa)
             indices[id] = -1;
-        return {};
+        return false;
     }
-    // 5. Make a vector of labels for the partition components
-    vector<int> component_labels;                           // index -> component label
-    vector<int> component_label_to_index(tips.size(),-1);   // component label -> index
-    for (int c=0;c<tips.size();c++) {
-        if (c == component[c]) {
-            int index = component_labels.size();
-            component_labels.push_back(c);
-            component_label_to_index[c] = index;
+
+    // 5. Pack the components
+    vector<unique_ptr<component_t>> packed_components;
+    for(auto& component: components)
+        if (not component->elements.empty())
+            packed_components.push_back( std::move(component) );
+    std::swap(components, packed_components);
+
+    // 6. Check implied splits to see if they are STILL implied.
+    for(auto& component: components)
+    {
+        // We don't need to re-check implied_splits if the taxon set hasn't changed.
+        if (component->implied_splits_have_been_checked) continue;
+
+        auto& implied_splits = component->old_implied_splits;
+        auto& non_implied_splits = component->old_non_implied_splits;
+        auto& new_splits = component->new_splits;
+
+        // It is cheaper to do this check once after adding taxa, instead of multiple times if we add multiple taxa.
+        // That is because we have to scan the entire exclude set, even if we only add 1 taxon to the components :-(.
+        for(int i=0;i<implied_splits.size();)
+        {
+            auto& split = implied_splits[i];
+
+#ifndef NDEBUG
+            int first = indices[*split->in.begin()];
+            assert(first >= 0);
+            assert(component_for_index[first] == component.get());
+#endif
+
+            bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
+            if (not implied)
+            {
+                auto split = remove_unordered(implied_splits,i);
+                new_splits.push_back(split);
+            }
+            else
+                i++;
         }
+
+        component->implied_splits_have_been_checked = true;
     }
-    // 6. Create the vector of tips in each connected component 
-    vector<vector<int>> subtips(component_labels.size());
-    for(int i=0;i<component_labels.size();i++) {
-        vector<int>& s = subtips[i];
-        int c = component_labels[i];
-        for (int j: elements[c]) {
-            s.push_back(tips[j]);
-        }
-    }
+
+    // NOTE: If all new splits are implied and no OLD splits are implied, then perhaps
+    //       all the old components will be sub-problems of the merged component?
+
     // 7. Determine the splits that are not satisfied yet and go into each component
-    vector<vector<const RSplit*>> subsplits(component_labels.size());
-    for(const auto& split: splits) {
+    for(auto& split: new_splits)
+    {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
-        int c = component[first];
-        // if none of the exclude group are in the component, then the split is satisfied by the top-level partition.
-        bool satisfied = true;
-        for(int x: split->out){
-            // indices[i] != -1 checks if x is in the current tip set.
-            if (indices[x] != -1 and component[indices[x]] == c) {
-                satisfied = false;
-                break;
-            }
-        }
-        if (not satisfied) {
-            int i = component_label_to_index[c];
-            subsplits[i].push_back(split);
+        auto component = component_for_index[first];
+
+        bool implied = not exclude_group_intersects_component(split, component, component_for_index);
+        if (implied)
+            component->old_implied_splits.push_back(split);
+        else
+        {
+            component->new_splits.push_back(split);
         }
     }
+
     // 8. Clear our map from id -> index, for use by subproblems.
-    for(int id: tips) {
+    for(int id: taxa) {
         indices[id] = -1;
     }
     // 9. Recursively solve the sub-problems of the partition components
-    for(int i=0;i<subtips.size();i++) {
-        auto subtree = BUILD(subtips[i], subsplits[i]);
-        if (not subtree) {
-            return {};
-        }
-        add_subtree(tree->get_root(), *subtree);
-    }
-    return tree;
-}
+    for(auto& component: components)
+    {
+        assert(component->elements.size() >= 2);
 
-unique_ptr<Tree_t> BUILD(const vector<int>& tips, const vector<RSplit>& splits) {
-    vector<const RSplit*> split_ptrs;
-    for(const auto& split: splits) {
-        split_ptrs.push_back(&split);
+        bool has_old_solution = component->solutions.size() == 1;
+
+        if (has_old_solution)
+        {
+            assert(component->elements.size() == component->solution()->taxa.size() + component->new_taxa.size());
+
+            // If no new taxa and no new splits, just continue.
+            if (component->new_splits.empty() and component->new_taxa.empty())
+                continue;
+
+            // Otherwise try adding the new taxa and splits to the existing solution.
+            else if (not BUILD(*component->solution(), component->new_taxa, component->new_splits))
+                return false;
+
+        }
+
+        auto& old_splits = component->old_non_implied_splits;
+        auto& new_splits = component->new_splits;
+        old_splits.insert(old_splits.end(), new_splits.begin(), new_splits.end());
+
+        if (not has_old_solution)
+        {
+            vector<int> all_taxa;
+            all_taxa.reserve(component->elements.size());
+            for (auto& index: component->elements)
+                all_taxa.push_back(taxa[index]);
+
+            auto subsolution = std::make_shared<Solution>();
+            if (not BUILD(*subsolution, all_taxa, component->old_non_implied_splits))
+                return false;
+            component->solutions = { subsolution };
+        }
     }
-    return BUILD(tips, split_ptrs);
+    return true;
 }
 
 template <typename T>
@@ -281,7 +588,7 @@ void add_root_and_tip_names(Tree_t& summary, Tree_t& taxonomy) {
     }
     // name tips
     auto summaryOttIdToNode = get_ottid_to_node_map(summary);
-    for(auto nd: iter_leaf_const(taxonomy)) {
+    for(auto nd: iter_leaf(taxonomy)) {
         auto id = nd->get_ott_id();
         auto nd2 = summaryOttIdToNode.at(id);
         nd2->set_name( nd->get_name());
@@ -371,7 +678,7 @@ bool is_ancestral_to(const Tree_t::node_type* anc, const Tree_t::node_type* n1) 
 
 map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tree_t& summary,
                                                                        const Tree_t& taxonomy) {
-    for(auto nd: iter_post_const(summary)) {
+    for(auto nd: iter_post(summary)) {
         if (nd->get_parent() and nd->get_name().size() and not nd->has_ott_id()) {
             LOG(WARNING)<<"Named taxonomy node has no OTTID!  Not checking for incertae sedis placement.";
             return {};
@@ -379,7 +686,7 @@ map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tre
     }
     map<const Tree_t::node_type*,const Tree_t::node_type*> placements;
     auto node_from_id = get_ottid_to_const_node_map(taxonomy);
-    for(auto nd: iter_post_const(summary)) {
+    for(auto nd: iter_post(summary)) {
         if (nd->get_parent() and nd->has_ott_id()) {
             auto id = nd->get_ott_id();
             auto anc_id = find_ancestor_id(nd);
@@ -476,7 +783,7 @@ template<typename Tree_T>
 map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const Tree_t& tree, const set<OttId>& incertae_sedis)
 {
     map<typename Tree_t::node_type const*, set<OttId>> include;
-    for(auto nd: iter_post_const(tree)) {
+    for(auto nd: iter_post(tree)) {
         // 1. Initialize set for this node.
         auto & inc = include[nd];
         // 2. Add OttId for tip nodes
@@ -486,7 +793,7 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const 
             continue;
         }
         // 3. Add Ids of children only if they are NOT incertae sedis
-        for(auto nd2: iter_child_const(*nd)) {
+        for(auto nd2: iter_child(*nd)) {
             if (not incertae_sedis.count(nd2->get_ott_id())) {
                 auto& inc_child = nd2->get_data().des_ids;
                 inc.insert(begin(inc_child),end(inc_child));
@@ -496,12 +803,12 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_include_sets(const 
     return include;
 }
 
-template<typename Tree_T>
+template<typename Tree_t>
 map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const Tree_t& tree, const set<OttId>& incertae_sedis) {
     map<typename Tree_t::node_type const*, set<OttId>> exclude;
     // 1. Set exclude set for root node to the empty set.
     exclude[tree.get_root()];
-    for(auto nd: iter_pre_const(tree)) {
+    for(auto nd: iter_pre(tree)) {
         // 2. Skip tips and the root node.
         if (nd->is_tip() || nd == tree.get_root()) {
             continue;
@@ -521,23 +828,277 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
     return exclude;
 }
 
-/// Get the list of splits, and add them one at a time if they are consistent with previous splits
-unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, bool verbose) {
-    // 0. Standardize names to 0..n-1 for this subproblem
-    const auto& taxonomy = trees.back();
-    auto all_leaves = taxonomy->get_root()->get_data().des_ids;
-    // index -> id
-    vector<OttId> ids;
-    // id -> index
-    map<OttId,int> id_map;
-    for(OttId id: all_leaves) {
+vector<pair<node_type<Tree_t>*,RSplit>>
+splits_for_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap)
+{
+    vector<pair<node_type<Tree_t>*,RSplit>> splits;
+    auto root = tree.get_root();
+    const auto leafTaxa = root->get_data().des_ids;
+    const auto leafTaxaIndices = remap(leafTaxa);
+    for(auto nd: iter_pre(tree))
+    {
+        if (not nd->is_tip() and nd != root)
+        {
+            auto descendants = remap(nd->get_data().des_ids);
+            splits.push_back({nd,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
+        }
+    }
+    return splits;
+}
+
+vector<pair<node_type<Tree_t>*,RSplit>>
+splits_for_taxonomy_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
+{
+    if (incertae_sedis.empty())
+        return splits_for_tree(tree, remap);
+
+    vector<pair<node_type<Tree_t>*,RSplit>> splits;
+    auto root = tree.get_root();
+
+    auto exclude = construct_exclude_sets(tree, incertae_sedis);
+
+    for(auto nd: iter_pre(tree))
+    {
+        if (not nd->is_tip() and nd != root) {
+            // construct split
+            const auto descendants = remap(nd->get_data().des_ids);
+            const auto nondescendants = remap(exclude[nd]);
+            splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
+        }
+    }
+
+    return splits;
+}
+
+template <typename T>
+pair<vector<T>,map<T,int>> make_index_map(const set<T>& s)
+{
+    pair<vector<T>,map<T,int>> x;
+    // ids:    index -> id
+    // id_map: id    -> index
+    auto& [ids,id_map] = x;
+    for(auto& id: s)
+    {
         int i = ids.size();
         id_map[id] = i;
         ids.push_back(id);
         assert(id_map[ids[i]] == i);
         assert(ids[id_map[id]] == id);
     }
-    auto remap = [&id_map](const set<OttId>& argIds) {return remap_ids(argIds, id_map);};
+    return x;
+}
+
+
+set<Tree_t::node_type*> find_conflicting_nodes(unique_ptr<Tree_t>& ok_tree, unique_ptr<Tree_t>& tree_to_clean)
+{
+    set<node_t*> conflicting_nodes;
+
+    typedef Tree_t::node_type node_t;
+    typedef ConflictTree::node_type cnode_t;
+    std::function<node_t*(node_t*,node_t*)> mrca_of_pair = [](node_t* n1, node_t* n2) {return mrca_from_depth(n1,n2);};
+
+    auto tree_to_clean_ottid_to_node = get_ottid_to_node_map(*tree_to_clean);
+
+    auto ok_tree_ottid_to_node = get_ottid_to_node_map(*ok_tree);
+
+    compute_depth(*ok_tree);
+
+    compute_depth(*tree_to_clean);
+
+    auto [induced_tree_to_clean,to_induced] = get_induced_tree_and_node_map<ConflictTree>(*tree_to_clean,
+                                                                                          tree_to_clean_ottid_to_node,
+                                                                                          mrca_of_pair,
+                                                                                          *ok_tree,
+                                                                                          ok_tree_ottid_to_node);
+
+    auto induced_ok_tree = get_induced_tree<ConflictTree>(*ok_tree,
+                                                          ok_tree_ottid_to_node,
+                                                          mrca_of_pair,
+                                                          *tree_to_clean,
+                                                          tree_to_clean_ottid_to_node);
+
+    if (induced_tree_to_clean->get_root() and induced_ok_tree->get_root())
+    {
+        std::unordered_map<const cnode_t*, node_t*> from_induced;
+        for(auto& [non_induced,induced]: to_induced)
+        {
+            from_induced[induced] = non_induced;
+        }
+
+        auto log_supported_by    = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_partial_path_of = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_resolved_by     = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_terminal        = [&](const cnode_t* /* node2 */, const cnode_t* /* node1 */) {};
+        auto log_conflicts_with  = [&](const cnode_t* /* node2 */, const cnode_t* node1 )
+        {
+            assert(node1->has_children());
+            // for each of node1 and all its monotypic ancestors.
+            do
+            {
+                // mark the corresponding node in the original (not induced) tree as conflicting.
+                auto node2 = from_induced.at(node1);
+                assert(node2->has_children());
+                conflicting_nodes.insert(node2);
+
+                node1 = node1->get_parent();
+            }
+            while(node1->is_outdegree_one_node());
+        };
+
+        perform_conflict_analysis(*induced_tree_to_clean, *induced_ok_tree, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
+    }
+
+    return conflicting_nodes;
+}
+
+template<typename N>
+inline void collapse_node_(N* nd)
+{
+    assert(nd);
+    assert(nd->has_children());
+
+    while(nd->has_children())
+    {
+        auto child = nd->get_first_child();
+        child->detach_this_node();
+        nd->add_sib_on_left(child);
+    }
+    nd->detach_this_node();
+}
+
+
+void remove_conflicting_splits_from_tree(unique_ptr<Tree_t>& ok_tree, unique_ptr<Tree_t>& tree_to_clean)
+{
+    for(auto& node: find_conflicting_nodes(ok_tree, tree_to_clean))
+        collapse_node_(node);
+}
+
+void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int k)
+{
+    for(int i=0;i<k;i++)
+        remove_conflicting_splits_from_tree(trees[i],trees[k]);
+}
+
+bool conflicting(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits)
+{
+    auto solution = std::make_shared<Solution>();
+    auto result = BUILD(*solution, all_leaves_indices, splits);
+    return not result;
+}
+
+bool conflicts_with(const vector<int>& all_leaves_indices, vector<ConstRSplit> splits1, const vector<ConstRSplit>& splits2)
+{
+    auto solution = std::make_shared<Solution>();
+    splits1.insert(splits1.end(), splits2.begin(), splits2.end());
+    return conflicting(all_leaves_indices, splits1);
+}
+
+// Trying to find a conflicting set of splits where if you remove one split, then there is no longer a conflict.
+// The first set of splits that conflicts?  Thinned from the back end to remove things that do not contribute to the conflict?
+// Alternatively:
+// Alternatively: the smallest set of splits that conflicts?
+
+template<typename T>
+std::vector<T> concat(const std::vector<T>& v1, const std::vector<T>& v2)
+{
+    auto v3 = v1;
+    v3.insert(v3.end(), v2.begin(), v2.end());
+    return v3;
+}
+
+void simplify(RSplitObj& s1, RSplitObj& s2)
+{
+    std::set<OttId> include1;
+    std::set<OttId> exclude1;
+    for(auto& i: s1.in)
+        include1.insert(i);
+    for(auto& o: s1.out)
+        exclude1.insert(o);
+    std::set<OttId> taxa1 = set_union_as_set(include1, exclude1);
+
+    std::set<OttId> include2;
+    std::set<OttId> exclude2;
+    for(auto& i: s2.in)
+        include2.insert(i);
+    for(auto& o: s2.out)
+        exclude2.insert(o);
+    std::set<OttId> taxa2 = set_union_as_set(include2, exclude2);
+
+    auto common_taxa = set_intersection_as_set(taxa1, taxa2);
+
+    include1 = set_intersection_as_set(include1, common_taxa);
+    exclude1 = set_intersection_as_set(exclude1, common_taxa);
+    s1.in.clear();
+    for(auto& i: include1)
+        s1.in.push_back(i);
+    s1.out.clear();
+    for(auto& e: exclude1)
+        s1.out.push_back(e);
+
+    include2 = set_intersection_as_set(include2, common_taxa);
+    exclude2 = set_intersection_as_set(exclude2, common_taxa);
+    s2.in.clear();
+    for(auto& i: include2)
+        s2.in.push_back(i);
+    s2.out.clear();
+    for(auto& e: exclude2)
+        s2.out.push_back(e);
+}
+
+std::vector<ConstRSplit> find_minimal_conflict_set(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits1, const vector<ConstRSplit>& splits2)
+{
+    assert(not conflicting(all_leaves_indices, splits1));
+    assert(not conflicting(all_leaves_indices, splits2));
+    assert(conflicts_with(all_leaves_indices, splits1, splits2));
+
+    if (splits1.size() == 1)
+    {
+        return {splits1[0]};
+    }
+    int n_half = splits1.size()/2;
+
+    // 1. If the first half conflicts, we can drop the last half.
+    vector<ConstRSplit> splits1a;
+    for(int i=0;i<n_half;i++)
+        splits1a.push_back(splits1[i]);
+
+    if (conflicts_with(all_leaves_indices, splits1a, splits2))
+        return find_minimal_conflict_set(all_leaves_indices, splits1a, splits2);
+
+    // 2. If the second half conflicts, we can drop the first half
+    vector<ConstRSplit> splits1b;
+    for(int i=n_half;i<splits1.size();i++)
+        splits1b.push_back(splits1[i]);
+
+    if (conflicts_with(all_leaves_indices, splits1b, splits2))
+        return find_minimal_conflict_set(all_leaves_indices, splits1b, splits2);
+
+    // 3. Find a minimal subset of splits1b to conflict with splits1a + splits2
+    auto splits1b_conflicting = find_minimal_conflict_set(all_leaves_indices, splits1b, concat(splits1a, splits2));
+
+    // 4. Find a minimal subset of splits1a to conflict with splits1b_conflicting + splits2;
+    auto splits1a_conflicting = find_minimal_conflict_set(all_leaves_indices, splits1a, concat(splits1b_conflicting, splits2));
+
+    return concat(splits1a_conflicting, splits1b_conflicting);
+}
+
+/// Get the list of splits, and add them one at a time if they are consistent with previous splits
+unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& incertae_sedis, variables_map& args)
+{
+    bool verbose = (bool)args.count("verbose");
+    bool batching = args["batching"].as<bool>();
+    bool oracle = args["oracle"].as<bool>();
+    bool incremental = args["incremental"].as<bool>();
+
+    // 1. Standardize names to 0..n-1 for this subproblem
+    const auto& taxonomy = trees.back();
+    auto all_leaves = taxonomy->get_root()->get_data().des_ids;
+
+    // ids:    index -> id
+    // id_map: id    -> index
+    auto [ids, id_map] = make_index_map(all_leaves);
+
+    std::function< set<int>(const set<OttId>&) > remap = [&id_map](const set<OttId>& argIds) {return remap_ids(argIds, id_map);};
     vector<int> all_leaves_indices;
     for(int i=0;i<all_leaves.size();i++) {
         all_leaves_indices.push_back(i);
@@ -546,76 +1107,128 @@ unique_ptr<Tree_t> combine(const vector<unique_ptr<Tree_t>>& trees, const set<Ot
     for(auto& i: indices) {
         i=-1;
     }
+
     /// Incrementally add splits from @splits_to_try to @consistent if they are consistent with it.
-    vector<RSplit> consistent;
-    auto add_split_if_consistent = [&all_leaves_indices,verbose,&consistent](auto nd, RSplit&& split) {
-            consistent.push_back(std::move(split));
+    vector<ConstRSplit> consistent;
 
-            auto result = BUILD(all_leaves_indices, consistent);
-            if (not result) {
-                consistent.pop_back();
-                if (verbose and nd->has_ott_id()) {
-                    LOG(INFO) << "Reject: ott" << nd->get_ott_id() << "\n";
+    shared_ptr<Solution> solution;
+
+    // A non-null solution means that consistent splits are already part of the solution.
+
+    int total_build_calls = 0;
+    auto add_splits_if_consistent = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
+        {
+            bool result;
+            if (incremental and solution)
+            {
+                vector<ConstRSplit> new_splits;
+                for(int i=0;i<n;i++)
+                    new_splits.push_back(splits[start+i].second);
+
+                result = BUILD(*solution, {}, new_splits);
+
+                if (result)
+                {
+                    for(auto& new_split: new_splits)
+                        consistent.push_back(new_split);
                 }
-                return false;
-            } else if (verbose and nd->has_ott_id()) {
-                LOG(INFO) << "Keep: ott" << nd->get_ott_id() << "\n";
             }
-            return true;
+            else
+            {
+                solution = std::make_shared<Solution>();
+
+                for(int i=0;i<n;i++)
+                    consistent.push_back(splits[start+i].second);
+
+                result = BUILD(*solution, all_leaves_indices, consistent);
+
+                if (not result)
+                {
+                    for(int i=0;i<n;i++)
+                        consistent.pop_back();
+                }
+            }
+
+            total_build_calls ++;
+
+            if (not incremental or not result) solution = {};
+
+            if (n==1 and not result) collapse_node_(splits[start].first);
+
+            return result;
         };
-    // 1. Find splits in order of input trees
-    vector<Tree_t::node_type const*> compatible_taxa;
-    for(int i=0;i<trees.size();i++) {
-        const auto& tree = trees[i];
-        auto root = tree->get_root();
-        const auto leafTaxa = root->get_data().des_ids;
-        const auto leafTaxaIndices = remap(leafTaxa);
-#ifndef NDEBUG
-#pragma clang diagnostic ignored  "-Wunreachable-code-loop-increment"
-        for(const auto& leaf: set_difference_as_set(leafTaxa, all_leaves)) {
-            throw OTCError() << "OTT Id " << leaf << " not in taxonomy!";
-        }
-#endif
-        // Handle the taxonomy tree specially when it has Incertae sedis taxa.
-        if (i == trees.size()-1 and not incertae_sedis.empty()) {
-            auto exclude = construct_exclude_sets<Tree_t>(*tree, incertae_sedis);
 
-            for(auto nd: iter_post_const(*tree)) {
-                if (not nd->is_tip() and nd != root) {
-                    // construct split
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    const auto nondescendants = remap(exclude[nd]);
-                    if (add_split_if_consistent(nd, split_from_include_exclude(descendants, nondescendants))) {
-                        compatible_taxa.push_back(nd);
-                    }
-                }
+    std::function<void(vector<pair<node_type<Tree_t>*,RSplit>>&,int,int)> add_splits_if_consistent_batch;
+    add_splits_if_consistent_batch = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
+        {
+            assert(n >= 1);
+            assert(start+n <= splits.size());
+            auto result = add_splits_if_consistent(splits, start, n);
+            if (not result and n > 1)
+            {
+                int n1 = n/2;
+                int n2 = n - n1;
+                add_splits_if_consistent_batch(splits, start   , n1);
+                add_splits_if_consistent_batch(splits, start+n1, n2);
             }
-        } else if (i == trees.size()-1) {
-            for(auto nd: iter_post_const(*tree)) {
-                if (not nd->is_tip() and nd != root) {
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    if (add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices})) {
-                        compatible_taxa.push_back(nd);
-                    }
-                }
-            }
-        } else {
-            for(auto nd: iter_post_const(*tree)) {
-                if (not nd->is_tip() and nd != root) {
-                    const auto descendants = remap(nd->get_data().des_ids);
-                    add_split_if_consistent(nd, RSplit{descendants, leafTaxaIndices});
-                }
-            }
+        };
+
+    // 1. Find splits in order of input trees
+    vector<pair<node_type<Tree_t>*,RSplit>> splits;
+    for(int i=0;i<trees.size();i++)
+    {
+        const auto& tree = trees[i];
+
+        // 1. Remove splits from tree i that directly conflict with previous TREES.
+        //    Unless this is the taxonomy tree and there are incertae sedis taxa.
+        if (oracle and (i<int(trees.size())-1 or incertae_sedis.empty()))
+            remove_conflicting_splits_from_tree(trees,i);
+
+        // 2. Get remaining splits
+        auto splits2 = (i<trees.size()-1)
+            ?splits_for_tree(*tree, remap)
+            :splits_for_taxonomy_tree(*tree, remap, incertae_sedis);
+
+        if (splits2.empty()) continue;
+
+        // 3. Add compatible splits to `splits` and remove incompatible nodes from `trees[i]`;
+        if (batching)
+            add_splits_if_consistent_batch(splits2, 0, splits2.size());
+        else
+        {
+            for(int i=0;i<splits2.size();i++)
+                add_splits_if_consistent_batch(splits2,i,1);
         }
+
+        LOG(INFO)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
     }
+
+    vector<const_node_type<Tree_t>*> compatible_taxa;
+    for(auto node: iter_pre(*trees.back()))
+    {
+        if (node->get_parent() and not node->is_tip())
+            compatible_taxa.push_back(node);
+    }
+
     // 2. Construct final tree and add names
-    auto tree = BUILD(all_leaves_indices, consistent);
-    for(auto nd: iter_pre(*tree)) {
-        if (nd->is_tip()) {
+
+    //FIXME - discard previous solution;
+    solution = std::make_shared<Solution>();
+    auto result = BUILD(*solution, all_leaves_indices, consistent);;
+    assert(result);
+    auto tree = solution->get_tree();
+    for(auto nd: iter_pre(*tree))
+    {
+        if (nd->is_tip())
+        {
             int index = nd->get_ott_id();
             nd->set_ott_id(ids[index]);
         }
     }
+
+    // We've modified the local copy of the taxonomy, so recompute depths.
+    // "compatible_taxa" has pointers into it, but should only have pointers to surviving nodes.
+    compute_depth(*taxonomy);
     add_root_and_tip_names(*tree, *taxonomy);
     add_names(*tree, compatible_taxa);
     return tree;
@@ -628,7 +1241,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     if (use_ids) {
         map<OttId,string> names;
         for(const auto& tree: trees) {
-            for(auto nd: iter_pre_const(*tree)) {
+            for(auto nd: iter_pre(*tree)) {
                 if (nd->is_tip()) {
                     OttId id = nd->get_ott_id();
                     auto it = names.find(id);
@@ -647,7 +1260,7 @@ unique_ptr<Tree_t> make_unresolved_tree(const vector<unique_ptr<Tree_t>>& trees,
     } else {
         set<string> names;
         for(const auto& tree: trees) {
-            for(auto nd: iter_pre_const(*tree)) {
+            for(auto nd: iter_pre(*tree)) {
                 if (nd->is_tip()) {
                     names.insert(nd->get_name());
                 }
@@ -685,7 +1298,10 @@ inline vector<const node_t *> vec_ptr_to_anc(const node_t * des, const node_t * 
     return ret;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
+    std::cout<<std::boolalpha;
+    std::cerr<<std::boolalpha;
     try {
         // 1. Parse command line arguments
         variables_map args = parse_cmd_line(argc,argv);
@@ -751,10 +1367,12 @@ int main(int argc, char *argv[]) {
                 require_tips_to_be_mapped_to_terminal_taxa(*trees[i], *trees.back());
             }
         }
+        // 6.5 Make a copy of the taxonomy so that "combine" doesn't modify it.
+        auto taxonomy = copy_tree<Tree_t>(*trees.back());
+        compute_depth(*taxonomy);
+
         // 7. Perform the synthesis
-        auto & taxonomy = *trees.back();
-        compute_depth(taxonomy);
-        auto tree = combine(trees, incertae_sedis, verbose);
+        auto tree = combine(trees, incertae_sedis, args);
         // 8. Set the root name (if asked)
         // FIXME: This could be avoided if the taxonomy tree in the subproblem always had a name for the root node.
         if (setRootName) {
@@ -764,10 +1382,9 @@ int main(int argc, char *argv[]) {
         write_tree_as_newick(std::cout, *tree);
         std::cout << "\n";
         // 10. Find placements
-        auto placements = check_placement(*tree, taxonomy);
-        for(auto & p: placements) {
-            auto placed = p.first;
-            auto parent = p.second;
+        auto placements = check_placement(*tree, *taxonomy);
+        for(auto& [placed, parent]: placements)
+        {
             auto mrca = mrca_from_depth(placed, parent);
             vector<const node_t*> placement_path = vec_ptr_to_anc(parent, mrca);
             vector<const node_t*> is_path = vec_ptr_to_anc(placed, mrca);

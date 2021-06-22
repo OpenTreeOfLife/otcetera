@@ -11,7 +11,7 @@
 #include "otc/tnrs/context.h"
 
 #include "otc/ctrie/str_utils.h"
-
+#include "otc/ws/find_node.h"
 
 using std::vector;
 using std::map;
@@ -280,29 +280,6 @@ void add_node_support_info(const TreesToServe & tts,
 }
 
 
-const std::regex ott_id_pattern("^ott(\\d+)$");
-
-optional<OttId> is_ott_id(const string& node_id)
-{
-    std::smatch matches;
-    if (std::regex_match(node_id, matches, ott_id_pattern))
-    {
-        long raw_ott_id = long_ott_id_from_name(node_id);
-        if (raw_ott_id >= 0)
-            return to_OttId(raw_ott_id);
-    }
-    return {};
-}
-
-const std::regex mrca_id_pattern("^mrca(ott\\d+)(ott\\d+)$");
-
-node_lookup_t broken_taxon(const SumTreeNode_t* n)
-{
-    node_lookup_t result(n);
-    result.was_broken = true;
-    return result;
-}
-
 template<typename N>
 bool is_ancestor_of(N* f, N* s)
 {
@@ -311,85 +288,6 @@ bool is_ancestor_of(N* f, N* s)
     const auto * fdata = &(f->get_data());
     const auto sec_ind = s->get_data().trav_enter;
     return (sec_ind >= fdata->trav_enter and sec_ind <= fdata->trav_exit);
-}
-
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
-{
-    const auto & tree_data = tree.get_data();
-
-    std::smatch matches;
-    if (std::regex_match(node_id, matches, ott_id_pattern))
-    {
-        // Get the OTT ID
-        long raw_ott_id = long_ott_id_from_name(node_id);
-
-        // 1. Check that the ID is not negative
-        if (raw_ott_id < 0)
-        {
-            LOG(WARNING) << "OTT ID " << raw_ott_id << " (from '"<<node_id<<"') is negative!";
-            return {};
-        }
-
-        // 2. Try and forward the ID.
-        OttId ott_id = check_ott_id_size(raw_ott_id);
-        if (auto ott_id2 = taxonomy.get_unforwarded_id(ott_id))
-            ott_id = *ott_id2;
-        else
-        {
-            LOG(WARNING) << "OTT ID " << ott_id << " (from '"<<node_id<<"') is neither a current ID nor a forwarded ID.";
-            return {};
-        }
-
-        // 3. Try to find the OTT ID in the summary tree.
-        auto i2nit = tree_data.id_to_node.find(ott_id);
-        if (i2nit != tree_data.id_to_node.end())
-            return {i2nit->second};
-
-        // 4. We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
-        if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
-        {
-            // if found, we return the MRCA pointer in the first slot of the pair.
-            return broken_taxon(bt_it->second.first);
-        }
-        else
-        {
-            LOG(WARNING) << "OTT ID" << ott_id << " (from '"<<node_id<<"') is not in the synth tree, and is not listed as broken.";
-            return {};
-        }
-    }
-
-    if (std::regex_match(node_id, matches, mrca_id_pattern))
-    {
-        // Does this match a canonical mrcaottXottY name?
-        auto n2nit = tree_data.broken_name_to_node.find(node_id);
-        if (n2nit != tree_data.broken_name_to_node.end()) {
-            return {n2nit->second};
-        }
-
-        // If it does not match a canonical name, then lookup ottX and ottY
-        assert(matches.size() >= 2);
-        std::string first_id = matches[1];
-        std::string second_id = matches[2];
-        auto result1 = find_node_by_id_str(tree, taxonomy, first_id);
-        if (result1.node == nullptr) {
-            return result1;
-        }
-        auto result2 = find_node_by_id_str(tree, taxonomy, second_id);
-        if (result2.node == nullptr) {
-            return result2;
-        }
-        return {find_mrca_via_traversal_indices(result1.node, result2.node)};
-    }
-    return {};
-}
-
-node_lookup_t find_required_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
-{
-    auto result = find_node_by_id_str(tree, taxonomy, node_id);
-    if (not result.node) {
-        throw OTCBadRequest() << "node_id '" << node_id << "' was not found!";
-    }
-    return result;
 }
 
 // See API docs at https://github.com/OpenTreeOfLife/germinator/wiki/Synthetic-tree-API-v3
@@ -484,8 +382,12 @@ inline void add_source_id_map(json & j,
         if (srcTag == string("ott")+taxonomy.get_version()) {
             jt["taxonomy"] = string("ott")+taxonomy.get_version();
         } else {
-            const auto & simentry = sta->source_id_map.at(srcTag);
-            jt = simentry;
+            try {
+                const auto & simentry = sta->source_id_map.at(srcTag);
+                jt = simentry;
+            } catch (...) {
+                throw OTCWebError() << "sta->source_id_map.at(" << srcTag << ") exception.";
+            }
         }
         sim[srcTag] = jt;   
     }
@@ -531,49 +433,9 @@ string node_info_ws_method(const TreesToServe & tts,
     const auto & taxonomy = locked_taxonomy.first;
     auto result = find_required_node_by_id_str(*tree_ptr, taxonomy, node_id);
 
-    auto response = node_info_json(tts, sta, result.node, include_lineage);
+    auto response = node_info_json(tts, sta, result.node(), include_lineage);
     response["query"] = node_id;
     return response.dump(1);
-}
-
-pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
-                                                                  const SummaryTree_t* tree_ptr,
-                                                                  const vector<string>& node_ids,
-                                                                  bool fail_broken = false) {
-    vector<const SumTreeNode_t *> nodes;
-    json unknown;
-    json broken = json::object();
-    optional<string> bad_node_id;
-    for (auto node_id : node_ids) {
-        auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
-        if (not result.node or (result.was_broken and fail_broken)) {
-            // Possible statuses:
-            //  - invalid    (never minted id)
-            //  - pruned     (valid but not in synth)
-            //  - deprecated (previously valid, not forwarded)
-            string reason = "unknown_id";
-            if (result.node and result.was_broken) {
-                reason = "broken";
-            } else if (auto id = is_ott_id(node_id)) {
-                auto taxon = taxonomy.included_taxon_from_id(*id);
-                // Not currently implemented...
-                // if (id == -2)
-                //  reason = "deprecated";
-                reason = (not taxon ? "invalid_ott_id": "pruned_ott_id");
-            }
-            unknown[node_id] = reason;
-            bad_node_id = node_id;
-        }
-        if (result.was_broken) {
-            broken[node_id] = node_id_for_summary_tree_node(*result.node);
-        }
-        // Current default strategy means that we include MRCAs for broken taxa.
-        nodes.push_back(result.node);
-    }
-    if (unknown.size()) {
-        throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown} };
-    }
-    return {nodes, broken};
 }
 
 string nodes_info_ws_method(const TreesToServe & tts,
@@ -583,7 +445,7 @@ string nodes_info_ws_method(const TreesToServe & tts,
                             bool include_lineage) {
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    auto [nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_ids);
+    auto [nodes, broken, filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_ids);
     json response;
     for(auto i = 0U; i < nodes.size(); i++) {
         auto j = node_info_json(tts, sta, nodes[i], include_lineage);
@@ -665,7 +527,7 @@ string mrca_ws_method(const TreesToServe & tts,
     auto [taxonomy,_] = tts.get_readable_taxonomy();
 
     // 1. Find MRCA of include group
-    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
+    auto [tip_nodes, broken, filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
 
     auto mrca_included = mrca(tip_nodes);
 
@@ -674,7 +536,7 @@ string mrca_ws_method(const TreesToServe & tts,
     const SumTreeNode_t* closest_excluded_ancestor = nullptr;
 
     // 2. Find MRCA of exclude group
-    auto [excluded_nodes, broken_excluded] = find_nodes_for_id_strings(taxonomy, tree_ptr, excluded_node_ids, false);
+    auto [excluded_nodes, broken_excluded, excluded_filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, excluded_node_ids, false);
     json reversals;
     for(int i=0;i<excluded_nodes.size();i++)
     {
@@ -742,9 +604,9 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
 {
     assert(tree_ptr != nullptr);
     auto result = find_required_node_by_id_str(*tree_ptr, taxonomy, node_id);
-    if (result.was_broken) {
+    if (result.broken()) {
         json broken;
-        broken["mrca"] = get_synth_node_label(result.node);
+        broken["mrca"] = get_synth_node_label(result.node());
 
         auto& contesting_trees_for_taxon = tree_ptr->get_data().contesting_trees_for_taxon;
 
@@ -762,10 +624,10 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
         j["broken"] = broken;
         throw OTCBadRequest("node_id was not found (broken taxon).\n")<<j;
     }
-    if (result.node->get_data().num_tips > tip_limit && height_limit < 0) {
+    if (result.node()->get_data().num_tips > tip_limit && height_limit < 0) {
         throw OTCBadRequest() << "The requested subtree is too large to be returned via the API. (Tip limit = " << tip_limit << ".) Download the entire tree.\n";
     }
-    return result.node;
+    return result.node();
 }
 
 
@@ -822,7 +684,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     // Check if any of the tip nodes are either (i) broken or (ii) not found.
-    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
+    auto [tip_nodes, broken, filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
     // Find the mrca
     bool first = true;
     for (auto n: tip_nodes) {
@@ -919,7 +781,12 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
     {
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
-        write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+        try {
+            write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+        } catch (...) {
+            LOG(DEBUG) << "Exception in arguson_subtree_ws_method";
+            throw;
+        }
         add_lineage(tts, a, focal, taxonomy, usedSrcIds, true);
         add_source_id_map(a, usedSrcIds, taxonomy, sta);
     }
