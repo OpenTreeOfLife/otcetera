@@ -237,11 +237,11 @@ struct component_t
     vector<ConstRSplit> old_non_implied_splits;  // beta
 
     shared_ptr<Solution> solution() const {
-        assert(solutions.size() == 1);
-        return solutions.front();
+        assert(old_solutions.size() == 1);
+        return old_solutions.front();
     }
 
-    vector<shared_ptr<Solution>> solutions;
+    vector<shared_ptr<Solution>> old_solutions;
 
     // Do these make sense if there is more than 1 solution?
     // If not, should these be added to the single solution instead?
@@ -250,6 +250,20 @@ struct component_t
 };
 
 typedef component_t* component_ref;
+
+struct Solution
+{
+    vector<int> taxa;
+    vector<ConstRSplit> splits;
+
+    vector<ConstRSplit> implied_splits;      // alpha
+    vector<ConstRSplit> non_implied_splits;  // beta
+
+    vector< component_ref > component_for_index;
+    vector< unique_ptr<component_t> > components;
+
+    unique_ptr<Tree_t> get_tree() const;
+};
 
 /// Merge components c1 and c2 and return the component name that survived
 void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vector<component_ref>& component)
@@ -300,8 +314,7 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     append(c1->new_taxa, c2->new_taxa);
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
-    append(c1->solutions, c2->solutions);
-    
+    append(c1->old_solutions, c2->old_solutions);
     c1->implied_splits_have_been_checked = false;
 
     return c1;
@@ -328,17 +341,6 @@ T remove_unordered(std::vector<T>& v, int i)
 
     return t;
 }
-
-struct Solution
-{
-    vector<int> taxa;
-    vector<ConstRSplit> splits;
-
-    vector< component_ref > component_for_index;
-    vector< unique_ptr<component_t> > components;
-
-    unique_ptr<Tree_t> get_tree() const;
-};
 
 unique_ptr<Tree_t> Solution::get_tree() const
 {
@@ -530,7 +532,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     {
         assert(component->elements.size() >= 2);
 
-        bool has_old_solution = component->solutions.size() == 1;
+        bool has_old_solution = component->old_solutions.size() == 1;
 
         if (has_old_solution)
         {
@@ -558,7 +560,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             auto subsolution = std::make_shared<Solution>();
             if (not BUILD(*subsolution, all_taxa, component->old_non_implied_splits))
                 return false;
-            component->solutions = { subsolution };
+            component->old_solutions = { subsolution };
         }
     }
     return true;
