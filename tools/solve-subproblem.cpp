@@ -394,7 +394,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         taxa.push_back(taxon);
 
     // Do we need to do this?
-    int orig_n_splits = solution.splits.size();
     for(auto& new_split: new_splits)
         solution.splits.push_back(new_split);
 
