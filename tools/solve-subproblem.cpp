@@ -232,8 +232,6 @@ struct component_t
 {
     list<int> elements;
 
-    bool implied_splits_have_been_checked = false;
-
     shared_ptr<Solution> solution() const {
         assert(old_solutions.size() == 1);
         return old_solutions.front();
@@ -273,7 +271,6 @@ void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vect
     component[index2] = c1;
     c1->elements.push_back(index2);
 
-    c1->implied_splits_have_been_checked = false;
 
     c1->solution_ = {};
 }
@@ -312,7 +309,6 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     append(c1->old_solutions, c2->old_solutions);
 
     c1->solution_ = {};
-    c1->implied_splits_have_been_checked = false;
 
     return c1;
 }
@@ -472,12 +468,11 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     for(auto& component: components)
     {
         // We don't need to re-check implied_splits if the taxon set hasn't changed.
-        if (component->implied_splits_have_been_checked) continue;
+        if (component->solution_) continue;
 
         assert(not component->solution_);
         component->solution_ = std::make_shared<Solution>();
         auto& csolution = *component->solution_;
-        component->implied_splits_have_been_checked = true;
 
         for(auto& old_solution: component->old_solutions)
         {
