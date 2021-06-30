@@ -241,6 +241,7 @@ struct component_t
         return old_solutions.front();
     }
 
+    shared_ptr<Solution> solution_;
     vector<shared_ptr<Solution>> old_solutions;
 
     // Do these make sense if there is more than 1 solution?
@@ -250,6 +251,10 @@ struct component_t
 };
 
 typedef component_t* component_ref;
+
+// A "partial" solution only has implied_splits + non_implied_splits
+// A "full" solution also has components.
+// Eventually I would like to replace non_implied_splits with the components!
 
 struct Solution
 {
@@ -274,6 +279,7 @@ void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vect
     c1->new_taxa.push_back(taxon2);
 
     c1->implied_splits_have_been_checked = false;
+    c1->solution_ = {};
 }
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
@@ -315,6 +321,8 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
     append(c1->old_solutions, c2->old_solutions);
+
+    c1->solution_ = {};
     c1->implied_splits_have_been_checked = false;
 
     return c1;
@@ -478,17 +486,41 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         // We don't need to re-check implied_splits if the taxon set hasn't changed.
         if (component->implied_splits_have_been_checked) continue;
 
+        assert(not component->solution_);
+        component->solution_ = std::make_shared<Solution>();
+        auto& csolution = *component->solution_;
+        component->implied_splits_have_been_checked = true;
+
+        for(auto& old_solution: component->old_solutions)
+        {
+            append(csolution.non_implied_splits, old_solution->non_implied_splits);
+            append(csolution.implied_splits, old_solution->implied_splits);
+        }
+
+        for(int i=0;i<csolution.implied_splits.size();i++)
+        {
+            auto& split = csolution.implied_splits[i];
+#ifndef NDEBUG
+            int first = indices[*split->in.begin()];
+            assert(first >= 0);
+            assert(component_for_index[first] == component.get());
+#endif
+            bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
+            if (not implied)
+            {
+                auto split = remove_unordered(csolution.implied_splits,i);
+                csolution.non_implied_splits.push_back(split);
+            }
+            else
+                i++;
+        }
+
         // It is cheaper to do this check once after adding taxa, instead of multiple times if we add multiple taxa.
         // That is because we have to scan the entire exclude set, even if we only add 1 taxon to the components :-(.
         for(int i=0;i<component->old_implied_splits.size();)
         {
             auto& split = component->old_implied_splits[i];
 
-#ifndef NDEBUG
-            int first = indices[*split->in.begin()];
-            assert(first >= 0);
-            assert(component_for_index[first] == component.get());
-#endif
 
             bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
             if (not implied)
@@ -499,8 +531,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             else
                 i++;
         }
-
-        component->implied_splits_have_been_checked = true;
     }
 
     // NOTE: If all new splits are implied and no OLD splits are implied, then perhaps
@@ -515,7 +545,10 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         bool implied = not exclude_group_intersects_component(split, component, component_for_index);
         if (implied)
+        {
             component->old_implied_splits.push_back(split);
+            component->solution_->implied_splits.push_back(split);
+        }
         else
         {
             component->new_splits.push_back(split);
@@ -548,6 +581,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         }
 
         append(component->old_non_implied_splits, component->new_splits);
+        append(component->solution_->non_implied_splits, component->new_splits);
 
         if (not has_old_solution)
         {
@@ -556,10 +590,10 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             for (auto& index: component->elements)
                 all_taxa.push_back(taxa[index]);
 
-            auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, all_taxa, component->old_non_implied_splits))
+            if (not BUILD(*component->solution_, all_taxa, component->old_non_implied_splits))
                 return false;
-            component->old_solutions = { subsolution };
+
+            component->old_solutions = { component->solution_ };
         }
     }
     return true;
