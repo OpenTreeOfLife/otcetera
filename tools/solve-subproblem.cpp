@@ -234,7 +234,6 @@ struct component_t
 
     bool implied_splits_have_been_checked = false;
     vector<ConstRSplit> old_implied_splits;      // alpha
-    vector<ConstRSplit> old_non_implied_splits;  // beta
 
     shared_ptr<Solution> solution() const {
         assert(old_solutions.size() == 1);
@@ -310,7 +309,6 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     c1->elements.splice(c1->elements.end(), c2->elements);
 
-    append(c1->old_non_implied_splits, c2->old_non_implied_splits);
     append(c1->old_implied_splits, c2->old_implied_splits);
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
@@ -571,7 +569,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         }
 
-        append(component->old_non_implied_splits, component->new_splits);
         append(component->solution_->non_implied_splits, component->new_splits);
 
         if (not reuse_solution)
@@ -581,7 +578,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             for (auto& index: component->elements)
                 all_taxa.push_back(taxa[index]);
 
-            if (not BUILD(*component->solution_, all_taxa, component->old_non_implied_splits))
+            if (not BUILD(*component->solution_, all_taxa, component->solution_->non_implied_splits))
                 return false;
 
             component->old_solutions = { component->solution_ };
