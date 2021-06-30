@@ -233,7 +233,6 @@ struct component_t
     list<int> elements;
 
     bool implied_splits_have_been_checked = false;
-    vector<ConstRSplit> old_implied_splits;      // alpha
 
     shared_ptr<Solution> solution() const {
         assert(old_solutions.size() == 1);
@@ -310,8 +309,6 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
         component[i] = c1;
 
     c1->elements.splice(c1->elements.end(), c2->elements);
-
-    append(c1->old_implied_splits, c2->old_implied_splits);
 
     // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
     // Does this mean anything if both components are non-trivial?
@@ -507,23 +504,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             if (not implied)
             {
                 auto split = remove_unordered(csolution.implied_splits,i);
-                csolution.non_implied_splits.push_back(split);
-            }
-            else
-                i++;
-        }
-
-        // It is cheaper to do this check once after adding taxa, instead of multiple times if we add multiple taxa.
-        // That is because we have to scan the entire exclude set, even if we only add 1 taxon to the components :-(.
-        for(int i=0;i<component->old_implied_splits.size();)
-        {
-            auto& split = component->old_implied_splits[i];
-
-
-            bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
-            if (not implied)
-            {
-                auto split = remove_unordered(component->old_implied_splits,i);
                 component->new_splits.push_back(split);
             }
             else
@@ -544,7 +524,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         bool implied = not exclude_group_intersects_component(split, component, component_for_index);
         if (implied)
         {
-            component->old_implied_splits.push_back(split);
             component->solution_->implied_splits.push_back(split);
         }
         else
