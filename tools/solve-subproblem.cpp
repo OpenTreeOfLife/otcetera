@@ -463,13 +463,19 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     std::swap(components, packed_components);
 
 
-    // OK, so can we change how component merges work?
-    // When do components first get (i) old_implied_splits, (ii) old_non_implied_splits, and (iii) new_splits?
+    // OK, so let's stop assuming that we can move splits from A[i] -> A'[i] and B[i] -> B'[i].
+    // i. Instead, lets check whether we "puncture" a solution by moving ANY splits A[i] -> A'[i].
+    //    If we do not, then the solution has (so far) survived intact.
+    //    All of its splits are going to end up in the same component ... how do we pass it down?
 
-    // I would like to change how component merges work.
-    // - If we merge two components that already have solutions, then each solution/old component should keep its implied_splits + non_implied_splits.
-    // - When handling each component, we want to look at (a) new splits to the component and (b) splits for merged components.
-    // - So, maybe the implied_splits + non_implied_splits should be part of the solution object...
+    // ii. For solutions that ARE punctured, the remaining splits may NOT end up in the same component.
+    //     However, I think that the children solutions MAY be guaranteed to end up in the same component.
+
+    // iii. Can we modify BUILD to pass down the vector of old solutions that are not punctured and
+    //   - Guaranteed that indeed all of the splits DO end up in the same component?
+    //   - Check if the posed problem matches an old solution?
+
+    // iv. How often does a merged component imply exactly 1 or more new splits, and no old splits?
 
     // 6. Check implied splits to see if they are STILL implied.
     for(auto& component: components)
@@ -499,6 +505,8 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             if (not implied)
             {
                 auto split = remove_unordered(csolution.implied_splits,i);
+                // FIXME -- for components that get here, we are not going to do an incremental BUILD!
+                // So just add these to csolution.non_implied_splits.
                 component->new_splits.push_back(split);
             }
             else
