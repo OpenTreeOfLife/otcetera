@@ -154,6 +154,7 @@ struct TaxonomyRecord {
     TaxonomyRecord(TaxonomyRecord& tr) = delete;
     bool is_extinct() const;
     explicit TaxonomyRecord(const std::string& line);
+    explicit TaxonomyRecord(const std::string& line, bool is_short);
     std::vector<std::string> sourceinfoAsVec() const {
         std::string si = std::string(sourceinfo);
         return comma_separated_as_vec(si);
@@ -243,7 +244,8 @@ public:
     Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), OttId keep_root=-1);
 
     private:
-
+    unsigned int read_input_taxonomy_stream(std::istream & taxonomy_stream);
+    unsigned int read_ott_taxonomy_stream(std::istream & taxonomy_stream);
     friend class RichTaxonomy;
 };
 
@@ -415,6 +417,9 @@ class RichTaxonomy: public BaseTaxonomy {
     const OttIdSet * is_suppressed_from_synth = nullptr;
     const ContextAwareCTrieBasedDB * fuzzy_match_db = nullptr;
     RichTaxonomy(const RichTaxonomy &) = delete;
+    private:
+    void read_input_synonyms_stream(std::istream & synonyms_file);
+    void read_ott_synonyms_stream(std::istream & synonyms_file);
 };
 
 
@@ -587,6 +592,7 @@ std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const Taxon
     vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
     for(auto i = 0U; i < taxonomy.size() ; i++) {
         const auto& line = taxonomy[i];
+        // std::cerr << "Taxonomy::get_tree line " << i << '\n';
         // Make the tree
         typename Tree_t::node_type* nd = nullptr;
         if (i==0) {

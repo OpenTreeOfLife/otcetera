@@ -14,6 +14,7 @@ class LightSynonym {
     std::string name;
     std::string source_string;
 };
+
 class PatchableTaxonomy: public RichTaxonomy {
     public:
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr

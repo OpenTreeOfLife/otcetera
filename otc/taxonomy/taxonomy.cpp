@@ -197,6 +197,33 @@ TaxonomyRecord::TaxonomyRecord(const string& line_)
     rank_strings.insert(string(rank));
 }
 
+// is_input_form will be true when the headers lack sourceinfo and uniqname
+TaxonomyRecord::TaxonomyRecord(const string& line_, bool /* is_input_form */)
+    :line(line_) {
+    // parse the line
+    // also see boost::make_split_iterator
+    const char* start[6];
+    const char* end[6];
+    start[0] = line.c_str();
+    for(int i = 0; i < 5; i++) {
+        end[i] = std::strstr(start[i],"\t|\t");
+        start[i + 1] = end[i] + 3;
+        // std::cerr << "start,end[" << i << "] = " << start[i] << ", " << end[i] << std::endl;
+    }
+    char *temp;
+    id = std::strtoul(start[0], &temp, 10);
+    parent_id = std::strtoul(start[1], &temp, 10);
+    name = string_view(start[2], end[2] - start[2]);
+    rank = string_view(start[3], end[3] - start[3]);
+    sourceinfo = string_view();
+    uniqname = string_view();
+    flags = flags_from_string(start[4], end[4]);
+    if (not uniqname.size()) {
+        uniqname = name;
+    }
+    rank_strings.insert(string(rank));
+}
+
 optional<int> Taxonomy::maybe_index_from_id(OttId id) const
 {
     auto loc = index.find(id);
@@ -382,11 +409,85 @@ Taxonomy::Taxonomy(const string& dir,
     // 2. Read and check the first line
     string line;
     std::getline(taxonomy_stream,line);
-    if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t") {
+    unsigned int count;
+    if (line == "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tflags\t|\t") {
+        count = read_input_taxonomy_stream(taxonomy_stream);
+    } else if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t") {
         throw OTCError() << "First line of file '" << filename << "' is not a taxonomy header.";
+    } else {
+        count = read_ott_taxonomy_stream(taxonomy_stream);
     }
+    LOG(TRACE) << "records read = " << count;
+    LOG(TRACE) << "records kept = " << size();
+    taxonomy_stream.close();
+    /*
+    if (read_deprecated) {
+        read_deprecated_file(path + "/deprecated.tsv");
+    }
+    */
+    read_forwards_file(path + "/forwards.tsv");
+}
+
+unsigned int Taxonomy::read_input_taxonomy_stream(std::istream & taxonomy_stream) {
     // 3. Read records up to the record containing the root.
-    int count = 0;
+    unsigned int count = 0;
+    string line;
+
+    if (keep_root != -1) {
+        while(std::getline(taxonomy_stream, line)) {
+            count++;
+            // Add line to vector
+            emplace_back(TaxonomyRecord{line, true});
+            if (back().id == keep_root) {
+                break;
+            }
+            pop_back();
+        }
+        if (empty()) {
+            throw OTCError() << "Root id '" << keep_root << "' not found.";
+        }
+    } else {
+        std::getline(taxonomy_stream, line);
+        count++;
+        // Add line to vector
+        emplace_back(TaxonomyRecord{line, true});
+    }
+    back().depth = 1;
+    if ((back().flags & cleaning_flags).any()) {
+        throw OTCError() << "Root taxon (ID = " << back().id << ") removed according to cleaning flags!";
+    }
+    index[back().id] = size() - 1;
+    // 4. Read the remaining records
+    while(std::getline(taxonomy_stream, line)) {
+        count++;
+        if (count % 100 == 0) {
+            std::cerr << "line " << count << ": " << line << '\n';
+        }
+        // Add line to vector
+        emplace_back(TaxonomyRecord{line, true});
+        // Eliminate records that match the cleaning flags
+        if ((back().flags & cleaning_flags).any()) {
+            pop_back();
+            continue;
+        }
+        // Eliminate records whose parents have been eliminated, or are not found.
+        auto loc = index.find(back().parent_id);
+        if (loc == index.end()) {
+            pop_back();
+            continue;
+        }
+        back().parent_index = loc->second;
+        back().depth = (*this)[back().parent_index].depth + 1;
+        (*this)[back().parent_index].out_degree++;
+        index[back().id] = size() - 1;
+    }
+    return count;
+}
+
+unsigned int Taxonomy::read_ott_taxonomy_stream(std::istream & taxonomy_stream) {
+    // 3. Read records up to the record containing the root.
+    unsigned int count = 0;
+    string line;
     if (keep_root != -1) {
         while(std::getline(taxonomy_stream, line)) {
             count++;
@@ -401,7 +502,7 @@ Taxonomy::Taxonomy(const string& dir,
             throw OTCError() << "Root id '" << keep_root << "' not found.";
         }
     } else {
-        std::getline(taxonomy_stream,line);
+        std::getline(taxonomy_stream, line);
         count++;
         // Add line to vector
         emplace_back(line);
@@ -432,24 +533,18 @@ Taxonomy::Taxonomy(const string& dir,
         (*this)[back().parent_index].out_degree++;
         index[back().id] = size() - 1;
     }
-    LOG(TRACE) << "records read = " << count;
-    LOG(TRACE) << "records kept = " << size();
-    taxonomy_stream.close();
-    /*
-    if (read_deprecated) {
-        read_deprecated_file(path + "/deprecated.tsv");
-    }
-    */
-    read_forwards_file(path + "/forwards.tsv");
+    return count;
 }
 
 std::variant<OttId,reason_missing> RichTaxonomy::get_unforwarded_id_or_reason(OttId id) const
 {
     const auto & td = tree->get_data();
-    if (td.id_to_node.count(id))
+    if (td.id_to_node.count(id)) {
         return id;
-    if (auto iter = forwards.find(id); iter != forwards.end())
+    }
+    if (auto iter = forwards.find(id); iter != forwards.end()) {
         return iter->second;
+    }
     return reason_missing::unknown;
 }
 
@@ -459,7 +554,9 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     { //braced to reduce scope of light_taxonomy to reduced memory
         Taxonomy light_taxonomy(dir, cf, kr); 
         auto nodeNamer = [](const auto&){return string();};
+        cerr << "light_taxonomy.get_tree<RichTaxTree>(nodeNamer)..." << std::endl;
         tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer);
+        cerr << "... tree returned" << std::endl;
         auto & tree_data = tree->get_data();
         std::swap(forwards, light_taxonomy.forwards);
         //std::swap(deprecated, light_taxonomy.deprecated);
@@ -503,6 +600,7 @@ void Taxonomy::read_forwards_file(string filepath)
 {
     // 1. Read forwards file and create id -> forwarded_id map
     ifstream forwards_stream(filepath);
+    int i = 1;
     if (forwards_stream) {
         string line;
         std::getline(forwards_stream, line);
@@ -514,6 +612,7 @@ void Taxonomy::read_forwards_file(string filepath)
             }
             const char* temp2 = temp+1;
             long new_id = std::strtoul(temp2, &temp, 10);
+            cerr << i++ << ": " << old_id << " -> " << new_id << '\n';
             forwards[check_ott_id_size(old_id)] = check_ott_id_size(new_id);
         }
     }
@@ -640,7 +739,6 @@ bool RTRichTaxNodeData::is_extinct() const {
 
 
 void RichTaxonomy::read_synonyms() {
-    RTRichTaxTreeData & tree_data = this->tree->get_data();
     string filename = path + "/synonyms.tsv";
     ifstream synonyms_file(filename);
         if (not synonyms_file) {
@@ -649,9 +747,47 @@ void RichTaxonomy::read_synonyms() {
     // 2. Read and check the first line
     string line;
     std::getline(synonyms_file, line);
-    if (line != "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t") {
+    if (line == "uid\t|\tname\t|\ttype\t|\t") {
+        read_input_synonyms_stream(synonyms_file);
+    } else  if (line != "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t") {
         throw OTCError() << "First line of file '" << filename << "' is not a synonym header.";
+    } else {
+        read_ott_synonyms_stream(synonyms_file);
     }
+}
+
+void RichTaxonomy::read_input_synonyms_stream(std::istream & synonyms_file) {
+    RTRichTaxTreeData & tree_data = this->tree->get_data();
+    string line;
+    while(std::getline(synonyms_file, line)) {
+        const char* start[3];
+        const char* end[3];
+        start[0] = line.c_str();
+        for(int i=0; i < 2; i++) {
+            end[i] = std::strstr(start[i],"\t|\t");
+            start[i + 1] = end[i] + 3;
+        }
+        end[2] = start[0] + line.length() - 3 ; // -3 for the \t|\t
+        char *temp;
+        string name = string(start[1], end[1] - start[1]);
+        unsigned long raw_id = std::strtoul(start[0], &temp, 10);
+        OttId ott_id = check_ott_id_size(raw_id);
+        const RTRichTaxNode * primary = tree_data.id_to_node.at(ott_id);
+        string sourceinfo;
+        
+        this->synonyms.emplace_back(name, primary, sourceinfo);
+        TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
+        
+        auto vs = comma_separated_as_vec(sourceinfo);
+        process_source_info_vec(vs, tree_data, tjs, primary);
+        RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
+        mp->get_data().junior_synonyms.push_back(&tjs);
+    }
+}
+
+void RichTaxonomy::read_ott_synonyms_stream(std::istream & synonyms_file) {
+    RTRichTaxTreeData & tree_data = this->tree->get_data();
+    string line;
     while(std::getline(synonyms_file, line)) {
         const char* start[5];
         const char* end[5];
