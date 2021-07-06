@@ -242,7 +242,6 @@ struct component_t
 
     // Do these make sense if there is more than 1 solution?
     // If not, should these be added to the single solution instead?
-    vector<int> new_taxa;
     vector<ConstRSplit> new_splits;
 };
 
@@ -271,8 +270,6 @@ void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vect
 {
     component[index2] = c1;
     c1->elements.push_back(index2);
-
-    c1->new_taxa.push_back(taxon2);
 
     c1->solution_ = {};
 }
@@ -306,10 +303,6 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
         component[i] = c1;
 
     c1->elements.splice(c1->elements.end(), c2->elements);
-
-    // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
-    // Does this mean anything if both components are non-trivial?
-    append(c1->new_taxa, c2->new_taxa);
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
     append(c1->old_solutions, c2->old_solutions);
@@ -407,7 +400,6 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     // 0. Clear any staged work for each component.
     for(auto& component: components)
     {
-        component->new_taxa.clear();
         component->new_splits.clear();
     }
 
@@ -544,25 +536,25 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     {
         assert(component->elements.size() >= 2);
 
-        bool has_old_solution = component->old_solutions.size() == 1;
+        bool reuse_solution = (component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size());
 
-        if (has_old_solution)
+        if (reuse_solution)
         {
-            assert(component->elements.size() == component->solution()->taxa.size() + component->new_taxa.size());
+            assert(component->elements.size() == component->solution()->taxa.size());
 
             // If no new taxa and no new splits, just continue.
-            if (component->new_splits.empty() and component->new_taxa.empty())
+            if (component->new_splits.empty())
                 continue;
 
             // Otherwise try adding the new taxa and splits to the existing solution.
-            else if (not BUILD(*component->solution(), component->new_taxa, component->new_splits))
+            else if (not BUILD(*component->solution(), {}, component->new_splits))
                 return false;
 
         }
 
         append(component->solution_->non_implied_splits, component->new_splits);
 
-        if (not has_old_solution)
+        if (not reuse_solution)
         {
             vector<int> all_taxa;
             all_taxa.reserve(component->elements.size());
