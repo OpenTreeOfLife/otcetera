@@ -261,7 +261,7 @@ struct Solution
 };
 
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vector<component_ref>& component)
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
 {
     component[index2] = c1;
     c1->elements.push_back(index2);
@@ -422,12 +422,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
                 {
                     components.push_back(std::make_unique<component_t>());
                     taxon_comp = components.back().get();
-                    merge_component_with_trivial(taxon_comp, taxon, index, component_for_index);
+                    merge_component_with_trivial(taxon_comp, index, component_for_index);
                 }
                 split_comp = taxon_comp;
             }
             else if (not taxon_comp)
-                merge_component_with_trivial(split_comp, taxon, index, component_for_index);
+                merge_component_with_trivial(split_comp, index, component_for_index);
             else if (split_comp != taxon_comp)
                 split_comp = merge_components(split_comp,taxon_comp,component_for_index);
         }
