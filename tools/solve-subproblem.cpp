@@ -232,7 +232,7 @@ struct component_t
 {
     list<int> elements;
 
-    shared_ptr<Solution> solution_;
+    shared_ptr<Solution> solution;
     vector<shared_ptr<Solution>> old_solutions;
 
     // Do these make sense if there is more than 1 solution?
@@ -266,7 +266,7 @@ void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vect
     component[index2] = c1;
     c1->elements.push_back(index2);
 
-    c1->solution_ = {};
+    c1->solution = {};
 }
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
@@ -302,7 +302,7 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     // One of these components could be new -- that is, composed only of previously-trivial components.
     append(c1->old_solutions, c2->old_solutions);
 
-    c1->solution_ = {};
+    c1->solution = {};
 
     return c1;
 }
@@ -339,7 +339,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 
     // 2. Add children for non-trivial components
     for(auto& component: components)
-        add_subtree(tree->get_root(), *component->solution_->get_tree());
+        add_subtree(tree->get_root(), *component->solution->get_tree());
 
     // 3. Add children for trivial components
     for(int index=0;index<taxa.size();index++)
@@ -467,15 +467,15 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     for(auto& component: components)
     {
         // We don't need to re-check implied_splits if the taxon set hasn't changed.
-        if (component->solution_)
+        if (component->solution)
         {
             assert((component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size()));
             continue;
         }
 
-        assert(not component->solution_);
-        component->solution_ = std::make_shared<Solution>();
-        auto& csolution = *component->solution_;
+        assert(not component->solution);
+        component->solution = std::make_shared<Solution>();
+        auto& csolution = *component->solution;
 
         for(auto& old_solution: component->old_solutions)
         {
@@ -515,7 +515,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         bool implied = not exclude_group_intersects_component(split, component, component_for_index);
         if (implied)
         {
-            component->solution_->implied_splits.push_back(split);
+            component->solution->implied_splits.push_back(split);
         }
         else
         {
@@ -548,7 +548,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         }
 
-        append(component->solution_->non_implied_splits, component->new_splits);
+        append(component->solution->non_implied_splits, component->new_splits);
 
         if (not reuse_solution)
         {
@@ -557,10 +557,10 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             for (auto& index: component->elements)
                 all_taxa.push_back(taxa[index]);
 
-            if (not BUILD(*component->solution_, all_taxa, component->solution_->non_implied_splits))
+            if (not BUILD(*component->solution, all_taxa, component->solution->non_implied_splits))
                 return false;
 
-            component->old_solutions = { component->solution_ };
+            component->old_solutions = { component->solution };
         }
     }
     return true;
