@@ -462,7 +462,11 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     for(auto& component: components)
     {
         // We don't need to re-check implied_splits if the taxon set hasn't changed.
-        if (component->solution_) continue;
+        if (component->solution_)
+        {
+            assert((component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size()));
+            continue;
+        }
 
         assert(not component->solution_);
         component->solution_ = std::make_shared<Solution>();
