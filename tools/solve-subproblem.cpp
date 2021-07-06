@@ -254,7 +254,7 @@ typedef component_t* component_ref;
 struct Solution
 {
     vector<int> taxa;
-    vector<ConstRSplit> splits;
+    int n_splits = 0;
 
     vector<ConstRSplit> implied_splits;      // alpha
     vector<ConstRSplit> non_implied_splits;  // beta
@@ -386,8 +386,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         taxa.push_back(taxon);
 
     // Do we need to do this?
-    for(auto& new_split: new_splits)
-        solution.splits.push_back(new_split);
+    solution.n_splits += new_splits.size();
 
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
@@ -404,7 +403,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
     }
 
     // 1. If there are no splits, then we are consistent.
-    if (solution.splits.empty())
+    if (solution.n_splits == 0)
         return true;
 
     // 2. Initialize the mapping from taxa to indices.
