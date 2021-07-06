@@ -495,9 +495,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             if (not implied)
             {
                 auto split = remove_unordered(csolution.implied_splits,i);
-                // FIXME -- for components that get here, we are not going to do an incremental BUILD!
-                // So just add these to csolution.non_implied_splits.
-                component->new_splits.push_back(split);
+                csolution.non_implied_splits.push_back(split);
             }
             else
                 i++;
