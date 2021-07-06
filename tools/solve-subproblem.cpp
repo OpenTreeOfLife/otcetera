@@ -232,11 +232,6 @@ struct component_t
 {
     list<int> elements;
 
-    shared_ptr<Solution> solution() const {
-        assert(old_solutions.size() == 1);
-        return old_solutions.front();
-    }
-
     shared_ptr<Solution> solution_;
     vector<shared_ptr<Solution>> old_solutions;
 
@@ -345,7 +340,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 
     // 2. Add children for non-trivial components
     for(auto& component: components)
-        add_subtree(tree->get_root(), *component->solution()->get_tree());
+        add_subtree(tree->get_root(), *component->solution_->get_tree());
 
     // 3. Add children for trivial components
     for(int index=0;index<taxa.size();index++)
@@ -532,12 +527,12 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         if (reuse_solution)
         {
-            assert(component->elements.size() == component->solution()->taxa.size());
+            assert(component->elements.size() == component->old_solutions[0]->taxa.size());
 
-            assert(component->solution_ == component->solution());
+            assert(component->solution_ == component->old_solutions[0]);
 
             // Otherwise try adding the new taxa and splits to the existing solution.
-            if (not BUILD(*component->solution(), {}, component->new_splits))
+            if (not BUILD(*component->old_solutions[0], {}, component->new_splits))
                 return false;
 
         }
@@ -557,7 +552,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             component->old_solutions = { component->solution_ };
         }
 
-        assert(component->solution_ == component->solution());
+        assert(component->solution_ == component->old_solutions[0]);
     }
     return true;
 }
