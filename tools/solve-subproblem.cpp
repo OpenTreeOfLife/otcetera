@@ -182,7 +182,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     strategies.add_options()
         ("batching",value<bool>()->default_value(true), "Make unresolved taxonomy from input tips.")
         ("oracle", value<bool>()->default_value(true), "Predict conflicting splits before BUILD.")
-        ("incremental", value<bool>()->default_value(false),"Reuse work from previous BUILD.")
+        ("incremental", value<bool>()->default_value(true),"Reuse work from previous BUILD.")
         ;
 
     options_description other("Other options");
