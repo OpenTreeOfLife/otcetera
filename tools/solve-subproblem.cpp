@@ -257,6 +257,9 @@ struct Solution
     vector< component_ref > component_for_index;
     vector< unique_ptr<component_t> > components;
 
+    vector<ConstRSplit> non_implied_splits_from_components() const;
+    vector<ConstRSplit> splits_from_components() const;
+
     unique_ptr<Tree_t> get_tree() const;
 
     Solution(const vector<int> t): taxa(t) {}
@@ -267,6 +270,25 @@ struct Solution
             taxa.push_back(other_taxa[index]);
     }
 };
+
+vector<ConstRSplit> Solution::splits_from_components() const
+{
+    vector<ConstRSplit> splits = non_implied_splits_from_components();
+    for(auto& split: implied_splits)
+        splits.push_back(split);
+    return splits;
+}
+
+vector<ConstRSplit> Solution::non_implied_splits_from_components() const
+{
+    vector<ConstRSplit> splits;
+    for(auto& component: components)
+    {
+        for(auto split: component->solution->splits_from_components())
+            splits.push_back(split);
+    }
+    return splits;
+}
 
 /// Merge components c1 and c2 and return the component name that survived
 void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
