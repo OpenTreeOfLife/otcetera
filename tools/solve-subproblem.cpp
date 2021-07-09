@@ -490,7 +490,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             append(csolution.implied_splits, old_solution->implied_splits);
         }
 
-        for(int i=0;i<csolution.implied_splits.size();i++)
+        for(int i=0;i<csolution.implied_splits.size();)
         {
             auto& split = csolution.implied_splits[i];
 #ifndef NDEBUG
