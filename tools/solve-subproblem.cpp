@@ -519,7 +519,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
             if (not implied)
             {
                 auto split = remove_unordered(component->old_implied_splits,i);
-                component->new_splits.push_back(split);
+                component->old_non_implied_splits.push_back(split);
             }
             else
                 i++;
