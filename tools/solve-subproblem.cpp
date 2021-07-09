@@ -563,12 +563,9 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         {
             assert(component->elements.size() == component->solution()->taxa.size());
 
-            // If no new taxa and no new splits, just continue.
-            if (component->new_splits.empty())
-                continue;
 
             // Otherwise try adding the new taxa and splits to the existing solution.
-            else if (not BUILD(*component->solution(), {}, component->new_splits))
+            if (not BUILD(*component->solution(), {}, component->new_splits))
                 return false;
 
         }
