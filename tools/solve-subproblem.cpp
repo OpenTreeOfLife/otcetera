@@ -563,6 +563,7 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         {
             assert(component->elements.size() == component->solution()->taxa.size());
 
+            assert(component->solution_ == component->solution());
 
             // Otherwise try adding the new taxa and splits to the existing solution.
             if (not BUILD(*component->solution(), {}, component->new_splits))
@@ -585,6 +586,8 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
             component->old_solutions = { component->solution_ };
         }
+
+        assert(component->solution_ == component->solution());
     }
     return true;
 }
