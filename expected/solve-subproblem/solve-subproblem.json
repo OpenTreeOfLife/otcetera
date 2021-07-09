@@ -38,5 +38,10 @@
       "invocation" : ["otc-solve-subproblem", "-I../../../data/is-within-is/is.txt", "<INFILELIST>"],
       "infile_list": ["is-within-is/tree1.tre", "is-within-is/tax.tre"],
       "expected": "is-within-is-1"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "<INFILELIST>"],
+      "infile_list": ["prob-1.tre"],
+      "expected": "prob-1"
   }
 ]
