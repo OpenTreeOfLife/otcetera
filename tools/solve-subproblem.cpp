@@ -563,28 +563,10 @@ bool BUILD(Solution& solution)
     {
         assert(component->elements.size() >= 2);
 
-        bool reuse_solution = (component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size());
+        if (not BUILD(*component->solution))
+            return false;
 
-        if (reuse_solution)
-        {
-            assert(component->elements.size() == component->old_solutions[0]->taxa.size());
-
-            assert(component->solution == component->old_solutions[0]);
-
-            // Otherwise try adding the new taxa and splits to the existing solution.
-            if (not BUILD(*component->solution))
-                return false;
-        }
-
-        if (not reuse_solution)
-        {
-            if (not BUILD(*component->solution))
-                return false;
-
-            component->old_solutions = { component->solution };
-        }
-
-        assert(component->solution == component->old_solutions[0]);
+        component->old_solutions = { component->solution };
     }
 
     return true;
