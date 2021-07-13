@@ -489,14 +489,6 @@ bool BUILD(Solution& solution)
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // OK, so can we change how component merges work?
-    // When do components first get (i) old_implied_splits, (ii) old_non_implied_splits, and (iii) new_splits?
-
-    // I would like to change how component merges work.
-    // - If we merge two components that already have solutions, then each solution/old component should keep its implied_splits + non_implied_splits.
-    // - When handling each component, we want to look at (a) new splits to the component and (b) splits for merged components.
-    // - So, maybe the implied_splits + non_implied_splits should be part of the solution object...
-
     // 6. Check implied splits to see if they are STILL implied.
     for(auto& component: components)
     {
@@ -510,11 +502,6 @@ bool BUILD(Solution& solution)
         assert(not component->solution);
         component->solution = std::make_shared<Solution>(*component, taxa);
 
-        // FIXME: instead of collecting implied splits and non-implied splits,
-        //        only scan the implied splits to see if the component has been punctured.
-        //        If the component is punctured, then we divide the A[i] between A' and B', and
-        //          add the child solutions to our list.
-        //        We should also be able to GENERATE the non_implied splits B[i] using old_solution->non_implied_splits_from_components()
         for(auto& old_solution: component->old_solutions)
         {
             append(component->solution->implied_splits, old_solution->implied_splits);
@@ -540,9 +527,6 @@ bool BUILD(Solution& solution)
                 i++;
         }
     }
-
-    // NOTE: If all new splits are implied and no OLD splits are implied, then perhaps
-    //       all the old components will be sub-problems of the merged component?
 
     // 7. Determine the splits that are not satisfied yet and go into each component
     for(auto& split: new_splits)
