@@ -588,11 +588,6 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
 
         if (not reuse_solution)
         {
-            vector<int> all_taxa;
-            all_taxa.reserve(component->elements.size());
-            for (auto& index: component->elements)
-                all_taxa.push_back(taxa[index]);
-
             if (not BUILD(*component->solution, component->solution->non_implied_splits))
                 return false;
 
