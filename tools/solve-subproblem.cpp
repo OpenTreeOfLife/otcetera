@@ -234,6 +234,15 @@ struct component_t
 
     shared_ptr<Solution> solution;
     vector<shared_ptr<Solution>> old_solutions;
+
+    vector<int> get_taxa(const std::vector<int>& other_taxa) const
+    {
+        vector<int> taxa;
+        taxa.reserve(elements.size());
+        for(auto index: elements)
+            taxa.push_back(other_taxa[index]);
+        return taxa;
+    }
 };
 
 template <typename T>
@@ -268,15 +277,18 @@ struct Solution
 
     unique_ptr<Tree_t> get_tree() const;
 
-    Solution(const vector<int>& t): taxa(t) {}
-    Solution(const vector<int>& t, const vector<ConstRSplit>& s): taxa(t), non_implied_splits(s) {}
-    Solution(const vector<int>& t, vector<ConstRSplit>&& s): taxa(t), non_implied_splits(std::move(s)) {}
+    Solution(const vector<int>& t, const vector<ConstRSplit>& s)
+        :taxa(t), non_implied_splits(s), component_for_index(taxa.size())
+    {}
+    Solution(const vector<int>& t, vector<ConstRSplit>&& s)
+        :taxa(t), non_implied_splits(std::move(s)), component_for_index(taxa.size())
+    {}
+    Solution(const vector<int>& t)
+        :Solution(t,{})
+    {}
     Solution(const component_t& c, const std::vector<int> other_taxa)
-    {
-        taxa.reserve(c.elements.size());
-        for(auto index: c.elements)
-            taxa.push_back(other_taxa[index]);
-    }
+        :Solution(c.get_taxa(other_taxa))
+    {}
 };
 
 vector<ConstRSplit> Solution::splits_from_components() const
@@ -419,7 +431,6 @@ bool BUILD(Solution& solution)
 
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
-    component_for_index.resize(taxa.size());
 
     // 1. If there are no splits, then we are consistent.
     if (new_splits.empty())
