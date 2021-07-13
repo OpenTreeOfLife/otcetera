@@ -226,6 +226,17 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o<<(ConstRSplit(s));
 }
 
+template <typename T>
+bool sort_cmp(const vector<T>& v1,  const vector<T>& v2)
+{
+    if (v1.size() != v2.size()) return false;
+
+    auto w1 = v1; std::sort(w1.begin(), w1.end());
+    auto w2 = v2; std::sort(w2.begin(), w2.end());
+
+    return (w1 == w2);
+}
+
 struct Solution;
 
 struct component_t
@@ -244,17 +255,6 @@ struct component_t
         return taxa;
     }
 };
-
-template <typename T>
-bool sort_cmp(const vector<T>& v1,  const vector<T>& v2)
-{
-    if (v1.size() != v2.size()) return false;
-
-    auto w1 = v1; std::sort(w1.begin(), w1.end());
-    auto w2 = v2; std::sort(w2.begin(), w2.end());
-
-    return (w1 == w2);
-}
 
 typedef component_t* component_ref;
 
