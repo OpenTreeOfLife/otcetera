@@ -425,10 +425,6 @@ bool BUILD(Solution& solution)
     auto& components = solution.components;
     component_for_index.resize(taxa.size());
 
-    // component->new_splits and component->new_taxa seem only to make sense if
-    // the component has exactly 1 solution.  Should these fields be part of the
-    // (single) solution then?
-
     // 1. If there are no splits, then we are consistent.
     if (solution.n_splits == 0)
         return true;
