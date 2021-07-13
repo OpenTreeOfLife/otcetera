@@ -545,20 +545,20 @@ bool BUILD(Solution& solution)
 
         bool implied = not exclude_group_intersects_component(split, component, component_for_index);
         if (implied)
-        {
             component->solution->implied_splits.push_back(split);
-        }
         else
-        {
             component->solution->non_implied_splits.push_back(split);
-        }
     }
 
-    // 8. Clear our map from id -> index, for use by subproblems.
+    // 8. We've now set up the sub-problems, so we can clear non_implied_splits/new_splits.
+    solution.non_implied_splits.clear();
+
+    // 9. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
         indices[id] = -1;
     }
-    // 9. Recursively solve the sub-problems of the partition components
+
+    // 10. Recursively solve the sub-problems of the partition components
     for(auto& component: components)
     {
         assert(component->elements.size() >= 2);
@@ -586,9 +586,6 @@ bool BUILD(Solution& solution)
 
         assert(component->solution == component->old_solutions[0]);
     }
-
-    // FIXME: This can still affect things, because we collect non-implied splits when we merge solutions.
-    solution.non_implied_splits.clear();
 
     return true;
 }
