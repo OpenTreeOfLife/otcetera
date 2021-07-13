@@ -269,7 +269,9 @@ struct Solution
 
     unique_ptr<Tree_t> get_tree() const;
 
-    Solution(const vector<int> t): taxa(t) {}
+    Solution(const vector<int>& t): taxa(t) {}
+    Solution(const vector<int>& t, const vector<ConstRSplit>& s): taxa(t), non_implied_splits(s) {}
+    Solution(const vector<int>& t, vector<ConstRSplit>&& s): taxa(t), non_implied_splits(std::move(s)) {}
     Solution(const component_t& c, const std::vector<int> other_taxa)
     {
         taxa.reserve(c.elements.size());
@@ -405,15 +407,16 @@ unique_ptr<Tree_t> Solution::get_tree() const
 
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
+bool BUILD(Solution& solution)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    // This copying seems wasteful.
+    // This describes the problem
     auto& taxa = solution.taxa;
+    auto& new_splits = solution.non_implied_splits;
 
     // Do we need to do this?
     solution.n_splits += new_splits.size();
@@ -569,13 +572,13 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
             assert(component->solution == component->old_solutions[0]);
 
             // Otherwise try adding the new taxa and splits to the existing solution.
-            if (not BUILD(*component->old_solutions[0], component->solution->non_implied_splits))
+            if (not BUILD(*component->solution))
                 return false;
         }
 
         if (not reuse_solution)
         {
-            if (not BUILD(*component->solution, component->solution->non_implied_splits))
+            if (not BUILD(*component->solution))
                 return false;
 
             component->old_solutions = { component->solution };
@@ -588,6 +591,14 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
     solution.non_implied_splits.clear();
 
     return true;
+}
+
+bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
+{
+    for(auto split: new_splits)
+        solution.non_implied_splits.push_back(split);
+
+    return BUILD(solution);
 }
 
 template <typename T>
@@ -1163,12 +1174,12 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             }
             else
             {
-                solution = std::make_shared<Solution>(all_leaves_indices);
-
                 for(int i=0;i<n;i++)
                     consistent.push_back(splits[start+i].second);
 
-                result = BUILD(*solution, consistent);
+                solution = std::make_shared<Solution>(all_leaves_indices, consistent);
+
+                result = BUILD(*solution);
 
                 if (not result)
                 {
@@ -1241,8 +1252,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     // 2. Construct final tree and add names
 
     //FIXME - discard previous solution;
-    solution = std::make_shared<Solution>(all_leaves_indices);
-    auto result = BUILD(*solution, consistent);;
+    solution = std::make_shared<Solution>(all_leaves_indices, consistent);
+    auto result = BUILD(*solution);
     assert(result);
     auto tree = solution->get_tree();
     for(auto nd: iter_pre(*tree))
