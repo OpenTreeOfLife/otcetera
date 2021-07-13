@@ -518,7 +518,6 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
         {
             append(component->solution->implied_splits, old_solution->implied_splits);
             auto non_implied_splits = old_solution->non_implied_splits_from_components();
-            assert(sort_cmp(old_solution->non_implied_splits, non_implied_splits));
             append(component->solution->non_implied_splits, non_implied_splits);
         }
 
@@ -604,7 +603,7 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
     }
 
     // FIXME: This can still affect things, because we collect non-implied splits when we merge solutions.
-    // solution.non_implied_splits.clear();
+    solution.non_implied_splits.clear();
 
     return true;
 }
