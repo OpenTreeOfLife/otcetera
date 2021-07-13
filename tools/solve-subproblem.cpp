@@ -266,8 +266,9 @@ struct Solution
 {
     vector<int> taxa;
 
-    vector<ConstRSplit> implied_splits;      // alpha
-    vector<ConstRSplit> non_implied_splits;  // beta
+    vector<ConstRSplit> implied_splits;              // alpha
+    vector<ConstRSplit> non_implied_splits;          // beta1
+    vector<std::shared_ptr<Solution>> sub_solutions; // beta2
 
     vector< component_ref > component_for_index;
     vector< unique_ptr<component_t> > components;
@@ -442,31 +443,36 @@ bool BUILD(Solution& solution)
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
+    auto merge = [&](auto& group)
+        {
+            component_ref split_comp = nullptr;
+            for(int taxon: group)
+            {
+                int index = indices[taxon];
+                assert(index != -1);
+                auto taxon_comp = component_for_index[index];
+                if (not split_comp)
+                {
+                    if (not taxon_comp)
+                    {
+                        components.push_back(std::make_unique<component_t>());
+                        taxon_comp = components.back().get();
+                        merge_component_with_trivial(taxon_comp, index, component_for_index);
+                    }
+                    split_comp = taxon_comp;
+                }
+                else if (not taxon_comp)
+                    merge_component_with_trivial(split_comp, index, component_for_index);
+                else if (split_comp != taxon_comp)
+                    split_comp = merge_components(split_comp,taxon_comp,component_for_index);
+            }
+        };
+
     // 3. For each split, all the leaves in the include group must be in the same component
     for(const auto& split: new_splits)
-    {
-        component_ref split_comp = nullptr;
-        for(int taxon: split->in)
-        {
-            int index = indices[taxon];
-            assert(index != -1);
-            auto taxon_comp = component_for_index[index];
-            if (not split_comp)
-            {
-                if (not taxon_comp)
-                {
-                    components.push_back(std::make_unique<component_t>());
-                    taxon_comp = components.back().get();
-                    merge_component_with_trivial(taxon_comp, index, component_for_index);
-                }
-                split_comp = taxon_comp;
-            }
-            else if (not taxon_comp)
-                merge_component_with_trivial(split_comp, index, component_for_index);
-            else if (split_comp != taxon_comp)
-                split_comp = merge_components(split_comp,taxon_comp,component_for_index);
-        }
-    }
+        merge(split->in);
+    for(const auto& sub_solution: solution.sub_solutions)
+        merge(sub_solution->taxa);
 
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (component_for_index[0] and component_for_index[0]->elements.size() == taxa.size())
@@ -482,7 +488,6 @@ bool BUILD(Solution& solution)
         if (not component->elements.empty())
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
-
 
     // OK, so can we change how component merges work?
     // When do components first get (i) old_implied_splits, (ii) old_non_implied_splits, and (iii) new_splits?
