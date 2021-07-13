@@ -509,10 +509,17 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
         assert(not component->solution);
         component->solution = std::make_shared<Solution>(*component, taxa);
 
+        // FIXME: instead of collecting implied splits and non-implied splits,
+        //        only scan the implied splits to see if the component has been punctured.
+        //        If the component is punctured, then we divide the A[i] between A' and B', and
+        //          add the child solutions to our list.
+        //        We should also be able to GENERATE the non_implied splits B[i] using old_solution->non_implied_splits_from_components()
         for(auto& old_solution: component->old_solutions)
         {
-            append(component->solution->non_implied_splits, old_solution->non_implied_splits);
             append(component->solution->implied_splits, old_solution->implied_splits);
+            auto non_implied_splits = old_solution->non_implied_splits_from_components();
+            assert(sort_cmp(old_solution->non_implied_splits, non_implied_splits));
+            append(component->solution->non_implied_splits, non_implied_splits);
         }
 
         for(int i=0;i<component->solution->implied_splits.size();)
@@ -595,6 +602,10 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
 
         assert(component->solution == component->old_solutions[0]);
     }
+
+    // FIXME: This can still affect things, because we collect non-implied splits when we merge solutions.
+    // solution.non_implied_splits.clear();
+
     return true;
 }
 
