@@ -234,10 +234,6 @@ struct component_t
 
     shared_ptr<Solution> solution;
     vector<shared_ptr<Solution>> old_solutions;
-
-    // Do these make sense if there is more than 1 solution?
-    // If not, should these be added to the single solution instead?
-    vector<ConstRSplit> new_splits;
 };
 
 template <typename T>
@@ -430,12 +426,6 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
     // the component has exactly 1 solution.  Should these fields be part of the
     // (single) solution then?
 
-    // 0. Clear any staged work for each component.
-    for(auto& component: components)
-    {
-        component->new_splits.clear();
-    }
-
     // 1. If there are no splits, then we are consistent.
     if (solution.n_splits == 0)
         return true;
@@ -557,7 +547,7 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
         }
         else
         {
-            component->new_splits.push_back(split);
+            component->solution->non_implied_splits.push_back(split);
         }
     }
 
@@ -579,12 +569,9 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
             assert(component->solution == component->old_solutions[0]);
 
             // Otherwise try adding the new taxa and splits to the existing solution.
-            if (not BUILD(*component->old_solutions[0], component->new_splits))
+            if (not BUILD(*component->old_solutions[0], component->solution->non_implied_splits))
                 return false;
-
         }
-
-        append(component->solution->non_implied_splits, component->new_splits);
 
         if (not reuse_solution)
         {
