@@ -508,17 +508,16 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
 
         assert(not component->solution);
         component->solution = std::make_shared<Solution>(*component, taxa);
-        auto& csolution = *component->solution;
 
         for(auto& old_solution: component->old_solutions)
         {
-            append(csolution.non_implied_splits, old_solution->non_implied_splits);
-            append(csolution.implied_splits, old_solution->implied_splits);
+            append(component->solution->non_implied_splits, old_solution->non_implied_splits);
+            append(component->solution->implied_splits, old_solution->implied_splits);
         }
 
-        for(int i=0;i<csolution.implied_splits.size();)
+        for(int i=0;i<component->solution->implied_splits.size();)
         {
-            auto& split = csolution.implied_splits[i];
+            auto& split = component->solution->implied_splits[i];
 #ifndef NDEBUG
             int first = indices[*split->in.begin()];
             assert(first >= 0);
@@ -527,8 +526,8 @@ bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
             bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
             if (not implied)
             {
-                auto split = remove_unordered(csolution.implied_splits,i);
-                csolution.non_implied_splits.push_back(split);
+                auto split = remove_unordered(component->solution->implied_splits,i);
+                component->solution->non_implied_splits.push_back(split);
             }
             else
                 i++;
