@@ -334,6 +334,17 @@ bool exclude_group_intersects_component(const ConstRSplit& split, const componen
     return false;
 }
 
+bool exclude_group_intersects_taxon_set(const ConstRSplit& split)
+{
+    for(int taxon: split->out)
+    {
+        int index = indices[taxon];
+
+        if (index != -1) return true;
+    }
+    return false;
+}
+
 template <typename T>
 void append(vector<T>& v1, const vector<T>& v2)
 {
@@ -460,6 +471,55 @@ bool BUILD(Solution& solution)
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
+    // 4. Check sub_solutions to see if they are punctured.
+    for(int k = sub_solutions.size()-1; k >= 0; k--)
+    {
+        auto& sub_solution = sub_solutions[k];
+
+        // I. Check if old_solution is punctured.
+        //    If so, then copy splits to solution.{implied,non_implied}_splits.
+        bool punctured = false;
+        for(int i=0; i < sub_solution->implied_splits.size(); i++)
+        {
+            auto& split = sub_solution->implied_splits[i];
+
+            bool implied = not exclude_group_intersects_taxon_set(split);
+
+            // If we just realized that this sub_solution is punctured, then copy the previously seen splits to non_implied_splits
+            if (implied and not punctured)
+            {
+                punctured = true;
+                for(int j=0;j<i;j++)
+                {
+                    auto& split_prev = sub_solution->implied_splits[j];
+                    solution.non_implied_splits.push_back(split_prev);
+                }
+            }
+
+            // Copy the split to {implied,non_implied}_splits if the sub_solution is punctured.
+            if (punctured)
+            {
+                if (implied)
+                    solution.implied_splits.push_back(split);
+                else
+                    solution.non_implied_splits.push_back(split);
+            }
+        }
+
+        // II. Replace punctured sub-solutions with their sub-component colutions.
+        if (punctured)
+        {
+            // IIa. Add the sub-solutions of the top-level sub_solution.
+            for(auto& fragment: sub_solution->components)
+                solution.sub_solutions.push_back(fragment->solution);
+
+            // IIb. Remove the punctured sub-solution.
+            if (k != sub_solutions.size()-1)
+                std::swap(sub_solutions[k], sub_solutions.back());
+            sub_solutions.pop_back();
+        }
+    }
+
     auto merge = [&](auto& group)
         {
             component_ref split_comp = nullptr;
@@ -485,17 +545,17 @@ bool BUILD(Solution& solution)
             }
         };
 
-    // 4a. For each new split, all the leaves in the include group must be in the same component
+    // 5a. For each new split, all the leaves in the include group must be in the same component
     for(const auto& split: new_splits)
         merge(split->in);
-    // 4b. For each sub_solution, all the leaves in the taxon set must be in the same component
+    // 5b. For each sub_solution, all the leaves in the taxon set must be in the same component
     for(const auto& sub_solution: sub_solutions)
     {
         assert(sub_solution->taxa.size() < taxa.size());
         merge(sub_solution->taxa);
     }
 
-    // 5. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
+    // 6. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (component_for_index[0] and component_for_index[0]->elements.size() == taxa.size())
     {
         for(int id: taxa)
@@ -503,14 +563,14 @@ bool BUILD(Solution& solution)
         return false;
     }
 
-    // 6. Pack the components
+    // 7. Pack the components
     vector<unique_ptr<component_t>> packed_components;
     for(auto& component: components)
         if (not component->elements.empty())
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 7. Check check the components so see if their old_solutions are punctured or not.
+    // 8. Check check the components so see if their old_solutions are punctured or not.
     for(auto& component: components)
     {
         // We don't need to re-check implied_splits if the taxon set hasn't changed.
@@ -523,50 +583,10 @@ bool BUILD(Solution& solution)
         assert(not component->solution);
         component->solution = std::make_shared<Solution>(*component, taxa);
 
-        for(auto& sub_solution: component->old_solutions)
-        {
-            // I. Check if old_solution is punctured.
-            //    If so, then copy splits to component->solution->{implied,non_implied}_splits.
-            bool punctured = false;
-            for(int i=0; i < sub_solution->implied_splits.size(); i++)
-            {
-                auto& split = sub_solution->implied_splits[i];
-                bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
-
-                // If we just realized that this sub_solution is punctured, then copy the previously seen splits to non_implied_splits
-                if (implied and not punctured)
-                {
-                    punctured = true;
-                    for(int j=0;j<i;j++)
-                    {
-                        auto& split_prev = sub_solution->implied_splits[j];
-                        component->solution->non_implied_splits.push_back(split_prev);
-                    }
-                }
-
-                // Copy the split to {implied,non_implied}_splits if the sub_solution is punctured.
-                if (punctured)
-                {
-                    if (implied)
-                        component->solution->implied_splits.push_back(split);
-                    else
-                        component->solution->non_implied_splits.push_back(split);
-                }
-            }
-
-            // II. Copy THIS sub_solution to component->sub_solutions if not punctured
-            if (not punctured)
-                component->solution->sub_solutions.push_back(sub_solution);
-            // III. Copy fragment sub_solutions if THIS sub_solution is fragmented.
-            else
-            {
-                for(auto& fragment: sub_solution->components)
-                    component->solution->sub_solutions.push_back(fragment->solution);
-            }
-        }
+        component->solution->sub_solutions = component->old_solutions;
     }
 
-    // 7a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
+    // 9a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
@@ -580,7 +600,7 @@ bool BUILD(Solution& solution)
             component->solution->non_implied_splits.push_back(split);
     }
 
-    // 7b. Determine which of the sub_solutions go into each component (there are all UNsatisfied, because unpunctured).
+    // 9b. Determine which of the sub_solutions go into each component (there are all UNsatisfied, because unpunctured).
     for(auto& sub_solution: sub_solutions)
     {
         int first_taxon = sub_solution->taxa[0];
@@ -589,16 +609,16 @@ bool BUILD(Solution& solution)
         component->solution->sub_solutions.push_back(sub_solution);
     }
 
-    // 8. We've now set up the sub-problems, so we can clear non_implied_splits/new_splits.
+    // 10. We've now set up the sub-problems, so we can clear non_implied_splits/new_splits.
     solution.non_implied_splits.clear();
     solution.sub_solutions.clear();
 
-    // 9. Clear our map from id -> index, for use by subproblems.
+    // 11. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
         indices[id] = -1;
     }
 
-    // 10. Recursively solve the sub-problems of the partition components
+    // 12. Recursively solve the sub-problems of the partition components
     for(auto& component: components)
     {
         assert(component->elements.size() >= 2);
