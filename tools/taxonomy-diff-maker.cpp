@@ -12,7 +12,7 @@
 #include "otc/tree.h"
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
-#include "otc/taxonomy/patching.h"
+#include "otc/taxonomy/diff_maker.h"
 #include "otc/config_file.h"
 
 INITIALIZE_EASYLOGGINGPP
@@ -137,7 +137,7 @@ std::pair<bool, unsigned> get_unsigned_property(const json & j,
 
 class TaxonomyAmendment {
     public:
-        virtual std::pair<bool, std::string> patch(PatchableTaxonomy &) = 0;
+        virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &) = 0;
         virtual ~TaxonomyAmendment(){
         }
 };
@@ -223,7 +223,7 @@ class TaxonAdditionAmendment: public BaseTaxonAmendment {
     virtual ~TaxonAdditionAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+    virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &t) {
         std::string empty;
         std::string fs = flags_to_string(flags);
         auto rank_str = rank_enum_to_name.at(rank);
@@ -240,7 +240,7 @@ class TaxonEditAmendment: public BaseTaxonAmendment {
     virtual ~TaxonEditAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+    virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &t) {
         std::string empty;
         std::string fs;
         auto rank_str = rank_enum_to_name.at(rank);
@@ -262,7 +262,7 @@ class TaxonDeletionAmendment: public BaseTaxonAmendment {
     virtual ~TaxonDeletionAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+    virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &t) {
         return t.delete_taxon(taxon_id);
     }
 };
@@ -276,7 +276,7 @@ class ForwardAdditionAmendment : public BaseForwardAmendment {
     virtual ~ForwardAdditionAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+    virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &t) {
         return t.add_forward(former_id, redirect_to_id);
     }
 };
@@ -290,7 +290,7 @@ class ForwardDeletionAmendment : public BaseForwardAmendment {
     virtual ~ForwardDeletionAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+    virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &t) {
         return t.delete_forward(former_id, redirect_to_id);
     }
 };
@@ -305,7 +305,7 @@ class SynonymAdditionAmendment : public BaseSynonymAmendment {
     virtual ~SynonymAdditionAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+    virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &t) {
         return t.add_synonym(name, ott_id, source_info);
     }
 };
@@ -319,7 +319,7 @@ class SynonymDeletionAmendment : public BaseSynonymAmendment {
     virtual ~SynonymDeletionAmendment(){
     }
 
-    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+    virtual std::pair<bool, std::string> patch(TaxonomyDiffMaker &t) {
         return t.delete_synonym(name, ott_id);
     }
 };
@@ -401,7 +401,7 @@ std::list<TaxonomyAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) 
 
 
 
-bool edit_taxonomy(PatchableTaxonomy & taxonomy,
+bool edit_taxonomy(TaxonomyDiffMaker & taxonomy,
                    const std::list<TaxonomyAmendmentPtr> & edit_list,
                    bool amend_status_to_stdout) {
     std::size_t num_attempts = 0;
@@ -441,8 +441,8 @@ int main(int argc, char* argv[]) {
         OttId keep_root = -1;
         bitset<32> cleaning_flags = 0;
         out << "loading old taxonomy" << std::endl;
-        PatchableTaxonomy otaxonomy = {otd, cleaning_flags, keep_root};
-        PatchableTaxonomy ntaxonomy = {ntd, cleaning_flags, keep_root};
+        TaxonomyDiffMaker otaxonomy = {otd, cleaning_flags, keep_root};
+        TaxonomyDiffMaker ntaxonomy = {ntd, cleaning_flags, keep_root};
         
     } catch (std::exception& e) {
         cerr << "otc-taxonomy-parser: Error! " << e.what() << std::endl;

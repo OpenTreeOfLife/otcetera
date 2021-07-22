@@ -15,6 +15,7 @@ libotcetera_sources = [
   'otcetera.cpp',
   'otcli.cpp',
   'supertree_util.cpp',
+  'taxonomy/diff_maker.cpp',
   'taxonomy/flags.cpp',
   'taxonomy/patching.cpp',
   'taxonomy/taxonomy.cpp',
