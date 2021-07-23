@@ -260,7 +260,6 @@ typedef component_t* component_ref;
 
 // A "partial" solution only has implied_splits + non_implied_splits
 // A "full" solution also has components.
-// Eventually I would like to replace non_implied_splits with the components!
 
 struct Solution
 {
@@ -418,16 +417,9 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
-// 0. Update doc?
-
-// 1. Handle adding trivial taxa to a component.
-
-// 2. When merging components, we need to consider moving splits from implied -> non_implied.
-// Should we do this from scratch?
-
-// 3. Each new component should have a list of pointers to previous .. components? solutions?
-// We could get their splits/taxa all at once, instead of copying them multiple times.
-
+// TODO: If BUILD fails, can we rebuild the solution that we have modified in-place?
+//       * we need to avoid modifying the old solutions (for a merged component) in-place.
+//       * we need to restore the component->elements list.
 
 /// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
 bool BUILD(Solution& solution)
@@ -437,7 +429,9 @@ bool BUILD(Solution& solution)
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    // This describes the problem
+    // 0. This describes the problem
+    // Each sub_solution basically serves as a bag of splits to augment new_splits.
+    // It is organized into a tree, and only the top level is vulnerable to puncturing.
     auto& taxa = solution.taxa;
     auto& new_splits = solution.non_implied_splits;
     auto& sub_solutions = solution.sub_solutions;
@@ -476,7 +470,7 @@ bool BUILD(Solution& solution)
     {
         auto& sub_solution = sub_solutions[k];
 
-        // I. Check if old_solution is punctured.
+        // I. Check if sub_solution is punctured.
         //    If so, then copy splits to solution.{implied,non_implied}_splits.
         bool punctured = false;
         for(int i=0; i < sub_solution->implied_splits.size(); i++)
@@ -509,7 +503,7 @@ bool BUILD(Solution& solution)
         // II. Replace punctured sub-solutions with their sub-component colutions.
         if (punctured)
         {
-            // IIa. Add the sub-solutions of the top-level sub_solution.
+            // IIa. Add the sub-component solutions of the top-level sub_solution.
             for(auto& fragment: sub_solution->components)
                 solution.sub_solutions.push_back(fragment->solution);
 
@@ -570,19 +564,25 @@ bool BUILD(Solution& solution)
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 8. Check check the components so see if their old_solutions are punctured or not.
+    // 8. Copy the old solutions from the merged COMPONENT to the new SOLUTION we are making.
+    //    We delay checking if the old solutions are punctured until we call BUILD
+    //      on the new solution/new component.
     for(auto& component: components)
     {
-        // We don't need to re-check implied_splits if the taxon set hasn't changed.
+        // 8a. If the component has a olution, then it hasn't been merged with any other component.
         if (component->solution)
         {
             assert((component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size()));
             continue;
         }
 
+        // 8b. If the component does NOT have an active solution then it is either.
+        //     (i) new or (ii) old, but has been merged with other components.
         assert(not component->solution);
         component->solution = std::make_shared<Solution>(*component, taxa);
 
+        // QUESTION: Does this copying mean that we shouldn't be storing the sub_solutions on the component?
+        // We could use std::move here...
         component->solution->sub_solutions = component->old_solutions;
     }
 
@@ -600,7 +600,11 @@ bool BUILD(Solution& solution)
             component->solution->non_implied_splits.push_back(split);
     }
 
-    // 9b. Determine which of the sub_solutions go into each component (there are all UNsatisfied, because unpunctured).
+    // 9b. Pass down sub_solutions into the correct component.
+    //     They basically are bundles of splits to work on.
+    //     They will always go into the same component because we merged an intersecting
+    //        components in 5b.
+    //     We will check if they are punctured when we call BUILD on the component.
     for(auto& sub_solution: sub_solutions)
     {
         int first_taxon = sub_solution->taxa[0];
@@ -609,7 +613,7 @@ bool BUILD(Solution& solution)
         component->solution->sub_solutions.push_back(sub_solution);
     }
 
-    // 10. We've now set up the sub-problems, so we can clear non_implied_splits/new_splits.
+    // 10. We've now set up the sub-problems, so we can clear non_implied_splits and sub-solutions.
     solution.non_implied_splits.clear();
     solution.sub_solutions.clear();
 
