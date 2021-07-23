@@ -604,7 +604,7 @@ bool BUILD(Solution& solution)
 
     // 9b. Pass down sub_solutions into the correct component.
     //     They basically are bundles of splits to work on.
-    //     They will always go into the same component because we merged an intersecting
+    //     They will always go into the same component because we merged any intersecting
     //        components in 5b.
     //     We will check if they are punctured when we call BUILD on the component.
     for(auto& sub_solution: sub_solutions)
