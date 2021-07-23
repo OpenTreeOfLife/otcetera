@@ -421,7 +421,9 @@ unique_ptr<Tree_t> Solution::get_tree() const
 //       * we need to avoid modifying the old solutions (for a merged component) in-place.
 //       * we need to restore the component->elements list.
 
-/// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
+/// Construct a tree with all the splits mentioned, and return false if this is not possible
+///   Solution stores both the new work to do, and solution to previous work.
+///   You can get the resulting tree from it with solution.get_tree().
 bool BUILD(Solution& solution)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
