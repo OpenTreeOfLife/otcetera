@@ -182,7 +182,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     strategies.add_options()
         ("batching",value<bool>()->default_value(true), "Make unresolved taxonomy from input tips.")
         ("oracle", value<bool>()->default_value(true), "Predict conflicting splits before BUILD.")
-        ("incremental", value<bool>()->default_value(false),"Reuse work from previous BUILD.")
+        ("incremental", value<bool>()->default_value(true),"Reuse work from previous BUILD.")
         ;
 
     options_description other("Other options");
@@ -228,40 +228,98 @@ std::ostream& operator<<(std::ostream& o, const RSplit& s) {
     return o<<(ConstRSplit(s));
 }
 
+template <typename T>
+bool sort_cmp(const vector<T>& v1,  const vector<T>& v2)
+{
+    if (v1.size() != v2.size()) return false;
+
+    auto w1 = v1; std::sort(w1.begin(), w1.end());
+    auto w2 = v2; std::sort(w2.begin(), w2.end());
+
+    return (w1 == w2);
+}
+
 struct Solution;
 
 struct component_t
 {
     list<int> elements;
 
-    bool implied_splits_have_been_checked = false;
-    vector<ConstRSplit> old_implied_splits;      // alpha
-    vector<ConstRSplit> old_non_implied_splits;  // beta
+    shared_ptr<Solution> solution;
+    vector<shared_ptr<Solution>> old_solutions;
 
-    shared_ptr<Solution> solution() const {
-        assert(solutions.size() == 1);
-        return solutions.front();
+    vector<int> get_taxa(const std::vector<int>& other_taxa) const
+    {
+        vector<int> taxa;
+        taxa.reserve(elements.size());
+        for(auto index: elements)
+            taxa.push_back(other_taxa[index]);
+        return taxa;
     }
-
-    vector<shared_ptr<Solution>> solutions;
-
-    // Do these make sense if there is more than 1 solution?
-    // If not, should these be added to the single solution instead?
-    vector<int> new_taxa;
-    vector<ConstRSplit> new_splits;
 };
 
 typedef component_t* component_ref;
 
+// A "partial" solution only has implied_splits + non_implied_splits
+// A "full" solution also has components.
+
+struct Solution
+{
+    vector<int> taxa;
+
+    vector<ConstRSplit> implied_splits;              // alpha
+    vector<ConstRSplit> non_implied_splits;          // beta1
+    vector<std::shared_ptr<Solution>> sub_solutions; // beta2
+
+    vector< component_ref > component_for_index;
+    vector< unique_ptr<component_t> > components;
+
+    vector<ConstRSplit> non_implied_splits_from_components() const;
+    vector<ConstRSplit> splits_from_components() const;
+
+    unique_ptr<Tree_t> get_tree() const;
+
+    Solution(const vector<int>& t, const vector<ConstRSplit>& s)
+        :taxa(t), non_implied_splits(s), component_for_index(taxa.size())
+    {}
+    Solution(const vector<int>& t, vector<ConstRSplit>&& s)
+        :taxa(t), non_implied_splits(std::move(s)), component_for_index(taxa.size())
+    {}
+    Solution(const vector<int>& t)
+        :Solution(t,{})
+    {}
+    Solution(const component_t& c, const std::vector<int> other_taxa)
+        :Solution(c.get_taxa(other_taxa))
+    {}
+};
+
+vector<ConstRSplit> Solution::splits_from_components() const
+{
+    vector<ConstRSplit> splits = non_implied_splits_from_components();
+    for(auto& split: implied_splits)
+        splits.push_back(split);
+    return splits;
+}
+
+vector<ConstRSplit> Solution::non_implied_splits_from_components() const
+{
+    vector<ConstRSplit> splits;
+    for(auto& component: components)
+    {
+        for(auto split: component->solution->splits_from_components())
+            splits.push_back(split);
+    }
+    return splits;
+}
+
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int taxon2, int index2, vector<component_ref>& component)
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
 {
     component[index2] = c1;
     c1->elements.push_back(index2);
 
-    c1->new_taxa.push_back(taxon2);
 
-    c1->implied_splits_have_been_checked = false;
+    c1->solution = {};
 }
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
@@ -273,6 +331,17 @@ bool exclude_group_intersects_component(const ConstRSplit& split, const componen
         if (index == -1) continue;
 
         if (component_for_index[index] == component) return true;
+    }
+    return false;
+}
+
+bool exclude_group_intersects_taxon_set(const ConstRSplit& split)
+{
+    for(int taxon: split->out)
+    {
+        int index = indices[taxon];
+
+        if (index != -1) return true;
     }
     return false;
 }
@@ -294,17 +363,10 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     c1->elements.splice(c1->elements.end(), c2->elements);
 
-    append(c1->old_non_implied_splits, c2->old_non_implied_splits);
-    append(c1->old_implied_splits, c2->old_implied_splits);
-
-    // This needs to work when one group has 1 non-trivial component and the other group has 0 non-trivial components.
-    // Does this mean anything if both components are non-trivial?
-    append(c1->new_taxa, c2->new_taxa);
-
     // One of these components could be new -- that is, composed only of previously-trivial components.
-    append(c1->solutions, c2->solutions);
-    
-    c1->implied_splits_have_been_checked = false;
+    append(c1->old_solutions, c2->old_solutions);
+
+    c1->solution = {};
 
     return c1;
 }
@@ -331,17 +393,6 @@ T remove_unordered(std::vector<T>& v, int i)
     return t;
 }
 
-struct Solution
-{
-    vector<int> taxa;
-    vector<ConstRSplit> splits;
-
-    vector< component_ref > component_for_index;
-    vector< unique_ptr<component_t> > components;
-
-    unique_ptr<Tree_t> get_tree() const;
-};
-
 unique_ptr<Tree_t> Solution::get_tree() const
 {
     assert(taxa.size() > 1);
@@ -352,7 +403,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 
     // 2. Add children for non-trivial components
     for(auto& component: components)
-        add_subtree(tree->get_root(), *component->solution()->get_tree());
+        add_subtree(tree->get_root(), *component->solution->get_tree());
 
     // 3. Add children for trivial components
     for(int index=0;index<taxa.size();index++)
@@ -368,88 +419,141 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
-// 0. Update doc?
+// TODO: If BUILD fails, can we rebuild the solution that we have modified in-place?
+//       * we need to avoid modifying the old solutions (for a merged component) in-place.
+//       * we need to restore the component->elements list.
 
-// 1. Handle adding trivial taxa to a component.
-
-// 2. When merging components, we need to consider moving splits from implied -> non_implied.
-// Should we do this from scratch?
-
-// 3. Each new component should have a list of pointers to previous .. components? solutions?
-// We could get their splits/taxa all at once, instead of copying them multiple times.
-
-
-/// Construct a tree with all the splits mentioned, and return a null pointer if this is not possible
-bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRSplit>& new_splits)
+/// Construct a tree with all the splits mentioned, and return false if this is not possible
+///   Solution stores both the new work to do, and solution to previous work.
+///   You can get the resulting tree from it with solution.get_tree().
+bool BUILD(Solution& solution)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    // This copying seems wasteful.
+    // 0. This describes the problem
+    // Each sub_solution basically serves as a bag of splits to augment new_splits.
+    // It is organized into a tree, and only the top level is vulnerable to puncturing.
     auto& taxa = solution.taxa;
-    int orig_n_taxa = taxa.size();
-    for(auto taxon: new_taxa)
-        taxa.push_back(taxon);
-
-    auto& splits = solution.splits;
-    int orig_n_splits = splits.size();
-    for(auto& new_split: new_splits)
-        splits.push_back(new_split);
+    auto& new_splits = solution.non_implied_splits;
+    auto& sub_solutions = solution.sub_solutions;
 
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
-    component_for_index.resize(taxa.size());
 
-    // component->new_splits and component->new_taxa seem only to make sense if
-    // the component has exactly 1 solution.  Should these fields be part of the
-    // (single) solution then?
-
-    // 0. Clear any staged work for each component.
-    for(auto& component: components)
+    // 1. If we found a solution to THIS exact problem then we can just re-use it.
+    if (sub_solutions.size() == 1 and sub_solutions[0]->taxa.size() == taxa.size())
     {
-        component->new_taxa.clear();
-        component->new_splits.clear();
+        auto prev_solution = sub_solutions[0];
+        assert(sort_cmp(prev_solution->taxa, taxa));
+
+        // Move the components from the previous solution to this one!
+        std::swap( taxa               , prev_solution->taxa                );
+        std::swap( components         , prev_solution->components          );
+        std::swap( component_for_index, prev_solution->component_for_index );
+        sub_solutions.clear();
+
+        // We are not done yet, so do NOT return here:
+        //   we may need to add the `new_splits` to the (partial) solution that we just found.
     }
 
-    // 1. If there are no splits, then we are consistent.
-    if (splits.empty())
+    // 2. If there are no splits, then we are consistent.
+    if (new_splits.empty() and sub_solutions.empty())
         return true;
 
-    // 2. Initialize the mapping from taxa to indices.
+    // 3. Initialize the mapping from taxa to indices.
     for(int k=0;k<indices.size();k++)
         assert(indices[k] == -1);
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
-    // 3. For each split, all the leaves in the include group must be in the same component
-    for(const auto& split: new_splits)
+    // 4. Check sub_solutions to see if they are punctured.
+    for(int k = sub_solutions.size()-1; k >= 0; k--)
     {
-        component_ref split_comp = nullptr;
-        for(int taxon: split->in)
+        auto& sub_solution = sub_solutions[k];
+
+        // I. Check if sub_solution is punctured.
+        //    If so, then copy splits to solution.{implied,non_implied}_splits.
+        bool punctured = false;
+        for(int i=0; i < sub_solution->implied_splits.size(); i++)
         {
-            int index = indices[taxon];
-            assert(index != -1);
-            auto taxon_comp = component_for_index[index];
-            if (not split_comp)
+            auto& split = sub_solution->implied_splits[i];
+
+            bool implied = not exclude_group_intersects_taxon_set(split);
+
+            // If we just realized that this sub_solution is punctured, then copy the previously seen splits to non_implied_splits
+            if (implied and not punctured)
             {
-                if (not taxon_comp)
+                punctured = true;
+                for(int j=0;j<i;j++)
                 {
-                    components.push_back(std::make_unique<component_t>());
-                    taxon_comp = components.back().get();
-                    merge_component_with_trivial(taxon_comp, taxon, index, component_for_index);
+                    auto& split_prev = sub_solution->implied_splits[j];
+                    solution.non_implied_splits.push_back(split_prev);
                 }
-                split_comp = taxon_comp;
             }
-            else if (not taxon_comp)
-                merge_component_with_trivial(split_comp, taxon, index, component_for_index);
-            else if (split_comp != taxon_comp)
-                split_comp = merge_components(split_comp,taxon_comp,component_for_index);
+
+            // Copy the split to {implied,non_implied}_splits if the sub_solution is punctured.
+            if (punctured)
+            {
+                if (implied)
+                    solution.implied_splits.push_back(split);
+                else
+                    solution.non_implied_splits.push_back(split);
+            }
+        }
+
+        // II. Replace punctured sub-solutions with their sub-component colutions.
+        if (punctured)
+        {
+            // IIa. Add the sub-component solutions of the top-level sub_solution.
+            for(auto& fragment: sub_solution->components)
+                solution.sub_solutions.push_back(fragment->solution);
+
+            // IIb. Remove the punctured sub-solution.
+            if (k != sub_solutions.size()-1)
+                std::swap(sub_solutions[k], sub_solutions.back());
+            sub_solutions.pop_back();
         }
     }
 
-    // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
+    auto merge = [&](auto& group)
+        {
+            component_ref split_comp = nullptr;
+            for(int taxon: group)
+            {
+                int index = indices[taxon];
+                assert(index != -1);
+                auto taxon_comp = component_for_index[index];
+                if (not split_comp)
+                {
+                    if (not taxon_comp)
+                    {
+                        components.push_back(std::make_unique<component_t>());
+                        taxon_comp = components.back().get();
+                        merge_component_with_trivial(taxon_comp, index, component_for_index);
+                    }
+                    split_comp = taxon_comp;
+                }
+                else if (not taxon_comp)
+                    merge_component_with_trivial(split_comp, index, component_for_index);
+                else if (split_comp != taxon_comp)
+                    split_comp = merge_components(split_comp,taxon_comp,component_for_index);
+            }
+        };
+
+    // 5a. For each new split, all the leaves in the include group must be in the same component
+    for(const auto& split: new_splits)
+        merge(split->in);
+    // 5b. For each sub_solution, all the leaves in the taxon set must be in the same component
+    for(const auto& sub_solution: sub_solutions)
+    {
+        assert(sub_solution->taxa.size() < taxa.size());
+        merge(sub_solution->taxa);
+    }
+
+    // 6. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (component_for_index[0] and component_for_index[0]->elements.size() == taxa.size())
     {
         for(int id: taxa)
@@ -457,52 +561,36 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
         return false;
     }
 
-    // 5. Pack the components
+    // 7. Pack the components
     vector<unique_ptr<component_t>> packed_components;
     for(auto& component: components)
         if (not component->elements.empty())
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 6. Check implied splits to see if they are STILL implied.
+    // 8. Copy the old solutions from the merged COMPONENT to the new SOLUTION we are making.
+    //    We delay checking if the old solutions are punctured until we call BUILD
+    //      on the new solution/new component.
     for(auto& component: components)
     {
-        // We don't need to re-check implied_splits if the taxon set hasn't changed.
-        if (component->implied_splits_have_been_checked) continue;
-
-        auto& implied_splits = component->old_implied_splits;
-        auto& non_implied_splits = component->old_non_implied_splits;
-        auto& new_splits = component->new_splits;
-
-        // It is cheaper to do this check once after adding taxa, instead of multiple times if we add multiple taxa.
-        // That is because we have to scan the entire exclude set, even if we only add 1 taxon to the components :-(.
-        for(int i=0;i<implied_splits.size();)
+        // 8a. If the component has a olution, then it hasn't been merged with any other component.
+        if (component->solution)
         {
-            auto& split = implied_splits[i];
-
-#ifndef NDEBUG
-            int first = indices[*split->in.begin()];
-            assert(first >= 0);
-            assert(component_for_index[first] == component.get());
-#endif
-
-            bool implied = not exclude_group_intersects_component(split, component.get(), component_for_index);
-            if (not implied)
-            {
-                auto split = remove_unordered(implied_splits,i);
-                new_splits.push_back(split);
-            }
-            else
-                i++;
+            assert((component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size()));
+            continue;
         }
 
-        component->implied_splits_have_been_checked = true;
+        // 8b. If the component does NOT have an active solution then it is either.
+        //     (i) new or (ii) old, but has been merged with other components.
+        assert(not component->solution);
+        component->solution = std::make_shared<Solution>(*component, taxa);
+
+        // QUESTION: Does this copying mean that we shouldn't be storing the sub_solutions on the component?
+        // We could use std::move here...
+        component->solution->sub_solutions = component->old_solutions;
     }
 
-    // NOTE: If all new splits are implied and no OLD splits are implied, then perhaps
-    //       all the old components will be sub-problems of the merged component?
-
-    // 7. Determine the splits that are not satisfied yet and go into each component
+    // 9a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
@@ -511,56 +599,53 @@ bool BUILD(Solution& solution, const vector<int>& new_taxa, const vector<ConstRS
 
         bool implied = not exclude_group_intersects_component(split, component, component_for_index);
         if (implied)
-            component->old_implied_splits.push_back(split);
+            component->solution->implied_splits.push_back(split);
         else
-        {
-            component->new_splits.push_back(split);
-        }
+            component->solution->non_implied_splits.push_back(split);
     }
 
-    // 8. Clear our map from id -> index, for use by subproblems.
+    // 9b. Pass down sub_solutions into the correct component.
+    //     They basically are bundles of splits to work on.
+    //     They will always go into the same component because we merged any intersecting
+    //        components in 5b.
+    //     We will check if they are punctured when we call BUILD on the component.
+    for(auto& sub_solution: sub_solutions)
+    {
+        int first_taxon = sub_solution->taxa[0];
+        int first_index = indices[first_taxon];
+        auto component = component_for_index[first_index];
+        component->solution->sub_solutions.push_back(sub_solution);
+    }
+
+    // 10. We've now set up the sub-problems, so we can clear non_implied_splits and sub-solutions.
+    solution.non_implied_splits.clear();
+    solution.sub_solutions.clear();
+
+    // 11. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
         indices[id] = -1;
     }
-    // 9. Recursively solve the sub-problems of the partition components
+
+    // 12. Recursively solve the sub-problems of the partition components
     for(auto& component: components)
     {
         assert(component->elements.size() >= 2);
 
-        bool has_old_solution = component->solutions.size() == 1;
+        if (not BUILD(*component->solution))
+            return false;
 
-        if (has_old_solution)
-        {
-            assert(component->elements.size() == component->solution()->taxa.size() + component->new_taxa.size());
-
-            // If no new taxa and no new splits, just continue.
-            if (component->new_splits.empty() and component->new_taxa.empty())
-                continue;
-
-            // Otherwise try adding the new taxa and splits to the existing solution.
-            else if (not BUILD(*component->solution(), component->new_taxa, component->new_splits))
-                return false;
-
-        }
-
-        auto& old_splits = component->old_non_implied_splits;
-        auto& new_splits = component->new_splits;
-        old_splits.insert(old_splits.end(), new_splits.begin(), new_splits.end());
-
-        if (not has_old_solution)
-        {
-            vector<int> all_taxa;
-            all_taxa.reserve(component->elements.size());
-            for (auto& index: component->elements)
-                all_taxa.push_back(taxa[index]);
-
-            auto subsolution = std::make_shared<Solution>();
-            if (not BUILD(*subsolution, all_taxa, component->old_non_implied_splits))
-                return false;
-            component->solutions = { subsolution };
-        }
+        component->old_solutions = { component->solution };
     }
+
     return true;
+}
+
+bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
+{
+    for(auto split: new_splits)
+        solution.non_implied_splits.push_back(split);
+
+    return BUILD(solution);
 }
 
 template <typename T>
@@ -983,14 +1068,13 @@ void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int 
 
 bool conflicting(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits)
 {
-    auto solution = std::make_shared<Solution>();
-    auto result = BUILD(*solution, all_leaves_indices, splits);
+    auto solution = std::make_shared<Solution>(all_leaves_indices);
+    auto result = BUILD(*solution, splits);
     return not result;
 }
 
 bool conflicts_with(const vector<int>& all_leaves_indices, vector<ConstRSplit> splits1, const vector<ConstRSplit>& splits2)
 {
-    auto solution = std::make_shared<Solution>();
     splits1.insert(splits1.end(), splits2.begin(), splits2.end());
     return conflicting(all_leaves_indices, splits1);
 }
@@ -1127,7 +1211,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 for(int i=0;i<n;i++)
                     new_splits.push_back(splits[start+i].second);
 
-                result = BUILD(*solution, {}, new_splits);
+                result = BUILD(*solution, new_splits);
 
                 if (result)
                 {
@@ -1137,12 +1221,12 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             }
             else
             {
-                solution = std::make_shared<Solution>();
-
                 for(int i=0;i<n;i++)
                     consistent.push_back(splits[start+i].second);
 
-                result = BUILD(*solution, all_leaves_indices, consistent);
+                solution = std::make_shared<Solution>(all_leaves_indices, consistent);
+
+                result = BUILD(*solution);
 
                 if (not result)
                 {
@@ -1215,8 +1299,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     // 2. Construct final tree and add names
 
     //FIXME - discard previous solution;
-    solution = std::make_shared<Solution>();
-    auto result = BUILD(*solution, all_leaves_indices, consistent);;
+    solution = std::make_shared<Solution>(all_leaves_indices, consistent);
+    auto result = BUILD(*solution);
     assert(result);
     auto tree = solution->get_tree();
     for(auto nd: iter_pre(*tree))

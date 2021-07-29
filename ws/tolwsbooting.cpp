@@ -702,11 +702,16 @@ create_method_handler(const string& path, const std::function<std::string(const 
                     LOG(DEBUG)<<"request: DONE";
                     session->close( OK, rbody, request_headers(rbody) );
                 } catch (OTCWebError& e) {
+                    LOG(DEBUG) << "OTCWebError: " << e.what();
                     string rbody = error_response(path,e);
                     session->close( e.status_code(), rbody, request_headers(rbody) );
                 } catch (OTCError& e) {
+                    LOG(DEBUG) << "OTCError: " << e.what();
                     string rbody = error_response(path,e);
                     session->close( 500, rbody, request_headers(rbody) );
+                } catch (std::exception& e) {
+                    LOG(DEBUG) << "std::exception: " << e.what();
+                    throw;
                 }
             });
     };

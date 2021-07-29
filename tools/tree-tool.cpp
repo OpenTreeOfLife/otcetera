@@ -12,6 +12,7 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
+#include "otc/node_naming.h"
 
 #include <boost/range/adaptor/reversed.hpp>
 
@@ -33,7 +34,7 @@ using std::unique_ptr;
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
 
-using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
+using Tree_t = RootedTree<RTNodeSmallestChild, RTreeNoData>;
 
 namespace po = boost::program_options;
 using po::variables_map;
@@ -72,6 +73,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("show-internal","Show the number of leaves")
         ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
         ("lost-taxa-vs",value<string>(),"Taxonomy tree to compare for lost taxa.")
+        ("standardize","Perform a rotation to a standard form.")
         ("indented-table","print number of leaves for each internal node")
         ;
 
@@ -337,6 +339,12 @@ void show_lost_taxa(const Tree_t& tree, const string& tax_tre_filename, const st
 }
 
 
+void standardize(Tree_t& tree)
+{
+    calculate_smallest_child(tree);
+    sort_by_smallest_child(tree);
+}
+
 int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
     try {
@@ -418,6 +426,8 @@ int main(int argc, char* argv[]) {
             string tax_tax_filename = args["taxonomy"].as<string>();
             show_lost_taxa(*tree, tax_tre_filename, tax_tax_filename);
         } else {
+            if (args.count("standardize"))
+                standardize(*tree);
             write_tree_as_newick(std::cout, *tree);
             std::cout << std::endl;
         }

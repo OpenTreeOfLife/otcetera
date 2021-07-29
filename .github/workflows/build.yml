@@ -49,6 +49,7 @@ jobs:
     - name: Install (Linux)
       if: runner.os == 'Linux'
       run: |
+        sudo apt update
         sudo apt install -y ccache libboost-all-dev
         sudo rm -rf /usr/local/share/boost
         if [ "${{ matrix.compiler }}" = "gcc" ]; then
