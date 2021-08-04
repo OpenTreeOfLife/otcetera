@@ -1216,7 +1216,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                     new_splits.push_back(splits[start+i].second);
 
                 result = BUILD(*solution, new_splits);
-
+                LOG(TRACE)<<"consistent = "<< consistent.size()<<" -> "<<consistent.size()+n<<": "<<(result?"ok":"FAIL");
                 if (result)
                 {
                     for(auto& new_split: new_splits)
@@ -1231,7 +1231,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 solution = std::make_shared<Solution>(all_leaves_indices, consistent);
 
                 result = BUILD(*solution);
-
+                LOG(TRACE)<<"consistent = "<< consistent.size()-n<<" -> "<<consistent.size()<<": "<<(result?"ok":"FAIL");
                 if (not result)
                 {
                     for(int i=0;i<n;i++)
