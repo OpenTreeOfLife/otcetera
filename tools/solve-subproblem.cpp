@@ -16,6 +16,7 @@
 #include <robin_hood.h>
 
 #include "otc/conflict.h"
+#include "otc/node_naming.h"
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -177,7 +178,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("root-name,n",value<string>(), "Rename the root to this name")
         ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
         ("prune-unrecognized,p","Prune unrecognized tips");
-    
+
     options_description strategies("Solver strategies");
     strategies.add_options()
         ("batching",value<bool>()->default_value(true), "Make unresolved taxonomy from input tips.")
@@ -1382,6 +1383,13 @@ inline vector<const node_t *> vec_ptr_to_anc(const node_t * des, const node_t * 
     return ret;
 }
 
+void standardize(Tree_t& t)
+{
+    std::unordered_map<const Tree_t::node_type*, OttId> smallest_child;
+    calculate_smallest_child_map<Tree_t>(t, smallest_child);
+    sort_by_smallest_child_map(t, smallest_child);
+}
+
 int main(int argc, char *argv[])
 {
     std::cout<<std::boolalpha;
@@ -1463,6 +1471,7 @@ int main(int argc, char *argv[])
             tree->get_root()->set_name(args["root-name"].as<string>());
         }
         // 9. Write out the summary tree.
+        standardize(*tree);
         write_tree_as_newick(std::cout, *tree);
         std::cout << "\n";
         // 10. Find placements

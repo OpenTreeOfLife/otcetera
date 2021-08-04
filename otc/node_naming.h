@@ -33,6 +33,21 @@ inline OttId& smallest_child(N * node) {
 }
 
 template<typename T>
+void calculate_smallest_child_map(T& tree, std::unordered_map<const typename T::node_type*,OttId>& smallest_child) {
+    for (auto nd: iter_post(tree)) {
+        if (nd->is_tip()) {
+            smallest_child[nd] = nd->get_ott_id();
+        } else {
+            auto sc = smallest_child.at(nd->get_first_child());
+            for(auto c: iter_child(*nd)) {
+                sc = std::min(sc, smallest_child.at(c));
+            }
+            smallest_child[nd] = sc;
+        }
+    }
+}
+
+template<typename T>
 void calculate_smallest_child(T& tree) {
     for (auto nd: iter_post(tree)) {
         if (nd->is_tip()) {
@@ -61,6 +76,29 @@ void sort_by_smallest_child(T& tree) {
                   end(children),
                   [](const auto& nd1, const auto& nd2) {
                       return smallest_child(nd1) < smallest_child(nd2);
+                  });
+        while (not children.empty()) {
+            auto x = children.back();
+            children.pop_back();
+            nd->add_child_at_front(x);
+        }
+    }
+}
+
+template<typename T>
+void sort_by_smallest_child_map(T& tree, const std::unordered_map<const typename T::node_type*,OttId>& smallest_child) {
+    const std::vector<typename T::node_type*> nodes = all_nodes(tree);
+    for (auto nd: nodes) {
+        std::vector<typename T::node_type*> children;
+        while (nd->has_children()) {
+            auto x = nd->get_first_child();
+            x->detach_this_node();
+            children.push_back(x);
+        }
+        std::sort(begin(children),
+                  end(children),
+                  [&](const auto& nd1, const auto& nd2) {
+                      return smallest_child.at(nd1) < smallest_child.at(nd2);
                   });
         while (not children.empty()) {
             auto x = children.back();
