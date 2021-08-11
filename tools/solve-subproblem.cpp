@@ -278,6 +278,12 @@ struct Solution
 
     unique_ptr<Tree_t> get_tree() const;
 
+    Solution& operator=(const Solution&) = default;
+    Solution& operator=(Solution&&) = default;
+
+    Solution(const Solution&) = default;
+    Solution(Solution&&) = default;
+
     Solution(const vector<int>& t)
         :taxa(t), component_for_index(taxa.size())
     {}
