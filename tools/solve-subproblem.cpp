@@ -278,14 +278,8 @@ struct Solution
 
     unique_ptr<Tree_t> get_tree() const;
 
-    Solution(const vector<int>& t, const vector<ConstRSplit>& s)
-        :taxa(t), non_implied_splits(s), component_for_index(taxa.size())
-    {}
-    Solution(const vector<int>& t, vector<ConstRSplit>&& s)
-        :taxa(t), non_implied_splits(std::move(s)), component_for_index(taxa.size())
-    {}
     Solution(const vector<int>& t)
-        :Solution(t,{})
+        :taxa(t), component_for_index(taxa.size())
     {}
     Solution(const component_t& c, const std::vector<int> other_taxa)
         :Solution(c.get_taxa(other_taxa))
@@ -1228,9 +1222,9 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 for(int i=0;i<n;i++)
                     consistent.push_back(splits[start+i].second);
 
-                solution = std::make_shared<Solution>(all_leaves_indices, consistent);
+                solution = std::make_shared<Solution>(all_leaves_indices);
 
-                result = BUILD(*solution);
+                result = BUILD(*solution, consistent);
                 LOG(TRACE)<<"consistent = "<< consistent.size()-n<<" -> "<<consistent.size()<<": "<<(result?"ok":"FAIL");
                 if (not result)
                 {
@@ -1303,8 +1297,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     // 2. Construct final tree and add names
 
     //FIXME - discard previous solution;
-    solution = std::make_shared<Solution>(all_leaves_indices, consistent);
-    auto result = BUILD(*solution);
+    solution = std::make_shared<Solution>(all_leaves_indices);
+    auto result = BUILD(*solution, consistent);
     assert(result);
     auto tree = solution->get_tree();
     for(auto nd: iter_pre(*tree))
