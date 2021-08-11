@@ -245,6 +245,8 @@ struct component_t
     list<int> elements;
 
     shared_ptr<Solution> solution;
+
+    vector<ConstRSplit> new_splits;
     vector<shared_ptr<Solution>> old_solutions;
 
     vector<int> get_taxa(const std::vector<int>& other_taxa) const
@@ -267,7 +269,6 @@ struct Solution
     vector<int> taxa;
 
     vector<ConstRSplit> implied_splits;              // alpha
-    vector<ConstRSplit> non_implied_splits;          // beta1
     vector<std::shared_ptr<Solution>> sub_solutions; // beta2
 
     vector< component_ref > component_for_index;
@@ -419,7 +420,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   Solution stores both the new work to do, and solution to previous work.
 ///   You can get the resulting tree from it with solution.get_tree().
-bool BUILD(Solution& solution)
+bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -430,7 +431,6 @@ bool BUILD(Solution& solution)
     // Each sub_solution basically serves as a bag of splits to augment new_splits.
     // It is organized into a tree, and only the top level is vulnerable to puncturing.
     auto& taxa = solution.taxa;
-    auto& new_splits = solution.non_implied_splits;
     auto& sub_solutions = solution.sub_solutions;
 
     auto& component_for_index = solution.component_for_index;
@@ -481,7 +481,7 @@ bool BUILD(Solution& solution)
 
             bool implied = not exclude_group_intersects_taxon_set(split);
 
-            // If we just realized that this sub_solution is punctured, then copy the previously seen splits to non_implied_splits
+            // If we just realized that this sub_solution is punctured, then copy the previously seen splits to new_splits
             if (implied and not punctured)
             {
                 punctured = true;
@@ -599,7 +599,7 @@ bool BUILD(Solution& solution)
         if (implied)
             component->solution->implied_splits.push_back(split);
         else
-            component->solution->non_implied_splits.push_back(split);
+            component->new_splits.push_back(split);
     }
 
     // 9b. Pass down sub_solutions into the correct component.
@@ -615,7 +615,7 @@ bool BUILD(Solution& solution)
         component->solution->sub_solutions.push_back(sub_solution);
     }
 
-    // 10. We've now set up the sub-problems, so we can clear non_implied_splits and sub-solutions.
+    // 10. We've now set up the sub-problems, so we can clear new_splits and sub-solutions.
     new_splits.clear();
     solution.sub_solutions.clear();
 
@@ -629,7 +629,7 @@ bool BUILD(Solution& solution)
     {
         assert(component->elements.size() >= 2);
 
-        if (not BUILD(*component->solution))
+        if (not BUILD_(*component->solution, component->new_splits))
             return false;
 
         component->old_solutions = { component->solution };
@@ -640,10 +640,9 @@ bool BUILD(Solution& solution)
 
 bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
 {
-    for(auto split: new_splits)
-        solution.non_implied_splits.push_back(split);
+    auto new_splits2 = new_splits;
 
-    return BUILD(solution);
+    return BUILD_(solution, new_splits2);
 }
 
 template <typename T>
