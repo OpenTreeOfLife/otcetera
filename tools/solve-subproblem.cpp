@@ -578,11 +578,13 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
             assert((component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size()));
             continue;
         }
-
         // 8b. If the component does NOT have an active solution then it is either.
         //     (i) new or (ii) old, but has been merged with other components.
-        assert(not component->solution);
-        component->solution = std::make_shared<Solution>(*component, taxa);
+        else
+        {
+            assert(not component->solution);
+            component->solution = std::make_shared<Solution>(*component, taxa);
+        }
     }
 
     // 9a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
@@ -601,8 +603,8 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
 
     // 9b. Pass down sub_solutions into the correct component.
     //     They basically are bundles of splits to work on.
-    //     They will always go into the same component because we merged any intersecting
-    //        components in 5b.
+    //     All splits in the same bundle always go into the same component because we merged
+    //        any intersecting components in 5b.
     //     We will check if they are punctured when we call BUILD on the component.
     for(auto& sub_solution: sub_solutions)
     {
