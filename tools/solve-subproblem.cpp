@@ -494,7 +494,7 @@ bool BUILD(Solution& solution)
                 for(int j=0;j<i;j++)
                 {
                     auto& split_prev = sub_solution->implied_splits[j];
-                    solution.non_implied_splits.push_back(split_prev);
+                    new_splits.push_back(split_prev);
                 }
             }
 
@@ -504,7 +504,7 @@ bool BUILD(Solution& solution)
                 if (implied)
                     solution.implied_splits.push_back(split);
                 else
-                    solution.non_implied_splits.push_back(split);
+                    new_splits.push_back(split);
             }
         }
 
@@ -622,7 +622,7 @@ bool BUILD(Solution& solution)
     }
 
     // 10. We've now set up the sub-problems, so we can clear non_implied_splits and sub-solutions.
-    solution.non_implied_splits.clear();
+    new_splits.clear();
     solution.sub_solutions.clear();
 
     // 11. Clear our map from id -> index, for use by subproblems.
