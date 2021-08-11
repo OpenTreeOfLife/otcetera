@@ -269,7 +269,6 @@ struct Solution
     vector<int> taxa;
 
     vector<ConstRSplit> implied_splits;              // alpha
-    vector<std::shared_ptr<Solution>> sub_solutions; // beta2
 
     vector< component_ref > component_for_index;
     vector< unique_ptr<component_t> > components;
@@ -420,7 +419,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   Solution stores both the new work to do, and solution to previous work.
 ///   You can get the resulting tree from it with solution.get_tree().
-bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
+bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -431,7 +430,6 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
     // Each sub_solution basically serves as a bag of splits to augment new_splits.
     // It is organized into a tree, and only the top level is vulnerable to puncturing.
     auto& taxa = solution.taxa;
-    auto& sub_solutions = solution.sub_solutions;
 
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
@@ -507,7 +505,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
         {
             // IIa. Add the sub-component solutions of the top-level sub_solution.
             for(auto& fragment: sub_solution->components)
-                solution.sub_solutions.push_back(fragment->solution);
+                sub_solutions.push_back(fragment->solution);
 
             // IIb. Remove the punctured sub-solution.
             if (k != sub_solutions.size()-1)
@@ -582,10 +580,6 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
         //     (i) new or (ii) old, but has been merged with other components.
         assert(not component->solution);
         component->solution = std::make_shared<Solution>(*component, taxa);
-
-        // QUESTION: Does this copying mean that we shouldn't be storing the sub_solutions on the component?
-        // We could use std::move here...
-        component->solution->sub_solutions = component->old_solutions;
     }
 
     // 9a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
@@ -612,12 +606,8 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
         int first_taxon = sub_solution->taxa[0];
         int first_index = indices[first_taxon];
         auto component = component_for_index[first_index];
-        component->solution->sub_solutions.push_back(sub_solution);
+        component->old_solutions.push_back(sub_solution);
     }
-
-    // 10. We've now set up the sub-problems, so we can clear new_splits and sub-solutions.
-    new_splits.clear();
-    solution.sub_solutions.clear();
 
     // 11. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
@@ -629,7 +619,13 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
     {
         assert(component->elements.size() >= 2);
 
-        if (not BUILD_(*component->solution, component->new_splits))
+        vector<ConstRSplit> comp_new_splits;
+        std::swap(component->new_splits, comp_new_splits);
+
+        vector<shared_ptr<Solution>> comp_sub_solutions;
+        std::swap(component->old_solutions, comp_sub_solutions);
+
+        if (not BUILD_(*component->solution, comp_new_splits, comp_sub_solutions))
             return false;
 
         component->old_solutions = { component->solution };
@@ -641,8 +637,9 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits)
 bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
 {
     auto new_splits2 = new_splits;
+    vector<shared_ptr<Solution>> sub_solutions;
 
-    return BUILD_(solution, new_splits2);
+    return BUILD_(solution, new_splits2, sub_solutions);
 }
 
 template <typename T>
