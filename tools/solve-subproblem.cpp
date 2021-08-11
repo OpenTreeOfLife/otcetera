@@ -451,10 +451,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
         assert(solution.implied_splits.empty());
 
         // Move the components from the previous solution to this one!
-        std::swap( solution.implied_splits     , prev_solution->implied_splits      );
-        std::swap( solution.taxa               , prev_solution->taxa                );
-        std::swap( solution.components         , prev_solution->components          );
-        std::swap( solution.component_for_index, prev_solution->component_for_index );
+        std::swap( solution     , *prev_solution );
         sub_solutions.clear();
 
         // We are not done yet, so do NOT return here:
