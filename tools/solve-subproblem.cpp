@@ -448,11 +448,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    // 0. This describes the problem
-    // Each sub_solution basically serves as a bag of splits to augment new_splits.
-    // It is organized into a tree, and only the top level is vulnerable to puncturing.
     auto& taxa = solution.taxa;
-
     auto& component_for_index = solution.component_for_index;
     auto& components = solution.components;
 
@@ -611,23 +607,6 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
             packed_components.push_back( std::move(component) );
     std::swap(components, packed_components);
 
-    // 8. Copy the old solutions from the merged COMPONENT to the new SOLUTION we are making.
-    //    We delay checking if the old solutions are punctured until we call BUILD
-    //      on the new solution/new component.
-    for(auto& component: components)
-    {
-        // 8a. If the component has a solution, then it hasn't been merged with any other component.
-        if (component->solution)
-        {
-            assert(component->old_solutions.empty());
-            continue;
-        }
-        // 8b. If the component does NOT have an active solution then it is either.
-        //     (i) new or (ii) old, but has been merged with other components.
-        else
-            component->solution = std::make_shared<Solution>(*component, taxa);
-    }
-
     // 9a. Determine the new splits that go into each component.
     //     We will check if they are implied or unimplied when we call BUILD on the component.
     for(auto& split: new_splits)
@@ -667,6 +646,11 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
 
         vector<shared_ptr<Solution>> comp_sub_solutions;
         std::swap(component->old_solutions, comp_sub_solutions);
+
+        // If we've invalidated the solution for this component because the component's taxon set increased,
+        // create an empty solution to use here.
+        if (not component->solution)
+            component->solution = std::make_shared<Solution>(*component, taxa);
 
         if (not BUILD_(*component->solution, comp_new_splits, comp_sub_solutions))
             return false;
