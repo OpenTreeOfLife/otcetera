@@ -311,21 +311,6 @@ vector<ConstRSplit> Solution::non_implied_splits_from_components() const
     return splits;
 }
 
-/// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
-{
-    component[index2] = c1;
-    c1->elements.push_back(index2);
-
-    if (c1->solution)
-    {
-        // We should be able to revert the merge by doing {c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();}
-        assert(c1->old_solutions.empty());
-        c1->old_solutions.push_back(c1->solution);
-    }
-
-    c1->solution = {};
-}
 
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
 {
@@ -384,6 +369,22 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     c1->solution = {};
 
     return c1;
+}
+
+/// Merge components c1 and c2 and return the component name that survived
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
+{
+    component[index2] = c1;
+    c1->elements.push_back(index2);
+
+    if (c1->solution)
+    {
+        // We should be able to revert the merge by doing {c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();}
+        assert(c1->old_solutions.empty());
+        c1->old_solutions.push_back(c1->solution);
+    }
+
+    c1->solution = {};
 }
 
 bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
