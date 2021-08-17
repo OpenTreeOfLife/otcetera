@@ -1281,8 +1281,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             add_splits_if_consistent_batch(splits2, 0, splits2.size());
         else
         {
-            for(int i=0;i<splits2.size();i++)
-                add_splits_if_consistent_batch(splits2,i,1);
+            for(int j=0;j<splits2.size();j++)
+                add_splits_if_consistent_batch(splits2,j,1);
         }
 
         LOG(INFO)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
