@@ -435,7 +435,6 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
-bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
 // TODO: If BUILD fails, can we rebuild the solution that we have modified in-place?
 //       * we need to avoid modifying the old solutions (for a merged component) in-place.
 //       * we need to restore the component->elements list.
@@ -443,6 +442,9 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   You can get the resulting tree from it with solution.get_tree().
 ///   New splits are in both `new_splits` and `sub_solution`.
+bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
+
+/// Check if splits in new_splits and sub_solutions are implied by solution.taxa, and then call BUILD_( ).
 bool BUILD_check_implied(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
@@ -623,7 +625,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
     std::swap(components, packed_components);
 
     // 6a. Determine the new splits that go into each component.
-    //     We will check if they are implied or unimplied when we call BUILD on the component.
+    //     We will check if they are implied or unimplied when we call BUILD_check_implied( ) on the component.
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
@@ -637,7 +639,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
     //     They basically are bundles of splits to work on.
     //     All splits in the same bundle always go into the same component because we merged
     //        any intersecting components in 5b.
-    //     We will check if they are punctured when we call BUILD on the component.
+    //     We will check if they are punctured when we call BUILD_check_implied( ) on the component.
     for(auto& sub_solution: sub_solutions)
     {
         int first_taxon = sub_solution->taxa[0];
