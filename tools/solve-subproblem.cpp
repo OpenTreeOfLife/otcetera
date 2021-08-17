@@ -466,8 +466,8 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
         std::swap( solution     , *prev_solution );
         sub_solutions.clear();
 
-        // We are not done yet, so do NOT return here:
-        //   we may need to add the `new_splits` to the (partial) solution that we just found.
+        // We are not done yet: we may need to add the `new_splits` to the (partial) solution that we just found.
+        // So do NOT return yet.
     }
 
     // 2. If there are no splits, then we are consistent.
