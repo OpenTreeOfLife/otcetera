@@ -1,4 +1,3 @@
-#undef NDEBUG
 #include <algorithm>
 #include <set>
 #include <list>
