@@ -484,9 +484,34 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
-    // 4. Check sub_solutions to see if they are punctured.
+    bool top = taxa.size() == indices.size();
+
+    if (not top) {
+
+    // 4a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
+    for(int k = new_splits.size()-1; k >= 0; k--)
+    {
+        auto& split = new_splits[k];
+        bool implied = not exclude_group_intersects_taxon_set(split);
+        assert( (not implied) or (not top) );
+        if (implied)
+        {
+            assert(not top);
+            // Copy the split to the implied_splits set.
+            solution.implied_splits.push_back(split);
+
+            // Remove it from the new_splits set.
+            if (k < new_splits.size()-1)
+                std::swap(split, new_splits.back());
+            new_splits.pop_back();
+        }
+    }
+
+    // 4b. Check sub_solutions to see if they are punctured.
     for(int k = sub_solutions.size()-1; k >= 0; k--)
     {
+        assert(not top);
+
         auto& sub_solution = sub_solutions[k];
 
         // I. Check if sub_solution is punctured.
@@ -532,6 +557,9 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
             sub_solutions.pop_back();
         }
     }
+    }
+
+    /// Start BUILD2_ subroutine here!
 
     auto merge = [&](auto& group)
         {
@@ -588,7 +616,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
     //      on the new solution/new component.
     for(auto& component: components)
     {
-        // 8a. If the component has a olution, then it hasn't been merged with any other component.
+        // 8a. If the component has a solution, then it hasn't been merged with any other component.
         if (component->solution)
         {
             assert(component->old_solutions.empty());
@@ -600,18 +628,15 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
             component->solution = std::make_shared<Solution>(*component, taxa);
     }
 
-    // 9a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
+    // 9a. Determine the new splits that go into each component.
+    //     We will check if they are implied or unimplied when we call BUILD on the component.
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
         assert(first >= 0);
         auto component = component_for_index[first];
 
-        bool implied = not exclude_group_intersects_component(split, component, component_for_index);
-        if (implied)
-            component->solution->implied_splits.push_back(split);
-        else
-            component->new_splits.push_back(split);
+        component->new_splits.push_back(split);
     }
 
     // 9b. Pass down sub_solutions into the correct component.
