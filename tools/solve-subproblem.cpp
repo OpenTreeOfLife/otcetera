@@ -441,38 +441,38 @@ unique_ptr<Tree_t> Solution::get_tree() const
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   You can get the resulting tree from it with solution.get_tree().
 ///   New splits are in both `new_splits` and `sub_solution`.
-bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
+bool BUILD_(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
 
 /// Check if splits in new_splits and sub_solutions are implied by solution.taxa, and then call BUILD_( ).
-bool BUILD_check_implied(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    auto& taxa = solution.taxa;
-    auto& component_for_index = solution.component_for_index;
-    auto& components = solution.components;
-
     // 1. If we found a solution to THIS exact problem then we can just re-use it.
-    if (sub_solutions.size() == 1 and sub_solutions[0]->taxa.size() == taxa.size())
+    if (sub_solutions.size() == 1 and sub_solutions[0]->taxa.size() == solution->taxa.size())
     {
         auto prev_solution = sub_solutions[0];
-        assert(sort_cmp(prev_solution->taxa, taxa));
+        assert(sort_cmp(prev_solution->taxa, solution->taxa));
 
         // It only makes sense to switch to an old solution if we don't already have an old solution,
         // so check that that is the case.  This problem should have a new/empty solution object.
-        assert(solution.non_implied_splits_from_components().empty());
-        assert(solution.implied_splits.empty());
+        assert(solution->non_implied_splits_from_components().empty());
+        assert(solution->implied_splits.empty());
 
         // Move the components from the previous solution to this one!
-        std::swap( solution     , *prev_solution );
+        solution = prev_solution;
         sub_solutions.clear();
 
         // We are not done yet: we may need to add the `new_splits` to the (partial) solution that we just found.
         // So do NOT return yet.
     }
+
+    auto& taxa = solution->taxa;
+    auto& component_for_index = solution->component_for_index;
+    auto& components = solution->components;
 
     // 2. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty())
@@ -492,7 +492,7 @@ bool BUILD_check_implied(Solution& solution, vector<ConstRSplit>& new_splits, ve
         if (implied)
         {
             // Copy the split to the implied_splits set.
-            solution.implied_splits.push_back(split);
+            solution->implied_splits.push_back(split);
 
             // Remove it from the new_splits set.
             if (k < new_splits.size()-1)
@@ -507,7 +507,7 @@ bool BUILD_check_implied(Solution& solution, vector<ConstRSplit>& new_splits, ve
         auto& sub_solution = sub_solutions[k];
 
         // I. Check if sub_solution is punctured.
-        //    If so, then copy splits to solution.{implied,non_implied}_splits.
+        //    If so, then copy splits to solution->{implied,non_implied}_splits.
         bool punctured = false;
         for(int i=0; i < sub_solution->implied_splits.size(); i++)
         {
@@ -530,7 +530,7 @@ bool BUILD_check_implied(Solution& solution, vector<ConstRSplit>& new_splits, ve
             if (punctured)
             {
                 if (implied)
-                    solution.implied_splits.push_back(split);
+                    solution->implied_splits.push_back(split);
                 else
                     new_splits.push_back(split);
             }
@@ -557,11 +557,11 @@ bool BUILD_check_implied(Solution& solution, vector<ConstRSplit>& new_splits, ve
     return BUILD_(solution, new_splits, sub_solutions);
 }
 
-bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool BUILD_(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
-    auto& taxa = solution.taxa;
-    auto& component_for_index = solution.component_for_index;
-    auto& components = solution.components;
+    auto& taxa = solution->taxa;
+    auto& component_for_index = solution->component_for_index;
+    auto& components = solution->components;
 
     // 1. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty())
@@ -668,7 +668,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
         if (not component->solution)
             component->solution = std::make_shared<Solution>(*component, taxa);
 
-        if (not BUILD_check_implied(*component->solution, comp_new_splits, comp_sub_solutions))
+        if (not BUILD_check_implied(component->solution, comp_new_splits, comp_sub_solutions))
             return false;
 
         assert(component->old_solutions.empty());
@@ -677,7 +677,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
     return true;
 }
 
-bool BUILD(Solution& solution, const vector<ConstRSplit>& new_splits)
+bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits)
 {
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;
@@ -1106,7 +1106,7 @@ void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int 
 bool conflicting(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits)
 {
     auto solution = std::make_shared<Solution>(all_leaves_indices);
-    auto result = BUILD(*solution, splits);
+    auto result = BUILD(solution, splits);
     return not result;
 }
 
@@ -1248,7 +1248,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 for(int i=0;i<n;i++)
                     new_splits.push_back(splits[start+i].second);
 
-                result = BUILD(*solution, new_splits);
+                result = BUILD(solution, new_splits);
                 LOG(TRACE)<<"consistent = "<< consistent.size()<<" -> "<<consistent.size()+n<<": "<<(result?"ok":"FAIL");
                 if (result)
                 {
@@ -1263,7 +1263,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
                 solution = std::make_shared<Solution>(all_leaves_indices);
 
-                result = BUILD(*solution, consistent);
+                result = BUILD(solution, consistent);
                 LOG(TRACE)<<"consistent = "<< consistent.size()-n<<" -> "<<consistent.size()<<": "<<(result?"ok":"FAIL");
                 if (not result)
                 {
@@ -1337,7 +1337,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
     //FIXME - discard previous solution;
     solution = std::make_shared<Solution>(all_leaves_indices);
-    auto result = BUILD(*solution, consistent);
+    auto result = BUILD(solution, consistent);
     assert(result);
     auto tree = solution->get_tree();
     for(auto nd: iter_pre(*tree))
