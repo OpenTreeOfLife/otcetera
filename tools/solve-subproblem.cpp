@@ -319,7 +319,7 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
 
     if (c1->solution)
     {
-        // We should be able to revert the component by setting c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();
+        // We should be able to revert the merge by doing {c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();}
         assert(c1->old_solutions.empty());
         c1->old_solutions.push_back(c1->solution);
     }
@@ -370,7 +370,7 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 
     if (c1->solution)
     {
-        // We should be able to revert the component by setting c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();
+        // We should be able to revert the merge by doing {c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();}
         assert(c1->old_solutions.empty());
         c1->old_solutions.push_back(c1->solution);
     }
