@@ -442,7 +442,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   You can get the resulting tree from it with solution.get_tree().
 ///   New splits are in both `new_splits` and `sub_solution`.
-bool BUILD_(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
+bool BUILD_partition_taxa_and_recurse(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
 
 /// Check if splits in new_splits and sub_solutions are implied by solution.taxa, and then call BUILD_( ).
 bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
@@ -555,10 +555,10 @@ bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     for(int id: taxa)
         indices[id] = -1;
 
-    return BUILD_(solution, new_splits, sub_solutions);
+    return BUILD_partition_taxa_and_recurse(solution, new_splits, sub_solutions);
 }
 
-bool BUILD_(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool BUILD_partition_taxa_and_recurse(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
@@ -683,7 +683,7 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;
 
-    return BUILD_(solution, new_splits2, sub_solutions);
+    return BUILD_partition_taxa_and_recurse(solution, new_splits2, sub_solutions);
 }
 
 template <typename T>
