@@ -317,6 +317,12 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
     component[index2] = c1;
     c1->elements.push_back(index2);
 
+    if (c1->solution)
+    {
+        // We should be able to revert the component by setting c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();
+        assert(c1->old_solutions.empty());
+        c1->old_solutions.push_back(c1->solution);
+    }
 
     c1->solution = {};
 }
@@ -361,6 +367,16 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
         component[i] = c1;
 
     c1->elements.splice(c1->elements.end(), c2->elements);
+
+    if (c1->solution)
+    {
+        // We should be able to revert the component by setting c1->solution = c1->old_solutions[0]; c1->old_solutions.clear();
+        assert(c1->old_solutions.empty());
+        c1->old_solutions.push_back(c1->solution);
+    }
+
+    if (c2->solution)
+        c1->old_solutions.push_back(c2->solution);
 
     // One of these components could be new -- that is, composed only of previously-trivial components.
     append(c1->old_solutions, c2->old_solutions);
@@ -575,16 +591,13 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
         // 8a. If the component has a olution, then it hasn't been merged with any other component.
         if (component->solution)
         {
-            assert((component->old_solutions.size() == 1) and (component->elements.size() == component->old_solutions[0]->taxa.size()));
+            assert(component->old_solutions.empty());
             continue;
         }
         // 8b. If the component does NOT have an active solution then it is either.
         //     (i) new or (ii) old, but has been merged with other components.
         else
-        {
-            assert(not component->solution);
             component->solution = std::make_shared<Solution>(*component, taxa);
-        }
     }
 
     // 9a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
@@ -633,7 +646,7 @@ bool BUILD_(Solution& solution, vector<ConstRSplit>& new_splits, vector<shared_p
         if (not BUILD_(*component->solution, comp_new_splits, comp_sub_solutions))
             return false;
 
-        component->old_solutions = { component->solution };
+        assert(component->old_solutions.empty());
     }
 
     return true;
