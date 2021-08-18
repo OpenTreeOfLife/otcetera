@@ -485,7 +485,7 @@ bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
-    // 5. Determine the new splits that go into each component (both satisfied AND unsatisfied)
+    // 4. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(int k = new_splits.size()-1; k >= 0; k--)
     {
         auto& split = new_splits[k];
@@ -502,7 +502,7 @@ bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
         }
     }
 
-    // 6. Check sub_solutions to see if they are punctured.
+    // 5. Check sub_solutions to see if they are punctured.
     for(int k = sub_solutions.size()-1; k >= 0; k--)
     {
         auto& sub_solution = sub_solutions[k];
@@ -551,7 +551,7 @@ bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
         }
     }
 
-    // 4a. Determine the new splits that go into each component (both satisfied AND unsatisfied)
+    // 6. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(int id: taxa)
         indices[id] = -1;
 
