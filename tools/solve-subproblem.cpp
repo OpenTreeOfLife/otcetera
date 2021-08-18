@@ -264,14 +264,49 @@ typedef component_t* component_ref;
 // A "partial" solution only has implied_splits + non_implied_splits
 // A "full" solution also has components.
 
+struct MergeRollbackInfo
+{
+    component_ref c1;
+    component_ref c2;
+    list<int>::const_iterator it;
+
+    shared_ptr<Solution> old_solution;
+
+    void unmerge(Solution& S);
+};
+
+struct SolutionRollbackInfo
+{
+    optional<int> n_old_implied_splits;
+    vector<MergeRollbackInfo> merge_rollback_info;
+    optional<vector< shared_ptr<component_t> >> old_components;
+
+    void rollback(Solution& S);
+};
+
 struct Solution
 {
     vector<int> taxa;
 
-    vector<ConstRSplit> implied_splits;              // alpha
+    vector<ConstRSplit> implied_splits;
 
     vector< component_ref > component_for_index;
-    vector< unique_ptr<component_t> > components;
+    vector< shared_ptr<component_t> > components;
+
+    optional<SolutionRollbackInfo> rollback_info_;
+
+    bool has_rollback_info() const {return (bool)rollback_info_;}
+
+    void clear_rollback_info() {rollback_info_.reset();}
+
+    SolutionRollbackInfo& rollback_info()
+    {
+        if (not rollback_info_)
+            rollback_info_ = SolutionRollbackInfo();
+        return *rollback_info_;
+    }
+
+    void finalize(bool);
 
     vector<ConstRSplit> non_implied_splits_from_components() const;
     vector<ConstRSplit> splits_from_components() const;
@@ -293,6 +328,59 @@ struct Solution
         :Solution(c.get_taxa(other_taxa))
     {}
 };
+
+void MergeRollbackInfo::unmerge(Solution& S)
+{
+    // Undo merging two components.
+    if (c2)
+    {
+        c2->elements.splice(c2->elements.end(), c1->elements, it, c1->elements.end());
+        for(auto& x: c2->elements)
+            S.component_for_index[x] = c2;
+    }
+    // Undo merge with trivial
+    else
+    {
+        S.component_for_index[c1->elements.back()] = nullptr;
+        c1->elements.pop_back();
+    }
+
+    if (old_solution)
+        c1->solution = old_solution;
+
+    c1->old_solutions.clear();
+    assert(c1->new_splits.empty());
+}
+
+void SolutionRollbackInfo::rollback(Solution& S)
+{
+    if (n_old_implied_splits)
+    {
+        assert(*n_old_implied_splits <= S.implied_splits.size());
+        S.implied_splits.resize(*n_old_implied_splits);
+    }
+
+    for(int i=(int)merge_rollback_info.size()-1; i >= 0; i--)
+        merge_rollback_info[i].unmerge(S);
+
+    if (old_components)
+        S.components = *old_components;
+}
+
+
+void Solution::finalize(bool success)
+{
+    if (not has_rollback_info()) return;
+
+    if (not success)
+        rollback_info().rollback(*this);
+
+    for(auto& component: components)
+        component->solution->finalize(success);
+
+    clear_rollback_info();
+}
+
 
 vector<ConstRSplit> Solution::splits_from_components() const
 {
@@ -358,6 +446,8 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
 
+    MergeRollbackInfo MRI{c1, c2, c2->elements.begin(), c1->solution};
+
     for(int i: c2->elements)
         component_for_index[i] = c1;
 
@@ -384,6 +474,8 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 /// Merge components c1 and c2 and return the component name that survived
 void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index)
 {
+    MergeRollbackInfo MRI{c1, nullptr, c1->elements.begin(), c1->solution};
+
     component_for_index[index2] = c1;
     c1->elements.push_back(index2);
 
@@ -606,10 +698,10 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     // 5. Pack the components
-    vector<unique_ptr<component_t>> packed_components;
+    vector<shared_ptr<component_t>> packed_components;
     for(auto& component: components)
         if (not component->elements.empty())
-            packed_components.push_back( std::move(component) );
+            packed_components.push_back( component );
     std::swap(components, packed_components);
 
     // 6a. Determine the new splits that go into each component.
