@@ -442,10 +442,10 @@ unique_ptr<Tree_t> Solution::get_tree() const
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   You can get the resulting tree from it with solution.get_tree().
 ///   New splits are in both `new_splits` and `sub_solution`.
-bool BUILD_partition_taxa_and_recurse(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
+bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
 
 /// Check if splits in new_splits and sub_solutions are implied by solution.taxa, and then call BUILD_( ).
-bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -555,10 +555,10 @@ bool BUILD_check_implied(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     for(int id: taxa)
         indices[id] = -1;
 
-    return BUILD_partition_taxa_and_recurse(solution, new_splits, sub_solutions);
+    return BUILD_partition_taxa_and_solve_components(solution, new_splits, sub_solutions);
 }
 
-bool BUILD_partition_taxa_and_recurse(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
@@ -625,7 +625,7 @@ bool BUILD_partition_taxa_and_recurse(shared_ptr<Solution>& solution, vector<Con
     std::swap(components, packed_components);
 
     // 6a. Determine the new splits that go into each component.
-    //     We will check if they are implied or unimplied when we call BUILD_check_implied( ) on the component.
+    //     We will check if they are implied or unimplied when we call BUILD_check_implied_and_continue( ) on the component.
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
@@ -639,7 +639,7 @@ bool BUILD_partition_taxa_and_recurse(shared_ptr<Solution>& solution, vector<Con
     //     They basically are bundles of splits to work on.
     //     All splits in the same bundle always go into the same component because we merged
     //        any intersecting components in 5b.
-    //     We will check if they are punctured when we call BUILD_check_implied( ) on the component.
+    //     We will check if they are punctured when we call BUILD_check_implied_and_continue( ) on the component.
     for(auto& sub_solution: sub_solutions)
     {
         int first_taxon = sub_solution->taxa[0];
@@ -669,7 +669,7 @@ bool BUILD_partition_taxa_and_recurse(shared_ptr<Solution>& solution, vector<Con
         if (not component->solution)
             component->solution = std::make_shared<Solution>(*component, taxa);
 
-        if (not BUILD_check_implied(component->solution, comp_new_splits, comp_sub_solutions))
+        if (not BUILD_check_implied_and_continue(component->solution, comp_new_splits, comp_sub_solutions))
             return false;
 
         assert(component->old_solutions.empty());
@@ -683,7 +683,7 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;
 
-    return BUILD_partition_taxa_and_recurse(solution, new_splits2, sub_solutions);
+    return BUILD_partition_taxa_and_solve_components(solution, new_splits2, sub_solutions);
 }
 
 template <typename T>
