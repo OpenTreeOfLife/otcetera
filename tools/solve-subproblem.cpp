@@ -387,28 +387,6 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
     c1->solution = {};
 }
 
-bool empty_intersection(const set<int>& xs, const vector<int>& ys) {
-    for (int y: ys){
-        if (xs.count(y)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-template <typename T>
-T remove_unordered(std::vector<T>& v, int i)
-{
-    assert(0 <= i and i < v.size());
-
-    auto t = v[i];
-    if (i < int(v.size())-1)
-        std::swap(v[i], v.back());
-    v.pop_back();
-
-    return t;
-}
-
 unique_ptr<Tree_t> Solution::get_tree() const
 {
     assert(taxa.size() > 1);
