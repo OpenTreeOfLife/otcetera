@@ -343,13 +343,13 @@ void append(vector<T>& v1, const vector<T>& v2)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component)
+component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index)
 {
     if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
 
     for(int i: c2->elements)
-        component[i] = c1;
+        component_for_index[i] = c1;
 
     c1->elements.splice(c1->elements.end(), c2->elements);
 
@@ -372,9 +372,9 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component)
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index)
 {
-    component[index2] = c1;
+    component_for_index[index2] = c1;
     c1->elements.push_back(index2);
 
     if (c1->solution)
