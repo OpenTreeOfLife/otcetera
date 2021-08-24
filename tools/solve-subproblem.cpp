@@ -278,9 +278,9 @@ struct MergeRollbackInfo
 
 struct SolutionRollbackInfo
 {
-    int n_old_implied_splits;
+    optional<int> n_old_implied_splits;
     vector<MergeRollbackInfo> merge_rollback_info;
-    vector< shared_ptr<component_t> > old_components;
+    optional<vector< shared_ptr<component_t> >> old_components;
 
     void rollback(Solution& S);
 };
@@ -350,13 +350,17 @@ void MergeRollbackInfo::unmerge(Solution& S)
 
 void SolutionRollbackInfo::rollback(Solution& S)
 {
-    assert(n_old_implied_splits <= S.implied_splits.size());
-    S.implied_splits.resize(n_old_implied_splits);
+    if (n_old_implied_splits)
+    {
+        assert(*n_old_implied_splits <= S.implied_splits.size());
+        S.implied_splits.resize(*n_old_implied_splits);
+    }
 
     for(int i=(int)merge_rollback_info.size()-1; i >= 0; i--)
         merge_rollback_info[i].unmerge(S);
 
-    S.components = old_components;
+    if (old_components)
+        S.components = *old_components;
 }
 
 
