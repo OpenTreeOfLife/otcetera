@@ -782,7 +782,9 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;
 
-    return BUILD_partition_taxa_and_solve_components(solution, new_splits2, sub_solutions);
+    bool ok =  BUILD_partition_taxa_and_solve_components(solution, new_splits2, sub_solutions);
+    solution->finalize(ok);
+    return ok;
 }
 
 template <typename T>
