@@ -333,7 +333,7 @@ void MergeRollbackInfo::unmerge(Solution& S)
     // Undo merging two components.
     if (c2)
     {
-        c2->elements.splice(c2->elements.end(), c1->elements, it);
+        c2->elements.splice(c2->elements.end(), c1->elements, it, c1->elements.end());
         for(auto& x: c2->elements)
             S.component_for_index[x] = c2;
     }
