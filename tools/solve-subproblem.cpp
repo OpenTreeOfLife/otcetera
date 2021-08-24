@@ -460,12 +460,12 @@ void append(vector<T>& v1, const vector<T>& v2)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index)
+component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info)
 {
     if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
 
-    MergeRollbackInfo MRI{c1, c2, c2->elements.begin(), c1->solution};
+    merge_rollback_info.push_back({c1, c2, c2->elements.begin(), c1->solution});
 
     for(int i: c2->elements)
         component_for_index[i] = c1;
@@ -491,9 +491,9 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index)
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info)
 {
-    MergeRollbackInfo MRI{c1, nullptr, c1->elements.begin(), c1->solution};
+    merge_rollback_info.push_back({c1, nullptr, {}, c1->solution});
 
     component_for_index[index2] = c1;
     c1->elements.push_back(index2);
@@ -584,6 +584,8 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
+    solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
+
     // 4. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(int k = new_splits.size()-1; k >= 0; k--)
     {
@@ -673,6 +675,8 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
+    auto& rollback_info = solution->rollback_info();
+
     auto merge = [&](auto& group)
         {
             component_ref split_comp = nullptr;
@@ -687,14 +691,14 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
                     {
                         components.push_back(std::make_unique<component_t>());
                         taxon_comp = components.back().get();
-                        merge_component_with_trivial(taxon_comp, index, component_for_index);
+                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info);
                     }
                     split_comp = taxon_comp;
                 }
                 else if (not taxon_comp)
-                    merge_component_with_trivial(split_comp, index, component_for_index);
+                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info);
                 else if (split_comp != taxon_comp)
-                    split_comp = merge_components(split_comp,taxon_comp,component_for_index);
+                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info);
             }
         };
 
@@ -717,6 +721,8 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     // 5. Pack the components
+    rollback_info.old_components = components;
+
     vector<shared_ptr<component_t>> packed_components;
     for(auto& component: components)
         if (not component->elements.empty())
