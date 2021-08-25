@@ -808,8 +808,10 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     // 8. Recursively solve the sub-problems of the partition components
-    for(auto& component: components)
+    optional<int> failing_component;
+    for(int i=0;i<components.size();i++)
     {
+        auto& component = components[i];
         assert(component->elements.size() >= 2);
 
         vector<ConstRSplit> comp_new_splits;
@@ -818,18 +820,37 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         vector<shared_ptr<Solution>> comp_sub_solutions;
         std::swap(component->old_solutions, comp_sub_solutions);
 
+        // If a previous component failed, we just want to clean up component->new_splits and component->old_solutions.
+        if (failing_component) continue;
+
         // If we've invalidated the solution for this component because the component's taxon set increased,
         // then create an empty solution to use here.
         if (not component->solution)
             component->solution = std::make_shared<Solution>(*component, taxa);
 
         if (not BUILD_check_implied_and_continue(component->solution, comp_new_splits, comp_sub_solutions))
-            return false;
+            failing_component = i;
 
         assert(component->old_solutions.empty());
+        assert(component->solution);
     }
 
-    return true;
+    if (failing_component)
+    {
+        // We only do this to the components that SUCCEEDED.
+        for(int i=0; i < *failing_component; i++)
+            components[i]->solution->finalize(false);
+
+        // The component that failed should have cleaned itself up.
+
+        // The components AFTER the one that succeeded... don't need to be cleaned up?
+
+        rollback_info.rollback(*solution);
+
+        solution->clear_rollback_info();
+    }
+
+    return (not failing_component);
 }
 
 bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits)
