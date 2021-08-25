@@ -787,6 +787,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     // 8. Recursively solve the sub-problems of the partition components
+    bool consistent = true;
     for(auto& component: components)
     {
         assert(component->elements.size() >= 2);
@@ -803,12 +804,13 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
             component->solution = std::make_shared<Solution>(*component, taxa);
 
         if (not BUILD_check_implied_and_continue(component->solution, comp_new_splits, comp_sub_solutions))
-            return false;
+            consistent = false;
 
         assert(component->old_solutions.empty());
+        assert(component->solution);
     }
 
-    return true;
+    return consistent;
 }
 
 bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits)
