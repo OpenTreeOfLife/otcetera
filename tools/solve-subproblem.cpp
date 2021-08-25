@@ -315,6 +315,8 @@ struct Solution
 
     unique_ptr<Tree_t> get_tree() const;
 
+    bool valid() const;
+
     Solution& operator=(const Solution&) = default;
     Solution& operator=(Solution&&) = default;
 
@@ -328,6 +330,18 @@ struct Solution
         :Solution(c.get_taxa(other_taxa))
     {}
 };
+
+bool Solution::valid() const
+{
+    for(auto& component: components)
+    {
+        if (not component->solution) return false;
+
+        if (not component->solution->valid()) return false;
+    }
+
+    return true;
+}
 
 void MergeRollbackInfo::unmerge(Solution& S)
 {
