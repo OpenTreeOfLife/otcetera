@@ -751,9 +751,19 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         merge(sub_solution->taxa);
     }
 
-    // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
+    // 4. Pack the components
+    rollback_info.old_components = vector<shared_ptr<component_t>>();
+    auto& packed_components = *rollback_info.old_components;
+    assert(packed_components.empty());
+    for(auto& component: components)
+        if (not component->elements.empty())
+            packed_components.push_back( component );
+    std::swap(components, packed_components);
+
+    // 5. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (solution->all_taxa_in_one_component())
     {
+        assert(components.size() == 1);
         for(int id: taxa)
             indices[id] = -1;
 
@@ -767,15 +777,6 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
 
         return false;
     }
-
-    // 5. Pack the components
-    rollback_info.old_components = components;
-
-    vector<shared_ptr<component_t>> packed_components;
-    for(auto& component: components)
-        if (not component->elements.empty())
-            packed_components.push_back( component );
-    std::swap(components, packed_components);
 
     // 6a. Determine the new splits that go into each component.
     //     We will check if they are implied or unimplied when we call BUILD_check_implied_and_continue( ) on the component.
