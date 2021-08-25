@@ -307,6 +307,11 @@ struct Solution
         return *rollback_info_;
     }
 
+    bool all_taxa_in_one_component() const
+    {
+        return component_for_index[0] and component_for_index[0]->elements.size() == taxa.size();
+    }
+
     void finalize(bool);
 
     vector<ConstRSplit> non_implied_splits_from_components() const;
@@ -682,7 +687,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     // 4. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (component_for_index[0] and component_for_index[0]->elements.size() == taxa.size())
+    if (solution->all_taxa_in_one_component())
     {
         for(int id: taxa)
             indices[id] = -1;
