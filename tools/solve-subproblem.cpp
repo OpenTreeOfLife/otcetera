@@ -263,7 +263,6 @@ typedef component_t* component_ref;
 
 // A "partial" solution only has implied_splits + non_implied_splits
 // A "full" solution also has components.
-struct Solution;
 
 struct MergeRollbackInfo
 {
