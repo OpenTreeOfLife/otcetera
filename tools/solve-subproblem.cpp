@@ -317,6 +317,8 @@ struct Solution
     vector<ConstRSplit> non_implied_splits_from_components() const;
     vector<ConstRSplit> splits_from_components() const;
 
+    int n_splits_from_components() const;
+
     unique_ptr<Tree_t> get_tree() const;
 
     bool valid() const;
@@ -440,6 +442,14 @@ vector<ConstRSplit> Solution::splits_from_components() const
     for(auto& split: implied_splits)
         splits.push_back(split);
     return splits;
+}
+
+int Solution::n_splits_from_components() const
+{
+    int n = implied_splits.size();
+    for(auto& component: components)
+        n += component->solution->n_splits_from_components();
+    return n;
 }
 
 vector<ConstRSplit> Solution::non_implied_splits_from_components() const
