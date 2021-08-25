@@ -422,7 +422,7 @@ void Solution::finalize(bool success)
 
     // If we only had one component, then we didn't call BUILD on the children.
     // So their solutions could be NULL.  And also there is nothing to undo.
-    if (all_taxa_in_one_component())
+    if (not all_taxa_in_one_component())
     {
         for(auto& component: components)
             component->solution->finalize(success);
