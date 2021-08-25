@@ -279,6 +279,7 @@ struct SolutionRollbackInfo
 {
     optional<int> n_old_implied_splits;
     vector<MergeRollbackInfo> merge_rollback_info;
+    optional<int> n_orig_components;
     optional<vector< shared_ptr<component_t> >> old_components;
 
     void rollback(Solution& S);
@@ -382,8 +383,40 @@ void SolutionRollbackInfo::rollback(Solution& S)
     for(int i=(int)merge_rollback_info.size()-1; i >= 0; i--)
         merge_rollback_info[i].unmerge(S);
 
+    // NOTE: Some components are created during merging that are
+    // (i) are not original components, and also
+    // (ii) end up being empty.  So they are not final components.
+
+    // * We need these components to survive (i.e not be destructed)
+    //   so that we can temporarily add elements to them during rollback.
+
+    // * We will then move these elements OUT of them into original
+    //   components.
+
+    // * These temporary components should all end up at the end of the
+    //   original components vector<> (the non-packed vector<>) because they
+    //   were added during merging by push_back( ).
+
+    // * We record the original size of the components vector BEFORE merging
+    //   and truncate to that length.  But before we truncate, we check that
+    //   rolling back merges leaves all the dropped components with no elements.
     if (old_components)
-        S.components = *old_components;
+    {
+        assert(n_orig_components);
+        std::swap(S.components, *old_components);
+
+        for(int i=0;i<S.components.size();i++)
+            assert(S.components[i]);
+
+        for(int i=*n_orig_components;i<S.components.size();i++)
+            assert(S.components[i]->elements.empty());
+
+        assert(*n_orig_components <= S.components.size());
+        S.components.resize(*n_orig_components);
+
+        for(int i=0;i<S.components.size();i++)
+            assert(not S.components[i]->elements.empty());
+    }
 }
 
 
@@ -681,6 +714,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         indices[taxa[i]] = i;
 
     auto& rollback_info = solution->rollback_info();
+    solution->rollback_info().n_orig_components = solution->components.size();
 
     auto merge = [&](auto& group)
         {
