@@ -371,13 +371,19 @@ void SolutionRollbackInfo::rollback(Solution& S)
 
 void Solution::finalize(bool success)
 {
+    // Avoid traversing parts of the tree that we didn't visit this round.
     if (not has_rollback_info()) return;
+
+    // If we only had one component, then we didn't call BUILD on the children.
+    // So their solutions could be NULL.  And also there is nothing to undo.
+    if (all_taxa_in_one_component())
+    {
+        for(auto& component: components)
+            component->solution->finalize(success);
+    }
 
     if (not success)
         rollback_info().rollback(*this);
-
-    for(auto& component: components)
-        component->solution->finalize(success);
 
     clear_rollback_info();
 }
