@@ -389,13 +389,18 @@ void SolutionRollbackInfo::rollback(Solution& S)
 
 void Solution::finalize(bool success)
 {
+    // Avoid traversing parts of the tree that we didn't visit this round.
     if (not has_rollback_info()) return;
+
+    // If there is rollback info, then BUILD found multiple components and
+    // recursively called into the children.  So, we need to undo the effects
+    // of that.
+    assert(not all_taxa_in_one_component());
+    for(auto& component: components)
+        component->solution->finalize(success);
 
     if (not success)
         rollback_info().rollback(*this);
-
-    for(auto& component: components)
-        component->solution->finalize(success);
 
     clear_rollback_info();
 }
@@ -717,6 +722,15 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     {
         for(int id: taxa)
             indices[id] = -1;
+
+        // Doing a manual rollback and clearing the rollback info here
+        // allows us to assume that components[i]->solution points to a valid
+        // object if there is rollback info.
+        rollback_info.rollback(*solution);
+        solution->clear_rollback_info();
+
+        assert(solution->valid());
+
         return false;
     }
 
