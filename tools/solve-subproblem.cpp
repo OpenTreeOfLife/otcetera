@@ -367,6 +367,9 @@ void MergeRollbackInfo::unmerge(Solution& S)
 
     if (old_solution)
         c1->solution = old_solution;
+
+    c1->old_solutions.clear();
+    assert(c1->new_splits.empty());
 }
 
 void SolutionRollbackInfo::rollback(Solution& S)
