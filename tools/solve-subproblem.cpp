@@ -1422,8 +1422,10 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     auto add_splits_if_consistent = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
         {
             bool result;
-            if (incremental and solution)
+            if (incremental)
             {
+                if (not solution)
+                    solution = std::make_shared<Solution>(all_leaves_indices);
                 vector<ConstRSplit> new_splits;
                 for(int i=0;i<n;i++)
                     new_splits.push_back(splits[start+i].second);
@@ -1435,6 +1437,11 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                     for(auto& new_split: new_splits)
                         consistent.push_back(new_split);
                 }
+                else
+                {
+                    LOG(TRACE)<<"FAIL!";
+                }
+                assert(consistent.size() == solution->n_splits_from_components());
             }
             else
             {
@@ -1453,8 +1460,6 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             }
 
             total_build_calls ++;
-
-            if (not incremental or not result) solution = {};
 
             if (n==1 and not result) collapse_node_(splits[start].first);
 
