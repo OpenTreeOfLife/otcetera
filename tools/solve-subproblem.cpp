@@ -646,6 +646,8 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
     {
         auto& sub_solution = sub_solutions[k];
 
+        assert(solution != sub_solution);
+
         // I. Check if sub_solution is punctured.
         //    If so, then copy splits to solution->{implied,non_implied}_splits.
         bool punctured = false;
