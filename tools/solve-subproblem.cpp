@@ -9,6 +9,7 @@
 #include "otc/supertree_util.h"
 #include "otc/tree_iter.h"
 #include "otc/induced_tree.h"
+#include "otc/CacheList.H"
 #include <fstream>
 #include <sstream>
 #include <boost/filesystem.hpp>
@@ -242,7 +243,7 @@ struct Solution;
 
 struct component_t
 {
-    list<int> elements;
+    cached_list<int> elements;
 
     shared_ptr<Solution> solution;
 
@@ -268,7 +269,7 @@ struct MergeRollbackInfo
 {
     component_ref c1;
     component_ref c2;
-    list<int>::const_iterator it;
+    cached_list<int>::const_iterator it;
 
     shared_ptr<Solution> old_solution;
 
