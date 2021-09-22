@@ -380,8 +380,19 @@ void SolutionRollbackInfo::rollback(Solution& S)
         S.implied_splits.resize(*n_old_implied_splits);
     }
 
-    for(int i=(int)merge_rollback_info.size()-1; i >= 0; i--)
-        merge_rollback_info[i].unmerge(S);
+    if (n_orig_components and *n_orig_components == 0)
+    {
+        S.components.clear();
+
+        // If we are just going to _delete_ S later on, then this is a waste of time.
+        for(auto& c: S.component_for_index)
+            c = nullptr;
+
+        return;
+    }
+    else
+        for(int i=(int)merge_rollback_info.size()-1; i >= 0; i--)
+            merge_rollback_info[i].unmerge(S);
 
     // NOTE: Some components are created during merging that are
     // (i) are not original components, and also
