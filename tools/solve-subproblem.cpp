@@ -509,12 +509,13 @@ void append(vector<T>& v1, const vector<T>& v2)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info)
+component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool has_initial_components)
 {
     if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
 
-    merge_rollback_info.push_back({c1, c2, c2->elements.begin(), c1->solution});
+    if (has_initial_components)
+        merge_rollback_info.push_back({c1, c2, c2->elements.begin(), c1->solution});
 
     for(int i: c2->elements)
         component_for_index[i] = c1;
@@ -540,9 +541,10 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info)
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool has_initial_components)
 {
-    merge_rollback_info.push_back({c1, nullptr, {}, c1->solution});
+    if (has_initial_components)
+        merge_rollback_info.push_back({c1, nullptr, {}, c1->solution});
 
     component_for_index[index2] = c1;
     c1->elements.push_back(index2);
@@ -729,6 +731,8 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     auto& rollback_info = solution->rollback_info();
     solution->rollback_info().n_orig_components = solution->components.size();
 
+    bool has_initial_components = not solution->components.empty();
+
     auto merge = [&](auto& group)
         {
             component_ref split_comp = nullptr;
@@ -743,14 +747,14 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
                     {
                         components.push_back(std::make_unique<component_t>());
                         taxon_comp = components.back().get();
-                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info);
+                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info, has_initial_components);
                     }
                     split_comp = taxon_comp;
                 }
                 else if (not taxon_comp)
-                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info);
+                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info, has_initial_components);
                 else if (split_comp != taxon_comp)
-                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info);
+                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info, has_initial_components);
             }
         };
 
