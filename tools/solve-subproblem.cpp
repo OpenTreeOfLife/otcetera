@@ -602,7 +602,7 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    // 1. If we found a solution to THIS exact problem then we can just re-use it.
+    // 0. If we found a solution to THIS exact problem then we can just re-use it.
     if (sub_solutions.size() == 1 and sub_solutions[0]->taxa.size() == solution->taxa.size())
     {
         auto prev_solution = sub_solutions[0];
@@ -621,6 +621,11 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
         // So do NOT return yet.
     }
 
+    // --- After this point, we have chosen which solution object we are working on --- //
+
+    // 1. Record the number of original implied splits.
+    solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
+
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
@@ -634,8 +639,6 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
         assert(indices[k] == -1);
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
-
-    solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
 
     // 4. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(int k = new_splits.size()-1; k >= 0; k--)
