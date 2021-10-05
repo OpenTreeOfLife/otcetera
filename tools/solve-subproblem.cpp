@@ -296,6 +296,8 @@ struct Solution
 
     optional<SolutionRollbackInfo> rollback_info_;
 
+    bool bad = false;
+
     bool has_rollback_info() const {return (bool)rollback_info_;}
 
     void clear_rollback_info() {rollback_info_.reset();}
@@ -374,6 +376,15 @@ void MergeRollbackInfo::unmerge(Solution& S)
 
 void SolutionRollbackInfo::rollback(Solution& S)
 {
+    // This is a newly created solution that is not on the top level.
+    // Therefore, we are going to throw it away.
+    // So don't spend time clearing it.
+    if (n_old_implied_splits and *n_old_implied_splits == 0)
+    {
+        S.bad = true;
+        return;
+    }
+
     if (n_old_implied_splits)
     {
         assert(*n_old_implied_splits <= S.implied_splits.size());
@@ -602,6 +613,8 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
+    assert(not solution->bad);
+
     // 0. If we found a solution to THIS exact problem then we can just re-use it.
     if (sub_solutions.size() == 1 and sub_solutions[0]->taxa.size() == solution->taxa.size())
     {
@@ -717,6 +730,8 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
 
 bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
+    assert(not solution->bad);
+
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
@@ -734,7 +749,13 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     auto& rollback_info = solution->rollback_info();
     solution->rollback_info().n_orig_components = solution->components.size();
 
+    bool top_level = not rollback_info.n_old_implied_splits;
+
+    bool new_and_not_top_level = not top_level and *rollback_info.n_old_implied_splits == 0;
+
     bool has_initial_components = not solution->components.empty();
+
+    bool record_component_merges = (not new_and_not_top_level) and has_initial_components;
 
     auto merge = [&](auto& group)
         {
@@ -750,14 +771,14 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
                     {
                         components.push_back(std::make_unique<component_t>());
                         taxon_comp = components.back().get();
-                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info, has_initial_components);
+                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info, record_component_merges);
                     }
                     split_comp = taxon_comp;
                 }
                 else if (not taxon_comp)
-                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info, has_initial_components);
+                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info, record_component_merges);
                 else if (split_comp != taxon_comp)
-                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info, has_initial_components);
+                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info, record_component_merges);
             }
         };
 
@@ -793,7 +814,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         rollback_info.rollback(*solution);
         solution->clear_rollback_info();
 
-        assert(solution->valid());
+        assert(solution->bad or solution->valid());
 
         return false;
     }
