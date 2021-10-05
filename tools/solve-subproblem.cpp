@@ -509,12 +509,12 @@ void append(vector<T>& v1, const vector<T>& v2)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool has_initial_components)
+component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool record_component_mergers)
 {
     if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
 
-    if (has_initial_components)
+    if (record_component_mergers)
         merge_rollback_info.push_back({c1, c2, c2->elements.begin(), c1->solution});
 
     for(int i: c2->elements)
@@ -541,9 +541,9 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool has_initial_components)
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool record_component_mergers)
 {
-    if (has_initial_components)
+    if (record_component_mergers)
         merge_rollback_info.push_back({c1, nullptr, {}, c1->solution});
 
     component_for_index[index2] = c1;
