@@ -2,8 +2,10 @@
 from dendropy.simulate import treesim
 from dendropy import TaxonNamespace, Node
 from dendropy.utility.error import SeedNodeDeletionException
-import sys
 from random import Random
+import tempfile
+import sys
+import os
 
 
 def tree_print(t):
@@ -15,11 +17,11 @@ def tree_print(t):
 def random_resolve(node, rng):
     if len(node._child_nodes) < 3:
         return
+    # Adapted from DendroPy code
     to_attach = rng.sample(node._child_nodes, 1)
     for child in to_attach:
         node.remove_child(child)
-    attachment_points = list(node._child_nodes)
-    attachment_points.append(node)
+    attachment_points = list(node._child_nodes) + [node]
     while len(to_attach) > 0:
         next_child = to_attach.pop()
         next_sib = rng.choice(attachment_points)
@@ -84,7 +86,8 @@ def gen_subprob(taxon_namespace,
     true_tree = treesim.birth_death_tree(birth_rate=1.0,
                                          death_rate=0,
                                          num_extant_tips=len(taxon_namespace),
-                                         taxon_namespace=taxon_namespace)
+                                         taxon_namespace=taxon_namespace,
+                                         rng=rng)
 
     err_stream.write('{} true-tree: {}'.format(out_fn, tree_print(true_tree)))
     for i in range(num_phylos):
@@ -140,24 +143,32 @@ def main():
     p.add_argument("--output-prefix",
                     type=str, 
                     default=None,
-                    help="If not specified, problems will be emitted to standard output. Otherwise sim #.tre will be appended to each prefix to generate the output file.")
+                    help="If not specified, problems will be emitted to standard output. Otherwise #-sim.tre will be appended to each prefix to generate the output file.")
+    p.add_argument("--output-suffix",
+                    type=str, 
+                    default=None,
+                    help="If specified, it alters the behavior of --output-prefix, such that this suffix is added after the rep number. If the suffix ends in / then the output file will be sim.tre . Otherwise -sim.tre will be appended to the suffix")
     p.add_argument("--seed",
                     type=int, 
                     default=None,
                     help="RNG seed (clock used if omitted)")
+    p.add_argument("--run-otc",
+                    action='store_true', 
+                    default=False,
+                    help="Run otc-solve-subproblem with all of the relevant options on the simulated output")
     args = p.parse_args()
     if args.num_phylos < 1:
-        sys.exit('--num-phylos must be greater than 0.')
+        sys.exit('--num-phylos must be greater than 0.\n')
     if args.num_otus < 3:
-        sys.exit('--num-otus must be greater than 2.')
+        sys.exit('--num-otus must be greater than 2.\n')
     if args.num_ecr < 0:
-        sys.exit('--num-ecr must not be negative.')
+        sys.exit('--num-ecr must not be negative.\n')
     if args.num_sim_reps < 1:
-        sys.exit('--num0-sim-reps must be positive.')
+        sys.exit('--num0-sim-reps must be positive.\n')
     if args.otu_inclusion_prob < 0.0 or args.otu_inclusion_prob > 1.0:
-        sys.exit('--otu-inclusion-prob must be a probability.')
+        sys.exit('--otu-inclusion-prob must be a probability.\n')
     if args.tax_edge_collapse_prob < 0.0 or args.tax_edge_collapse_prob > 1.0:
-        sys.exit('--tax-edge-collapse-prob must be a probability.')
+        sys.exit('--tax-edge-collapse-prob must be a probability.\n')
     
     rng = Random()
     if args.seed is not None:
@@ -170,13 +181,35 @@ def main():
     rng.seed(seed)
     sys.stderr.write("gen_subproblem.py: seed = {s}\n".format(s=seed))    
 
+    out_pref = args.output_prefix
+    run_otc = args.run_otc
+    if run_otc and out_pref is None:
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            do_sim(tmpdirname + '/', args, rng)
+    else:
+        do_sim(out_pref, args, rng)
+
+def do_sim(out_pref, args, rng):
     num_otus = args.num_otus
     tns = TaxonNamespace(["ott{}".format(i) for i in range(1, 1+num_otus)])
+    out_suff = args.output_suffix
+    if out_suff is not None:
+        if out_pref is None:
+            sys.exit('--output-suffix can only be used when --output-prefix is also used.\n')
+        final_suff = 'sim.tre' if out_suff.endswith('/') else '-sim.tre'
     for rep_index in range(args.num_sim_reps):
         rep_num = 1 + rep_index
         ope_f = False
-        if args.output_prefix is not None:
-            out_fp = args.output_prefix + rep_num + ".tre"
+        if out_pref is not None:
+            rs = str(rep_num)
+            if out_suff:
+                out_fp = out_pref + rs + out_suff + final_suff 
+            else:
+                out_fp = out_pref + rs + "-sim.tre"
+            sys.stderr.write('out_fp = {}\n'.format(out_fp))
+            par_dir = os.path.split(out_fp)[0]
+            if not os.path.isdir(par_dir):
+                os.makedirs(par_dir)
             out_stream = open(out_fp, mode="w")
             ope_f = True
         else:
@@ -192,7 +225,6 @@ def main():
         finally:
             if ope_f:
                 out_stream.close()
-
 
 
 if __name__ == '__main__':
