@@ -1564,7 +1564,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     if (g_do_timing) {
         auto end_timing = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> diff = end_timing - start_timing;
-        std::cerr << "timing " << std::setw(9) << diff.count() << " seconds.\n";
+        std::cerr << "timing " << std::setprecision(10) << diff.count() << " seconds.\n";
     }
     return tree;
 }

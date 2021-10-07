@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import sys
 import os
-
+import re
 
 def tree_print(t):
     return t.as_string(schema='newick',
@@ -114,6 +114,12 @@ def gen_subprob(taxon_namespace,
     out_stream.write(tree_print(tax))
     
 
+def gen_b_o_i():
+    for i in (0, 1):
+        for j in (0, 1):
+            for k in (0, 1):
+                yield (i, j, k)
+
 def main():
     import argparse
     p = argparse.ArgumentParser(description="Simulator of OpenTree synth subproblems.")
@@ -194,10 +200,8 @@ def main():
             ope_sum = True
         if not sum_existed:
             columns = ["num_otus", "num_phylos", "rep_num", "seed", "num_ecr", "inc_prob", "collapse_prob"]
-            for i in (0, 1):
-                for j in (0, 1):
-                    for k in (0, 1):
-                        columns.append('batch{i}oracl{j}incre{k}'.format(i=i, j=j, k=k))
+            for i, j, k in gen_b_o_i():
+                columns.append('batch{i}oracl{j}incre{k}'.format(i=i, j=j, k=k))
             headers = '\t'.join(columns)
             sum_stream.write('{}\n'.format(headers))
     try:
@@ -218,8 +222,28 @@ def open_fp(out_fp, mode):
         os.makedirs(par_dir)
     return open(out_fp, mode=mode), existed
 
+timing_pat = re.compile(r'^timing +(.+) +seconds.$')
 def time_otc_runs(inp_fp):
-    return range(8)
+    invoc_pref = ["otc-solve-subproblem", "-m", inp_fp]
+    time_list = []
+    for b, o, i in gen_b_o_i():
+        opts = ['--batching={}'.format(b),
+                '--oracle={}'.format(o),
+                '--incremental={}'.format(i)]
+        invoc = invoc_pref + opts
+        rp = subprocess.run(invoc, capture_output=True)
+        timing_float = None
+        for line in rp.stderr.decode('utf-8').split('\n'):
+            m = timing_pat.match(line)
+            if m:
+                timing_float = m.group(1)
+                break
+            #else:
+            #    print('line "{}" did not match'.format(line))
+        if timing_float is None:
+            raise RuntimeError('"timing ... seconds." not found in {} run.'.format(invoc))
+        time_list.append(timing_float)
+    return time_list
 
 def do_sim(out_pref, args, seed, sum_stream):
     rng = Random()
