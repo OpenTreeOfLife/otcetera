@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from dendropy.simulate import treesim
-from dendropy import TaxonNamespace
+from dendropy import TaxonNamespace, Node
 from dendropy.utility.error import SeedNodeDeletionException
 import sys
 from random import Random
@@ -11,10 +11,62 @@ def tree_print(t):
                        suppress_edge_lengths=True,
                        suppress_rooting=True)
 
-def do_ecr_move(tree, rng):
+
+def random_resolve(node, rng):
+    if len(node._child_nodes) < 3:
+        return
+    to_attach = rng.sample(node._child_nodes, 1)
+    for child in to_attach:
+        node.remove_child(child)
+    attachment_points = list(node._child_nodes)
+    attachment_points.append(node)
+    while len(to_attach) > 0:
+        next_child = to_attach.pop()
+        next_sib = rng.choice(attachment_points)
+        next_attachment = Node()
+        if next_sib is node:
+            cc = list(node._child_nodes)
+            node.add_child(next_attachment)
+            for c in cc:
+                node.remove_child(c)
+                next_attachment.add_child(c)
+            node.add_child(next_child)
+        else:
+            p = next_sib._parent_node
+            p.add_child(next_attachment)
+            p.remove_child(next_sib)
+            next_attachment.add_child(next_sib)
+            next_attachment.add_child(next_child)
+        next_attachment.edge.length = 0.0
+        attachment_points.append(next_attachment)
+        attachment_points.append(next_child)
+
+def get_internal_nodes(tree):
     is_internal_node = lambda x: bool((len(x.child_nodes()) > 0) and x is not tree.seed_node)
-    internal_nodes = [i for i in tree.postorder_node_iter(is_internal_node)]
-    print(internal_nodes)
+    return [i for i in tree.postorder_node_iter(is_internal_node)]
+    
+def do_ecr_move(tree, rng):
+    """Modifies a tree in place."""
+    internal_nodes = get_internal_nodes(tree)
+    if not internal_nodes:
+        return
+    rand_internal = rng.choice(internal_nodes)
+    int_edge = rand_internal.edge
+    par = int_edge.tail_node
+    assert par is not rand_internal
+    assert int_edge.head_node is rand_internal
+    int_edge.collapse()
+    random_resolve(node=par, rng=rng)
+
+def add_error(tree, num_ecr, rng):
+    for j in range(num_ecr):
+        do_ecr_move(tree=tree, rng=rng)
+
+def collapse_some(tree, edge_collapse_prob, rng):
+    internal_nodes = get_internal_nodes(tree)
+    for nd in internal_nodes:
+        if rng.random() < edge_collapse_prob:
+            nd.edge.collapse()
 
 def gen_subprob(taxon_namespace,
                 num_phylos=1,
@@ -36,7 +88,7 @@ def gen_subprob(taxon_namespace,
 
     err_stream.write('{} true-tree: {}'.format(out_fn, tree_print(true_tree)))
     for i in range(num_phylos):
-        t = None:
+        t = None
         while t is None:
             try:
                 t = true_tree.extract_tree(node_filter_fn=lambda n: rng.random() < otu_inclusion_prob,
@@ -44,8 +96,7 @@ def gen_subprob(taxon_namespace,
                                            suppress_unifurcations=True)
             except SeedNodeDeletionException:
                 pass
-        for j in range(num_ecr):
-            do_ecr_move(tree=t, rng=rng)
+        add_error(t, num_ecr=num_ecr, rng=rng)
         if t.seed_node.is_leaf():
             r = tree_print(t).strip()
             assert not r.startswith('(')
@@ -54,6 +105,8 @@ def gen_subprob(taxon_namespace,
         else:
             out_stream.write(tree_print(t))
     tax = true_tree.extract_tree()
+    add_error(tax, num_ecr=num_ecr, rng=rng)
+    collapse_some(tax, edge_collapse_prob=tax_edge_collapse_prob, rng=rng)
     out_stream.write(tree_print(tax))
     
 
