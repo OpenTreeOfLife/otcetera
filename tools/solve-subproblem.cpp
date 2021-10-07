@@ -2,6 +2,9 @@
 #include <set>
 #include <list>
 #include <iterator>
+#include <numeric>
+#include <chrono>
+#include <iomanip>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 
 #include "otc/otcli.h"
@@ -40,6 +43,8 @@ typedef TreeMappedWithSplits Tree_t;
 typedef Tree_t::node_type node_t;
 
 static vector<int> indices;
+bool g_do_timing = false;
+
 
 int depth(const Tree_t::node_type* nd)
 {
@@ -191,7 +196,8 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("synthesize-taxonomy,T","Make unresolved taxonomy from input tips.")
         ("allow-no-ids,a", "Allow problems w/o OTT ids")
         ("standardize,S", "Write out a standardized subproblem and exit.")
-        ;
+        ("time,m", "Report time taken to standard error.")
+         ;
 
     options_description visible;
     visible.add(output).add(strategies).add(other).add(otc::standard_options());
@@ -1407,7 +1413,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     bool batching = args["batching"].as<bool>();
     bool oracle = args["oracle"].as<bool>();
     bool incremental = args["incremental"].as<bool>();
-
+    auto start_timing = std::chrono::high_resolution_clock::now();
+        
     // 1. Standardize names to 0..n-1 for this subproblem
     const auto& taxonomy = trees.back();
     auto all_leaves = taxonomy->get_root()->get_data().des_ids;
@@ -1523,7 +1530,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 add_splits_if_consistent_batch(splits2,j,1);
         }
 
-        LOG(INFO)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
+        LOG(DEBUG)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
     }
 
     vector<const_node_type<Tree_t>*> compatible_taxa;
@@ -1554,6 +1561,11 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     compute_depth(*taxonomy);
     add_root_and_tip_names(*tree, *taxonomy);
     add_names(*tree, compatible_taxa);
+    if (g_do_timing) {
+        auto end_timing = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = end_timing - start_timing;
+        std::cerr << "timing " << std::setw(9) << diff.count() << " seconds.\n";
+    }
     return tree;
 }
 
@@ -1641,6 +1653,8 @@ int main(int argc, char *argv[])
         bool synthesize_taxonomy = (bool)args.count("synthesize-taxonomy");
         bool cladeTips = not (bool)args.count("no-higher-tips");
         bool verbose = (bool)args.count("verbose");
+        bool benchmark = (bool)args.count("time");
+        g_do_timing = benchmark;
         bool writeStandardized = (bool)args.count("standardize");
         if (writeStandardized) {
             rules.set_ott_ids = false;

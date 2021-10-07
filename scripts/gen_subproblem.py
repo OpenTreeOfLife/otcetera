@@ -1,18 +1,61 @@
 #!/usr/bin/env python3
 from dendropy.simulate import treesim
+from dendropy import TaxonNamespace
+from dendropy.utility.error import SeedNodeDeletionException
 import sys
 from random import Random
 
-def gen_subprob(num_phylos=1,
-                num_otus=4,
+
+def tree_print(t):
+    return t.as_string(schema='newick',
+                       suppress_edge_lengths=True,
+                       suppress_rooting=True)
+
+def do_ecr_move(tree, rng):
+    is_internal_node = lambda x: bool((len(x.child_nodes()) > 0) and x is not tree.seed_node)
+    internal_nodes = [i for i in tree.postorder_node_iter(is_internal_node)]
+    print(internal_nodes)
+
+def gen_subprob(taxon_namespace,
+                num_phylos=1,
                 num_ecr=1,
                 otu_inclusion_prob=0.5,
                 tax_edge_collapse_prob=1.0,
                 out_stream=None,
+                err_stream=None,
                 rng=None):
     if out_stream is None:
         out_stream = sys.stdout
-    out_stream.write("hi\n")
+    if err_stream is None:
+        err_stream = sys.stderr
+    out_fn = out_stream.name    
+    true_tree = treesim.birth_death_tree(birth_rate=1.0,
+                                         death_rate=0,
+                                         num_extant_tips=len(taxon_namespace),
+                                         taxon_namespace=taxon_namespace)
+
+    err_stream.write('{} true-tree: {}'.format(out_fn, tree_print(true_tree)))
+    for i in range(num_phylos):
+        t = None:
+        while t is None:
+            try:
+                t = true_tree.extract_tree(node_filter_fn=lambda n: rng.random() < otu_inclusion_prob,
+                                           is_apply_filter_to_internal_nodes=False,
+                                           suppress_unifurcations=True)
+            except SeedNodeDeletionException:
+                pass
+        for j in range(num_ecr):
+            do_ecr_move(tree=t, rng=rng)
+        if t.seed_node.is_leaf():
+            r = tree_print(t).strip()
+            assert not r.startswith('(')
+            assert r.endswith(';')
+            out_stream.write('({});\n'.format(r[:-1]))
+        else:
+            out_stream.write(tree_print(t))
+    tax = true_tree.extract_tree()
+    out_stream.write(tree_print(tax))
+    
 
 def main():
     import argparse
@@ -74,6 +117,8 @@ def main():
     rng.seed(seed)
     sys.stderr.write("gen_subproblem.py: seed = {s}\n".format(s=seed))    
 
+    num_otus = args.num_otus
+    tns = TaxonNamespace(["ott{}".format(i) for i in range(1, 1+num_otus)])
     for rep_index in range(args.num_sim_reps):
         rep_num = 1 + rep_index
         ope_f = False
@@ -85,11 +130,11 @@ def main():
             out_stream = sys.stdout
         try:
             gen_subprob(num_phylos=args.num_phylos,
-                        num_otus=args.num_otus,
                         num_ecr=args.num_ecr,
                         otu_inclusion_prob=args.otu_inclusion_prob,
                         tax_edge_collapse_prob=args.tax_edge_collapse_prob,
                         out_stream=out_stream, 
+                        taxon_namespace=tns,
                         rng=rng)
         finally:
             if ope_f:
