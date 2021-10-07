@@ -218,7 +218,7 @@ def open_fp(out_fp, mode):
     existed = os.path.exists(out_fp)
     sys.stderr.write('Opening = {}\n'.format(out_fp))
     par_dir = os.path.split(out_fp)[0]
-    if not os.path.isdir(par_dir):
+    if par_dir and not os.path.isdir(par_dir):
         os.makedirs(par_dir)
     return open(out_fp, mode=mode), existed
 
