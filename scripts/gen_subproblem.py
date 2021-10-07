@@ -3,6 +3,7 @@ from dendropy.simulate import treesim
 from dendropy import TaxonNamespace, Node
 from dendropy.utility.error import SeedNodeDeletionException
 from random import Random
+import subprocess
 import tempfile
 import sys
 import os
@@ -156,6 +157,10 @@ def main():
                     action='store_true', 
                     default=False,
                     help="Run otc-solve-subproblem with all of the relevant options on the simulated output")
+    p.add_argument("--summary-out",
+                    type=str, 
+                    default=None,
+                    help="Only used if --run-otc is specified. Appends runtime summaries to this file.")
     args = p.parse_args()
     if args.num_phylos < 1:
         sys.exit('--num-phylos must be greater than 0.\n')
@@ -170,7 +175,6 @@ def main():
     if args.tax_edge_collapse_prob < 0.0 or args.tax_edge_collapse_prob > 1.0:
         sys.exit('--tax-edge-collapse-prob must be a probability.\n')
     
-    rng = Random()
     if args.seed is not None:
         if args.seed < 1:
             sys.exit('--seed must be positive')
@@ -178,25 +182,72 @@ def main():
     else:
         import time
         seed = time.monotonic_ns()
-    rng.seed(seed)
-    sys.stderr.write("gen_subproblem.py: seed = {s}\n".format(s=seed))    
-
+    
     out_pref = args.output_prefix
     run_otc = args.run_otc
-    if run_otc and out_pref is None:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            do_sim(tmpdirname + '/', args, rng)
-    else:
-        do_sim(out_pref, args, rng)
+    ope_sum = False
+    sum_stream = sys.stderr
+    if run_otc:    
+        sum_existed = False
+        if args.summary_out:
+            sum_stream, sum_existed = open_fp(args.summary_out, 'a')
+            ope_sum = True
+        if not sum_existed:
+            columns = ["num_otus", "num_phylos", "rep_num", "seed", "num_ecr", "inc_prob", "collapse_prob"]
+            for i in (0, 1):
+                for j in (0, 1):
+                    for k in (0, 1):
+                        columns.append('batch{i}oracl{j}incre{k}'.format(i=i, j=j, k=k))
+            headers = '\t'.join(columns)
+            sum_stream.write('{}\n'.format(headers))
+    try:
+        if run_otc and out_pref is None:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                do_sim(tmpdirname + '/', args, seed, sum_stream)
+        else:
+            do_sim(out_pref, args, seed, sum_stream)
+    finally:
+        if ope_sum:
+            sum_stream.close()
 
-def do_sim(out_pref, args, rng):
+def open_fp(out_fp, mode):
+    existed = os.path.exists(out_fp)
+    sys.stderr.write('Opening = {}\n'.format(out_fp))
+    par_dir = os.path.split(out_fp)[0]
+    if not os.path.isdir(par_dir):
+        os.makedirs(par_dir)
+    return open(out_fp, mode=mode), existed
+
+def time_otc_runs(inp_fp):
+    return range(8)
+
+def do_sim(out_pref, args, seed, sum_stream):
+    rng = Random()
+    rng.seed(seed)
+    sys.stderr.write("gen_subproblem.py: seed = {s}\n".format(s=seed))
     num_otus = args.num_otus
+    num_ecr =args.num_ecr
+    num_phylos =args.num_phylos
+    otu_inclusion_prob = args.otu_inclusion_prob
+    tax_edge_collapse_prob = args.tax_edge_collapse_prob
     tns = TaxonNamespace(["ott{}".format(i) for i in range(1, 1+num_otus)])
+    run_otc = args.run_otc
+    if run_otc:
+        sum_row_temp = [str(num_otus),
+                        str(num_phylos),
+                        "",
+                        str(seed),
+                        str(num_ecr), 
+                        str(otu_inclusion_prob),
+                        str(tax_edge_collapse_prob)]
+        rep_num_idx = 2
+        seed_idx = 3
     out_suff = args.output_suffix
     if out_suff is not None:
         if out_pref is None:
             sys.exit('--output-suffix can only be used when --output-prefix is also used.\n')
         final_suff = 'sim.tre' if out_suff.endswith('/') else '-sim.tre'
+    out_fp = None
     for rep_index in range(args.num_sim_reps):
         rep_num = 1 + rep_index
         ope_f = False
@@ -206,26 +257,29 @@ def do_sim(out_pref, args, rng):
                 out_fp = out_pref + rs + out_suff + final_suff 
             else:
                 out_fp = out_pref + rs + "-sim.tre"
-            sys.stderr.write('out_fp = {}\n'.format(out_fp))
-            par_dir = os.path.split(out_fp)[0]
-            if not os.path.isdir(par_dir):
-                os.makedirs(par_dir)
-            out_stream = open(out_fp, mode="w")
+            out_stream = open_fp(out_fp, 'w')[0]
             ope_f = True
         else:
             out_stream = sys.stdout
         try:
-            gen_subprob(num_phylos=args.num_phylos,
-                        num_ecr=args.num_ecr,
-                        otu_inclusion_prob=args.otu_inclusion_prob,
-                        tax_edge_collapse_prob=args.tax_edge_collapse_prob,
+            gen_subprob(num_phylos=num_phylos,
+                        num_ecr=num_ecr,
+                        otu_inclusion_prob=otu_inclusion_prob,
+                        tax_edge_collapse_prob=tax_edge_collapse_prob,
                         out_stream=out_stream, 
                         taxon_namespace=tns,
                         rng=rng)
         finally:
             if ope_f:
                 out_stream.close()
-
+        if run_otc:
+            assert out_fp is not None
+            times = time_otc_runs(out_fp)
+            sum_row_temp[rep_num_idx] = str(rep_num)
+            tr = sum_row_temp + [str(i) for i in times]
+            sum_stream.write('{}\n'.format('\t'.join(tr)))
+            sum_row_temp[seed_idx] = ''
+        
 
 if __name__ == '__main__':
     main()
