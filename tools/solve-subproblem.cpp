@@ -472,11 +472,13 @@ void Solution::finalize(bool success)
     // If there is rollback info, then BUILD found multiple components and
     // recursively called into the children.  So, we need to undo the effects
     // of that.
-    if (has_rollback_info())
+    if (descendant_has_rollback_info)
     {
         assert(not all_taxa_in_one_component());
         for(auto& component: components)
             component->solution->finalize(success);
+
+        descendant_has_rollback_info = false;
     }
 
     if (not success)
@@ -661,13 +663,8 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
 
     // --- After this point, we have chosen which solution object we are working on --- //
 
-    // 1. Record the number of original implied splits.
-    if (solution->implied_splits.empty() and sub_solutions.empty())
-    {
-        // This problem and all of its children must be new!
-        // So, don't initialize the rollback info.
-    }
-    else
+    // 1. Record the number of original implied splits if we are modifying an old solution.
+    if (not solution->implied_splits.empty())
     {
         solution->init_rollback_info();
         solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
@@ -895,6 +892,10 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     // 8. Recursively solve the sub-problems of the partition components
+
+    // This should initially be false.
+    assert(not solution->descendant_has_rollback_info);
+
     optional<int> failing_component;
     for(int i=0;i<components.size();i++)
     {
@@ -918,6 +919,9 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         if (not BUILD_check_implied_and_continue(component->solution, comp_new_splits, comp_sub_solutions))
             failing_component = i;
 
+        if (component->solution->has_rollback_info() or component->solution->descendant_has_rollback_info)
+            solution->descendant_has_rollback_info = true;
+
         assert(component->old_solutions.empty());
         assert(component->solution);
     }
@@ -925,8 +929,12 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     if (failing_component)
     {
         // We only do this to the components that SUCCEEDED.
-        for(int i=0; i < *failing_component; i++)
-            components[i]->solution->finalize(false);
+        if (solution->descendant_has_rollback_info)
+        {
+            for(int i=0; i < *failing_component; i++)
+                components[i]->solution->finalize(false);
+            solution->descendant_has_rollback_info = false;
+        }
 
         // The component that failed should have cleaned itself up.
 
