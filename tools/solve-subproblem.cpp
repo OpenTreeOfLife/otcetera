@@ -469,15 +469,15 @@ void SolutionRollbackInfo::rollback(Solution& S)
 
 void Solution::finalize(bool success)
 {
-    // Avoid traversing parts of the tree that we didn't visit this round.
-    if (not has_rollback_info()) return;
-
     // If there is rollback info, then BUILD found multiple components and
     // recursively called into the children.  So, we need to undo the effects
     // of that.
-    assert(not all_taxa_in_one_component());
-    for(auto& component: components)
-        component->solution->finalize(success);
+    if (has_rollback_info())
+    {
+        assert(not all_taxa_in_one_component());
+        for(auto& component: components)
+            component->solution->finalize(success);
+    }
 
     if (not success)
         try_rollback();
