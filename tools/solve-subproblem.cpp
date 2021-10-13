@@ -297,8 +297,6 @@ struct Solution
     bool descendant_has_rollback_info = false;
     optional<SolutionRollbackInfo> rollback_info_;
 
-    bool bad = false;
-
     bool has_rollback_info() const {return (bool)rollback_info_;}
 
     void init_rollback_info() {rollback_info_ = SolutionRollbackInfo();}
@@ -318,7 +316,7 @@ struct Solution
             rollback_info().rollback(*this);
             clear_rollback_info();
 
-            assert(bad or valid());
+            assert(valid());
         }
     }
 
@@ -401,15 +399,6 @@ void MergeRollbackInfo::unmerge(Solution& S)
 
 void SolutionRollbackInfo::rollback(Solution& S)
 {
-    // This is a newly created solution that is not on the top level.
-    // Therefore, we are going to throw it away.
-    // So don't spend time clearing it.
-    if (n_old_implied_splits and *n_old_implied_splits == 0)
-    {
-        S.bad = true;
-        return;
-    }
-
     if (n_old_implied_splits)
     {
         assert(*n_old_implied_splits <= S.implied_splits.size());
@@ -640,8 +629,6 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    assert(not solution->bad);
-
     // 0. If we found a solution to THIS exact problem then we can just re-use it.
     if (sub_solutions.size() == 1 and sub_solutions[0]->taxa.size() == solution->taxa.size())
     {
@@ -761,8 +748,6 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
 
 bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
-    assert(not solution->bad);
-
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
