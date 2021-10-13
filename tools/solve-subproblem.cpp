@@ -354,6 +354,10 @@ struct Solution
 
 bool Solution::valid() const
 {
+    if (descendant_has_rollback_info) return false;
+
+    if (has_rollback_info()) return false;
+
     for(auto& component: components)
     {
         if (not component->solution) return false;
