@@ -300,12 +300,13 @@ struct Solution
 
     bool has_rollback_info() const {return (bool)rollback_info_;}
 
+    void init_rollback_info() {rollback_info_ = SolutionRollbackInfo();}
+
     void clear_rollback_info() {rollback_info_.reset();}
 
     SolutionRollbackInfo& rollback_info()
     {
-        if (not rollback_info_)
-            rollback_info_ = SolutionRollbackInfo();
+        assert(has_rollback_info());
         return *rollback_info_;
     }
 
@@ -637,6 +638,7 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
     // --- After this point, we have chosen which solution object we are working on --- //
 
     // 1. Record the number of original implied splits.
+    solution->init_rollback_info();
     solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
 
     auto& taxa = solution->taxa;
@@ -899,6 +901,7 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;
 
+    solution->init_rollback_info();
     bool ok =  BUILD_partition_taxa_and_solve_components(solution, new_splits2, sub_solutions);
     solution->finalize(ok);
     return ok;
