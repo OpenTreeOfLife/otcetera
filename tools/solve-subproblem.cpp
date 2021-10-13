@@ -480,7 +480,7 @@ void Solution::finalize(bool success)
         component->solution->finalize(success);
 
     if (not success)
-        rollback_info().rollback(*this);
+        try_rollback();
 
     clear_rollback_info();
 }
