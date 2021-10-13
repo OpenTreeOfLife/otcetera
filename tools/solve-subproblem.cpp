@@ -294,6 +294,7 @@ struct Solution
     vector< component_ref > component_for_index;
     vector< shared_ptr<component_t> > components;
 
+    bool descendant_has_rollback_info = false;
     optional<SolutionRollbackInfo> rollback_info_;
 
     bool bad = false;
