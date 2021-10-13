@@ -946,6 +946,9 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
     solution->init_rollback_info();
     bool ok =  BUILD_partition_taxa_and_solve_components(solution, new_splits2, sub_solutions);
     solution->finalize(ok);
+
+    assert(solution->all_descendants_valid());
+
     return ok;
 }
 
