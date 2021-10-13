@@ -310,6 +310,17 @@ struct Solution
         return *rollback_info_;
     }
 
+    void try_rollback()
+    {
+        if (has_rollback_info())
+        {
+            rollback_info().rollback(*this);
+            clear_rollback_info();
+
+            assert(bad or valid());
+        }
+    }
+
     bool all_taxa_in_one_component() const
     {
         return component_for_index[0] and component_for_index[0]->elements.size() == taxa.size();
@@ -521,13 +532,13 @@ void append(vector<T>& v1, const vector<T>& v2)
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool record_component_mergers)
+component_ref merge_components(component_ref c1, component_ref c2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>* const merge_rollback_info)
 {
     if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
 
-    if (record_component_mergers)
-        merge_rollback_info.push_back({c1, c2, c2->elements.begin(), c1->solution});
+    if (merge_rollback_info)
+        merge_rollback_info->push_back({c1, c2, c2->elements.begin(), c1->solution});
 
     for(int i: c2->elements)
         component_for_index[i] = c1;
@@ -553,10 +564,10 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 }
 
 /// Merge components c1 and c2 and return the component name that survived
-void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool record_component_mergers)
+void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>* const merge_rollback_info)
 {
-    if (record_component_mergers)
-        merge_rollback_info.push_back({c1, nullptr, {}, c1->solution});
+    if (merge_rollback_info)
+        merge_rollback_info->push_back({c1, nullptr, {}, c1->solution});
 
     component_for_index[index2] = c1;
     c1->elements.push_back(index2);
@@ -638,8 +649,16 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
     // --- After this point, we have chosen which solution object we are working on --- //
 
     // 1. Record the number of original implied splits.
-    solution->init_rollback_info();
-    solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
+    if (solution->implied_splits.empty() and sub_solutions.empty())
+    {
+        // This problem and all of its children must be new!
+        // So, don't initialize the rollback info.
+    }
+    else
+    {
+        solution->init_rollback_info();
+        solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
+    }
 
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
@@ -748,16 +767,17 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     for (int i=0;i<taxa.size();i++)
         indices[taxa[i]] = i;
 
-    auto& rollback_info = solution->rollback_info();
-    solution->rollback_info().n_orig_components = solution->components.size();
+    vector<MergeRollbackInfo>* merge_rollback_info = nullptr;
 
-    bool top_level = not rollback_info.n_old_implied_splits;
+    if (solution->has_rollback_info())
+    {
+        solution->rollback_info().n_orig_components = solution->components.size();
 
-    bool new_and_not_top_level = not top_level and *rollback_info.n_old_implied_splits == 0;
-
-    bool has_initial_components = not solution->components.empty();
-
-    bool record_component_merges = (not new_and_not_top_level) and has_initial_components;
+        // Leave this as a null pointer if we can just destroy all the components instead of recording
+        // rollback operations.
+        if (not solution->components.empty())
+            merge_rollback_info = &solution->rollback_info().merge_rollback_info;
+    }
 
     auto merge = [&](auto& group)
         {
@@ -773,14 +793,14 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
                     {
                         components.push_back(std::make_unique<component_t>());
                         taxon_comp = components.back().get();
-                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info, record_component_merges);
+                        merge_component_with_trivial(taxon_comp, index, component_for_index, merge_rollback_info);
                     }
                     split_comp = taxon_comp;
                 }
                 else if (not taxon_comp)
-                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info, record_component_merges);
+                    merge_component_with_trivial(split_comp, index, component_for_index, merge_rollback_info);
                 else if (split_comp != taxon_comp)
-                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info, record_component_merges);
+                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, merge_rollback_info);
             }
         };
 
@@ -795,13 +815,27 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     // 4. Pack the components
-    rollback_info.old_components = vector<shared_ptr<component_t>>();
-    auto& packed_components = *rollback_info.old_components;
-    assert(packed_components.empty());
-    for(auto& component: components)
-        if (not component->elements.empty())
-            packed_components.push_back( component );
-    std::swap(components, packed_components);
+    {
+        // 4a. Pack the components
+        vector<shared_ptr<component_t>> packed_components;
+        for(auto& component: components)
+            if (not component->elements.empty())
+                packed_components.push_back( component );
+
+        // 4b. Optionally save the original components in the rollback info
+        if (solution->has_rollback_info())
+        {
+            auto& R = solution->rollback_info();
+            assert(not R.old_components);
+            R.old_components = std::move(components);
+        }
+
+        // 4c. Move the packed components into the active variable.
+        components = std::move(packed_components);
+
+        // 4d. End of scope destroys packed_components variable.
+    }
+
 
     // 5. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (solution->all_taxa_in_one_component())
@@ -813,10 +847,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         // Doing a manual rollback and clearing the rollback info here
         // allows us to assume that components[i]->solution points to a valid
         // object if there is rollback info.
-        rollback_info.rollback(*solution);
-        solution->clear_rollback_info();
-
-        assert(solution->bad or solution->valid());
+        solution->try_rollback();
 
         return false;
     }
@@ -888,9 +919,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
 
         // The components AFTER the one that succeeded... don't need to be cleaned up?
 
-        rollback_info.rollback(*solution);
-
-        solution->clear_rollback_info();
+        solution->try_rollback();
     }
 
     return (not failing_component);
