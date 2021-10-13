@@ -337,6 +337,7 @@ struct Solution
     unique_ptr<Tree_t> get_tree() const;
 
     bool valid() const;
+    bool all_descendants_valid() const;
 
     Solution& operator=(const Solution&) = default;
     Solution& operator=(Solution&&) = default;
@@ -352,6 +353,17 @@ struct Solution
     {}
 };
 
+bool Solution::all_descendants_valid() const
+{
+    if (not valid()) return false;
+
+    for(auto& component: components)
+        if (not component->solution->all_descendants_valid())
+            return false;
+
+    return true;
+}
+
 bool Solution::valid() const
 {
     if (descendant_has_rollback_info) return false;
@@ -359,11 +371,7 @@ bool Solution::valid() const
     if (has_rollback_info()) return false;
 
     for(auto& component: components)
-    {
         if (not component->solution) return false;
-
-        if (not component->solution->valid()) return false;
-    }
 
     return true;
 }
