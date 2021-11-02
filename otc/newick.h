@@ -93,16 +93,22 @@ inline std::unique_ptr<T> tree_from_newick_string(const std::string& s) {
 }
 
 template <typename T>
+inline std::unique_ptr<T> first_newick_tree_from_stream(std::istream& inp, const ParsingRules& Rules, const std::string& name)
+{
+    LOG(INFO) << "reading \"" << name << "\"...";
+    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(name));
+    FilePosStruct pos(filenamePtr);
+    return read_next_newick<T>(inp, pos, Rules);
+}
+
+template <typename T>
 inline std::unique_ptr<T> first_newick_tree_from_file(const std::string& filename, const ParsingRules& Rules)
 {
     std::ifstream inp;
     if (!open_utf8_file(filename, inp)) {
         throw OTCError()<<"Could not open \""<<filename<<"\"";
     }
-    LOG(INFO) << "reading \"" << filename << "\"...";
-    ConstStrPtr filenamePtr = ConstStrPtr(new std::string(filename));
-    FilePosStruct pos(filenamePtr);
-    return read_next_newick<T>(inp, pos, Rules);
+    return first_newick_tree_from_stream<T>(inp, Rules, filename);
 }
 
 template <typename T>
@@ -111,6 +117,14 @@ inline std::unique_ptr<T> first_newick_tree_from_file(const std::string& filenam
     ParsingRules rules;
     rules.require_ott_ids = false;
     return first_newick_tree_from_file<T>(filename, rules);
+}
+
+template <typename T>
+inline std::unique_ptr<T> first_newick_tree_from_stream(std::istream& inp, const std::string& name)
+{
+    ParsingRules rules;
+    rules.require_ott_ids = false;
+    return first_newick_tree_from_stream<T>(inp, rules, name);
 }
 
 }// namespace otc
