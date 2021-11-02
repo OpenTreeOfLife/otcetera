@@ -62,18 +62,18 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     options_description output("Output options");
     output.add_options()
-        ("high-degree-nodes", value<long>(), "Show the top <arg> high-degree nodes.")
+        ("high-degree-nodes", value<long>(), "Show the top <arg> high-degree nodes")
         ("degree-of",value<OttId>(), "Show the degree of node <arg>")
         ("children-of",value<OttId>(), "List the children of node <arg>")
         ("parent-of",value<OttId>(), "List the parent of node <arg>")
-        ("count-nodes","Show the number of nodes")
-        ("count-leaves","Show the number of leaves")
-        ("show-leaves","Show the number of leaves")
-        ("show-internal","Show the number of leaves")
+        ("count-nodes","Show number of nodes")
+        ("count-leaves","Show number of leaves")
+        ("show-leaves","Show leaf names")
+        ("show-internal","Show internal node names")
         ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
         ("lost-taxa-vs",value<string>(),"Taxonomy tree to compare for lost taxa.")
         ("standardize","Perform a rotation to a standard form.")
-        ("indented-table","print number of leaves for each internal node")
+        ("indented-table","Print number of leaves for each internal node")
         ;
 
     options_description visible;
