@@ -8,6 +8,7 @@
 
 #include "otc/error.h"
 #include "otc/tree.h"
+#include "otc/newick.h"
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
@@ -156,12 +157,15 @@ void indented_table_of_node_counts(std::ostream & out, const Tree_t & tree) {
 }
 
 unique_ptr<Tree_t> get_tree(const string& filename) {
-    vector<unique_ptr<Tree_t>> trees;
-    std::function<bool(unique_ptr<Tree_t>)> a = [&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;};
     ParsingRules rules;
     rules.require_ott_ids = false;
-    otc::process_trees(filename,rules,a);//[&](unique_ptr<Tree_t> t) {trees.push_back(std::move(t));return true;});
-    return std::move(trees[0]);
+    return first_newick_tree_from_file<Tree_t>(filename, rules);
+}
+
+unique_ptr<Tree_t> get_tree(std::istream& inp, const std::string& name) {
+    ParsingRules rules;
+    rules.require_ott_ids = false;
+    return first_newick_tree_from_stream<Tree_t>(inp, rules, name);
 }
 
 Tree_t::node_type* find_node_by_ott_id(Tree_t& tree, OttId root_ott_id, bool throw_if_not_found=true) {
@@ -348,10 +352,16 @@ int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);
-        if (not args.count("tree")) {
-            throw OTCError() << "Please specify the tree to operate on!";
+
+        unique_ptr<Tree_t> tree;
+        if (args.count("tree"))
+        {
+            auto filename = args["tree"].as<string>();
+            tree = get_tree(filename);
         }
-        auto tree = get_tree(args["tree"].as<string>());
+        else
+            tree = get_tree(std::cin, "STDIN");
+
         if (args.count("root")) {
             OttId root = args["root"].as<OttId>();
             tree = truncate_to_subtree_by_ott_id(std::move(tree), root);
