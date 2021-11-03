@@ -242,6 +242,7 @@ struct Solution;
 
 struct component_t
 {
+    // This is a list of taxa, identified by their index.
     list<int> elements;
 
     shared_ptr<Solution> solution;
@@ -249,12 +250,13 @@ struct component_t
     vector<ConstRSplit> new_splits;
     vector<shared_ptr<Solution>> old_solutions;
 
-    vector<int> get_taxa(const std::vector<int>& other_taxa) const
+    // Convert the list of taxon INDICES in `elements` to a list of taxon NAMES.
+    vector<int> get_taxa(const std::vector<int>& index_to_taxon) const
     {
         vector<int> taxa;
         taxa.reserve(elements.size());
         for(auto index: elements)
-            taxa.push_back(other_taxa[index]);
+            taxa.push_back(index_to_taxon[index]);
         return taxa;
     }
 };
@@ -346,8 +348,8 @@ struct Solution
     Solution(const vector<int>& t)
         :taxa(t), component_for_index(taxa.size())
     {}
-    Solution(const component_t& c, const std::vector<int> other_taxa)
-        :Solution(c.get_taxa(other_taxa))
+    Solution(const component_t& c, const std::vector<int> index_to_taxon)
+        :Solution(c.get_taxa(index_to_taxon))
     {}
 };
 
