@@ -778,6 +778,8 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
 
     auto merge = [&](auto& group)
         {
+            // Avoid creating components with 1 element!
+            assert(group.size() >= 2);
             component_ref split_comp = nullptr;
             for(int taxon: group)
             {
