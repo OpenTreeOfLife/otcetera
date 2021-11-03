@@ -1225,10 +1225,14 @@ splits_for_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >
     const auto leafTaxaIndices = remap(leafTaxa);
     for(auto nd: iter_pre(tree))
     {
-        if (not nd->is_tip() and nd != root)
+        // The include group should have at least two elements.
+        if (not nd->is_tip() and not nd->is_outdegree_one_node())
         {
             auto descendants = remap(nd->get_data().des_ids);
-            splits.push_back({nd,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
+
+            // The exclude group should be non-empty.
+            if (descendants.size() < leafTaxaIndices.size())
+                splits.push_back({nd,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
         }
     }
     return splits;
