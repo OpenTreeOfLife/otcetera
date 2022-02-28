@@ -61,6 +61,29 @@ void prune_duplicate_ottids(Tree& tree) {
     }
 }
 
+template <typename Tree>
+std::optional<OttId> has_duplicate_ottids(Tree& tree) {
+    std::vector<typename Tree::node_type*> leaves;
+    for(auto leaf: iter_leaf(tree)) {
+        leaves.push_back(leaf);
+    }
+    std::map<OttId, typename Tree::node_type*> node_ptrs;
+    for(auto leaf: leaves) {
+        if (not leaf->has_ott_id()) {
+            continue;
+        }
+        auto id = leaf->get_ott_id();
+        // If the OTT id is new, then add the node as canonical representative of the OTT id
+        if (not node_ptrs.count(id)) {
+            node_ptrs.insert({id, leaf});
+        } else {
+            // Otherwise delete the non-canonical OTT id and its ancestors
+            return id;
+        }
+    }
+    return {};
+}
+
 }
 
 #endif
