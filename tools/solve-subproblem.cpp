@@ -1424,7 +1424,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
     // ids:    index -> id
     // id_map: id    -> index
-    auto [ids, id_map] = make_index_map(all_leaves);
+    auto [ids, id_map_] = make_index_map(all_leaves);
+    auto& id_map = id_map_;
 
     std::function< set<int>(const set<OttId>&) > remap = [&id_map](const set<OttId>& argIds) {return remap_ids(argIds, id_map);};
     vector<int> all_leaves_indices;
