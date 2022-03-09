@@ -29,7 +29,7 @@ jobs:
             buildtype: "release"
 
           - name: ubuntu-gcc-10
-            os: ubuntu-lates
+            os: ubuntu-latest
             compiler: gcc
             version: "10"
             buildtype: "release"
@@ -51,7 +51,7 @@ jobs:
 #
 
           - name: ubuntu-gcc-11-debugoptimized
-            os: ubuntu-lates
+            os: ubuntu-latest
             compiler: gcc
             version: "11"
             buildtype: "debugoptimized"
