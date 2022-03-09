@@ -128,7 +128,7 @@ jobs:
         git clone --recursive https://github.com/corvusoft/restbed.git
         mkdir restbed/build
         ( cd restbed/build ; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
-        echo "CPPFLAGS=-I${HOME}/local/include/corvusoft" >> $GITHUB_ENV
+        echo "CPPFLAGS=-I${HOME}/local/include" >> $GITHUB_ENV
         echo "LDFLAGS=-L${HOME}/local/lib -L${HOME}/local/library" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=${HOME}/local/lib:${HOME}/local/library:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
@@ -139,8 +139,9 @@ jobs:
           # Address sanitizer can't find its dylibs on OS X?
           ARGS="${ARGS} -Db_sanitize=${{ matrix.sanitize }}"
         fi
-        echo meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} -Dcpp_args='-g' ${ARGS}
-        meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} -Dcpp_args='-g' ${ARGS}
+        echo "CPPFLAGS=-g $CPPFLAGS" >> $GITHUB_ENV
+        echo meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
+        meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
 
     - name: Build otcetera
       run: |
