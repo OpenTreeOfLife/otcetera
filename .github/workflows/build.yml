@@ -131,6 +131,7 @@ jobs:
         echo "CPPFLAGS=-I${HOME}/local/include" >> $GITHUB_ENV
         echo "LDFLAGS=-L${HOME}/local/lib -L${HOME}/local/library" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=${HOME}/local/lib:${HOME}/local/library:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "DYLD_LIBRARY_PATH=${HOME}/local/lib:${HOME}/local/library:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Configure otcetera
       run: |
