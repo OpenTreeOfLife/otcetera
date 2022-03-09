@@ -99,14 +99,16 @@ std::pair<std::unique_ptr<Tree_Out_t>,std::unordered_map<Node_In_t*, non_const_n
 get_induced_tree_from_leaves_and_MRCA(const std::vector<Node_In_t*>& leaves,
                                       Node_In_t* MRCA)
 {
-    // 0. If there are no leaves, return an empty tree.
+
     std::unique_ptr<Tree_Out_t> induced_tree(new Tree_Out_t());
-    if (leaves.empty()) return {std::move(induced_tree),{}};
+    std::unordered_map<Node_In_t*, non_const_node_type<Tree_Out_t>*> to_induced_tree;
+
+    // 0. If there are no leaves, return an empty tree.
+    if (leaves.empty()) return {std::move(induced_tree), to_induced_tree};
 
     // 1. Find all nodes in the tree
     auto nodes = find_induced_nodes(leaves, MRCA);;
     // 2. Construct duplicate nodes for the induced tree, recording correspondence
-    std::unordered_map<Node_In_t*, non_const_node_type<Tree_Out_t>*> to_induced_tree;
     for(auto nd: nodes)
     {
         auto nd2 = induced_tree->create_node(nullptr);
