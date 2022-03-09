@@ -40,13 +40,15 @@ jobs:
             version: "11"
             buildtype: "release"
 
-          - name: ubuntu-gcc-11-sanitize
-            os: ubuntu-latest
-            compiler: gcc
-            version: "11"
-            buildtype: "release"
-            sanitize: "address"
-
+# To enable this, we'd probably need to add `export ASAN_OPTIONS=detect_odr_violation=0`.
+#
+#          - name: ubuntu-gcc-11-sanitize
+#            os: ubuntu-latest
+#            compiler: gcc
+#            version: "11"
+#            buildtype: "release"
+#            sanitize: "address"
+#
           - name: ubuntu-gcc-11-debugoptimized
             os: ubuntu-lates
             compiler: gcc
