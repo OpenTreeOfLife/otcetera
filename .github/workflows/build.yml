@@ -15,7 +15,7 @@ jobs:
         name: [ubuntu-gcc-9,
                ubuntu-gcc-10,
                ubuntu-gcc-11,
-               ubuntu-gcc-11-sanitize,
+#               ubuntu-gcc-11-sanitize,
                ubuntu-gcc-11-debugoptimized,
                ubuntu-clang-11,
 #               macos-xcode-12.5
@@ -49,6 +49,7 @@ jobs:
 #            buildtype: "release"
 #            sanitize: "address"
 #
+
           - name: ubuntu-gcc-11-debugoptimized
             os: ubuntu-lates
             compiler: gcc
