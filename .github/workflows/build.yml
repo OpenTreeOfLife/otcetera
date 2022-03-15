@@ -18,7 +18,7 @@ jobs:
 #               ubuntu-gcc-11-sanitize,
                ubuntu-gcc-11-debugoptimized,
                ubuntu-clang-11,
-#               macos-xcode-12.5
+               macos-xcode-12.5
                ]
 
         include:
@@ -65,11 +65,11 @@ jobs:
 # Currently we get "dyld: Library not loaded: @rpath/librestbed.4.dylib"
 # when attempting to run executables.
 #
-#          - name: macos-xcode-12.5
-#            os: macos-latest
-#            compiler: xcode
-#            version: "12.5"
-#            buildtype: "release"
+          - name: macos-xcode-12.5
+            os: macos-latest
+            compiler: xcode
+            version: "12.5"
+            buildtype: "release"
 
     runs-on: ${{ matrix.os }}
     steps:
