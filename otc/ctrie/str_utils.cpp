@@ -10,12 +10,12 @@ std::locale global_locale;
 
 int set_global_conv_facet() {
     try {
-        global_locale = std::locale("en_US.utf8");
+        global_locale = std::locale("en_US.UTF-8");
     } catch (const std::exception &) {
         try {
             global_locale = std::locale("en");
         } catch (const std::exception & x) {
-             std::cerr << "locale \"en_US.utf8\" or \"en\" must be supported on the system to run this program.\n";
+             std::cerr << "locale \"en_US.UTF-8\" or \"en\" must be supported on the system to run this program.\n";
              std::cerr << x.what() << "\n";
              return 1;
         }
