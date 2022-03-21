@@ -155,6 +155,9 @@ jobs:
 
     - name: Run otcetera tests
       run: |
+        echo "Initial environment: LANG=$LANG, LC_CTYPE=$LC_CTYPE, LC_ALL=$LC_ALL"
+        echo "LANG=en_US.UTF-8" >> $GITHUB_ENV
+        echo "Testing environment: LANG=$LANG, LC_CTYPE=$LC_CTYPE, LC_ALL=$LC_ALL"
         python3 -mpip install requests
         ninja -C build test
 
