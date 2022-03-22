@@ -71,7 +71,7 @@ public:
     uint64_t index() const {assert(not done()); return index_;}
 
     ctrie_child_iterator operator++() {index_++; mask_cur_letter(); return (*this);}
-    ctrie_child_iterator operator++(int) {auto tmp = *this; (*this)++; return tmp;}
+    ctrie_child_iterator operator++(int) {auto tmp = *this; ++(*this); return tmp;}
 
     ind_pair_t operator*() const { return ind_pair_t(letter(),index());}
 

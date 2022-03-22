@@ -3819,8 +3819,7 @@ class RegisteredLoggers : public base::utils::Registry<Logger, std::string> {
       logger_->m_logBuilder = m_defaultLogBuilder;
       registerNew(id, logger_);
       LoggerRegistrationCallback* callback = nullptr;
-      for (const std::pair<std::string, base::type::LoggerRegistrationCallbackPtr>& h
-           : m_loggerRegistrationCallbacks) {
+      for (const auto& h: m_loggerRegistrationCallbacks) {
         callback = h.second.get();
         if (callback != nullptr && callback->enabled()) {
           callback->acquireLock();
@@ -4688,8 +4687,7 @@ class LogDispatcher : base::NoCopy {
     }
     LogDispatchCallback* callback = nullptr;
     LogDispatchData data;
-    for (const std::pair<std::string, base::type::LogDispatchCallbackPtr>& h
-         : ELPP->m_logDispatchCallbacks) {
+    for (const auto& h: ELPP->m_logDispatchCallbacks) {
       callback = h.second.get();
       if (callback != nullptr && callback->enabled()) {
         data.setLogMessage(&m_logMessage);
