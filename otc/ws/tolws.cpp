@@ -382,8 +382,12 @@ inline void add_source_id_map(json & j,
         if (srcTag == string("ott")+taxonomy.get_version()) {
             jt["taxonomy"] = string("ott")+taxonomy.get_version();
         } else {
-            const auto & simentry = sta->source_id_map.at(srcTag);
-            jt = simentry;
+            try {
+                const auto & simentry = sta->source_id_map.at(srcTag);
+                jt = simentry;
+            } catch (...) {
+                throw OTCWebError() << "sta->source_id_map.at(" << srcTag << ") exception.";
+            }
         }
         sim[srcTag] = jt;   
     }
@@ -777,7 +781,12 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
     {
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
-        write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+        try {
+            write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+        } catch (...) {
+            LOG(DEBUG) << "Exception in arguson_subtree_ws_method";
+            throw;
+        }
         add_lineage(tts, a, focal, taxonomy, usedSrcIds, true);
         add_source_id_map(a, usedSrcIds, taxonomy, sta);
     }

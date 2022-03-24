@@ -121,7 +121,7 @@ class RootedTreeNode {
         T & get_data() {
             return data;
         }
-        RootedTreeNode<T>(RootedTreeNode<T> *par)
+        RootedTreeNode(RootedTreeNode<T> *par)
             :parent(par) {
         }
         void add_sib_on_left(node_type *n) {
@@ -304,7 +304,7 @@ class RootedTreeNode {
         OttId ottId = std::numeric_limits<OttId>::max(); // present for every leaf. UINT_MAX for internals labeled with taxlabels
         T data;
     private:
-        RootedTreeNode<T>(const RootedTreeNode<T> &) = delete;
+        RootedTreeNode(const RootedTreeNode<T> &) = delete;
         RootedTreeNode<T> & operator=(const RootedTreeNode<T> &) = delete;
         template<typename Y, typename Z>
         friend class RootedTree;
@@ -325,13 +325,13 @@ class RootedTree {
         using node_type = RootedTreeNode<T>;
         using data_type = U;
         
-        RootedTree<T, U>()
+        RootedTree()
             :root(nullptr) {
         }
-        explicit RootedTree<T, U>(node_type* r)
+        explicit RootedTree(node_type* r)
             :root(r) {
         }
-        ~RootedTree<T, U>() {
+        ~RootedTree() {
             clear();
         }
         std::vector<const node_type *> get_preorder_traversal() const;
@@ -461,7 +461,7 @@ class RootedTree {
             return r;
         }
     private:
-        RootedTree<T, U>(const RootedTree<T, U> &) = delete;
+        RootedTree(const RootedTree<T, U> &) = delete;
         RootedTree<T, U> & operator=(const RootedTree<T, U> &) = delete;
 };
 

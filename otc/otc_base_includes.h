@@ -13,6 +13,7 @@
 
 #include "otc/easylogging++.hpp"
 #include <optional>
+#include <limits>
 
 #define OTC_UNREACHABLE {LOG(ERROR)<<"Unreachable code reached!"; std::abort();}
 

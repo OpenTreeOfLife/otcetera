@@ -170,7 +170,7 @@ void NewickTokenizer::iterator::consume_next_token() {
             }
             throw OTCParsingError("Unexpected EOF. Semicolon expected at the end of the newick.", '\0', *this->current_pos);
         } else {
-            LOG(TRACE) << "in consume_next_token with n =\"" << n << "\"";
+            //LOG(TRACE) << "in consume_next_token with n =\"" << n << "\"";
             if (this->previous_token_state == NWK_NOT_IN_TREE) {
                 if (n == '(') {
                     this->current_token_state = NWK_OPEN;

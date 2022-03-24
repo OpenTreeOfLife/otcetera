@@ -14,30 +14,62 @@ jobs:
       matrix:
         name: [ubuntu-gcc-9,
                ubuntu-gcc-10,
-#               ubuntu-clang-9,
-#               macos-xcode-12.3,
+               ubuntu-gcc-11,
+#               ubuntu-gcc-11-sanitize,
+               ubuntu-gcc-11-debugoptimized,
+               ubuntu-clang-11,
+#               macos-xcode-12.5
                ]
 
         include:
           - name: ubuntu-gcc-9
-            os: ubuntu-20.04
+            os: ubuntu-latest
             compiler: gcc
             version: "9"
+            buildtype: "release"
 
           - name: ubuntu-gcc-10
-            os: ubuntu-20.04
+            os: ubuntu-latest
             compiler: gcc
             version: "10"
+            buildtype: "release"
 
-#          - name: ubuntu-clang-9
-#            os: ubuntu-20.04
-#            compiler: clang
-#            version: "9"
+          - name: ubuntu-gcc-11
+            os: ubuntu-latest
+            compiler: gcc
+            version: "11"
+            buildtype: "release"
 
-#          - name: macos-xcode-12.3
+# To enable this, we'd probably need to add `export ASAN_OPTIONS=detect_odr_violation=0`.
+#
+#          - name: ubuntu-gcc-11-sanitize
+#            os: ubuntu-latest
+#            compiler: gcc
+#            version: "11"
+#            buildtype: "release"
+#            sanitize: "address"
+#
+
+          - name: ubuntu-gcc-11-debugoptimized
+            os: ubuntu-latest
+            compiler: gcc
+            version: "11"
+            buildtype: "debugoptimized"
+
+          - name: ubuntu-clang-11
+            os: ubuntu-latest
+            compiler: clang
+            version: "11"
+            buildtype: "release"
+
+# Currently we get "dyld: Library not loaded: @rpath/librestbed.4.dylib"
+# when attempting to run executables.
+#
+#          - name: macos-xcode-12.5
 #            os: macos-latest
 #            compiler: xcode
-#            version: "12.3"
+#            version: "12.5"
+#            buildtype: "release"
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -88,7 +120,7 @@ jobs:
         echo "::set-output name=timestamp::${stamp}"
 
     - name: ccache cache files
-      uses: actions/cache@v2
+      uses: pat-s/always-upload-cache@v2
       with:
          path: ~/.ccache
          key: ${{ matrix.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
@@ -100,15 +132,20 @@ jobs:
         cd
         git clone --recursive https://github.com/corvusoft/restbed.git
         mkdir restbed/build
-        ( cd restbed/build ; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="$HOME/local/" .. ; make ; make install )
-        echo "CPPFLAGS=-I${HOME}/local/include" >> $GITHUB_ENV
-        echo "LDFLAGS=-L${HOME}/local/lib -L${HOME}/local/library" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=${HOME}/local/lib:${HOME}/local/library:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        ( cd restbed/build ; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="${HOME}/local/" .. ; make ; make install )
+        echo "LD_LIBRARY_PATH=${HOME}/local/library:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Configure otcetera
       run: |
         cd ${GITHUB_WORKSPACE}
-        meson build --prefix=$HOME/local --buildtype=release ${ARGS}
+        ARGS="${ARGS} -Drestbed_dir=${HOME}/local/"
+        if [ "${{ runner.os }}" = "Linux" ] && [ "${{ matrix.name }}" != "windows" ] && [ "${{ matrix.sanitize }}" != "" ] ; then
+          # Address sanitizer can't find its dylibs on OS X?
+          ARGS="${ARGS} -Db_sanitize=${{ matrix.sanitize }}"
+        fi
+        echo "CPPFLAGS=-g $CPPFLAGS" >> $GITHUB_ENV
+        echo meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
+        meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
 
     - name: Build otcetera
       run: |
