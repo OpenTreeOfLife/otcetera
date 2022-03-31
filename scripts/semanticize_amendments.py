@@ -65,4 +65,11 @@ def main(repo_top, last_handled_sha):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+    try:
+        amend_repo, last_handled_sha = sys.argv[1], sys.argv[2]
+    except:
+        sys.exit("""Expecting 2 arguments: 
+  1. the path to the amendments repo and,
+  2. the last SHA that has been dealt with in a previous edOTT.
+""")
+    main(amend_repo, last_handled_sha)
