@@ -41,7 +41,7 @@ json get_json_from_uri(const string & uri_string) {
     LOG(DEBUG)<<"HTTP Version:   "<<response->get_version()<<"\n";
     LOG(DEBUG)<<"HTTP Protocol:  "<<response->get_protocol().data()<<"\n";
 
-    for ( const auto header : response->get_headers( ) ) {
+    for ( const auto& header : response->get_headers( ) ) {
         LOG(DEBUG)<<"Header '"<<header.first.data()<<"' > '"<<header.second.data()<<"'";
     }
     if (response->get_status_code() != 200) {

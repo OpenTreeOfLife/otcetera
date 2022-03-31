@@ -40,7 +40,27 @@
       "expected": "is-within-is-1"
   },
   {
-      "invocation" : ["otc-solve-subproblem", "<INFILELIST>"],
+      "invocation" : ["otc-solve-subproblem", "<INFILELIST>","--batch=0","--oracle=0","--incremental=0"],
+      "infile_list": ["prob-1.tre"],
+      "expected": "prob-1"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "<INFILELIST>","--batch=0","--oracle=0","--incremental=1"],
+      "infile_list": ["prob-1.tre"],
+      "expected": "prob-1"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "<INFILELIST>","--batch=0","--oracle=1","--incremental=1"],
+      "infile_list": ["prob-1.tre"],
+      "expected": "prob-1"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "<INFILELIST>","--batch=1","--oracle=1","--incremental=0"],
+      "infile_list": ["prob-1.tre"],
+      "expected": "prob-1"
+  },
+  {
+      "invocation" : ["otc-solve-subproblem", "<INFILELIST>","--batch=1","--oracle=1","--incremental=1"],
       "infile_list": ["prob-1.tre"],
       "expected": "prob-1"
   }

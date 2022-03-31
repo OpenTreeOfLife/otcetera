@@ -34,9 +34,15 @@ if get_option('webservices')
   #curl = dependency('libcurl')
   # Can we test if we need them to link with restbed?
   threads = dependency('threads')
-  restbed_lib = cpp.find_library('restbed')
+
+  restbed_dir = get_option('restbed_dir')
+  restbed_incdir = restbed_dir / 'include'
+  restbed_libdir = restbed_dir / 'library'
+  restbed_lib = cpp.find_library('restbed', dirs: restbed_libdir)
   restbed_deps = [restbed_lib, threads] # ssl, curl?
-  restbed = declare_dependency(dependencies: restbed_deps)
+  restbed = declare_dependency(include_directories: restbed_incdir,
+                               dependencies: restbed_deps)
+
   # FIXME: we could put this back if we made enabling webservices a build-if-you-can tri-state option.
   # if not restbed.found() or not ssl.found() or not curl.found()
   #  restbed = disabler()

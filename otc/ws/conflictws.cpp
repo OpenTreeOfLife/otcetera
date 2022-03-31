@@ -409,6 +409,16 @@ json conflict_with_summary(const ConflictTree& query_tree,
     return conflict_with_tree_impl(query_tree, summary, query_mrca, summary_mrca, Tax);
 }
 
+json conflict_with_newick(const ConflictTree& query_tree,
+                          const ConflictTree& tree2,
+                          const RichTaxonomy& Tax)
+{
+    std::function<const cnode_type*(const cnode_type*,const cnode_type*)> mrca = [](const cnode_type* n1, const cnode_type* n2) {
+        return mrca_from_depth(n1,n2);
+    };
+    return conflict_with_tree_impl(query_tree, tree2, mrca, mrca, Tax);
+}
+
 
 // Remove leaves (and their monotypic ancestors) in the query tree
 // that are the ancestors of other leaves in the query tree.
@@ -439,24 +449,49 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
     LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
 }
 
-void check_all_leaves_have_ott_ids(const ConflictTree& query_tree) {
+// Remove leaves (and their monotypic ancestors) in the query tree
+// that are the ancestors of other leaves in the query tree.
+std::optional<OttId> has_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxonomy) {
+    using tfunc = std::function<const tnode_type*(const tnode_type*,const tnode_type*)>;
+    tfunc taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {
+        return mrca_from_depth(n1,n2);
+    };
+
+    auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
+    auto induced_taxonomy = get_induced_tree<ConflictTree>(taxonomy_nodes_from_query_leaves,
+                                                           taxonomy_mrca);
+    auto ottid_to_induced_tax_node = get_ottid_to_node_map(*induced_taxonomy);
+
+    vector<cnode_type*> nodes_to_prune;
+    for(auto leaf: iter_leaf(query_tree)) {
+        auto ottid = leaf->get_ott_id();
+        auto tax_node = ottid_to_induced_tax_node.at(ottid);
+        if (not tax_node->is_tip()) {
+            return ottid;
+        }
+    }
+
+    return {};
+}
+
+void check_all_leaves_have_ott_ids(const ConflictTree& query_tree, const string& tree_name) {
     for(auto leaf: iter_leaf_const(query_tree)) {
         if (leaf->has_ott_id()) {
             continue;
         }
         if (leaf->get_name().empty()) {
-            throw OTCBadRequest()<<"Un-named leaf has no OTT id!";
+            throw OTCBadRequest()<<tree_name<<": Un-named leaf has no OTT id!";
         } else {
-            throw OTCBadRequest()<<"Leaf '"<<leaf->get_name()<<"' has no OTT id!";
+            throw OTCBadRequest()<<tree_name<<": Leaf '"<<leaf->get_name()<<"' has no OTT id!";
         }
     }
 }
 
-void check_all_nodes_have_node_names(const ConflictTree& query_tree) {
+void check_all_nodes_have_node_names(const ConflictTree& query_tree, const string& tree_name) {
     for(const auto nd: iter_post_const(query_tree)) {
         if (nd->get_name().empty()) {
             auto E = OTCBadRequest();
-            E << "Query tree has unnamed node";
+            E << tree_name<<" has unnamed node";
             if (nd->has_ott_id()) {
                 E << " with OTT Id=" << nd->get_ott_id();
             }
@@ -534,9 +569,9 @@ string conflict_ws_method(const SummaryTree_t& summary,
         throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
     }
     // 1. Check that all leaves in input tree have OTT ids
-    check_all_leaves_have_ott_ids(*query_tree);
+    check_all_leaves_have_ott_ids(*query_tree, "tree1");
     // 2. Check that all leaves in input tree have node names
-    check_all_nodes_have_node_names(*query_tree);
+    check_all_nodes_have_node_names(*query_tree, "tree1");
     // 3. Prune leaves with duplicate ott ids
     prune_duplicate_ottids(*query_tree);
     // 4. Prune leaves of the query that are ancestral to other query leaves
@@ -572,6 +607,23 @@ string conflict_ws_method(const SummaryTree_t& summary,
         return conflict_with_taxonomy(*query_tree, taxonomy).dump(1);
     } else if (tree2s == "synth") {
         return conflict_with_summary(*query_tree, summary, taxonomy).dump(1);
+    }
+    else if (tree2s.size() > 0 and tree2s[0] == '(') {
+        auto tree2 = tree_from_newick_string<ConflictTree>(tree2s);
+
+        check_all_leaves_have_ott_ids(*query_tree, "tree2");
+        check_all_nodes_have_node_names(*query_tree, "tree2");
+
+        if (auto id = has_duplicate_ottids(*tree2))
+            throw OTCError()<<"tree2: duplicate OTT id "<<*id<<"!";
+
+        if (auto id = has_ancestral_leaves(*tree2, taxonomy))
+            throw OTCError()<<"tree2: higher taxon leaf OTT id "<<*id<<"!";
+
+        compute_depth(*tree2);
+        compute_tips(*tree2);
+
+        return conflict_with_newick(*query_tree, *tree2, taxonomy).dump(1);
     }
     throw OTCBadRequest() << "tree2 = '" << tree2s << "' not recognized!";
 }
