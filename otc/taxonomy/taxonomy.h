@@ -200,6 +200,7 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
     int index_from_id(OttId) const;
 
 public:
+    static bool tolerate_synonyms_to_unknown_id;
     template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
 
     std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;

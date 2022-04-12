@@ -52,6 +52,8 @@ using po::variables_map;
 namespace otc
 {
 
+bool Taxonomy::tolerate_synonyms_to_unknown_id = false;
+
 bool rank_is_specific(TaxonomicRank rank)
 {
     // taxomachine includes "species", "subspecies", "variety", "varietas", "forma", "form"
@@ -643,6 +645,7 @@ void RichTaxonomy::read_synonyms() {
     if (line != "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t") {
         throw OTCError() << "First line of file '" << filename << "' is not a synonym header.";
     }
+    int num_syn_skipped = 0;
     while(std::getline(synonyms_file, line)) {
         const char* start[5];
         const char* end[5];
@@ -656,7 +659,18 @@ void RichTaxonomy::read_synonyms() {
         string name = string(start[0], end[0] - start[0]);
         unsigned long raw_id = std::strtoul(start[1], &temp, 10);
         OttId ott_id = check_ott_id_size(raw_id);
-        const RTRichTaxNode * primary = tree_data.id_to_node.at(ott_id);
+        const RTRichTaxNode * primary = nullptr;
+        try {
+            primary = tree_data.id_to_node.at(ott_id);
+        } catch (std::out_of_range &) {
+            if (!Taxonomy::tolerate_synonyms_to_unknown_id) {
+                throw;
+            }
+        }
+        if (primary == nullptr) {
+            num_syn_skipped++;
+            continue;
+        }
         string sourceinfo = string(start[4], end[4] - start[4]);
         
         this->synonyms.emplace_back(name, primary, sourceinfo);
@@ -666,6 +680,9 @@ void RichTaxonomy::read_synonyms() {
         process_source_info_vec(vs, tree_data, tjs, primary);
         RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
         mp->get_data().junior_synonyms.push_back(&tjs);
+    }
+    if (num_syn_skipped > 0) {
+        LOG(INFO) << num_syn_skipped << " synonyms skipped because they mapped to unknown IDs.\n";
     }
 }
 
