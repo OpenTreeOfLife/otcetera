@@ -654,7 +654,9 @@ string newick_conflict_ws_method(const SummaryTree_t& summary,
                                  const string& tree1s,
                                  const string& tree2s) {
     try {
-        LOG(WARNING)<<"newick conflict: tree1s = '"<<tree1s<<"'   tree1s = '"<<tree2s<<"'";
+        LOG(WARNING)<<"newick conflict:";
+        LOG(DEBUG)  <<"  tree1s = "<<tree1s;
+        LOG(DEBUG)  <<"  tree2s = "<<tree2s;
         auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
         return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
     } catch (otc::OTCParsingError& e) {
@@ -667,7 +669,9 @@ string phylesystem_conflict_ws_method(const SummaryTree_t& summary,
                                       const RichTaxonomy & taxonomy,
                                       const string& tree1s,
                                       const string& tree2s) {
-    LOG(WARNING)<<"phylesystem conflict: tree1s = '"<<tree1s<<"'   tree1s = '"<<tree2s<<"'";
+    LOG(WARNING)<<"phylesystem conflict:";
+    LOG(DEBUG)  <<"  tree1s = "<<tree1s;
+    LOG(WARNING)<<"  tree2s = "<<tree2s;
     auto query_tree = get_phylesystem_tree<ConflictTree>(tree1s);
     return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
 }
