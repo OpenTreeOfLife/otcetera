@@ -778,7 +778,9 @@ int run_server(const po::variables_map & args) {
     if (args.count("pidfile")) {
         pidfile = args["pidfile"].as<string>();
     }
-
+    if (args.count("ignore-broken-syn")) {
+        Taxonomy::tolerate_synonyms_to_unknown_id = true;
+    }
 
 
     if (!args.count("tree-dir")) {
@@ -951,6 +953,7 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
         ("port,P",value<int>(),"Port to bind to.")
         ("pidfile,p",value<string>(),"filepath for PID")
         ("num-threads,n",value<int>(),"number of threads")
+        ("ignore-broken-syn","If passed in, the presence of a synonym mapping to a non-existent ID will just be ignored.")
         ;
 
     options_description visible;
