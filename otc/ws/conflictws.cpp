@@ -48,6 +48,9 @@ get_induced_trees2(Tree1& T1,
     auto T2_nodes_from_T1_leaves = get_induced_nodes(T1,T2);
     LOG(WARNING)<<T2_nodes_from_T1_leaves.size()<<" leaves of T1 are in T2";
 
+    if (T2_nodes_from_T1_leaves.size() < 2)
+        throw OTCBadRequest()<<"The two trees have only "<<T2_nodes_from_T1_leaves.size()<<" nodes in common!  At least 2 are required";
+
     // 1b. Actually construct the induced tree for T2.
     //     It might have fewer leaves than in T2_nodes_from_T1_leaves, if some of the nodes are ancestral to others.
     auto induced_tree2 = get_induced_tree<Tree_Out_t>(T2_nodes_from_T1_leaves, MRCA_of_pair2);
@@ -77,7 +80,7 @@ get_induced_trees2(Tree1& T1,
 
         auto it = ottid_to_induced_tree2_node.find(leaf->get_ott_id());
         if (it == ottid_to_induced_tree2_node.end()) {
-            LOG(WARNING)<<"Dropping tip "<<leaf->get_ott_id()<<": not found in induced taxonomy-or-synth tree.";
+            LOG(DEBUG)<<"Dropping query tip "<<leaf->get_ott_id()<<": not found in induced tree2.";
         } else if (not it->second->is_tip()) {
             LOG(WARNING)<<"Dropping higher taxon tip "<<leaf->get_ott_id();
         } else {
@@ -474,15 +477,31 @@ std::optional<OttId> has_ancestral_leaves(ConflictTree& query_tree, const RichTa
     return {};
 }
 
-void check_all_leaves_have_ott_ids(const ConflictTree& query_tree, const string& tree_name) {
-    for(auto leaf: iter_leaf_const(query_tree)) {
-        if (leaf->has_ott_id()) {
-            continue;
+void check_all_leaves_have_good_ott_ids(const ConflictTree& query_tree, const RichTaxonomy& taxonomy, const string& tree_name)
+{
+    for(auto leaf: iter_leaf(query_tree))
+    {
+        if (not leaf->has_ott_id())
+        {
+            if (leaf->get_name().empty())
+                throw OTCBadRequest()<<tree_name<<": Un-named leaf has no OTT id!";
+            else
+                throw OTCBadRequest()<<tree_name<<": Leaf '"<<leaf->get_name()<<"' has no OTT id!";
         }
-        if (leaf->get_name().empty()) {
-            throw OTCBadRequest()<<tree_name<<": Un-named leaf has no OTT id!";
-        } else {
-            throw OTCBadRequest()<<tree_name<<": Leaf '"<<leaf->get_name()<<"' has no OTT id!";
+        else
+        {
+            auto ottid = leaf->get_ott_id();
+            auto valid_ottid = taxonomy.get_unforwarded_id(ottid);
+            if (not valid_ottid)
+            {
+                if (leaf->get_name().empty())
+                    throw OTCBadRequest()<<tree_name<<": Un-named leaf has bad OTT id "<<ottid<<"!";
+                else
+                    throw OTCBadRequest()<<tree_name<<": Leaf '"<<leaf->get_name()<<"' has bad OTT id "<<ottid<<"!";
+            }
+            // Should we do forwarding here?
+            // else if (*valid_ottid != ottid)
+            //     leaf->set_ott_id(*valid_ottid);
         }
     }
 }
@@ -569,7 +588,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
         throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
     }
     // 1. Check that all leaves in input tree have OTT ids
-    check_all_leaves_have_ott_ids(*query_tree, "tree1");
+    check_all_leaves_have_good_ott_ids(*query_tree, taxonomy, "tree1");
     // 2. Check that all leaves in input tree have node names
     check_all_nodes_have_node_names(*query_tree, "tree1");
     // 3. Prune leaves with duplicate ott ids
@@ -611,12 +630,14 @@ string conflict_ws_method(const SummaryTree_t& summary,
     else if (tree2s.size() > 0 and tree2s[0] == '(') {
         auto tree2 = tree_from_newick_string<ConflictTree>(tree2s);
 
-        check_all_leaves_have_ott_ids(*query_tree, "tree2");
-        check_all_nodes_have_node_names(*query_tree, "tree2");
-
+        // 1. Check that all leaves in input tree have OTT ids
+        check_all_leaves_have_good_ott_ids(*tree2, taxonomy, "tree2");
+        // 2. Check that all leaves in tree2 have node names
+        check_all_nodes_have_node_names(*tree2, "tree2");
+        // 3. Check for duplicate ott ids
         if (auto id = has_duplicate_ottids(*tree2))
             throw OTCError()<<"tree2: duplicate OTT id "<<*id<<"!";
-
+        // 4. Check for higher taxon leaves
         if (auto id = has_ancestral_leaves(*tree2, taxonomy))
             throw OTCError()<<"tree2: higher taxon leaf OTT id "<<*id<<"!";
 

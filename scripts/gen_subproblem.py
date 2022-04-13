@@ -8,6 +8,7 @@ import tempfile
 import sys
 import os
 import re
+from collections import defaultdict
 
 def tree_print(t):
     return t.as_string(schema='newick',
@@ -199,9 +200,7 @@ def main():
             sum_stream, sum_existed = open_fp(args.summary_out, 'a')
             ope_sum = True
         if not sum_existed:
-            columns = ["num_otus", "num_phylos", "rep_num", "seed", "num_ecr", "inc_prob", "collapse_prob"]
-            for i, j, k in gen_b_o_i():
-                columns.append('batch{i}oracl{j}incre{k}'.format(i=i, j=j, k=k))
+            columns = ["num_otus", "num_phylos", "rep_num", "seed", "num_ecr", "inc_prob", "collapse_prob", "batch", "oracle", "incr", "time"]
             headers = '\t'.join(columns)
             sum_stream.write('{}\n'.format(headers))
     try:
@@ -225,7 +224,7 @@ def open_fp(out_fp, mode):
 timing_pat = re.compile(r'^timing +(.+) +seconds.$')
 def time_otc_runs(inp_fp):
     invoc_pref = ["otc-solve-subproblem", "-m", inp_fp]
-    time_list = []
+    time_dict = defaultdict(lambda: 0.0)
     for b, o, i in gen_b_o_i():
         opts = ['--batching={}'.format(b),
                 '--oracle={}'.format(o),
@@ -242,8 +241,8 @@ def time_otc_runs(inp_fp):
             #    print('line "{}" did not match'.format(line))
         if timing_float is None:
             raise RuntimeError('"timing ... seconds." not found in {} run.'.format(invoc))
-        time_list.append(timing_float)
-    return time_list
+        time_dict[(b,o,i)] = timing_float
+    return time_dict
 
 def do_sim(out_pref, args, seed, sum_stream):
     rng = Random()
@@ -300,9 +299,10 @@ def do_sim(out_pref, args, seed, sum_stream):
             assert out_fp is not None
             times = time_otc_runs(out_fp)
             sum_row_temp[rep_num_idx] = str(rep_num)
-            tr = sum_row_temp + [str(i) for i in times]
-            sum_stream.write('{}\n'.format('\t'.join(tr)))
-            sum_row_temp[seed_idx] = ''
+            for (b,o,i) in times:
+                tr = sum_row_temp + [str(b), str(o), str(i), str(times[(b,o,i)])]
+                sum_stream.write('{}\n'.format('\t'.join(tr)))
+#            sum_row_temp[seed_idx] = ''
         
 
 if __name__ == '__main__':
