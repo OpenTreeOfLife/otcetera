@@ -293,6 +293,7 @@ int main(int argc, char* argv[]) {
         auto format = args["format"].as<string>();
         auto flags_match = get_flags_match(args);
         auto taxonomy = load_taxonomy(args);
+        const bool root_changed = args.count("root") || args.count("xroot");
         const bool detach_root = bool(args.count("xroot"));
         if (detach_root) {
             taxonomy[0].parent_id = 0;
@@ -374,7 +375,7 @@ int main(int argc, char* argv[]) {
             std::cout << std::endl;
         }
         if (args.count("write-taxonomy")) {
-            taxonomy.write(args["write-taxonomy"].as<string>(), false);
+            taxonomy.write(args["write-taxonomy"].as<string>(), false, !root_changed);
         }
         if (args.count("name")) {
             OttId id = args["name"].as<OttId>();

@@ -232,7 +232,10 @@ public:
     OttId map(OttId id) const;
 
     /// Write out a taxonomy to directory dirname
-    void write(const std::string& dirname, bool copy_taxonomy_tsv_lines_raw=true);
+    void write(const std::string& dirname,
+               bool copy_taxonomy_tsv_lines_raw,
+               bool copy_synonyms_tsv_raw);
+    void copy_relevant_synonyms(std::istream & inp, std::ostream & outp);
 
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), OttId keep_root=-1);

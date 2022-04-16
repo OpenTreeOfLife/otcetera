@@ -240,7 +240,10 @@ OttId Taxonomy::map(OttId old_id) const {
     return -1;
 }
 
-void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines_raw) {
+void Taxonomy::write(const std::string& newdirname,
+                     bool copy_taxonomy_tsv_lines_raw,
+                     bool copy_synonyms_tsv_raw
+                     ) {
     fs::path old_dir = path;
     fs::path new_dir = newdirname;
     if (! fs::exists(new_dir)) {
@@ -249,10 +252,28 @@ void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines
     
     // Copy the other files.
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
-                "log.tsv", "otu_differences.tsv", "synonyms.tsv", "weaklog.csv"})
+                "log.tsv", "otu_differences.tsv", "weaklog.csv"})
     {
-        if (fs::exists(old_dir/name))
+        if (fs::exists(old_dir/name)) {
             fs::copy_file(old_dir/name,new_dir/name);
+        }
+    }
+
+    const auto fname = "synonyms.tsv";
+    if (fs::exists(old_dir/fname)) {
+        if (copy_synonyms_tsv_raw) {
+            fs::copy_file(old_dir/fname, new_dir/fname);
+        } else {
+            std::ifstream inpf((old_dir/fname).string());
+            if (not inpf) {
+                throw OTCError() << "Could not open file '" << (old_dir/fname).string() << "'.";
+            }
+            std::ofstream outpf((new_dir/fname).string());
+            if (not outpf) {
+                throw OTCError() << "Could not create file '" << (new_dir/fname).string() << "'.";
+            }
+            copy_relevant_synonyms(inpf, outpf);
+        }
     }
     // Write the new version file.
     {
@@ -308,6 +329,33 @@ void Taxonomy::write(const std::string& newdirname, bool copy_taxonomy_tsv_lines
             ff << p.first << '\t' << p.second << '\n';
         }
         ff.close();
+    }
+}
+
+void Taxonomy::copy_relevant_synonyms(std::istream & synonyms_file,
+                                      std::ostream & outp) {
+    string line;
+    std::getline(synonyms_file, line);
+    if (line != "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t") {
+        throw OTCError() << "First line of the synonym file is not a synonym header.";
+    }
+    outp << line << '\n';
+    int num_syn_skipped = 0;
+    while(std::getline(synonyms_file, line)) {
+        const char * namestr = line.c_str();
+        const char * endnamestr = std::strstr(namestr,"\t|\t");
+        const char * ott_id_str = endnamestr + 3;
+        char *temp;
+        unsigned long raw_id = std::strtoul(ott_id_str, &temp, 10);
+        OttId ott_id = check_ott_id_size(raw_id);
+        if (contains(index, ott_id)) {
+            outp << line << '\n';
+        } else {
+            num_syn_skipped++;
+        }
+    }
+    if (num_syn_skipped > 0) {
+        LOG(DEBUG) << num_syn_skipped << " synonyms not emitted because they mapped to unknown IDs.\n";
     }
 }
 
