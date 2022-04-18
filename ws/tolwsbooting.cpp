@@ -1171,10 +1171,16 @@ bool read_tree_and_annotations(const fs::path & config_path,
     // Check that the tree was built against the correct taxonomy.
     string tree_tax_version = annotations_obj["taxonomy_version"];
     string synth_id = annotations_obj["synth_id"];
-    if (tree_tax_version != taxonomy.get_version())
-    {
-        LOG(WARNING) << "Read \"" << annotations_path << "\" as JSON.\n";
-        throw OTCError()<<"Tree with <synth_id='"<<synth_id<<"',taxonomy_version='"<<tree_tax_version<<"'> does not match taxonomy version '"<<taxonomy.get_version()<<"'";
+    if (tree_tax_version != taxonomy.get_version()) {
+        // propinquity now tags ott versions with "modified: root id" in custom synth
+        //  but the tree still reflects the unmodified OTT version string. 
+        //  So, MTH is relaxing the checking of the OTT verstion string to allow version + "modified" as a prefix to count as a match
+        auto taxv = taxonomy.get_version();
+        auto ttaxvm = tree_tax_version + "modified";
+        if (!lcase_match_prefix(taxv, ttaxvm)) {
+            LOG(WARNING) << "Read \"" << annotations_path << "\" as JSON.\n";
+            throw OTCError()<<"Tree with <synth_id='"<<synth_id<<"',taxonomy_version='"<<tree_tax_version<<"'> does not match taxonomy version '"<<taxonomy.get_version()<<"' (= or modified)";
+        }
     }
 
     std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
