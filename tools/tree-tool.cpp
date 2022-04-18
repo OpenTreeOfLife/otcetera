@@ -66,6 +66,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("degree-of",value<OttId>(), "Show the degree of node <arg>")
         ("children-of",value<OttId>(), "List the children of node <arg>")
         ("parent-of",value<OttId>(), "List the parent of node <arg>")
+        ("ancestors-of",value<OttId>(), "List the all ancestor (parent to root order) of node <arg>")
         ("count-nodes","Show the number of nodes")
         ("count-leaves","Show the number of leaves")
         ("show-leaves","Show the number of leaves")
@@ -390,6 +391,18 @@ int main(int argc, char* argv[]) {
             auto nd = find_node_by_ott_id(*tree, n);
             if (nd->get_parent()) {
                 std::cout << nd->get_parent()->get_name() << "\n";
+            } else {
+                std::cout << "No parent: that node is the root.\n";
+            }
+        } else if (args.count("ancestors-of")) {
+            OttId n = args["ancestors-of"].as<OttId>();
+            auto nd = find_node_by_ott_id(*tree, n);
+            auto ancnd = nd->get_parent();
+            if (ancnd) {
+                while (ancnd) {
+                    std::cout << ancnd->get_name() << "\n";
+                    ancnd = ancnd->get_parent();
+                }
             } else {
                 std::cout << "No parent: that node is the root.\n";
             }

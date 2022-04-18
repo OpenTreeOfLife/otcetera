@@ -1536,6 +1536,33 @@ void delete_tip_and_monotypic_ancestors(T& tree, typename T::node_type* node) {
     }
 }
 
- 
+template<typename T>
+inline void writeDegDist(std::ostream & outstr, std::ostream * errstr, const T &tree);
+
+template<typename T>
+inline void writeDegDist(std::ostream & outstr, std::ostream * errstr, const T &tree) {
+    std::map<unsigned long, unsigned long> degreeDistribution;
+    for (auto nd : iter_pre_const(tree)) {
+        auto od = nd->get_out_degree();
+        degreeDistribution[od] += 1;
+    }
+    outstr << "Out-degree\tCount\n";
+    std::size_t numNodes = 0U;
+    for (auto p: degreeDistribution) {
+        outstr << p.first << "\t" << p.second << "\n";
+        numNodes += p.second;
+    }
+    if (errstr == nullptr) {
+        return;
+    }
+    const auto numLeaves = degreeDistribution[0UL];
+    const auto numElbows = (contains(degreeDistribution, 1UL) ? degreeDistribution[1UL]: 0UL);
+    *errstr << numLeaves << " leaves\n";
+    *errstr << numNodes - numLeaves << " non-leaf nodes (internals including the root)\n";
+    *errstr << numNodes - numLeaves - numElbows<< " non-leaf nodes with out-degree > 1 (internals including the root)\n";
+    *errstr << numNodes << " total nodes\n";
+
+}
+
 }// namespace otc
 #endif
