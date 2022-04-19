@@ -138,6 +138,9 @@ void analyze_case_sensitivity(const RTRichTaxTreeData & rt_data,
 }
 
 void process_taxonomy(const RichTaxonomy & taxonomy) {
+    auto nc = Context::cull_contexts_to_taxonomy(taxonomy);
+    //LOG(INFO) << nc << " taxonomy contexts retained...";
+
     const Context * c = determine_context({});
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";

@@ -4,6 +4,7 @@ import requests
 import json
 import time
 import logging
+import sys
 try:
     from Queue import Queue
 except:
@@ -14,6 +15,8 @@ _LOG.setLevel(logging.DEBUG)
 _lh = logging.StreamHandler()
 _lh.setFormatter(logging.Formatter("[%(asctime)s] %(filename)s (%(lineno)3d): %(levelname) 8s: %(message)s"))
 _LOG.addHandler(_lh)
+
+g_interactive = '--interactive' in sys.argv
 
 NUM_TESTS = 0
 FAILED_TESTS = []
@@ -244,6 +247,8 @@ class WebServiceTestJob(object):
 
     def get_results(self):
         """:return self.status_str"""
+        if g_interactive:
+            input("{} passed = {}:\n{}\nHit any key to proceed\n".format(self.name, self.passed, self.status_str))
         return self.status_str
 #########################################################################################
 
@@ -319,7 +324,7 @@ def run_tests(test_par, dirs_to_run, test_threads):
         td["test_dir"] = test_dir
         td_list.append(td)
 
-    start_worker(test_threads)
+    start_worker(1 if g_interactive else test_threads)
     service_prefix = "http://127.0.0.1:{}/".format(SERVER_PORT)
     all_jobs = [WebServiceTestJob(test_par=test_par, test_description=td, service_prefix=service_prefix) for td in td_list]
     running_jobs = list(all_jobs)
@@ -383,6 +388,7 @@ if __name__ == '__main__':
     parser.add_argument('--server-threads', default=4, type=int, required=False, help='Number of threads for the server')
     parser.add_argument('--test-threads', default=8, type=int, required=False, help='Number of threads launched for running tests.')
     parser.add_argument('--secs-to-recheck-pid-file', default=0, type=int, required=False, help='If the pid file exists, the process will enter a loop sleeping and rechecking for this number of seconds.')
+    parser.add_argument('--interactive', default=False, action="store_true", help='If true, run 1 thread and prompt for each next test')
     
     args = parser.parse_args()
     if args.server_threads < 1 or args.test_threads < 1:

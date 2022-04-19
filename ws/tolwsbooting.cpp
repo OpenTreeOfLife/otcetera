@@ -789,8 +789,10 @@ int run_server(const po::variables_map & args) {
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
     RichTaxonomy taxonomy = load_rich_taxonomy(args);
-
-
+    
+    auto nc = Context::cull_contexts_to_taxonomy(taxonomy);
+    LOG(INFO) << nc << " taxonomy contexts retained...";
+    
     const Context * c = determine_context({});
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";
@@ -1109,36 +1111,34 @@ inline std::size_t calc_memory_used(const RichTaxonomy &rt, MemoryBookkeeper &mb
 void mark_summary_tree_nodes_extinct(SummaryTree_t& tree, const RichTaxonomy& taxonomy)
 {
     // compute extinctness for each node.  Post means that a node is only visited after all its children.
-    for (auto node: iter_post(tree))
-    {
+    for (auto node: iter_post(tree)) {
         auto& node_data = node->get_data();
-        if (node->is_tip())
-        {
+        if (node->is_tip()) {
             auto id = node->get_ott_id();
             auto& taxon = taxonomy.included_taxon_from_id(id)->get_data();
             node_data.extinct_mark = taxon.is_extinct();
-        }
-        else
-        {
+        } else {
             // If any child is not extinct, then this node is not extinct either.
             node_data.extinct_mark = true;
-            for (auto c : iter_child_const(*node))
-                if (not c->get_data().is_extinct())
+            for (auto c : iter_child_const(*node)) {
+                if (not c->get_data().is_extinct()) {
                     node_data.extinct_mark = false;
+                }
+            }
 
             // Complain about higher taxa with extinctness that doesn't match the computed extinctness.
-            if (node->has_ott_id())
-            {
+            if (node->has_ott_id()) {
                 auto id = node->get_ott_id();
                 auto& taxon = taxonomy.included_taxon_from_id(id)->get_data();
-                if (node_data.is_extinct() != taxon.is_extinct())
-                {
+                if (node_data.is_extinct() != taxon.is_extinct()) {
                     LOG(WARNING)<<"Higher taxon "<<taxon.possibly_nonunique_name<<" is extinct="<<taxon.is_extinct()<<"  but the computed extinctness is extinct="<<node_data.is_extinct();
-                    for (auto c : iter_child_const(*node))
-                        if (not c->get_data().is_extinct())
+                    for (auto c : iter_child_const(*node)) {
+                        if (not c->get_data().is_extinct()) {
                             LOG(WARNING)<<"    Child "<<c->get_name()<<" is NOT extinct!";
-                        else
+                        } else {
                             LOG(WARNING)<<"    Child "<<c->get_name()<<" is EXTINCT!";
+                        }
+                    }
                 }
             }
         }
