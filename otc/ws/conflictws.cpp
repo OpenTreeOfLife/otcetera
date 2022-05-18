@@ -477,7 +477,7 @@ std::optional<OttId> has_ancestral_leaves(ConflictTree& query_tree, const RichTa
     return {};
 }
 
-void check_all_leaves_have_good_ott_ids(const ConflictTree& query_tree, const RichTaxonomy& taxonomy, const string& tree_name)
+void check_and_forward_leaf_ott_ids(ConflictTree& query_tree, const RichTaxonomy& taxonomy, const string& tree_name)
 {
     for(auto leaf: iter_leaf(query_tree))
     {
@@ -499,9 +499,8 @@ void check_all_leaves_have_good_ott_ids(const ConflictTree& query_tree, const Ri
                 else
                     throw OTCBadRequest()<<tree_name<<": Leaf '"<<leaf->get_name()<<"' has bad OTT id "<<ottid<<"!";
             }
-            // Should we do forwarding here?
-            // else if (*valid_ottid != ottid)
-            //     leaf->set_ott_id(*valid_ottid);
+            else if (*valid_ottid != ottid)
+                leaf->set_ott_id(*valid_ottid);
         }
     }
 }
@@ -582,13 +581,13 @@ string conflict_ws_method(const SummaryTree_t& summary,
                           std::unique_ptr<ConflictTree>& query_tree,
                           const string& tree2s)
 {
-    // 0. Prune unmapped leaves.
+    // 0. Prune unmapped leaves -- this already handles forwards.
     auto leaf_counts = prune_unmapped_leaves(*query_tree, taxonomy);
     if (leaf_counts.first < 3) {
         throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
     }
     // 1. Check that all leaves in input tree have OTT ids
-    check_all_leaves_have_good_ott_ids(*query_tree, taxonomy, "tree1");
+    check_and_forward_leaf_ott_ids(*query_tree, taxonomy, "tree1");
     // 2. Check that all leaves in input tree have node names
     check_all_nodes_have_node_names(*query_tree, "tree1");
     // 3. Prune leaves with duplicate ott ids
@@ -631,7 +630,7 @@ string conflict_ws_method(const SummaryTree_t& summary,
         auto tree2 = tree_from_newick_string<ConflictTree>(tree2s);
 
         // 1. Check that all leaves in input tree have OTT ids
-        check_all_leaves_have_good_ott_ids(*tree2, taxonomy, "tree2");
+        check_and_forward_leaf_ott_ids(*tree2, taxonomy, "tree2");
         // 2. Check that all leaves in tree2 have node names
         check_all_nodes_have_node_names(*tree2, "tree2");
         // 3. Check for duplicate ott ids
