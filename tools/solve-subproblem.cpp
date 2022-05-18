@@ -285,12 +285,14 @@ struct MergeRollbackInfo
 
 struct SolutionRollbackInfo
 {
+    Solution* S;
     optional<int> n_old_implied_splits;
     vector<MergeRollbackInfo> merge_rollback_info;
     optional<int> n_orig_components;
     optional<vector< shared_ptr<component_t> >> old_components;
 
-    void rollback(Solution& S);
+    void rollback();
+    explicit SolutionRollbackInfo(Solution& s): S(&s) {}
 };
 
 struct Solution
@@ -311,7 +313,7 @@ struct Solution
     SolutionRollbackInfo& rollback_info()
     {
         if (not rollback_info_)
-            rollback_info_ = SolutionRollbackInfo();
+            rollback_info_ = SolutionRollbackInfo(*this);
         return *rollback_info_;
     }
 
@@ -380,27 +382,27 @@ void MergeRollbackInfo::unmerge(Solution& S)
     assert(c1->new_splits.empty());
 }
 
-void SolutionRollbackInfo::rollback(Solution& S)
+void SolutionRollbackInfo::rollback()
 {
     if (n_old_implied_splits)
     {
-        assert(*n_old_implied_splits <= S.implied_splits.size());
-        S.implied_splits.resize(*n_old_implied_splits);
+        assert(*n_old_implied_splits <= S->implied_splits.size());
+        S->implied_splits.resize(*n_old_implied_splits);
     }
 
     if (n_orig_components and *n_orig_components == 0)
     {
-        S.components.clear();
+        S->components.clear();
 
         // If we are just going to _delete_ S later on, then this is a waste of time.
-        for(auto& c: S.component_for_index)
+        for(auto& c: S->component_for_index)
             c = nullptr;
 
         return;
     }
     else
         for(int i=(int)merge_rollback_info.size()-1; i >= 0; i--)
-            merge_rollback_info[i].unmerge(S);
+            merge_rollback_info[i].unmerge(*S);
 
     // NOTE: Some components are created during merging that are
     // (i) are not original components, and also
@@ -422,19 +424,19 @@ void SolutionRollbackInfo::rollback(Solution& S)
     if (old_components)
     {
         assert(n_orig_components);
-        std::swap(S.components, *old_components);
+        std::swap(S->components, *old_components);
 
-        for(int i=0;i<S.components.size();i++)
-            assert(S.components[i]);
+        for(int i=0;i<S->components.size();i++)
+            assert(S->components[i]);
 
-        for(int i=*n_orig_components;i<S.components.size();i++)
-            assert(S.components[i]->elements.empty());
+        for(int i=*n_orig_components;i<S->components.size();i++)
+            assert(S->components[i]->elements.empty());
 
-        assert(*n_orig_components <= S.components.size());
-        S.components.resize(*n_orig_components);
+        assert(*n_orig_components <= S->components.size());
+        S->components.resize(*n_orig_components);
 
-        for(int i=0;i<S.components.size();i++)
-            assert(not S.components[i]->elements.empty());
+        for(int i=0;i<S->components.size();i++)
+            assert(not S->components[i]->elements.empty());
     }
 }
 
@@ -452,7 +454,7 @@ void Solution::finalize(bool success)
         component->solution->finalize(success);
 
     if (not success)
-        rollback_info().rollback(*this);
+        rollback_info().rollback();
 
     clear_rollback_info();
 }
@@ -798,7 +800,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         // Doing a manual rollback and clearing the rollback info here
         // allows us to assume that components[i]->solution points to a valid
         // object if there is rollback info.
-        rollback_info.rollback(*solution);
+        rollback_info.rollback();
         solution->clear_rollback_info();
 
         assert(solution->valid());
@@ -873,7 +875,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
 
         // The components AFTER the one that succeeded... don't need to be cleaned up?
 
-        rollback_info.rollback(*solution);
+        rollback_info.rollback();
 
         solution->clear_rollback_info();
     }
