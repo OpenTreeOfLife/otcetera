@@ -324,6 +324,20 @@ struct Solution
         return component_for_index[0] and component_for_index[0]->elements.size() == taxa.size();
     }
 
+    void initialize_taxon_index_map() const
+    {
+        for(int k=0;k<indices.size();k++)
+            assert(indices[k] == -1);
+        for (int i=0;i<taxa.size();i++)
+            indices[taxa[i]] = i;
+    }
+
+    void clear_taxon_index_map() const
+    {
+        for(int id: taxa)
+            indices[id] = -1;
+    }
+
     void finalize(bool);
 
     vector<ConstRSplit> non_implied_splits_from_components() const;
@@ -635,7 +649,6 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     // 1. Record the number of original implied splits.
     solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
 
-    auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
 
@@ -643,10 +656,7 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     if (new_splits.empty() and sub_solutions.empty()) return;
 
     // 3. Initialize the mapping from taxa to indices.
-    for(int k=0;k<indices.size();k++)
-        assert(indices[k] == -1);
-    for (int i=0;i<taxa.size();i++)
-        indices[taxa[i]] = i;
+    solution->initialize_taxon_index_map();
 
     // 4. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(int k = new_splits.size()-1; k >= 0; k--)
@@ -717,8 +727,7 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     }
 
     // 6. Determine the new splits that go into each component (both satisfied AND unsatisfied)
-    for(int id: taxa)
-        indices[id] = -1;
+    solution->clear_taxon_index_map();
 }
 
 
@@ -914,11 +923,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         return true;
 
     // 2. Initialize the mapping from taxa to indices.
-    auto& taxa = solution->taxa;
-    for(int k=0;k<indices.size();k++)
-        assert(indices[k] == -1);
-    for (int i=0;i<taxa.size();i++)
-        indices[taxa[i]] = i;
+    solution->initialize_taxon_index_map();
 
     Merge(solution, new_splits, sub_solutions);
 
@@ -928,10 +933,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
 
     Assign(solution, new_splits, sub_solutions);
 
-    // 7. Clear our map from id -> index, for use by subproblems.
-    for(int id: taxa) {
-        indices[id] = -1;
-    }
+    solution->clear_taxon_index_map();
 
     bool success = SolveSubproblems(solution, new_splits, sub_solutions);
 
