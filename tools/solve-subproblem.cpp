@@ -799,7 +799,7 @@ void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vect
 
 }
 
-bool MaybeFail(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool MaybeFail(shared_ptr<Solution>& solution)
 {
     auto& components = solution->components;
 
@@ -859,7 +859,7 @@ void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vec
     }
 }
 
-bool SolveSubproblems(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool SolveSubproblems(shared_ptr<Solution>& solution)
 {
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
@@ -927,7 +927,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
 
     Merge(solution, new_splits, sub_solutions);
 
-    bool fail = MaybeFail(solution, new_splits, sub_solutions);
+    bool fail = MaybeFail(solution);
     if (fail)
         return false;
 
@@ -935,7 +935,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
 
     solution->clear_taxon_index_map();
 
-    bool success = SolveSubproblems(solution, new_splits, sub_solutions);
+    bool success = SolveSubproblems(solution);
 
     return success;
 }
