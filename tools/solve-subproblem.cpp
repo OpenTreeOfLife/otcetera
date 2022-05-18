@@ -734,25 +734,10 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
     return BUILD_partition_taxa_and_solve_components(solution, new_splits, sub_solutions);
 }
 
-bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
-    auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
-
-    // 0. Check if the solution is new.
-    bool solution_is_new = (solution->visited == 0);
-    solution->visited++;
-
-    // 1. If there are no splits to add, then we are consistent.
-    if (new_splits.empty() and sub_solutions.empty())
-        return true;
-
-    // 2. Initialize the mapping from taxa to indices.
-    for(int k=0;k<indices.size();k++)
-        assert(indices[k] == -1);
-    for (int i=0;i<taxa.size();i++)
-        indices[taxa[i]] = i;
 
     auto& rollback_info = solution->rollback_info();
     solution->rollback_info().n_orig_components = solution->components.size();
@@ -790,7 +775,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     // 3b. For each sub_solution, all the leaves in the taxon set must be in the same component
     for(const auto& sub_solution: sub_solutions)
     {
-        assert(sub_solution->taxa.size() < taxa.size());
+        assert(sub_solution->taxa.size() < solution->taxa.size());
         merge(sub_solution->taxa);
     }
 
@@ -802,6 +787,32 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         if (not component->elements.empty())
             packed_components.push_back( component );
     std::swap(components, packed_components);
+
+}
+
+bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+{
+    auto& taxa = solution->taxa;
+    auto& component_for_index = solution->component_for_index;
+    auto& components = solution->components;
+
+    // 0. Check if the solution is new.
+    bool solution_is_new = (solution->visited == 0);
+    solution->visited++;
+
+    // 1. If there are no splits to add, then we are consistent.
+    if (new_splits.empty() and sub_solutions.empty())
+        return true;
+
+    // 2. Initialize the mapping from taxa to indices.
+    for(int k=0;k<indices.size();k++)
+        assert(indices[k] == -1);
+    for (int i=0;i<taxa.size();i++)
+        indices[taxa[i]] = i;
+
+    auto& rollback_info = solution->rollback_info();
+
+    Merge(solution, new_splits, sub_solutions);
 
     // 5. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (solution->all_taxa_in_one_component())
