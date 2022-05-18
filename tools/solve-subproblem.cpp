@@ -306,6 +306,8 @@ struct Solution
 
     optional<SolutionRollbackInfo> rollback_info_;
 
+    int visited = 0;
+
     bool has_rollback_info() const {return (bool)rollback_info_;}
 
     void clear_rollback_info() {rollback_info_.reset();}
@@ -730,6 +732,10 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
+
+    // 0. Check if the solution is new.
+    bool solution_is_new = (solution->visited == 0);
+    solution->visited++;
 
     // 1. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty())
