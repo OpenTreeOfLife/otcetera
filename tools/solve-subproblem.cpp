@@ -850,60 +850,14 @@ void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vec
     }
 }
 
-bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool SolveSubproblems(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
 
-    // 0. Check if the solution is new.
-    bool solution_is_new = (solution->visited == 0);
-    solution->visited++;
-
-    // 1. If there are no splits to add, then we are consistent.
-    if (new_splits.empty() and sub_solutions.empty())
-        return true;
-
-    // 2. Initialize the mapping from taxa to indices.
-    for(int k=0;k<indices.size();k++)
-        assert(indices[k] == -1);
-    for (int i=0;i<taxa.size();i++)
-        indices[taxa[i]] = i;
-
     auto& rollback_info = solution->rollback_info();
 
-    Merge(solution, new_splits, sub_solutions);
-
-    bool fail = MaybeFail(solution, new_splits, sub_solutions);
-    if (fail)
-        return false;
-
-    // 5. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
-    if (solution->all_taxa_in_one_component())
-    {
-        assert(components.size() == 1);
-        for(int id: taxa)
-            indices[id] = -1;
-
-        // Doing a manual rollback and clearing the rollback info here
-        // allows us to assume that components[i]->solution points to a valid
-        // object if there is rollback info.
-        rollback_info.rollback();
-        solution->clear_rollback_info();
-
-        assert(solution->valid());
-
-        return false;
-    }
-
-    Assign(solution, new_splits, sub_solutions);
-
-    // 7. Clear our map from id -> index, for use by subproblems.
-    for(int id: taxa) {
-        indices[id] = -1;
-    }
-
-    // 8. Recursively solve the sub-problems of the partition components
     optional<int> failing_component;
     for(int i=0;i<components.size();i++)
     {
@@ -947,6 +901,41 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     }
 
     return (not failing_component);
+}
+
+bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+{
+    // 0. Check if the solution is new.
+    bool solution_is_new = (solution->visited == 0);
+    solution->visited++;
+
+    // 1. If there are no splits to add, then we are consistent.
+    if (new_splits.empty() and sub_solutions.empty())
+        return true;
+
+    // 2. Initialize the mapping from taxa to indices.
+    auto& taxa = solution->taxa;
+    for(int k=0;k<indices.size();k++)
+        assert(indices[k] == -1);
+    for (int i=0;i<taxa.size();i++)
+        indices[taxa[i]] = i;
+
+    Merge(solution, new_splits, sub_solutions);
+
+    bool fail = MaybeFail(solution, new_splits, sub_solutions);
+    if (fail)
+        return false;
+
+    Assign(solution, new_splits, sub_solutions);
+
+    // 7. Clear our map from id -> index, for use by subproblems.
+    for(int id: taxa) {
+        indices[id] = -1;
+    }
+
+    bool success = SolveSubproblems(solution, new_splits, sub_solutions);
+
+    return success;
 }
 
 bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits)
