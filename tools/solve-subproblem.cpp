@@ -790,6 +790,36 @@ void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vect
 
 }
 
+void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+{
+    auto& component_for_index = solution->component_for_index;
+    auto& components = solution->components;
+
+    // 1. Determine the new splits that go into each component.
+    //    We will check if they are implied or unimplied when we call BUILD_check_implied_and_continue( ) on the component.
+    for(auto& split: new_splits)
+    {
+        int first = indices[*split->in.begin()];
+        assert(first >= 0);
+        auto component = component_for_index[first];
+
+        component->new_splits.push_back(split);
+    }
+
+    // 2. Pass down sub_solutions into the correct component.
+    //    They basically are bundles of splits to work on.
+    //    All splits in the same bundle always go into the same component because we merged
+    //       any intersecting components in 5b.
+    //    We will check if they are punctured when we call BUILD_check_implied_and_continue( ) on the component.
+    for(auto& sub_solution: sub_solutions)
+    {
+        int first_taxon = sub_solution->taxa[0];
+        int first_index = indices[first_taxon];
+        auto component = component_for_index[first_index];
+        component->old_solutions.push_back(sub_solution);
+    }
+}
+
 bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
     auto& taxa = solution->taxa;
@@ -832,29 +862,7 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
         return false;
     }
 
-    // 6a. Determine the new splits that go into each component.
-    //     We will check if they are implied or unimplied when we call BUILD_check_implied_and_continue( ) on the component.
-    for(auto& split: new_splits)
-    {
-        int first = indices[*split->in.begin()];
-        assert(first >= 0);
-        auto component = component_for_index[first];
-
-        component->new_splits.push_back(split);
-    }
-
-    // 6b. Pass down sub_solutions into the correct component.
-    //     They basically are bundles of splits to work on.
-    //     All splits in the same bundle always go into the same component because we merged
-    //        any intersecting components in 5b.
-    //     We will check if they are punctured when we call BUILD_check_implied_and_continue( ) on the component.
-    for(auto& sub_solution: sub_solutions)
-    {
-        int first_taxon = sub_solution->taxa[0];
-        int first_index = indices[first_taxon];
-        auto component = component_for_index[first_index];
-        component->old_solutions.push_back(sub_solution);
-    }
+    Assign(solution, new_splits, sub_solutions);
 
     // 7. Clear our map from id -> index, for use by subproblems.
     for(int id: taxa) {
