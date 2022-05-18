@@ -790,6 +790,36 @@ void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vect
 
 }
 
+bool MaybeFail(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+{
+    auto& components = solution->components;
+
+    // SUCCESS!
+    if (not solution->all_taxa_in_one_component())
+        return false;
+
+    // FAILURE!
+    else
+    {
+        auto& taxa = solution->taxa;
+
+        assert(components.size() == 1);
+        for(int id: taxa)
+            indices[id] = -1;
+
+        // Doing a manual rollback and clearing the rollback info here
+        // allows us to assume that components[i]->solution points to a valid
+        // object if there is rollback info.
+        solution->rollback_info().rollback();
+        solution->clear_rollback_info();
+
+        assert(solution->valid());
+
+        // we failed!
+        return true;
+    }
+}
+
 void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
     auto& component_for_index = solution->component_for_index;
@@ -843,6 +873,10 @@ bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, v
     auto& rollback_info = solution->rollback_info();
 
     Merge(solution, new_splits, sub_solutions);
+
+    bool fail = MaybeFail(solution, new_splits, sub_solutions);
+    if (fail)
+        return false;
 
     // 5. If we can't subdivide the leaves in any way, then the splits are not consistent, so return failure
     if (solution->all_taxa_in_one_component())
