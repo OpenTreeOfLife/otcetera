@@ -732,7 +732,7 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
 }
 
 
-void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, SolutionRollbackInfo& rollback_info)
+void Merge(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, SolutionRollbackInfo& rollback_info)
 {
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
