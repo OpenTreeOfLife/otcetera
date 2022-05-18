@@ -604,10 +604,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   You can get the resulting tree from it with solution.get_tree().
 ///   New splits are in both `new_splits` and `sub_solution`.
-bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
-
-/// Check if splits in new_splits and sub_solutions are implied by solution.taxa, and then call BUILD_( ).
-bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -643,8 +640,7 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
     auto& components = solution->components;
 
     // 2. If there are no splits to add, then we are consistent.
-    if (new_splits.empty() and sub_solutions.empty())
-        return true;
+    if (new_splits.empty() and sub_solutions.empty()) return;
 
     // 3. Initialize the mapping from taxa to indices.
     for(int k=0;k<indices.size();k++)
@@ -723,6 +719,17 @@ bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<Con
     // 6. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(int id: taxa)
         indices[id] = -1;
+}
+
+
+bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
+
+/// Check if splits in new_splits and sub_solutions are implied by solution.taxa, and then call BUILD_( ).
+bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+{
+    RemoveImpliedSplits(solution, new_splits, sub_solutions);
+
+    if (new_splits.empty() and sub_solutions.empty()) return true;
 
     return BUILD_partition_taxa_and_solve_components(solution, new_splits, sub_solutions);
 }
