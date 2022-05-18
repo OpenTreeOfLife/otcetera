@@ -618,7 +618,7 @@ unique_ptr<Tree_t> Solution::get_tree() const
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   You can get the resulting tree from it with solution.get_tree().
 ///   New splits are in both `new_splits` and `sub_solution`.
-void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, SolutionRollbackInfo& sol_rollback_info)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -647,7 +647,8 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     // --- After this point, we have chosen which solution object we are working on --- //
 
     // 1. Record the number of original implied splits.
-    solution->rollback_info().n_old_implied_splits = solution->implied_splits.size();
+    sol_rollback_info = SolutionRollbackInfo(*solution);
+    sol_rollback_info.n_old_implied_splits = solution->implied_splits.size();
 
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
@@ -731,13 +732,12 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
 }
 
 
-void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, SolutionRollbackInfo& rollback_info)
 {
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
 
-    auto& rollback_info = solution->rollback_info();
-    solution->rollback_info().n_orig_components = solution->components.size();
+    rollback_info.n_orig_components = solution->components.size();
 
     bool has_initial_components = not solution->components.empty();
 
@@ -908,18 +908,26 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
     bool solution_is_new = (solution->visited == 0);
     solution->visited++;
 
+    SolutionRollbackInfo sol_rollback_info(*solution);
+
     // 1. Remove implied splits
     if (not top)
-        RemoveImpliedSplits(solution, new_splits, sub_solutions);
+        RemoveImpliedSplits(solution, new_splits, sub_solutions, sol_rollback_info);
 
     // 2. If there are no splits to add, then we are consistent.
-    if (new_splits.empty() and sub_solutions.empty()) return true;
+    if (new_splits.empty() and sub_solutions.empty())
+    {
+        solution->rollback_info() = sol_rollback_info;
+        return true;
+    }
 
     // 3. Initialize the mapping from taxa to indices.
     solution->initialize_taxon_index_map();
 
     // 4. Merge components
-    Merge(solution, new_splits, sub_solutions);
+    Merge(solution, new_splits, sub_solutions, sol_rollback_info);
+
+    solution->rollback_info() = sol_rollback_info;
 
     // 5. Fail if there is only one component
     bool fail = MaybeFail(solution);
