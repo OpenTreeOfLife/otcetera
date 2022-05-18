@@ -731,18 +731,6 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
 }
 
 
-bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions);
-
-/// Check if splits in new_splits and sub_solutions are implied by solution.taxa, and then call BUILD_( ).
-bool BUILD_check_implied_and_continue(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
-{
-    RemoveImpliedSplits(solution, new_splits, sub_solutions);
-
-    if (new_splits.empty() and sub_solutions.empty()) return true;
-
-    return BUILD_partition_taxa_and_solve_components(solution, new_splits, sub_solutions);
-}
-
 void Merge(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
     auto& component_for_index = solution->component_for_index;
@@ -835,7 +823,7 @@ void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vec
     auto& components = solution->components;
 
     // 1. Determine the new splits that go into each component.
-    //    We will check if they are implied or unimplied when we call BUILD_check_implied_and_continue( ) on the component.
+    //    We will check if they are implied or unimplied when we call RemoveImpliedSplits( ) on the component.
     for(auto& split: new_splits)
     {
         int first = indices[*split->in.begin()];
@@ -849,7 +837,7 @@ void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vec
     //    They basically are bundles of splits to work on.
     //    All splits in the same bundle always go into the same component because we merged
     //       any intersecting components in 5b.
-    //    We will check if they are punctured when we call BUILD_check_implied_and_continue( ) on the component.
+    //    We will check if they are punctured when we call RemoveImpliedSplits( ) on the component.
     for(auto& sub_solution: sub_solutions)
     {
         int first_taxon = sub_solution->taxa[0];
@@ -858,6 +846,8 @@ void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vec
         component->old_solutions.push_back(sub_solution);
     }
 }
+
+bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, bool top = false);
 
 bool SolveSubproblems(shared_ptr<Solution>& solution)
 {
@@ -887,7 +877,7 @@ bool SolveSubproblems(shared_ptr<Solution>& solution)
         if (not component->solution)
             component->solution = std::make_shared<Solution>(*component, taxa);
 
-        if (not BUILD_check_implied_and_continue(component->solution, comp_new_splits, comp_sub_solutions))
+        if (not BuildIncA(component->solution, comp_new_splits, comp_sub_solutions))
             failing_component = i;
 
         assert(component->old_solutions.empty());
@@ -912,29 +902,37 @@ bool SolveSubproblems(shared_ptr<Solution>& solution)
     return (not failing_component);
 }
 
-bool BUILD_partition_taxa_and_solve_components(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
+bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, bool top)
 {
     // 0. Check if the solution is new.
     bool solution_is_new = (solution->visited == 0);
     solution->visited++;
 
-    // 1. If there are no splits to add, then we are consistent.
-    if (new_splits.empty() and sub_solutions.empty())
-        return true;
+    // 1. Remove implied splits
+    if (not top)
+        RemoveImpliedSplits(solution, new_splits, sub_solutions);
 
-    // 2. Initialize the mapping from taxa to indices.
+    // 2. If there are no splits to add, then we are consistent.
+    if (new_splits.empty() and sub_solutions.empty()) return true;
+
+    // 3. Initialize the mapping from taxa to indices.
     solution->initialize_taxon_index_map();
 
+    // 4. Merge components
     Merge(solution, new_splits, sub_solutions);
 
+    // 5. Fail if there is only one component
     bool fail = MaybeFail(solution);
     if (fail)
         return false;
 
+    // 6. Assign splits and sub_solutions to components
     Assign(solution, new_splits, sub_solutions);
 
+    // 7. Clear the taxon index map
     solution->clear_taxon_index_map();
 
+    // 8. Recurse into sub-problems
     bool success = SolveSubproblems(solution);
 
     return success;
@@ -945,7 +943,7 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;
 
-    bool ok =  BUILD_partition_taxa_and_solve_components(solution, new_splits2, sub_solutions);
+    bool ok =  BuildIncA(solution, new_splits2, sub_solutions, true);
     solution->finalize(ok);
     return ok;
 }
