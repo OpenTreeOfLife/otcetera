@@ -847,9 +847,10 @@ void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vec
     }
 }
 
-bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, bool top = false);
+bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions,
+               vector<SolutionRollbackInfo>& all_rollback_info, bool top = false);
 
-bool SolveSubproblems(shared_ptr<Solution>& solution)
+bool SolveSubproblems(shared_ptr<Solution>& solution, vector<SolutionRollbackInfo>& all_rollback_info)
 {
     auto& taxa = solution->taxa;
     auto& component_for_index = solution->component_for_index;
@@ -877,7 +878,7 @@ bool SolveSubproblems(shared_ptr<Solution>& solution)
         if (not component->solution)
             component->solution = std::make_shared<Solution>(*component, taxa);
 
-        if (not BuildIncA(component->solution, comp_new_splits, comp_sub_solutions))
+        if (not BuildIncA(component->solution, comp_new_splits, comp_sub_solutions, all_rollback_info))
             failing_component = i;
 
         assert(component->old_solutions.empty());
@@ -902,7 +903,8 @@ bool SolveSubproblems(shared_ptr<Solution>& solution)
     return (not failing_component);
 }
 
-bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, bool top)
+bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions,
+               vector<SolutionRollbackInfo>& all_rollback_info, bool top)
 {
     // 0. Check if the solution is new.
     bool solution_is_new = (solution->visited == 0);
@@ -929,6 +931,9 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
 
     solution->rollback_info() = sol_rollback_info;
 
+    if (solution_is_new)
+        all_rollback_info.push_back(sol_rollback_info);
+
     // 5. Fail if there is only one component
     bool fail = MaybeFail(solution);
     if (fail)
@@ -941,7 +946,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
     solution->clear_taxon_index_map();
 
     // 8. Recurse into sub-problems
-    bool success = SolveSubproblems(solution);
+    bool success = SolveSubproblems(solution, all_rollback_info);
 
     return success;
 }
@@ -951,7 +956,8 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;
 
-    bool ok =  BuildIncA(solution, new_splits2, sub_solutions, true);
+    vector<SolutionRollbackInfo> all_rollback_info;
+    bool ok =  BuildIncA(solution, new_splits2, sub_solutions, all_rollback_info, true);
     solution->finalize(ok);
     return ok;
 }
