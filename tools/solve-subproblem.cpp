@@ -285,14 +285,14 @@ struct MergeRollbackInfo
 
 struct SolutionRollbackInfo
 {
-    Solution* S;
+    shared_ptr<Solution> S;
     optional<int> n_old_implied_splits;
     vector<MergeRollbackInfo> merge_rollback_info;
     optional<int> n_orig_components;
     optional<vector< shared_ptr<component_t> >> old_components;
 
     void rollback();
-    explicit SolutionRollbackInfo(Solution& s): S(&s) {}
+    explicit SolutionRollbackInfo(const shared_ptr<Solution>& s): S(s) {}
 };
 
 struct Solution
@@ -304,20 +304,7 @@ struct Solution
     vector< component_ref > component_for_index;
     vector< shared_ptr<component_t> > components;
 
-    optional<SolutionRollbackInfo> rollback_info_;
-
     int visited = 0;
-
-    bool has_rollback_info() const {return (bool)rollback_info_;}
-
-    void clear_rollback_info() {rollback_info_.reset();}
-
-    SolutionRollbackInfo& rollback_info()
-    {
-        if (not rollback_info_)
-            rollback_info_ = SolutionRollbackInfo(*this);
-        return *rollback_info_;
-    }
 
     bool all_taxa_in_one_component() const
     {
@@ -337,8 +324,6 @@ struct Solution
         for(int id: taxa)
             indices[id] = -1;
     }
-
-    void finalize(bool);
 
     vector<ConstRSplit> non_implied_splits_from_components() const;
     vector<ConstRSplit> splits_from_components() const;
@@ -454,25 +439,6 @@ void SolutionRollbackInfo::rollback()
         for(int i=0;i<S->components.size();i++)
             assert(not S->components[i]->elements.empty());
     }
-}
-
-
-void Solution::finalize(bool success)
-{
-    // Avoid traversing parts of the tree that we didn't visit this round.
-    if (not has_rollback_info()) return;
-
-    // If there is rollback info, then BUILD found multiple components and
-    // recursively called into the children.  So, we need to undo the effects
-    // of that.
-    assert(not all_taxa_in_one_component());
-    for(auto& component: components)
-        component->solution->finalize(success);
-
-    if (not success)
-        rollback_info().rollback();
-
-    clear_rollback_info();
 }
 
 
@@ -647,7 +613,7 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
     // --- After this point, we have chosen which solution object we are working on --- //
 
     // 1. Record the number of original implied splits.
-    sol_rollback_info = SolutionRollbackInfo(*solution);
+    sol_rollback_info = SolutionRollbackInfo(solution);
     sol_rollback_info.n_old_implied_splits = solution->implied_splits.size();
 
     auto& component_for_index = solution->component_for_index;
@@ -798,19 +764,8 @@ bool MaybeFail(shared_ptr<Solution>& solution)
     // FAILURE!
     else
     {
-        auto& taxa = solution->taxa;
-
         assert(components.size() == 1);
-        for(int id: taxa)
-            indices[id] = -1;
-
-        // Doing a manual rollback and clearing the rollback info here
-        // allows us to assume that components[i]->solution points to a valid
-        // object if there is rollback info.
-        solution->rollback_info().rollback();
-        solution->clear_rollback_info();
-
-        assert(solution->valid());
+        solution->clear_taxon_index_map();
 
         // we failed!
         return true;
@@ -856,8 +811,6 @@ bool SolveSubproblems(shared_ptr<Solution>& solution, vector<SolutionRollbackInf
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
 
-    auto& rollback_info = solution->rollback_info();
-
     optional<int> failing_component;
     for(int i=0;i<components.size();i++)
     {
@@ -885,41 +838,28 @@ bool SolveSubproblems(shared_ptr<Solution>& solution, vector<SolutionRollbackInf
         assert(component->solution);
     }
 
-    if (failing_component)
-    {
-        // We only do this to the components that SUCCEEDED.
-        for(int i=0; i < *failing_component; i++)
-            components[i]->solution->finalize(false);
-
-        // The component that failed should have cleaned itself up.
-
-        // The components AFTER the one that succeeded... don't need to be cleaned up?
-
-        rollback_info.rollback();
-
-        solution->clear_rollback_info();
-    }
-
     return (not failing_component);
 }
 
 bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions,
                vector<SolutionRollbackInfo>& all_rollback_info, bool top)
 {
-    // 0. Check if the solution is new.
-    bool solution_is_new = (solution->visited == 0);
-    solution->visited++;
-
-    SolutionRollbackInfo sol_rollback_info(*solution);
+    SolutionRollbackInfo sol_rollback_info(solution);
 
     // 1. Remove implied splits
     if (not top)
         RemoveImpliedSplits(solution, new_splits, sub_solutions, sol_rollback_info);
 
+    // 1.5. Check if the solution is new.
+    bool solution_is_new = (solution->visited == 0);
+    solution->visited++;
+
     // 2. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty())
     {
-        solution->rollback_info() = sol_rollback_info;
+        if (not solution_is_new)
+            all_rollback_info.push_back(sol_rollback_info);
+
         return true;
     }
 
@@ -929,9 +869,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
     // 4. Merge components
     Merge(solution, new_splits, sub_solutions, sol_rollback_info);
 
-    solution->rollback_info() = sol_rollback_info;
-
-    if (solution_is_new)
+    if (not solution_is_new)
         all_rollback_info.push_back(sol_rollback_info);
 
     // 5. Fail if there is only one component
@@ -958,7 +896,13 @@ bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
 
     vector<SolutionRollbackInfo> all_rollback_info;
     bool ok =  BuildIncA(solution, new_splits2, sub_solutions, all_rollback_info, true);
-    solution->finalize(ok);
+
+    if (not ok)
+    {
+        for(int i = (int)all_rollback_info.size()-1; i>=0; i--)
+            all_rollback_info[i].rollback();
+    }
+
     return ok;
 }
 
