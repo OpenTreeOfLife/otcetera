@@ -506,13 +506,8 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     if (c2->elements.size() > c1->elements.size())
         std::swap(c1, c2);
 
-    if (record_component_mergers)
-        merge_rollback_info.push_back({c1, c2, c2->elements.begin(), c1->solution});
-
     for(int i: c2->elements)
         component_for_index[i] = c1;
-
-    c1->elements.splice(c1->elements.end(), c2->elements);
 
     if (c1->solution)
     {
@@ -524,10 +519,15 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
     if (c2->solution)
         c1->old_solutions.push_back(c2->solution);
 
+    if (record_component_mergers)
+        merge_rollback_info.push_back({c1, c2, c2->elements.begin(), c1->solution});
+
     // One of these components could be new -- that is, composed only of previously-trivial components.
     append(c1->old_solutions, c2->old_solutions);
 
     c1->solution = {};
+
+    c1->elements.splice(c1->elements.end(), c2->elements);
 
     return c1;
 }
@@ -535,11 +535,7 @@ component_ref merge_components(component_ref c1, component_ref c2, vector<compon
 /// Merge components c1 and c2 and return the component name that survived
 void merge_component_with_trivial(component_ref c1, int index2, vector<component_ref>& component_for_index, vector<MergeRollbackInfo>& merge_rollback_info, bool record_component_mergers)
 {
-    if (record_component_mergers)
-        merge_rollback_info.push_back({c1, nullptr, {}, c1->solution});
-
     component_for_index[index2] = c1;
-    c1->elements.push_back(index2);
 
     if (c1->solution)
     {
@@ -548,7 +544,12 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
         c1->old_solutions.push_back(c1->solution);
     }
 
+    if (record_component_mergers)
+        merge_rollback_info.push_back({c1, nullptr, {}, c1->solution});
+
     c1->solution = {};
+
+    c1->elements.push_back(index2);
 }
 
 unique_ptr<Tree_t> Solution::get_tree() const
