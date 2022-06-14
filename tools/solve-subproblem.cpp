@@ -388,6 +388,7 @@ void SolutionRollbackInfo::rollback()
     assert(n_old_implied_splits <= S->implied_splits.size());
     S->implied_splits.resize(n_old_implied_splits);
 
+    // If n_orig_component is set, then we didn't quit early before the Merge( ) step.
     if (n_orig_components and *n_orig_components == 0)
     {
         S->components.clear();
