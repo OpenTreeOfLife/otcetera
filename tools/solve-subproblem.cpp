@@ -578,20 +578,8 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
-// TODO: If BUILD fails, can we rebuild the solution that we have modified in-place?
-//       * we need to avoid modifying the old solutions (for a merged component) in-place.
-//       * we need to restore the component->elements list.
-
-/// Construct a tree with all the splits mentioned, and return false if this is not possible
-///   You can get the resulting tree from it with solution.get_tree().
-///   New splits are in both `new_splits` and `sub_solution`.
-void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, SolutionRollbackInfo& sol_rollback_info)
+void MaybeReuseSolution(shared_ptr<Solution>& solution, vector<shared_ptr<Solution>>& sub_solutions)
 {
-#pragma clang diagnostic ignored  "-Wsign-conversion"
-#pragma clang diagnostic ignored  "-Wsign-compare"
-#pragma clang diagnostic ignored  "-Wshorten-64-to-32"
-#pragma GCC diagnostic ignored  "-Wsign-compare"
-
     // 0. If we found a solution to THIS exact problem then we can just re-use it.
     if (sub_solutions.size() == 1 and sub_solutions[0]->taxa.size() == solution->taxa.size())
     {
@@ -610,11 +598,25 @@ void RemoveImpliedSplits(shared_ptr<Solution>& solution, vector<ConstRSplit>& ne
         // We are not done yet: we may need to add the `new_splits` to the (partial) solution that we just found.
         // So do NOT return yet.
     }
+}
+
+// TODO: If BUILD fails, can we rebuild the solution that we have modified in-place?
+//       * we need to avoid modifying the old solutions (for a merged component) in-place.
+//       * we need to restore the component->elements list.
+
+/// Construct a tree with all the splits mentioned, and return false if this is not possible
+///   You can get the resulting tree from it with solution.get_tree().
+///   New splits are in both `new_splits` and `sub_solution`.
+void RemoveImpliedSplits(const shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, SolutionRollbackInfo& sol_rollback_info)
+{
+#pragma clang diagnostic ignored  "-Wsign-conversion"
+#pragma clang diagnostic ignored  "-Wsign-compare"
+#pragma clang diagnostic ignored  "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored  "-Wsign-compare"
 
     // --- After this point, we have chosen which solution object we are working on --- //
 
     // 1. Record the number of original implied splits.
-    sol_rollback_info = SolutionRollbackInfo(solution);
     sol_rollback_info.n_old_implied_splits = solution->implied_splits.size();
 
     auto& component_for_index = solution->component_for_index;
@@ -845,17 +847,20 @@ bool SolveSubproblems(shared_ptr<Solution>& solution, vector<SolutionRollbackInf
 bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions,
                vector<SolutionRollbackInfo>& all_rollback_info, bool top)
 {
-    SolutionRollbackInfo sol_rollback_info(solution);
+    // 1. MaybeReuseSolution
+    MaybeReuseSolution(solution, sub_solutions);
 
-    // 1. Remove implied splits
-    if (not top)
-        RemoveImpliedSplits(solution, new_splits, sub_solutions, sol_rollback_info);
-
-    // 1.5. Check if the solution is new.
+    // 2. Check if the solution is new.
     bool solution_is_new = (solution->visited == 0);
     solution->visited++;
 
-    // 2. If there are no splits to add, then we are consistent.
+    SolutionRollbackInfo sol_rollback_info(solution);
+
+    // 3. Remove implied splits
+    if (not top)
+        RemoveImpliedSplits(solution, new_splits, sub_solutions, sol_rollback_info);
+
+    // A. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty())
     {
         if (not solution_is_new)
@@ -864,7 +869,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
         return true;
     }
 
-    // 3. Initialize the mapping from taxa to indices.
+    // B. Initialize the mapping from taxa to indices.
     solution->initialize_taxon_index_map();
 
     // 4. Merge components
@@ -881,10 +886,10 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
     // 6. Assign splits and sub_solutions to components
     Assign(solution, new_splits, sub_solutions);
 
-    // 7. Clear the taxon index map
+    // C. Clear the taxon index map
     solution->clear_taxon_index_map();
 
-    // 8. Recurse into sub-problems
+    // 7. Recurse into sub-problems
     bool success = SolveSubproblems(solution, all_rollback_info);
 
     return success;
