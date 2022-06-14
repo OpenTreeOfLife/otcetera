@@ -279,18 +279,6 @@ struct MergeRollbackInfo
     void unmerge(Solution& S);
 };
 
-struct SolutionRollbackInfo
-{
-    shared_ptr<Solution> S;
-    optional<int> n_old_implied_splits;
-    vector<MergeRollbackInfo> merge_rollback_info;
-    optional<int> n_orig_components;
-    optional<vector< shared_ptr<component_t> >> old_components;
-
-    void rollback();
-    explicit SolutionRollbackInfo(const shared_ptr<Solution>& s): S(s) {}
-};
-
 struct Solution
 {
     vector<int> taxa;
@@ -379,13 +367,26 @@ void MergeRollbackInfo::unmerge(Solution& S)
     assert(c1->new_splits.empty());
 }
 
+struct SolutionRollbackInfo
+{
+    shared_ptr<Solution> S;
+    int n_old_implied_splits;
+    vector<MergeRollbackInfo> merge_rollback_info;
+    optional<int> n_orig_components;
+    optional<vector< shared_ptr<component_t> >> old_components;
+
+    void rollback();
+
+    explicit SolutionRollbackInfo(const shared_ptr<Solution>& s)
+        : S(s), n_old_implied_splits( s->implied_splits.size() )
+    {
+    }
+};
+
 void SolutionRollbackInfo::rollback()
 {
-    if (n_old_implied_splits)
-    {
-        assert(*n_old_implied_splits <= S->implied_splits.size());
-        S->implied_splits.resize(*n_old_implied_splits);
-    }
+    assert(n_old_implied_splits <= S->implied_splits.size());
+    S->implied_splits.resize(n_old_implied_splits);
 
     if (n_orig_components and *n_orig_components == 0)
     {
@@ -603,7 +604,7 @@ void MaybeReuseSolution(shared_ptr<Solution>& solution, vector<shared_ptr<Soluti
 /// Construct a tree with all the splits mentioned, and return false if this is not possible
 ///   You can get the resulting tree from it with solution.get_tree().
 ///   New splits are in both `new_splits` and `sub_solution`.
-void RemoveImpliedSplits(const shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions, SolutionRollbackInfo& sol_rollback_info)
+void RemoveImpliedSplits(const shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
 #pragma clang diagnostic ignored  "-Wsign-conversion"
 #pragma clang diagnostic ignored  "-Wsign-compare"
@@ -613,8 +614,6 @@ void RemoveImpliedSplits(const shared_ptr<Solution>& solution, vector<ConstRSpli
     // --- After this point, we have chosen which solution object we are working on --- //
 
     // 1. Record the number of original implied splits.
-    sol_rollback_info.n_old_implied_splits = solution->implied_splits.size();
-
     auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
 
@@ -854,7 +853,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
 
     // 3. Remove implied splits
     if (not top)
-        RemoveImpliedSplits(solution, new_splits, sub_solutions, sol_rollback_info);
+        RemoveImpliedSplits(solution, new_splits, sub_solutions);
 
     // A. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty())
