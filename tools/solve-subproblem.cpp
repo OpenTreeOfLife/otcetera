@@ -16,7 +16,6 @@
 #include <sstream>
 #include <boost/filesystem.hpp>
 #include <optional>
-#include <robin_hood.h>
 
 #include "otc/conflict.h"
 #include "otc/node_naming.h"
@@ -33,9 +32,6 @@ using std::map;
 using std::string;
 using std::optional;
 using std::shared_ptr;
-
-template <typename X>
-using Set = robin_hood::unordered_set<X>;
 
 using namespace otc;
 
