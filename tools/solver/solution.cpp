@@ -20,6 +20,34 @@ bool Solution::valid() const
     return true;
 }
 
+vector<ConstRSplit> Solution::splits_from_components() const
+{
+    vector<ConstRSplit> splits = non_implied_splits_from_components();
+    for(auto& split: implied_splits)
+        splits.push_back(split);
+    return splits;
+}
+
+int Solution::n_splits_from_components() const
+{
+    int n = implied_splits.size();
+    for(auto& component: components)
+        n += component->solution->n_splits_from_components();
+    return n;
+}
+
+vector<ConstRSplit> Solution::non_implied_splits_from_components() const
+{
+    vector<ConstRSplit> splits;
+    for(auto& component: components)
+    {
+        for(auto split: component->solution->splits_from_components())
+            splits.push_back(split);
+    }
+    return splits;
+}
+
+
 unique_ptr<Tree_t> Solution::get_tree() const
 {
     assert(taxa.size() > 1);

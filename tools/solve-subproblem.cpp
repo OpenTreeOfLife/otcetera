@@ -272,34 +272,6 @@ void SolutionRollbackInfo::rollback()
 }
 
 
-vector<ConstRSplit> Solution::splits_from_components() const
-{
-    vector<ConstRSplit> splits = non_implied_splits_from_components();
-    for(auto& split: implied_splits)
-        splits.push_back(split);
-    return splits;
-}
-
-int Solution::n_splits_from_components() const
-{
-    int n = implied_splits.size();
-    for(auto& component: components)
-        n += component->solution->n_splits_from_components();
-    return n;
-}
-
-vector<ConstRSplit> Solution::non_implied_splits_from_components() const
-{
-    vector<ConstRSplit> splits;
-    for(auto& component: components)
-    {
-        for(auto split: component->solution->splits_from_components())
-            splits.push_back(split);
-    }
-    return splits;
-}
-
-
 bool exclude_group_intersects_component(const ConstRSplit& split, const component_t* component, const vector<component_ref>& component_for_index)
 {
     for(int taxon: split->out)
