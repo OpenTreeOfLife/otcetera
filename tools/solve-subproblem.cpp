@@ -8,6 +8,7 @@
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 
 #include "tools/solver/rsplit.h"
+#include "tools/solver/component.h"
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
@@ -146,27 +147,6 @@ bool sort_cmp(const vector<T>& v1,  const vector<T>& v2)
 }
 
 struct Solution;
-
-struct component_t
-{
-    list<int> elements;
-
-    shared_ptr<Solution> solution;
-
-    vector<ConstRSplit> new_splits;
-    vector<shared_ptr<Solution>> old_solutions;
-
-    vector<int> get_taxa(const std::vector<int>& other_taxa) const
-    {
-        vector<int> taxa;
-        taxa.reserve(elements.size());
-        for(auto index: elements)
-            taxa.push_back(other_taxa[index]);
-        return taxa;
-    }
-};
-
-typedef component_t* component_ref;
 
 // A "partial" solution only has implied_splits + non_implied_splits
 // A "full" solution also has components.
