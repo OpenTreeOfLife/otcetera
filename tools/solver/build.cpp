@@ -560,3 +560,18 @@ bool BUILDINC(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_spl
     return ok;
 }
 
+bool BUILD_check(const std::vector<int> all_leaves_indices, const std::vector<ConstRSplit>& splits)
+{
+    auto solution = std::make_shared<Solution>(all_leaves_indices);
+    return BUILDINC(solution, splits);
+}
+
+std::unique_ptr<Tree_t> BUILD(const std::vector<int> all_leaves_indices, const std::vector<ConstRSplit>& splits)
+{
+    auto solution = std::make_shared<Solution>(all_leaves_indices);
+    bool compatible = BUILDINC(solution, splits);
+    if (compatible)
+        return solution->get_tree();
+    else
+        return {};
+}

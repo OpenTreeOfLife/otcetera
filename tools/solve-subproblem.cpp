@@ -798,10 +798,9 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     // 2. Construct final tree and add names
 
     //FIXME - discard previous solution;
-    solution = std::make_shared<Solution>(all_leaves_indices);
-    auto result = BUILDINC(solution, consistent);
-    assert(result);
-    auto tree = solution->get_tree();
+    auto tree = BUILD(all_leaves_indices, consistent);
+    assert(tree);
+
     for(auto nd: iter_pre(*tree))
     {
         if (nd->is_tip())
