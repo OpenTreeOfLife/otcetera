@@ -7,8 +7,11 @@
 #include <iomanip>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 
-#include "tools/solver/rsplit.h"
-#include "tools/solver/component.h"
+#include "solver/tree.h"
+#include "solver/rsplit.h"
+#include "solver/component.h"
+#include "solver/solution.h"
+
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
@@ -36,9 +39,6 @@ using std::optional;
 using std::shared_ptr;
 
 using namespace otc;
-
-typedef TreeMappedWithSplits Tree_t;
-typedef Tree_t::node_type node_t;
 
 static vector<int> indices;
 bool g_do_timing = false;
@@ -162,69 +162,18 @@ struct MergeRollbackInfo
     void unmerge(Solution& S);
 };
 
-struct Solution
+void Solution::initialize_taxon_index_map() const
 {
-    vector<int> taxa;
+    for(int k=0;k<indices.size();k++)
+        assert(indices[k] == -1);
+    for (int i=0;i<taxa.size();i++)
+        indices[taxa[i]] = i;
+}
 
-    vector<ConstRSplit> implied_splits;
-
-    vector< component_ref > component_for_index;
-    vector< shared_ptr<component_t> > components;
-
-    int visited = 0;
-
-    bool all_taxa_in_one_component() const
-    {
-        return component_for_index[0] and component_for_index[0]->elements.size() == taxa.size();
-    }
-
-    void initialize_taxon_index_map() const
-    {
-        for(int k=0;k<indices.size();k++)
-            assert(indices[k] == -1);
-        for (int i=0;i<taxa.size();i++)
-            indices[taxa[i]] = i;
-    }
-
-    void clear_taxon_index_map() const
-    {
-        for(int id: taxa)
-            indices[id] = -1;
-    }
-
-    vector<ConstRSplit> non_implied_splits_from_components() const;
-    vector<ConstRSplit> splits_from_components() const;
-
-    int n_splits_from_components() const;
-
-    unique_ptr<Tree_t> get_tree() const;
-
-    bool valid() const;
-
-    Solution& operator=(const Solution&) = default;
-    Solution& operator=(Solution&&) = default;
-
-    Solution(const Solution&) = default;
-    Solution(Solution&&) = default;
-
-    Solution(const vector<int>& t)
-        :taxa(t), component_for_index(taxa.size())
-    {}
-    Solution(const component_t& c, const std::vector<int> other_taxa)
-        :Solution(c.get_taxa(other_taxa))
-    {}
-};
-
-bool Solution::valid() const
+void Solution::clear_taxon_index_map() const
 {
-    for(auto& component: components)
-    {
-        if (not component->solution) return false;
-
-        if (not component->solution->valid()) return false;
-    }
-
-    return true;
+    for(int id: taxa)
+        indices[id] = -1;
 }
 
 void MergeRollbackInfo::unmerge(Solution& S)
@@ -431,32 +380,6 @@ void merge_component_with_trivial(component_ref c1, int index2, vector<component
     c1->solution = {};
 
     c1->elements.push_back(index2);
-}
-
-unique_ptr<Tree_t> Solution::get_tree() const
-{
-    assert(taxa.size() > 1);
-
-    // 1. Make a tree with just a root node
-    std::unique_ptr<Tree_t> tree(new Tree_t());
-    tree->create_root();
-
-    // 2. Add children for non-trivial components
-    for(auto& component: components)
-        add_subtree(tree->get_root(), *component->solution->get_tree());
-
-    // 3. Add children for trivial components
-    for(int index=0;index<taxa.size();index++)
-    {
-        if (not component_for_index[index])
-        {
-            auto taxon = taxa[index];
-            auto node = tree->create_child(tree->get_root());
-            node->set_ott_id(taxon);
-        }
-    }
-
-    return tree;
 }
 
 void MaybeReuseSolution(shared_ptr<Solution>& solution, vector<shared_ptr<Solution>>& sub_solutions)

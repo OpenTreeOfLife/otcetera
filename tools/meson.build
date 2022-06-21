@@ -66,7 +66,7 @@ foreach program : programs
              install: true)
 endforeach
 
-solver_sources = ['solve-subproblem.cpp','solver/rsplit.cpp']
+solver_sources = ['solve-subproblem.cpp','solver/rsplit.cpp', 'solver/solution.cpp']
 executable('otc-solve-subproblem',
            solver_sources,
            dependencies: [boost, libotcetera, json],
