@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 
+#include "tools/solver/rsplit.h"
 #include "otc/otcli.h"
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
@@ -47,15 +48,6 @@ int depth(const Tree_t::node_type* nd)
     return nd->get_data().depth;
 }
 
-/// Create a SORTED vector from a set
-template <typename T>
-vector<T> set_to_vector(const set<T>& s) {
-    vector<T> v;
-    v.reserve(s.size());
-    std::copy(s.begin(), s.end(), std::back_inserter(v));
-    return v;
-}
-
 template <typename Tree_Out_t, typename Tree_In_t>
 unique_ptr<Tree_Out_t> copy_tree(const Tree_In_t& tree)
 {
@@ -88,77 +80,6 @@ unique_ptr<Tree_Out_t> copy_tree(const Tree_In_t& tree)
     // 3. Set the root of the new tree to node corresponding to the MRCA
     new_tree->_set_root( to_new_tree.at(tree.get_root()) );
     return new_tree;
-}
-
-struct RSplitObj
-{
-    static std::size_t num;
-
-    mutable int _refs = 0;
-
-    friend inline void intrusive_ptr_release(RSplitObj* pThis)
-    {
-        if (--pThis->_refs == 0 ) {
-            delete pThis;
-        }
-    }
-
-    friend inline void intrusive_ptr_add_ref(RSplitObj* pThis)
-    {
-        pThis->_refs++;
-    }
-
-    friend inline void intrusive_ptr_release(const RSplitObj* pThis)
-    {
-        if(--const_cast<RSplitObj*>(pThis)->_refs == 0 ) {
-            delete const_cast<RSplitObj*>(pThis);
-        }
-    }
-
-    friend inline void intrusive_ptr_add_ref(const RSplitObj* pThis)
-    {
-        const_cast<RSplitObj*>(pThis)->_refs++;
-    }
-
-    vector<int> in;
-    vector<int> out;
-    optional<std::size_t> id;
-
-    RSplitObj()
-    {
-        id = num++;
-    }
-
-    RSplitObj(const set<int>& i, const set<int>& a)
-    {
-        id = num++;
-        in  = set_to_vector(i);
-        set_difference(begin(a), end(a), begin(in), end(in), std::inserter(out, out.end()));
-    }
-};
-
-std::size_t RSplitObj::num = 0;
-
-using RSplit = boost::intrusive_ptr<RSplitObj>;
-using ConstRSplit = boost::intrusive_ptr<const RSplitObj>;
-
-std::ostream& operator<<(std::ostream& o, const RSplitObj& s)
-{
-    o<<"["<<s.in.size() + s.out.size()<<" tips] ";
-    for(auto& is: s.in)
-        o<<"ott"<<is<<" ";
-    o<<"| ";
-    for(auto& os: s.out)
-        o<<"ott"<<os<<" ";
-    return o;
-}
-
-RSplit split_from_include_exclude(const set<int>& i, const set<int>& e)
-{
-    RSplit s(new RSplitObj);
-    s->in = set_to_vector(i);
-    s->out = set_to_vector(e);
-    return s;
 }
 
 namespace po = boost::program_options;
@@ -211,24 +132,6 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
                                                     "Trees should occur in order of priority, with the taxonomy last.",
                                                     visible, invisible, p);
     return vm;
-}
-
-std::ostream& operator<<(std::ostream& o, const ConstRSplit& s) {
-    write_separated_collection(o, s->in, " ") <<" | ";
-    if (s->out.size() < 100) {
-        write_separated_collection(o, s->out, " ");
-    } else {
-        auto it = s->out.begin();
-        for(int i=0;i<100;i++) {
-            o << *it++ <<" ";
-        }
-        o << "...";
-    }
-    return o;
-}
-
-std::ostream& operator<<(std::ostream& o, const RSplit& s) {
-    return o<<(ConstRSplit(s));
 }
 
 template <typename T>

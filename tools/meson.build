@@ -39,7 +39,6 @@ programs = [
   ['inducedsubtree',  'induced-subtree'],
   ['distance',  'distance'],
   ['taxonconflictreport',  'taxon-conflict-report'],
-  ['solve-subproblem',  'solve-subproblem'],
   ['graft-solutions',  'graft-solutions'],
   ['unprune-solution',  'unprune-solution'],
   ['name-unnamed-nodes',  'name-unnamed-nodes'],
@@ -66,6 +65,13 @@ foreach program : programs
              install_rpath: rpath,
              install: true)
 endforeach
+
+solver_sources = ['solve-subproblem.cpp','solver/rsplit.cpp']
+executable('otc-solve-subproblem',
+           solver_sources,
+           dependencies: [boost, libotcetera, json],
+           install_rpath: rpath,
+           install: true)
 
 executable('otc-version-reporter', ['version-reporter.cpp',git_version_h], dependencies: [boost, libotcetera, json], install_rpath: rpath, install: true)
 
