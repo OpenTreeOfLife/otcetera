@@ -543,7 +543,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
 }
 
 
-bool BUILD(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits)
+bool BUILDINC(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits)
 {
     auto new_splits2 = new_splits;
     vector<shared_ptr<Solution>> sub_solutions;

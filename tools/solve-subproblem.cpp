@@ -561,7 +561,7 @@ void remove_conflicting_splits_from_tree(vector<unique_ptr<Tree_t>>& trees, int 
 bool conflicting(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits)
 {
     auto solution = std::make_shared<Solution>(all_leaves_indices);
-    auto result = BUILD(solution, splits);
+    auto result = BUILDINC(solution, splits);
     return not result;
 }
 
@@ -707,7 +707,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 for(int i=0;i<n;i++)
                     new_splits.push_back(splits[start+i].second);
 
-                result = BUILD(solution, new_splits);
+                result = BUILDINC(solution, new_splits);
                 LOG(TRACE)<<"consistent = "<< consistent.size()<<" -> "<<consistent.size()+n<<": "<<(result?"ok":"FAIL");
                 if (result)
                 {
@@ -727,7 +727,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
                 solution = std::make_shared<Solution>(all_leaves_indices);
 
-                result = BUILD(solution, consistent);
+                result = BUILDINC(solution, consistent);
                 LOG(TRACE)<<"consistent = "<< consistent.size()-n<<" -> "<<consistent.size()<<": "<<(result?"ok":"FAIL");
                 if (not result)
                 {
@@ -799,7 +799,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
     //FIXME - discard previous solution;
     solution = std::make_shared<Solution>(all_leaves_indices);
-    auto result = BUILD(solution, consistent);
+    auto result = BUILDINC(solution, consistent);
     assert(result);
     auto tree = solution->get_tree();
     for(auto nd: iter_pre(*tree))
