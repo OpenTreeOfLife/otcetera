@@ -48,6 +48,9 @@ get_induced_trees2(Tree1& T1,
     auto T2_nodes_from_T1_leaves = get_induced_nodes(T1,T2);
     LOG(WARNING)<<T2_nodes_from_T1_leaves.size()<<" leaves of T1 are in T2";
 
+    if (T2_nodes_from_T1_leaves.size() < 2)
+        throw OTCBadRequest()<<"The two trees have only "<<T2_nodes_from_T1_leaves.size()<<" nodes in common!  At least 2 are required";
+
     // 1b. Actually construct the induced tree for T2.
     //     It might have fewer leaves than in T2_nodes_from_T1_leaves, if some of the nodes are ancestral to others.
     auto induced_tree2 = get_induced_tree<Tree_Out_t>(T2_nodes_from_T1_leaves, MRCA_of_pair2);
@@ -77,7 +80,7 @@ get_induced_trees2(Tree1& T1,
 
         auto it = ottid_to_induced_tree2_node.find(leaf->get_ott_id());
         if (it == ottid_to_induced_tree2_node.end()) {
-            LOG(WARNING)<<"Dropping tip "<<leaf->get_ott_id()<<": not found in induced taxonomy-or-synth tree.";
+            LOG(DEBUG)<<"Dropping query tip "<<leaf->get_ott_id()<<": not found in induced tree2.";
         } else if (not it->second->is_tip()) {
             LOG(WARNING)<<"Dropping higher taxon tip "<<leaf->get_ott_id();
         } else {
@@ -409,6 +412,16 @@ json conflict_with_summary(const ConflictTree& query_tree,
     return conflict_with_tree_impl(query_tree, summary, query_mrca, summary_mrca, Tax);
 }
 
+json conflict_with_newick(const ConflictTree& query_tree,
+                          const ConflictTree& tree2,
+                          const RichTaxonomy& Tax)
+{
+    std::function<const cnode_type*(const cnode_type*,const cnode_type*)> mrca = [](const cnode_type* n1, const cnode_type* n2) {
+        return mrca_from_depth(n1,n2);
+    };
+    return conflict_with_tree_impl(query_tree, tree2, mrca, mrca, Tax);
+}
+
 
 // Remove leaves (and their monotypic ancestors) in the query tree
 // that are the ancestors of other leaves in the query tree.
@@ -439,24 +452,64 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
     LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
 }
 
-void check_all_leaves_have_ott_ids(const ConflictTree& query_tree) {
-    for(auto leaf: iter_leaf_const(query_tree)) {
-        if (leaf->has_ott_id()) {
-            continue;
+// Remove leaves (and their monotypic ancestors) in the query tree
+// that are the ancestors of other leaves in the query tree.
+std::optional<OttId> has_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxonomy) {
+    using tfunc = std::function<const tnode_type*(const tnode_type*,const tnode_type*)>;
+    tfunc taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {
+        return mrca_from_depth(n1,n2);
+    };
+
+    auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
+    auto induced_taxonomy = get_induced_tree<ConflictTree>(taxonomy_nodes_from_query_leaves,
+                                                           taxonomy_mrca);
+    auto ottid_to_induced_tax_node = get_ottid_to_node_map(*induced_taxonomy);
+
+    vector<cnode_type*> nodes_to_prune;
+    for(auto leaf: iter_leaf(query_tree)) {
+        auto ottid = leaf->get_ott_id();
+        auto tax_node = ottid_to_induced_tax_node.at(ottid);
+        if (not tax_node->is_tip()) {
+            return ottid;
         }
-        if (leaf->get_name().empty()) {
-            throw OTCBadRequest()<<"Un-named leaf has no OTT id!";
-        } else {
-            throw OTCBadRequest()<<"Leaf '"<<leaf->get_name()<<"' has no OTT id!";
+    }
+
+    return {};
+}
+
+void check_and_forward_leaf_ott_ids(ConflictTree& query_tree, const RichTaxonomy& taxonomy, const string& tree_name)
+{
+    for(auto leaf: iter_leaf(query_tree))
+    {
+        if (not leaf->has_ott_id())
+        {
+            if (leaf->get_name().empty())
+                throw OTCBadRequest()<<tree_name<<": Un-named leaf has no OTT id!";
+            else
+                throw OTCBadRequest()<<tree_name<<": Leaf '"<<leaf->get_name()<<"' has no OTT id!";
+        }
+        else
+        {
+            auto ottid = leaf->get_ott_id();
+            auto valid_ottid = taxonomy.get_unforwarded_id(ottid);
+            if (not valid_ottid)
+            {
+                if (leaf->get_name().empty())
+                    throw OTCBadRequest()<<tree_name<<": Un-named leaf has bad OTT id "<<ottid<<"!";
+                else
+                    throw OTCBadRequest()<<tree_name<<": Leaf '"<<leaf->get_name()<<"' has bad OTT id "<<ottid<<"!";
+            }
+            else if (*valid_ottid != ottid)
+                leaf->set_ott_id(*valid_ottid);
         }
     }
 }
 
-void check_all_nodes_have_node_names(const ConflictTree& query_tree) {
+void check_all_nodes_have_node_names(const ConflictTree& query_tree, const string& tree_name) {
     for(const auto nd: iter_post_const(query_tree)) {
         if (nd->get_name().empty()) {
             auto E = OTCBadRequest();
-            E << "Query tree has unnamed node";
+            E << tree_name<<" has unnamed node";
             if (nd->has_ott_id()) {
                 E << " with OTT Id=" << nd->get_ott_id();
             }
@@ -528,15 +581,15 @@ string conflict_ws_method(const SummaryTree_t& summary,
                           std::unique_ptr<ConflictTree>& query_tree,
                           const string& tree2s)
 {
-    // 0. Prune unmapped leaves.
+    // 0. Prune unmapped leaves -- this already handles forwards.
     auto leaf_counts = prune_unmapped_leaves(*query_tree, taxonomy);
     if (leaf_counts.first < 3) {
         throw OTCBadRequest()<<"Query tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
     }
     // 1. Check that all leaves in input tree have OTT ids
-    check_all_leaves_have_ott_ids(*query_tree);
+    check_and_forward_leaf_ott_ids(*query_tree, taxonomy, "tree1");
     // 2. Check that all leaves in input tree have node names
-    check_all_nodes_have_node_names(*query_tree);
+    check_all_nodes_have_node_names(*query_tree, "tree1");
     // 3. Prune leaves with duplicate ott ids
     prune_duplicate_ottids(*query_tree);
     // 4. Prune leaves of the query that are ancestral to other query leaves
@@ -573,6 +626,25 @@ string conflict_ws_method(const SummaryTree_t& summary,
     } else if (tree2s == "synth") {
         return conflict_with_summary(*query_tree, summary, taxonomy).dump(1);
     }
+    else if (tree2s.size() > 0 and tree2s[0] == '(') {
+        auto tree2 = tree_from_newick_string<ConflictTree>(tree2s);
+
+        // 1. Check that all leaves in input tree have OTT ids
+        check_and_forward_leaf_ott_ids(*tree2, taxonomy, "tree2");
+        // 2. Check that all leaves in tree2 have node names
+        check_all_nodes_have_node_names(*tree2, "tree2");
+        // 3. Check for duplicate ott ids
+        if (auto id = has_duplicate_ottids(*tree2))
+            throw OTCError()<<"tree2: duplicate OTT id "<<*id<<"!";
+        // 4. Check for higher taxon leaves
+        if (auto id = has_ancestral_leaves(*tree2, taxonomy))
+            throw OTCError()<<"tree2: higher taxon leaf OTT id "<<*id<<"!";
+
+        compute_depth(*tree2);
+        compute_tips(*tree2);
+
+        return conflict_with_newick(*query_tree, *tree2, taxonomy).dump(1);
+    }
     throw OTCBadRequest() << "tree2 = '" << tree2s << "' not recognized!";
 }
 
@@ -581,7 +653,9 @@ string newick_conflict_ws_method(const SummaryTree_t& summary,
                                  const string& tree1s,
                                  const string& tree2s) {
     try {
-        LOG(WARNING)<<"newick conflict: tree1s = '"<<tree1s<<"'   tree1s = '"<<tree2s<<"'";
+        LOG(WARNING)<<"newick conflict:";
+        LOG(DEBUG)  <<"  tree1s = "<<tree1s;
+        LOG(DEBUG)  <<"  tree2s = "<<tree2s;
         auto query_tree = tree_from_newick_string<ConflictTree>(tree1s);
         return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
     } catch (otc::OTCParsingError& e) {
@@ -594,7 +668,9 @@ string phylesystem_conflict_ws_method(const SummaryTree_t& summary,
                                       const RichTaxonomy & taxonomy,
                                       const string& tree1s,
                                       const string& tree2s) {
-    LOG(WARNING)<<"phylesystem conflict: tree1s = '"<<tree1s<<"'   tree1s = '"<<tree2s<<"'";
+    LOG(WARNING)<<"phylesystem conflict:";
+    LOG(DEBUG)  <<"  tree1s = "<<tree1s;
+    LOG(WARNING)<<"  tree2s = "<<tree2s;
     auto query_tree = get_phylesystem_tree<ConflictTree>(tree1s);
     return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
 }

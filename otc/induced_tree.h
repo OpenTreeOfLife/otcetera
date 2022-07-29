@@ -99,14 +99,16 @@ std::pair<std::unique_ptr<Tree_Out_t>,std::unordered_map<Node_In_t*, non_const_n
 get_induced_tree_from_leaves_and_MRCA(const std::vector<Node_In_t*>& leaves,
                                       Node_In_t* MRCA)
 {
-    // 0. If there are no leaves, return an empty tree.
+
     std::unique_ptr<Tree_Out_t> induced_tree(new Tree_Out_t());
-    if (leaves.empty()) return {std::move(induced_tree),{}};
+    std::unordered_map<Node_In_t*, non_const_node_type<Tree_Out_t>*> to_induced_tree;
+
+    // 0. If there are no leaves, return an empty tree.
+    if (leaves.empty()) return {std::move(induced_tree), to_induced_tree};
 
     // 1. Find all nodes in the tree
     auto nodes = find_induced_nodes(leaves, MRCA);;
     // 2. Construct duplicate nodes for the induced tree, recording correspondence
-    std::unordered_map<Node_In_t*, non_const_node_type<Tree_Out_t>*> to_induced_tree;
     for(auto nd: nodes)
     {
         auto nd2 = induced_tree->create_node(nullptr);
@@ -206,13 +208,52 @@ std::unique_ptr<Tree_Out_t> get_induced_tree(Tree_In1_t& T1,
     return get_induced_tree_and_node_map<Tree_Out_t,Tree_In1_t,Tree_In2_t>(T1, nodes1, MRCA_of_pair, T2, nodes2).first;
 }
 
+template <typename T>
+class has_id_to_node {
+private:
+    typedef char YesType[1];
+    typedef char NoType[2];
+
+    template <typename C> static YesType& test(decltype(&C::id_to_node));
+    template <typename C> static NoType& test(...);
+
+public:
+    enum { value = sizeof(test<T>(0)) == sizeof(YesType) };
+};
+
+// Get a list of nodes in T2 that are leaves in T1.
+// The nodes in T2 do NOT need to be leaves of T2.
+
+template <typename T>
+using data_type = typename T::data_type;
+
+template <typename Tree1_t, typename Tree2_t>
+typename std::enable_if<has_id_to_node<data_type<Tree2_t>>::value, std::vector<node_type<Tree2_t>*>>::type
+get_induced_nodes(const Tree1_t& T1, Tree2_t& T2)
+{
+    auto& ott_to_nodes2 = T2.get_data().id_to_node;
+    std::vector<node_type<Tree2_t>*> nodes;
+    for(auto leaf: iter_leaf(T1))
+    {
+        auto id = leaf->get_ott_id();
+        auto it = ott_to_nodes2.find(id);
+        if (it != ott_to_nodes2.end()) {
+            nodes.push_back(const_cast<node_type<Tree2_t>*>(it->second));
+        }
+    }
+    return nodes;
+}
+
+
 // Get a list of nodes in T2 that are leaves in T1.
 // The nodes in T2 do NOT need to be leaves of T2.
 
 template <typename Tree1_t, typename Tree2_t>
-auto get_induced_nodes(const Tree1_t& T1, Tree2_t& T2)
+typename std::enable_if<not has_id_to_node<data_type<Tree2_t>>::value, std::vector<node_type<Tree2_t>*>>::type
+get_induced_nodes(const Tree1_t& T1, Tree2_t& T2)
 {
-    auto& ott_to_nodes2 = T2.get_data().id_to_node;
+    auto ott_to_nodes2 = otc::get_ottid_to_const_node_map(T2);
+
     std::vector<node_type<Tree2_t>*> nodes;
     for(auto leaf: iter_leaf(T1))
     {

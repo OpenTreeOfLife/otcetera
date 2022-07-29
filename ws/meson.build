@@ -30,6 +30,7 @@ test('web services test (1)',
             '--synthesis-parent',synth_dir1,
             '--tests-parent',expectedws_dir1,
             '--exe-dir',exe_dir,
+	    '--server-port=1987',
             '--secs-to-recheck-pid-file=30']
     )
 
@@ -46,6 +47,7 @@ test('web services test (2)',
             '--synthesis-parent',synth_dir2,
             '--tests-parent',expectedws_dir2,
             '--exe-dir',exe_dir,
+	    '--server-port=1988',
             '--secs-to-recheck-pid-file=30']
     )
 
@@ -59,6 +61,6 @@ test('tnrs web services test',
      	    '--synthesis-parent', synth_dir,
 	    '--tests-parent', expectedws_dir,
 	    '--exe-dir', exe_dir,
-	    '--server-port=1986',
+	    '--server-port=1989',
 	    '--secs-to-recheck-pid-file=30']
     )
