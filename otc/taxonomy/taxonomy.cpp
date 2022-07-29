@@ -821,7 +821,16 @@ void RichTaxonomy::read_input_synonyms_stream(std::istream & synonyms_file) {
         string name = string(start[1], end[1] - start[1]);
         unsigned long raw_id = std::strtoul(start[0], &temp, 10);
         OttId ott_id = check_ott_id_size(raw_id);
-        const RTRichTaxNode * primary = tree_data.id_to_node.at(ott_id);
+        const RTRichTaxNode * primary = nullptr;
+        try {
+            primary = tree_data.id_to_node.at(ott_id);
+        } catch (std::out_of_range &) {
+            if (!Taxonomy::tolerate_synonyms_to_unknown_id) {
+                throw;
+            }
+            LOG(WARNING) << "skipping synonym \"" << name << "\" to unknown ID " << ott_id;
+            continue;
+        }
         string sourceinfo;
         
         this->synonyms.emplace_back(name, primary, sourceinfo);

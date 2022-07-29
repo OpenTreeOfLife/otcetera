@@ -87,6 +87,7 @@ int main(int argc, char* argv[]) {
         OttId keep_root = -1;
         bitset<32> cleaning_flags = 0;
         out << "loading old taxonomy" << std::endl;
+        Taxonomy::tolerate_synonyms_to_unknown_id = true;
         TaxonomyDiffMaker otaxonomy = {otd, cleaning_flags, keep_root};
         TaxonomyDiffMaker ntaxonomy = {ntd, cleaning_flags, keep_root};
         
