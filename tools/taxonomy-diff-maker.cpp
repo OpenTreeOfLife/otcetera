@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
         TaxonomyDiffMaker ntaxonomy = {ntd, cleaning_flags, keep_root};
         
     } catch (std::exception& e) {
-        cerr << "otc-taxonomy-parser: Error! " << e.what() << std::endl;
+        cerr << "otc-taxonomy-diff-maker: Error! " << e.what() << std::endl;
         return 1;
     }
 }
