@@ -27,12 +27,11 @@ using std::endl;
 using std::bitset;
 using std::unique_ptr;
 using std::set;
+using std::string_view;
 using json = nlohmann::json;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
-
-using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
 
 namespace po = boost::program_options;
 using po::variables_map;
@@ -68,6 +67,52 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     return vm;
 }
 
+using id2name_t = std::unordered_map<OttId, string_view>;
+using name2id_t = std::unordered_map<string_view, OttId>;
+
+template<typename T>
+bool fill_name_id_maps(const T & tree_data, id2name_t& id2name, name2id_t & name2id) {
+    LOG(INFO) << tree_data.id_to_record.size() << " tree_data.id_to_record";
+    for (auto id_rec_pair : tree_data.id_to_record) {
+        const auto & record = id_rec_pair.second;
+        const auto & tax_id = id_rec_pair.first;
+        const auto name = record->name;
+        if (contains(name2id, name)) {
+            LOG(ERROR) << "name \"" << name << "\" repeated";
+        } else {
+            if (contains(id2name, tax_id)) {
+                LOG(ERROR) << "name \"" << tax_id << "\" repeated";
+                return false;
+            }
+            id2name[tax_id] = name;
+            name2id[name] = tax_id;
+        }
+    }
+    return true;
+}
+
+bool diff_from_taxonomies(std::ostream & out,
+                          const TaxonomyDiffMaker & old_tax,
+                          const TaxonomyDiffMaker & new_tax) {
+    const auto & old_tree = old_tax.get_tax_tree();
+    const auto & new_tree = new_tax.get_tax_tree();
+    const auto & old_td = old_tree.get_data();
+    const auto & new_td = new_tree.get_data();
+    id2name_t old_id2name, new_id2name;
+    name2id_t old_name2id, new_name2id;
+    LOG(DEBUG) << "old_td.name_to_node.size() = " << old_td.name_to_node.size() ;
+    LOG(DEBUG) << "new_td.name_to_node.size() = " << new_td.name_to_node.size() ;
+    
+    if (!fill_name_id_maps(old_td, old_id2name, old_name2id)) {
+        return false;
+    }
+    if (!fill_name_id_maps(new_td, new_id2name, new_name2id)) {
+        return false;
+    }
+    out << old_id2name.size() << " " << new_id2name.size() << std::endl;
+    LOG(ERROR) << "hi";
+    return true;
+}
 
 int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
@@ -86,10 +131,12 @@ int main(int argc, char* argv[]) {
         string ntd = args["newtaxonomy"].as<string>();
         OttId keep_root = -1;
         bitset<32> cleaning_flags = 0;
-        out << "loading old taxonomy" << std::endl;
+        LOG(INFO) << "loading old taxonomy\n";
         Taxonomy::tolerate_synonyms_to_unknown_id = true;
         TaxonomyDiffMaker otaxonomy = {otd, cleaning_flags, keep_root};
+        LOG(INFO) << "loading new taxonomy\n";
         TaxonomyDiffMaker ntaxonomy = {ntd, cleaning_flags, keep_root};
+        diff_from_taxonomies(out, otaxonomy, ntaxonomy);
         
     } catch (std::exception& e) {
         cerr << "otc-taxonomy-diff-maker: Error! " << e.what() << std::endl;

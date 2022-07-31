@@ -509,7 +509,7 @@ unsigned int Taxonomy::read_input_taxonomy_stream(std::istream & taxonomy_stream
     // 4. Read the remaining records
     while(std::getline(taxonomy_stream, line)) {
         count++;
-        if (count % 100 == 0) {
+        if (count % 500 == 0) {
             std::cerr << "line " << count << ": " << line << '\n';
         }
         // Add line to vector
