@@ -5,16 +5,6 @@
 
 namespace otc {
 
-class LightSynonym {
-    public:
-    LightSynonym(const std::string & n, const std::string & src)
-      :name(n),
-      source_string(src) {
-    }
-    std::string name;
-    std::string source_string;
-};
-
 class TaxonomyDiffMaker: public RichTaxonomy {
     public:
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr

@@ -30,8 +30,10 @@ using std::endl;
 using std::bitset;
 using std::unique_ptr;
 using std::set;
+using std::map;
 using std::string_view;
 using json = nlohmann::json;
+using vec_strv_t = std::vector<std::string_view>;
 
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
@@ -215,28 +217,130 @@ const RTRichTaxNode * find_specimen_based_root(const RTRichTaxNode *nd,
                                                const OttIdSet & spec_based_ids,
                                                OttIdSet & seen) {
     const RTRichTaxNode * par = nd->get_parent();
+    const RTRichTaxNode * ret = nullptr;
     while (true) {
         if (!par) {
-            return nd;
+            ret = nd;
+            break;
         }
         if (contains(spec_based_ids, par->get_ott_id())) {
             nd = par;
         } else {
-            return nd;
+            ret = nd;
+            break;
         }
         par = nd->get_parent();
     }
+    if (ret->is_tip()) {
+        seen.insert(ret->get_ott_id());
+    } else {
+        for (auto nnd : iter_pre_n_const(ret)) {
+            auto tax_id = nnd->get_ott_id();
+            if (!contains(spec_based_ids, tax_id)) {
+                throw OTCError() << "taxon " << nnd->get_name() << " (" << tax_id << ") not specimen_based, but in spec_based clade";
+            }
+            seen.insert(tax_id);
+        }
+    }
+    return ret;
+}
 
+using id2nd_t = std::unordered_map<OttId, const RTRichTaxNode *>;
+id2nd_t find_all_specimen_based_roots(const id2nd_t id2nd,
+                                      const OttIdSet & specimen_based_ids,
+                                      OttIdSet & seen) {
+    id2nd_t sp_root;
+    for (auto ott_id : specimen_based_ids) {
+        if (contains(seen, ott_id)) {
+            continue;
+        }
+        auto nd = id2nd.at(ott_id);
+        auto root_ptr = find_specimen_based_root(nd, specimen_based_ids, seen);
+        assert(root_ptr != nullptr);
+        sp_root[root_ptr->get_ott_id()] = root_ptr;
+    }
+    return sp_root;
 }
 
 
+enum AlphaEditOp {
+    NO_CHANGE = 0,
+    CHANGED_ID = 1,
+    CHANGED_NAME = 2,
+    DELETED_SYN = 3,
+    ADDED_SYN = 4,
+    CHANGED_RANK = 5,
+    DELETE_TAXON = 6,
+    ADD_TAXON = 7
+};
+
+const vector<string> aeo2str = {"no change", "change id", "change name",
+                                "delete synonym", "add synonym", 
+                                "change_rank", "delete taxon", "add taxon"};
+
+
+class AlphaEdit {
+    public:
+        AlphaEdit()
+            :operation(AlphaEditOp::NO_CHANGE),
+            first_rank(TaxonomicRank::RANK_NO_RANK),
+            second_rank(TaxonomicRank::RANK_NO_RANK) {
+        }
+
+        AlphaEditOp operation;
+        string first_str, second_str;
+        OttId first_id, second_id;
+        TaxonomicRank first_rank, second_rank;
+
+        void add_to_json_array(json & jarr) const {
+            if (operation == AlphaEditOp::NO_CHANGE) {
+                return;
+            } 
+            json el;
+            el["operation"] = aeo2str[operation];
+            if (operation == AlphaEditOp::CHANGED_ID) {
+                el["from"] = first_id;
+                el["to"] = second_id;
+            } else {
+                el["taxon_id"] = first_id;
+                if (operation == AlphaEditOp::CHANGED_NAME) {
+                    el["from"] = first_str;
+                    el["to"] = second_str;
+                } else if (operation == AlphaEditOp::DELETED_SYN || operation == AlphaEditOp::ADDED_SYN) {
+                    el["synonym"] = first_str;
+                    if (!second_str.empty()) {
+                        el["type"] = second_str;
+                    }
+                } else if (operation == AlphaEditOp::DELETE_TAXON) {
+                    if (!first_str.empty()) {
+                        el["name"] = first_str;
+                    }
+                } else if (operation == AlphaEditOp::CHANGED_RANK) {
+                    el["from"] = rank_enum_to_name.at(first_rank);
+                    el["to"] = rank_enum_to_name.at(second_rank);
+                } else {
+                    assert(operation == AlphaEditOp::ADD_TAXON);
+                    el["name"] = first_str;
+                    el["rank"] = rank_enum_to_name.at(first_rank);
+                }
+            }
+            jarr.push_back(el);
+        }
+};
 
 class TaxonomyDiffer {
     public:
     TaxonomyDiffer(const TaxonomyDiffMaker & old_tax, const TaxonomyDiffMaker & new_tax);
-
+    void write(std::ostream & out ) const ;
+    
     protected:
     void compare_specimen_based();
+    void diagnose_root_spec_based_status(const RTRichTaxNode *old_spec_nd);
+    void children_diagnose_root_spec_based_status(const RTRichTaxNode *old, const RTRichTaxNode * new_nd) {
+    }
+    void record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichTaxNode *new_nd);
+
+    AlphaEdit & new_alpha_edit();
 
     const RichTaxTree & old_tree;
     const RichTaxTree & new_tree;
@@ -245,8 +349,22 @@ class TaxonomyDiffer {
     OttIdSet old_specimen_based_ids, new_specimen_based_ids;
     OttIdSet old_clade_ids, new_clade_ids;
     std::unordered_map<OttId, const RTRichTaxNode *> old_sp_root;
-    
+    std::unordered_map<string, ndvec_t> old_name_to_nds;
+    std::unordered_map<string, ndvec_t> new_name_to_nds;
+
+    std::vector<AlphaEdit> alphaTaxonomyEdits;
 };
+
+void TaxonomyDiffer::write(std::ostream & out ) const {
+    json edits = json::array();
+    for (const auto & el : alphaTaxonomyEdits) {
+        el.add_to_json_array(edits);
+    }
+    json document;
+    document["alpha"] = edits;
+    out << document.dump(1) << std::endl;
+}
+
 
 TaxonomyDiffer::TaxonomyDiffer(const TaxonomyDiffMaker & old_tax,
                                const TaxonomyDiffMaker & new_tax)
@@ -254,6 +372,14 @@ TaxonomyDiffer::TaxonomyDiffer(const TaxonomyDiffMaker & old_tax,
    new_tree(new_tax.get_tax_tree()),
    old_td(old_tax.get_tax_tree().get_data()),
    new_td(new_tax.get_tax_tree().get_data()) {
+    for (auto idnd_p : old_td.id_to_node) {
+        const auto & nd_ptr = idnd_p.second;
+        old_name_to_nds[nd_ptr->get_name()].push_back(nd_ptr);
+    }
+    for (auto idnd_p : new_td.id_to_node) {
+        const auto & nd_ptr = idnd_p.second;
+        new_name_to_nds[nd_ptr->get_name()].push_back(nd_ptr);
+    }
     partitionTaxonByTypeOfType(old_tree, old_clade_ids, old_specimen_based_ids);
     LOG(DEBUG) << old_clade_ids.size() << " clades and " << old_specimen_based_ids.size() << " specimen_based ids.";
     partitionTaxonByTypeOfType(new_tree, new_clade_ids, new_specimen_based_ids);
@@ -265,25 +391,138 @@ TaxonomyDiffer::TaxonomyDiffer(const TaxonomyDiffMaker & old_tax,
 
 void TaxonomyDiffer::compare_specimen_based() {
     OttIdSet seen;
-    const auto & old_td = old_tree.get_data();
-    const auto & old_i2n = old_td.id_to_node;
-    for (auto ott_id : old_specimen_based_ids) {
-        if (contains(seen, ott_id)) {
+    old_sp_root = find_all_specimen_based_roots(old_td.id_to_node,
+                                                old_specimen_based_ids, 
+                                                seen);
+    LOG(DEBUG) << "old tree had " << old_sp_root.size() << " roots of specimen_based taxa.";
+    for (auto ott_id_root_p : old_sp_root) {
+        diagnose_root_spec_based_status(ott_id_root_p.second);
+    }
+}
+
+const AlphaEdit mtEdit;
+
+inline AlphaEdit & TaxonomyDiffer::new_alpha_edit() {
+    alphaTaxonomyEdits.push_back(mtEdit);
+    return *(alphaTaxonomyEdits.rbegin());
+}
+
+void TaxonomyDiffer::record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichTaxNode *new_nd) {
+    if (new_nd == nullptr) {
+        assert(old_nd != nullptr);
+        const RTRichTaxNodeData & old_nd_data = old_nd->get_data();
+        for (const auto js : old_nd_data.junior_synonyms) {
+            auto & edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::DELETED_SYN;
+            edit.first_id = old_nd->get_ott_id();
+            edit.first_str = js->name;
+            if (!js->source_string.empty()) {
+                edit.second_str = js->source_string;
+            }
+        }
+        return;
+    }
+    if (old_nd == nullptr) {
+        assert(new_nd != nullptr);
+        const RTRichTaxNodeData & new_nd_data = new_nd->get_data();
+        for (const auto js : new_nd_data.junior_synonyms) {
+            auto & edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::ADDED_SYN;
+            edit.first_id = new_nd->get_ott_id();
+            edit.first_str = js->name;
+            if (!js->source_string.empty()) {
+                edit.second_str = js->source_string;
+            }
+        }
+        return;
+    }
+    map<string, string> oldpairs;
+    map<string, string> newpairs;
+    const RTRichTaxNodeData & old_nd_data = old_nd->get_data();
+    for (const auto js : old_nd_data.junior_synonyms) {
+        oldpairs[js->name] = js->source_string;
+    }
+    const RTRichTaxNodeData & new_nd_data = new_nd->get_data();
+    for (const auto js : new_nd_data.junior_synonyms) {
+        newpairs[js->name] = js->source_string;
+    }
+    for (auto op : oldpairs) {
+        auto nIt = newpairs.find(op.first);
+        if (nIt == newpairs.end()) {
+            auto & edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::DELETED_SYN;
+            edit.first_id = new_nd->get_ott_id();
+            edit.first_str = op.first;
+            edit.second_str = op.second;
             continue;
         }
-        auto nd = old_i2n.at(ott_id);
-        auto root_ptr = find_specimen_based_root(nd, old_specimen_based_ids, seen);
-        assert(root_ptr != nullptr);
-        old_sp_root[root_ptr->get_ott_id()] = root_ptr;
+        if (nIt->second != op.second) {
+            auto & edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::DELETED_SYN;
+            edit.first_id = new_nd->get_ott_id();
+            edit.first_str = op.first;
+            edit.second_str = op.second;
+            edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::ADDED_SYN;
+            edit.first_id = new_nd->get_ott_id();
+            edit.first_str = nIt->first;
+            edit.second_str = nIt->second;
+        }
     }
-    LOG(DEBUG) << "old tree had " << old_sp_root.size() << " roots of specimen_based taxa.";
+    for (auto np : newpairs) {
+        auto oIt = oldpairs.find(np.first);
+        if (oIt == oldpairs.end()) {
+            auto & edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::ADDED_SYN;
+            edit.first_id = new_nd->get_ott_id();
+            edit.first_str = np.first;
+            edit.second_str = np.second;
+        }
+    }
+}
 
+void TaxonomyDiffer::diagnose_root_spec_based_status(const RTRichTaxNode *old_spec_nd) {
+    const auto & new_i2nd = new_td.id_to_node;
+    const OttId old_root_id = old_spec_nd->get_ott_id();
+    const auto new_el = new_i2nd.find(old_root_id);
+    const RTRichTaxNode * new_cmp_nd = nullptr;
+
+    if (new_el == new_i2nd.end()) {
+        const auto old_name = old_spec_nd->get_name();
+        const auto new_by_name = new_name_to_nds.find(old_name);
+        if (new_by_name == new_name_to_nds.end()) {
+            children_diagnose_root_spec_based_status(old_spec_nd, nullptr);
+            // need to keep this before the DELETE_TAXON here
+            record_syn_diffs(old_spec_nd, new_cmp_nd);
+            auto & edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::DELETE_TAXON;
+            edit.first_id = old_root_id;
+            edit.first_str = old_name;
+        } else {
+            const ndvec_t newnodes = new_by_name->second;
+            if (newnodes.size() != 1) {
+                throw OTCError() << "Old specimen_based root " << old_name << " (" << old_root_id << ") not found by id. and maps to multiple names";
+            }
+            new_cmp_nd = newnodes[0];
+            children_diagnose_root_spec_based_status(old_spec_nd, new_cmp_nd);
+            record_syn_diffs(old_spec_nd, new_cmp_nd); 
+            auto & edit = new_alpha_edit();
+            edit.operation = AlphaEditOp::CHANGED_NAME;
+            edit.first_str = old_name;
+            edit.second_str = new_cmp_nd->get_name();
+        }
+    } else {
+        new_cmp_nd = new_el->second;
+        children_diagnose_root_spec_based_status(old_spec_nd, new_el->second);
+        record_syn_diffs(old_spec_nd, new_cmp_nd);
+    }
 }
 
 bool diff_from_taxonomies(std::ostream & out,
                           const TaxonomyDiffMaker & old_tax,
                           const TaxonomyDiffMaker & new_tax) {
     TaxonomyDiffer tax_dif(old_tax, new_tax);
+    tax_dif.write(out);
     // // I. we look at the subset of taxa that have the same ID and name between versions
     // //   I.A - find the set of IDs with the same name
     // id2name_t old_id2name, new_id2name;
