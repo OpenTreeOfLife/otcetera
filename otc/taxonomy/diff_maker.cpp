@@ -40,21 +40,24 @@ TaxonomyDiffMaker::TaxonomyDiffMaker(const std::string& dir,
     :RichTaxonomy(dir, cf, kr) {
     const auto & rich_tax_tree = this->get_tax_tree();
     const auto & rt_data = rich_tax_tree.get_data();
+    std::vector<const RTRichTaxNode *> nd_vec;
+    nd_vec.reserve(10);
     for (auto& [name, node] : rt_data.name_to_node) {
+        nd_vec.clear();
         if (node == nullptr) {
-            continue;
+            nd_vec = rt_data.homonym_to_nodes.at(name);
+        } else {
+            nd_vec.push_back(node);
         }
-        const auto & nd_data = node->get_data();
-        for (auto syn_ptr : nd_data.junior_synonyms) {
-            synonym2node[syn_ptr->name].push_back(node);
-            //std::cerr << "registered " << syn_ptr->name << " syn for "<< nd_data.get_nonuniqname() << '\n';
+        for (auto nd : nd_vec ) {
+            const auto & nd_data = nd->get_data();
+            for (auto syn_ptr : nd_data.junior_synonyms) {
+                synonym2node[syn_ptr->name].push_back(nd);
+                //std::cerr << "registered " << syn_ptr->name << " syn for "<< nd_data.get_nonuniqname() << '\n';
+            }
         }
-        //     if (name != node->get_data().get_nonuniqname()) {
-        //         assert(!contains(node_to_uniqname, node));
-        //         node_to_uniqname[node] = name;
-        //     }
     }
-    //std::cerr << filtered_records.size() << " filtered_records" << std::endl;
+
 }
 
 
