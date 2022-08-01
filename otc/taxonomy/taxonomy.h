@@ -81,6 +81,7 @@ enum TaxonomicRank {
     RANK_VARIETAS,
     RANK_VARIETY,
     RANK_SUBVARIETY,
+    RANK_STRAIN,
     RANK_NO_RANK,
     RANK_NO_RANK_TERMINAL
 };
