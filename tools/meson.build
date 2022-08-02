@@ -67,7 +67,7 @@ foreach program : programs
 endforeach
 
 solver_sources = ['solve-subproblem.cpp','solver/rsplit.cpp', 'solver/solution.cpp',
-                  'solver/build.cpp']
+                  'solver/build.cpp', 'solver/rollback.cpp']
 
 executable('otc-solve-subproblem',
            solver_sources,
