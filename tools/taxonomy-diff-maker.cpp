@@ -271,12 +271,14 @@ enum AlphaEditOp {
     ADDED_SYN = 4,
     CHANGED_RANK = 5,
     DELETE_TAXON = 6,
-    ADD_TAXON = 7
+    ADD_TAXON = 7,
+    CHANGED_FLAGS = 8
 };
 
 const vector<string> aeo2str = {"no change", "change id", "change name",
                                 "delete synonym", "add synonym", 
-                                "change_rank", "delete taxon", "add taxon"};
+                                "change_rank", "delete taxon", "add taxon",
+                                "change flags"};
 
 
 class AlphaEdit {
@@ -291,6 +293,7 @@ class AlphaEdit {
         string first_str, second_str;
         OttId first_id, second_id;
         TaxonomicRank first_rank, second_rank;
+        tax_flags first_flags, second_flags;
 
         void add_to_json_array(json & jarr) const {
             if (operation == AlphaEditOp::NO_CHANGE) {
@@ -318,10 +321,17 @@ class AlphaEdit {
                 } else if (operation == AlphaEditOp::CHANGED_RANK) {
                     el["from"] = rank_enum_to_name.at(first_rank);
                     el["to"] = rank_enum_to_name.at(second_rank);
+                } else if (operation == AlphaEditOp::CHANGED_FLAGS) {
+                    el["from"] = flags_to_string(first_flags);
+                    el["to"] = flags_to_string(second_flags);
                 } else {
                     assert(operation == AlphaEditOp::ADD_TAXON);
                     el["name"] = first_str;
                     el["rank"] = rank_enum_to_name.at(first_rank);
+                    auto fstr = flags_to_string(first_flags);
+                    if (!fstr.empty()) {
+                        el["flags"] = fstr;
+                    }
                 }
             }
             jarr.push_back(el);
@@ -335,10 +345,13 @@ class TaxonomyDiffer {
     
     protected:
     void compare_specimen_based();
-    void diagnose_root_spec_based_status(const RTRichTaxNode *old_spec_nd);
-    void children_diagnose_root_spec_based_status(const RTRichTaxNode *old, const RTRichTaxNode * new_nd) {
-    }
+    void diagnose_old_spec_based_fate(const RTRichTaxNode *old_spec_nd, bool top_level);
+    //void diagnose_new_spec_based_status(const RTRichTaxNode *old_spec_nd, bool top_level);
+    void children_diagnose_old_spec_based_fate(const RTRichTaxNode *old,
+                                               const RTRichTaxNode * new_nd,
+                                               bool top_level);
     void record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichTaxNode *new_nd);
+    void record_tax_edits_for_match(const RTRichTaxNode *old_nd, const RTRichTaxNode * new_nd);
 
     AlphaEdit & new_alpha_edit();
 
@@ -351,6 +364,13 @@ class TaxonomyDiffer {
     std::unordered_map<OttId, const RTRichTaxNode *> old_sp_root;
     std::unordered_map<string, ndvec_t> old_name_to_nds;
     std::unordered_map<string, ndvec_t> new_name_to_nds;
+
+    // These 3 fields are filled starting with children_diagnose_old_spec_based_fate
+    OttIdSet retained_spec_ids;  // found in both - same ID
+    map<OttId, OttId> mapped_spec_ids;  // found in both. old ID -> new ID
+    map<OttId, OttId> revmapped_spec_ids; //              new ID -> old ID
+    OttIdSet deleted_spec_ids; // only in old
+    OttIdSet new_spec_ids;     // only in new.
 
     std::vector<AlphaEdit> alphaTaxonomyEdits;
 };
@@ -391,13 +411,66 @@ TaxonomyDiffer::TaxonomyDiffer(const TaxonomyDiffMaker & old_tax,
 
 void TaxonomyDiffer::compare_specimen_based() {
     OttIdSet seen;
-    old_sp_root = find_all_specimen_based_roots(old_td.id_to_node,
-                                                old_specimen_based_ids, 
-                                                seen);
+    const auto & old_i2nd = old_td.id_to_node;
+    old_sp_root = find_all_specimen_based_roots(old_i2nd, old_specimen_based_ids, seen);
     LOG(DEBUG) << "old tree had " << old_sp_root.size() << " roots of specimen_based taxa.";
+    // this loop and recursive call will record all deleted, remapped and retained.
     for (auto ott_id_root_p : old_sp_root) {
-        diagnose_root_spec_based_status(ott_id_root_p.second);
+        diagnose_old_spec_based_fate(ott_id_root_p.second, true);
     }
+    LOG(DEBUG) << "retained_spec_ids.size() = " << retained_spec_ids.size();
+    LOG(DEBUG) << "mapped_spec_ids.size() = " << mapped_spec_ids.size();
+    LOG(DEBUG) << "revmapped_spec_ids.size() = " << revmapped_spec_ids.size();
+    LOG(DEBUG) << "deleted_spec_ids.size() = " << deleted_spec_ids.size();
+    // Now we can figure out the added specimen-based taxa
+    const auto & new_i2nd = new_td.id_to_node;
+    for (auto nid : new_specimen_based_ids) {
+        auto nd = new_i2nd.at(nid);
+        assert(nd != nullptr);
+        auto new_tax_id = nd->get_ott_id();
+        if (contains(retained_spec_ids, new_tax_id) || 
+            contains(revmapped_spec_ids, new_tax_id)) {
+            continue;
+        } 
+        auto & edit = new_alpha_edit();
+        edit.operation = AlphaEditOp::ADD_TAXON;
+        edit.first_id = nid;
+        edit.first_str = nd->get_name();
+        auto nd_data = nd->get_data();
+        edit.first_rank = nd_data.rank;
+        edit.first_flags = nd_data.flags;
+        record_syn_diffs(nullptr, nd);
+        new_spec_ids.insert(new_tax_id);
+    }
+    LOG(DEBUG) << "new_spec_ids.size() = " << new_spec_ids.size();
+    // now we characterize the structure of groupings below the species level.
+    // using pair_nd_t = std::pair<const RTRichTaxNode *, const RTRichTaxNode *>;
+    // vector<pair_nd_t> matched;
+    // matched.reserve(retained_spec_ids.size() + mapped_spec_ids.size());
+    // vector<const RTRichTaxNode *old_nd> old_only_intern, new_only_intern;
+    // for (auto rid : retained_spec_ids) {
+    //     auto old_nd = old_i2nd.at(rid);
+    //     auto new_nd = new_i2nd.at(rid);
+    //     if (old_nd->is_tip()) {
+    //         if (!new_nd->is_tip()) {
+    //             new_only_intern.push_back(new_nd);
+    //         }
+            
+    //     } else {
+    //         if (new_nd->is_tip()) {
+    //             old_only_intern.push_back(old_only_intern);
+    //         } else {
+    //             matched.push_back(pair_nd_t{old_nd, new_nd});
+    //         }
+    //     }
+        
+    // }
+    // for (auto mIt : mapped_spec_ids) {
+    //     auto old_nd = old_i2nd.at(mIt.first);
+    //     auto new_nd = new_i2nd.at(mIt.second);
+    //     matched.push_back(pair_nd_t{old_nd, new_nd});
+    // }
+
 }
 
 const AlphaEdit mtEdit;
@@ -481,7 +554,40 @@ void TaxonomyDiffer::record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichT
     }
 }
 
-void TaxonomyDiffer::diagnose_root_spec_based_status(const RTRichTaxNode *old_spec_nd) {
+void TaxonomyDiffer::children_diagnose_old_spec_based_fate(const RTRichTaxNode * old_nd,
+                                                              const RTRichTaxNode * new_nd,
+                                                              bool top_level) {
+    assert(old_nd != nullptr);
+    const auto old_tax_id = old_nd->get_ott_id();
+    if (new_nd == nullptr) {
+        deleted_spec_ids.insert(old_tax_id);
+    } else {
+        const auto new_tax_id = new_nd->get_ott_id();
+        if (new_nd->get_ott_id() == old_tax_id) {
+            retained_spec_ids.insert(old_tax_id);
+        } else {
+            mapped_spec_ids[old_tax_id] = new_tax_id;
+            revmapped_spec_ids[new_tax_id] = old_tax_id;
+        }
+    }
+
+    // indirect recursion
+    for (auto child : iter_child_const(*old_nd)) {
+        diagnose_old_spec_based_fate(child, false);
+    }
+    if (!top_level) {
+        return;
+    }
+    // for (auto child : iter_child_const(*new_nd)) {
+    //     diagnose_new_spec_based_status(child);
+    // }
+}
+
+// void TaxonomyDiffer::diagnose_new_spec_based_status(const RTRichTaxNode *new_spec_nd) {
+// }
+
+void TaxonomyDiffer::diagnose_old_spec_based_fate(const RTRichTaxNode *old_spec_nd,
+                                                  bool top_level) {
     const auto & new_i2nd = new_td.id_to_node;
     const OttId old_root_id = old_spec_nd->get_ott_id();
     const auto new_el = new_i2nd.find(old_root_id);
@@ -491,9 +597,9 @@ void TaxonomyDiffer::diagnose_root_spec_based_status(const RTRichTaxNode *old_sp
         const auto old_name = old_spec_nd->get_name();
         const auto new_by_name = new_name_to_nds.find(old_name);
         if (new_by_name == new_name_to_nds.end()) {
-            children_diagnose_root_spec_based_status(old_spec_nd, nullptr);
-            // need to keep this before the DELETE_TAXON here
-            record_syn_diffs(old_spec_nd, new_cmp_nd);
+            children_diagnose_old_spec_based_fate(old_spec_nd, nullptr, top_level);
+            // don't need to worry about deleting synonyms of a deleted  taxon
+            //record_syn_diffs(old_spec_nd, new_cmp_nd);
             auto & edit = new_alpha_edit();
             edit.operation = AlphaEditOp::DELETE_TAXON;
             edit.first_id = old_root_id;
@@ -504,18 +610,44 @@ void TaxonomyDiffer::diagnose_root_spec_based_status(const RTRichTaxNode *old_sp
                 throw OTCError() << "Old specimen_based root " << old_name << " (" << old_root_id << ") not found by id. and maps to multiple names";
             }
             new_cmp_nd = newnodes[0];
-            children_diagnose_root_spec_based_status(old_spec_nd, new_cmp_nd);
-            record_syn_diffs(old_spec_nd, new_cmp_nd); 
-            auto & edit = new_alpha_edit();
-            edit.operation = AlphaEditOp::CHANGED_NAME;
-            edit.first_str = old_name;
-            edit.second_str = new_cmp_nd->get_name();
+            children_diagnose_old_spec_based_fate(old_spec_nd, new_cmp_nd, top_level);
+            record_tax_edits_for_match(old_spec_nd, new_cmp_nd);
         }
     } else {
         new_cmp_nd = new_el->second;
-        children_diagnose_root_spec_based_status(old_spec_nd, new_el->second);
-        record_syn_diffs(old_spec_nd, new_cmp_nd);
+        children_diagnose_old_spec_based_fate(old_spec_nd, new_el->second, top_level);
+        record_tax_edits_for_match(old_spec_nd, new_cmp_nd);
     }
+}
+
+void TaxonomyDiffer::record_tax_edits_for_match(const RTRichTaxNode * old_nd,
+                                                const RTRichTaxNode * new_nd) {
+    auto tax_id = old_nd->get_ott_id();
+    record_syn_diffs(old_nd, new_nd);
+    if (old_nd->get_name() != new_nd->get_name()) {
+        const auto old_name = old_nd->get_name();
+        auto & edit = new_alpha_edit();
+        edit.operation = AlphaEditOp::CHANGED_NAME;
+        edit.first_str = old_name;
+        edit.second_str = new_nd->get_name();
+        edit.first_id = tax_id;
+    }
+    auto & old_data = old_nd->get_data();
+    auto & new_data = new_nd->get_data();
+    if (old_data.rank != new_data.rank) {
+        auto & edit = new_alpha_edit();
+        edit.operation = AlphaEditOp::CHANGED_RANK;
+        edit.first_rank = old_data.rank;
+        edit.second_rank = new_data.rank;
+        edit.first_id = tax_id;
+    }
+    if (old_data.flags != new_data.flags) {
+        auto & edit = new_alpha_edit();
+        edit.operation = AlphaEditOp::CHANGED_FLAGS;
+        edit.first_flags = old_data.flags;
+        edit.second_flags = new_data.flags;
+        edit.first_id = tax_id;
+    }   
 }
 
 bool diff_from_taxonomies(std::ostream & out,
