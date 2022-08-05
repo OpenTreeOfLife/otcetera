@@ -409,6 +409,7 @@ class AlphaGroupEdit {
                         added.push_back(oid);
                     }
                     el["added"] = added;
+                    el["name"] = first_str;
                 } else if (operation == AlphaGroupEditOp::DELETED_GROUPING) {
                     // no-op
                 }
@@ -433,11 +434,12 @@ using name2grouping_t = map<string, vector<Grouping *> >;
 
 class TaxonomyDiffer {
     public:
-    TaxonomyDiffer(const TaxonomyDiffMaker & old_tax, const TaxonomyDiffMaker & new_tax);
+    TaxonomyDiffer(TaxonomyDiffMaker & old_tax, TaxonomyDiffMaker & new_tax);
     void write(std::ostream & out ) const ;
     
     protected:
     void compare_specimen_based();
+    void compare_higher_taxa();
     //void diagnose_fate_of_groupings(const RTRichTaxNode *old_spec_nd);
     void diagnose_old_spec_based_fate(const RTRichTaxNode *old_spec_nd, bool top_level);
     void find_pair_for_new(const RTRichTaxNode *new_nd,
@@ -453,9 +455,10 @@ class TaxonomyDiffer {
 
     AlphaEdit & new_alpha_edit();
     AlphaGroupEdit & new_alpha_group_edit();
+    AlphaGroupEdit & new_higher_edit();
 
-    const RichTaxTree & old_tree;
-    const RichTaxTree & new_tree;
+    RichTaxTree & old_tree;
+    RichTaxTree & new_tree;
     const RTRichTaxTreeData & old_td;
     const RTRichTaxTreeData & new_td;
     OttIdSet old_specimen_based_ids, new_specimen_based_ids;
@@ -477,6 +480,7 @@ class TaxonomyDiffer {
     
     std::vector<AlphaEdit> alphaTaxonomyEdits;
     std::vector<AlphaGroupEdit> alphaGroupEdits;
+    std::vector<AlphaGroupEdit> higherGroupEdits;
 };
 
 const AlphaEdit mtEdit;
@@ -492,6 +496,12 @@ inline AlphaGroupEdit & TaxonomyDiffer::new_alpha_group_edit() {
     return *(alphaGroupEdits.rbegin());
 }
 
+inline AlphaGroupEdit & TaxonomyDiffer::new_higher_edit() {
+    higherGroupEdits.push_back(mtAGEdit);
+    return *(higherGroupEdits.rbegin());
+}
+
+
 
 void TaxonomyDiffer::write(std::ostream & out ) const {
     json edits = json::array();
@@ -502,17 +512,22 @@ void TaxonomyDiffer::write(std::ostream & out ) const {
     for (const auto & grel : alphaGroupEdits) {
         grel.add_to_json_array(gredits);
     }
+    json hedits = json::array();
+    for (const auto & hrel : higherGroupEdits) {
+        hrel.add_to_json_array(hedits);
+    }
     json document;
     document["alpha"] = edits;
     document["alpha_groups"] = gredits;
+    document["higher_taxa"] = hedits;
     out << document.dump(1) << std::endl;
 }
 
 
-TaxonomyDiffer::TaxonomyDiffer(const TaxonomyDiffMaker & old_tax,
-                               const TaxonomyDiffMaker & new_tax)
-  :old_tree(old_tax.get_tax_tree()),
-   new_tree(new_tax.get_tax_tree()),
+TaxonomyDiffer::TaxonomyDiffer(TaxonomyDiffMaker & old_tax,
+                               TaxonomyDiffMaker & new_tax)
+  :old_tree(const_cast<RichTaxTree &>(old_tax.get_tax_tree())),
+   new_tree(const_cast<RichTaxTree &>(new_tax.get_tax_tree())),
    old_td(old_tax.get_tax_tree().get_data()),
    new_td(new_tax.get_tax_tree().get_data()) {
     for (auto idnd_p : old_td.id_to_node) {
@@ -529,9 +544,143 @@ TaxonomyDiffer::TaxonomyDiffer(const TaxonomyDiffMaker & old_tax,
     LOG(DEBUG) << new_clade_ids.size() << " clades and " << new_specimen_based_ids.size() << " specimen_based ids.";
 
     compare_specimen_based();
+    compare_higher_taxa();
     
 }
 
+void fill_from_children(const RTRichTaxNode * inner_nd,
+                        OttIdSet & uniq,
+                        OttIdSet & retained,
+                        const nd2idset_t & nd2uniq_ids,
+                        const nd2idset_t & nd2des_ids) {
+    for (auto c : iter_child_const(*inner_nd)) {
+        const auto cuniq = nd2uniq_ids.find(c);
+        if (cuniq != nd2uniq_ids.end()) {
+            uniq.insert(cuniq->second.begin(), cuniq->second.end());
+        }
+        const auto cretained = nd2des_ids.find(c);
+        if (cretained != nd2des_ids.end()) {
+            retained.insert(cretained->second.begin(), cretained->second.end());
+        }
+    }
+}
+
+void TaxonomyDiffer::compare_higher_taxa() {
+    map<std::uint32_t, const RTRichTaxNode *> old_by_trav, new_by_trav;
+    set_traversal_entry_exit(old_tree);
+    set_traversal_entry_exit(new_tree);
+    nd2idset_t nd2add_ids;
+    nd2idset_t nd2des_ids;
+    for (auto nsrIt : new_sp_root) {
+        const auto sp_id = nsrIt.first;
+        auto sp_nd = nsrIt.second;
+        if (contains(new_spec_ids, sp_id)) {
+            nd2add_ids[sp_nd].insert(sp_id);
+        } else {
+            nd2des_ids[sp_nd].insert(sp_id);
+        }
+        for (auto anc : iter_anc_const(*sp_nd)) {
+            const auto trav_enter = anc->get_data().trav_enter;
+            if (contains(new_by_trav, trav_enter)) {
+                break;
+            }
+            new_by_trav[trav_enter] = anc;
+        }
+    }
+    LOG(DEBUG) << "new_by_trav.size() = " << new_by_trav.size() << " from " << new_by_trav.begin()->first << " " << new_by_trav.begin()->second->get_name() << " to " << new_by_trav.rbegin()->first << " " << new_by_trav.rbegin()->second->get_name();
+    nd2idset_t nd2del_ids;
+    nd2idset_t nd2des_ids_in_new;
+    // fill in del and des fields for the "tips" of the tree (the species, presumably)
+    for (auto osrIt : old_sp_root) {
+        const auto sp_id = osrIt.first;
+        auto sp_nd = osrIt.second;
+        if (contains(deleted_spec_ids, sp_id)) {
+            nd2del_ids[sp_nd].insert(sp_id);
+        } else if (contains(retained_spec_ids, sp_id)) {
+            nd2des_ids_in_new[sp_nd].insert(sp_id);
+        } else {
+            nd2des_ids_in_new[sp_nd].insert(mapped_spec_ids.at(sp_id));
+        }
+        for (auto anc : iter_anc_const(*sp_nd)) {
+            const auto trav_enter = anc->get_data().trav_enter;
+            if (contains(old_by_trav, trav_enter)) {
+                break;
+            }
+            old_by_trav[trav_enter] = anc;
+        }
+    }
+    LOG(DEBUG) << "old_by_trav.size() = " << old_by_trav.size() << " from " << old_by_trav.begin()->first << " " << old_by_trav.begin()->second->get_name() << " to " << old_by_trav.rbegin()->first << " " << old_by_trav.rbegin()->second->get_name();
+    const auto & old_i2nd = old_td.id_to_node;
+    const auto & new_i2nd = new_td.id_to_node;
+
+    for (auto byIt = old_by_trav.rbegin(); byIt != old_by_trav.rend(); ++byIt) {
+        auto inner_nd = byIt->second;
+        OttIdSet & del = nd2del_ids[inner_nd];
+        OttIdSet & in_new = nd2des_ids_in_new[inner_nd];
+        auto tax_id = inner_nd->get_ott_id();
+        auto ni2nIt = new_i2nd.find(tax_id);
+        if (ni2nIt == new_i2nd.end()) {
+            fill_from_children(inner_nd, del, in_new, nd2del_ids, nd2des_ids_in_new);
+            auto & edit = new_higher_edit();
+            edit.operation = AlphaGroupEditOp::DELETED_GROUPING;
+            edit.first_id = tax_id;
+            edit.first_str = inner_nd->get_name();
+        } else {
+            in_new.insert(tax_id);
+        }
+    }
+
+    for (auto byIt = new_by_trav.rbegin(); byIt != new_by_trav.rend(); ++byIt) {
+        auto inner_nd = byIt->second;
+        OttIdSet & added = nd2add_ids[inner_nd];
+        OttIdSet & retained = nd2des_ids[inner_nd];
+        auto tax_id = inner_nd->get_ott_id();
+        auto oi2nIt = old_i2nd.find(tax_id);
+        if (oi2nIt == old_i2nd.end()) {
+            fill_from_children(inner_nd, added, retained, nd2add_ids, nd2des_ids);
+            auto & edit = new_higher_edit();
+            edit.operation = AlphaGroupEditOp::NEW_GROUPING;
+            edit.first_id = tax_id;
+            edit.first_str = inner_nd->get_name();
+            edit.addedIds = retained;
+            edit.addedIds.insert(added.begin(), added.end());
+        } else {
+            retained.insert(tax_id);
+            OttIdSet new_add, new_retained;
+            fill_from_children(inner_nd, new_add, new_retained, nd2add_ids, nd2des_ids);
+            auto old_nd = oi2nIt->second;
+            OttIdSet old_del, old_retained;
+            fill_from_children(old_nd, old_del, old_retained, nd2del_ids, nd2des_ids_in_new);
+            if (inner_nd->get_name() != old_nd->get_name()) {
+                auto & edit = new_higher_edit();
+                edit.operation = AlphaGroupEditOp::GR_CHANGED_NAME;
+                edit.first_id = tax_id;
+                edit.first_str = old_nd->get_name();
+                edit.second_str = inner_nd->get_name();
+            }
+            OttIdSet ret_but_del = set_difference_as_set(old_retained, new_retained);
+            OttIdSet ret_but_add = set_difference_as_set(new_retained, old_retained);
+            old_del.insert(ret_but_del.begin(), ret_but_del.end());
+            new_add.insert(ret_but_add.begin(), ret_but_add.end());
+            if (!new_add.empty()) {
+                auto & edit = new_higher_edit();
+                edit.first_id = tax_id;
+                if (!old_del.empty()) {
+                    edit.operation = AlphaGroupEditOp::ADD_DEL_TAXA;
+                    edit.delIds = old_del;
+                } else {
+                    edit.operation = AlphaGroupEditOp::ADD_TAXA;
+                }
+                edit.addedIds = new_add;
+            } else if (!old_del.empty()) {
+                auto & edit = new_higher_edit();
+                edit.first_id = tax_id;
+                edit.operation = AlphaGroupEditOp::DEL_TAXA;
+                edit.delIds = old_del;
+            }
+        }
+    }
+}
 
 
 void TaxonomyDiffer::compare_specimen_based() {
@@ -944,124 +1093,12 @@ void TaxonomyDiffer::record_tax_edits_for_match(const RTRichTaxNode * old_nd,
     }   
 }
 
-// void TaxonomyDiffer::diagnose_fate_of_groupings(const RTRichTaxNode *old_spec_nd) {
-//     const OttId old_root_id = old_spec_nd->get_ott_id();
-//     assert(!contains(old_handled, old_root_id));
-//     const auto & new_i2nd = new_td.id_to_node;
-//     const RTRichTaxNode * new_nd = nullptr;
-//     if (old_spec_nd->is_tip()) {
-//         OttId new_ott_id;
-//         if (contains(retained_spec_ids, old_root_id)) {
-//             new_ott_id = old_root_id;
-//         } else {
-//             auto mIt = mapped_spec_ids.find(old_root_id);
-//             if (mIt == mapped_spec_ids.end()) {
-//                 // nothing to be done for del tip
-//                 old_handled.insert(old_root_id); 
-//                 return;
-//             }
-//             new_ott_id = mIt->second;
-//         }
-
-//         new_nd = new_i2nd.at(new_ott_id);
-//         if (new_nd->is_tip()) {
-//             // no groupings if both are tips. 
-//             // nothing but bookkeeping to be done
-//             old_handled.insert(old_root_id);
-//             assert(!contains(new_handled, old_root_id));
-//             new_handled.insert(old_root_id);
-//             return;
-//         }
-//         for (auto new_c : iter_post_n_const(*new_nd)) {
-//             if (new_c == new_nd) {
-//                 continue;
-//             }
-//             const auto new_c_id = new_c->get_ott_id();
-//             if (!contains(new_spec_ids, new_c_id)) {
-//                 throw OTCError() << "NotImplementedCase: non-new taxon ID (" << new_c_id << ") found inside group " << new_nd->get_name() << " (" << old_root_id << ") which was a tip in the old taxonomy.";
-//             }
-//         }
-
-//     }
-   // const RTRichTaxNode * new_cmp_nd = nullptr;
-
-    // if (new_el == new_i2nd.end()) {
-    //     const auto old_name = old_spec_nd->get_name();
-    //     const auto new_by_name = new_name_to_nds.find(old_name);
-    //     if (new_by_name == new_name_to_nds.end()) {
-    //         children_diagnose_old_spec_based_fate(old_spec_nd, nullptr, top_level);
-    //         // don't need to worry about deleting synonyms of a deleted  taxon
-    //         //record_syn_diffs(old_spec_nd, new_cmp_nd);
-    //         auto & edit = new_alpha_edit();
-    //         edit.operation = AlphaEditOp::DELETE_TAXON;
-    //         edit.first_id = old_root_id;
-    //         edit.first_str = old_name;
-    //     } else {
-    //         const ndvec_t newnodes = new_by_name->second;
-    //         if (newnodes.size() != 1) {
-    //             throw OTCError() << "Old specimen_based root " << old_name << " (" << old_root_id << ") not found by id. and maps to multiple names";
-    //         }
-    //         new_cmp_nd = newnodes[0];
-    //         children_diagnose_old_spec_based_fate(old_spec_nd, new_cmp_nd, top_level);
-    //         record_tax_edits_for_match(old_spec_nd, new_cmp_nd);
-    //     }
-    // } else {
-    //     new_cmp_nd = new_el->second;
-    //     children_diagnose_old_spec_based_fate(old_spec_nd, new_el->second, top_level);
-    //     record_tax_edits_for_match(old_spec_nd, new_cmp_nd);
-    // }
-//}
-
 
 bool diff_from_taxonomies(std::ostream & out,
-                          const TaxonomyDiffMaker & old_tax,
-                          const TaxonomyDiffMaker & new_tax) {
+                          TaxonomyDiffMaker & old_tax,
+                          TaxonomyDiffMaker & new_tax) {
     TaxonomyDiffer tax_dif(old_tax, new_tax);
-    tax_dif.write(out);
-    // // I. we look at the subset of taxa that have the same ID and name between versions
-    // //   I.A - find the set of IDs with the same name
-    // id2name_t old_id2name, new_id2name;
-    // LOG(DEBUG) << "old_td.name_to_node.size() = " << old_td.name_to_node.size() ;
-    // LOG(DEBUG) << "new_td.name_to_node.size() = " << new_td.name_to_node.size() ;
-    // fill_name_id_maps(old_td, old_id2name);
-    // fill_name_id_maps(new_td, new_id2name);
-    // LOG(DEBUG) << old_id2name.size() << " " << new_id2name.size() << std::endl;
-    // const OttIdSet same_id_name = find_ids_with_same_names(old_id2name, new_id2name);
-    // LOG(DEBUG) << same_id_name.size() << " IDs with the same name between versions";
-    // //   I.B - further restrict this (as "culled") to the set of those IDs that are
-    // //      terminal when only the same_id_name IDs are relevant.
-    // OttIdSet ota, nta;
-    // fill_term_des_id_set(old_tree, same_id_name, ota);
-    // fill_term_des_id_set(new_tree, same_id_name, nta);
-    // const auto & tmp = intersection_of_sets(ota, nta);
-    // OttIdSet culled = intersection_of_sets(same_id_name, tmp);
-    // ota.clear();
-    // nta.clear();
-    // //   I.C - get the mappings from ID to relevant set of IDs for each tree.
-    // const nd2idset_t old_nd2ids = fill_term_des_id_set(old_tree, culled, ota);
-    // const nd2idset_t new_nd2ids = fill_term_des_id_set(new_tree, culled, nta);
-    // assert(ota == nta);
-    // assert(culled == nta);
-    // LOG(DEBUG) << culled.size() << " = culled.size()";
-    // //   I.D - look for phylorefs that are new or deleted wrt to the culled set of IDs
-    // idset2nd_vec_t old_idset2ndvec, new_idset2ndvec;
-    // for (auto nidsp: old_nd2ids) {
-    //     old_idset2ndvec[nidsp.second].push_back(nidsp.first);
-    // }
-    // LOG(DEBUG) << old_idset2ndvec.size() << " = old_idset2ndvec.size()";
-    // for (auto nidsp: new_nd2ids) {
-    //     new_idset2ndvec[nidsp.second].push_back(nidsp.first);
-    // }
-    // LOG(DEBUG) << new_idset2ndvec.size() << " = new_idset2ndvec.size()";
-    // for (auto idsnp: new_idset2ndvec) {
-    //     auto & idset = idsnp.first;
-    //     if (!contains(old_idset2ndvec, idset)) {
-    //         out << "INSERT MRCA(";
-    //         write_tax_id_set(out, "", idset, ",");
-    //         out << ")" << std::endl;
-    //     }
-    // }
-    
+    tax_dif.write(out);    
     return true;
 }
 
