@@ -606,6 +606,16 @@ void TaxonomyDiffer::compare_specimen_based() {
             find_pair_for_new(ott_id_root_p.second, old_groups, groups_by_name, tough_new_groups);
         }
     }
+    id2grouping_t unpaired_old_groups;
+    for (auto ogIt : old_groups) {
+        if (!ogIt->second.paired) {
+            unpaired_old_groups[ogIt->first] = ogIt->second;
+        }
+    }
+    old_groups.clear();
+    groups_by_name.clear();
+    LOG(DEBUG) << "unpaired_old_groups.size() = " << unpaired_old_groups.size();
+    LOG(DEBUG) << "tough_new_groups.size() = " << tough_new_groups.size();
 
     // now we characterize the structure of groupings below the species level.
     // using pair_nd_t = std::pair<const RTRichTaxNode *, const RTRichTaxNode *>;
