@@ -520,7 +520,7 @@ void TaxonomyDiffer::write(std::ostream & out ) const {
     document["alpha"] = edits;
     document["alpha_groups"] = gredits;
     document["higher_taxa"] = hedits;
-    out << document.dump(1) << std::endl;
+    out << document.dump(0) << std::endl;
 }
 
 
