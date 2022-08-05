@@ -344,11 +344,14 @@ enum AlphaGroupEditOp {
     GR_CHANGED_NAME = 2,
     ADD_TAXA = 3,
     DEL_TAXA = 4,
-    ADD_DEL_TAXA = 5
+    ADD_DEL_TAXA = 5,
+    DELETED_GROUPING = 6,
+    NEW_GROUPING = 7
 };
 
 const vector<string> ageo2str = {"no change", "change id", "change name",
-                                "add taxa", "delete taxa", "add+delete taxa"};
+                                "add taxa", "delete taxa", "add+delete taxa",
+                                "deleted grouping", "new grouping"};
 
 
 class AlphaGroupEdit {
@@ -400,6 +403,14 @@ class AlphaGroupEdit {
                         deleted.push_back(oid);
                     }
                     el["deleted"] = deleted;
+                } else if (operation == AlphaGroupEditOp::NEW_GROUPING) {
+                    json added = json::array();
+                    for (auto oid : addedIds) {
+                        added.push_back(oid);
+                    }
+                    el["added"] = added;
+                } else if (operation == AlphaGroupEditOp::DELETED_GROUPING) {
+                    // no-op
                 }
             }
             jarr.push_back(el);
@@ -608,15 +619,28 @@ void TaxonomyDiffer::compare_specimen_based() {
     }
     id2grouping_t unpaired_old_groups;
     for (auto ogIt : old_groups) {
-        if (!ogIt->second.paired) {
-            unpaired_old_groups[ogIt->first] = ogIt->second;
+        if (!ogIt.second.paired) {
+            unpaired_old_groups[ogIt.first] = ogIt.second;
         }
     }
     old_groups.clear();
     groups_by_name.clear();
     LOG(DEBUG) << "unpaired_old_groups.size() = " << unpaired_old_groups.size();
     LOG(DEBUG) << "tough_new_groups.size() = " << tough_new_groups.size();
-
+    for (auto uogIt : unpaired_old_groups) {
+        auto & agedit = new_alpha_group_edit();
+        agedit.operation = AlphaGroupEditOp::DELETED_GROUPING;
+        agedit.first_id = uogIt.first;
+    }
+    for (auto tngIt : tough_new_groups) {
+        auto & agedit = new_alpha_group_edit();
+        agedit.operation = AlphaGroupEditOp::NEW_GROUPING;
+        agedit.first_id = tngIt.first;
+        Grouping & grouping = tngIt.second;
+        OttIdSet added_ids = grouping.shared_ids;
+        added_ids.insert(grouping.new_ids.begin(), grouping.new_ids.end());
+        agedit.addedIds = added_ids;
+    }
     // now we characterize the structure of groupings below the species level.
     // using pair_nd_t = std::pair<const RTRichTaxNode *, const RTRichTaxNode *>;
     // vector<pair_nd_t> matched;
@@ -698,6 +722,7 @@ void TaxonomyDiffer::find_pair_for_new(const RTRichTaxNode *new_nd,
             nonobvious[new_id] = grouping;
         } else {
             grouping.paired = true;
+            old_grouping->paired = true;
             if (correspond_id != new_id) {
                 auto & agedit = new_alpha_group_edit();
                 agedit.operation = AlphaGroupEditOp::GR_CHANGED_ID;
