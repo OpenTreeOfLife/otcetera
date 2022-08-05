@@ -135,6 +135,13 @@ std::pair<bool, const json *> get_array_property(const json & j,
     return std::pair<bool, const json *>(false, nullptr);
 }
 
+const unsigned parse_as_unsigned(const json & j) {
+    if (!j.is_number_unsigned()) {
+        throw OTCError() << "Expecting a non negative integer";
+    }
+    return j.get<unsigned>();
+}
+
 std::pair<bool, unsigned> get_unsigned_property(const json & j,
                                                 const std::string & prop_name,
                                                 bool required) {
@@ -150,7 +157,7 @@ std::pair<bool, unsigned> get_unsigned_property(const json & j,
 }
 
 
-AlphaEdit parse_alpha(const json & edit_obj) {
+inline AlphaEdit parse_alpha(const json & edit_obj) {
     AlphaEdit ed;
     auto op_str = get_string_property(edit_obj, "operation", true).second;
     auto s2aIt = str2aeo.find(op_str);
@@ -201,7 +208,7 @@ AlphaEdit parse_alpha(const json & edit_obj) {
     return ed;
 }
 
-AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
+inline AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
     AlphaGroupEdit ed;
         auto op_str = get_string_property(edit_obj, "operation", true).second;
     auto s2aIt = str2ageo.find(op_str);
@@ -210,51 +217,40 @@ AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
     }
     AlphaGroupEditOp op_enum = s2aIt->second;
     ed.operation = op_enum;
-    // if (op_enum == AlphaEditOp::NO_CHANGE) {
-    //     // no op
-    // } else if (op_enum == AlphaEditOp::CHANGED_ID) {
-    //     ed.first_id = get_unsigned_property(edit_obj, "from", true).second;
-    //     ed.second_id = get_unsigned_property(edit_obj, "to", true).second;
-    // } else {
-    //     ed.first_id = get_unsigned_property(edit_obj, "taxon_id", true).second;
-    //     if (op_enum == AlphaEditOp::CHANGED_NAME) {
-    //         ed.first_str = get_string_property(edit_obj, "from", true).second;
-    //         ed.second_str = get_string_property(edit_obj, "to", true).second;
-    //     } else if (op_enum == AlphaEditOp::DELETED_SYN || op_enum == AlphaEditOp::ADDED_SYN) {
-    //         ed.first_str = get_string_property(edit_obj, "synonym", true).second;
-    //         std::string x = get_string_property(edit_obj, "type", false).second;
-    //         if (!x.empty()) {
-    //             ed.second_str = x;
-    //         }
-    //     } else if (op_enum == AlphaEditOp::DELETE_TAXON) {
-    //         ed.first_str = get_string_property(edit_obj, "name", true).second;
-    //     } else if (op_enum == AlphaEditOp::CHANGED_RANK) {
-    //         string x = get_string_property(edit_obj, "from", true).second;
-    //         ed.first_rank = string_to_rank(x, true);
-    //         x = get_string_property(edit_obj, "to", true).second;
-    //         ed.second_rank = string_to_rank(x, true);
-    //     } else if (op_enum == AlphaEditOp::CHANGED_FLAGS) {
-    //         string x = get_string_property(edit_obj, "from", true).second;
-    //         ed.first_flags = flags_from_string(x);
-    //         x = get_string_property(edit_obj, "to", true).second;
-    //         ed.second_flags = flags_from_string(x);
-    //     } else {
-    //         assert(op_enum == AlphaEditOp::ADD_TAXON);
-    //         ed.first_str = get_string_property(edit_obj, "name", true).second;
-    //         string x = get_string_property(edit_obj, "rank", false).second;
-    //         ed.first_rank = string_to_rank(x, true);
-    //         x = get_string_property(edit_obj, "flags", false).second;
-    //         if (!x.empty()) {
-    //             ed.first_flags = flags_from_string(x);
-    //         }
-    //     }
-    // }
+    if (op_enum == AlphaGroupEditOp::NO_GR_CHANGE) {
+        // no op
+    } else if (op_enum == AlphaGroupEditOp::GR_CHANGED_ID) {
+        ed.first_id = get_unsigned_property(edit_obj, "from", true).second;
+        ed.second_id = get_unsigned_property(edit_obj, "to", true).second;
+    } else {
+        ed.first_id = get_unsigned_property(edit_obj, "taxon_id", true).second;
+        if (op_enum == AlphaGroupEditOp::GR_CHANGED_NAME) {
+            ed.first_str = get_string_property(edit_obj, "from", true).second;
+            ed.second_str = get_string_property(edit_obj, "to", true).second;
+        }
+        if (op_enum == AlphaGroupEditOp::ADD_TAXA
+            || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA
+            || op_enum == AlphaGroupEditOp::NEW_GROUPING) {
+            auto ada = get_array_property(edit_obj, "added", true).second;
+            for (auto aed : *ada) {
+                ed.addedIds.insert(parse_as_unsigned(aed));
+            }
+        }
+        if (op_enum == AlphaGroupEditOp::DEL_TAXA || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA) {
+            auto dda = get_array_property(edit_obj, "deleted", true).second;
+            for (auto aed : *dda) {
+                ed.delIds.insert(parse_as_unsigned(aed));
+            }
+        }
+        if (op_enum == AlphaGroupEditOp::NEW_GROUPING) {
+            ed.first_str = get_string_property(edit_obj, "name", true).second;
+        }
+    }
     return ed;    
 }
 
-AlphaGroupEdit parse_higher_taxon(const json & edit_obj) {
-    AlphaGroupEdit ed;
-    return ed;    
+inline AlphaGroupEdit parse_higher_taxon(const json & edit_obj) {
+    return parse_alpha_group(edit_obj); 
 }
 
 void parse_source_edits_json(std::istream & inp,

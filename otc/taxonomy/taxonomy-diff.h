@@ -312,7 +312,7 @@ const std::vector<std::string> ageo2str = {"no change", "change id", "change nam
                                 "add taxa", "delete taxa", "add+delete taxa",
                                 "deleted grouping", "new grouping"};
 
-const std::map<std::string, AlphaEditOp> str2ageo = {
+const std::map<std::string, AlphaGroupEditOp> str2ageo = {
     {"no change", AlphaGroupEditOp::NO_GR_CHANGE},
     {"change id", AlphaGroupEditOp::GR_CHANGED_ID},
     {"change name", AlphaGroupEditOp::GR_CHANGED_NAME},
