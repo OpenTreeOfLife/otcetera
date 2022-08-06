@@ -346,7 +346,7 @@ void TaxonomyDiffer::compare_specimen_based() {
         edit.operation = AlphaEditOp::ADD_TAXON;
         edit.first_id = nid;
         edit.first_str = nd->get_name();
-        auto nd_data = nd->get_data();
+        auto & nd_data = nd->get_data();
         edit.first_rank = nd_data.rank;
         edit.first_flags = nd_data.flags;
         record_syn_diffs(nullptr, nd);
@@ -701,6 +701,12 @@ void TaxonomyDiffer::diagnose_old_spec_based_fate(const RTRichTaxNode *old_spec_
 void TaxonomyDiffer::record_tax_edits_for_match(const RTRichTaxNode * old_nd,
                                                 const RTRichTaxNode * new_nd) {
     auto tax_id = old_nd->get_ott_id();
+    if (tax_id != new_nd->get_ott_id()) {
+        auto & edit = new_alpha_edit();
+        edit.operation = AlphaEditOp::CHANGED_ID;
+        edit.first_id = tax_id;
+        edit.second_id = new_nd->get_ott_id();
+    }
     record_syn_diffs(old_nd, new_nd);
     if (old_nd->get_name() != new_nd->get_name()) {
         const auto old_name = old_nd->get_name();

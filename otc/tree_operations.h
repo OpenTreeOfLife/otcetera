@@ -20,6 +20,8 @@ int count_children_in_set(T nd, const CONTAINER & ancestral);
 template<typename T, typename CONTAINER>
 bool is_monotypic_in_set(T nd, const CONTAINER & ancestral);
 template<typename T>
+void collapse_split_dont_del_node(T* nd);
+template<typename T>
 void collapse_split_and_del_node(T* nd);
 template<typename T>
 std::size_t n_internal_with_ott_id(const T& tree);
@@ -143,6 +145,16 @@ inline bool is_monotypic_in_set(T nd, const CONTAINER & ancestral) {
 }
 
 template<typename T>
+void collapse_split_dont_del_node(T* nd) {
+    while (nd->get_first_child()) {
+        auto nd2 = nd->get_first_child();
+        nd2->detach_this_node();
+        nd->add_sib_on_left(nd2);
+    }
+    nd->detach_this_node();
+}
+
+template<typename T>
 void collapse_split_and_del_node(T* nd) {
     while (nd->get_first_child()) {
         auto nd2 = nd->get_first_child();
@@ -152,6 +164,8 @@ void collapse_split_and_del_node(T* nd) {
     nd->detach_this_node();
     delete nd;
 }
+
+
 
 template<typename T>
 inline std::size_t n_internal_with_ott_id(const T& tree) {

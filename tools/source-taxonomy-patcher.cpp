@@ -293,12 +293,91 @@ void parse_source_edits_json(std::istream & inp,
     }
 }
 
-void patch_source_taxonomy(RichTaxonomy & otaxonomy,
-                           list<AlphaEdit> & alpha_taxa,
-                           list<AlphaGroupEdit> & alpha_groups,
-                           list<AlphaGroupEdit> & higher,
-                           std::string outdir) {
+std::list<TaxonomicJuniorSynonym> new_synonyms;
 
+inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
+                         RTRichTaxTreeData & tree_data) {
+    if (aed.operation == AlphaEditOp::NO_CHANGE) {
+        return;
+    }
+    OttId tax_id = aed.first_id;
+    RTRichTaxNode * nd = nullptr;
+    RTRichTaxNodeData * nd_data = nullptr;
+    if (aed.operation != AlphaEditOp::ADD_TAXON) {
+            try {
+            nd = const_cast<RTRichTaxNode *>(tree_data.id_to_node.at(tax_id));
+        } catch (...) {
+            throw OTCError() << "Could not find ID " << tax_id << " in taxonomy id_to_node";
+        }
+        nd_data = &(nd->get_data());
+    }
+    if (aed.operation == AlphaEditOp::CHANGED_ID) {
+        nd->set_ott_id(aed.second_id);
+        tree_data.id_to_node[aed.second_id] = nd;
+    } else if (aed.operation == AlphaEditOp::CHANGED_NAME) {
+        nd->set_name(aed.second_str);
+    } else if (aed.operation == AlphaEditOp::DELETED_SYN) {
+        while (true) {
+            auto jsIt = nd_data->junior_synonyms.begin();
+            for (; jsIt != nd_data->junior_synonyms.end(); ++jsIt) {
+                if ((*jsIt)->name == aed.first_str) {
+                    break;
+                }
+            }
+            if (jsIt != nd_data->junior_synonyms.end()) {
+                nd_data->junior_synonyms.erase(jsIt);
+            } else {
+                break;
+            }
+        }
+    } else if (aed.operation == AlphaEditOp::ADDED_SYN) {
+        string mt;
+        new_synonyms.emplace_back(aed.first_str, nd, mt);
+        TaxonomicJuniorSynonym & js = *new_synonyms.rbegin();
+        nd_data->junior_synonyms.push_back(&js);
+    } else if (aed.operation == AlphaEditOp::DELETE_TAXON) {
+        collapse_split_dont_del_node(nd);
+    } else if (aed.operation == AlphaEditOp::CHANGED_RANK) {
+        nd_data->rank = aed.second_rank;
+    } else if (aed.operation == AlphaEditOp::CHANGED_FLAGS) {
+        nd_data->flags = aed.second_flags;
+    } else if (aed.operation == AlphaEditOp::ADD_TAXON) {
+        RTRichTaxNode * newnd = tree.create_node(nullptr);
+        newnd->set_ott_id(aed.first_id);
+        newnd->set_name(aed.first_str);
+        auto & newnd_data = newnd->get_data();
+        newnd_data.rank = aed.first_rank;
+        newnd_data.flags = aed.first_flags;
+        tree_data.id_to_node[aed.first_id] = newnd;
+    }
+}
+
+void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTaxTreeData & tree_data) {
+
+}
+
+void handle_higher(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTaxTreeData & tree_data) {
+
+}
+
+
+void patch_source_taxonomy(RichTaxonomy & otaxonomy,
+                           const list<AlphaEdit> & alpha_taxa,
+                           const list<AlphaGroupEdit> & alpha_groups,
+                           const list<AlphaGroupEdit> & higher,
+                           const std::string outdir) {
+    RichTaxTree & tree = const_cast<RichTaxTree &>(otaxonomy.get_tax_tree());
+    RTRichTaxTreeData & tree_data = tree.get_data();
+    for (auto aed : alpha_taxa) {
+        handle_alpha(aed, tree, tree_data);
+    }
+    for (auto aged : alpha_groups) {
+        handle_alpha_group(aged, tree, tree_data);
+    }
+    for (auto aged : higher) {
+        handle_higher(aged, tree, tree_data);
+    }
+    //otaxonomy.write(outdir, false, false);
 }
 
 int main(int argc, char* argv[]) {
