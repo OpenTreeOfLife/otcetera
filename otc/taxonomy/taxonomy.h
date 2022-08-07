@@ -209,7 +209,8 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
 
 public:
     static bool tolerate_synonyms_to_unknown_id;
-    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
+    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>,
+                                                                bool process_source_maps = true) const;
 
     std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;
 
@@ -353,7 +354,8 @@ class RichTaxonomy: public BaseTaxonomy {
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     RichTaxonomy(const std::string& dir,
                  std::bitset<32> cf = std::bitset<32>(),
-                 OttId kr = -1);
+                 OttId kr = -1,
+                 bool read_syn_type_as_src = false);
     RichTaxonomy(RichTaxonomy &&) = default;
 
     std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;
@@ -410,6 +412,7 @@ class RichTaxonomy: public BaseTaxonomy {
     void read_synonyms();
     void _fill_ids_to_suppress_set();
     
+    bool read_synonym_type_as_src; // only relevant for source taxonomies with syntype info
     std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
@@ -437,7 +440,8 @@ template <typename Node_t, typename TREE>
 void populate_node_from_taxonomy_record(Node_t & nd,
                                     const TaxonomyRecord & line,
                                     std::function<std::string(const TaxonomyRecord&)> get_name,
-                                    TREE & tree);
+                                    TREE & tree,
+                                    bool process_source_maps = true);
 
 
 // default behavior is to set ID and Name from line
@@ -445,7 +449,8 @@ template <typename Node_t, typename TREE>
 inline void populate_node_from_taxonomy_record(Node_t & nd,
                                            const TaxonomyRecord & line,
                                            std::function<std::string(const TaxonomyRecord&)> get_name,
-                                           TREE & ) {
+                                           TREE & ,
+                                           bool ) {
     nd.set_ott_id(line.id);
     nd.set_name(get_name(line));    
 }
@@ -554,7 +559,8 @@ template <>
 inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
                                                const TaxonomyRecord & tr,
                                                std::function<std::string(const TaxonomyRecord&)> ,
-                                               RichTaxTree & tree) {
+                                               RichTaxTree & tree,
+                                               bool process_source_maps) {
     using std::string;
     using std::vector;
     using std::string_view;
@@ -585,13 +591,16 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
     auto flags = data.get_flags();
     //cout << "flags = " << flags << " name = " << this_node->get_name() << '\n';
     add_f_to_json_if_needed(tree_data.flags2json, flags);
-    auto vs = tr.sourceinfoAsVec();
-    data.source_info = string(tr.sourceinfo);
-    process_source_info_vec(vs, tree_data, data, this_node);
+    if (process_source_maps) {
+        auto vs = tr.sourceinfoAsVec();
+        data.source_info = string(tr.sourceinfo);
+        process_source_info_vec(vs, tree_data, data, this_node);
+    }
 }
 
 template <typename Tree_t>
-std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const TaxonomyRecord&)> get_name) const {
+std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const TaxonomyRecord&)> get_name,
+                                           bool process_source_maps) const {
     const auto& taxonomy = *this;
     std::unique_ptr<Tree_t> tree(new Tree_t);
     vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
@@ -606,11 +615,12 @@ std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const Taxon
             auto parent_nd = node_ptr[line.parent_index];
             nd = tree->create_child(parent_nd);
         }
-        populate_node_from_taxonomy_record(*nd, line, get_name, *tree);
+        populate_node_from_taxonomy_record(*nd, line, get_name, *tree, process_source_maps);
         node_ptr[i] = nd;
     }
     return tree;
 }
+
 // formatting options.
 std::string format_with_taxonomy(const std::string& orig, const std::string& format, const TaxonomyRecord& rec, const Taxonomy& taxonomy);
 std::string format_without_taxonomy(const std::string& orig, const std::string& format);

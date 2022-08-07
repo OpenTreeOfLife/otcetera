@@ -600,13 +600,17 @@ std::variant<OttId,reason_missing> RichTaxonomy::get_unforwarded_id_or_reason(Ot
 }
 
 
-RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
-    :BaseTaxonomy(dir, cf, kr) {
+RichTaxonomy::RichTaxonomy(const std::string& dir,
+                           std::bitset<32> cf,
+                           OttId kr,
+                           bool read_syn_type_as_src)
+    :BaseTaxonomy(dir, cf, kr),
+    read_synonym_type_as_src(read_syn_type_as_src) {
     { //braced to reduce scope of light_taxonomy to reduced memory
         Taxonomy light_taxonomy(dir, cf, kr); 
         auto nodeNamer = [](const auto&){return string();};
         cerr << "light_taxonomy.get_tree<RichTaxTree>(nodeNamer)..." << std::endl;
-        tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer);
+        tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer, false);
         cerr << "... tree returned" << std::endl;
         auto & tree_data = tree->get_data();
         std::swap(forwards, light_taxonomy.forwards);
@@ -834,12 +838,17 @@ void RichTaxonomy::read_input_synonyms_stream(std::istream & synonyms_file) {
             continue;
         }
         string sourceinfo;
+        if (read_synonym_type_as_src) {
+            sourceinfo = string(start[2], end[2] - start[2]);
+        }
         
         this->synonyms.emplace_back(name, primary, sourceinfo);
         TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
         
         auto vs = comma_separated_as_vec(sourceinfo);
-        process_source_info_vec(vs, tree_data, tjs, primary);
+        if (!read_synonym_type_as_src) {
+            process_source_info_vec(vs, tree_data, tjs, primary);
+        }
         RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
         mp->get_data().junior_synonyms.push_back(&tjs);
     }

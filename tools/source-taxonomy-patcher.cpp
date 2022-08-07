@@ -1,11 +1,12 @@
 #include "otc/taxonomy/taxonomy-diff.h"
 #include <boost/program_options.hpp>
 #include "otc/taxonomy/diff_maker.h"
-
+#include <boost/filesystem/operations.hpp>
 INITIALIZE_EASYLOGGINGPP
 
 using namespace otc;
 
+namespace fs = boost::filesystem;
 using std::string;
 using std::list;
 using std::vector;
@@ -17,6 +18,7 @@ using std::unique_ptr;
 using std::set;
 using std::map;
 using std::string_view;
+using std::ofstream;
 using json = nlohmann::json;
 using vec_strv_t = std::vector<std::string_view>;
 
@@ -391,8 +393,6 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
             deleted_nodes.insert(nd);
             collapse_split_dont_del_node(nd);
         }
-    } else if (aed.operation == AlphaGroupEditOp::NEW_GROUPING) {
-
     }
 }
 
@@ -400,6 +400,46 @@ void handle_higher(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTaxTree
     handle_alpha_group(aed, tree, tree_data);
 }
 
+void write_patched(const RichTaxTree & tree, const std::string outdir) {
+    fs::path new_dir = outdir;
+    if (! fs::exists(new_dir)) {
+        fs::create_directories(new_dir);
+    }
+    const char * sep = "\t|\t";
+    ofstream tf;
+    tf.open((new_dir/"taxonomy.tsv").string());
+    if (!tf.good()) {
+        throw OTCError() << "could not open " << (new_dir/"taxonomy.tsv").string() ;
+    }
+    tf << "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tflags\t|\t\n";
+    
+    const auto sfname = "synonyms.tsv";
+    ofstream soutpf;
+    soutpf.open((new_dir/sfname).string());
+    if (!soutpf.good()) {
+        throw OTCError() << "could not open " << (new_dir/sfname).string() ;
+    }
+    soutpf << "uid\t|\tname\t|\ttype\t|\t\n ";
+
+    for(auto nd: iter_pre(tree)) {
+        tf << nd->get_ott_id() << sep;
+        auto par = nd->get_parent();
+        if (par != nullptr) {
+            tf << par->get_ott_id();
+        }
+        tf << sep << nd->get_name() << sep;
+        const auto & nd_data = nd->get_data();
+        tf << rank_enum_to_name.at(nd_data.rank) << sep;
+        tf << flags_to_string(nd_data.flags) << sep << '\n';
+        auto jsIt = nd_data.junior_synonyms.begin();
+        for (; jsIt != nd_data.junior_synonyms.end(); ++jsIt) {
+            soutpf << nd->get_ott_id() << sep 
+                   << (*jsIt)->name << sep 
+                   << (*jsIt)->source_string << sep << '\n';
+        }
+    }
+
+}
 
 void patch_source_taxonomy(RichTaxonomy & otaxonomy,
                            const list<AlphaEdit> & alpha_taxa,
@@ -420,7 +460,7 @@ void patch_source_taxonomy(RichTaxonomy & otaxonomy,
     LOG(DEBUG) << "deleted_nodes.size() = " << deleted_nodes.size();
     LOG(DEBUG) << "detached_nodes.size() = " << detached_nodes.size();
     LOG(DEBUG) << "attached_nodes.size() = " << attached_nodes.size();
-    //otaxonomy.write(outdir, false, false);
+    write_patched(tree, outdir);
 }
 
 int main(int argc, char* argv[]) {
@@ -462,7 +502,7 @@ int main(int argc, char* argv[]) {
         bitset<32> cleaning_flags = 0;
         LOG(INFO) << "loading old taxonomy\n";
         Taxonomy::tolerate_synonyms_to_unknown_id = true;
-        RichTaxonomy otaxonomy = {otd, cleaning_flags, keep_root};
+        RichTaxonomy otaxonomy = {otd, cleaning_flags, keep_root, true};
         patch_source_taxonomy(otaxonomy, alpha_taxa, alpha_groups, higher, outdir);
     } catch (std::exception& e) {
         cerr << "otc-source-taxonomy-patcher: Error! " << e.what() << std::endl;

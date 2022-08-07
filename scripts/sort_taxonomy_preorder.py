@@ -29,6 +29,7 @@ def main(taxonomy_fp, root_id, out):
             kids = by_par_id.get(par_id)
             if not kids:
                 continue
+            kids.sort()
             for kid in kids:
                 kid_id, kid_line = kid
                 newly_emitted.add(kid_id)
