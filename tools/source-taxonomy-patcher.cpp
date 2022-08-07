@@ -59,28 +59,6 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     return vm;
 }
 
-
-// std::list<TaxonomyAmendmentPtr> parse_taxon_amendments_json(std::istream & inp) {
-//     json edits_obj = json::parse(inp);
-//     std::list<TaxonomyAmendmentPtr> edit_list;
-//     if (edits_obj.is_object()) {
-//         edit_list.push_back(parse_taxon_amendment_obj(edits_obj));
-//     } else if (edits_obj.is_array()) {
-//         unsigned obj_num = 0;
-//         for (auto eo : edits_obj) {
-//             if (eo.is_object()) {
-//                 edit_list.push_back(parse_taxon_amendment_obj(eo));
-//             } else {
-//                 throw OTCError() << "Expecting amendment object, but element " << obj_num << " of array was not an object.";
-//             }
-//             ++obj_num;
-//         }
-//     } else {
-//         throw OTCError() << "Expecting amendment array or object.";
-//     }
-//     return edit_list;
-// }
-
 const json * find_object_ptr(const json & j,
                              const std::string & prop_name,
                              bool required) {
@@ -294,6 +272,9 @@ void parse_source_edits_json(std::istream & inp,
 }
 
 std::list<TaxonomicJuniorSynonym> new_synonyms;
+std::set<const RTRichTaxNode *> deleted_nodes;
+std::set<const RTRichTaxNode *> detached_nodes;
+std::set<const RTRichTaxNode *> attached_nodes;
 
 inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
                          RTRichTaxTreeData & tree_data) {
@@ -336,6 +317,7 @@ inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
         TaxonomicJuniorSynonym & js = *new_synonyms.rbegin();
         nd_data->junior_synonyms.push_back(&js);
     } else if (aed.operation == AlphaEditOp::DELETE_TAXON) {
+        deleted_nodes.insert(nd);
         collapse_split_dont_del_node(nd);
     } else if (aed.operation == AlphaEditOp::CHANGED_RANK) {
         nd_data->rank = aed.second_rank;
@@ -353,11 +335,69 @@ inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
 }
 
 void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTaxTreeData & tree_data) {
+    if (aed.operation == AlphaGroupEditOp::NO_GR_CHANGE) {
+        return;
+    }
+    OttId tax_id = aed.first_id;
+    RTRichTaxNode * nd = nullptr;
+    RTRichTaxNodeData * nd_data = nullptr;
+    auto & id2nd = tree_data.id_to_node;
+    if (aed.operation == AlphaGroupEditOp::NEW_GROUPING) {
+        nd = tree.create_node(nullptr);
+        nd->set_ott_id(aed.first_id);
+        nd->set_name(aed.first_str);
+        nd_data = &(nd->get_data());
+        //newnd_data.rank = aed.first_rank;
+        //newnd_data.flags = aed.first_flags;
+        id2nd[aed.first_id] = nd;
+    } else {
+            try {
+            nd = const_cast<RTRichTaxNode *>(id2nd.at(tax_id));
+        } catch (...) {
+            throw OTCError() << "Could not find ID " << tax_id << " in taxonomy id_to_node";
+        }
+        nd_data = &(nd->get_data());
+    }
+    if (aed.operation == AlphaGroupEditOp::GR_CHANGED_ID) {
+        nd->set_ott_id(aed.second_id);
+        tree_data.id_to_node[aed.second_id] = nd;
+    } else if (aed.operation == AlphaGroupEditOp::GR_CHANGED_NAME) {
+        nd->set_name(aed.second_str);
+    } else if (aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
+        || aed.operation == AlphaGroupEditOp::ADD_TAXA
+        || aed.operation == AlphaGroupEditOp::NEW_GROUPING
+        ) {
+        for (auto add_id : aed.addedIds) {
+            RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
+            if (nc->get_parent() != nullptr) {
+                nc->detach_this_node();
+                detached_nodes.insert(nc);
+            }
+            nd->add_child(nc);
+            attached_nodes.insert(nc);
+        }
+    }
+    if (aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
+        || aed.operation == AlphaGroupEditOp::DEL_TAXA) {
+        for (auto add_id : aed.delIds) {
+            RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
+            if (nc->get_parent() != nullptr) {
+                nc->detach_this_node();
+                detached_nodes.insert(nc);
+            }
+        }
+    } else if (aed.operation == AlphaGroupEditOp::DELETED_GROUPING) {
+        if (!contains(deleted_nodes, nd)) {
+            deleted_nodes.insert(nd);
+            collapse_split_dont_del_node(nd);
+        }
+    } else if (aed.operation == AlphaGroupEditOp::NEW_GROUPING) {
 
+    }
 }
 
 void handle_higher(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTaxTreeData & tree_data) {
-
+    handle_alpha_group(aed, tree, tree_data);
 }
 
 
@@ -377,6 +417,9 @@ void patch_source_taxonomy(RichTaxonomy & otaxonomy,
     for (auto aged : higher) {
         handle_higher(aged, tree, tree_data);
     }
+    LOG(DEBUG) << "deleted_nodes.size() = " << deleted_nodes.size();
+    LOG(DEBUG) << "detached_nodes.size() = " << detached_nodes.size();
+    LOG(DEBUG) << "attached_nodes.size() = " << attached_nodes.size();
     //otaxonomy.write(outdir, false, false);
 }
 
