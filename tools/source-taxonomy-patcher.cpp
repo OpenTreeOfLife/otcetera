@@ -29,6 +29,8 @@ namespace po = boost::program_options;
 using po::variables_map;
 using namespace boost::property_tree;
 
+unsigned focal_id = 993561;
+
 variables_map parse_cmd_line(int argc,char* argv[]) {
     using namespace po;
     // named options
@@ -213,7 +215,11 @@ inline AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
             || op_enum == AlphaGroupEditOp::NEW_GROUPING) {
             auto ada = get_array_property(edit_obj, "added", true).second;
             for (auto aed : *ada) {
-                ed.addedIds.insert(parse_as_unsigned(aed));
+                unsigned atax_id = parse_as_unsigned(aed);
+                if (atax_id == focal_id) {
+                    LOG(DEBUG) << "found " << focal_id << " in added for taxon " << ed.first_id ;   
+                }
+                ed.addedIds.insert(atax_id);
             }
         }
         if (op_enum == AlphaGroupEditOp::DEL_TAXA || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA) {
@@ -255,7 +261,7 @@ void parse_source_edits_json(std::istream & inp,
     obj_num = 0;
     for (auto aged : *alpha_groups_array) {
         if (aged.is_object()) {
-            higher.push_back(parse_alpha_group(aged));
+            alpha_groups.push_back(parse_alpha_group(aged));
         } else {
             throw OTCError() << "Expecting \"alpha_groups\" to be an array object, but element " << obj_num << " of array was not an object.";
         }
@@ -263,14 +269,17 @@ void parse_source_edits_json(std::istream & inp,
     }
     auto higher_array = get_array_property(edits_obj, "higher_taxa", true).second;
     obj_num = 0;
-    for (auto hed : *alpha_groups_array) {
+    for (auto hed : *higher_array) {
         if (hed.is_object()) {
-            alpha_groups.push_back(parse_higher_taxon(hed));
+            higher.push_back(parse_higher_taxon(hed));
         } else {
             throw OTCError() << "Expecting \"higher_taxa\" to be an array object, but element " << obj_num << " of array was not an object.";
         }
         ++obj_num;
     }
+    LOG(DEBUG) << "alpha_taxa.size() = " << alpha_taxa.size();
+    LOG(DEBUG) << "alpha_groups.size() = " << alpha_groups.size();
+    LOG(DEBUG) << "higher.size() = " << higher.size();
 }
 
 std::list<TaxonomicJuniorSynonym> new_synonyms;
@@ -369,8 +378,13 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
         || aed.operation == AlphaGroupEditOp::ADD_TAXA
         || aed.operation == AlphaGroupEditOp::NEW_GROUPING
         ) {
+        bool added_focal = false;
         for (auto add_id : aed.addedIds) {
             RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
+            if (add_id == focal_id) {
+                added_focal = true;
+                LOG(DEBUG) << "Adding " << focal_id << " to " << tax_id;
+            }
             if (nc->get_parent() != nullptr) {
                 nc->detach_this_node();
                 detached_nodes.insert(nc);
