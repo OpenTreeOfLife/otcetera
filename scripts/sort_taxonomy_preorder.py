@@ -25,7 +25,9 @@ def main(taxonomy_fp, root_id, out):
         last_emitted = set(newly_emitted)
         emitted.update(newly_emitted)
         newly_emitted = set()
-        for par_id in last_emitted:
+        leml = list(last_emitted)
+        leml.sort()
+        for par_id in leml:
             kids = by_par_id.get(par_id)
             if not kids:
                 continue

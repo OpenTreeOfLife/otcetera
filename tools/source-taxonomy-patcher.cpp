@@ -211,7 +211,7 @@ inline AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
             ed.second_str = get_string_property(edit_obj, "to", true).second;
         }
         if (op_enum == AlphaGroupEditOp::ADD_TAXA
-            || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA
+           // || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA
             || op_enum == AlphaGroupEditOp::NEW_GROUPING) {
             auto ada = get_array_property(edit_obj, "added", true).second;
             for (auto aed : *ada) {
@@ -219,15 +219,15 @@ inline AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
                 if (atax_id == focal_id) {
                     LOG(DEBUG) << "found " << focal_id << " in added for taxon " << ed.first_id ;   
                 }
-                ed.addedIds.insert(atax_id);
+                ed.newChildIds.insert(atax_id);
             }
         }
-        if (op_enum == AlphaGroupEditOp::DEL_TAXA || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA) {
-            auto dda = get_array_property(edit_obj, "deleted", true).second;
-            for (auto aed : *dda) {
-                ed.delIds.insert(parse_as_unsigned(aed));
-            }
-        }
+        // if (op_enum == AlphaGroupEditOp::DEL_TAXA || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA) {
+        //     auto dda = get_array_property(edit_obj, "deleted", true).second;
+        //     for (auto aed : *dda) {
+        //         ed.delIds.insert(parse_as_unsigned(aed));
+        //     }
+        // }
         if (op_enum == AlphaGroupEditOp::NEW_GROUPING) {
             ed.first_str = get_string_property(edit_obj, "name", true).second;
         }
@@ -374,12 +374,12 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
         tree_data.id_to_node[aed.second_id] = nd;
     } else if (aed.operation == AlphaGroupEditOp::GR_CHANGED_NAME) {
         nd->set_name(aed.second_str);
-    } else if (aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
-        || aed.operation == AlphaGroupEditOp::ADD_TAXA
+    } else if (aed.operation == AlphaGroupEditOp::ADD_TAXA
+        // || aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
         || aed.operation == AlphaGroupEditOp::NEW_GROUPING
         ) {
         bool added_focal = false;
-        for (auto add_id : aed.addedIds) {
+        for (auto add_id : aed.newChildIds) {
             RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
             if (add_id == focal_id) {
                 added_focal = true;
@@ -393,16 +393,17 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
             attached_nodes.insert(nc);
         }
     }
-    if (aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
-        || aed.operation == AlphaGroupEditOp::DEL_TAXA) {
-        for (auto add_id : aed.delIds) {
-            RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
-            if (nc->get_parent() != nullptr) {
-                nc->detach_this_node();
-                detached_nodes.insert(nc);
-            }
-        }
-    } else if (aed.operation == AlphaGroupEditOp::DELETED_GROUPING) {
+    //if (aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
+    //    || aed.operation == AlphaGroupEditOp::DEL_TAXA) {
+        // no-op // for (auto add_id : aed.delIds) {
+        //     RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
+        //     if (nc->get_parent() != nullptr) {
+        //         nc->detach_this_node();
+        //         detached_nodes.insert(nc);
+        //     }
+        // }
+    //} else 
+    if (aed.operation == AlphaGroupEditOp::DELETED_GROUPING) {
         if (!contains(deleted_nodes, nd)) {
             deleted_nodes.insert(nd);
             collapse_split_dont_del_node(nd);

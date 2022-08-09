@@ -302,8 +302,8 @@ enum AlphaGroupEditOp {
     GR_CHANGED_ID = 1,
     GR_CHANGED_NAME = 2,
     ADD_TAXA = 3,
-    DEL_TAXA = 4,
-    ADD_DEL_TAXA = 5,
+    // DEL_TAXA = 4,
+    // ADD_DEL_TAXA = 5,
     DELETED_GROUPING = 6,
     NEW_GROUPING = 7
 };
@@ -317,8 +317,8 @@ const std::map<std::string, AlphaGroupEditOp> str2ageo = {
     {"change id", AlphaGroupEditOp::GR_CHANGED_ID},
     {"change name", AlphaGroupEditOp::GR_CHANGED_NAME},
     {"add taxa", AlphaGroupEditOp::ADD_TAXA},
-    {"delete taxa", AlphaGroupEditOp::DEL_TAXA},
-    {"add+delete taxa", AlphaGroupEditOp::ADD_DEL_TAXA},
+    // {"delete taxa", AlphaGroupEditOp::DEL_TAXA},
+    // {"add+delete taxa", AlphaGroupEditOp::ADD_DEL_TAXA},
     {"deleted grouping", AlphaGroupEditOp::DELETED_GROUPING},
     {"new grouping", AlphaGroupEditOp::NEW_GROUPING}
 };
@@ -332,8 +332,9 @@ class AlphaGroupEdit {
         AlphaGroupEditOp operation;
         std::string first_str, second_str;
         OttId first_id, second_id;
-        OttIdSet addedIds;
-        OttIdSet delIds;
+        OttIdSet newChildIds;
+        //OttIdSet addedIds;
+        //OttIdSet delIds;
 
         void add_to_json_array(nlohmann::json & jarr) const {
             if (operation == AlphaGroupEditOp::NO_GR_CHANGE) {
@@ -351,30 +352,30 @@ class AlphaGroupEdit {
                     el["to"] = second_str;
                 } else if (operation == AlphaGroupEditOp::ADD_TAXA) {
                     nlohmann::json added = nlohmann::json::array();
-                    for (auto oid : addedIds) {
+                    for (auto oid : newChildIds) {
                         added.push_back(oid);
                     }
                     el["added"] = added;
-                } else if (operation == AlphaGroupEditOp::DEL_TAXA) {
-                    nlohmann::json deleted = nlohmann::json::array();
-                    for (auto oid : delIds) {
-                        deleted.push_back(oid);
-                    }
-                    el["deleted"] = deleted;
-                } else if (operation == AlphaGroupEditOp::ADD_DEL_TAXA) {
-                    nlohmann::json added = nlohmann::json::array();
-                    for (auto oid : addedIds) {
-                        added.push_back(oid);
-                    }
-                    el["added"] = added;
-                    nlohmann::json deleted = nlohmann::json::array();
-                    for (auto oid : delIds) {
-                        deleted.push_back(oid);
-                    }
-                    el["deleted"] = deleted;
+                // } else if (operation == AlphaGroupEditOp::DEL_TAXA) {
+                //     nlohmann::json deleted = nlohmann::json::array();
+                //     for (auto oid : delIds) {
+                //         deleted.push_back(oid);
+                //     }
+                //     el["deleted"] = deleted;
+                // } else if (operation == AlphaGroupEditOp::ADD_DEL_TAXA) {
+                //     nlohmann::json added = nlohmann::json::array();
+                //     for (auto oid : addedIds) {
+                //         added.push_back(oid);
+                //     }
+                //     el["added"] = added;
+                //     nlohmann::json deleted = nlohmann::json::array();
+                //     for (auto oid : delIds) {
+                //         deleted.push_back(oid);
+                //     }
+                //     el["deleted"] = deleted;
                 } else if (operation == AlphaGroupEditOp::NEW_GROUPING) {
                     nlohmann::json added = nlohmann::json::array();
-                    for (auto oid : addedIds) {
+                    for (auto oid : newChildIds) {
                         added.push_back(oid);
                     }
                     el["added"] = added;
