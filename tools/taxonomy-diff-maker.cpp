@@ -94,7 +94,8 @@ class TaxonomyDiffer {
 
     void old_tax_child_ids(const RTRichTaxNode * old_nd, OttIdSet & dest) const;
     void new_tax_child_ids(const RTRichTaxNode * new_nd, OttIdSet & new_ids, OttIdSet & retained_id) const;
-
+    void add_group_prop_changes(const RTRichTaxNode * old_nd,
+                                const RTRichTaxNode * new_nd);
     RichTaxTree & old_tree;
     RichTaxTree & new_tree;
     const RTRichTaxTreeData & old_td;
@@ -289,21 +290,20 @@ void TaxonomyDiffer::compare_higher_taxa() {
             edit.operation = AlphaGroupEditOp::NEW_GROUPING;
             edit.first_id = tax_id;
             edit.first_str = inner_nd->get_name();
+            const auto & new_nd_data = inner_nd->get_data();
+            edit.first_rank = new_nd_data.rank;
+            edit.first_flags = new_nd_data.flags;
             edit.newChildIds = ret_ids;
         } else {
             //retained.insert(tax_id);
             OttIdSet new_add, new_retained;
             new_tax_child_ids(inner_nd, new_add, new_retained); // all ids are "new" for a new grouping
             auto old_nd = oi2nIt->second;
+            add_group_prop_changes(old_nd, inner_nd);
             OttIdSet old_retained;
             old_tax_child_ids(old_nd, old_retained);
-            if (inner_nd->get_name() != old_nd->get_name()) {
-                auto & edit = new_higher_edit();
-                edit.operation = AlphaGroupEditOp::GR_CHANGED_NAME;
-                edit.first_id = tax_id;
-                edit.first_str = old_nd->get_name();
-                edit.second_str = inner_nd->get_name();
-            }
+            
+
             // OttIdSet ret_but_del = set_difference_as_set(old_retained, new_retained);
             OttIdSet ret_but_add = set_difference_as_set(new_retained, old_retained);
             // old_del.insert(ret_but_del.begin(), ret_but_del.end());
@@ -328,6 +328,33 @@ void TaxonomyDiffer::compare_higher_taxa() {
     }
 }
 
+void TaxonomyDiffer::add_group_prop_changes(const RTRichTaxNode * old_nd,
+                                         const RTRichTaxNode * new_nd) {
+    const auto tax_id = new_nd->get_ott_id();
+    if (new_nd->get_name() != old_nd->get_name()) {
+        auto & edit = new_higher_edit();
+        edit.operation = AlphaGroupEditOp::GR_CHANGED_NAME;
+        edit.first_id = tax_id;
+        edit.first_str = old_nd->get_name();
+        edit.second_str = new_nd->get_name();
+    }
+    const auto & new_data = new_nd->get_data();
+    const auto & old_data = old_nd->get_data();
+    if (new_data.rank != old_data.rank) {
+        auto & edit = new_higher_edit();
+        edit.operation = AlphaGroupEditOp::GR_CHANGED_RANK;
+        edit.first_id = tax_id;
+        edit.first_rank = old_data.rank;
+        edit.second_rank = new_data.rank;
+    }
+    if (new_data.flags != old_data.flags) {
+        auto & edit = new_higher_edit();
+        edit.operation = AlphaGroupEditOp::GR_CHANGED_FLAGS;
+        edit.first_id = tax_id;
+        edit.first_flags = old_data.flags;
+        edit.second_flags = new_data.flags;
+    }   
+}
 
 void TaxonomyDiffer::compare_specimen_based() {
     OttIdSet seen;
@@ -380,6 +407,7 @@ void TaxonomyDiffer::compare_specimen_based() {
                 continue;
             }
             Grouping & group = old_groups[desnd->get_ott_id()];
+            group.node = desnd;
             group.name = desnd->get_name();
             groups_by_name[group.name].push_back(&group); // register in map by name
             group.tax_id = desnd->get_ott_id();
@@ -416,6 +444,12 @@ void TaxonomyDiffer::compare_specimen_based() {
         agedit.operation = AlphaGroupEditOp::NEW_GROUPING;
         agedit.first_id = tngIt.first;
         Grouping & grouping = tngIt.second;
+        auto tn = grouping.node;
+        assert(tn != nullptr);
+        agedit.first_str = tn->get_name();
+        auto & new_nd_data = tn->get_data();
+        agedit.first_rank = new_nd_data.rank;
+        agedit.first_flags = new_nd_data.flags;
         OttIdSet added_ids = grouping.shared_ids;
         added_ids.insert(grouping.new_ids.begin(), grouping.new_ids.end());
         agedit.newChildIds = added_ids;
@@ -456,6 +490,7 @@ void TaxonomyDiffer::find_pair_for_new(const RTRichTaxNode *new_nd,
             continue;
         }
         Grouping & group = new_groups[desnd->get_ott_id()];
+        group.node = desnd;
         group.name = desnd->get_name();
         group.tax_id = desnd->get_ott_id();
         new_tax_child_ids(desnd, group.new_ids, group.shared_ids);
@@ -481,19 +516,16 @@ void TaxonomyDiffer::find_pair_for_new(const RTRichTaxNode *new_nd,
         } else {
             grouping.paired = true;
             old_grouping->paired = true;
+
             if (correspond_id != new_id) {
                 auto & agedit = new_alpha_group_edit();
                 agedit.operation = AlphaGroupEditOp::GR_CHANGED_ID;
                 agedit.first_id = correspond_id;
                 agedit.second_id = new_id;
             }
-            if (grouping.name != old_grouping->name) {
-                auto & agedit = new_alpha_group_edit();
-                agedit.first_id = new_id;
-                agedit.operation = AlphaGroupEditOp::GR_CHANGED_NAME;
-                agedit.first_str = old_grouping->name;
-                agedit.second_str = grouping.name;
-            }
+            assert(old_grouping->node != nullptr);
+            assert(grouping.node != nullptr);
+            add_group_prop_changes(old_grouping->node, grouping.node);
             // OttIdSet del_ids = set_difference_as_set(old_grouping->shared_ids, grouping.shared_ids);
             OttIdSet added_ids = set_difference_as_set(grouping.shared_ids, old_grouping->shared_ids);
             added_ids.insert(grouping.new_ids.begin(), grouping.new_ids.end());

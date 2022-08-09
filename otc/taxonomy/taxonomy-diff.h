@@ -305,12 +305,15 @@ enum AlphaGroupEditOp {
     // DEL_TAXA = 4,
     // ADD_DEL_TAXA = 5,
     DELETED_GROUPING = 6,
-    NEW_GROUPING = 7
+    NEW_GROUPING = 7,
+    GR_CHANGED_RANK = 8,
+    GR_CHANGED_FLAGS = 9
 };
 
 const std::vector<std::string> ageo2str = {"no change", "change id", "change name",
                                 "add taxa", "delete taxa", "add+delete taxa",
-                                "deleted grouping", "new grouping"};
+                                "deleted grouping", "new grouping",
+                                "change rank", "change flags"};
 
 const std::map<std::string, AlphaGroupEditOp> str2ageo = {
     {"no change", AlphaGroupEditOp::NO_GR_CHANGE},
@@ -320,7 +323,10 @@ const std::map<std::string, AlphaGroupEditOp> str2ageo = {
     // {"delete taxa", AlphaGroupEditOp::DEL_TAXA},
     // {"add+delete taxa", AlphaGroupEditOp::ADD_DEL_TAXA},
     {"deleted grouping", AlphaGroupEditOp::DELETED_GROUPING},
-    {"new grouping", AlphaGroupEditOp::NEW_GROUPING}
+    {"new grouping", AlphaGroupEditOp::NEW_GROUPING},
+    {"change rank", AlphaGroupEditOp::GR_CHANGED_RANK},
+    {"change flags", AlphaGroupEditOp::GR_CHANGED_FLAGS}
+
 };
 
 class AlphaGroupEdit {
@@ -335,6 +341,8 @@ class AlphaGroupEdit {
         OttIdSet newChildIds;
         //OttIdSet addedIds;
         //OttIdSet delIds;
+        TaxonomicRank first_rank, second_rank;
+        tax_flags first_flags, second_flags;
 
         void add_to_json_array(nlohmann::json & jarr) const {
             if (operation == AlphaGroupEditOp::NO_GR_CHANGE) {
@@ -350,6 +358,12 @@ class AlphaGroupEdit {
                 if (operation == AlphaGroupEditOp::GR_CHANGED_NAME) {
                     el["from"] = first_str;
                     el["to"] = second_str;
+                } else if (operation == AlphaGroupEditOp::GR_CHANGED_RANK) {
+                    el["from"] = rank_enum_to_name.at(first_rank);
+                    el["to"] = rank_enum_to_name.at(second_rank);
+                } else if (operation == AlphaGroupEditOp::GR_CHANGED_FLAGS) {
+                    el["from"] = flags_to_string(first_flags);
+                    el["to"] = flags_to_string(first_flags);
                 } else if (operation == AlphaGroupEditOp::ADD_TAXA) {
                     nlohmann::json added = nlohmann::json::array();
                     for (auto oid : newChildIds) {
@@ -380,6 +394,11 @@ class AlphaGroupEdit {
                     }
                     el["added"] = added;
                     el["name"] = first_str;
+                    el["rank"] = rank_enum_to_name.at(first_rank);
+                    auto fstr = flags_to_string(first_flags);
+                    if (!fstr.empty()) {
+                        el["flags"] = fstr;
+                    }
                 } else if (operation == AlphaGroupEditOp::DELETED_GROUPING) {
                     // no-op
                 }
@@ -397,6 +416,7 @@ class Grouping {
     OttIdSet shared_ids; // always put in terms of "new" ids
     OttIdSet new_ids;    // new taxa in new group;
     bool paired;
+    const RTRichTaxNode * node;
 };
 
 } // namespace

@@ -209,6 +209,16 @@ inline AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
         if (op_enum == AlphaGroupEditOp::GR_CHANGED_NAME) {
             ed.first_str = get_string_property(edit_obj, "from", true).second;
             ed.second_str = get_string_property(edit_obj, "to", true).second;
+        } else if (op_enum == AlphaGroupEditOp::GR_CHANGED_RANK) {
+            string x = get_string_property(edit_obj, "from", true).second;
+            ed.first_rank = string_to_rank(x, true);
+            x = get_string_property(edit_obj, "to", true).second;
+            ed.second_rank = string_to_rank(x, true);
+        } else if (op_enum == AlphaGroupEditOp::GR_CHANGED_FLAGS) {
+            string x = get_string_property(edit_obj, "from", true).second;
+            ed.first_flags = flags_from_string(x);
+            x = get_string_property(edit_obj, "to", true).second;
+            ed.second_flags = flags_from_string(x);
         }
         if (op_enum == AlphaGroupEditOp::ADD_TAXA
            // || op_enum == AlphaGroupEditOp::ADD_DEL_TAXA
@@ -230,6 +240,12 @@ inline AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
         // }
         if (op_enum == AlphaGroupEditOp::NEW_GROUPING) {
             ed.first_str = get_string_property(edit_obj, "name", true).second;
+            string x = get_string_property(edit_obj, "rank", false).second;
+            ed.first_rank = string_to_rank(x, true);
+            x = get_string_property(edit_obj, "flags", false).second;
+            if (!x.empty()) {
+                ed.first_flags = flags_from_string(x);
+            }
         }
     }
     return ed;    
@@ -358,8 +374,8 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
         nd->set_ott_id(aed.first_id);
         nd->set_name(aed.first_str);
         nd_data = &(nd->get_data());
-        //newnd_data.rank = aed.first_rank;
-        //newnd_data.flags = aed.first_flags;
+        nd_data->rank = aed.first_rank;
+        nd_data->flags = aed.first_flags;
         id2nd[aed.first_id] = nd;
     } else {
             try {
@@ -374,6 +390,10 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
         tree_data.id_to_node[aed.second_id] = nd;
     } else if (aed.operation == AlphaGroupEditOp::GR_CHANGED_NAME) {
         nd->set_name(aed.second_str);
+    } else if (aed.operation == AlphaGroupEditOp::GR_CHANGED_RANK) {
+        nd->get_data().rank = aed.second_rank;
+    } else if (aed.operation == AlphaGroupEditOp::GR_CHANGED_FLAGS) {
+        nd->get_data().flags = aed.second_flags;
     } else if (aed.operation == AlphaGroupEditOp::ADD_TAXA
         // || aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
         || aed.operation == AlphaGroupEditOp::NEW_GROUPING
