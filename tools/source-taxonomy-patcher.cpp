@@ -29,7 +29,7 @@ namespace po = boost::program_options;
 using po::variables_map;
 using namespace boost::property_tree;
 
-unsigned focal_id = 993561;
+unsigned focal_id = 1605450;
 
 variables_map parse_cmd_line(int argc,char* argv[]) {
     using namespace po;
@@ -361,6 +361,8 @@ inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
     }
 }
 
+const RTRichTaxNode * focal_nd = nullptr;
+const RTRichTaxNode * focal_nd_par = nullptr;
 void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTaxTreeData & tree_data) {
     if (aed.operation == AlphaGroupEditOp::NO_GR_CHANGE) {
         return;
@@ -403,7 +405,9 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
             RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
             if (add_id == focal_id) {
                 added_focal = true;
-                LOG(DEBUG) << "Adding " << focal_id << " to " << tax_id;
+                focal_nd = nc;
+                focal_nd_par = nd;
+                LOG(DEBUG) << "Adding " << focal_id << " to " << tax_id << " nc = " << nc;
             }
             if (nc->get_parent() != nullptr) {
                 nc->detach_this_node();
@@ -456,7 +460,13 @@ void write_patched(const RichTaxTree & tree, const std::string outdir) {
     }
     soutpf << "uid\t|\tname\t|\ttype\t|\t\n ";
 
-    for(auto nd: iter_pre(tree)) {
+    for(auto nd: iter_post(tree)) {
+        if (nd == focal_nd) {
+            LOG(DEBUG) << "hit " << focal_nd;
+        }
+        if (nd == focal_nd_par) {
+            LOG(DEBUG) << "hit par " << focal_nd_par;
+        }
         tf << nd->get_ott_id() << sep;
         auto par = nd->get_parent();
         if (par != nullptr) {
