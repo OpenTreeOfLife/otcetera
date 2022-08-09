@@ -161,6 +161,9 @@ inline AlphaEdit parse_alpha(const json & edit_obj) {
         } else if (op_enum == AlphaEditOp::DELETED_SYN || op_enum == AlphaEditOp::ADDED_SYN) {
             ed.first_str = get_string_property(edit_obj, "synonym", true).second;
             std::string x = get_string_property(edit_obj, "type", false).second;
+            if (ed.first_id == 1000949) {
+                LOG(DEBUG) << "x for 1000949 is " << x ;
+            }
             if (!x.empty()) {
                 ed.second_str = x;
             }
@@ -339,10 +342,13 @@ inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
             }
         }
     } else if (aed.operation == AlphaEditOp::ADDED_SYN) {
-        string mt;
-        new_synonyms.emplace_back(aed.first_str, nd, mt);
+        new_synonyms.emplace_back(aed.first_str, nd, aed.second_str);
         TaxonomicJuniorSynonym & js = *new_synonyms.rbegin();
         nd_data->junior_synonyms.push_back(&js);
+        if (tax_id == 1000949) {
+            LOG(DEBUG) << "js for 1000949 is " << js.name << " ss=" << js.source_string;
+
+        }
     } else if (aed.operation == AlphaEditOp::DELETE_TAXON) {
         deleted_nodes.insert(nd);
         collapse_split_dont_del_node(nd);
@@ -461,12 +467,6 @@ void write_patched(const RichTaxTree & tree, const std::string outdir) {
     soutpf << "uid\t|\tname\t|\ttype\t|\t\n ";
 
     for(auto nd: iter_pre(tree)) {
-        if (nd == focal_nd) {
-            LOG(DEBUG) << "hit " << focal_nd;
-        }
-        if (nd == focal_nd_par) {
-            LOG(DEBUG) << "hit par " << focal_nd_par;
-        }
         tf << nd->get_ott_id() << sep;
         auto par = nd->get_parent();
         if (par != nullptr) {

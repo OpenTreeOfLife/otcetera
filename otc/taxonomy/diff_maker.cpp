@@ -36,8 +36,9 @@ TaxonomyDiffMaker load_taxonomy_diff_maker(const boost::program_options::variabl
 
 TaxonomyDiffMaker::TaxonomyDiffMaker(const std::string& dir,
                                      std::bitset<32> cf,
-                                     OttId kr)
-    :RichTaxonomy(dir, cf, kr) {
+                                     OttId kr,
+                                     bool read_syn_type_as_src)
+    :RichTaxonomy(dir, cf, kr, read_syn_type_as_src) {
     const auto & rich_tax_tree = this->get_tax_tree();
     const auto & rt_data = rich_tax_tree.get_data();
     std::vector<const RTRichTaxNode *> nd_vec;

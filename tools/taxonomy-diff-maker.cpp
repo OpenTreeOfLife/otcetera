@@ -276,7 +276,7 @@ void TaxonomyDiffer::compare_higher_taxa() {
 }
 
 void TaxonomyDiffer::add_group_prop_changes(const RTRichTaxNode * old_nd,
-                                         const RTRichTaxNode * new_nd) {
+                                            const RTRichTaxNode * new_nd) {
     const auto tax_id = new_nd->get_ott_id();
     if (new_nd->get_name() != old_nd->get_name()) {
         auto & edit = new_higher_edit();
@@ -300,7 +300,8 @@ void TaxonomyDiffer::add_group_prop_changes(const RTRichTaxNode * old_nd,
         edit.first_id = tax_id;
         edit.first_flags = old_data.flags;
         edit.second_flags = new_data.flags;
-    }   
+    } 
+    record_syn_diffs(old_nd, new_nd);
 }
 
 void TaxonomyDiffer::compare_specimen_based() {
@@ -407,6 +408,7 @@ void TaxonomyDiffer::compare_specimen_based() {
         OttIdSet added_ids = grouping.shared_ids;
         added_ids.insert(grouping.new_ids.begin(), grouping.new_ids.end());
         agedit.newChildIds = added_ids;
+        record_syn_diffs(nullptr, tn);
     }
 }
 
@@ -712,9 +714,9 @@ int main(int argc, char* argv[]) {
         bitset<32> cleaning_flags = 0;
         LOG(INFO) << "loading old taxonomy\n";
         Taxonomy::tolerate_synonyms_to_unknown_id = true;
-        TaxonomyDiffMaker otaxonomy = {otd, cleaning_flags, keep_root};
+        TaxonomyDiffMaker otaxonomy = {otd, cleaning_flags, keep_root, true};
         LOG(INFO) << "loading new taxonomy\n";
-        TaxonomyDiffMaker ntaxonomy = {ntd, cleaning_flags, keep_root};
+        TaxonomyDiffMaker ntaxonomy = {ntd, cleaning_flags, keep_root, true};
         diff_from_taxonomies(out, otaxonomy, ntaxonomy);
         
     } catch (std::exception& e) {

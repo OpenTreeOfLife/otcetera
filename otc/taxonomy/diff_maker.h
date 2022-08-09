@@ -10,7 +10,8 @@ class TaxonomyDiffMaker: public RichTaxonomy {
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     TaxonomyDiffMaker(const std::string& dir,
                       std::bitset<32> cf = std::bitset<32>(),
-                      OttId kr = -1);
+                      OttId kr = -1,
+                      bool read_syn_type_as_src = false);
     TaxonomyDiffMaker(TaxonomyDiffMaker &&) = default;
     protected:
     std::map<std::string, std::vector<const RTRichTaxNode *> > synonym2node;
