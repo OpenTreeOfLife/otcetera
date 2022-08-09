@@ -111,7 +111,9 @@ const map<string, TaxonomicRank, std::less<>> rank_name_to_enum =
         {"varietas", RANK_VARIETAS},
         {"variety", RANK_VARIETY},
         {"subvariety", RANK_SUBVARIETY},
+        {"morph", RANK_MORPH},
         {"strain", RANK_STRAIN},
+        {"isolate", RANK_ISOLATE},
         {"no rank", RANK_NO_RANK},
         {"no rank - terminal", RANK_NO_RANK_TERMINAL},
         {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
@@ -161,7 +163,9 @@ const map<TaxonomicRank, string, std::less<>> rank_enum_to_name =
         {RANK_VARIETAS, "varietas"},
         {RANK_VARIETY, "variety"},
         {RANK_SUBVARIETY, "subvariety"},
+        {RANK_MORPH, "morph"},
         {RANK_STRAIN, "strain"},
+        {RANK_ISOLATE, "isolate"},
         {RANK_NO_RANK, "no rank"},
         {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
         {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT

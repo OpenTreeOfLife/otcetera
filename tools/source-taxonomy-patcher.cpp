@@ -460,7 +460,7 @@ void write_patched(const RichTaxTree & tree, const std::string outdir) {
     }
     soutpf << "uid\t|\tname\t|\ttype\t|\t\n ";
 
-    for(auto nd: iter_post(tree)) {
+    for(auto nd: iter_pre(tree)) {
         if (nd == focal_nd) {
             LOG(DEBUG) << "hit " << focal_nd;
         }

@@ -363,7 +363,7 @@ class AlphaGroupEdit {
                     el["to"] = rank_enum_to_name.at(second_rank);
                 } else if (operation == AlphaGroupEditOp::GR_CHANGED_FLAGS) {
                     el["from"] = flags_to_string(first_flags);
-                    el["to"] = flags_to_string(first_flags);
+                    el["to"] = flags_to_string(second_flags);
                 } else if (operation == AlphaGroupEditOp::ADD_TAXA) {
                     nlohmann::json added = nlohmann::json::array();
                     for (auto oid : newChildIds) {

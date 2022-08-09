@@ -207,74 +207,36 @@ void fill_from_children(const RTRichTaxNode * inner_nd,
 OttId focal_id = 2715640;
 
 void TaxonomyDiffer::compare_higher_taxa() {
-    map<std::uint32_t, const RTRichTaxNode *> old_by_trav; //, new_by_trav;
-    set_traversal_entry_exit(old_tree);
-    set_traversal_entry_exit(new_tree);
-    // nd2idset_t nd2add_ids;
-    // nd2idset_t nd2des_ids;
-    // for (auto nsrIt : new_sp_root) {
-    //     const auto sp_id = nsrIt.first;
-    //     auto sp_nd = nsrIt.second;
-    //     // if (contains(new_spec_ids, sp_id)) {
-    //     //     nd2add_ids[sp_nd].insert(sp_id);
-    //     // } else {
-    //     //     nd2des_ids[sp_nd].insert(sp_id);
-    //     // }
+    // map<std::uint32_t, const RTRichTaxNode *> old_by_trav; //, new_by_trav;
+    // set_traversal_entry_exit(old_tree);
+    // set_traversal_entry_exit(new_tree);
+    // for (auto osrIt : old_sp_root) {
+    //     const auto sp_id = osrIt.first;
+    //     auto sp_nd = osrIt.second;
     //     for (auto anc : iter_anc_const(*sp_nd)) {
-    //         if (anc->get_ott_id() == focal_id) {
-    //             LOG(DEBUG) << "found " << focal_id << " in trav";
-    //         }
     //         const auto trav_enter = anc->get_data().trav_enter;
-    //         if (contains(new_by_trav, trav_enter)) {
+    //         if (contains(old_by_trav, trav_enter)) {
     //             break;
     //         }
-    //         if (anc->get_ott_id() == focal_id) {
-    //             LOG(DEBUG) << " adding  " << focal_id << " to new_by_trav";
-    //         }
-    //         new_by_trav[trav_enter] = anc;
+    //         old_by_trav[trav_enter] = anc;
     //     }
     // }
-    // LOG(DEBUG) << "new_by_trav.size() = " << new_by_trav.size() << " from " << new_by_trav.begin()->first << " " << new_by_trav.begin()->second->get_name() << " to " << new_by_trav.rbegin()->first << " " << new_by_trav.rbegin()->second->get_name();
-    // nd2idset_t nd2del_ids;
-    // nd2idset_t nd2des_ids_in_new;
-    // // fill in del and des fields for the "tips" of the tree (the species, presumably)
-    for (auto osrIt : old_sp_root) {
-        const auto sp_id = osrIt.first;
-        auto sp_nd = osrIt.second;
-        // if (contains(deleted_spec_ids, sp_id)) {
-        //     nd2del_ids[sp_nd].insert(sp_id);
-        // } else if (contains(retained_spec_ids, sp_id)) {
-        //     nd2des_ids_in_new[sp_nd].insert(sp_id);
-        // } else {
-        //     nd2des_ids_in_new[sp_nd].insert(mapped_spec_ids.at(sp_id));
-        // }
-        for (auto anc : iter_anc_const(*sp_nd)) {
-            const auto trav_enter = anc->get_data().trav_enter;
-            if (contains(old_by_trav, trav_enter)) {
-                break;
-            }
-            old_by_trav[trav_enter] = anc;
-        }
-    }
-    LOG(DEBUG) << "old_by_trav.size() = " << old_by_trav.size() << " from " << old_by_trav.begin()->first << " " << old_by_trav.begin()->second->get_name() << " to " << old_by_trav.rbegin()->first << " " << old_by_trav.rbegin()->second->get_name();
+    // LOG(DEBUG) << "old_by_trav.size() = " << old_by_trav.size() << " from " << old_by_trav.begin()->first << " " << old_by_trav.begin()->second->get_name() << " to " << old_by_trav.rbegin()->first << " " << old_by_trav.rbegin()->second->get_name();
     const auto & old_i2nd = old_td.id_to_node;
     const auto & new_i2nd = new_td.id_to_node;
 
-    for (auto byIt = old_by_trav.rbegin(); byIt != old_by_trav.rend(); ++byIt) {
-        auto inner_nd = byIt->second;
-        // OttIdSet & del = nd2del_ids[inner_nd];
-        // OttIdSet & in_new = nd2des_ids_in_new[inner_nd];
-        auto tax_id = inner_nd->get_ott_id();
+    //for (auto byIt = old_by_trav.rbegin(); byIt != old_by_trav.rend(); ++byIt) {
+    for (auto tax_id : old_clade_ids) {
+        //auto inner_nd = byIt->second;
+        //auto tax_id = inner_nd->get_ott_id();
         auto ni2nIt = new_i2nd.find(tax_id);
         if (ni2nIt == new_i2nd.end()) {
-            // fill_from_children(inner_nd, del, in_new, nd2del_ids, nd2des_ids_in_new);
+            auto inner_nd = old_i2nd.at(tax_id);
             auto & edit = new_higher_edit();
             edit.operation = AlphaGroupEditOp::DELETED_GROUPING;
             edit.first_id = tax_id;
             edit.first_str = inner_nd->get_name();
-        } // else {
-          //    in_new.insert(tax_id);
-          // }
+        }
     }
 
     for (auto inner_nd : iter_post_const(new_tree)) {
@@ -295,35 +257,20 @@ void TaxonomyDiffer::compare_higher_taxa() {
             edit.first_flags = new_nd_data.flags;
             edit.newChildIds = ret_ids;
         } else {
-            //retained.insert(tax_id);
             OttIdSet new_add, new_retained;
             new_tax_child_ids(inner_nd, new_add, new_retained); // all ids are "new" for a new grouping
             auto old_nd = oi2nIt->second;
             add_group_prop_changes(old_nd, inner_nd);
             OttIdSet old_retained;
             old_tax_child_ids(old_nd, old_retained);
-            
-
-            // OttIdSet ret_but_del = set_difference_as_set(old_retained, new_retained);
             OttIdSet ret_but_add = set_difference_as_set(new_retained, old_retained);
-            // old_del.insert(ret_but_del.begin(), ret_but_del.end());
             new_add.insert(ret_but_add.begin(), ret_but_add.end());
             if (!new_add.empty()) {
                 auto & edit = new_higher_edit();
                 edit.first_id = tax_id;
-                // if (!old_del.empty()) {
-                //     edit.operation = AlphaGroupEditOp::ADD_DEL_TAXA;
-                //     edit.delIds = old_del;
-                // } else {
-                    edit.operation = AlphaGroupEditOp::ADD_TAXA;
-                // }
+                edit.operation = AlphaGroupEditOp::ADD_TAXA;
                 edit.newChildIds = new_add;
-            } // else if (!old_del.empty()) {
-              //       auto & edit = new_higher_edit();
-              //     edit.first_id = tax_id;
-              //     edit.operation = AlphaGroupEditOp::DEL_TAXA;
-              //     edit.delIds = old_del;
-              // }
+            }
         }
     }
 }
@@ -376,10 +323,11 @@ void TaxonomyDiffer::compare_specimen_based() {
         auto nd = new_i2nd.at(nid);
         assert(nd != nullptr);
         auto new_tax_id = nd->get_ott_id();
-        if (contains(retained_spec_ids, new_tax_id) || 
-            contains(revmapped_spec_ids, new_tax_id)) {
+        if (contains(retained_spec_ids, new_tax_id)
+            || contains(revmapped_spec_ids, new_tax_id)
+            || contains(old_i2nd, new_tax_id)) {
             continue;
-        } 
+        }
         auto & edit = new_alpha_edit();
         edit.operation = AlphaEditOp::ADD_TAXON;
         edit.first_id = nid;
@@ -435,9 +383,15 @@ void TaxonomyDiffer::compare_specimen_based() {
     LOG(DEBUG) << "unpaired_old_groups.size() = " << unpaired_old_groups.size();
     LOG(DEBUG) << "tough_new_groups.size() = " << tough_new_groups.size();
     for (auto uogIt : unpaired_old_groups) {
-        auto & agedit = new_alpha_group_edit();
-        agedit.operation = AlphaGroupEditOp::DELETED_GROUPING;
-        agedit.first_id = uogIt.first;
+        // if a group has become a tip, we don't delete it, as there
+        //  should be other edits to move its children.
+        if (contains(new_i2nd, uogIt.first)) {
+            add_group_prop_changes(uogIt.second.node, new_i2nd.at(uogIt.first));
+        } else {
+            auto & agedit = new_alpha_group_edit();
+            agedit.operation = AlphaGroupEditOp::DELETED_GROUPING;
+            agedit.first_id = uogIt.first;
+        } 
     }
     for (auto tngIt : tough_new_groups) {
         auto & agedit = new_alpha_group_edit();
@@ -500,7 +454,7 @@ void TaxonomyDiffer::find_pair_for_new(const RTRichTaxNode *new_nd,
         OttId new_id = grIt.first;
         Grouping & grouping = grIt.second;
         auto rmIt = revmapped_spec_ids.find(new_id);
-        const OttId correspond_id = (rmIt == revmapped_spec_ids.end() ? new_id : rmIt->second);
+        OttId correspond_id = (rmIt == revmapped_spec_ids.end() ? new_id : rmIt->second);
         auto old_grIt = old_gr_by_id.find(correspond_id);
         Grouping * old_grouping = nullptr;
         if (old_grIt == old_gr_by_id.end() || old_grIt->second.paired) {
@@ -510,6 +464,23 @@ void TaxonomyDiffer::find_pair_for_new(const RTRichTaxNode *new_nd,
             }
         } else {
             old_grouping = &(old_grIt->second);
+        }
+        Grouping spare;
+        if (old_grouping == nullptr) {
+            const RTRichTaxNode * old_nd = nullptr;
+            if (contains(retained_spec_ids, new_id)) {
+                old_nd = old_td.id_to_node.at(new_id);
+            } else if (contains(revmapped_spec_ids, new_id)) {
+                correspond_id = revmapped_spec_ids.at(new_id);
+                old_nd = old_td.id_to_node.at(correspond_id);
+            }
+            if (old_nd != nullptr) {
+                // this happens if a tip taxon in the old taxonomy is now a group
+                spare.node = old_nd;
+                spare.tax_id = old_nd->get_ott_id();
+                spare.name = old_nd->get_name();
+                old_grouping = &spare;
+            }
         }
         if (old_grouping == nullptr) {
             nonobvious[new_id] = grouping;
@@ -532,19 +503,9 @@ void TaxonomyDiffer::find_pair_for_new(const RTRichTaxNode *new_nd,
             if (!added_ids.empty()) {
                 auto & agedit = new_alpha_group_edit();
                 agedit.first_id = new_id;
-                // if (!del_ids.empty()) {
-                //     agedit.operation = AlphaGroupEditOp::ADD_DEL_TAXA;
-                //     agedit.delIds = del_ids;
-                // } else {
-                    agedit.operation = AlphaGroupEditOp::ADD_TAXA;
-                //}
+                agedit.operation = AlphaGroupEditOp::ADD_TAXA;
                 agedit.newChildIds = added_ids;
-            } // else if (!del_ids.empty()) {
-              //     auto & agedit = new_alpha_group_edit();
-              //     agedit.first_id = new_id;
-              //     agedit.operation = AlphaGroupEditOp::DEL_TAXA;
-              //     agedit.delIds = del_ids;
-              // }
+            }
         }
     }
 }
@@ -650,13 +611,8 @@ void TaxonomyDiffer::children_diagnose_old_spec_based_fate(const RTRichTaxNode *
     if (!top_level) {
         return;
     }
-    // for (auto child : iter_child_const(*new_nd)) {
-    //     diagnose_new_spec_based_status(child);
-    // }
 }
 
-// void TaxonomyDiffer::diagnose_new_spec_based_status(const RTRichTaxNode *new_spec_nd) {
-// }
 
 void TaxonomyDiffer::diagnose_old_spec_based_fate(const RTRichTaxNode *old_spec_nd,
                                                   bool top_level) {
@@ -766,14 +722,4 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 }
-
-// 1. Write a parser to read the lines faster
-// 2. Avoid memory allocation -- by mmapping the taxonomy file?
-// 3. Convert the flags into a bitmask
-// 4. Should the Rank be a converted to an integer?
-// 5. Can we assign OTT IDs to internal nodes of a tree while accounting for Incertae Sedis taxa?
-// * What are the triplet-inference rules for the Incertae Sedis problem?
-
-// TODO: mmap via BOOST https://techoverflow.net/blog/2013/03/31/mmap-with-boost-iostreams-a-minimalist-example/
-// TODO: write out a reduced taxonomy
 
