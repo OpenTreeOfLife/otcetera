@@ -614,7 +614,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir,
         Taxonomy light_taxonomy(dir, cf, kr); 
         auto nodeNamer = [](const auto&){return string();};
         cerr << "light_taxonomy.get_tree<RichTaxTree>(nodeNamer)..." << std::endl;
-        tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer, false);
+        tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer, !read_syn_type_as_src);
         cerr << "... tree returned" << std::endl;
         auto & tree_data = tree->get_data();
         std::swap(forwards, light_taxonomy.forwards);
