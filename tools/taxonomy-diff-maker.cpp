@@ -18,7 +18,7 @@ using std::map;
 using std::string_view;
 using json = nlohmann::json;
 using vec_strv_t = std::vector<std::string_view>;
-
+using std::unordered_set;
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
 
@@ -514,10 +514,13 @@ void TaxonomyDiffer::find_pair_for_new(const RTRichTaxNode *new_nd,
 
 
 
-
+unordered_set< OttId > syn_recorded;
 void TaxonomyDiffer::record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichTaxNode *new_nd) {
     if (new_nd == nullptr) {
         assert(old_nd != nullptr);
+        if (contains(syn_recorded, old_nd->get_ott_id())) {
+            return;
+        }
         const RTRichTaxNodeData & old_nd_data = old_nd->get_data();
         for (const auto js : old_nd_data.junior_synonyms) {
             auto & edit = new_alpha_edit();
@@ -528,8 +531,13 @@ void TaxonomyDiffer::record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichT
                 edit.second_str = js->source_string;
             }
         }
+        syn_recorded.insert(old_nd->get_ott_id());
         return;
     }
+    if (contains(syn_recorded, new_nd->get_ott_id())) {
+        return;
+    }
+    syn_recorded.insert(new_nd->get_ott_id());
     if (old_nd == nullptr) {
         assert(new_nd != nullptr);
         const RTRichTaxNodeData & new_nd_data = new_nd->get_data();
