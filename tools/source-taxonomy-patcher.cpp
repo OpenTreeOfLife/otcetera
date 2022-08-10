@@ -29,7 +29,6 @@ namespace po = boost::program_options;
 using po::variables_map;
 using namespace boost::property_tree;
 
-unsigned focal_id = 1605450;
 
 variables_map parse_cmd_line(int argc,char* argv[]) {
     using namespace po;
@@ -229,9 +228,6 @@ inline AlphaGroupEdit parse_alpha_group(const json & edit_obj) {
             auto ada = get_array_property(edit_obj, "added", true).second;
             for (auto aed : *ada) {
                 unsigned atax_id = parse_as_unsigned(aed);
-                if (atax_id == focal_id) {
-                    LOG(DEBUG) << "found " << focal_id << " in added for taxon " << ed.first_id ;   
-                }
                 ed.newChildIds.insert(atax_id);
             }
         }
@@ -306,10 +302,11 @@ std::set<const RTRichTaxNode *> deleted_nodes;
 std::set<const RTRichTaxNode *> detached_nodes;
 std::set<const RTRichTaxNode *> attached_nodes;
 
-inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
-                         RTRichTaxTreeData & tree_data) {
+inline bool handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
+                         RTRichTaxTreeData & tree_data,
+                         bool force) {
     if (aed.operation == AlphaEditOp::NO_CHANGE) {
-        return;
+        return true;
     }
     OttId tax_id = aed.first_id;
     RTRichTaxNode * nd = nullptr;
@@ -318,7 +315,10 @@ inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
             try {
             nd = const_cast<RTRichTaxNode *>(tree_data.id_to_node.at(tax_id));
         } catch (...) {
-            throw OTCError() << "Could not find ID " << tax_id << " in taxonomy id_to_node";
+            if (force) {
+                throw OTCError() << "Could not find ID " << tax_id << " in taxonomy id_to_node";
+            }
+            return false;
         }
         nd_data = &(nd->get_data());
     }
@@ -365,10 +365,9 @@ inline void handle_alpha(const AlphaEdit & aed, RichTaxTree & tree,
         newnd_data.flags = aed.first_flags;
         tree_data.id_to_node[aed.first_id] = newnd;
     }
+    return true;
 }
 
-const RTRichTaxNode * focal_nd = nullptr;
-const RTRichTaxNode * focal_nd_par = nullptr;
 void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTaxTreeData & tree_data) {
     if (aed.operation == AlphaGroupEditOp::NO_GR_CHANGE) {
         return;
@@ -411,15 +410,8 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
         // || aed.operation == AlphaGroupEditOp::ADD_DEL_TAXA
         || aed.operation == AlphaGroupEditOp::NEW_GROUPING
         ) {
-        bool added_focal = false;
         for (auto add_id : aed.newChildIds) {
             RTRichTaxNode * nc = const_cast<RTRichTaxNode *>(id2nd.at(add_id));
-            if (add_id == focal_id) {
-                added_focal = true;
-                focal_nd = nc;
-                focal_nd_par = nd;
-                LOG(DEBUG) << "Adding " << focal_id << " to " << tax_id << " nc = " << nc;
-            }
             if (nc->get_parent() != nullptr) {
                 nc->detach_this_node();
                 detached_nodes.insert(nc);
@@ -498,14 +490,20 @@ void patch_source_taxonomy(RichTaxonomy & otaxonomy,
                            const std::string outdir) {
     RichTaxTree & tree = const_cast<RichTaxTree &>(otaxonomy.get_tax_tree());
     RTRichTaxTreeData & tree_data = tree.get_data();
+    list<AlphaEdit> delayed;
     for (auto aed : alpha_taxa) {
-        handle_alpha(aed, tree, tree_data);
+        if (!handle_alpha(aed, tree, tree_data, false)) {
+            delayed.push_back(aed);
+        }
     }
     for (auto aged : alpha_groups) {
         handle_alpha_group(aged, tree, tree_data);
     }
     for (auto aged : higher) {
         handle_higher(aged, tree, tree_data);
+    }
+    for (auto aed : delayed) {
+        handle_alpha(aed, tree, tree_data, true);
     }
     LOG(DEBUG) << "deleted_nodes.size() = " << deleted_nodes.size();
     LOG(DEBUG) << "detached_nodes.size() = " << detached_nodes.size();

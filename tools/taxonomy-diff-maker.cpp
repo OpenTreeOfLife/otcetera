@@ -256,6 +256,7 @@ void TaxonomyDiffer::compare_higher_taxa() {
             edit.first_rank = new_nd_data.rank;
             edit.first_flags = new_nd_data.flags;
             edit.newChildIds = ret_ids;
+            record_syn_diffs(nullptr, inner_nd);
         } else {
             OttIdSet new_add, new_retained;
             new_tax_child_ids(inner_nd, new_add, new_retained); // all ids are "new" for a new grouping
@@ -552,53 +553,71 @@ void TaxonomyDiffer::record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichT
         }
         return;
     }
-    map<string, string> oldpairs;
-    map<string, string> newpairs;
+    map<string, set<string> > oldpairs;
+    map<string, set<string> > newpairs;
     const RTRichTaxNodeData & old_nd_data = old_nd->get_data();
     for (const auto js : old_nd_data.junior_synonyms) {
-        oldpairs[js->name] = js->source_string;
+        oldpairs[js->name].insert(js->source_string);
     }
     const RTRichTaxNodeData & new_nd_data = new_nd->get_data();
     for (const auto js : new_nd_data.junior_synonyms) {
-        newpairs[js->name] = js->source_string;
+        newpairs[js->name].insert(js->source_string);
     }
     for (auto op : oldpairs) {
         auto nIt = newpairs.find(op.first);
         if (nIt == newpairs.end()) {
-            auto & edit = new_alpha_edit();
-            edit.operation = AlphaEditOp::DELETED_SYN;
-            edit.first_id = new_nd->get_ott_id();
-            edit.first_str = op.first;
-            edit.second_str = op.second;
+            for (auto ss : op.second) {
+                auto & edit = new_alpha_edit();
+                edit.operation = AlphaEditOp::DELETED_SYN;
+                edit.first_id = new_nd->get_ott_id();
+                edit.first_str = op.first;
+                edit.second_str = ss;
+            }
             continue;
         }
-        if (nIt->second != op.second) {
-            if (new_nd->get_ott_id() == focal_id) {
-                LOG(DEBUG) << "focal syn new = " << nIt->first << " ss = " << nIt->second << " del " << op.first << " ss= " << op.second;
+        for (auto ss : op.second) {
+            bool found = false;
+            for (auto nss: nIt->second) {
+                if (nss == ss) {
+                    found = true;
+                    break;
+                }
             }
-            auto & editd = new_alpha_edit();
-            editd.operation = AlphaEditOp::DELETED_SYN;
-            editd.first_id = new_nd->get_ott_id();
-            editd.first_str = op.first;
-            editd.second_str = op.second;
-            auto & edit = new_alpha_edit();
-            edit.operation = AlphaEditOp::ADDED_SYN;
-            edit.first_id = new_nd->get_ott_id();
-            edit.first_str = nIt->first;
-            edit.second_str = nIt->second;
+            if (!found) {
+                auto & editd = new_alpha_edit();
+                editd.operation = AlphaEditOp::DELETED_SYN;
+                editd.first_id = new_nd->get_ott_id();
+                editd.first_str = op.first;
+                editd.second_str = ss;
+            }
+        }
+        for (auto nss: nIt->second) {
+            bool found = false;
+            for (auto ss : op.second) {
+                if (nss == ss) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                auto & edit = new_alpha_edit();
+                edit.operation = AlphaEditOp::ADDED_SYN;
+                edit.first_id = new_nd->get_ott_id();
+                edit.first_str = nIt->first;
+                edit.second_str = nss;
+            }
         }
     }
     for (auto np : newpairs) {
         auto oIt = oldpairs.find(np.first);
         if (oIt == oldpairs.end()) {
-            if (new_nd->get_ott_id() == focal_id) {
-                LOG(DEBUG) << "focal syn new = " << np.first << " ss = " << np.second;
+            for (auto nss : np.second) {
+                auto & edit = new_alpha_edit();
+                edit.operation = AlphaEditOp::ADDED_SYN;
+                edit.first_id = new_nd->get_ott_id();
+                edit.first_str = np.first;
+                edit.second_str = nss;
             }
-            auto & edit = new_alpha_edit();
-            edit.operation = AlphaEditOp::ADDED_SYN;
-            edit.first_id = new_nd->get_ott_id();
-            edit.first_str = np.first;
-            edit.second_str = np.second;
         }
     }
 }
