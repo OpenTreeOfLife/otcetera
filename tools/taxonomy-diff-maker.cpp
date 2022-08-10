@@ -204,7 +204,7 @@ void fill_from_children(const RTRichTaxNode * inner_nd,
     }
 }
 
-OttId focal_id = 2715640;
+OttId focal_id = 1053879;
 
 void TaxonomyDiffer::compare_higher_taxa() {
     // map<std::uint32_t, const RTRichTaxNode *> old_by_trav; //, new_by_trav;
@@ -573,12 +573,15 @@ void TaxonomyDiffer::record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichT
             continue;
         }
         if (nIt->second != op.second) {
+            if (new_nd->get_ott_id() == focal_id) {
+                LOG(DEBUG) << "focal syn new = " << nIt->first << " ss = " << nIt->second << " del " << op.first << " ss= " << op.second;
+            }
+            auto & editd = new_alpha_edit();
+            editd.operation = AlphaEditOp::DELETED_SYN;
+            editd.first_id = new_nd->get_ott_id();
+            editd.first_str = op.first;
+            editd.second_str = op.second;
             auto & edit = new_alpha_edit();
-            edit.operation = AlphaEditOp::DELETED_SYN;
-            edit.first_id = new_nd->get_ott_id();
-            edit.first_str = op.first;
-            edit.second_str = op.second;
-            edit = new_alpha_edit();
             edit.operation = AlphaEditOp::ADDED_SYN;
             edit.first_id = new_nd->get_ott_id();
             edit.first_str = nIt->first;
@@ -588,6 +591,9 @@ void TaxonomyDiffer::record_syn_diffs(const RTRichTaxNode *old_nd, const RTRichT
     for (auto np : newpairs) {
         auto oIt = oldpairs.find(np.first);
         if (oIt == oldpairs.end()) {
+            if (new_nd->get_ott_id() == focal_id) {
+                LOG(DEBUG) << "focal syn new = " << np.first << " ss = " << np.second;
+            }
             auto & edit = new_alpha_edit();
             edit.operation = AlphaEditOp::ADDED_SYN;
             edit.first_id = new_nd->get_ott_id();

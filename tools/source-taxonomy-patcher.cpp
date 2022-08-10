@@ -378,8 +378,13 @@ void handle_alpha_group(const AlphaGroupEdit & aed, RichTaxTree & tree, RTRichTa
     RTRichTaxNodeData * nd_data = nullptr;
     auto & id2nd = tree_data.id_to_node;
     if (aed.operation == AlphaGroupEditOp::NEW_GROUPING) {
-        nd = tree.create_node(nullptr);
-        nd->set_ott_id(aed.first_id);
+        auto i2nIt = id2nd.find(tax_id);
+        if (i2nIt == id2nd.end()) {
+            nd = tree.create_node(nullptr);
+            nd->set_ott_id(tax_id);
+        } else {
+            nd = const_cast<RTRichTaxNode *>(i2nIt->second);
+        }
         nd->set_name(aed.first_str);
         nd_data = &(nd->get_data());
         nd_data->rank = aed.first_rank;
@@ -464,7 +469,7 @@ void write_patched(const RichTaxTree & tree, const std::string outdir) {
     if (!soutpf.good()) {
         throw OTCError() << "could not open " << (new_dir/sfname).string() ;
     }
-    soutpf << "uid\t|\tname\t|\ttype\t|\t\n ";
+    soutpf << "uid\t|\tname\t|\ttype\t|\t\n";
 
     for(auto nd: iter_pre(tree)) {
         tf << nd->get_ott_id() << sep;
