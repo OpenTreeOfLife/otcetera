@@ -34,7 +34,10 @@ def main(taxonomy_fp, root_id, out):
             kids.sort()
             for kid in kids:
                 kid_id, kid_line = kid
+                if kid_id in emitted:
+                    raise RuntimeError(f"{kid_id} emitted > 1 time. second time from {par_id}")
                 newly_emitted.add(kid_id)
+                emitted.add(kid_id)
                 out.write(kid_line)
     sys.stderr.write(f"{len(emitted)} records emitted\n")
 
