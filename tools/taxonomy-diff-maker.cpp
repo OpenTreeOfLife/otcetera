@@ -204,7 +204,7 @@ void fill_from_children(const RTRichTaxNode * inner_nd,
     }
 }
 
-OttId focal_id = 1053879;
+OttId focal_id = 1343363;
 
 void TaxonomyDiffer::compare_higher_taxa() {
     // map<std::uint32_t, const RTRichTaxNode *> old_by_trav; //, new_by_trav;
@@ -264,6 +264,22 @@ void TaxonomyDiffer::compare_higher_taxa() {
             add_group_prop_changes(old_nd, inner_nd);
             OttIdSet old_retained;
             old_tax_child_ids(old_nd, old_retained);
+            if (tax_id == focal_id) {
+                 for (auto c : iter_child_const(*old_nd)) {
+                    auto cid = c->get_ott_id();
+                    if (contains(mapped_spec_ids, cid)) {
+                        LOG(DEBUG) << "parent " << focal_id << " " << cid << " old child id mapped to " << mapped_spec_ids.at(cid);
+                    } else {
+                        LOG(DEBUG) << "parent " << focal_id << " " << cid << " old child";
+                    }
+                }
+                LOG(DEBUG) << "parent " << focal_id << " old_retained";
+                write_tax_id_set(std::cerr, " ", old_retained, ", "); std::cerr << '\n';
+                LOG(DEBUG) << "parent " << focal_id << " new_retained";
+                write_tax_id_set(std::cerr, " ", new_retained, ", "); std::cerr << '\n';
+                LOG(DEBUG) << "parent " << focal_id << " new_add";
+                write_tax_id_set(std::cerr, " ", new_add, ", "); std::cerr << '\n';
+            }
             OttIdSet ret_but_add = set_difference_as_set(new_retained, old_retained);
             new_add.insert(ret_but_add.begin(), ret_but_add.end());
             if (!new_add.empty()) {
@@ -633,7 +649,11 @@ void TaxonomyDiffer::children_diagnose_old_spec_based_fate(const RTRichTaxNode *
         const auto new_tax_id = new_nd->get_ott_id();
         if (new_nd->get_ott_id() == old_tax_id) {
             retained_spec_ids.insert(old_tax_id);
-        } else {
+        } else if (contains(old_td.id_to_node, new_tax_id)) {
+            // in the case of a merger, treat the record with the missing ID as 
+            // deleted, not mapped.
+            deleted_spec_ids.insert(old_tax_id); 
+        } else { 
             mapped_spec_ids[old_tax_id] = new_tax_id;
             revmapped_spec_ids[new_tax_id] = old_tax_id;
         }
@@ -648,11 +668,15 @@ void TaxonomyDiffer::children_diagnose_old_spec_based_fate(const RTRichTaxNode *
     }
 }
 
+OttIdSet dealtWithViaMerge, dealtWithViaIdMatch;
 
 void TaxonomyDiffer::diagnose_old_spec_based_fate(const RTRichTaxNode *old_spec_nd,
                                                   bool top_level) {
     const auto & new_i2nd = new_td.id_to_node;
     const OttId old_root_id = old_spec_nd->get_ott_id();
+    if (contains(dealtWithViaMerge, old_root_id)) {
+        return;
+    }
     const auto new_el = new_i2nd.find(old_root_id);
     const RTRichTaxNode * new_cmp_nd = nullptr;
 
@@ -673,10 +697,28 @@ void TaxonomyDiffer::diagnose_old_spec_based_fate(const RTRichTaxNode *old_spec_
                 throw OTCError() << "Old specimen_based root " << old_name << " (" << old_root_id << ") not found by id. and maps to multiple names";
             }
             new_cmp_nd = newnodes[0];
+            const OttId new_root_id = new_cmp_nd->get_ott_id();
+            const auto & old_i2nd = old_td.id_to_node;
+            const auto old_el = old_i2nd.find(new_root_id);
+            if (old_el != old_i2nd.end()) {
+                dealtWithViaMerge.insert(old_root_id);
+            }
             children_diagnose_old_spec_based_fate(old_spec_nd, new_cmp_nd, top_level);
-            record_tax_edits_for_match(old_spec_nd, new_cmp_nd);
+            if (old_el == old_i2nd.end()) {
+                record_tax_edits_for_match(old_spec_nd, new_cmp_nd);
+            } else {
+                // 2 taxa merged, but the one with the different name retained its ID in the new taxonomy.
+                dealtWithViaMerge.insert(old_root_id);
+                record_tax_edits_for_match(old_el->second, new_cmp_nd); // treat edit as change name rather than change ID
+                record_syn_diffs(old_spec_nd, new_cmp_nd); // get synonyms from node with same name
+                auto & edit = new_alpha_edit();
+                edit.operation = AlphaEditOp::DELETE_TAXON;
+                edit.first_id = old_root_id;
+                edit.first_str = old_name;
+            }
         }
     } else {
+        dealtWithViaIdMatch.insert(old_root_id);
         new_cmp_nd = new_el->second;
         children_diagnose_old_spec_based_fate(old_spec_nd, new_el->second, top_level);
         record_tax_edits_for_match(old_spec_nd, new_cmp_nd);
