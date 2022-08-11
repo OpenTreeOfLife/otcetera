@@ -225,7 +225,7 @@ enum AlphaEditOp {
 
 const std::vector<std::string> aeo2str = {"no change", "change id", "change name",
                                 "delete synonym", "add synonym", 
-                                "change_rank", "delete taxon", "add taxon",
+                                "change rank", "delete taxon", "add taxon",
                                 "change flags"};
 
 const std::map<std::string, AlphaEditOp> str2aeo = {
@@ -234,7 +234,7 @@ const std::map<std::string, AlphaEditOp> str2aeo = {
     {"change name", AlphaEditOp::CHANGED_NAME},
     {"delete synonym", AlphaEditOp::DELETED_SYN},
     {"add synonym", AlphaEditOp::ADDED_SYN},
-    {"change_rank", AlphaEditOp::CHANGED_RANK},
+    {"change rank", AlphaEditOp::CHANGED_RANK},
     {"delete taxon", AlphaEditOp::DELETE_TAXON},
     {"add taxon", AlphaEditOp::ADD_TAXON},
     {"change flags", AlphaEditOp::CHANGED_FLAGS}
