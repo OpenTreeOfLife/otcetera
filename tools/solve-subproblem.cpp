@@ -3,9 +3,6 @@
 #include <list>
 #include <iterator>
 #include <numeric>
-#include <chrono>
-#include <iomanip>
-#include <boost/smart_ptr/intrusive_ptr.hpp>
 
 #include "solver/tree.h"
 #include "solver/rsplit.h"
