@@ -7,4 +7,9 @@
 typedef otc::TreeMappedWithSplits Tree_t;
 typedef Tree_t::node_type node_t;
 
+inline int depth(const Tree_t::node_type* nd)
+{
+    return nd->get_data().depth;
+}
+
 #endif
