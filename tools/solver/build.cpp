@@ -155,19 +155,13 @@ void RemoveImpliedSplits(const shared_ptr<Solution>& solution, vector<ConstRSpli
 #pragma clang diagnostic ignored  "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored  "-Wsign-compare"
 
-    // --- After this point, we have chosen which solution object we are working on --- //
-
-    // 1. Record the number of original implied splits.
-    auto& component_for_index = solution->component_for_index;
-    auto& components = solution->components;
-
-    // 2. If there are no splits to add, then we are consistent.
+    // 1. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty()) return;
 
-    // 3. Initialize the mapping from taxa to indices.
+    // 2. Initialize the mapping from taxa to indices.
     solution->initialize_taxon_index_map();
 
-    // 4. Determine the new splits that go into each component (both satisfied AND unsatisfied)
+    // 3. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     for(int k = new_splits.size()-1; k >= 0; k--)
     {
         auto& split = new_splits[k];
@@ -184,7 +178,7 @@ void RemoveImpliedSplits(const shared_ptr<Solution>& solution, vector<ConstRSpli
         }
     }
 
-    // 5. Check sub_solutions to see if they are punctured.
+    // 4. Check sub_solutions to see if they are punctured.
     for(int k = sub_solutions.size()-1; k >= 0; k--)
     {
         auto& sub_solution = sub_solutions[k];
@@ -235,7 +229,7 @@ void RemoveImpliedSplits(const shared_ptr<Solution>& solution, vector<ConstRSpli
         }
     }
 
-    // 6. Determine the new splits that go into each component (both satisfied AND unsatisfied)
+    // 5. Determine the new splits that go into each component (both satisfied AND unsatisfied)
     solution->clear_taxon_index_map();
 }
 
