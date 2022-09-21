@@ -164,6 +164,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     bool oracle = args["oracle"].as<bool>();
     bool incremental = args["incremental"].as<bool>();
     bool g_do_timing = (bool)args.count("time");
+    bool rollback = args["rollback"].as<bool>();
     auto start_timing = std::chrono::high_resolution_clock::now();
 
     // 1. Standardize names to 0..n-1 for this subproblem
@@ -199,7 +200,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             if (incremental)
             {
                 if (not solution)
-                    solution = std::make_shared<Solution>(all_leaves_indices);
+                    solution = std::make_shared<Solution>(all_leaves_indices, rollback);
                 vector<ConstRSplit> new_splits;
                 for(int i=0;i<n;i++)
                     new_splits.push_back(splits[start+i].second);
@@ -214,6 +215,14 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 else
                 {
                     LOG(TRACE)<<"FAIL!";
+
+                    if (not rollback)
+                    {
+                        solution = std::make_shared<Solution>(all_leaves_indices, rollback);
+                        bool old_result = BUILDINC(solution, consistent);
+                        assert(old_result);
+                        total_build_calls ++;
+                    }
                 }
                 assert(consistent.size() == solution->n_splits_from_components());
             }
@@ -222,7 +231,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 for(int i=0;i<n;i++)
                     consistent.push_back(splits[start+i].second);
 
-                solution = std::make_shared<Solution>(all_leaves_indices);
+                solution = std::make_shared<Solution>(all_leaves_indices, rollback);
 
                 result = BUILDINC(solution, consistent);
                 LOG(TRACE)<<"consistent = "<< consistent.size()-n<<" -> "<<consistent.size()<<": "<<(result?"ok":"FAIL");

@@ -241,7 +241,7 @@ void Merge(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
 
     rollback_info.n_orig_components = solution->components.size();
 
-    bool has_initial_components = not solution->components.empty();
+    bool record_rollback = solution->rollback and not solution->components.empty();
 
     auto merge = [&](auto& group)
         {
@@ -257,14 +257,14 @@ void Merge(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
                     {
                         components.push_back(std::make_unique<component_t>());
                         taxon_comp = components.back().get();
-                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info, has_initial_components);
+                        merge_component_with_trivial(taxon_comp, index, component_for_index, rollback_info.merge_rollback_info, record_rollback);
                     }
                     split_comp = taxon_comp;
                 }
                 else if (not taxon_comp)
-                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info, has_initial_components);
+                    merge_component_with_trivial(split_comp, index, component_for_index, rollback_info.merge_rollback_info, record_rollback);
                 else if (split_comp != taxon_comp)
-                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info, has_initial_components);
+                    split_comp = merge_components(split_comp,taxon_comp,component_for_index, rollback_info.merge_rollback_info, record_rollback);
             }
         };
 
@@ -365,7 +365,7 @@ bool SolveSubproblems(shared_ptr<Solution>& solution, vector<SolutionRollbackInf
         // If we've invalidated the solution for this component because the component's taxon set increased,
         // then create an empty solution to use here.
         if (not component->solution)
-            component->solution = std::make_shared<Solution>(*component, taxa);
+            component->solution = std::make_shared<Solution>(*component, taxa, solution->rollback);
 
         if (not BuildIncA(component->solution, comp_new_splits, comp_sub_solutions, all_rollback_info))
             failing_component = i;
@@ -385,6 +385,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
 
     // 2. Check if the solution is new.
     bool solution_is_new = (solution->visited == 0);
+    bool record_rollback_info = solution->rollback and not solution_is_new;
     solution->visited++;
 
     SolutionRollbackInfo sol_rollback_info(solution);
@@ -396,7 +397,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
     // A. If there are no splits to add, then we are consistent.
     if (new_splits.empty() and sub_solutions.empty())
     {
-        if (not solution_is_new)
+        if (record_rollback_info)
             all_rollback_info.push_back(sol_rollback_info);
 
         return true;
@@ -408,7 +409,7 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
     // 4. Merge components
     Merge(solution, new_splits, sub_solutions, sol_rollback_info);
 
-    if (not solution_is_new)
+    if (record_rollback_info)
         all_rollback_info.push_back(sol_rollback_info);
 
     // 5. Fail if there is only one component
@@ -437,6 +438,8 @@ bool BUILDINC(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_spl
     vector<SolutionRollbackInfo> all_rollback_info;
     bool ok =  BuildIncA(solution, new_splits2, sub_solutions, all_rollback_info, true);
 
+    assert(solution->rollback or all_rollback_info.empty());
+
     if (not ok)
     {
         for(int i = (int)all_rollback_info.size()-1; i>=0; i--)
@@ -448,13 +451,13 @@ bool BUILDINC(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_spl
 
 bool BUILD_check(const std::vector<int> all_leaves_indices, const std::vector<ConstRSplit>& splits)
 {
-    auto solution = std::make_shared<Solution>(all_leaves_indices);
+    auto solution = std::make_shared<Solution>(all_leaves_indices, false);
     return BUILDINC(solution, splits);
 }
 
 std::unique_ptr<Tree_t> BUILD(const std::vector<int> all_leaves_indices, const std::vector<ConstRSplit>& splits)
 {
-    auto solution = std::make_shared<Solution>(all_leaves_indices);
+    auto solution = std::make_shared<Solution>(all_leaves_indices, false);
     bool compatible = BUILDINC(solution, splits);
     if (compatible)
         return solution->get_tree();

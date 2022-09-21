@@ -97,6 +97,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("batching",value<bool>()->default_value(true), "Make unresolved taxonomy from input tips.")
         ("oracle", value<bool>()->default_value(true), "Predict conflicting splits before BUILD.")
         ("incremental", value<bool>()->default_value(true),"Reuse work from previous BUILD.")
+        ("rollback",value<bool>()->default_value(true), "Record rollback info in BUILDINC.")
         ;
 
     options_description other("Other options");
@@ -189,9 +190,7 @@ map<const Tree_t::node_type*,const Tree_t::node_type*> check_placement(const Tre
 
 bool conflicting(const vector<int>& all_leaves_indices, const vector<ConstRSplit>& splits)
 {
-    auto solution = std::make_shared<Solution>(all_leaves_indices);
-    auto result = BUILDINC(solution, splits);
-    return not result;
+    return not BUILD_check(all_leaves_indices, splits);
 }
 
 bool conflicts_with(const vector<int>& all_leaves_indices, vector<ConstRSplit> splits1, const vector<ConstRSplit>& splits2)

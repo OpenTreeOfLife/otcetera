@@ -74,10 +74,10 @@ unique_ptr<Tree_t> Solution::get_tree() const
     return tree;
 }
 
-Solution::Solution(const vector<int>& t)
-    :taxa(t), component_for_index(taxa.size())
+Solution::Solution(const vector<int>& t, bool r)
+    :taxa(t), component_for_index(taxa.size()), rollback(r)
 {}
 
-Solution::Solution(const component_t& c, const vector<int> other_taxa)
-    :Solution(c.get_taxa(other_taxa))
+Solution::Solution(const component_t& c, const vector<int> other_taxa, bool r)
+    :Solution(c.get_taxa(other_taxa),r)
 {}

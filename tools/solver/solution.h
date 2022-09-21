@@ -19,6 +19,7 @@ struct Solution
 
     // Counter for determining if this is a new Solution or a pre-existing one.
     int visited = 0;
+    bool rollback = true;
 
     bool all_taxa_in_one_component() const;
 
@@ -40,8 +41,8 @@ struct Solution
     Solution(const Solution&) = default;
     Solution(Solution&&) = default;
 
-    Solution(const std::vector<int>& t);
-    Solution(const component_t& c, const std::vector<int> other_taxa);
+    Solution(const std::vector<int>& t, bool rollback);
+    Solution(const component_t& c, const std::vector<int> other_taxa, bool rollback);
 };
 
 #endif
