@@ -230,7 +230,7 @@ def time_otc_runs(inp_fp):
                 '--oracle={}'.format(o),
                 '--incremental={}'.format(i)]
         invoc = invoc_pref + opts
-        rp = subprocess.run(invoc, capture_output=True)
+        rp = subprocess.run(invoc, capture_output=True, check=True)
         timing_float = None
         for line in rp.stderr.decode('utf-8').split('\n'):
             m = timing_pat.match(line)
