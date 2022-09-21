@@ -311,7 +311,6 @@ bool MaybeFail(shared_ptr<Solution>& solution)
 void Assign(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, vector<shared_ptr<Solution>>& sub_solutions)
 {
     auto& component_for_index = solution->component_for_index;
-    auto& components = solution->components;
 
     // 1. Determine the new splits that go into each component.
     //    We will check if they are implied or unimplied when we call RemoveImpliedSplits( ) on the component.
@@ -346,7 +345,6 @@ bool BuildIncA(shared_ptr<Solution>& solution, vector<ConstRSplit>& new_splits, 
 bool SolveSubproblems(shared_ptr<Solution>& solution, vector<SolutionRollbackInfo>& all_rollback_info)
 {
     auto& taxa = solution->taxa;
-    auto& component_for_index = solution->component_for_index;
     auto& components = solution->components;
 
     optional<int> failing_component;
