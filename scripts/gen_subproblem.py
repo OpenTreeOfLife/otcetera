@@ -115,11 +115,15 @@ def gen_subprob(taxon_namespace,
     out_stream.write(tree_print(tax))
     
 
-def gen_b_o_i():
+def gen_b_o_i_r():
     for i in (0, 1):
         for j in (0, 1):
             for k in (0, 1):
-                yield (i, j, k)
+                if k == 0:
+                    yield (i, j, k, 0)
+                else:
+                    for r in (0,1):
+                        yield (i, j, k, r)
 
 def main():
     import argparse
@@ -200,7 +204,7 @@ def main():
             sum_stream, sum_existed = open_fp(args.summary_out, 'a')
             ope_sum = True
         if not sum_existed:
-            columns = ["num_otus", "num_phylos", "rep_num", "seed", "num_ecr", "inc_prob", "collapse_prob", "batch", "oracle", "incr", "time"]
+            columns = ["num_otus", "num_phylos", "rep_num", "seed", "num_ecr", "inc_prob", "collapse_prob", "batch", "oracle", "incr", "rollback", "time"]
             headers = '\t'.join(columns)
             sum_stream.write('{}\n'.format(headers))
     try:
@@ -225,10 +229,11 @@ timing_pat = re.compile(r'^timing +(.+) +seconds.$')
 def time_otc_runs(inp_fp):
     invoc_pref = ["otc-solve-subproblem", "-m", inp_fp]
     time_dict = defaultdict(lambda: 0.0)
-    for b, o, i in gen_b_o_i():
+    for b, o, i, r in gen_b_o_i_r():
         opts = ['--batching={}'.format(b),
                 '--oracle={}'.format(o),
-                '--incremental={}'.format(i)]
+                '--incremental={}'.format(i),
+                '--rollback={}'.format(r)]
         invoc = invoc_pref + opts
         rp = subprocess.run(invoc, capture_output=True, check=True)
         timing_float = None
@@ -238,10 +243,10 @@ def time_otc_runs(inp_fp):
                 timing_float = m.group(1)
                 break
             #else:
-            #    print('line "{}" did not match'.format(line))
+            #    print(f'line "{line}" did not match')
         if timing_float is None:
             raise RuntimeError('"timing ... seconds." not found in {} run.'.format(invoc))
-        time_dict[(b,o,i)] = timing_float
+        time_dict[(b,o,i,r)] = timing_float
     return time_dict
 
 def do_sim(out_pref, args, seed, sum_stream):
@@ -299,8 +304,8 @@ def do_sim(out_pref, args, seed, sum_stream):
             assert out_fp is not None
             times = time_otc_runs(out_fp)
             sum_row_temp[rep_num_idx] = str(rep_num)
-            for (b,o,i) in times:
-                tr = sum_row_temp + [str(b), str(o), str(i), str(times[(b,o,i)])]
+            for (b,o,i,r) in times:
+                tr = sum_row_temp + [str(b), str(o), str(i), str(r), str(times[(b,o,i,r)])]
                 sum_stream.write('{}\n'.format('\t'.join(tr)))
 #            sum_row_temp[seed_idx] = ''
         
