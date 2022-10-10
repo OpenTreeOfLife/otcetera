@@ -173,6 +173,7 @@ template <typename N>
 N * introduce_monotypic_parent(N * taxon, N * supertree_child) {
     assert(taxon);
     assert(supertree_child);
+    LOG(DEBUG) << "introduce_monotypic_parent: taxon=" << taxon->get_ott_id() << ", supertree_child = " << supertree_child->get_ott_id(); 
     N * nn = new N(nullptr);
     supertree_child->replace_this_node(nn);
     nn->set_name(taxon->get_name());
@@ -190,6 +191,7 @@ N * introduce_monotypic_parent(N * taxon, N * supertree_child) {
 //    as the parent to `supertree_child`
 template <typename N>
 N * add_parent_and_move_unsampled_tax_children(N * taxon, N * supertree_child) {
+    LOG(DEBUG) << "add_parent_and_move_unsampled_tax_children: " << taxon->get_ott_id() << ", supertree_child = " << supertree_child->get_ott_id(); 
     auto * nn = introduce_monotypic_parent(taxon, supertree_child);
     move_unsampled_tax_children(taxon, nn);
     return nn;
@@ -208,6 +210,7 @@ void move_unsampled_tax_children(N * taxon, N * supertree_node, std::set<N*> *v)
     for (auto child : children) {
         auto & cd = child->get_data();
         if (cd.des_ids.empty() && cd.repr_in_supertree_by == nullptr) {
+            LOG(DEBUG) << "move_unsampled_tax_children moving " << child->get_ott_id();
             child->detach_this_node();
             supertree_node->add_child(child);
             if (v) {
@@ -227,6 +230,7 @@ void move_unsampled_tax_children(N * taxon, N * supertree_node, std::set<N*> *v)
 //    that are children of `taxon via move_unsampled_tax_children.
 template <typename N>
 N * special_bisect_with_new_child(N * taxon, N * curr_supertree_node, bool move_unsamp) {
+    LOG(DEBUG) << "special_bisect_with_new_child: " << taxon->get_ott_id() << ", curr_supertree_node = " << curr_supertree_node->get_ott_id() << "move_unsamp= "<< move_unsamp; 
     N * nt = bisect_branch_with_new_child(curr_supertree_node);
     nt->set_name(taxon->get_name());
     nt->set_ott_id(taxon->get_ott_id());
@@ -242,8 +246,7 @@ N * special_bisect_with_new_child(N * taxon, N * curr_supertree_node, bool move_
 // Used for starting from an ancestor of the taxa in taxon_node and moving one
 //    step closer to the MRCA of those taxa
 Node_t * find_single_child_with_all_marked_taxa(Node_t * curr_supertree_node,
-                                                const Node_t * taxon_node)
-{
+                                                const Node_t * taxon_node) {
     const auto & taxon_des = taxon_node->get_data().des_ids;
     assert(not taxon_des.empty());
     assert(is_subset(taxon_des, curr_supertree_node->get_data().des_ids));
@@ -327,6 +330,8 @@ size_t incorporate_higher_taxon(N* taxon,
                                 bool record_in_ltm,
                                 const map<OttId, childParPair> & ott_to_tax,
                                 map<N *, set<N*> > & non_mono_to_register) {
+    LOG(DEBUG) << "incorporate_higher_taxon: " << taxon->get_ott_id() << ", root_supertree_node = " << root_supertree_node->get_ott_id(); 
+    
     assert(taxon);
     assert(root_supertree_node);
     const auto & taxData = taxon->get_data();
@@ -666,6 +671,7 @@ void unprune_slice(N *root_supertree_node,
     assert(root_supertree_node);
     assert(root_supertree_node->has_ott_id());
     const auto ott_id = root_supertree_node->get_ott_id();
+    LOG(DEBUG) << "unprune_slice(" << ott_id << "...);";
     assert(ott_to_supertree.at(ott_id) == root_supertree_node);
     N * root_taxon = ott_to_tax.at(ott_id).first;
     assert(root_taxon != nullptr);
@@ -720,6 +726,7 @@ void unprune_slice(N *root_supertree_node,
                                                   record_in_ltm,
                                                   ott_to_tax,
                                                   non_mono_to_register);
+            LOG(DEBUG) << "done with incorporate_higher_taxon 1";
         }
         taxon->get_data().repr_in_supertree_by = root_supertree_node;
     }
@@ -739,6 +746,7 @@ void unprune_slice(N *root_supertree_node,
                                                       false,
                                                       ott_to_tax,
                                                       non_mono_to_register);
+                LOG(DEBUG) << "done with incorporate_higher_taxon 2";
             }
             is_taxon_ptr->get_data().repr_in_supertree_by = root_supertree_node;
         }
@@ -1269,8 +1277,8 @@ int main(int argc, char *argv[]) {
     auto & taxonomy = *(trees.at(1));
     UnpruneStats unprune_stats(incertae_sedis_ids);
     do_unprune_and_name(taxonomy, supertree, unprune_stats);
-    report_stats(unprune_stats, statsStreamPtr);
-    name_unnamed_nodes(supertree);
+    /*report_stats(unprune_stats, statsStreamPtr);
+    name_unnamed_nodes(supertree);*/
     write_tree_as_newick(std::cout, supertree);
     std::cout << std::endl;
     if (!lostTaxaJSONFilename.empty()) {
