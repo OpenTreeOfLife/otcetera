@@ -370,6 +370,7 @@ int main(int argc, char *argv[])
         ParsingRules rules;
         rules.set_ott_ids = not (bool)args.count("allow-no-ids");
         rules.prune_unrecognized_input_tips = (bool)args.count("prune-unrecognized");
+        rules.require_ott_ids = false;
         bool synthesize_taxonomy = (bool)args.count("synthesize-taxonomy");
         bool cladeTips = not (bool)args.count("no-higher-tips");
         bool verbose = (bool)args.count("verbose");
