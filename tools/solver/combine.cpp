@@ -91,13 +91,13 @@ splits_for_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
     auto root = tree.get_root();
     const auto leafTaxa = root->get_data().des_ids;
-    const auto leafTaxaIndices = remap(leafTaxa);
+    const auto leafTaxaIndices = set_to_vector( remap(leafTaxa) );
     for(auto nd: iter_pre(tree))
     {
         if (not nd->is_tip() and nd != root)
         {
             auto descendants = remap(nd->get_data().des_ids);
-            splits.push_back({nd,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
+            splits.push_back({nd, RSplit(new RSplitObj{descendants, leafTaxaIndices})}) ;
         }
     }
     return splits;
