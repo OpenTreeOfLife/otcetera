@@ -291,7 +291,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 add_splits_if_consistent_batch(splits2,j,1);
         }
 
-        LOG(DEBUG)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
+        LOG(INFO)<<"i = "<<i+1<<" / "<<trees.size()<<"   Total build calls = "<<total_build_calls;
     }
 
     vector<const_node_type<Tree_t>*> compatible_taxa;
