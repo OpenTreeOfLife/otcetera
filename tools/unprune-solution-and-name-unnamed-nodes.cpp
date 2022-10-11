@@ -260,7 +260,9 @@ Node_t * find_single_child_with_all_marked_taxa(Node_t * curr_supertree_node,
 // This function walks through the subtree rooted at `root_supertree_node`
 //    to find the MRCA of the IDs in the taxon's des_ids field.
 template <typename N>
-N * walk_tipward_to_find_taxon_mrca(N* taxon, N* root_supertree_node)
+N * walk_tipward_to_find_taxon_mrca(N* taxon,
+                                    N* root_supertree_node,
+                                    const map<OttId, childParPair> & ott_to_tax)
 {
     const auto & taxDes = taxon->get_data().des_ids;
     assert(not taxDes.empty());
@@ -270,8 +272,16 @@ N * walk_tipward_to_find_taxon_mrca(N* taxon, N* root_supertree_node)
 
     // 2. here we walk tipward to find the MRCA of the taxa in taxDes
     auto curr_supertree_node = root_supertree_node;
-    while (auto next_supertree_node = find_single_child_with_all_marked_taxa(curr_supertree_node, taxon))
+    while (auto next_supertree_node = find_single_child_with_all_marked_taxa(curr_supertree_node, taxon)) {
         curr_supertree_node = next_supertree_node;
+        if (curr_supertree_node->has_ott_id()) {
+            const auto cpp = ott_to_tax.at(curr_supertree_node->get_ott_id());
+            if (cpp.second == taxon) {
+                LOG(DEBUG) << "curr_supertree_node is taxon child of " << taxon->get_ott_id() << " breaking...";
+                break;
+            }
+        }
+    }
 
     // 3. the result should be an ancestor of all the taxa in the des_ids of `taxon`
     assert(is_subset(taxDes, curr_supertree_node->get_data().des_ids));
@@ -335,7 +345,7 @@ size_t incorporate_higher_taxon(N* taxon,
     assert(taxDes.size() > 0);
     assert(taxData.nonexcluded_ids != nullptr);
     const auto & nonexcluded_ids = *taxData.nonexcluded_ids;
-    N * curr_supertree_node = walk_tipward_to_find_taxon_mrca(taxon, root_supertree_node);
+    N * curr_supertree_node = walk_tipward_to_find_taxon_mrca(taxon, root_supertree_node, ott_to_tax);
     if (unprune_stats.nonmonophyletic_inc_sed_to_des_ids.count(taxon_ott_id) > 0) {
         move_unsampled_tax_children(taxon, curr_supertree_node);
     }
