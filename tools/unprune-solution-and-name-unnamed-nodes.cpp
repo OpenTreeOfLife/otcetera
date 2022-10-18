@@ -275,8 +275,8 @@ N * walk_tipward_to_find_taxon_mrca(N* taxon,
     while (auto next_supertree_node = find_single_child_with_all_marked_taxa(curr_supertree_node, taxon)) {
         curr_supertree_node = next_supertree_node;
         if (curr_supertree_node->has_ott_id()) {
-            const auto cpp = ott_to_tax.at(curr_supertree_node->get_ott_id());
-            if (cpp.second == taxon) {
+            auto [taxo_child, taxo_parent] = ott_to_tax.at(curr_supertree_node->get_ott_id());
+            if (taxo_parent == taxon) {
                 LOG(DEBUG) << "curr_supertree_node is taxon child of " << taxon->get_ott_id() << " breaking...";
                 break;
             }
