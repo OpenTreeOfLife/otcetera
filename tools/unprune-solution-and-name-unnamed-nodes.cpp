@@ -275,8 +275,8 @@ N * walk_tipward_to_find_taxon_mrca(N* taxon,
     while (auto next_supertree_node = find_single_child_with_all_marked_taxa(curr_supertree_node, taxon)) {
         curr_supertree_node = next_supertree_node;
         if (curr_supertree_node->has_ott_id()) {
-            const auto cpp = ott_to_tax.at(curr_supertree_node->get_ott_id());
-            if (cpp.second == taxon) {
+            auto [taxo_child, taxo_parent] = ott_to_tax.at(curr_supertree_node->get_ott_id());
+            if (taxo_parent == taxon) {
                 LOG(DEBUG) << "curr_supertree_node is taxon child of " << taxon->get_ott_id() << " breaking...";
                 break;
             }
@@ -555,9 +555,7 @@ leaf_inc_sed_tuple_t detect_leaves_for_slice(Node_t * root_taxon,
         auto effective_tip_taxon_node = ott_to_tax.at(realTipOttId).first;
         effective_tip_taxon_node->get_data().des_ids.clear();
     }
-    for (auto cr_pair : queued_for_flagging) {
-        auto carriedTipId = cr_pair.first;
-        auto threadedThroughOttId = cr_pair.second;
+    for (auto [carriedTipId, threadedThroughOttId] : queued_for_flagging) {
         Node_t * effective_tip_taxon_node = ott_to_tax.at(carriedTipId).first;
         add_to_des_ids_for_anc(carriedTipId, effective_tip_taxon_node, root_taxon, ott_to_tax);
         supertree_leaves.insert(ott_to_supertree.at(threadedThroughOttId));
@@ -579,9 +577,7 @@ inc_sed_class_pair classify_incertae_sedis_for_slice(OttId ott_id,
     map<int, list<Node_t *> > inc_sed_to_deal_with_by_level;
     set<Node_t *> inc_sed_mapping_deeper;
     // Now we can use curr_slice_inc_sed_map to figure out which inc. sedis. taxa will be dealt with in this slice;
-    for (auto scism_it: curr_slice_inc_sed_map) {
-        auto & inc_sed_taxon = scism_it.first;
-        auto & included_leaf_pair_set = scism_it.second;
+    for (auto& [inc_sed_taxon, included_leaf_pair_set]: curr_slice_inc_sed_map) {
         auto gsit = inc_sed_map.find(inc_sed_taxon);
         if (gsit == inc_sed_map.end()) {
             throw OTCError() << "Incertae sedis taxon " << inc_sed_taxon->get_ott_id() << " included in slice " << ott_id << ", but was not found in the inc_sed_taxon_to_sampled_tips map!";
@@ -636,9 +632,7 @@ size_t expand_slice_tips(const node_set_t & supertree_leaves,
 void record_broken_taxa(const map<Node_t *, node_set_t > & non_mono_to_register,
                         map<OttId, Node_t *> & ott_to_supertree,
                         UnpruneStats & unprune_stats) {
-    for (auto nmel : non_mono_to_register) {
-        auto nm = nmel.first;
-        const auto & moved_nodes = nmel.second;
+    for (auto& [nm, moved_nodes] : non_mono_to_register) {
         for (auto mtn : moved_nodes) {
             ott_to_supertree[mtn->get_ott_id()] = mtn;
         }
@@ -774,8 +768,7 @@ void unprune_slice(N *root_supertree_node,
             c = c->get_parent();
         }
     }
-    for (auto scism_it: curr_slice_inc_sed_map) {
-        auto & inc_sed_taxon = scism_it.first;
+    for (auto& [inc_sed_taxon,_]: curr_slice_inc_sed_map) {
         inc_sed_taxon->get_data().des_ids.clear();
     }
     root_supertree_node->get_data().des_ids.clear();
@@ -985,9 +978,7 @@ void find_broken_incertae_sedis_des(Tree_t & /* taxonomy */,
                                     const map<OttId, childParPair> & /* ott_to_tax */,
                                     UnpruneStats & unprune_stats) {
     const auto & to_tips_map = unprune_stats.inc_sed_taxon_to_sampled_tips;
-    for (auto ttm_it: to_tips_map) {
-        auto inc_sed_taxon = ttm_it.first;
-        const auto & sampled = ttm_it.second;
+    for (auto& [inc_sed_taxon, sampled]: to_tips_map) {
         if (sampled.size() < 2) {
             continue;
         }
@@ -1083,15 +1074,14 @@ void unprune_by_postorder_traversal(Tree_t & /* taxonomy */,
     }
     const auto & id_to_fix_map = unprune_stats.nonmonophyletic_inc_sed_to_des_ids;
     auto & lost_taxa = unprune_stats.lost_taxa;
-    for (auto pit : id_to_fix_map) {
-        OttId broken_ott_id = pit.first;
+    for (auto& [broken_ott_id, broken_des_ids] : id_to_fix_map) {
         auto taxon_node = ott_to_tax.at(broken_ott_id).first;
         auto nonexcluded_ids = taxon_node->get_data().nonexcluded_ids;
         assert(nonexcluded_ids != nullptr);
         lost_taxa.emplace(piecewise_construct,
                           forward_as_tuple(broken_ott_id),
                           forward_as_tuple(broken_ott_id,
-                                           pit.second,
+                                           broken_des_ids,
                                            *nonexcluded_ids,
                                            ott_to_sol));
     }
