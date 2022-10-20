@@ -19,8 +19,8 @@ struct RTNodeTrav;
 using Node_t = RootedTreeNode<RTNodeTrav>;
 
 struct RTNodeTrav {
-    mutable std::uint32_t trav_enter = UINT32_MAX;
-    mutable std::uint32_t trav_exit = UINT32_MAX;
+    // mutable std::uint32_t trav_enter = UINT32_MAX;
+    // mutable std::uint32_t trav_exit = UINT32_MAX;
 };
 
 struct RTTreeEmpty {
@@ -93,6 +93,7 @@ pair_ids_sets get_internal_ids(T & tree,
 template<typename T>
 pair_ids_sets taxo_get_internal_ids(T & tree,
                                     std::map<OttId, OttId> & toNamedAnc,
+                                    std::map<OttId, const Node_t *> & id2ndMap,
                                     const OttIdSet & relevant) {
     pair_ids_sets pis;
     OttIdSet & tip_ids = pis.first;
@@ -104,6 +105,7 @@ pair_ids_sets taxo_get_internal_ids(T & tree,
                 throw OTCError() << "tip without OTT ID";
             }
             auto ott_id = nd->get_ott_id();
+            id2ndMap[ott_id] = nd;
             tip_ids.insert(ott_id);
             auto first_anc_id = get_first_anc_with_rel_id(nd, relevant);
             toNamedAnc[ott_id] = first_anc_id;
@@ -112,6 +114,7 @@ pair_ids_sets taxo_get_internal_ids(T & tree,
                 throw OTCError() << "taxonomy internal node without OTT ID";
             }
             auto ott_id = nd->get_ott_id();
+            id2ndMap[ott_id] = nd;
             if (contains(relevant, ott_id)) {
                 internal_ids.insert(ott_id);
                 if (nd->get_parent() != nullptr) {
@@ -124,17 +127,89 @@ pair_ids_sets taxo_get_internal_ids(T & tree,
     return pis;
 }
 
+int check_ancs_for_id(const OttId ott_id,
+                      OttId root_id,
+                      const id_2_anc_t & phylo2anc,
+                      const id_2_anc_t & taxo2anc,
+                      std::map<OttId, const Node_t *> & tax_id2nd,
+                      const OttIdSet & incertae_sedis_ids) {
+    if (ott_id == root_id) {
+        return 0;
+    }
+    OttId phy_par_id, tax_par_id;
+    try {
+        phy_par_id = phylo2anc.at(ott_id);
+    } catch(...) {
+        throw OTCError() << ott_id << " not in phylo2anc map\n";
+    }
+    try {
+        tax_par_id = taxo2anc.at(ott_id);
+    } catch(...) {
+        throw OTCError() << ott_id << " not in taxo2anc map\n";
+    }
+    
+    if (phy_par_id == tax_par_id) {
+        return 0;
+    }
+    LOG(DEBUG) << ott_id << " is first a descendant of " << phy_par_id << " in phylogeny, but " << tax_par_id << " in taxonomy.\n";
+    
+    const Node_t * deepest_inc_sed_nd = nullptr;
+    const Node_t * curr_nd = tax_id2nd.at(ott_id);
+    OttId nd_id = ott_id;
+    while (true) {
+        if (nd_id == tax_par_id) {
+            break;
+        }
+        if (contains(incertae_sedis_ids, nd_id)) {
+            LOG(DEBUG) << "  setting deepest_inc_sed_nd to " << ott_id;
+            deepest_inc_sed_nd = curr_nd; 
+        } else {
+            LOG(DEBUG) << nd_id << " not incertae_sedis";
+        }
+        curr_nd = curr_nd->get_parent();
+        nd_id = curr_nd->get_ott_id();
+    } 
+    OttId must_be_anc_id;
+    if (deepest_inc_sed_nd != nullptr) {
+        must_be_anc_id = deepest_inc_sed_nd->get_parent()->get_ott_id();
+        LOG(DEBUG) << "must_be_anc_id = "<< must_be_anc_id;
+        OttId phy_spike_id = phy_par_id;
+        const Node_t * phy_spike_nd = tax_id2nd.at(phy_spike_id);
+        while (true) {
+            if (phy_spike_id == must_be_anc_id) {
+                LOG(DEBUG) << "must_be_anc_id = " << must_be_anc_id << " encountered";
+                return 0;
+            }
+            LOG(DEBUG) << "phy_spike_id = "<< phy_spike_id << " !=  " << must_be_anc_id;
+            if (phy_spike_id == tax_par_id) {
+                LOG(DEBUG) << "phy_spike_id = "<< phy_spike_id << " ==  " << tax_par_id << " = tax_par_id. breaking...";
+                break;
+            }
+            phy_spike_nd = phy_spike_nd->get_parent();
+            phy_spike_id = phy_spike_nd->get_ott_id();
+            if (phy_spike_id == root_id) {
+                LOG(DEBUG) << "phy_spike_id = "<< phy_spike_id << " ==  " << root_id << " = root_id, breaking...";
+                break;
+            }
+        }
+    } else {
+        LOG(DEBUG) << "deepest_inc_sed_nd = nullptr";
+    }
+    std::cout << ott_id << " is first a descendant of " << phy_par_id << " in phylogeny, but " << tax_par_id << " in taxonomy.\n";
+    throw OTCError() << "Doh!";
+    return 1;
+}
 
 int check_named_nodes(const Tree_t & supertree,
                       const Tree_t & taxonomy,
                       const OttIdSet & incertae_sedis_ids) {
     LOG(DEBUG) << "incertae_sedis_ids.size() = " << incertae_sedis_ids.size();
     int errs = 0;
-    set_traversal_entry_exit(supertree);
-    set_traversal_entry_exit(taxonomy);
     id_2_anc_t phylo2anc;
     auto [phylo_tips, phylo_internals] = get_internal_ids(supertree, phylo2anc);
-    auto [taxo_tips, taxo_internals] = taxo_get_internal_ids(taxonomy, phylo2anc, phylo_internals);
+    id_2_anc_t taxo2anc;
+    std::map<OttId, const Node_t *> tax_id2nd;
+    auto [taxo_tips, taxo_internals] = taxo_get_internal_ids(taxonomy, taxo2anc, tax_id2nd, phylo_internals);
     if (phylo_tips != taxo_tips) {
         auto phylo_extras = set_difference_as_set(phylo_tips, taxo_tips);
         for (auto pe : phylo_extras) {
@@ -146,6 +221,25 @@ int check_named_nodes(const Tree_t & supertree,
             errs += 1;
             std::cout << te << "\ttip missing in phylogeny.\n";
         }
+    }
+    if (phylo_internals != taxo_internals) {
+        auto phylo_extras = set_difference_as_set(phylo_internals, taxo_internals);
+        for (auto pe : phylo_extras) {
+            errs += 1;
+            std::cout << pe << "\textra internal in phylogeny.\n";
+        }
+        auto taxo_extras = set_difference_as_set(taxo_internals, phylo_internals);
+        for (auto te : taxo_extras) {
+            errs += 1;
+            std::cout << te << "\tinternal missing in phylogeny.\n";
+        }
+    }
+    auto root_id = supertree.get_root()->get_ott_id();
+    for (auto ott_id : phylo_tips) {
+        errs += check_ancs_for_id(ott_id, root_id, phylo2anc, taxo2anc, tax_id2nd, incertae_sedis_ids);
+    }
+    for (auto ott_id : phylo_internals) {
+        errs += check_ancs_for_id(ott_id, root_id, phylo2anc, taxo2anc, tax_id2nd, incertae_sedis_ids);
     }
     return errs;
 }
