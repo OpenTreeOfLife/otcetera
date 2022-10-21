@@ -55,6 +55,7 @@ programs = [
   ['prune-clean',  'prune-clean'],
   ['broken-taxa',  'broken-taxa'],
   ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],
+  ['checknamednodes', 'check-named-nodes'],
   ]
 
 # we need restbed for this, indirectly.
