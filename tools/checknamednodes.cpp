@@ -31,6 +31,7 @@ using std::string;
 using std::get;
 using std::unique_ptr;
 using std::vector;
+using std::set;
 
 using Tree_t = RootedTree<RTNodeTrav, RTTreeEmpty>;
 
@@ -62,7 +63,8 @@ using pair_ids_sets = std::pair<OttIdSet, OttIdSet>;
 using id_2_anc_t = std::map<OttId, OttId>;
 template<typename T>
 pair_ids_sets get_internal_ids(T & tree,
-                        std::map<OttId, OttId> & toNamedAnc) {
+                        std::map<OttId, OttId> & toNamedAnc,
+                        std::map<OttId, const Node_t *> & id2ndMap) {
     pair_ids_sets pis;
     OttIdSet & tip_ids = pis.first;
     OttIdSet & internal_ids = pis.second;
@@ -73,12 +75,14 @@ pair_ids_sets get_internal_ids(T & tree,
                 throw OTCError() << "tip without OTT ID";
             }
             auto ott_id = nd->get_ott_id();
+            id2ndMap[ott_id] = nd;
             tip_ids.insert(ott_id);
             auto first_anc_id = get_first_anc_with_id(nd);
             toNamedAnc[ott_id] = first_anc_id;
         } else {
             if (nd->has_ott_id()) {
                 auto ott_id = nd->get_ott_id();
+                id2ndMap[ott_id] = nd;
                 internal_ids.insert(ott_id);
                 if (nd->get_parent() != nullptr) {
                     auto first_anc_id = get_first_anc_with_id(nd);
@@ -127,10 +131,56 @@ pair_ids_sets taxo_get_internal_ids(T & tree,
     return pis;
 }
 
+const Node_t * find_deepest_inc_sed_before(OttId ott_id,
+                                           const std::map<OttId, const Node_t *> & tax_id2nd,
+                                           OttId tax_par_id,
+                                           const OttIdSet & incertae_sedis_ids) {
+    const Node_t * deepest_inc_sed_nd = nullptr;
+    const Node_t * curr_nd = tax_id2nd.at(ott_id);
+    OttId nd_id = ott_id;
+    while (true) {
+        if (nd_id == tax_par_id) {
+            break;
+        }
+        if (contains(incertae_sedis_ids, nd_id)) {
+            LOG(DEBUG) << "  setting deepest_inc_sed_nd to " << ott_id;
+            deepest_inc_sed_nd = curr_nd; 
+        } else {
+            LOG(DEBUG) << nd_id << " not incertae_sedis";
+        }
+        curr_nd = curr_nd->get_parent();
+        nd_id = curr_nd->get_ott_id();
+    }
+    return deepest_inc_sed_nd;
+}
+
+const Node_t * find_deepest_taxon_before_phy(OttId ott_id,
+                                             const std::map<OttId, const Node_t *> & phy_id2nd,
+                                             OttId must_be_anc_id) {
+    const Node_t * deepest_nd = nullptr;
+    const Node_t * curr_nd = phy_id2nd.at(ott_id);
+    while (true) {
+        if (curr_nd->has_ott_id()) {
+            if (curr_nd->get_ott_id() == must_be_anc_id) {
+                break;
+            }
+            LOG(DEBUG) << "  setting deepest_nd to " << ott_id;
+            deepest_nd = curr_nd; 
+        } else {
+            LOG(DEBUG) << "node without ID";
+        }
+        curr_nd = curr_nd->get_parent();
+    }
+    return deepest_nd;
+}
+
+
+
 int check_ancs_for_id(const OttId ott_id,
                       OttId root_id,
                       const id_2_anc_t & phylo2anc,
                       const id_2_anc_t & taxo2anc,
+                      std::map<OttId, const Node_t *> & phy_id2nd,
                       std::map<OttId, const Node_t *> & tax_id2nd,
                       const OttIdSet & incertae_sedis_ids) {
     if (ott_id == root_id) {
@@ -153,24 +203,15 @@ int check_ancs_for_id(const OttId ott_id,
     }
     LOG(DEBUG) << ott_id << " is first a descendant of " << phy_par_id << " in phylogeny, but " << tax_par_id << " in taxonomy.\n";
     
-    const Node_t * deepest_inc_sed_nd = nullptr;
-    const Node_t * curr_nd = tax_id2nd.at(ott_id);
-    OttId nd_id = ott_id;
-    while (true) {
-        if (nd_id == tax_par_id) {
-            break;
-        }
-        if (contains(incertae_sedis_ids, nd_id)) {
-            LOG(DEBUG) << "  setting deepest_inc_sed_nd to " << ott_id;
-            deepest_inc_sed_nd = curr_nd; 
-        } else {
-            LOG(DEBUG) << nd_id << " not incertae_sedis";
-        }
-        curr_nd = curr_nd->get_parent();
-        nd_id = curr_nd->get_ott_id();
-    } 
+    auto deepest_inc_sed_nd = find_deepest_inc_sed_before(ott_id,
+                                                          tax_id2nd, 
+                                                          tax_par_id, 
+                                                          incertae_sedis_ids);
     OttId must_be_anc_id;
     if (deepest_inc_sed_nd != nullptr) {
+        // Return 0 if ott_id infiltrated phy_par_id because 
+        //  ott_id was a member of a deep incertae sedis taxon
+        //  that was "allowed" to enter phy_par_id
         must_be_anc_id = deepest_inc_sed_nd->get_parent()->get_ott_id();
         LOG(DEBUG) << "must_be_anc_id = "<< must_be_anc_id;
         OttId phy_spike_id = phy_par_id;
@@ -192,11 +233,49 @@ int check_ancs_for_id(const OttId ott_id,
                 break;
             }
         }
+        if (phy_spike_id == root_id) {
+            // phy_par_id is not a taxonomic child of tax_par_id.
+            // this can be allowed if phy_par_id is part of a 
+            //  deep incertae sedis taxon that infiltrated 
+            //  tax_par_id, and ott_id is part of an deep incertae sedis
+            //  subclade of tax_par_id that can then infiltrate
+            //  phy_par_id
+            auto phy_deep = find_deepest_taxon_before_phy(ott_id,
+                                                          phy_id2nd, 
+                                                          must_be_anc_id);
+            if (phy_deep != nullptr) {
+                assert(phy_deep->has_ott_id());
+                auto phy_deep_id = phy_deep->get_ott_id();
+                auto phy_deep_taxon = tax_id2nd.at(phy_deep_id);
+                auto mba_taxon = deepest_inc_sed_nd->get_parent();
+                set<const Node_t *> mba_spike;
+                for (auto mbaa: iter_anc_const(*mba_taxon)) {
+                    mba_spike.insert(mbaa);
+                }
+                auto deep_inc_sed_phy = phy_deep_taxon;
+                for (auto pdta : iter_anc_const(*phy_deep_taxon)) {
+                    if (contains(mba_spike, pdta)) {
+                        break;
+                    }
+                    LOG(DEBUG) << pdta->get_ott_id() << " is taxonomic anc of " << phy_deep_id << " but not " << must_be_anc_id ;
+                    deep_inc_sed_phy = pdta;
+                }
+                assert(deep_inc_sed_phy);
+                assert(deep_inc_sed_phy->has_ott_id());
+                LOG(DEBUG) << "deep_inc_sed_phy->get_ott_id() = "<<deep_inc_sed_phy->get_ott_id();
+                if (contains(incertae_sedis_ids, deep_inc_sed_phy->get_ott_id())) {
+                    LOG(DEBUG) << " ... is in incertae_sedis_ids";
+                    return 0;
+                }
+                LOG(DEBUG) << " ... is not in incertae_sedis_ids";
+            }
+            
+        }
     } else {
         LOG(DEBUG) << "deepest_inc_sed_nd = nullptr";
     }
     std::cout << ott_id << " is first a descendant of " << phy_par_id << " in phylogeny, but " << tax_par_id << " in taxonomy.\n";
-    throw OTCError() << "Doh!";
+    // throw OTCError() << "Doh!";
     return 1;
 }
 
@@ -206,7 +285,8 @@ int check_named_nodes(const Tree_t & supertree,
     LOG(DEBUG) << "incertae_sedis_ids.size() = " << incertae_sedis_ids.size();
     int errs = 0;
     id_2_anc_t phylo2anc;
-    auto [phylo_tips, phylo_internals] = get_internal_ids(supertree, phylo2anc);
+    std::map<OttId, const Node_t *> phy_id2nd;
+    auto [phylo_tips, phylo_internals] = get_internal_ids(supertree, phylo2anc, phy_id2nd);
     id_2_anc_t taxo2anc;
     std::map<OttId, const Node_t *> tax_id2nd;
     auto [taxo_tips, taxo_internals] = taxo_get_internal_ids(taxonomy, taxo2anc, tax_id2nd, phylo_internals);
@@ -236,10 +316,12 @@ int check_named_nodes(const Tree_t & supertree,
     }
     auto root_id = supertree.get_root()->get_ott_id();
     for (auto ott_id : phylo_tips) {
-        errs += check_ancs_for_id(ott_id, root_id, phylo2anc, taxo2anc, tax_id2nd, incertae_sedis_ids);
+        errs += check_ancs_for_id(ott_id, root_id, phylo2anc, taxo2anc,
+                                  phy_id2nd, tax_id2nd, incertae_sedis_ids);
     }
     for (auto ott_id : phylo_internals) {
-        errs += check_ancs_for_id(ott_id, root_id, phylo2anc, taxo2anc, tax_id2nd, incertae_sedis_ids);
+        errs += check_ancs_for_id(ott_id, root_id, phylo2anc, taxo2anc,
+                                  phy_id2nd, tax_id2nd, incertae_sedis_ids);
     }
     return errs;
 }
@@ -257,7 +339,12 @@ int main(int argc, char *argv[]) {
                 "  and a filepath to list of incertae sedis taxa (1 ID per line)."
                 "Emits an error message for every taxon that does not have the expected\n"
                 "  parent, based on the structure of the taxonomy and the nodes with \n"
-                "  OTT IDs in the phylogeny.\n",
+                "  OTT IDs in the phylogeny.\n"
+                "To be used to check propinquity with:\n"
+                "  otc-check-named-nodes \\\n"
+                "    -iexemplified_phylo/incertae_sedis.txt \\\n" 
+                "    labelled_supertree/labelled_supertree.tre \\\n" 
+                "    exemplified_phylo/regraft_cleaned_ott.tre\n",
                 "-iincertae_sedis.txt phylo.tre taxo.tre");
     ot_cli.add_flag('i',
               "Optional list of IDs of tree in the taxonomy that are incertae sedis",
