@@ -86,35 +86,47 @@ map<typename Tree_t::node_type const*, set<OttId>> construct_exclude_sets(const 
 }
 
 vector<pair<node_type<Tree_t>*,RSplit>>
-splits_for_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap)
+splits_for_tree(bool preorder, Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap)
 {
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
     auto root = tree.get_root();
     const auto leafTaxa = root->get_data().des_ids;
     const auto leafTaxaIndices = remap(leafTaxa);
-    for(auto nd: iter_pre(tree))
+    auto maybe_add_split = [&](const auto& nd)
     {
         if (not nd->is_tip() and nd != root)
         {
             auto descendants = remap(nd->get_data().des_ids);
             splits.push_back({nd,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
         }
+    };
+
+    if (preorder)
+    {
+        for(auto nd: iter_pre(tree))
+            maybe_add_split(nd);
     }
+    else
+    {
+        for(auto nd: iter_post(tree))
+            maybe_add_split(nd);
+    }
+
     return splits;
 }
 
 vector<pair<node_type<Tree_t>*,RSplit>>
-splits_for_taxonomy_tree(Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
+splits_for_taxonomy_tree(bool preorder, Tree_t& tree, const std::function< set<int>(const set<OttId>&) >& remap, const set<OttId>& incertae_sedis)
 {
     if (incertae_sedis.empty())
-        return splits_for_tree(tree, remap);
+        return splits_for_tree(preorder, tree, remap);
 
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
     auto root = tree.get_root();
 
     auto exclude = construct_exclude_sets(tree, incertae_sedis);
 
-    for(auto nd: iter_pre(tree))
+    auto maybe_add_split = [&](const auto& nd)
     {
         if (not nd->is_tip() and nd != root) {
             // construct split
@@ -122,6 +134,17 @@ splits_for_taxonomy_tree(Tree_t& tree, const std::function< set<int>(const set<O
             const auto nondescendants = remap(exclude[nd]);
             splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
         }
+    };
+
+    if (preorder)
+    {
+        for(auto nd: iter_pre(tree))
+            maybe_add_split(nd);
+    }
+    else
+    {
+        for(auto nd: iter_post(tree))
+            maybe_add_split(nd);
     }
 
     return splits;
@@ -165,6 +188,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     bool incremental = args["incremental"].as<bool>();
     bool g_do_timing = (bool)args.count("time");
     bool rollback = args["rollback"].as<bool>();
+    bool preorder = args["branch-order"].as<string>() == "preorder";
+
     auto start_timing = std::chrono::high_resolution_clock::now();
 
     // 1. Standardize names to 0..n-1 for this subproblem
@@ -277,8 +302,8 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
         // 2. Get remaining splits
         auto splits2 = (i<trees.size()-1)
-            ?splits_for_tree(*tree, remap)
-            :splits_for_taxonomy_tree(*tree, remap, incertae_sedis);
+            ?splits_for_tree(preorder, *tree, remap)
+            :splits_for_taxonomy_tree(preorder, *tree, remap, incertae_sedis);
 
         if (splits2.empty()) continue;
 

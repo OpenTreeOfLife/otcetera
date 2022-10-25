@@ -90,7 +90,8 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("incertae-sedis,I", value<string>(), "File containing Incertae sedis ids")
         ("root-name,n", value<string>(), "Rename the root to this name")
         ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
-        ("prune-unrecognized,p","Prune unrecognized tips");
+        ("prune-unrecognized,p","Prune unrecognized tips")
+        ("branch-order", value<string>()->default_value("preorder"), "Consider splits from a tree preorder or postorder?");
 
     options_description strategies("Solver strategies");
     strategies.add_options()
@@ -123,6 +124,10 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
                                                     "Files are concatenated and the combined list treated as a single subproblem.\n"
                                                     "Trees should occur in order of priority, with the taxonomy last.",
                                                     visible, invisible, p);
+
+    string order = vm.at("branch-order").as<string>();
+    if (order != "preorder" and order != "postorder")
+        throw OTCError()<<"Option 'branch-order' must be either 'preorder' or 'postorder': '"<<order<<"' not recognized.";
     return vm;
 }
 
