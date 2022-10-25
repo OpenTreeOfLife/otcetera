@@ -378,10 +378,14 @@ int main(int argc, char *argv[])
             rules.set_ott_ids = false;
         }
         bool setRootName = (bool)args.count("root-name");
+
+        if (not args.count("subproblem"))
+            throw OTCError("No subproblem provided!\n\nSee --help for usage information.");
+
         vector<string> filenames = args["subproblem"].as<vector<string>>();
         // 2. Load trees from subproblem file(s)
         if (filenames.empty()) {
-            throw OTCError("No subproblem provided!");
+            throw OTCError("No subproblem provided!\n\nSee --help for usage information.");
         }
         vector<unique_ptr<Tree_t>> trees = get_trees<Tree_t>(filenames, rules);
         if (trees.empty()) {
