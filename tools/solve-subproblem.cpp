@@ -94,8 +94,8 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
 
     options_description strategies("Solver strategies");
     strategies.add_options()
-        ("batching",value<bool>()->default_value(true), "Make unresolved taxonomy from input tips.")
-        ("oracle", value<bool>()->default_value(true), "Predict conflicting splits before BUILD.")
+        ("batching",value<bool>()->default_value(false), "Make unresolved taxonomy from input tips.")
+        ("oracle", value<bool>()->default_value(false), "Predict conflicting splits before BUILD.")
         ("incremental", value<bool>()->default_value(true),"Reuse work from previous BUILD.")
         ("rollback",value<bool>()->default_value(true), "Record rollback info in BUILDINC.")
         ;
