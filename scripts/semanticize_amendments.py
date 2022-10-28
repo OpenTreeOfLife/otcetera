@@ -58,9 +58,12 @@ def main(repo_top, last_handled_sha):
     for c in repo.commits_after(after_sha=last_handled_sha):
         for fp, oid in repo.files_touched(c):
             if '/' in fp: # top level files are for notes, ID minting...
+                sys.stderr.write(f"processing {fp} ...\n")
                 content = repo.get_file_contents(oid)
                 tb = processs_amendment(fp, content)
                 all_terse_blobs.extend(tb)
+            else:
+                sys.stderr.write(f"skipping {fp} ...\n")
     print(json.dumps(all_terse_blobs, indent=2))
 
 
