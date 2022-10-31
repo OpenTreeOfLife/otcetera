@@ -38,14 +38,16 @@ PatchableTaxonomy::PatchableTaxonomy(const std::string& dir,
                                      OttId kr)
     :RichTaxonomy(dir, cf, kr) {
     const auto & rich_tax_tree = this->get_tax_tree();
-    const auto & rt_data = rich_tax_tree.get_data();
-    for (auto& [name, node] : rt_data.name_to_node) {
-        if (node == nullptr) {
-            continue;
-        }
+    //const auto & rt_data = rich_tax_tree.get_data();
+    // for (auto& [name, node] : rt_data.name_to_node) {
+    for (auto node : iter_post_const(rich_tax_tree)) {
+        assert(node != nullptr);
         const auto & nd_data = node->get_data();
         for (auto syn_ptr : nd_data.junior_synonyms) {
             synonym2node[syn_ptr->name].push_back(node);
+            if (syn_ptr->name == "Zmotus") {
+                LOG(INFO) << "synonym Zmotus for " << node->get_ott_id() << " added to synonym2node";
+            }
             //std::cerr << "registered " << syn_ptr->name << " syn for "<< nd_data.get_nonuniqname() << '\n';
         }
         //     if (name != node->get_data().get_nonuniqname()) {
@@ -133,12 +135,16 @@ bool_str_t PatchableTaxonomy::delete_synonym(const std::string & name, OttId ott
 }
 
 void PatchableTaxonomy::add_name_to_node_maps(const std::string & name,
-                                                      const RTRichTaxNode * target_nd) {
+                                              const RTRichTaxNode * target_nd) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
     auto hit = rt_data.homonym_to_nodes.find(name);
     auto sit = rt_data.name_to_node.find(name);
     if (hit != rt_data.homonym_to_nodes.end()) {
+        if (name == "Zmotus") {
+            LOG(INFO) << "add_name_to_node_maps Zmotus to homonym_to_nodes for " << target_nd->get_ott_id();
+        }
+            
         assert(sit == rt_data.name_to_node.end());
         auto nv = copy_except(hit->second, target_nd);
         auto nvs = nv.size();
@@ -149,10 +155,17 @@ void PatchableTaxonomy::add_name_to_node_maps(const std::string & name,
         return;
     }
     if (sit == rt_data.name_to_node.end()) {
+        if (name == "Zmotus") {
+            LOG(INFO) << "add_name_to_node_maps Zmotus to name_to_node for " << target_nd->get_ott_id();
+        }
+        
         rt_data.name_to_node[name] = target_nd;
         return;
     }
     if (sit->second != target_nd) {
+        if (name == "Zmotus") {
+            LOG(INFO) << "add_name_to_node_maps Zmotus from name_to_node for " << sit->second->get_ott_id() << " to homonym_to_nodes with " << target_nd->get_ott_id();
+        }
         std::vector<const RTRichTaxNode *> v{sit->second, target_nd};
         rt_data.homonym_to_nodes.emplace(name, v);
         rt_data.name_to_node.erase(sit);
@@ -422,6 +435,10 @@ void PatchableTaxonomy::write_synonyms_file_contents(std::ostream & sf) const {
     for (auto & [syn_name, vec_nd] : synonym2node) {
         for (auto nd_ptr : vec_nd) {
             const auto & jsv = nd_ptr->get_data().junior_synonyms;
+            if (syn_name == "Zmotus") {
+                LOG(INFO) << "synonym Zmotus for " << nd_ptr->get_ott_id() << " in write_synonyms_file_contents";
+            }
+            
             for (auto jsp : jsv) {
                 if (jsp->name == syn_name) {
                     sf << syn_name << sep 
@@ -429,6 +446,9 @@ void PatchableTaxonomy::write_synonyms_file_contents(std::ostream & sf) const {
                        << sep // we don't retain the type on parsing
                        << sep // we don't retain the uniqname on parsing
                        << jsp->source_string << sep << '\n';
+                    if (syn_name == "Zmotus") {
+                        LOG(INFO) << "synonym Zmotus for " << nd_ptr->get_ott_id() << " in jsv in write_synonyms_file_contents";
+                    }
                     break;
                 }
             }

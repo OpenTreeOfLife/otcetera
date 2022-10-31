@@ -847,6 +847,9 @@ void RichTaxonomy::read_input_synonyms_stream(std::istream & synonyms_file) {
         string name = string(start[1], end[1] - start[1]);
         unsigned long raw_id = std::strtoul(start[0], &temp, 10);
         OttId ott_id = check_ott_id_size(raw_id);
+        if (name == "Zmotus") {
+            LOG(INFO) << "synonym Zmotus for " << ott_id << " read";
+        }
         const RTRichTaxNode * primary = nullptr;
         try {
             primary = tree_data.id_to_node.at(ott_id);
@@ -891,6 +894,9 @@ void RichTaxonomy::read_ott_synonyms_stream(std::istream & synonyms_file) {
         string name = string(start[0], end[0] - start[0]);
         unsigned long raw_id = std::strtoul(start[1], &temp, 10);
         OttId ott_id = check_ott_id_size(raw_id);
+        if (name == "Zmotus") {
+            LOG(INFO) << "synonym Zmotus for " << ott_id << " read";
+        }
         const RTRichTaxNode * primary = nullptr;
         try {
             primary = tree_data.id_to_node.at(ott_id);
@@ -912,6 +918,9 @@ void RichTaxonomy::read_ott_synonyms_stream(std::istream & synonyms_file) {
         process_source_info_vec(vs, tree_data, tjs, primary);
         RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
         mp->get_data().junior_synonyms.push_back(&tjs);
+        if (name == "Zmotus") {
+            LOG(INFO) << "synonym Zmotus for " << ott_id << " pushed back";
+        }
     }
     if (num_syn_skipped > 0) {
         LOG(INFO) << num_syn_skipped << " synonyms skipped because they mapped to unknown IDs.\n";
