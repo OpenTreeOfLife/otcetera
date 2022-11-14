@@ -91,13 +91,13 @@ splits_for_tree(bool preorder, Tree_t& tree, const std::function< set<int>(const
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
     auto root = tree.get_root();
     const auto leafTaxa = root->get_data().des_ids;
-    const auto leafTaxaIndices = remap(leafTaxa);
+    const auto leafTaxaIndices = set_to_vector( remap(leafTaxa) );
     auto maybe_add_split = [&](const auto& nd)
     {
         if (not nd->is_tip() and nd != root)
         {
             auto descendants = remap(nd->get_data().des_ids);
-            splits.push_back({nd,RSplit(new RSplitObj{descendants, leafTaxaIndices})});
+            splits.push_back({nd, RSplit(new RSplitObj{descendants, leafTaxaIndices})}) ;
         }
     };
 
@@ -316,7 +316,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
                 add_splits_if_consistent_batch(splits2,j,1);
         }
 
-        LOG(DEBUG)<<"i = "<<i<<"  Total build calls = "<<total_build_calls;
+        LOG(INFO)<<"i = "<<i+1<<" / "<<trees.size()<<"   Total build calls = "<<total_build_calls;
     }
 
     vector<const_node_type<Tree_t>*> compatible_taxa;

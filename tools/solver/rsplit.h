@@ -42,6 +42,7 @@ struct RSplitObj
 
     RSplitObj();
     RSplitObj(const std::set<int>& i, const std::set<int>& a);
+    RSplitObj(const std::set<int>& i, const std::vector<int>& a);
 };
 
 // Reference-counted objects, with reference stored inside the object
@@ -55,5 +56,15 @@ std::ostream& operator<<(std::ostream& o, const ConstRSplit& s);
 std::ostream& operator<<(std::ostream& o, const RSplit& s);
 
 RSplit split_from_include_exclude(const std::set<int>& i, const std::set<int>& e);
+
+/// Create a SORTED vector from a set
+/// Better: myset | ranges::to<vector>
+template <typename T>
+std::vector<T> set_to_vector(const std::set<T>& s) {
+    std::vector<T> v;
+    v.reserve(s.size());
+    std::copy(s.begin(), s.end(), std::back_inserter(v));
+    return v;
+}
 
 #endif /* RSPLIT_H */

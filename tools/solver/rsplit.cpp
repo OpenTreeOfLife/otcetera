@@ -4,22 +4,19 @@
 using std::set;
 using std::vector;
 
-/// Create a SORTED vector from a set
-/// Better: myset | ranges::to<vector>
-template <typename T>
-vector<T> set_to_vector(const set<T>& s) {
-    vector<T> v;
-    v.reserve(s.size());
-    std::copy(s.begin(), s.end(), std::back_inserter(v));
-    return v;
-}
-
 RSplitObj::RSplitObj()
 {
     id = num++;
 }
 
 RSplitObj::RSplitObj(const set<int>& i, const set<int>& a)
+{
+    id = num++;
+    in  = set_to_vector(i);
+    set_difference(begin(a), end(a), begin(in), end(in), std::inserter(out, out.end()));
+}
+
+RSplitObj::RSplitObj(const set<int>& i, const vector<int>& a)
 {
     id = num++;
     in  = set_to_vector(i);
