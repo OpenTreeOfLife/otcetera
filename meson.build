@@ -6,7 +6,7 @@ project('otcetera', ['cpp'],
 	  'cpp_std=c++17',
           'warning_level=3'
 	],
-	meson_version: '>=0.53')
+	meson_version: '>=0.60')
 
 cpp = meson.get_compiler('cpp')
 
