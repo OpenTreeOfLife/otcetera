@@ -274,23 +274,30 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             return result;
         };
 
-    std::function<void(vector<pair<node_type<Tree_t>*,RSplit>>&,int,int)> add_splits_if_consistent_batch;
-    add_splits_if_consistent_batch = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n)
+    std::function<int(vector<pair<node_type<Tree_t>*,RSplit>>&,int,int)> add_splits_if_consistent_batch;
+    add_splits_if_consistent_batch = [&](vector<pair<node_type<Tree_t>*,RSplit>>& splits, int start, int n) -> int
         {
             assert(n >= 1);
             assert(start+n <= splits.size());
             auto result = add_splits_if_consistent(splits, start, n);
-            if (not result and n > 1)
+            if (result)
+                return n;
+            else if (n<=1)
+                return 0;
+            else
             {
                 int n1 = n/2;
                 int n2 = n - n1;
-                add_splits_if_consistent_batch(splits, start   , n1);
-                add_splits_if_consistent_batch(splits, start+n1, n2);
+                int n_ok1 = add_splits_if_consistent_batch(splits, start   , n1);
+                int n_ok2 = add_splits_if_consistent_batch(splits, start+n1, n2);
+                return n_ok1 + n_ok2;
             }
         };
 
     // 1. Find splits in order of input trees
     vector<pair<node_type<Tree_t>*,RSplit>> splits;
+    int total_splits_considered = 0;
+    int total_splits_compatible = 0;
     for(int i=0;i<trees.size();i++)
     {
         const auto& tree = trees[i];
@@ -307,16 +314,24 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
 
         if (splits2.empty()) continue;
 
+        total_splits_considered += splits2.size();
+
         // 3. Add compatible splits to `splits` and remove incompatible nodes from `trees[i]`;
         if (batching)
-            add_splits_if_consistent_batch(splits2, 0, splits2.size());
+            total_splits_compatible += add_splits_if_consistent_batch(splits2, 0, splits2.size());
         else
         {
             for(int j=0;j<splits2.size();j++)
-                add_splits_if_consistent_batch(splits2,j,1);
+                total_splits_compatible += add_splits_if_consistent_batch(splits2,j,1);
         }
 
-        LOG(INFO)<<"i = "<<i+1<<" / "<<trees.size()<<"   Total build calls = "<<total_build_calls;
+        auto cur_timing = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = cur_timing - start_timing;
+        LOG(INFO)<<"i = "<<i+1<<" / "<<trees.size()<<
+            "  #build = "<<total_build_calls<<
+            "  splits-all = "<<total_splits_considered<<
+            "  splits-ok = "<<total_splits_compatible<<
+            "  time = "<<std::fixed<<std::setprecision(4)<<diff.count() << " seconds";
     }
 
     vector<const_node_type<Tree_t>*> compatible_taxa;
@@ -349,7 +364,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
     if (g_do_timing) {
         auto end_timing = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> diff = end_timing - start_timing;
-        std::cerr << "timing " << std::setprecision(10) << diff.count() << " seconds.\n";
+        std::cerr << "timing " << std::setprecision(8) << diff.count() << " seconds.\n";
     }
     return tree;
 }
