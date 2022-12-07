@@ -4,14 +4,14 @@
 #include <vector>
 #include <cstdlib>
 
+#include <g3log/logworker.hpp>
+#include <g3log/loglevels.hpp>
+
 ///////////////////////////////////////////////////////////////
 // pragmas are MTH mods to silence clang
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored  "-Wglobal-constructors"
 #pragma clang diagnostic ignored  "-Wexit-time-destructors"
-INITIALIZE_EASYLOGGINGPP
-
-static el::Configurations defaultConf;
 
 #pragma clang diagnostic pop
 ///////////////////////////////////////////////////////////////
@@ -23,6 +23,31 @@ using std::vector;
 
 namespace otc {
 bool debugging_output_enabled = false;
+
+std::unique_ptr<g3::LogWorker>  default_worker;
+
+class CustomSink
+{
+public:
+    void forwardLogToStdout(g3::LogMessageMover logEntry) {
+        std::cout << logEntry.get().timestamp()<<" ["<<logEntry.get().level()<<"]  "<<logEntry.get().message() << std::endl;
+    }
+};
+
+void initialize_logging()
+{
+    auto logFilePath = std::getenv("OTCETERA_LOGFILE");
+
+    auto worker = g3::LogWorker::createLogWorker();
+    // Log to file
+    auto handle1 = worker->addDefaultLogger("otcetera", logFilePath ? logFilePath : "./");
+    // Log to console
+    auto handle2 = worker->addSink(std::make_unique<CustomSink>(), &CustomSink::forwardLogToStdout);
+    // Initialize Logging
+    g3::initializeLogging(worker.get());
+    default_worker = std::move(worker);
+}
+
 OTCLI::OTCLI(const char *title,
           const char *descrip,
           const char *usage,
@@ -36,20 +61,15 @@ OTCLI::OTCLI(const char *title,
         usageStr(usage),
         out(std::cout),
         err(std::cerr) {
-    defaultConf.setToDefault();
-    if (quietExecution) {
-        defaultConf.set(el::Level::Global, el::ConfigurationType::Enabled, "false");
-    } else {
-        defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
-        defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+    initialize_logging();
+
+    if (quietExecution)
+        g3::log_levels::disableAll();
+    else
+    {
+        g3::log_levels::enable(TRACE);
+        g3::log_levels::enable(DEBUG);
     }
-    auto logFilePath = std::getenv("OTCETERA_LOGFILE");
-    if (logFilePath) {
-        defaultConf.set(el::Level::Global, el::ConfigurationType::Filename, logFilePath);
-    } else {
-        std::cerr << "Not setting logFilePath\n";
-    }
-    el::Loggers::reconfigureLogger("default", defaultConf);
 }
 
 void OTCLI::print_help(std::ostream & outStream) {
@@ -77,15 +97,13 @@ void OTCLI::print_help(std::ostream & outStream) {
 void OTCLI::turn_on_verbose_mode() {
     this->verbose = true;
     debugging_output_enabled = true;
-    defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
-    el::Loggers::reconfigureLogger("default", defaultConf);
+    g3::log_levels::enable(DEBUG);
 }
 
 void OTCLI::turn_off_verbose_mode() {
     this->verbose = false;
     debugging_output_enabled = false;
-    defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
-    el::Loggers::reconfigureLogger("default", defaultConf);
+    g3::log_levels::disable(DEBUG);
 }
 
 bool OTCLI::handle_flag(const std::string & flagWithoutDash) {
@@ -125,16 +143,14 @@ bool OTCLI::handle_flag(const std::string & flagWithoutDash) {
             recursionNeeded = true;
         }
         this->verbose = true;
-        defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
-        el::Loggers::reconfigureLogger("default", defaultConf);
+        g3::log_levels::enable(TRACE);
     } else if (f == 'q') {
         if (flagWithoutDash.length() > 1) {
             recursionNeeded = true;
         }
         this->verbose = false;
         debugging_output_enabled = false;
-        defaultConf.set(el::Level::Global, el::ConfigurationType::Enabled, "false");
-        el::Loggers::reconfigureLogger("default", defaultConf);
+        g3::log_levels::disableAll();
     } else if (f == 'f') {
         if (flagWithoutDash.length() == 1) {
             this->err << "Expecting an argument value after the  -f flag.\n";
@@ -198,20 +214,19 @@ po::options_description standard_options() {
 }
 
 variables_map cmd_line_set_logging(const po::variables_map& vm) {
-    el::Configurations defaultConf;
     if (vm.count("quiet")) {
-        defaultConf.set(el::Level::Global,  el::ConfigurationType::Enabled, "false");
+        g3::log_levels::disableAll();
     } else {
-        defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "false");
-        defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "false");
+        g3::log_levels::disable(TRACE);
+        g3::log_levels::disable(DEBUG);
         if (vm.count("trace")) {
-            defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
+            g3::log_levels::enable(TRACE);
+            g3::log_levels::enable(DEBUG);
         }
         if (vm.count("verbose")) {
-            defaultConf.set(el::Level::Debug, el::ConfigurationType::Enabled, "true");
+            g3::log_levels::enable(DEBUG);
         }
     }
-    el::Loggers::reconfigureLogger("default", defaultConf);
     return vm;
 }
 

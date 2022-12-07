@@ -367,6 +367,8 @@ void standardize(Tree_t& t)
 
 int main(int argc, char *argv[])
 {
+    otc::initialize_logging();
+
     std::cout<<std::boolalpha;
     std::cerr<<std::boolalpha;
     try {

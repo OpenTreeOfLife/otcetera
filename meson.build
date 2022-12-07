@@ -21,8 +21,7 @@ conf_data.set_quoted('_ARCH_', host_machine.system()+' ' + host_machine.cpu_fami
 conf_data.set_quoted('_COMPILER_', cpp.get_id() + ' ' + cpp.version()+' ' + host_machine.cpu_family())
 configure_file(output : 'config.h', configuration : conf_data)
 
-# Do we need this?
-# AC_PROG_LN_S
+logging = dependency('g3log')
 
 boost = dependency('boost', modules : ['program_options','system','filesystem'], version: '>=1.54')
 

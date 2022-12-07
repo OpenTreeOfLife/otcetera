@@ -24,7 +24,6 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
-INITIALIZE_EASYLOGGINGPP
 
 using namespace otc;
 namespace fs = boost::filesystem;
@@ -105,7 +104,10 @@ void add_name_and_rank(json& broken_taxa, const Taxonomy& taxonomy)
     }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
+    otc::initialize_logging();
+
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);

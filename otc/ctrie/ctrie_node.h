@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <bitset>
 #include <optional>
+#include <iostream>
 #include "otc/error.h"
 #include "otc/otc_base_includes.h"
 

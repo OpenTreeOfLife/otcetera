@@ -29,8 +29,6 @@
 #include "otc/tnrs/context.h"
 #include "otc/ws/tolws.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;
@@ -178,7 +176,10 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
+    otc::initialize_logging();
+
     if (set_global_conv_facet() != 0) {
         return 1;
     }

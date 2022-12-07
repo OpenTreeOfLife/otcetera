@@ -17,8 +17,6 @@
 #include "otc/tnrs/context.h"
 #include "otc/supertree_util.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
 
@@ -1205,7 +1203,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
         MemoryBookkeeper tax_mem_b;
         std::size_t tree_mem = 0;
         auto tax_mem = calc_memory_used(taxonomy, tax_mem_b);
-        write_memory_bookkeeping(LOG(INFO), tax_mem_b, "taxonomy", tax_mem);
+        write_memory_bookkeeping(INTERNAL_LOG_MESSAGE(INFO).stream(), tax_mem_b, "taxonomy", tax_mem);
 #   endif
     auto [tree,sta] = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
     try {
@@ -1358,7 +1356,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
 #       if defined(REPORT_MEMORY_USAGE)
             MemoryBookkeeper tree_mem_b;
             tree_mem += calc_memory_used_by_tree(tree, tree_mem_b);
-            write_memory_bookkeeping(LOG(INFO), tree_mem_b, "tree", tree_mem);
+            write_memory_bookkeeping(INTERNAL_LOG_MESSAGE(INFO).stream(), tree_mem_b, "tree", tree_mem);
             LOG(INFO) << "tax + tree memory = " << tax_mem << " + " << tree_mem << " = " << tax_mem + tree_mem;
 #       endif
     } catch (...) {
@@ -1371,6 +1369,9 @@ bool read_tree_and_annotations(const fs::path & config_path,
 }// namespace otc
 
 int main( const int argc, char** argv) {
+
+    otc::initialize_logging();
+
     if (otc::set_global_conv_facet() != 0) {
         return 1;
     }

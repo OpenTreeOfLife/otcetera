@@ -1,5 +1,6 @@
 #if !defined OTCETERA_BASE_INCLUDES_H
 #define OTCETERA_BASE_INCLUDES_H
+
 #include "assert.hh"
 #include <set>
 #include <functional>
@@ -7,13 +8,16 @@
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored  "-Wweak-vtables"
 #endif
-#define ELPP_CUSTOM_COUT std::cerr
-#define ELPP_THREAD_SAFE 1
-#define ELPP_STACKTRACE_ON_CRASH 1
 
-#include "otc/easylogging++.hpp"
 #include <optional>
 #include <limits>
+#include <fstream>
+#include <iostream>
+
+#include <g3log/g3log.hpp>
+#include <g3log/loglevels.hpp>
+const LEVELS ERROR {WARNING.value +1, {"ERROR"}};
+const LEVELS TRACE {DEBUG.value -1, {"TRACE"}};
 
 #define OTC_UNREACHABLE {LOG(ERROR)<<"Unreachable code reached!"; std::abort();}
 

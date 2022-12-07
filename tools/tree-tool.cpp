@@ -20,8 +20,6 @@
 
 namespace fs = boost::filesystem;
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;
@@ -345,7 +343,10 @@ void standardize(Tree_t& tree)
     sort_by_smallest_child(tree);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
+    otc::initialize_logging();
+
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);

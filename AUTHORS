@@ -2,8 +2,6 @@ otcetera has been written by:
   Mark T. Holder http://orcid.org/0000-0001-5575-0536
   Ben D. Redelings http://ben-redelings.org
 
-otceteraincludes: http://github.com/easylogging
-
 otcetera depends on https://github.com/nlohmann/json
 
 otcetera has borrowed many ideas/snippets from NCL (see author list for NCL below)

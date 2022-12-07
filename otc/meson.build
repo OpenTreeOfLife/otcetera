@@ -43,8 +43,8 @@ otc_inc = include_directories('..')
 otc_lib = shared_library('otcetera',
                          libotcetera_sources,
                          include_directories: otc_inc,
-                         dependencies: [boost, restbed],
+                         dependencies: [boost, restbed, logging],
                          install: true)
 
-libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib, dependencies: [restbed])
+libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib, dependencies: [restbed, logging])
 

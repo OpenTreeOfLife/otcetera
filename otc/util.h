@@ -10,6 +10,7 @@
 #include <list>
 #include <unordered_map>
 #include <string_view>
+#include <cstring>
 #include "otc/otc_base_includes.h"
 #include "otc/error.h"
 
