@@ -143,8 +143,8 @@ jobs:
         git clone https://github.com/KjellKod/g3log.git
         mkdir g3log/build
         cd g3log/build
-        cmake .. -DCMAKE_INSTALL_PREFIX="/usr/" -DUSE_DYNAMIC_LOGGING_LEVELS=ON
-        make -j4 package
+        cmake .. -DCMAKE_INSTALL_PREFIX="/usr/" -DUSE_DYNAMIC_LOGGING_LEVELS=ON -G Ninja
+        ninja package
         sudo dpkg -i g3log*.deb
 
     - name: Configure otcetera
