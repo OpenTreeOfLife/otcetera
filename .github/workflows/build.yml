@@ -156,8 +156,8 @@ jobs:
           ARGS="${ARGS} -Db_sanitize=${{ matrix.sanitize }}"
         fi
         echo "CPPFLAGS=-g $CPPFLAGS" >> $GITHUB_ENV
-        echo meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
-        meson build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
+        echo meson setup build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
+        meson setup build --prefix=$HOME/local --buildtype=${{ matrix.buildtype }} ${ARGS}
 
     - name: Build otcetera
       run: |
