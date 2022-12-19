@@ -167,6 +167,8 @@ jobs:
 
     - name: Run otcetera tests
       run: |
+        $HOME/local/bin/otc-version-reporter
+        $HOME/local/bin/otc-solve-subproblem -h
         python3 -mpip install requests
         ninja -C build test
 
