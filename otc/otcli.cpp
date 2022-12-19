@@ -29,8 +29,8 @@ std::unique_ptr<g3::LogWorker>  default_worker;
 class CustomSink
 {
 public:
-    void forwardLogToStdout(g3::LogMessageMover logEntry) {
-        std::cout << logEntry.get().timestamp()<<" ["<<logEntry.get().level()<<"]  "<<logEntry.get().message() << std::endl;
+    void forwardLogToStderr(g3::LogMessageMover logEntry) {
+        std::cerr << logEntry.get().timestamp()<<" ["<<logEntry.get().level()<<"]  "<<logEntry.get().message() << std::endl;
     }
 };
 
@@ -42,7 +42,7 @@ void initialize_logging()
     // Log to file
     auto handle1 = worker->addDefaultLogger("otcetera", logFilePath ? logFilePath : "./");
     // Log to console
-    auto handle2 = worker->addSink(std::make_unique<CustomSink>(), &CustomSink::forwardLogToStdout);
+    auto handle2 = worker->addSink(std::make_unique<CustomSink>(), &CustomSink::forwardLogToStderr);
     // Initialize Logging
     g3::initializeLogging(worker.get());
     default_worker = std::move(worker);
