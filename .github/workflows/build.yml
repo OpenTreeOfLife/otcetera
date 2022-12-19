@@ -132,8 +132,20 @@ jobs:
         cd
         git clone --recursive https://github.com/corvusoft/restbed.git
         mkdir restbed/build
-        ( cd restbed/build ; cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="${HOME}/local/" .. ; make ; make install )
+        cd restbed/build
+        cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTS=NO -DBUILD_SSL=NO -DCMAKE_INSTALL_PREFIX="${HOME}/local/" -G Ninja
+        ninja install
         echo "LD_LIBRARY_PATH=${HOME}/local/library:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: build g3log
+      run: |
+        cd
+        git clone https://github.com/KjellKod/g3log.git
+        mkdir g3log/build
+        cd g3log/build
+        cmake .. -DCMAKE_INSTALL_PREFIX="/usr/" -DUSE_DYNAMIC_LOGGING_LEVELS=ON
+        make -j4 package
+        sudo dpkg -i g3log*.deb
 
     - name: Configure otcetera
       run: |
