@@ -172,4 +172,17 @@ jobs:
         python3 -mpip install requests
         ninja -C build test
 
+    - name: Upload test files if they failed
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: test-results-${{ matrix.name }}
+        path: expected
+
+    - name: Upload test files if they failed
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: test-resultsws-${{ matrix.name }}
+        path: expected-ws
 
