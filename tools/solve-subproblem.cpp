@@ -89,7 +89,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
     output.add_options()
         ("incertae-sedis,I", value<string>(), "File containing Incertae sedis ids")
         ("root-name,n", value<string>(), "Rename the root to this name")
-        ("no-higher-tips,l", "Tips may be internal nodes on the taxonomy.")
+        ("no-higher-tips", "Tips may be internal nodes on the taxonomy.")
         ("prune-unrecognized,p","Prune unrecognized tips")
         ("branch-order", value<string>()->default_value("preorder"), "Consider splits from a tree preorder or postorder?");
 

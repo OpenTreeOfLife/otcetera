@@ -242,7 +242,7 @@ po::options_description standard_options() {
       ("response-file,f", value<string>(), "Treat contents of file <arg> as a command line.")
       ("quiet,q","QUIET mode (all logging disabled)")
       ("trace,t","TRACE level debugging (very noisy)")
-      ("logdir,l","Directory to put log file in")
+      ("logdir,l", value<string>(), "Directory to put log file in")
       ("verbose,v","verbose")
     ;
     return standard;
@@ -252,7 +252,7 @@ variables_map cmd_line_set_logging(const string& name, const po::variables_map& 
 {
     optional<fs::path> logdir;
     if (vm.count("logdir"))
-        logdir = vm["log"].as<string>();
+        logdir = vm["logdir"].as<string>();
 
     initialize_logging(name, logdir);
 
