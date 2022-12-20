@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <fstream>
 
 #include <g3log/logworker.hpp>
 #include <g3log/loglevels.hpp>
@@ -20,29 +21,54 @@ namespace po = boost::program_options;
 using po::variables_map;
 using std::string;
 using std::vector;
+using std::optional;
+namespace fs = std::filesystem;
 
 namespace otc {
 bool debugging_output_enabled = false;
 
 std::unique_ptr<g3::LogWorker>  default_worker;
 
-class CustomSink
+class ConsoleSink
 {
 public:
-    void forwardLogToStderr(g3::LogMessageMover logEntry) {
+    void logToStderr(g3::LogMessageMover logEntry) {
         std::cerr << logEntry.get().timestamp()<<" ["<<logEntry.get().level()<<"]  "<<logEntry.get().message() << std::endl;
     }
 };
 
-void initialize_logging()
+class FileSink
 {
-    auto logFilePath = std::getenv("OTCETERA_LOGFILE");
+    std::ofstream out;
+public:
+    void logToFile(g3::LogMessageMover logEntry) {
+        out << logEntry.get().timestamp()<<" ["<<logEntry.get().level()<<"]  "<<logEntry.get().message() << std::endl;
+    }
+
+    FileSink(const fs::path& filepath)
+        :out(filepath, std::ios::app)
+        {
+            out<<"======================== BEGIN ========================\n";
+        }
+};
+
+void initialize_logging(const string& name, std::optional<fs::path> logfile_dir)
+{
+    fs::path logfile = fs::path(name+".log.txt").filename();
+
+    // This is for backward compatibility.  After all users switch to the command-line flag we can remove it.
+    if (auto logfile_dir_env = std::getenv("OTCETERA_LOGFILE"); logfile_dir_env and not logfile_dir)
+        logfile_dir = string(logfile_dir_env);
+
+    if (logfile_dir)
+        logfile = *logfile_dir / logfile;
 
     auto worker = g3::LogWorker::createLogWorker();
-    // Log to file
-    auto handle1 = worker->addDefaultLogger("otcetera", logFilePath ? logFilePath : "./");
     // Log to console
-    auto handle2 = worker->addSink(std::make_unique<CustomSink>(), &CustomSink::forwardLogToStderr);
+    auto handle1 = worker->addSink(std::make_unique<ConsoleSink>(), &ConsoleSink::logToStderr);
+    // Log to file
+    auto handle2 = worker->addSink(std::make_unique<FileSink>(logfile), &FileSink::logToFile);
+
     // Initialize Logging
     g3::initializeLogging(worker.get());
     default_worker = std::move(worker);
@@ -60,9 +86,8 @@ OTCLI::OTCLI(const char *title,
         descriptionStr(descrip),
         usageStr(usage),
         out(std::cout),
-        err(std::cerr) {
-    initialize_logging();
-
+        err(std::cerr)
+{
     if (quietExecution)
         g3::log_levels::disableAll();
     else
@@ -79,6 +104,7 @@ void OTCLI::print_help(std::ostream & outStream) {
     outStream << "Standard command-line flags:\n";
     outStream << "    -h on the command line shows this help message\n";
     outStream << "    -fFILE treat each line of FILE as an arg\n";
+    outStream << "    -l logfile directory.\n";
     outStream << "    -q QUIET mode (all logging disabled)\n";
     outStream << "    -t TRACE level debugging (very noisy)\n";
     outStream << "    -v verbose\n";
@@ -138,6 +164,12 @@ bool OTCLI::handle_flag(const std::string & flagWithoutDash) {
             recursionNeeded = true;
         }
         turn_on_verbose_mode();
+    } else if (f == 'l') {
+        if (flagWithoutDash.length() == 1) {
+            this->err << "Expecting an argument value after the  -l flag.\n";
+            return false;
+        }
+        logfile_dir_arg = flagWithoutDash.substr(1);
     } else if (f == 't') {
         if (flagWithoutDash.length() > 1) {
             recursionNeeded = true;
@@ -166,6 +198,7 @@ bool OTCLI::handle_flag(const std::string & flagWithoutDash) {
     }
     return true;
 }
+
 bool OTCLI::parse_args(int argc, char *argv[], std::vector<std::string> & args) {
     this->exitCode = 0;
     std::list<std::string> allArgs;
@@ -192,6 +225,7 @@ bool OTCLI::parse_args(int argc, char *argv[], std::vector<std::string> & args) 
             args.push_back(filepathstr);
         }
     }
+    initialize_logging(argv[0], logfile_dir_arg);
     return true;
 }
 
@@ -208,12 +242,20 @@ po::options_description standard_options() {
       ("response-file,f", value<string>(), "Treat contents of file <arg> as a command line.")
       ("quiet,q","QUIET mode (all logging disabled)")
       ("trace,t","TRACE level debugging (very noisy)")
+      ("logdir,l","Directory to put log file in")
       ("verbose,v","verbose")
     ;
     return standard;
 }
 
-variables_map cmd_line_set_logging(const po::variables_map& vm) {
+variables_map cmd_line_set_logging(const string& name, const po::variables_map& vm)
+{
+    optional<fs::path> logdir;
+    if (vm.count("logdir"))
+        logdir = vm["log"].as<string>();
+
+    initialize_logging(name, logdir);
+
     if (vm.count("quiet")) {
         g3::log_levels::disableAll();
     } else {
@@ -342,7 +384,7 @@ variables_map parse_cmd_line_standard(int argc, char* argv[],
         }
         exit(0);
     }
-    cmd_line_set_logging(vm);
+    cmd_line_set_logging(argv[0], vm);
     return vm; 
 }
 

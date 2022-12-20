@@ -345,8 +345,6 @@ void standardize(Tree_t& tree)
 
 int main(int argc, char* argv[])
 {
-    otc::initialize_logging();
-
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);

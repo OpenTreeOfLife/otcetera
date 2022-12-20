@@ -282,8 +282,6 @@ map<string, OttId> read_mapping_file(const string & mf) {
 
 int main(int argc, char* argv[])
 {
-    otc::initialize_logging();
-
     std::ios::sync_with_stdio(false);
     std::ofstream jlogf;
     std::ofstream * json_log = nullptr;

@@ -1370,8 +1370,6 @@ bool read_tree_and_annotations(const fs::path & config_path,
 
 int main( const int argc, char** argv) {
 
-    otc::initialize_logging();
-
     if (otc::set_global_conv_facet() != 0) {
         return 1;
     }

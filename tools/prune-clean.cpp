@@ -211,8 +211,6 @@ std::pair<string,string> split_on_last(const string& s, char c)
 
 int main(int argc, char* argv[])
 {
-    otc::initialize_logging();
-
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);

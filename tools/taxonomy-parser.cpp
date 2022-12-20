@@ -286,8 +286,6 @@ std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
 
 int main(int argc, char* argv[])
 {
-    otc::initialize_logging();
-
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc, argv);

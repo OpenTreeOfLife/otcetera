@@ -133,8 +133,6 @@ OttIdSet prune_if_flagged_and_not_anc(const Taxonomy & taxonomy,
 
 int main(int argc, char* argv[])
 {
-    otc::initialize_logging();
-
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc,argv);
