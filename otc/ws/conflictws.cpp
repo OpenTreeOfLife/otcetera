@@ -43,7 +43,7 @@ get_induced_trees2(Tree1& T1,
 
     // 1. First construct the induced tree for T2.
 
-    // 1a. Find the nodes of T2 that corresponds to leaves of T1.
+    // 1a. Find the nodes of T2 that correspond to leaves of T1.
     //     Note that some of these nodes could be ancestral to other ones in T2.
     auto T2_nodes_from_T1_leaves = get_induced_nodes(T1,T2);
     LOG(WARNING)<<T2_nodes_from_T1_leaves.size()<<" leaves of T1 are in T2";
@@ -228,6 +228,13 @@ json get_conflict_node_status(const set<pair<string,int>>& witnesses, string sta
     {
         json witness_name;
 
+        // The witness could be
+        // (i) an ottX name (tree2 = ott or synth)
+        // (ii) an mrcaottXottY name (tree2 = synth)
+        // (iii) a nodeX name (tree2 = study tree)
+
+        // Can we provide a meaningful name for case (ii)?
+
         if (long raw_ott_id = long_ott_id_from_name(node_name); raw_ott_id >= 0)
         {
             OttId id = check_ott_id_size(raw_ott_id);
@@ -273,28 +280,40 @@ json get_conflict_node_status(const set<pair<string,int>>& witnesses, string sta
 // PROBLEM: It is possible to have both y1 conflicts with x (x:conflicts_with y1) and y2 resolves x (x:resolves y2)
 // PROBLEM: It is possible to have both y1 supported_by x (x:supported_by y1) and y2 resolves x (x:resolves y2)
 // PROBLEM: It is possible to have both x resolves y (x:resolved_by y1) and y2 resolves x (x:resolves y2)
-// Let's solve this situation by NOT reporting when tree2 resolves tree1.
+// SOLUTION: DO NOT report when tree2 resolves tree1, only when tree1 resolves tree2.
 
 
 json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax) const {
     json nodes;
-//    for(auto& x: resolves) {
-//        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolves", Tax);
+/*
+ *  node1: node from tree1.
+ *  node2: node from tree2.
+ *
+ *  NOTE: All the relationships describe the nodes in tree!
+ *        For example, "resolved_by" means that node2 is resolved_by node1.
+ *
+ *        Despite this fact, the map is keyed by nodes in the FIRST tree.
+ *        Leaving out the "tree2 resolves tree1" relationship allows us to divide
+ *          nodes in tree1 by how they relate to tree2.
+ */ 
+
+//    for(auto& [node1, node2]: resolves) {
+//        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "resolves", Tax);
 //    }
-    for(auto& x: resolved_by) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolved_by", Tax);
+    for(auto& [node1, node2]: resolved_by) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "resolved_by", Tax);
     }
-    for(auto& x: supported_by) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "supported_by", Tax);
+    for(auto& [node1, node2]: supported_by) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "supported_by", Tax);
     }
-    for(auto& x: partial_path_of) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "partial_path_of", Tax);
+    for(auto& [node1, node2]: partial_path_of) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "partial_path_of", Tax);
     }
-    for(auto& x: terminal) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "terminal", Tax);
+    for(auto& [node1, node2]: terminal) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "terminal", Tax);
     }
-    for(auto& x: conflicts_with) {
-        nodes[extract_node_name_if_present(x.first)] = get_conflict_node_status(x.second, "conflicts_with", Tax);
+    for(auto& [node1, node2]: conflicts_with) {
+        nodes[extract_node_name_if_present(node1)] = get_conflict_node_status(node2, "conflicts_with", Tax);
     }
     // For monotypic nodes in the query, copy annotation from child.
     for(auto it: iter_post_const(tree)) {
