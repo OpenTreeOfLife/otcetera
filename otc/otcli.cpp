@@ -70,6 +70,8 @@ void initialize_logging(const string& name, std::optional<fs::path> logfile_dir)
     auto handle2 = worker->addSink(std::make_unique<FileSink>(logfile), &FileSink::logToFile);
 
     // Initialize Logging
+    g3::only_change_at_initialization::addLogLevel(ERROR);
+    g3::only_change_at_initialization::addLogLevel(TRACE);
     g3::initializeLogging(worker.get());
     default_worker = std::move(worker);
 }
