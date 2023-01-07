@@ -120,6 +120,10 @@ int min_depth(const cnode_type* node) {
     return node->get_data().depth;
 }
 
+
+/*
+ * This structure exists so that conflict analyis can record results on it.
+ */
 struct conflict_stats {
     protected:
     template <typename T>
@@ -129,6 +133,12 @@ struct conflict_stats {
         }    
     }
     public:
+
+    /*
+     * We store strings here instead of (const cnode_type*) because the nodes
+     * may vanish out from underneath us.  But pointers would be nicer.
+     */
+
     map<string, string> supported_by;
     map<string, string> partial_path_of;
     map<string, std::set<pair<string, int>>> conflicts_with;
