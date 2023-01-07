@@ -299,7 +299,7 @@ json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax)
  *  node1: node from tree1.
  *  node2: node from tree2.
  *
- *  NOTE: All the relationships describe the nodes in tree!
+ *  NOTE: All the relationships describe the nodes in tree2!
  *        For example, "resolved_by" means that node2 is resolved_by node1.
  *
  *        Despite this fact, the map is keyed by nodes in the FIRST tree.
