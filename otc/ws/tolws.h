@@ -5,7 +5,9 @@
 #include <list>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
+#include <optional>
 #include <unordered_map>
 #include <boost/filesystem/operations.hpp>
 #include <stdexcept>
@@ -237,6 +239,8 @@ void index_by_name_or_id(T & tree) {
         }
     }
 }
+
+std::string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd);
 
 class TreesToServe;
 

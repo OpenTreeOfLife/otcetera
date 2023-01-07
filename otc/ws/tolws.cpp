@@ -6,10 +6,7 @@
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "otc/node_naming.h"       // for make_name(prefix,OttId)
-#include <optional>
-#include <string_view>
 #include "otc/tnrs/context.h"
-
 #include "otc/ctrie/str_utils.h"
 #include "otc/ws/find_node.h"
 
