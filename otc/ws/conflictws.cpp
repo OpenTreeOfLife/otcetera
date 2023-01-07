@@ -5,6 +5,7 @@
 #include "otc/conflict.h"
 #include "otc/ws/nexson/nexson.h"
 #include "otc/ws/prune.h"
+#include "otc/ws/find_node.h"
 #include <optional>
 #include <string_view>
 
@@ -26,6 +27,7 @@ using json=nlohmann::json;
 namespace otc {
 
 using cnode_type = ConflictTree::node_type;
+using snode_type = SummaryTree_t::node_type;
 
 
 
@@ -220,17 +222,6 @@ string extract_node_name_if_present(const string& newick_name) {
     return newick_name;
 }
 
-string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const cnode_type& nd)
-{
-    if (not nd.has_ott_id())
-        throw OTCError()<<"Node "<<nd.get_name()<<" has no OTT id";
-
-    auto id = nd.get_ott_id();
-    auto nd_taxon = taxonomy.included_taxon_from_id(id);
-    auto& taxon_data = nd_taxon->get_data();
-    return taxon_data.get_nonuniqname();
-}
-
 optional<string> ott_witness_namer(const string& witness, const RichTaxonomy& Tax)
 {
     long raw_ott_id = long_ott_id_from_name(witness);
@@ -244,6 +235,71 @@ optional<string> ott_witness_namer(const string& witness, const RichTaxonomy& Ta
     return {};
 }
 
+optional<pair<string,int>> get_descendant_name(const RichTaxonomy& taxonomy, const snode_type* nd)
+{
+    // 1. If the node has a name, the use that name.
+    if (nd->has_ott_id())
+    {
+        // FIXME -- should we use ott_witness_namer(node_name(*nd)) instead?
+        auto name = string(taxon_nonuniquename(taxonomy, *nd));
+        return {{name, 0}};
+    }
+
+    // 2. Otherwise consider names of its child subtrees
+    optional<pair<string,int>> name;
+    for(auto child: iter_child_const(*nd))
+    {
+        if (auto child_name = get_descendant_name(taxonomy, child))
+        {
+            child_name->second++;
+            if (child_name->second < name->second)
+                name = child_name;
+        }
+    }
+    return name;
+}
+
+vector<string> get_descendant_names2(const RichTaxonomy& taxonomy, const snode_type* nd)
+{
+    vector<pair<string,int>> weighted_names;
+    for(auto child: iter_child_const(*nd))
+    {
+        if (auto n = get_descendant_name(taxonomy, child))
+            weighted_names.push_back(*n);
+    }
+
+    std::sort(weighted_names.begin(), weighted_names.end(), [](auto& x, auto& y) {return x.second < y.second;});
+
+    vector<string> names;
+    for(auto& [name,_]: weighted_names)
+        names.push_back(name);
+    return names;
+}
+
+optional<string> synth_witness_namer(const string& node_name, const SummaryTree_t& summary, const RichTaxonomy& taxonomy)
+{
+    // 1. If we can name the node using the taxonomy, then do that.
+    if (auto wn = ott_witness_namer(node_name, taxonomy))
+        return *wn;
+
+    // 2. Look up the node in the summary tree.
+    auto node = find_required_node_by_id_str(summary, taxonomy, node_name).node();
+
+    // 3. Find the names of descendants
+    auto dnames = get_descendant_names2(taxonomy, node);
+
+    // 4. If there are 0 or 1 name, then we didn't find anything to call this node.
+    if (dnames.size() < 2)
+        return {};
+
+    // 5. Generate the witness_name
+    string name = dnames[0] + "+" + dnames[1];
+    if (dnames.size() > 2)
+        name += "+...";
+    name = "["+name+"]";
+
+    return name;
+}
 
 inline json get_node_status(const string& witness, string status, const witness_namer_t& witness_namer) {
     json j;
@@ -456,14 +512,13 @@ json conflict_with_taxonomy(const ConflictTree& query_tree, const RichTaxonomy& 
 json conflict_with_summary(const ConflictTree& query_tree,
                            const SummaryTree_t& summary,
                            const RichTaxonomy& Tax) {
-    using snode_type = SummaryTree_t::node_type;
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {
         return mrca_from_depth(n1,n2);
     };
     std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca = [](const snode_type* n1, const snode_type* n2) {
         return find_mrca_via_traversal_indices(n1,n2);
     };
-    witness_namer_t witness_namer = [&](const string& w) {return ott_witness_namer(w,Tax);};
+    witness_namer_t witness_namer = [&](const string& w) {return synth_witness_namer(w,summary,Tax);};
     return conflict_with_tree_impl(query_tree, summary, query_mrca, summary_mrca, witness_namer);
 }
 
