@@ -16,6 +16,8 @@
 
 #include <g3log/g3log.hpp>
 #include <g3log/loglevels.hpp>
+// Don't forget to call g3::only_change_at_initialization::addLogLevel( ) for each new level.
+// Currently this is in otcli.cpp.
 const LEVELS ERROR {WARNING.value +1, {"ERROR"}};
 const LEVELS TRACE {DEBUG.value -1, {"TRACE"}};
 
