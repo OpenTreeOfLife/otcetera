@@ -376,10 +376,10 @@ json conflict_with_tree_impl(const QT & query_tree,
     };
 
     {
-        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto [induced_tree1, induced_tree2] = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
 
-        perform_conflict_analysis(*induced_trees.first,
-                                  *induced_trees.second,
+        perform_conflict_analysis(*induced_tree1,
+                                  *induced_tree2,
                                   log_supported_by,
                                   log_partial_path_of,
                                   log_conflicts_with,
@@ -409,8 +409,8 @@ json conflict_with_tree_impl(const QT & query_tree,
 */
 
     {
-        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
-        return stats.get_json(*induced_trees.first, Tax);
+        auto [induced_tree1, induced_tree2] = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        return stats.get_json(*induced_tree1, *induced_tree2, Tax);
     }
 }
 
