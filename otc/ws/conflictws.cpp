@@ -287,7 +287,7 @@ optional<string> synth_witness_namer(const string& node_name, const SummaryTree_
     auto node = find_required_node_by_id_str(summary, taxonomy, node_name).node();
 
     // 3. Find the names of descendants
-    auto dnames = get_descendant_names2(taxonomy, node);
+    auto dnames = get_descendant_names(taxonomy, *node);
 
     // 4. If there are 0 or 1 name, then we didn't find anything to call this node.
     if (dnames.size() < 2)
