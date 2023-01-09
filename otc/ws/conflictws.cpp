@@ -259,6 +259,7 @@ optional<pair<string,int>> get_descendant_name(const RichTaxonomy& taxonomy, con
     return name;
 }
 
+// Compare to get_descendant_names( ) in tolws.cpp
 vector<string> get_descendant_names2(const RichTaxonomy& taxonomy, const snode_type* nd)
 {
     vector<pair<string,int>> weighted_names;
@@ -293,7 +294,7 @@ optional<string> synth_witness_namer(const string& node_name, const SummaryTree_
         return {};
 
     // 5. Generate the witness_name
-    string name = dnames[0] + "+" + dnames[1];
+    string name = dnames.front() + "+" + dnames.back();
     if (dnames.size() > 2)
         name += "+...";
     name = "["+name+"]";
