@@ -295,6 +295,42 @@ OttId Taxonomy::map(OttId old_id) const {
     return -1;
 }
 
+// Jan, 2023 MTH having some issues with copy_file failing on ubuntu g++11
+void copy_file_two_tries(const fs::path & old_path, const fs::path & new_path) {
+    if (fs::exists(old_path)) {
+        const bool new_exists = fs::exists(new_path);
+        try {
+            fs::copy_file(old_path, new_path);
+        } catch (...) {
+            if (new_exists) {
+                throw;
+            }
+            // based on https://www.oreilly.com/library/view/c-cookbook/0596007612/ch10s08.html
+            const static int BUFFER_LENGTH = 8192;
+            std::ifstream istrm{old_path.string(), std::ios_base::in | std::ios_base::binary};
+            if (!istrm.good()) {
+                throw OTCError() << "Could not open file " << old_path.string();
+            }
+            std::ofstream ostrm{new_path.string(), std::ios_base::out | std::ios_base::binary};
+            if (!ostrm.good()) {
+                throw OTCError() << "Could not open file " << new_path.string();
+            }
+            char buffer[BUFFER_LENGTH];
+            do {
+                istrm.read(&buffer[0], BUFFER_LENGTH);
+                if (istrm.bad()) {
+                    throw OTCError() << "Problem reading from " << old_path.string();
+                }
+                ostrm.write(&buffer[0], istrm.gcount());
+                if (ostrm.bad()) {
+                    throw OTCError() << "Problem writing to " << new_path.string();
+                }
+            } while (istrm.gcount() > 0);
+            istrm.close();
+            ostrm.close();
+        }
+    }
+}
 
 void Taxonomy::write(const std::string& newdirname,
                      bool copy_taxonomy_tsv_lines_raw,
@@ -309,15 +345,13 @@ void Taxonomy::write(const std::string& newdirname,
     // Copy the other files.
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
                 "log.tsv", "otu_differences.tsv", "weaklog.csv"}) {
-        if (fs::exists(old_dir/name)) {
-            fs::copy_file(old_dir/name,new_dir/name);
-        }
+        copy_file_two_tries(old_dir/name,new_dir/name);
     }
 
     const auto fname = "synonyms.tsv";
     if (fs::exists(old_dir/fname)) {
         if (copy_synonyms_tsv_raw) {
-            fs::copy_file(old_dir/fname, new_dir/fname);
+            copy_file_two_tries(old_dir/fname, new_dir/fname);
         } else {
             std::ifstream inpf((old_dir/fname).string());
             if (not inpf) {
