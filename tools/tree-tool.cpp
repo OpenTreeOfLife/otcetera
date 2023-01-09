@@ -16,9 +16,7 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
-#include <boost/filesystem/operations.hpp>
-
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 using namespace otc;
 

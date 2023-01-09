@@ -9,7 +9,7 @@
 #include <vector>
 #include <optional>
 #include <unordered_map>
-#include <boost/filesystem/operations.hpp>
+#include <filesystem>
 #include <stdexcept>
 #include <memory>
 #include "otc/newick_tokenizer.h"
@@ -331,7 +331,7 @@ std::string phylesystem_conflict_ws_method(const SummaryTree_t & summary,
                                            const std::string& tree1s,
                                            const std::string& tree2s);
 
-bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
+bool read_trees(const std::filesystem::path & dirname, TreesToServe & tts);
 
 void from_json(const nlohmann::json &j, SourceTreeId & sti);
 void to_json(nlohmann::json &j, const SourceTreeId & sti);

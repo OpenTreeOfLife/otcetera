@@ -18,11 +18,9 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
-#include <boost/filesystem/operations.hpp>
-
 #include "otc/ws/prune.h"
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 using namespace otc;
 

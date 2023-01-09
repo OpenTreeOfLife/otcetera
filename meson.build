@@ -23,7 +23,7 @@ configure_file(output : 'config.h', configuration : conf_data)
 
 logging = dependency('g3log')
 
-boost = dependency('boost', modules : ['program_options','system','filesystem'], version: '>=1.54')
+boost = dependency('boost', modules : ['program_options','system'], version: '>=1.71')
 
 json = declare_dependency(include_directories: include_directories('otc'))
 

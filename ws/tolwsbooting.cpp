@@ -36,7 +36,7 @@ using std::to_string;
 
 namespace po = boost::program_options;
 using namespace otc;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
 namespace chrono = std::chrono;
@@ -498,7 +498,6 @@ string conflict_status_method_handler( const json& parsed_args ) {
 #include "otc/ctrie/str_utils.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
 using json = nlohmann::json;
 typedef std::set<fs::path> fp_set;
 typedef std::pair<bool, fp_set > bool_fp_set; 

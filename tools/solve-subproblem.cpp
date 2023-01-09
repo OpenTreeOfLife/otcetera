@@ -19,13 +19,12 @@
 #include "otc/induced_tree.h"
 #include <fstream>
 #include <sstream>
-#include <boost/filesystem.hpp>
 #include <optional>
 
 #include "otc/node_naming.h"
 
 using namespace otc;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 using std::vector;
 using std::unique_ptr;

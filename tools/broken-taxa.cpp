@@ -11,7 +11,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/tokenizer.hpp>
 #include <bitset>
 #include <set>
@@ -26,7 +25,7 @@
 #include "otc/taxonomy/flags.h"
 
 using namespace otc;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
