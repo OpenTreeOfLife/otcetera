@@ -252,7 +252,7 @@ optional<pair<string,int>> get_descendant_name(const RichTaxonomy& taxonomy, con
         if (auto child_name = get_descendant_name(taxonomy, child))
         {
             child_name->second++;
-            if (child_name->second < name->second)
+            if (not name or child_name->second < name->second)
                 name = child_name;
         }
     }
