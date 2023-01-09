@@ -241,6 +241,7 @@ void index_by_name_or_id(T & tree) {
 }
 
 std::string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd);
+std::vector<std::string> get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd);
 
 class TreesToServe;
 

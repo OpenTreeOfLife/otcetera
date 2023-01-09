@@ -53,9 +53,9 @@ string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd
 // FIXME - Looking at more names on each level seems better because it would find higher-ranking descendant names
 //       - is there a reason we weren't doing this?  e.g. scanning all children could go too slow?
 // FIXME - We could cache representative descendants (which takes memory) if too slow.
-json get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+vector<string> get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
-    json names = json::array();
+    vector<string> names;
     if (nd.has_children())
     {
         auto first = nd.get_first_child();
