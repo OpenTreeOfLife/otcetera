@@ -741,6 +741,11 @@ string conflict_ws_method(const SummaryTree_t& summary,
     else if (tree2s.size() > 0 and tree2s[0] == '(') {
         auto tree2 = tree_from_newick_string<ConflictTree>(tree2s);
 
+        // 0. Prune unmapped leaves -- this already handles forwards.
+        auto leaf_counts = prune_unmapped_leaves(*tree2, taxonomy);
+        if (leaf_counts.first < 3) {
+            throw OTCBadRequest()<<"tree2 tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
+        }
         // 1. Check that all leaves in input tree have OTT ids
         check_and_forward_leaf_ott_ids(*tree2, taxonomy, "tree2");
         // 2. Check that all leaves in tree2 have node names
