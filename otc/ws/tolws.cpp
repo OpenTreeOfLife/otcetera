@@ -37,7 +37,7 @@ string get_synth_node_label(const SumTreeNode_t* node)
         return node->get_name();
 }
 
-string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
     if (not nd.has_ott_id())
         throw OTCError()<<"Node "<<nd.get_name()<<" has no OTT id";
@@ -45,7 +45,7 @@ string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_
     auto id = nd.get_ott_id();
     auto nd_taxon = taxonomy.included_taxon_from_id(id);
     auto& taxon_data = nd_taxon->get_data();
-    return taxon_data.get_nonuniqname();
+    return string(taxon_data.get_nonuniqname());
 }
 
 // Corresponds to getNamesOfRepresentativeDescendants( ) in treemachine/src/main/java/opentree/GraphExplorer.java

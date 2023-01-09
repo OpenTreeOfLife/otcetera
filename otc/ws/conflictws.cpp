@@ -241,7 +241,7 @@ optional<pair<string,int>> get_descendant_name(const RichTaxonomy& taxonomy, con
     if (nd->has_ott_id())
     {
         // FIXME -- should we use ott_witness_namer(node_name(*nd)) instead?
-        auto name = string(taxon_nonuniquename(taxonomy, *nd));
+        auto name = taxon_nonuniquename(taxonomy, *nd);
         return {{name, 0}};
     }
 

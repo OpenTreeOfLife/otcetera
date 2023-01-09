@@ -240,7 +240,7 @@ void index_by_name_or_id(T & tree) {
     }
 }
 
-std::string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd);
+std::string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd);
 
 class TreesToServe;
 
