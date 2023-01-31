@@ -1,6 +1,6 @@
 #include <boost/algorithm/string/join.hpp>
-#include <boost/filesystem/operations.hpp>
-namespace fs = boost::filesystem;
+#include <filesystem>
+namespace fs = std::filesystem;
 #include "otc/taxonomy/diff_maker.h"
 #include "otc/otc_base_includes.h"
 

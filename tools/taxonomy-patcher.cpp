@@ -15,8 +15,6 @@
 #include "otc/taxonomy/patching.h"
 #include "otc/config_file.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;

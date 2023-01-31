@@ -2,8 +2,6 @@
 #include <boost/program_options.hpp>
 #include "otc/taxonomy/diff_maker.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;

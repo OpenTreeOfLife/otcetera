@@ -1,12 +1,11 @@
 #include "otc/taxonomy/taxonomy-diff.h"
 #include <boost/program_options.hpp>
 #include "otc/taxonomy/diff_maker.h"
-#include <boost/filesystem/operations.hpp>
-INITIALIZE_EASYLOGGINGPP
+#include <filesystem>
 
 using namespace otc;
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using std::string;
 using std::list;
 using std::vector;
