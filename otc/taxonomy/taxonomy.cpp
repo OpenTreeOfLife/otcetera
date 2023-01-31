@@ -12,9 +12,9 @@
 #include <bitset>
 #include <fstream>
 #include <regex>
-#include <boost/filesystem/operations.hpp>
+#include <filesystem>
 #include <boost/algorithm/string/join.hpp>
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 #include "otc/error.h"
 #include "otc/tree.h"

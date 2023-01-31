@@ -13,9 +13,13 @@
 #include <boost/tokenizer.hpp>
 #include <boost/program_options.hpp>
 #include <memory>
+#include <filesystem>
 #include "assert.hh"
+
 namespace otc {
 bool get_bool(const std::string& arg, const std::string& context);
+
+void initialize_logging(std::optional<std::filesystem::path> = {});
 
 class OTCLI {
     public:
@@ -29,6 +33,7 @@ class OTCLI {
         std::string currentFilename;
         std::string prefixForFiles;
         std::string currTmpFilepath;
+        std::optional<std::filesystem::path> logfile_dir_arg;
         void * blob;
 
         void add_flag(char flag, const std::string & help, bool (*cb)(OTCLI &, const std::string &), bool argNeeded) {

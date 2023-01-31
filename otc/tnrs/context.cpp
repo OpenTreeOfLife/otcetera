@@ -10,6 +10,7 @@ using std::vector;
 namespace otc
 {
 
+
 int find_context_index_by_name(const vector<Context> & context_vec, const std::string &n) {
     for (auto i = 0; i < (int) context_vec.size(); ++i) {
         if (context_vec[i].name == n) {
@@ -105,19 +106,19 @@ vector<Context> generate_all_contexts() {
         }
         const auto & cvec = p2cit.second;
         Context & par_context = ret[par_ind];
-        par_context.subcontext_indices.reserve(cvec.size());
+        // par_context.subcontext_indices.reserve(cvec.size());
         for (const auto & cn : cvec) {
             auto child_ind = find_context_index_by_name(ret, cn);
             if (child_ind < 0) {
                 throw OTCError() << "did not find context with name \"" << cn << "\"";
             }
-            par_context.subcontext_indices.push_back((std::size_t)child_ind);
+            // par_context.subcontext_indices.push_back((std::size_t)child_ind);
         }
     }
     return ret;
 }
 
-const vector<Context> all_contexts = generate_all_contexts();
+vector<Context> all_contexts = generate_all_contexts();
 
 map<OttId, const Context*> make_ottid_to_context(const vector<Context> & all_contexts)
 {
@@ -128,7 +129,7 @@ map<OttId, const Context*> make_ottid_to_context(const vector<Context> & all_con
     return ottid_to_context;
 }
 
-map<OttId, const Context*> ottid_to_context = make_ottid_to_context(all_contexts);
+map<OttId, const Context*> g_ottid_to_context = make_ottid_to_context(all_contexts);
 
 
 
@@ -142,6 +143,26 @@ map<string, const Context*> make_name_to_context(const vector<Context>& all_cont
 
 map<string, const Context*> name_to_context = make_name_to_context(all_contexts);
 
+
+int Context::cull_contexts_to_taxonomy(const RichTaxonomy & taxonomy) {
+    vector<Context> culled;
+    int num_retained = 0;
+    for (auto & context: all_contexts) {
+        // lots of code expects "All life" to be a context, so we'll keep it as the root
+        if (context.name == "All life") {
+            context.ott_id = taxonomy.get_tax_tree().get_root()->get_ott_id();
+        }
+        if (taxonomy.get_unforwarded_id(context.ott_id)) {
+            culled.push_back(context);
+            ++num_retained;
+        }
+    }
+    // Cull the global objects
+    all_contexts.swap(culled); 
+    g_ottid_to_context = make_ottid_to_context(all_contexts);
+    name_to_context = make_name_to_context(all_contexts);
+    return num_retained;
+}
 
 using trav_range_t = std::pair<std::uint32_t, std::uint32_t>;
 using nom_cod_and_ranges_t = std::pair<const Nomenclature::Code *, std::vector<trav_range_t> >;
@@ -281,8 +302,8 @@ const Context* least_inclusive_context(const vector<const RTRichTaxNode*> & taxa
     auto mrca = taxonomy_mrca(taxa);
     while (mrca) {
         auto id = mrca->get_ott_id();
-        if (ottid_to_context.count(id)) {
-            return ottid_to_context.at(id);
+        if (g_ottid_to_context.count(id)) {
+            return g_ottid_to_context.at(id);
         }
         mrca = mrca->get_parent();
     }

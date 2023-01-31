@@ -29,8 +29,6 @@
 #include "otc/tnrs/context.h"
 #include "otc/ws/tolws.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;
@@ -140,6 +138,9 @@ void analyze_case_sensitivity(const RTRichTaxTreeData & rt_data,
 }
 
 void process_taxonomy(const RichTaxonomy & taxonomy) {
+    auto nc = Context::cull_contexts_to_taxonomy(taxonomy);
+    //LOG(INFO) << nc << " taxonomy contexts retained...";
+
     const Context * c = determine_context({});
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";
@@ -178,7 +179,8 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     if (set_global_conv_facet() != 0) {
         return 1;
     }

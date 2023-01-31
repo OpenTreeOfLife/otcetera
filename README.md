@@ -5,10 +5,6 @@ otcetera owes a lot of code and ideas to Paul Lewis' Nexus Class Library.
   See http://hydrodictyon.eeb.uconn.edu/ncl/ and
   https://github.com/mtholder/ncl
 
-It also uses easyloggingpp which is distributed under an MIT License. See
-  http://github.com/easylogging/ for info on that project. The file from
-  that project is otc/easylogging++.h
-
 Some set comparisons (in util.h) were based on
    http://stackoverflow.com/posts/1964252/revisions
 by http://stackoverflow.com/users/127669/graphics-noob
@@ -566,8 +562,7 @@ The syntax used to describe a new test is described in [../expected/README.md](.
 and the directories that describe the expected behavior are in the `expected` subdirectory.
 
 ## ACKNOWLEDGEMENTS
-See comments above about usage of [easyloggingpp](https://github.com/easylogging/)
-and [nlohmann::json](https://github.com/nlohmann/json)
+See comments above about usage of [nlohmann::json](https://github.com/nlohmann/json)
 
 To acknowledge the contributions of the NCL code and ideas, a snapshot of the
 NCL credits taken from the version of NCL used to jump start otcetera is:

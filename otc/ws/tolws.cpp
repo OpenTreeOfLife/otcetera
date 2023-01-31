@@ -6,10 +6,7 @@
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "otc/node_naming.h"       // for make_name(prefix,OttId)
-#include <optional>
-#include <string_view>
 #include "otc/tnrs/context.h"
-
 #include "otc/ctrie/str_utils.h"
 #include "otc/ws/find_node.h"
 
@@ -40,7 +37,7 @@ string get_synth_node_label(const SumTreeNode_t* node)
         return node->get_name();
 }
 
-string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
     if (not nd.has_ott_id())
         throw OTCError()<<"Node "<<nd.get_name()<<" has no OTT id";
@@ -48,7 +45,7 @@ string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_
     auto id = nd.get_ott_id();
     auto nd_taxon = taxonomy.included_taxon_from_id(id);
     auto& taxon_data = nd_taxon->get_data();
-    return taxon_data.get_nonuniqname();
+    return string(taxon_data.get_nonuniqname());
 }
 
 // Corresponds to getNamesOfRepresentativeDescendants( ) in treemachine/src/main/java/opentree/GraphExplorer.java
@@ -56,9 +53,9 @@ string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_
 // FIXME - Looking at more names on each level seems better because it would find higher-ranking descendant names
 //       - is there a reason we weren't doing this?  e.g. scanning all children could go too slow?
 // FIXME - We could cache representative descendants (which takes memory) if too slow.
-json get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+vector<string> get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
-    json names = json::array();
+    vector<string> names;
     if (nd.has_children())
     {
         auto first = nd.get_first_child();

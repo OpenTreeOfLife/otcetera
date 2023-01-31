@@ -6,7 +6,7 @@ project('otcetera', ['cpp'],
 	  'cpp_std=c++17',
           'warning_level=3'
 	],
-	meson_version: '>=0.53')
+	meson_version: '>=0.60')
 
 cpp = meson.get_compiler('cpp')
 
@@ -21,10 +21,9 @@ conf_data.set_quoted('_ARCH_', host_machine.system()+' ' + host_machine.cpu_fami
 conf_data.set_quoted('_COMPILER_', cpp.get_id() + ' ' + cpp.version()+' ' + host_machine.cpu_family())
 configure_file(output : 'config.h', configuration : conf_data)
 
-# Do we need this?
-# AC_PROG_LN_S
+logging = dependency('g3log')
 
-boost = dependency('boost', modules : ['program_options','system','filesystem'], version: '>=1.54')
+boost = dependency('boost', modules : ['program_options','system'], version: '>=1.71')
 
 json = declare_dependency(include_directories: include_directories('otc'))
 

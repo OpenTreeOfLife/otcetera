@@ -5,6 +5,7 @@
 #include "otc/conflict.h"
 #include "otc/ws/nexson/nexson.h"
 #include "otc/ws/prune.h"
+#include "otc/ws/find_node.h"
 #include <optional>
 #include <string_view>
 
@@ -26,6 +27,7 @@ using json=nlohmann::json;
 namespace otc {
 
 using cnode_type = ConflictTree::node_type;
+using snode_type = SummaryTree_t::node_type;
 
 
 
@@ -43,7 +45,7 @@ get_induced_trees2(Tree1& T1,
 
     // 1. First construct the induced tree for T2.
 
-    // 1a. Find the nodes of T2 that corresponds to leaves of T1.
+    // 1a. Find the nodes of T2 that correspond to leaves of T1.
     //     Note that some of these nodes could be ancestral to other ones in T2.
     auto T2_nodes_from_T1_leaves = get_induced_nodes(T1,T2);
     LOG(WARNING)<<T2_nodes_from_T1_leaves.size()<<" leaves of T1 are in T2";
@@ -120,6 +122,11 @@ int min_depth(const cnode_type* node) {
     return node->get_data().depth;
 }
 
+typedef std::function<optional<string>(const string&)> witness_namer_t;
+
+/*
+ * This structure exists so that conflict analyis can record results on it.
+ */
 struct conflict_stats {
     protected:
     template <typename T>
@@ -129,6 +136,14 @@ struct conflict_stats {
         }    
     }
     public:
+
+    /*
+     * We store strings here instead of (const cnode_type*) because the nodes
+     * may vanish out from underneath us.  But pointers would be nicer.
+     */
+
+    witness_namer_t witness_namer;
+
     map<string, string> supported_by;
     map<string, string> partial_path_of;
     map<string, std::set<pair<string, int>>> conflicts_with;
@@ -188,7 +203,9 @@ struct conflict_stats {
         // 4. If the newest node is not shallower then add it.
         nodes.insert(pair<string, int>({name2, min_depth_node2}));
     }
-    json get_json(const ConflictTree&, const RichTaxonomy&) const;
+    json get_json(const ConflictTree& induced_tree1) const;
+
+    conflict_stats(const witness_namer_t& w): witness_namer(w) {}
 };
 
 using tnode_type = RTRichTaxNode;
@@ -205,35 +222,114 @@ string extract_node_name_if_present(const string& newick_name) {
     return newick_name;
 }
 
-inline json get_node_status(const string& witness, string status, const RichTaxonomy& Tax) {
-    json j;
-    j["witness"] = extract_node_name_if_present(witness);
-    j["status"] = std::move(status);
+optional<string> ott_witness_namer(const string& witness, const RichTaxonomy& Tax)
+{
     long raw_ott_id = long_ott_id_from_name(witness);
     if (raw_ott_id >= 0) {
         OttId id = check_ott_id_size(raw_ott_id);
         auto nd = Tax.included_taxon_from_id(id);
         if (nd != nullptr) {
-            j["witness_name"] = nd->get_name();
+            return nd->get_name();
         }
     }
+    return {};
+}
+
+optional<pair<string,int>> get_descendant_name(const RichTaxonomy& taxonomy, const snode_type* nd)
+{
+    // 1. If the node has a name, the use that name.
+    if (nd->has_ott_id())
+    {
+        // FIXME -- should we use ott_witness_namer(node_name(*nd)) instead?
+        auto name = taxon_nonuniquename(taxonomy, *nd);
+        return {{name, 0}};
+    }
+
+    // 2. Otherwise consider names of its child subtrees
+    optional<pair<string,int>> name;
+    for(auto child: iter_child_const(*nd))
+    {
+        if (auto child_name = get_descendant_name(taxonomy, child))
+        {
+            child_name->second++;
+            if (not name or child_name->second < name->second)
+                name = child_name;
+        }
+    }
+    return name;
+}
+
+// Compare to get_descendant_names( ) in tolws.cpp
+vector<string> get_descendant_names2(const RichTaxonomy& taxonomy, const snode_type* nd)
+{
+    vector<pair<string,int>> weighted_names;
+    for(auto child: iter_child_const(*nd))
+    {
+        if (auto n = get_descendant_name(taxonomy, child))
+            weighted_names.push_back(*n);
+    }
+
+    std::sort(weighted_names.begin(), weighted_names.end(), [](auto& x, auto& y) {return x.second < y.second;});
+
+    vector<string> names;
+    for(auto& [name,_]: weighted_names)
+        names.push_back(name);
+    return names;
+}
+
+optional<string> synth_witness_namer(const string& node_name, const SummaryTree_t& summary, const RichTaxonomy& taxonomy)
+{
+    // 1. If we can name the node using the taxonomy, then do that.
+    if (auto wn = ott_witness_namer(node_name, taxonomy))
+        return *wn;
+
+    // 2. Look up the node in the summary tree.
+    auto node = find_required_node_by_id_str(summary, taxonomy, node_name).node();
+
+    // 3. Find the names of descendants
+    auto dnames = get_descendant_names(taxonomy, *node);
+
+    // 4. If there are 0 or 1 name, then we didn't find anything to call this node.
+    if (dnames.size() < 2)
+        return {};
+
+    // 5. Generate the witness_name
+    string name = dnames.front() + "+" + dnames.back();
+    if (dnames.size() > 2)
+        name += "+...";
+    name = "["+name+"]";
+
+    return name;
+}
+
+inline json get_node_status(const string& witness, string status, const witness_namer_t& witness_namer) {
+    json j;
+    j["witness"] = extract_node_name_if_present(witness);
+    j["status"] = std::move(status);
+    if (auto w = witness_namer(witness))
+        j["witness_name"] = *w;
     return j;
 }
 
-json get_conflict_node_status(const set<pair<string,int>>& witnesses, string status, const RichTaxonomy& Tax)
+json get_conflict_node_status(const set<pair<string,int>>& witnesses,
+                              string status,
+                              const witness_namer_t& witness_namer)
 {
     json j_witnesses = json::array();
     json j_witness_names = json::array();
     for(auto& [node_name, _]: witnesses)
     {
         json witness_name;
+        if (auto w = witness_namer(node_name))
+            witness_name = *w;
 
-        if (long raw_ott_id = long_ott_id_from_name(node_name); raw_ott_id >= 0)
-        {
-            OttId id = check_ott_id_size(raw_ott_id);
-            if (auto nd = Tax.included_taxon_from_id(id))
-                witness_name  = nd->get_name();
-        }
+        // The witness could be
+        // (i) an ottX name (tree2 = ott or synth)
+        // (ii) an mrcaottXottY name (tree2 = synth)
+        // (iii) a nodeX name (tree2 = study tree)
+
+        // Can we provide a meaningful name for case (ii)?
+
         j_witnesses.push_back( extract_node_name_if_present(node_name) );
         j_witness_names.push_back( witness_name );
     }
@@ -273,31 +369,45 @@ json get_conflict_node_status(const set<pair<string,int>>& witnesses, string sta
 // PROBLEM: It is possible to have both y1 conflicts with x (x:conflicts_with y1) and y2 resolves x (x:resolves y2)
 // PROBLEM: It is possible to have both y1 supported_by x (x:supported_by y1) and y2 resolves x (x:resolves y2)
 // PROBLEM: It is possible to have both x resolves y (x:resolved_by y1) and y2 resolves x (x:resolves y2)
-// Let's solve this situation by NOT reporting when tree2 resolves tree1.
+// SOLUTION: DO NOT report when tree2 resolves tree1, only when tree1 resolves tree2.
 
 
-json conflict_stats::get_json(const ConflictTree& tree, const RichTaxonomy& Tax) const {
+json conflict_stats::get_json(const ConflictTree& tree1) const
+{
     json nodes;
-//    for(auto& x: resolves) {
-//        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolves", Tax);
+
+/*
+ *  node1: node from tree1.
+ *  node2: node from tree2.
+ *
+ *  NOTE: All the relationships describe the nodes in tree2!
+ *        For example, "resolved_by" means that node2 is resolved_by node1.
+ *
+ *        Despite this fact, the map is keyed by nodes in the FIRST tree.
+ *        Leaving out the "tree2 resolves tree1" relationship allows us to divide
+ *          nodes in tree1 by how they relate to tree2.
+ */ 
+
+//    for(auto& [node1, node2]: resolves) {
+//        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "resolves", witness_namer);
 //    }
-    for(auto& x: resolved_by) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "resolved_by", Tax);
+    for(auto& [node1, node2]: resolved_by) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "resolved_by", witness_namer);
     }
-    for(auto& x: supported_by) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "supported_by", Tax);
+    for(auto& [node1, node2]: supported_by) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "supported_by", witness_namer);
     }
-    for(auto& x: partial_path_of) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "partial_path_of", Tax);
+    for(auto& [node1, node2]: partial_path_of) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "partial_path_of", witness_namer);
     }
-    for(auto& x: terminal) {
-        nodes[extract_node_name_if_present(x.first)] = get_node_status(x.second, "terminal", Tax);
+    for(auto& [node1, node2]: terminal) {
+        nodes[extract_node_name_if_present(node1)] = get_node_status(node2, "terminal", witness_namer);
     }
-    for(auto& x: conflicts_with) {
-        nodes[extract_node_name_if_present(x.first)] = get_conflict_node_status(x.second, "conflicts_with", Tax);
+    for(auto& [node1, node2]: conflicts_with) {
+        nodes[extract_node_name_if_present(node1)] = get_conflict_node_status(node2, "conflicts_with", witness_namer);
     }
     // For monotypic nodes in the query, copy annotation from child.
-    for(auto it: iter_post_const(tree)) {
+    for(auto it: iter_post_const(tree1)) {
         if (it->is_outdegree_one_node()) {
             auto name = extract_node_name_if_present(it->get_name());
             auto child_name = extract_node_name_if_present(it->get_first_child()->get_name());
@@ -316,9 +426,9 @@ json conflict_with_tree_impl(const QT & query_tree,
                              const TT & other_tree,
                              std::function<const QM*(const QM*,const QM*)> & query_mrca,
                              std::function<const TM*(const TM*,const TM*)> & other_mrca,
-                             const RichTaxonomy& Tax)
+                             const witness_namer_t & witness_namer)
 {
-    conflict_stats stats;
+    conflict_stats stats(witness_namer);
     auto log_supported_by = [&stats](const QM* node2, const QM* node1) {
         if (is_fake_tip(node1)) {
             stats.add_terminal(node2,node1);
@@ -347,10 +457,10 @@ json conflict_with_tree_impl(const QT & query_tree,
     };
 
     {
-        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        auto [induced_tree1, induced_tree2] = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
 
-        perform_conflict_analysis(*induced_trees.first,
-                                  *induced_trees.second,
+        perform_conflict_analysis(*induced_tree1,
+                                  *induced_tree2,
                                   log_supported_by,
                                   log_partial_path_of,
                                   log_conflicts_with,
@@ -380,8 +490,8 @@ json conflict_with_tree_impl(const QT & query_tree,
 */
 
     {
-        auto induced_trees = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
-        return stats.get_json(*induced_trees.first, Tax);
+        auto [induced_tree1, induced_tree2] = get_induced_trees2<ConflictTree>(query_tree, query_mrca, other_tree, other_mrca);
+        return stats.get_json(*induced_tree1);
     }
 }
 
@@ -396,20 +506,21 @@ json conflict_with_taxonomy(const ConflictTree& query_tree, const RichTaxonomy& 
     tfunc taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {
         return mrca_from_depth(n1,n2);
     };
-    return conflict_with_tree_impl(query_tree, taxonomy, query_mrca, taxonomy_mrca, Tax);
+    witness_namer_t witness_namer = [&](const string& w) {return ott_witness_namer(w,Tax);};
+    return conflict_with_tree_impl(query_tree, taxonomy, query_mrca, taxonomy_mrca, witness_namer);
 }
 
 json conflict_with_summary(const ConflictTree& query_tree,
                            const SummaryTree_t& summary,
                            const RichTaxonomy& Tax) {
-    using snode_type = SummaryTree_t::node_type;
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> query_mrca = [](const cnode_type* n1, const cnode_type* n2) {
         return mrca_from_depth(n1,n2);
     };
     std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca = [](const snode_type* n1, const snode_type* n2) {
         return find_mrca_via_traversal_indices(n1,n2);
     };
-    return conflict_with_tree_impl(query_tree, summary, query_mrca, summary_mrca, Tax);
+    witness_namer_t witness_namer = [&](const string& w) {return synth_witness_namer(w,summary,Tax);};
+    return conflict_with_tree_impl(query_tree, summary, query_mrca, summary_mrca, witness_namer);
 }
 
 json conflict_with_newick(const ConflictTree& query_tree,
@@ -419,7 +530,8 @@ json conflict_with_newick(const ConflictTree& query_tree,
     std::function<const cnode_type*(const cnode_type*,const cnode_type*)> mrca = [](const cnode_type* n1, const cnode_type* n2) {
         return mrca_from_depth(n1,n2);
     };
-    return conflict_with_tree_impl(query_tree, tree2, mrca, mrca, Tax);
+    witness_namer_t witness_namer = [&](const string& w) {return ott_witness_namer(w,Tax);};
+    return conflict_with_tree_impl(query_tree, tree2, mrca, mrca, witness_namer);
 }
 
 
@@ -629,6 +741,11 @@ string conflict_ws_method(const SummaryTree_t& summary,
     else if (tree2s.size() > 0 and tree2s[0] == '(') {
         auto tree2 = tree_from_newick_string<ConflictTree>(tree2s);
 
+        // 0. Prune unmapped leaves -- this already handles forwards.
+        auto leaf_counts = prune_unmapped_leaves(*tree2, taxonomy);
+        if (leaf_counts.first < 3) {
+            throw OTCBadRequest()<<"tree2 tree has only "<<leaf_counts.first<<" leaves with an OTT id!";
+        }
         // 1. Check that all leaves in input tree have OTT ids
         check_and_forward_leaf_ott_ids(*tree2, taxonomy, "tree2");
         // 2. Check that all leaves in tree2 have node names

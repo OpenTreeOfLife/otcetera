@@ -16,8 +16,6 @@
 #include "otc/taxonomy/flags.h"
 #include "otc/config_file.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;
@@ -286,7 +284,8 @@ std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc, argv);

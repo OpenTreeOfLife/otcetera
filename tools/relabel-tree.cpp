@@ -21,7 +21,6 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
-INITIALIZE_EASYLOGGINGPP
 
 using namespace otc;
 
@@ -281,7 +280,8 @@ map<string, OttId> read_mapping_file(const string & mf) {
     return ret;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     std::ios::sync_with_stdio(false);
     std::ofstream jlogf;
     std::ofstream * json_log = nullptr;

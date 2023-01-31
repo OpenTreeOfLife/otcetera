@@ -96,7 +96,7 @@ uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|
 155737	|	189832	|	Lophotrochozoa	|	no rank	|	ncbi:1206795	|		|		|	
 941620	|	155737	|	Annelida	|	phylum	|	ncbi:6340,worms:882,gbif:42,irmng:234	|		|		|	
 555379	|	155737	|	Platyhelminthes	|	phylum	|	ncbi:6157,worms:793,gbif:108,irmng:116	|		|		|	
-6802117	|	155737	|	Mollusca	|	phylum	|	ncbi:6447,worms:51,gbif:52,irmng:175	|		|		|	
+802117	|	155737	|	Mollusca	|	phylum	|	ncbi:6447,worms:51,gbif:52,irmng:175	|		|		|	
 826261	|	155737	|	Brachiopoda	|	phylum	|	ncbi:7568,worms:1803,gbif:110,irmng:107	|		|		|	
 681832	|	826261	|	Rhynchonelliformea	|	subphylum	|	ncbi:115369,worms:104018,irmng:1139	|		|		|	
 107877	|	681832	|	Rhynchonellata	|	class	|	ncbi:115371,worms:104020,gbif:210,irmng:1242	|		|		|	

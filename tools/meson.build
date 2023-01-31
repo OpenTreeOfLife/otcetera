@@ -39,7 +39,6 @@ programs = [
   ['inducedsubtree',  'induced-subtree'],
   ['distance',  'distance'],
   ['taxonconflictreport',  'taxon-conflict-report'],
-  ['solve-subproblem',  'solve-subproblem'],
   ['graft-solutions',  'graft-solutions'],
   ['unprune-solution',  'unprune-solution'],
   ['name-unnamed-nodes',  'name-unnamed-nodes'],
@@ -71,14 +70,24 @@ foreach program : programs
              install: true)
 endforeach
 
+solver_sources = ['solve-subproblem.cpp','solver/rsplit.cpp', 'solver/solution.cpp',
+                  'solver/build.cpp', 'solver/rollback.cpp', 'solver/oracle.cpp',
+                  'solver/combine.cpp', 'solver/names.cpp']
+
+executable('otc-solve-subproblem',
+           solver_sources,
+           dependencies: [boost, libotcetera, json],
+           install_rpath: rpath,
+           install: true)
+
 executable('otc-version-reporter', ['version-reporter.cpp',git_version_h], dependencies: [boost, libotcetera, json], install_rpath: rpath, install: true)
 
 
 
-test_otc_tools = find_program(meson.source_root()/'tools/test_otc_tools.py')
-data_dir =     meson.source_root()/'data'
-expected_dir = meson.source_root()/'expected'
-tools_dir =    meson.build_root()/'tools'
+test_otc_tools = find_program(meson.project_source_root()/'tools/test_otc_tools.py')
+data_dir =     meson.project_source_root()/'data'
+expected_dir = meson.project_source_root()/'expected'
+tools_dir =    meson.project_build_root()/'tools'
 
 test('otc tools test',
      test_otc_tools,

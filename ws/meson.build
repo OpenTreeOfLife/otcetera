@@ -10,12 +10,12 @@ executable('otc-tol-ws', otc_tol_ws_sources,
 	   install: true)
 
 
-test_web_services = find_program( meson.source_root()/'ws/test_web_services.py' )
+test_web_services = find_program( meson.project_source_root()/'ws/test_web_services.py' )
 
 # this should be the dir of the otc-tol-ws binary before its installed.
-exe_dir = meson.build_root()/'ws'
+exe_dir = meson.project_build_root()/'ws'
 
-synth_setups = meson.source_root()/'data/synth-setups'
+synth_setups = meson.project_source_root()/'data/synth-setups'
 
 synth_setup_1 = synth_setups/'synth-1'
 
@@ -51,9 +51,9 @@ test('web services test (2)',
             '--secs-to-recheck-pid-file=30']
     )
 
-tax_dir = meson.source_root()/'test/tnrs/data/taxonomy-induced'
-synth_dir = meson.source_root()/'test/tnrs/data/taxonomy-tree'
-expectedws_dir = meson.source_root()/'test/tnrs/expectedws-induced'
+tax_dir = meson.project_source_root()/'test/tnrs/data/taxonomy-induced'
+synth_dir = meson.project_source_root()/'test/tnrs/data/taxonomy-tree'
+expectedws_dir = meson.project_source_root()/'test/tnrs/expectedws-induced'
 test('tnrs web services test',
      test_web_services,
      timeout: 300,

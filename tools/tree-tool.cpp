@@ -16,11 +16,7 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
-#include <boost/filesystem/operations.hpp>
-
-namespace fs = boost::filesystem;
-
-INITIALIZE_EASYLOGGINGPP
+namespace fs = std::filesystem;
 
 using namespace otc;
 
@@ -345,7 +341,8 @@ void standardize(Tree_t& tree)
     sort_by_smallest_child(tree);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);

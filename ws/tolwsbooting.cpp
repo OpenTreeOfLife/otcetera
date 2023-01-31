@@ -17,8 +17,6 @@
 #include "otc/tnrs/context.h"
 #include "otc/supertree_util.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
 
@@ -38,7 +36,7 @@ using std::to_string;
 
 namespace po = boost::program_options;
 using namespace otc;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
 namespace chrono = std::chrono;
@@ -500,7 +498,6 @@ string conflict_status_method_handler( const json& parsed_args ) {
 #include "otc/ctrie/str_utils.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
 using json = nlohmann::json;
 typedef std::set<fs::path> fp_set;
 typedef std::pair<bool, fp_set > bool_fp_set; 
@@ -792,8 +789,10 @@ int run_server(const po::variables_map & args) {
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
     RichTaxonomy taxonomy = load_rich_taxonomy(args);
-
-
+    
+    auto nc = Context::cull_contexts_to_taxonomy(taxonomy);
+    LOG(INFO) << nc << " taxonomy contexts retained...";
+    
     const Context * c = determine_context({});
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";
@@ -1112,36 +1111,34 @@ inline std::size_t calc_memory_used(const RichTaxonomy &rt, MemoryBookkeeper &mb
 void mark_summary_tree_nodes_extinct(SummaryTree_t& tree, const RichTaxonomy& taxonomy)
 {
     // compute extinctness for each node.  Post means that a node is only visited after all its children.
-    for (auto node: iter_post(tree))
-    {
+    for (auto node: iter_post(tree)) {
         auto& node_data = node->get_data();
-        if (node->is_tip())
-        {
+        if (node->is_tip()) {
             auto id = node->get_ott_id();
             auto& taxon = taxonomy.included_taxon_from_id(id)->get_data();
             node_data.extinct_mark = taxon.is_extinct();
-        }
-        else
-        {
+        } else {
             // If any child is not extinct, then this node is not extinct either.
             node_data.extinct_mark = true;
-            for (auto c : iter_child_const(*node))
-                if (not c->get_data().is_extinct())
+            for (auto c : iter_child_const(*node)) {
+                if (not c->get_data().is_extinct()) {
                     node_data.extinct_mark = false;
+                }
+            }
 
             // Complain about higher taxa with extinctness that doesn't match the computed extinctness.
-            if (node->has_ott_id())
-            {
+            if (node->has_ott_id()) {
                 auto id = node->get_ott_id();
                 auto& taxon = taxonomy.included_taxon_from_id(id)->get_data();
-                if (node_data.is_extinct() != taxon.is_extinct())
-                {
+                if (node_data.is_extinct() != taxon.is_extinct()) {
                     LOG(WARNING)<<"Higher taxon "<<taxon.possibly_nonunique_name<<" is extinct="<<taxon.is_extinct()<<"  but the computed extinctness is extinct="<<node_data.is_extinct();
-                    for (auto c : iter_child_const(*node))
-                        if (not c->get_data().is_extinct())
+                    for (auto c : iter_child_const(*node)) {
+                        if (not c->get_data().is_extinct()) {
                             LOG(WARNING)<<"    Child "<<c->get_name()<<" is NOT extinct!";
-                        else
+                        } else {
                             LOG(WARNING)<<"    Child "<<c->get_name()<<" is EXTINCT!";
+                        }
+                    }
                 }
             }
         }
@@ -1205,7 +1202,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
         MemoryBookkeeper tax_mem_b;
         std::size_t tree_mem = 0;
         auto tax_mem = calc_memory_used(taxonomy, tax_mem_b);
-        write_memory_bookkeeping(LOG(INFO), tax_mem_b, "taxonomy", tax_mem);
+        write_memory_bookkeeping(INTERNAL_LOG_MESSAGE(INFO).stream(), tax_mem_b, "taxonomy", tax_mem);
 #   endif
     auto [tree,sta] = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
     try {
@@ -1358,7 +1355,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
 #       if defined(REPORT_MEMORY_USAGE)
             MemoryBookkeeper tree_mem_b;
             tree_mem += calc_memory_used_by_tree(tree, tree_mem_b);
-            write_memory_bookkeeping(LOG(INFO), tree_mem_b, "tree", tree_mem);
+            write_memory_bookkeeping(INTERNAL_LOG_MESSAGE(INFO).stream(), tree_mem_b, "tree", tree_mem);
             LOG(INFO) << "tax + tree memory = " << tax_mem << " + " << tree_mem << " = " << tax_mem + tree_mem;
 #       endif
     } catch (...) {
@@ -1371,6 +1368,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
 }// namespace otc
 
 int main( const int argc, char** argv) {
+
     if (otc::set_global_conv_facet() != 0) {
         return 1;
     }
