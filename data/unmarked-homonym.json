@@ -1,0 +1,12 @@
+[
+  {
+    "action": "add",
+    "taxon": {
+      "ott_id": 24,
+      "sourceinfo": "additions-6520246-6520246:6520246",
+      "name": "Amaryllis minor",
+      "parent": 100,
+      "rank": "species"
+    }
+  }
+]

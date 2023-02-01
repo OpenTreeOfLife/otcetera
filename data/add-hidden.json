@@ -1,0 +1,9 @@
+[
+  {
+    "action": "edit",
+    "taxon": {
+      "ott_id": 2,
+      "flags": "edited,hybrid,hidden"
+    }
+  }
+]

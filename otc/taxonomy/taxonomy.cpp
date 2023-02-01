@@ -83,6 +83,9 @@ const map<string, TaxonomicRank, std::less<>> rank_name_to_enum =
         {"class", RANK_CLASS},
         {"subclass", RANK_SUBCLASS},
         {"infraclass", RANK_INFRACLASS},
+        {"subterclass", RANK_SUBTERCLASS},
+        {"cohort", RANK_COHORT},
+        {"subcohort", RANK_SUBCOHORT},
         {"superorder", RANK_SUPERORDER},
         {"order", RANK_ORDER},
         {"suborder", RANK_SUBORDER},
@@ -98,16 +101,27 @@ const map<string, TaxonomicRank, std::less<>> rank_name_to_enum =
         {"subgenus", RANK_SUBGENUS},
         {"section", RANK_SECTION},
         {"subsection", RANK_SUBSECTION},
+        {"series", RANK_SERIES},
+        {"subseries", RANK_SUBSERIES},
         {"species group", RANK_SPECIES_GROUP},
         {"species subgroup", RANK_SPECIES_SUBGROUP},
         {"species", RANK_SPECIES},
         {"subspecies", RANK_SUBSPECIES},
         {"infraspecificname", RANK_INFRASPECIFICNAME},
-        {"forma", RANK_FORMA},
-        {"subform", RANK_SUBFORM},
         {"varietas", RANK_VARIETAS},
         {"variety", RANK_VARIETY},
         {"subvariety", RANK_SUBVARIETY},
+        {"forma", RANK_FORMA},
+        {"subform", RANK_SUBFORM},
+        {"forma specialis", RANK_FORMA_SPECIALIS},
+        {"morph", RANK_MORPH},
+        {"strain", RANK_STRAIN},
+        {"isolate", RANK_ISOLATE},
+        {"biotype", RANK_BIOTYPE},
+        {"pathogroup", RANK_PATHOGROUP},
+        {"serogroup", RANK_SEROGROUP},
+        {"serotype", RANK_SEROTYPE},
+        {"genotype", RANK_GENOTYPE},
         {"no rank", RANK_NO_RANK},
         {"no rank - terminal", RANK_NO_RANK_TERMINAL},
         {"natio", RANK_INFRASPECIFICNAME} // not really a rank, should go in subsequent version of OTT
@@ -129,6 +143,9 @@ const map<TaxonomicRank, string, std::less<>> rank_enum_to_name =
         {RANK_CLASS, "class"},
         {RANK_SUBCLASS, "subclass"},
         {RANK_INFRACLASS, "infraclass"},
+        {RANK_SUBTERCLASS, "subterclass"},
+        {RANK_COHORT, "cohort"},
+        {RANK_SUBCOHORT, "subcohort"},
         {RANK_SUPERORDER, "superorder"},
         {RANK_ORDER, "order"},
         {RANK_SUBORDER, "suborder"},
@@ -144,16 +161,27 @@ const map<TaxonomicRank, string, std::less<>> rank_enum_to_name =
         {RANK_SUBGENUS, "subgenus"},
         {RANK_SECTION, "section"},
         {RANK_SUBSECTION, "subsection"},
+        {RANK_SERIES, "series"},
+        {RANK_SUBSERIES, "subseries"},
         {RANK_SPECIES_GROUP, "species group"},
         {RANK_SPECIES_SUBGROUP, "species subgroup"},
         {RANK_SPECIES, "species"},
         {RANK_SUBSPECIES, "subspecies"},
         {RANK_INFRASPECIFICNAME, "infraspecificname"},
-        {RANK_FORMA, "forma"},
-        {RANK_SUBFORM, "subform"},
         {RANK_VARIETAS, "varietas"},
         {RANK_VARIETY, "variety"},
         {RANK_SUBVARIETY, "subvariety"},
+        {RANK_FORMA, "forma"},
+        {RANK_SUBFORM, "subform"},
+        {RANK_FORMA_SPECIALIS, "forma specialis"},
+        {RANK_MORPH, "morph"},
+        {RANK_STRAIN, "strain"},
+        {RANK_ISOLATE, "isolate"},
+        {RANK_BIOTYPE, "biotype"},
+        {RANK_PATHOGROUP, "pathogroup"},
+        {RANK_SEROGROUP, "serogroup"},
+        {RANK_SEROTYPE, "serotype"},
+        {RANK_GENOTYPE, "genotype"},
         {RANK_NO_RANK, "no rank"},
         {RANK_NO_RANK_TERMINAL, "no rank - terminal"},
         {RANK_INFRASPECIFICNAME, "natio"} // not really a rank, should go in subsequent version of OTT
@@ -187,6 +215,33 @@ TaxonomyRecord::TaxonomyRecord(const string& line_)
     sourceinfo = string_view(start[4], end[4] - start[4]);
     uniqname = string_view(start[5], end[5] - start[5]);
     flags = flags_from_string(start[6], end[6]);
+    if (not uniqname.size()) {
+        uniqname = name;
+    }
+    rank_strings.insert(string(rank));
+}
+
+// is_input_form will be true when the headers lack sourceinfo and uniqname
+TaxonomyRecord::TaxonomyRecord(const string& line_, bool /* is_input_form */)
+    :line(line_) {
+    // parse the line
+    // also see boost::make_split_iterator
+    const char* start[6];
+    const char* end[6];
+    start[0] = line.c_str();
+    for(int i = 0; i < 5; i++) {
+        end[i] = std::strstr(start[i],"\t|\t");
+        start[i + 1] = end[i] + 3;
+        // std::cerr << "start,end[" << i << "] = " << start[i] << ", " << end[i] << std::endl;
+    }
+    char *temp;
+    id = std::strtoul(start[0], &temp, 10);
+    parent_id = std::strtoul(start[1], &temp, 10);
+    name = string_view(start[2], end[2] - start[2]);
+    rank = string_view(start[3], end[3] - start[3]);
+    sourceinfo = string_view();
+    uniqname = string_view();
+    flags = flags_from_string(start[4], end[4]);
     if (not uniqname.size()) {
         uniqname = name;
     }
@@ -240,6 +295,43 @@ OttId Taxonomy::map(OttId old_id) const {
     return -1;
 }
 
+// Jan, 2023 MTH having some issues with copy_file failing on ubuntu g++11
+void copy_file_two_tries(const fs::path & old_path, const fs::path & new_path) {
+    if (fs::exists(old_path)) {
+        const bool new_exists = fs::exists(new_path);
+        try {
+            fs::copy_file(old_path, new_path);
+        } catch (...) {
+            if (new_exists) {
+                throw;
+            }
+            // based on https://www.oreilly.com/library/view/c-cookbook/0596007612/ch10s08.html
+            const static int BUFFER_LENGTH = 8192;
+            std::ifstream istrm{old_path.string(), std::ios_base::in | std::ios_base::binary};
+            if (!istrm.good()) {
+                throw OTCError() << "Could not open file " << old_path.string();
+            }
+            std::ofstream ostrm{new_path.string(), std::ios_base::out | std::ios_base::binary};
+            if (!ostrm.good()) {
+                throw OTCError() << "Could not open file " << new_path.string();
+            }
+            char buffer[BUFFER_LENGTH];
+            do {
+                istrm.read(&buffer[0], BUFFER_LENGTH);
+                if (istrm.bad()) {
+                    throw OTCError() << "Problem reading from " << old_path.string();
+                }
+                ostrm.write(&buffer[0], istrm.gcount());
+                if (ostrm.bad()) {
+                    throw OTCError() << "Problem writing to " << new_path.string();
+                }
+            } while (istrm.gcount() > 0);
+            istrm.close();
+            ostrm.close();
+        }
+    }
+}
+
 void Taxonomy::write(const std::string& newdirname,
                      bool copy_taxonomy_tsv_lines_raw,
                      bool copy_synonyms_tsv_raw
@@ -252,17 +344,14 @@ void Taxonomy::write(const std::string& newdirname,
     
     // Copy the other files.
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
-                "log.tsv", "otu_differences.tsv", "weaklog.csv"})
-    {
-        if (fs::exists(old_dir/name)) {
-            fs::copy_file(old_dir/name,new_dir/name);
-        }
+                "log.tsv", "otu_differences.tsv", "weaklog.csv"}) {
+        copy_file_two_tries(old_dir/name,new_dir/name);
     }
 
     const auto fname = "synonyms.tsv";
     if (fs::exists(old_dir/fname)) {
         if (copy_synonyms_tsv_raw) {
-            fs::copy_file(old_dir/fname, new_dir/fname);
+            copy_file_two_tries(old_dir/fname, new_dir/fname);
         } else {
             std::ifstream inpf((old_dir/fname).string());
             if (not inpf) {
@@ -318,6 +407,8 @@ void Taxonomy::write(const std::string& newdirname,
                tf << flags_to_string(rec.flags) << sep;
                tf << '\n';
            }
+
+           
         }
         tf.close();
     }
@@ -423,11 +514,85 @@ Taxonomy::Taxonomy(const string& dir,
     // 2. Read and check the first line
     string line;
     std::getline(taxonomy_stream,line);
-    if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t") {
+    unsigned int count;
+    if (line == "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tflags\t|\t") {
+        count = read_input_taxonomy_stream(taxonomy_stream);
+    } else if (line != "uid\t|\tparent_uid\t|\tname\t|\trank\t|\tsourceinfo\t|\tuniqname\t|\tflags\t|\t") {
         throw OTCError() << "First line of file '" << filename << "' is not a taxonomy header.";
+    } else {
+        count = read_ott_taxonomy_stream(taxonomy_stream);
     }
+    LOG(TRACE) << "records read = " << count;
+    LOG(TRACE) << "records kept = " << size();
+    taxonomy_stream.close();
+    /*
+    if (read_deprecated) {
+        read_deprecated_file(path + "/deprecated.tsv");
+    }
+    */
+    read_forwards_file(path + "/forwards.tsv");
+}
+
+unsigned int Taxonomy::read_input_taxonomy_stream(std::istream & taxonomy_stream) {
     // 3. Read records up to the record containing the root.
-    int count = 0;
+    unsigned int count = 0;
+    string line;
+
+    if (keep_root != -1) {
+        while(std::getline(taxonomy_stream, line)) {
+            count++;
+            // Add line to vector
+            emplace_back(TaxonomyRecord{line, true});
+            if (back().id == keep_root) {
+                break;
+            }
+            pop_back();
+        }
+        if (empty()) {
+            throw OTCError() << "Root id '" << keep_root << "' not found.";
+        }
+    } else {
+        std::getline(taxonomy_stream, line);
+        count++;
+        // Add line to vector
+        emplace_back(TaxonomyRecord{line, true});
+    }
+    back().depth = 1;
+    if ((back().flags & cleaning_flags).any()) {
+        throw OTCError() << "Root taxon (ID = " << back().id << ") removed according to cleaning flags!";
+    }
+    index[back().id] = size() - 1;
+    // 4. Read the remaining records
+    while(std::getline(taxonomy_stream, line)) {
+        count++;
+        if (count % 500 == 0) {
+            std::cerr << "line " << count << ": " << line << '\n';
+        }
+        // Add line to vector
+        emplace_back(TaxonomyRecord{line, true});
+        // Eliminate records that match the cleaning flags
+        if ((back().flags & cleaning_flags).any()) {
+            pop_back();
+            continue;
+        }
+        // Eliminate records whose parents have been eliminated, or are not found.
+        auto loc = index.find(back().parent_id);
+        if (loc == index.end()) {
+            pop_back();
+            continue;
+        }
+        back().parent_index = loc->second;
+        back().depth = (*this)[back().parent_index].depth + 1;
+        (*this)[back().parent_index].out_degree++;
+        index[back().id] = size() - 1;
+    }
+    return count;
+}
+
+unsigned int Taxonomy::read_ott_taxonomy_stream(std::istream & taxonomy_stream) {
+    // 3. Read records up to the record containing the root.
+    unsigned int count = 0;
+    string line;
     if (keep_root != -1) {
         while(std::getline(taxonomy_stream, line)) {
             count++;
@@ -442,7 +607,7 @@ Taxonomy::Taxonomy(const string& dir,
             throw OTCError() << "Root id '" << keep_root << "' not found.";
         }
     } else {
-        std::getline(taxonomy_stream,line);
+        std::getline(taxonomy_stream, line);
         count++;
         // Add line to vector
         emplace_back(line);
@@ -473,33 +638,34 @@ Taxonomy::Taxonomy(const string& dir,
         (*this)[back().parent_index].out_degree++;
         index[back().id] = size() - 1;
     }
-    LOG(TRACE) << "records read = " << count;
-    LOG(TRACE) << "records kept = " << size();
-    taxonomy_stream.close();
-    /*
-    if (read_deprecated) {
-        read_deprecated_file(path + "/deprecated.tsv");
-    }
-    */
-    read_forwards_file(path + "/forwards.tsv");
+    return count;
 }
 
 std::variant<OttId,reason_missing> RichTaxonomy::get_unforwarded_id_or_reason(OttId id) const
 {
     const auto & td = tree->get_data();
-    if (td.id_to_node.count(id))
+    if (td.id_to_node.count(id)) {
         return id;
-    if (auto iter = forwards.find(id); iter != forwards.end())
+    }
+    if (auto iter = forwards.find(id); iter != forwards.end()) {
         return iter->second;
+    }
     return reason_missing::unknown;
 }
 
-RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
-    :BaseTaxonomy(dir, cf, kr) {
+
+RichTaxonomy::RichTaxonomy(const std::string& dir,
+                           std::bitset<32> cf,
+                           OttId kr,
+                           bool read_syn_type_as_src)
+    :BaseTaxonomy(dir, cf, kr),
+    read_synonym_type_as_src(read_syn_type_as_src) {
     { //braced to reduce scope of light_taxonomy to reduced memory
         Taxonomy light_taxonomy(dir, cf, kr); 
         auto nodeNamer = [](const auto&){return string();};
-        tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer);
+        cerr << "light_taxonomy.get_tree<RichTaxTree>(nodeNamer)..." << std::endl;
+        tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer, !read_syn_type_as_src);
+        cerr << "... tree returned" << std::endl;
         auto & tree_data = tree->get_data();
         std::swap(forwards, light_taxonomy.forwards);
         //std::swap(deprecated, light_taxonomy.deprecated);
@@ -530,12 +696,12 @@ RichTaxonomy::RichTaxonomy(const std::string& dir, std::bitset<32> cf, OttId kr)
     _fill_ids_to_suppress_set();
     this->read_synonyms();
     const auto & td = tree->get_data();
-    LOG(INFO) << "# of taxa stored in taxonomy, but filtered from taxonomy tree = " << filtered_records.size();
-    LOG(INFO) << "last # in ncbi_id_map = " << (td.ncbi_id_map.empty() ? 0 : max_numeric_key(td.ncbi_id_map));
-    LOG(INFO) << "last # in gbif_id_map = " <<  (td.gbif_id_map.empty() ? 0 : max_numeric_key(td.gbif_id_map));
-    LOG(INFO) << "last # in worms_id_map = " <<  (td.worms_id_map.empty() ? 0 : max_numeric_key(td.worms_id_map));
-    LOG(INFO) << "last # in if_id_map = " <<  (td.if_id_map.empty() ? 0 : max_numeric_key(td.if_id_map));
-    LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
+    // LOG(INFO) << "# of taxa stored in taxonomy, but filtered from taxonomy tree = " << filtered_records.size();
+    // LOG(INFO) << "last # in ncbi_id_map = " << (td.ncbi_id_map.empty() ? 0 : max_numeric_key(td.ncbi_id_map));
+    // LOG(INFO) << "last # in gbif_id_map = " <<  (td.gbif_id_map.empty() ? 0 : max_numeric_key(td.gbif_id_map));
+    // LOG(INFO) << "last # in worms_id_map = " <<  (td.worms_id_map.empty() ? 0 : max_numeric_key(td.worms_id_map));
+    // LOG(INFO) << "last # in if_id_map = " <<  (td.if_id_map.empty() ? 0 : max_numeric_key(td.if_id_map));
+    // LOG(INFO) << "last # in irmng_id_map = " <<  (td.irmng_id_map.empty() ? 0 : max_numeric_key(td.irmng_id_map));
 }
 
 
@@ -543,6 +709,7 @@ void Taxonomy::read_forwards_file(string filepath)
 {
     // 1. Read forwards file and create id -> forwarded_id map
     ifstream forwards_stream(filepath);
+    int i = 1;
     if (forwards_stream) {
         string line;
         std::getline(forwards_stream, line);
@@ -554,6 +721,7 @@ void Taxonomy::read_forwards_file(string filepath)
             }
             const char* temp2 = temp+1;
             long new_id = std::strtoul(temp2, &temp, 10);
+            cerr << i++ << ": " << old_id << " -> " << new_id << '\n';
             forwards[check_ott_id_size(old_id)] = check_ott_id_size(new_id);
         }
     }
@@ -674,14 +842,12 @@ RichTaxonomy load_rich_taxonomy(const variables_map& args) {
     return {taxonomy_dir, cleaning_flags, keep_root};
 }
 
-bool RTRichTaxNodeData::is_extinct() const
-{
+bool RTRichTaxNodeData::is_extinct() const {
     return ::is_extinct(flags);
 }
 
 
 void RichTaxonomy::read_synonyms() {
-    RTRichTaxTreeData & tree_data = this->tree->get_data();
     string filename = path + "/synonyms.tsv";
     ifstream synonyms_file(filename);
         if (not synonyms_file) {
@@ -690,9 +856,61 @@ void RichTaxonomy::read_synonyms() {
     // 2. Read and check the first line
     string line;
     std::getline(synonyms_file, line);
-    if (line != "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t") {
+    if (line == "uid\t|\tname\t|\ttype\t|\t") {
+        read_input_synonyms_stream(synonyms_file);
+    } else  if (line != "name\t|\tuid\t|\ttype\t|\tuniqname\t|\tsourceinfo\t|\t") {
         throw OTCError() << "First line of file '" << filename << "' is not a synonym header.";
+    } else {
+        read_ott_synonyms_stream(synonyms_file);
     }
+}
+
+void RichTaxonomy::read_input_synonyms_stream(std::istream & synonyms_file) {
+    RTRichTaxTreeData & tree_data = this->tree->get_data();
+    string line;
+    while(std::getline(synonyms_file, line)) {
+        const char* start[3];
+        const char* end[3];
+        start[0] = line.c_str();
+        for(int i=0; i < 2; i++) {
+            end[i] = std::strstr(start[i],"\t|\t");
+            start[i + 1] = end[i] + 3;
+        }
+        end[2] = start[0] + line.length() - 3 ; // -3 for the \t|\t
+        char *temp;
+        string name = string(start[1], end[1] - start[1]);
+        unsigned long raw_id = std::strtoul(start[0], &temp, 10);
+        OttId ott_id = check_ott_id_size(raw_id);
+        const RTRichTaxNode * primary = nullptr;
+        try {
+            primary = tree_data.id_to_node.at(ott_id);
+        } catch (std::out_of_range &) {
+            if (!Taxonomy::tolerate_synonyms_to_unknown_id) {
+                throw;
+            }
+            LOG(WARNING) << "skipping synonym \"" << name << "\" to unknown ID " << ott_id;
+            continue;
+        }
+        string sourceinfo;
+        if (read_synonym_type_as_src) {
+            sourceinfo = string(start[2], end[2] - start[2]);
+        }
+        
+        this->synonyms.emplace_back(name, primary, sourceinfo);
+        TaxonomicJuniorSynonym & tjs = *(this->synonyms.rbegin());
+        
+        auto vs = comma_separated_as_vec(sourceinfo);
+        if (!read_synonym_type_as_src) {
+            process_source_info_vec(vs, tree_data, tjs, primary);
+        }
+        RTRichTaxNode * mp = const_cast<RTRichTaxNode *>(primary);
+        mp->get_data().junior_synonyms.push_back(&tjs);
+    }
+}
+
+void RichTaxonomy::read_ott_synonyms_stream(std::istream & synonyms_file) {
+    RTRichTaxTreeData & tree_data = this->tree->get_data();
+    string line;
     int num_syn_skipped = 0;
     while(std::getline(synonyms_file, line)) {
         const char* start[5];
@@ -870,40 +1088,6 @@ string extract_string(const json & j, string opt_name) {
         }
     }
     throw OTCError() << "Expecting a \"" << opt_name << "\" property that refers to an string.";
-}
-
-void RichTaxonomy::add_taxonomic_addition_string(const std::string &s) {
-    json j;
-    try {
-        j = json::parse(s);
-    } catch (std::exception & x) {
-        throw OTCError() << "Error parsing JSON for taxonomic addition: " << x.what();
-    }
-    auto tax_arr_it = j.find("taxa");
-    if (tax_arr_it == j.end() || !tax_arr_it->is_array()) {
-        throw OTCError() << "Expecting a taxonomic addition to have \"taxa\" property referring to an array.";
-    }
-    auto tax_arr = j["taxa"];
-    string amend_id = extract_string(j, "id");
-    for (json::const_iterator tax_add_it = tax_arr.begin(); tax_add_it != tax_arr.end(); ++tax_add_it) {
-        vector<string> elements;
-        const json & taxon_addition = *tax_add_it;
-        elements.reserve(8);
-        string ott_id = extract_long_as_string(taxon_addition, "ott_id");
-        string source = amend_id;
-        source += ":";
-        source += ott_id;
-        elements.push_back(ott_id);
-        elements.push_back(extract_long_as_string(taxon_addition, "parent"));
-        elements.push_back(extract_string(taxon_addition, "name"));
-        elements.push_back(extract_string(taxon_addition, "rank"));
-        elements.push_back(source);
-        elements.push_back(string());
-        elements.push_back(string());
-        elements.push_back(string());
-        string fake_line = boost::algorithm::join(elements, "\t|\t");
-        //process_taxonomy_line(fake_line);
-    }
 }
 
 

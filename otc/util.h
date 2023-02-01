@@ -44,6 +44,7 @@ QuotingRequirementsEnum determine_newick_quoting_requirements(const std::string 
 std::string add_newick_quotes(const std::string &s);
 std::string blanks_to_underscores(const std::string &s);
 void write_escaped_for_newick(std::ostream & out, const std::string & n);
+void write_tax_id_set(std::ostream & out, const char *indent, const OttIdSet &fir, const char * sep);
 void write_ott_id_set(std::ostream & out, const char *indent, const OttIdSet &fir, const char * sep);
 void db_write_ott_id_set(const char * label, const OttIdSet &fir);
 void write_ott_id_set_diff(std::ostream & out, const char *indent, const OttIdSet &fir, const char *firN, const OttIdSet & sec, const char *secN);
@@ -139,6 +140,18 @@ inline std::set<T> keys(const std::map<T, U> & container) {
     return k;
 }
 
+inline void write_tax_id_set(std::ostream & out,
+                             const char *indent,
+                             const OttIdSet &fir,
+                             const char * sep) {
+    for (auto rIt = fir.begin(); rIt != fir.end(); ++rIt) {
+        if (rIt != fir.begin()) {
+            out << sep;
+        }
+        out << indent << *rIt;
+    }
+}
+
 inline void write_ott_id_set(std::ostream & out,
                              const char *indent,
                              const OttIdSet &fir,
@@ -150,6 +163,7 @@ inline void write_ott_id_set(std::ostream & out,
         out << indent << "ott" << *rIt;
     }
 }
+
 inline void db_write_ott_id_set(const char * label,
                                 const OttIdSet &fir) {
     if (!debugging_output_enabled) {

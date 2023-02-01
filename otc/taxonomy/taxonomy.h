@@ -53,6 +53,9 @@ enum TaxonomicRank {
     RANK_CLASS,
     RANK_SUBCLASS,
     RANK_INFRACLASS,
+    RANK_SUBTERCLASS,
+    RANK_COHORT,
+    RANK_SUBCOHORT,
     RANK_SUPERORDER,
     RANK_ORDER,
     RANK_SUBORDER,
@@ -68,16 +71,27 @@ enum TaxonomicRank {
     RANK_SUBGENUS,
     RANK_SECTION,
     RANK_SUBSECTION,
+    RANK_SERIES,
+    RANK_SUBSERIES,
     RANK_SPECIES_GROUP,
     RANK_SPECIES_SUBGROUP,
     RANK_SPECIES,
     RANK_SUBSPECIES,
     RANK_INFRASPECIFICNAME,
-    RANK_FORMA,
-    RANK_SUBFORM,
     RANK_VARIETAS,
     RANK_VARIETY,
     RANK_SUBVARIETY,
+    RANK_FORMA,
+    RANK_SUBFORM,
+    RANK_FORMA_SPECIALIS,
+    RANK_MORPH,
+    RANK_STRAIN,
+    RANK_ISOLATE,
+    RANK_BIOTYPE,
+    RANK_PATHOGROUP,
+    RANK_SEROGROUP,
+    RANK_SEROTYPE,
+    RANK_GENOTYPE,
     RANK_NO_RANK,
     RANK_NO_RANK_TERMINAL
 };
@@ -99,11 +113,14 @@ inline const std::string & rank_to_string(const TaxonomicRank &r) {
 }
 
 
-inline TaxonomicRank string_to_rank(const std::string_view& s)
+inline TaxonomicRank string_to_rank(const std::string_view& s, bool must_match_if_nonempty = false)
 {
     // FIXME! 
     auto rank = rank_name_to_enum.find(s);
     if (rank == rank_name_to_enum.end()) {
+        if (must_match_if_nonempty and !s.empty()) {
+            throw OTCError() << "rank \"" << s << "\" not recognized.";
+        }
         LOG(WARNING)<<"unknown rank '"<<s<<"'";
         return RANK_NO_RANK;
     }
@@ -140,7 +157,7 @@ struct TaxonomyRecord {
     std::string_view sourceinfo;
     std::string_view uniqname; // will point to name field, if empty in .tsv
     std::bitset<32> flags;
-    int depth = 0;
+    int depth = 0; // 1 for root, 2 for root's children, etc
     int out_degree = 0;
     TaxonomyRecord& operator=(TaxonomyRecord&& tr) = default;
     TaxonomyRecord& operator=(const TaxonomyRecord& tr) = delete;
@@ -148,6 +165,7 @@ struct TaxonomyRecord {
     TaxonomyRecord(TaxonomyRecord& tr) = delete;
     bool is_extinct() const;
     explicit TaxonomyRecord(const std::string& line);
+    explicit TaxonomyRecord(const std::string& line, bool is_short);
     std::vector<std::string> sourceinfoAsVec() const {
         std::string si = std::string(sourceinfo);
         return comma_separated_as_vec(si);
@@ -201,7 +219,8 @@ class Taxonomy: public std::vector<TaxonomyRecord>, public BaseTaxonomy {
 
 public:
     static bool tolerate_synonyms_to_unknown_id;
-    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>) const;
+    template <typename Tree_t> std::unique_ptr<Tree_t> get_tree(std::function<std::string(const TaxonomyRecord&)>,
+                                                                bool process_source_maps = true) const;
 
     std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;
 
@@ -239,6 +258,10 @@ public:
 
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
     Taxonomy(const std::string& dir, std::bitset<32> cf=std::bitset<32>(), OttId keep_root=-1);
+
+    private:
+    unsigned int read_input_taxonomy_stream(std::istream & taxonomy_stream);
+    unsigned int read_ott_taxonomy_stream(std::istream & taxonomy_stream);
     friend class RichTaxonomy;
 };
 
@@ -267,6 +290,9 @@ class RTRichTaxNodeData {
     }
     std::vector<std::string> sourceinfoAsVec() const {
         return comma_separated_as_vec(source_info);
+    }
+    std::string get_sources_as_fmt_str() const {
+        return source_info;
     }
     nlohmann::json get_sources_json() const {
         auto vs = this->sourceinfoAsVec();
@@ -336,7 +362,10 @@ class RichTaxonomy: public BaseTaxonomy {
         return *tree;
     }
     /// Load the taxonomy from directory dir, and apply cleaning flags cf, and keep subtree below kr
-    RichTaxonomy(const std::string& dir, std::bitset<32> cf = std::bitset<32>(), OttId kr = -1);
+    RichTaxonomy(const std::string& dir,
+                 std::bitset<32> cf = std::bitset<32>(),
+                 OttId kr = -1,
+                 bool read_syn_type_as_src = false);
     RichTaxonomy(RichTaxonomy &&) = default;
 
     std::variant<OttId,reason_missing> get_unforwarded_id_or_reason(OttId id) const;
@@ -354,16 +383,16 @@ class RichTaxonomy: public BaseTaxonomy {
         }
         return i2n_it->second;
     }
-    void add_taxonomic_addition_string(const std::string &s);
+    
     const OttIdSet & get_ids_to_suppress_from_tnrs() const {
         return ids_to_suppress_from_tnrs;
     }
+    
     void set_ids_suppressed_from_summary_tree_alias(const OttIdSet * ott_id_set_ptr) {
         is_suppressed_from_synth = ott_id_set_ptr;
     }
 
-    bool node_is_suppressed_from_tnrs(const RTRichTaxNode* nd) const
-    {
+    bool node_is_suppressed_from_tnrs(const RTRichTaxNode * nd) const {
         auto& tree_data = tree->get_data();
         const auto& tax_record_flags = nd->get_data().get_flags();
         return (tree_data.suppress_flags & tax_record_flags).any();
@@ -372,6 +401,7 @@ class RichTaxonomy: public BaseTaxonomy {
     const OttIdSet * get_ids_suppressed_from_summary_tree_alias() const {
         return is_suppressed_from_synth;
     }
+
     const std::list<TaxonomicJuniorSynonym> & get_synonyms_list() const {
         return synonyms;
     }
@@ -384,7 +414,15 @@ class RichTaxonomy: public BaseTaxonomy {
         fuzzy_match_db = match_db;
     }
     
-    private:
+    
+    protected:
+    RichTaxTree & get_mutable_tax_tree() const {
+        return *tree;
+    }
+    void read_synonyms();
+    void _fill_ids_to_suppress_set();
+    
+    bool read_synonym_type_as_src; // only relevant for source taxonomies with syntype info
     std::vector<TaxonomyRecord> filtered_records;
     std::unique_ptr<RichTaxTree> tree;
     std::list<TaxonomicJuniorSynonym> synonyms;
@@ -396,11 +434,11 @@ class RichTaxonomy: public BaseTaxonomy {
     //    will allow the services to report "is_suppressed_from_synth" option.
     const OttIdSet * is_suppressed_from_synth = nullptr;
     const ContextAwareCTrieBasedDB * fuzzy_match_db = nullptr;
-    void read_synonyms();
-    void _fill_ids_to_suppress_set();
     RichTaxonomy(const RichTaxonomy &) = delete;
+    private:
+    void read_input_synonyms_stream(std::istream & synonyms_file);
+    void read_ott_synonyms_stream(std::istream & synonyms_file);
 };
-
 
 
 //class RTTaxNodeData {
@@ -412,7 +450,8 @@ template <typename Node_t, typename TREE>
 void populate_node_from_taxonomy_record(Node_t & nd,
                                     const TaxonomyRecord & line,
                                     std::function<std::string(const TaxonomyRecord&)> get_name,
-                                    TREE & tree);
+                                    TREE & tree,
+                                    bool process_source_maps = true);
 
 
 // default behavior is to set ID and Name from line
@@ -420,7 +459,8 @@ template <typename Node_t, typename TREE>
 inline void populate_node_from_taxonomy_record(Node_t & nd,
                                            const TaxonomyRecord & line,
                                            std::function<std::string(const TaxonomyRecord&)> get_name,
-                                           TREE & ) {
+                                           TREE & ,
+                                           bool ) {
     nd.set_ott_id(line.id);
     nd.set_name(get_name(line));    
 }
@@ -507,15 +547,33 @@ inline void process_source_info_vec(const std::vector<std::string> & vs,
     }
 }
 
+template<typename T, typename U> 
+inline void add_f_to_json_if_needed(T & flags2json,
+                                    U & flags) {
+    using std::string;
+    using std::vector;
+    using nlohmann::json;
+    
+    // If the flag combination is new, store the JSON representation
+    if (flags2json.count(flags) == 0) {
+        vector<string> vf = flags_to_string_vec(flags);
+        flags2json[flags] = json();
+        auto & fj = flags2json[flags];
+        for (auto fs : vf) {
+            fj.push_back(fs);
+        }
+    }
+}
+
 template <>
 inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
-                                              const TaxonomyRecord & tr,
+                                               const TaxonomyRecord & tr,
                                                std::function<std::string(const TaxonomyRecord&)> ,
-                                               RichTaxTree & tree) {
+                                               RichTaxTree & tree,
+                                               bool process_source_maps) {
     using std::string;
     using std::vector;
     using std::string_view;
-    using nlohmann::json;
     RTRichTaxNode * this_node = &nd;
     nd.set_ott_id(tr.id);
     auto & data = nd.get_data();
@@ -542,27 +600,23 @@ inline void populate_node_from_taxonomy_record(RTRichTaxNode & nd,
                            this_node);
     auto flags = data.get_flags();
     //cout << "flags = " << flags << " name = " << this_node->get_name() << '\n';
-    // If the flag combination is new, store the JSON representation
-    if (tree_data.flags2json.count(flags) == 0) {
-        vector<string> vf = flags_to_string_vec(flags);
-        tree_data.flags2json[flags] = json();
-        auto & fj = tree_data.flags2json[flags];
-        for (auto fs : vf) {
-            fj.push_back(fs);
-        }
+    add_f_to_json_if_needed(tree_data.flags2json, flags);
+    if (process_source_maps) {
+        auto vs = tr.sourceinfoAsVec();
+        data.source_info = string(tr.sourceinfo);
+        process_source_info_vec(vs, tree_data, data, this_node);
     }
-    auto vs = tr.sourceinfoAsVec();
-    data.source_info = string(tr.sourceinfo);
-    process_source_info_vec(vs, tree_data, data, this_node);
 }
 
 template <typename Tree_t>
-std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const TaxonomyRecord&)> get_name) const {
+std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const TaxonomyRecord&)> get_name,
+                                           bool process_source_maps) const {
     const auto& taxonomy = *this;
     std::unique_ptr<Tree_t> tree(new Tree_t);
     vector<typename Tree_t::node_type*> node_ptr(size(), nullptr);
     for(auto i = 0U; i < taxonomy.size() ; i++) {
         const auto& line = taxonomy[i];
+        // std::cerr << "Taxonomy::get_tree line " << i << '\n';
         // Make the tree
         typename Tree_t::node_type* nd = nullptr;
         if (i==0) {
@@ -571,11 +625,12 @@ std::unique_ptr<Tree_t> Taxonomy::get_tree(std::function<std::string(const Taxon
             auto parent_nd = node_ptr[line.parent_index];
             nd = tree->create_child(parent_nd);
         }
-        populate_node_from_taxonomy_record(*nd, line, get_name, *tree);
+        populate_node_from_taxonomy_record(*nd, line, get_name, *tree, process_source_maps);
         node_ptr[i] = nd;
     }
     return tree;
 }
+
 // formatting options.
 std::string format_with_taxonomy(const std::string& orig, const std::string& format, const TaxonomyRecord& rec, const Taxonomy& taxonomy);
 std::string format_without_taxonomy(const std::string& orig, const std::string& format);

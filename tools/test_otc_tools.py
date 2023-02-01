@@ -8,6 +8,7 @@ def debug(m):
     sys.stderr.write('DEBUG: ')
     sys.stderr.write(m)
     sys.stderr.write('\n')
+
 def error(m):
     sys.stderr.write('ERROR: ')
     sys.stderr.write(m)

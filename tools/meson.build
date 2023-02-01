@@ -44,13 +44,17 @@ programs = [
   ['name-unnamed-nodes',  'name-unnamed-nodes'],
   ['annotate-synth',  'annotate-synth'],
   ['conflict-stats',  'conflict-stats'],
+  ['source-taxonomy-patcher',  'source-taxonomy-patcher'],
+  ['taxonomy-diff-maker',  'taxonomy-diff-maker'],
   ['taxonomy-parser',  'taxonomy-parser'],
+  ['taxonomy-patcher',  'taxonomy-patcher'],
   ['regrafttaxonomygenerator',  'regraft-taxonomy-generator'],
   ['relabel-tree',  'relabel-tree'],
   ['tree-tool',  'tree-tool'],
   ['prune-clean',  'prune-clean'],
   ['broken-taxa',  'broken-taxa'],
   ['unprune-solution-and-name-unnamed-nodes', 'unprune-solution-and-name-unnamed-nodes'],
+  ['checknamednodes', 'check-named-nodes'],
   ]
 
 # we need restbed for this, indirectly.
