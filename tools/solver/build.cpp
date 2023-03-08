@@ -245,6 +245,7 @@ void Merge(shared_ptr<Solution>& solution, const vector<ConstRSplit>& new_splits
 
     auto merge = [&](auto& group)
         {
+            assert(group.size() >= 2);
             component_ref split_comp = nullptr;
             for(int taxon: group)
             {

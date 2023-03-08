@@ -94,10 +94,12 @@ splits_for_tree(bool preorder, Tree_t& tree, const std::function< set<int>(const
     const auto leafTaxaIndices = set_to_vector( remap(leafTaxa) );
     auto maybe_add_split = [&](const auto& nd)
     {
-        if (not nd->is_tip() and nd != root)
+        if (nd->get_out_degree() >= 2 and nd != root)
         {
             auto descendants = remap(nd->get_data().des_ids);
-            splits.push_back({nd, RSplit(new RSplitObj{descendants, leafTaxaIndices})}) ;
+            if (descendants.size() > 1)
+                splits.push_back({nd, RSplit(new RSplitObj{descendants, leafTaxaIndices})}) ;
+            assert(splits.back().second->in.size() > 1);
         }
     };
 
@@ -128,10 +130,11 @@ splits_for_taxonomy_tree(bool preorder, Tree_t& tree, const std::function< set<i
 
     auto maybe_add_split = [&](const auto& nd)
     {
-        if (not nd->is_tip() and nd != root) {
+        if (nd->get_out_degree() >= 2 and nd != root) {
             // construct split
             const auto descendants = remap(nd->get_data().des_ids);
             const auto nondescendants = remap(exclude[nd]);
+            if (descendants.size() > 1 and nondescendants.size() > 0)
             splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
         }
     };
