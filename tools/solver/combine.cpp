@@ -134,8 +134,11 @@ splits_for_taxonomy_tree(bool preorder, Tree_t& tree, const std::function< set<i
             // construct split
             const auto descendants = remap(nd->get_data().des_ids);
             const auto nondescendants = remap(exclude[nd]);
-            if (descendants.size() > 1 and nondescendants.size() > 0)
-            splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
+            // FIXME: Should we allow splits with nondescendants.size() == 0 ??
+            //        Probably not, but doing so breaks test is-naming1,
+            //        Since we have (A,B,C) with B and C both incertae-sedis.
+            if (descendants.size() > 1)
+                splits.push_back({nd, split_from_include_exclude(descendants, nondescendants)});
         }
     };
 
