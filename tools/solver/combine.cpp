@@ -340,7 +340,7 @@ unique_ptr<Tree_t> combine(vector<unique_ptr<Tree_t>>& trees, const set<OttId>& 
             {
                 auto [n_compatible, failed_] = add_splits_if_consistent_batch(splits2,j,1);
                 total_splits_compatible += n_compatible;
-                failed = failed_;
+                failed.insert(failed.end(), failed_.begin(), failed_.end());
             }
         }
 
