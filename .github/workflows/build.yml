@@ -100,7 +100,6 @@ jobs:
           echo "DEVELOPER_DIR=/Applications/Xcode_${{ matrix.version }}.app/Contents/Developer" >> $GITHUB_ENV
           echo "CC=ccache clang" >> $GITHUB_ENV
           echo "CXX=ccache clang++" >> $GITHUB_ENV
-          ccache --set-config=cache_dir=$HOME/.ccache
 
     - name: Install meson
       run: |
@@ -111,7 +110,9 @@ jobs:
     - name: Prepare ccache timestamp
       id: ccache_cache_timestamp
       run: |
-        if [ "$RUNNER_OS" = "Linux" ]; then
+        ccache --set-config=cache_dir=$HOME/.ccache
+
+        if [ "${{ runner.os }}" = "Linux" ]; then
           stamp=$(date '+%s')
         else
           stamp=$(gdate '+%s')
