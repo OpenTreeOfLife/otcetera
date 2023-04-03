@@ -19,6 +19,9 @@ conf_data = configuration_data()
 conf_data.set_quoted('PACKAGE_VERSION', meson.project_version())
 conf_data.set_quoted('_ARCH_', host_machine.system()+' ' + host_machine.cpu_family())
 conf_data.set_quoted('_COMPILER_', cpp.get_id() + ' ' + cpp.version()+' ' + host_machine.cpu_family())
+
+conf_data.set('HAVE_SYS_RESOURCE_H', cpp.has_header('sys/resource.h'))
+
 configure_file(output : 'config.h', configuration : conf_data)
 
 logging = dependency('g3log')

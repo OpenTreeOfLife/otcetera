@@ -16,6 +16,9 @@
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
 #include "otc/supertree_util.h"
+#ifdef HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
 
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
@@ -1369,7 +1372,15 @@ bool read_tree_and_annotations(const fs::path & config_path,
 
 int main( const int argc, char** argv) {
 
-    if (otc::set_global_conv_facet() != 0) {
+   g3::overrideSetupSignals({ {SIGFPE, "SIGFPE"},
+                              {SIGILL, "SIGILL"},
+       });
+
+#ifdef HAVE_SYS_RLIMIT_H
+   setrlimit(RLIMIT_CORE, RLIMIT_INFINITY);
+#endif
+
+   if (otc::set_global_conv_facet() != 0) {
         return 1;
     }
     
