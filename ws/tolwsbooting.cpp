@@ -16,6 +16,7 @@
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
 #include "otc/supertree_util.h"
+#include "config.h"
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
@@ -1370,15 +1371,42 @@ bool read_tree_and_annotations(const fs::path & config_path,
 
 }// namespace otc
 
+#ifdef HAVE_SYS_RESOURCE_H
+string show_rlimit(rlim_t lim)
+{
+    if (lim == RLIM_INFINITY)
+        return "unlimited";
+    else
+        return std::to_string(lim);
+}
+
+void allow_dumping_core()
+{
+    rlimit limits;
+
+    getrlimit(RLIMIT_CORE,&limits);
+
+    LOG(INFO)<<"OLD core limits = "<<show_rlimit(limits.rlim_cur)<<endl;
+
+    limits.rlim_cur = RLIM_INFINITY;
+
+    setrlimit(RLIMIT_CORE,&limits);
+    getrlimit(RLIMIT_CORE,&limits);
+
+    LOG(INFO)<<"NEW core limits = "<<show_rlimit(limits.rlim_cur)<<endl;
+}
+#else
+void allow_dumping_core()
+{
+    LOG(INFO)<<"Not modifying core limits - not built with <sys/rlimit.H>";
+}
+#endif
+
 int main( const int argc, char** argv) {
 
    g3::overrideSetupSignals({ {SIGFPE, "SIGFPE"},
                               {SIGILL, "SIGILL"},
        });
-
-#ifdef HAVE_SYS_RLIMIT_H
-   setrlimit(RLIMIT_CORE, RLIMIT_INFINITY);
-#endif
 
    if (otc::set_global_conv_facet() != 0) {
         return 1;
@@ -1387,6 +1415,9 @@ int main( const int argc, char** argv) {
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc,argv);
+
+        allow_dumping_core();
+
         return run_server(args);
     } catch (std::exception& e) {
         LOG(ERROR) <<"otc-tol-ws: Error! " << e.what() << std::endl;
