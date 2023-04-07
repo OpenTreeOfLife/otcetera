@@ -618,10 +618,21 @@ void ready_handler( Service& ) {
 // this is a hack.  Also it doesn't include the time zone
 string ctime(const chrono::system_clock::time_point& t) {
     time_t t2 = chrono::system_clock::to_time_t(t);
-    char* c = ctime(&t2);
-    string tt = c;
-    tt.pop_back(); // remove newline
-    return tt;
+    char buffer[100];
+    if (char* c = ctime_r(&t2, buffer))
+    {
+        string tt = c;
+        if (tt.size())
+            tt.pop_back(); // remove newline
+        else
+            LOG(INFO)<<"ctime_r returned an empty string!";
+        return tt;
+    }
+    else
+    {
+        LOG(INFO)<<"ctime_r returned NULL!";
+        return "";
+    }
 }
 
 multimap<string,string> request_headers(const string& rbody) {
