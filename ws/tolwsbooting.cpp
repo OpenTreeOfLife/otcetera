@@ -954,6 +954,7 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
     output.add_options()
         ("tree-dir,D",value<string>(),"Filepath to directory that will hold synthetic tree output")
         ("port,P",value<int>(),"Port to bind to.")
+        ("crash,C","Intentionally SEGFAULT.")
         ("pidfile,p",value<string>(),"filepath for PID")
         ("num-threads,n",value<int>(),"number of threads")
         ("ignore-broken-syn","If passed in, the presence of a synonym mapping to a non-existent ID will just be ignored.")
@@ -1402,6 +1403,9 @@ void allow_dumping_core()
 }
 #endif
 
+
+int (*f)(int) = nullptr;
+
 int main( const int argc, char** argv) {
 
    g3::overrideSetupSignals({ {SIGFPE, "SIGFPE"},
@@ -1417,6 +1421,13 @@ int main( const int argc, char** argv) {
         auto args = parse_cmd_line(argc,argv);
 
         allow_dumping_core();
+
+        // Intentially crash.  Used for testing core dumps.
+        int x = 0;
+        if (args.count("crash"))
+        {
+            x = f(x);
+        }
 
         return run_server(args);
     } catch (std::exception& e) {
