@@ -22,9 +22,9 @@ The instructions below contain all of the gory detail. There are a few quirks wi
 
 ### Compiler
 Otcetera requires a C++17 compiler.  You can use
-* g++ version 8 (or higer)
-* clang++ version 7 (or higher)
-* XCode version 10.1 (or higher)
+* g++ version 9 (or higer)
+* clang++ version 11 (or higher)
+* XCode version 13 (or higher)
 
 ### Build tools: meson, cmake, and ninja
 To build otcetera, we need the build tools
