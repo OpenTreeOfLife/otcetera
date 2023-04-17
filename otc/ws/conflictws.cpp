@@ -535,17 +535,24 @@ json conflict_with_newick(const ConflictTree& query_tree,
 }
 
 
-// Remove leaves (and their monotypic ancestors) in the query tree
-// that are the ancestors of other leaves in the query tree.
-void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxonomy) {
+unique_ptr<ConflictTree> get_induced_taxonomy(const ConflictTree& query_tree, const RichTaxonomy& taxonomy)
+{
     using tfunc = std::function<const tnode_type*(const tnode_type*,const tnode_type*)>;
+
     tfunc taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {
         return mrca_from_depth(n1,n2);
     };
 
     auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
-    auto induced_taxonomy = get_induced_tree<ConflictTree>(taxonomy_nodes_from_query_leaves,
-                                                           taxonomy_mrca);
+    return get_induced_tree<ConflictTree>(taxonomy_nodes_from_query_leaves, taxonomy_mrca);
+}
+
+// Remove leaves (and their monotypic ancestors) in the query tree
+// that are the ancestors of other leaves in the query tree.
+void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxonomy)
+{
+    auto induced_taxonomy = get_induced_taxonomy(query_tree, taxonomy);
+
     auto ottid_to_induced_tax_node = get_ottid_to_node_map(*induced_taxonomy);
 
     LOG(WARNING)<<"induced taxonomy has "<<n_leaves(*induced_taxonomy)<<" leaves.";
@@ -564,17 +571,13 @@ void prune_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxono
     LOG(WARNING)<<"query tree pruned down to "<<n_leaves(*induced_taxonomy)<<" leaves.";
 }
 
+
 // Remove leaves (and their monotypic ancestors) in the query tree
 // that are the ancestors of other leaves in the query tree.
-std::optional<OttId> has_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxonomy) {
-    using tfunc = std::function<const tnode_type*(const tnode_type*,const tnode_type*)>;
-    tfunc taxonomy_mrca = [](const tnode_type* n1, const tnode_type* n2) {
-        return mrca_from_depth(n1,n2);
-    };
+std::optional<OttId> has_ancestral_leaves(ConflictTree& query_tree, const RichTaxonomy& taxonomy)
+{
+    auto induced_taxonomy = get_induced_taxonomy(query_tree, taxonomy);
 
-    auto taxonomy_nodes_from_query_leaves = get_induced_nodes(query_tree, taxonomy.get_tax_tree());
-    auto induced_taxonomy = get_induced_tree<ConflictTree>(taxonomy_nodes_from_query_leaves,
-                                                           taxonomy_mrca);
     auto ottid_to_induced_tax_node = get_ottid_to_node_map(*induced_taxonomy);
 
     vector<cnode_type*> nodes_to_prune;
@@ -675,6 +678,49 @@ vector<OttId> extra_children_for_node(OttId id, const SummaryTree_t& summary, co
 }
 
 
+// Find the smallest set C of taxa (leaf or internal) that we need to add as children of `id` so that
+// i) all descendents of id are descendants of one of these children
+// ii) all taxa in C are present in the summary tree
+map<cnode_type*, vector<OttId>>
+extra_children_for_tree(ConflictTree& query_tree, const ConflictTree& other_tree, const RichTaxonomy& taxonomy)
+{
+    auto induced_taxonomy = get_induced_taxonomy(other_tree, taxonomy);
+
+    auto ottid_to_induced_tax_node = get_ottid_to_const_node_map(*induced_taxonomy);
+
+    // For each leaf of the query tree
+    map<cnode_type*, vector<OttId>> leaves_to_add;
+    for(auto leaf: iter_leaf(query_tree))
+    {
+        auto leaf_id = leaf->get_ott_id();
+
+        // .. that is in the induced taxonomy ...
+        if (not ottid_to_induced_tax_node.count(leaf_id)) continue;
+
+        // .. but is not a tip ...
+        auto tax_node = ottid_to_induced_tax_node.at(leaf_id);
+
+        if (tax_node->is_tip()) continue;
+
+        // ... find all the descendant tips in the other tree.
+        vector<OttId> children;
+        for(auto leaf2: iter_post_n(*tax_node))
+            if (leaf2->is_tip())
+                children.push_back(leaf2->get_ott_id());
+
+        leaves_to_add.insert({leaf, children});
+    }
+
+    return leaves_to_add;
+}
+
+void add_children(ConflictTree& tree, const map<cnode_type*, vector<OttId>>& children_to_add)
+{
+    for(const auto& [leaf, child_ids]: children_to_add)
+        for(auto id: child_ids)
+            tree.create_child(leaf)->set_ott_id(id);
+}
+
 /*
  * OK, a general approach to normalizing two trees for comparison:
  * 0. All tips must have OTT IDs.
@@ -722,20 +768,22 @@ string conflict_ws_method(const SummaryTree_t& summary,
             }
         }
         // Add nodes with the specified ottids
-        for(const auto& job: children_to_add) {
-            auto leaf = job.first;
-            auto& child_ids = job.second;
-            for(auto id: child_ids) {
-                query_tree->create_child(leaf)->set_ott_id(id);
-            }
-        }
+        add_children(*query_tree, children_to_add);
     }
-    // 5. Compute depth and number of tips for query_tree.
-    compute_depth(*query_tree);
-    compute_tips(*query_tree);
-    if (tree2s == "ott") {
+    if (tree2s == "ott")
+    {
+        // Compute depth and number of tips for query_tree.
+        compute_depth(*query_tree);
+        compute_tips(*query_tree);
+
         return conflict_with_taxonomy(*query_tree, taxonomy).dump(1);
-    } else if (tree2s == "synth") {
+    }
+    else if (tree2s == "synth")
+    {
+        // Compute depth and number of tips for query_tree.
+        compute_depth(*query_tree);
+        compute_tips(*query_tree);
+
         return conflict_with_summary(*query_tree, summary, taxonomy).dump(1);
     }
     else if (tree2s.size() > 0 and tree2s[0] == '(') {
@@ -750,13 +798,25 @@ string conflict_ws_method(const SummaryTree_t& summary,
         check_and_forward_leaf_ott_ids(*tree2, taxonomy, "tree2");
         // 2. Check that all leaves in tree2 have node names
         check_all_nodes_have_node_names(*tree2, "tree2");
-        // 3. Check for duplicate ott ids
-        if (auto id = has_duplicate_ottids(*tree2))
-            throw OTCError()<<"tree2: duplicate OTT id "<<*id<<"!";
-        // 4. Check for higher taxon leaves
-        if (auto id = has_ancestral_leaves(*tree2, taxonomy))
-            throw OTCError()<<"tree2: higher taxon leaf OTT id "<<*id<<"!";
+        // 3. Prune leaves with duplicate ott ids
+        prune_duplicate_ottids(*tree2);
+        // 4. Prune leaves of the query that are ancestral to other query leaves
+        prune_ancestral_leaves(*tree2, taxonomy);
 
+        // Find children in each tree that are descendents of nodes in the other tree.
+        // Get the children before modifying either tree.
+        auto children_to_add1 = extra_children_for_tree(*query_tree, *tree2, taxonomy);
+        auto children_to_add2 = extra_children_for_tree(*tree2, *query_tree, taxonomy);
+
+        // Add nodes with the specified ottids
+        add_children(*query_tree, children_to_add1);
+        add_children(*tree2, children_to_add2);
+
+        // Compute depth and number of tips for query_tree.
+        compute_depth(*query_tree);
+        compute_tips(*query_tree);
+
+        // Compute depth and number of tips for tree2
         compute_depth(*tree2);
         compute_tips(*tree2);
 
