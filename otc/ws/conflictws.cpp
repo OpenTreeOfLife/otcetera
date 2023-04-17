@@ -411,6 +411,8 @@ json conflict_stats::get_json(const ConflictTree& tree1) const
         if (it->is_outdegree_one_node()) {
             auto name = extract_node_name_if_present(it->get_name());
             auto child_name = extract_node_name_if_present(it->get_first_child()->get_name());
+            assert(name.size());
+            assert(child_name.size());
             nodes[name] = nodes.at(child_name);
         }
     }
@@ -718,7 +720,12 @@ void add_children(ConflictTree& tree, const map<cnode_type*, vector<OttId>>& chi
 {
     for(const auto& [leaf, child_ids]: children_to_add)
         for(auto id: child_ids)
-            tree.create_child(leaf)->set_ott_id(id);
+        {
+            auto new_leaf = tree.create_child(leaf);
+            new_leaf->set_ott_id(id);
+            // All nodes must have a name!
+            new_leaf->set_name("ott"+std::to_string(id));
+        }
 }
 
 /*
