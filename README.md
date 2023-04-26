@@ -94,12 +94,12 @@ After installing prerequisites, try the following commands to build `restbed` an
 
     # Make restbed library available too.
     export CPPFLAGS="-I${OPENTREE}/local/include $CPPFLAGS"
-    export LDFLAGS="-L${OPENTREE}/local/lib $LDFLAGS"
+    export LDFLAGS="-L${OPENTREE}/local/library $LDFLAGS"
     echo "CPPFLAGS=${CPPFLAGS}"
     echo "LDFLAGS=${LDFLAGS}"
     # Mac ignores LD_LIBRARY_PATH and doesn't need it, but linux needs it.
-    export LD_LIBRARY_PATH=${OPENTREE}/local/lib
-    
+    export LD_LIBRARY_PATH=${OPENTREE}/local/library
+
     # Build otcetera
     cd $OPENTREE/otcetera
     meson build otcetera --prefix=$OPENTREE/local
