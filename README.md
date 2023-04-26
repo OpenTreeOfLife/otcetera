@@ -78,7 +78,7 @@ After installing prerequisites, try the following commands to build `restbed` an
     git clone --recursive https://github.com/corvusoft/restbed.git
     mkdir -p $OPENTREE/otcetera
     cd $OPENTREE/otcetera
-    git clone https://github.com/mtholder/otcetera.git
+    git clone https://github.com/OpenTreeOfLife/otcetera.git
     
     # On Mac, check that we are using homebrew ssl in /usr/local/opt/openssl, not system ssl!
     echo "CPPFLAGS=${CPPFLAGS}"
