@@ -36,6 +36,10 @@ To build otcetera, we need the build tools
 
 We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. By default, otcetera will not compile the web services if it can't find restbed.
 
+### Logging library: g3log
+
+Otcetera now requires the logging library g3log.
+
 ### Testing: requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
@@ -54,14 +58,12 @@ On recent versions of Debian or Ubuntu Linux, you can run:
     sudo apt-get install meson cmake ninja-build libboost-all-dev libcurl4-openssl-dev
 
 ### Meson (alternate)
-If you don't have version >= 0.49 of meson, you can install it in a virtualenv
+If you don't have version >= 0.60 of meson, you can install it in a virtualenv
 
     # Install meson in a virtualenv
     python3 -m venv meson
     source meson/bin/activate
-    pip3 install meson
-    # Install ninja to the virtualenv bin directory
-    wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d meson/bin
+    pip3 install meson ninja
 
 On windows, you can install meson using the MSI installer on the [releases page](https://github.com/mesonbuild/meson/releases).
 
