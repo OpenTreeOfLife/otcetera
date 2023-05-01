@@ -86,6 +86,14 @@ After installing prerequisites, try the following commands to build `restbed` an
     echo "CPPFLAGS=${CPPFLAGS}"
     echo "LDFLAGS=${LDFLAGS}"
 
+    # Build g3log
+    git clone https://github.com/KjellKod/g3log.git
+    mkdir g3log/build
+    (cd g3log/build
+     cmake .. -G Ninja -DUSE_DYNAMIC_LOGGING_LEVELS=ON -DCMAKE_INSTALL_PREFIX=/usr -DCPACK_PACKAGE_FILE_NAME=g3log
+     nice -n10 ninja package
+     sudo dpkg -i g3log.deb)
+
     # Build restbed
     alias ninja='nice -n10 ninja'
     cd $OPENTREE/restbed
