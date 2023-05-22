@@ -36,6 +36,10 @@ To build otcetera, we need the build tools
 
 We are using the [Restbed framework](https://github.com/corvusoft/restbed) to implement web services for the tree of life. By default, otcetera will not compile the web services if it can't find restbed.
 
+### Logging library: g3log
+
+Otcetera now requires the logging library g3log.
+
 ### Testing: requests
 
 The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
@@ -54,14 +58,12 @@ On recent versions of Debian or Ubuntu Linux, you can run:
     sudo apt-get install meson cmake ninja-build libboost-all-dev libcurl4-openssl-dev
 
 ### Meson (alternate)
-If you don't have version >= 0.49 of meson, you can install it in a virtualenv
+If you don't have version >= 0.60 of meson, you can install it in a virtualenv
 
     # Install meson in a virtualenv
     python3 -m venv meson
     source meson/bin/activate
-    pip3 install meson
-    # Install ninja to the virtualenv bin directory
-    wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip && unzip -q ninja-linux.zip -d meson/bin
+    pip3 install meson ninja
 
 On windows, you can install meson using the MSI installer on the [releases page](https://github.com/mesonbuild/meson/releases).
 
@@ -78,11 +80,19 @@ After installing prerequisites, try the following commands to build `restbed` an
     git clone --recursive https://github.com/corvusoft/restbed.git
     mkdir -p $OPENTREE/otcetera
     cd $OPENTREE/otcetera
-    git clone https://github.com/mtholder/otcetera.git
+    git clone https://github.com/OpenTreeOfLife/otcetera.git
     
     # On Mac, check that we are using homebrew ssl in /usr/local/opt/openssl, not system ssl!
     echo "CPPFLAGS=${CPPFLAGS}"
     echo "LDFLAGS=${LDFLAGS}"
+
+    # Build g3log
+    git clone https://github.com/KjellKod/g3log.git
+    mkdir g3log/build
+    (cd g3log/build
+     cmake .. -G Ninja -DUSE_DYNAMIC_LOGGING_LEVELS=ON -DCMAKE_INSTALL_PREFIX=/usr -DCPACK_PACKAGE_FILE_NAME=g3log
+     nice -n10 ninja package
+     sudo dpkg -i g3log.deb)
 
     # Build restbed
     alias ninja='nice -n10 ninja'
@@ -94,12 +104,12 @@ After installing prerequisites, try the following commands to build `restbed` an
 
     # Make restbed library available too.
     export CPPFLAGS="-I${OPENTREE}/local/include $CPPFLAGS"
-    export LDFLAGS="-L${OPENTREE}/local/lib $LDFLAGS"
+    export LDFLAGS="-L${OPENTREE}/local/library $LDFLAGS"
     echo "CPPFLAGS=${CPPFLAGS}"
     echo "LDFLAGS=${LDFLAGS}"
     # Mac ignores LD_LIBRARY_PATH and doesn't need it, but linux needs it.
-    export LD_LIBRARY_PATH=${OPENTREE}/local/lib
-    
+    export LD_LIBRARY_PATH=${OPENTREE}/local/library
+
     # Build otcetera
     cd $OPENTREE/otcetera
     meson build otcetera --prefix=$OPENTREE/local
