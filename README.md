@@ -28,7 +28,7 @@ Otcetera requires a C++17 compiler.  You can use
 
 ### Build tools: meson, cmake, and ninja
 To build otcetera, we need the build tools
-* [meson](http://mesonbuild.com).
+* [meson](http://mesonbuild.com)
 * ninja
 * cmake (to build the restbed library)
 
