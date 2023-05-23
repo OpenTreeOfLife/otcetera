@@ -42,7 +42,7 @@ Otcetera now requires the logging library g3log.
 
 ### Testing: requests
 
-The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
+The python requests package is need for running the `ninja test` target because it runs tests in the `ws` subdirectory.
 
 ## prerequisites: quick start
 
