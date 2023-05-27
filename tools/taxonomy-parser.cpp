@@ -69,7 +69,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("extinct-to-incert,E","Adds an incertae_sedis flag to every extinct taxa (use with write-taxonomy)")
         ("children,C",value<long>(),"Show the children of node <arg>")
         ("parent,P",value<OttId>(),"Show the parent taxon of node <arg>")
-        ("report-dist-to-root","Report the number of nodes between each OTT ID and the root")
+        ("report-dist-to-root","Report the number of nodes between from the root to each OTT ID (the root reports 1)")
         ("high-degree-nodes",value<int>(),"Show the top <arg> high-degree nodes")
         ("write-tree,T","Write out the result as a tree")
         ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
