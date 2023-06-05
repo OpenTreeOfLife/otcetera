@@ -402,8 +402,25 @@ string taxon_info_method_handler( const json& parsedargs ) {
     auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
-    return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+
+    auto ott_id = extract_argument<OttId>(parsedargs, "ott_id");
+    auto source_id = extract_argument<string>(parsedargs, "source_id");
+    auto ott_ids = extract_argument<OttIdSet>(parsedargs, "ott_ids");
+
+    if (ott_ids)
+    {
+        if (ott_id)
+            throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'ott_id'";
+        if (source_id)
+            throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'source_id'";
+
+        return taxon_infos_ws_method(taxonomy, *ott_ids, include_lineage, include_children, include_terminal_descendants);
+    }
+    else
+    {
+        const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
+        return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+    }
 }
 
 string taxon_flags_method_handler( const json& ) {
