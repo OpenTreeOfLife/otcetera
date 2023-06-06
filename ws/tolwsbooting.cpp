@@ -396,7 +396,12 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, cons
     }
 }
 
-string taxon_info_method_handler( const json& parsedargs ) {
+
+string taxon_info_method_handler( const json& parsedargs )
+{
+    // Maximum number of OTT IDs to work on in one requestion for "ott_ids" argument.
+    constexpr int max_ids = 10000;
+
     auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
     auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
     auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
@@ -409,10 +414,15 @@ string taxon_info_method_handler( const json& parsedargs ) {
 
     if (ott_ids)
     {
+        // Complain about conflicting operations.
         if (ott_id)
             throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'ott_id'";
         if (source_id)
             throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'source_id'";
+
+        // Complain about too much work per requestion.
+        if (ott_ids->size() > max_ids)
+            throw OTCWebError(413)<<"Too many OTT IDs.  This call is limited to "<<max_ids<<" IDs per request, but got "<<ott_ids->size()<<" different IDs.";
 
         return taxon_infos_ws_method(taxonomy, *ott_ids, include_lineage, include_children, include_terminal_descendants);
     }
