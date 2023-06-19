@@ -453,7 +453,6 @@ string nodes_info_ws_method(const TreesToServe & tts,
     for(auto& node_id: node_ids)
     {
         json j;
-        j["query"] = node_id;
 
         auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
 
@@ -465,6 +464,8 @@ string nodes_info_ws_method(const TreesToServe & tts,
         }
         else
             j["error"] = find_node_failure_reason(result);
+
+        j["query"] = node_id;
 
         response.push_back(j);
     }
