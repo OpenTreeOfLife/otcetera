@@ -300,6 +300,8 @@ const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTax
         }
 #   endif
 }
+// Maximum number of ids to allow at once for node_info/node_ids and taxon_info/ott_ids
+constexpr int max_ids = 10000;
 
 string node_info_method_handler(const json& parsed_args) {
     string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
@@ -399,9 +401,6 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, cons
 
 string taxon_info_method_handler( const json& parsedargs )
 {
-    // Maximum number of OTT IDs to work on in one requestion for "ott_ids" argument.
-    constexpr int max_ids = 10000;
-
     auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
     auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
     auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
