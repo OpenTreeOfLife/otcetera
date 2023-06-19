@@ -448,11 +448,24 @@ string nodes_info_ws_method(const TreesToServe & tts,
 
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    auto [nodes, broken, filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_ids);
-    json response;
-    for(auto i = 0U; i < nodes.size(); i++) {
-        auto j = node_info_json(tts, sta, nodes[i], include_lineage);
-        j["query"] = node_ids[i];
+
+    json response = json::array();
+    for(auto& node_id: node_ids)
+    {
+        json j;
+        j["query"] = node_id;
+
+        auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
+
+        if (result.node())
+        {
+            j = node_info_json(tts, sta, result.node(), include_lineage);
+            if (result.broken())
+                j["broken"] = true;
+        }
+        else
+            j["error"] = find_node_failure_reason(result);
+
         response.push_back(j);
     }
     return response.dump(1);
