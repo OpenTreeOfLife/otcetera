@@ -138,5 +138,6 @@ NameToSynth find_required_node_by_id_str(const SummaryTree_t & tree, const RichT
 std::tuple<std::vector<const SumTreeNode_t*>,nlohmann::json,nlohmann::json>
 find_nodes_for_id_strings(const RichTaxonomy& taxonomy, const SummaryTree_t* tree_ptr, const std::vector<std::string>& node_ids,
                           bool fail_broken = false, bool = false, bool = false, bool = false);
+std::string find_node_failure_reason(const NameToSynth& result, bool fail_broken = false);
 }
 #endif

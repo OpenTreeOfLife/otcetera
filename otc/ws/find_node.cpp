@@ -132,6 +132,29 @@ NameToSynth find_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& 
         return NoMatchName{};
 }
 
+// Possible statuses:
+//  "unknown_id"        (The number in the ottid is too big)
+//  "unknown_id"        (Deprecated: previously valid ottid, no longer forwarded)
+//  "unknown_id"        (For an mrcaottXottY id where anything goes wrong at all)
+//  "invalid_ott_id"    (Not in current ott, and not forwarded)
+//  "pruned_ott_id"     (In OTT, but pruned from synth)
+
+//  "broken"            (In OTT, not pruned, but broken taxon and fail_broken = true)
+string find_node_failure_reason(const NameToSynth& result, bool fail_broken)
+{
+    assert(not result.node() or (fail_broken and result.broken()));
+
+    if (result.invalid())
+        return "invalid_ott_id";
+    else if (result.pruned())
+        return "pruned_ott_id";
+    else if (result.broken())
+        return "broken";
+    else
+        return "unknown_id";
+}
+
+
 NameToSynth find_required_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
     auto result = find_node_by_id_str(tree, taxonomy, node_id);
