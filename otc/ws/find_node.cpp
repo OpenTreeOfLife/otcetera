@@ -158,8 +158,10 @@ string find_node_failure_reason(const NameToSynth& result, bool fail_broken)
 NameToSynth find_required_node_by_id_str(const SummaryTree_t & tree, const RichTaxonomy& taxonomy, const string & node_id)
 {
     auto result = find_node_by_id_str(tree, taxonomy, node_id);
-    if (not result.node()) {
-        throw OTCBadRequest() << "node_id '" << node_id << "' was not found!";
+    if (not result.node())
+    {
+        string reason = find_node_failure_reason(result);
+        throw OTCBadRequest() << "node_id '" << node_id << "' was not found!"<<json{ {"reason", reason} };
     }
     return result;
 }
