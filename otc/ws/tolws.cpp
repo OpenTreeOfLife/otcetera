@@ -432,6 +432,9 @@ string node_info_ws_method(const TreesToServe & tts,
 
     auto response = node_info_json(tts, sta, result.node(), include_lineage);
     response["query"] = node_id;
+    if (result.broken())
+        response["broken"] = true;
+
     return response.dump(1);
 }
 
@@ -439,7 +442,10 @@ string nodes_info_ws_method(const TreesToServe & tts,
                             const SummaryTree_t * tree_ptr,
                             const SummaryTreeAnnotation * sta,
                             const vector<string> & node_ids,
-                            bool include_lineage) {
+                            bool include_lineage)
+{
+    LOG(DEBUG)<<"nodes_info_ws_method( ):";
+
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     auto [nodes, broken, filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_ids);
