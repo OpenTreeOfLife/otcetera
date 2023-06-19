@@ -327,6 +327,8 @@ string node_info_method_handler(const json& parsed_args) {
     if (node_id) {
         return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
     } else {
+        if (node_ids->size() > max_ids)
+            throw OTCWebError(413)<<"Too many node IDs.  This call is limited to "<<max_ids<<" IDs per request, but got "<<node_ids->size()<<" IDs.";
         return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
     }
 }
