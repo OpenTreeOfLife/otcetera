@@ -166,55 +166,22 @@ NameToSynth find_required_node_by_id_str(const SummaryTree_t & tree, const RichT
     return result;
 }
 
-tuple<vector<const SumTreeNode_t*>,json,json>
+tuple<vector<const SumTreeNode_t*>,json>
 find_nodes_for_id_strings(const RichTaxonomy& taxonomy, const SummaryTree_t* tree_ptr, const vector<string>& node_ids,
-                          bool fail_broken, bool filter_invalid, bool filter_pruned, bool filter_broken)
+                          bool fail_broken)
 {
     vector<const SumTreeNode_t *> nodes;
     json unknown;
     json broken = json::object();
-    json filtered = json::object();
     optional<string> bad_node_id;
     for (auto node_id : node_ids)
     {
         auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
 
-        if (not result.node() or (result.broken() and (fail_broken or filter_broken)))
+        if (not result.node() or (result.broken() and fail_broken))
         {
-            // Possible statuses:
-            //  "unknown_id"        (The number in the ottid is too big)
-            //  "unknown_id"        (Deprecated: previously valid ottid, no longer forwarded)
-            //  "unknown_id"        (For an mrca where anything goes wrong at all"
-            //  "invalid_ott_id"    (Not in current ott, and not forwarded)
-            //  "pruned_ott_id"     (In OTT, but pruned from synth)
-            //  "broken"            (In OTT, not pruned, but broken taxon and fail_broken = true)
-
-            string reason = "unknown_id";
-            bool filter = false;
-
-            if (result.invalid())
-            {
-                reason = "invalid_ott_id";
-                filter = filter_invalid;
-            }
-            else if (result.pruned())
-            {
-                reason = "pruned_ott_id";
-                filter = filter_pruned;
-            }
-            else if (result.broken())
-            {
-                reason = "broken";
-                filter = filter_broken;
-            }
-
-            if (filter)
-                filtered[node_id] = reason;
-            else
-            {
-                unknown[node_id] = reason;
-                bad_node_id = node_id;
-            }
+            unknown[node_id] = find_node_failure_reason(result, fail_broken);
+            bad_node_id = node_id;
         }
 
         if (result.broken())
@@ -228,7 +195,7 @@ find_nodes_for_id_strings(const RichTaxonomy& taxonomy, const SummaryTree_t* tre
         // Probability we should report "filtered": {} when nothing is filtered, but could report filtered only if non-empty.
         throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown} };
     }
-    return {nodes, broken, filtered};
+    return {nodes, broken};
 }
 
 }

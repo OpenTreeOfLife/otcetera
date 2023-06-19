@@ -424,7 +424,7 @@ string node_info_ws_method(const TreesToServe & tts,
                            const SummaryTreeAnnotation * sta,
                            const string & node_id,
                            bool include_lineage) {
-    LOG(DEBUG)<<"Got to node_info_ws_method( )";
+    LOG(DEBUG)<<"node_info_ws_method( ):";
 
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
@@ -543,7 +543,7 @@ string mrca_ws_method(const TreesToServe & tts,
     auto [taxonomy,_] = tts.get_readable_taxonomy();
 
     // 1. Find MRCA of include group
-    auto [tip_nodes, broken, filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
+    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
 
     auto mrca_included = mrca(tip_nodes);
 
@@ -552,7 +552,7 @@ string mrca_ws_method(const TreesToServe & tts,
     const SumTreeNode_t* closest_excluded_ancestor = nullptr;
 
     // 2. Find MRCA of exclude group
-    auto [excluded_nodes, broken_excluded, excluded_filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, excluded_node_ids, false);
+    auto [excluded_nodes, broken_excluded] = find_nodes_for_id_strings(taxonomy, tree_ptr, excluded_node_ids, false);
     json reversals;
     for(int i=0;i<excluded_nodes.size();i++)
     {
@@ -700,7 +700,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
     // Check if any of the tip nodes are either (i) broken or (ii) not found.
-    auto [tip_nodes, broken, filtered] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
+    auto [tip_nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_id_vec);
     // Find the mrca
     bool first = true;
     for (auto n: tip_nodes) {
