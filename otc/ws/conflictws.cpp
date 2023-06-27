@@ -61,8 +61,18 @@ get_induced_trees2(Tree1& T1,
 
     // 1c. Rename internal nodes of synth/taxonomy to ottXXX instead of taxon name
     for(auto node: iter_post(*induced_tree2)) {
-        if (node->has_ott_id()) {
-            node->set_name("ott"+std::to_string(node->get_ott_id()));
+        // ott: Parietobalaena palmeri -> ott3615461
+        // synth: "" -> ott494235
+        // newick: "_node41 ott3612189" -> ott3612189
+
+        // Its only newick trees from phylesystem that have source node names, so we
+        // can safely use the source node name if its present.
+        if (auto source_name = get_source_node_name(node->get_name()))
+            node->set_name(*source_name);
+        else if (node->has_ott_id()) {
+            string new_name = "ott"+std::to_string(node->get_ott_id());
+            LOG(DEBUG)<<"Renaming "<<node->get_name()<<" to "<<new_name;
+            node->set_name(new_name);
         }
     }
     LOG(DEBUG)<<"induced_tree2 = "<<newick_string(*induced_tree2);
