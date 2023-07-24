@@ -300,6 +300,8 @@ const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTax
         }
 #   endif
 }
+// Maximum number of ids to allow at once for node_info/node_ids and taxon_info/ott_ids
+constexpr int max_ids = 10000;
 
 string node_info_method_handler(const json& parsed_args) {
     string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
@@ -325,6 +327,8 @@ string node_info_method_handler(const json& parsed_args) {
     if (node_id) {
         return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
     } else {
+        if (node_ids->size() > max_ids)
+            throw OTCWebError(413)<<"Too many node IDs.  This call is limited to "<<max_ids<<" IDs per request, but got "<<node_ids->size()<<" IDs.";
         return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
     }
 }
@@ -396,14 +400,38 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, cons
     }
 }
 
-string taxon_info_method_handler( const json& parsedargs ) {
+
+string taxon_info_method_handler( const json& parsedargs )
+{
     auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
     auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
     auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
-    return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+
+    auto ott_id = extract_argument<OttId>(parsedargs, "ott_id");
+    auto source_id = extract_argument<string>(parsedargs, "source_id");
+    auto ott_ids = extract_argument<OttIdSet>(parsedargs, "ott_ids");
+
+    if (ott_ids)
+    {
+        // Complain about conflicting operations.
+        if (ott_id)
+            throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'ott_id'";
+        if (source_id)
+            throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'source_id'";
+
+        // Complain about too much work per requestion.
+        if (ott_ids->size() > max_ids)
+            throw OTCWebError(413)<<"Too many OTT IDs.  This call is limited to "<<max_ids<<" IDs per request, but got "<<ott_ids->size()<<" different IDs.";
+
+        return taxon_infos_ws_method(taxonomy, *ott_ids, include_lineage, include_children, include_terminal_descendants);
+    }
+    else
+    {
+        const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
+        return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+    }
 }
 
 string taxon_flags_method_handler( const json& ) {

@@ -62,11 +62,12 @@ void tax_service_add_suppressed_taxon_info(const RichTaxonomy & taxonomy,
 }
 
 
-string taxon_info_ws_method(const RichTaxonomy & taxonomy,
+json taxon_info_ws_method_j(const RichTaxonomy & taxonomy,
                             const RTRichTaxNode * taxon_node,
                             bool include_lineage,
                             bool include_children,
-                            bool include_terminal_descendants) {
+                            bool include_terminal_descendants)
+{
     assert(taxon_node != nullptr);
     json response;
     tax_service_add_taxon_info(taxonomy, *taxon_node, response);
@@ -95,8 +96,42 @@ string taxon_info_ws_method(const RichTaxonomy & taxonomy,
         }
         response["terminal_descendants"] = td_array;
     }
+    return response;
+}
+
+string taxon_info_ws_method(const RichTaxonomy & taxonomy,
+                            const RTRichTaxNode * taxon_node,
+                            bool include_lineage,
+                            bool include_children,
+                            bool include_terminal_descendants)
+{
+    auto response = taxon_info_ws_method_j(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
     return response.dump(1);
 }
+
+string taxon_infos_ws_method(const RichTaxonomy & taxonomy,
+                             const OttIdSet& ott_ids,
+                             bool include_lineage,
+                             bool include_children,
+                             bool include_terminal_descendants)
+{
+    json response = json::array();
+    for(auto ott_id: ott_ids)
+    {
+        json j;
+        if (auto taxon_node = taxonomy.included_taxon_from_id(ott_id))
+            j = taxon_info_ws_method_j(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+        else
+        {
+            j["error"] = "unrecognized";
+        }
+        
+        j["query"] = ott_id;
+        response.push_back(j);
+    }
+    return response.dump(1);
+}
+
 
 // flags: not_otu, environmental, environmental_inherited, viral, hidden, hidden_inherited, was_container
 //    are excluded from being returned in TNRS results.
