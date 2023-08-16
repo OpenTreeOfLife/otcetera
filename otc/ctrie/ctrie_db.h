@@ -3,18 +3,27 @@
 
 
 #include "otc/ctrie/ctrie.h"
+#include <memory>
 
 namespace otc {
 
 class CompressedTrieBasedDB {
-    public:
+public:
     void initialize(const std::set<std::string> & keys);
     std::set<FuzzyQueryResult, SortQueryResByNearness>  fuzzy_query(const std::string & query_str) const;
     std::set<FuzzyQueryResult, SortQueryResByNearness>  exact_query(const std::string & query_str) const;
     std::vector<std::string>                            prefix_query(const std::string & query_str) const;
-    private:
+
+    void add_key(const std::string& s);
+
+    void rebuild_new_trie();
+
+private:
     CompressedTrie wide_trie;
     CompressedTrie thin_trie;
+
+    std::shared_ptr<CompressedTrie> new_trie;
+    std::set<std::string> new_keys;
 };
 
 
