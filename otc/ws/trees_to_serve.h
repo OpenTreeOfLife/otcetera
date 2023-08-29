@@ -4,6 +4,8 @@
 #include <set>
 #include <thread>
 #include "otc/ws/tolws.h"
+#include "otc/taxonomy/patching.h"
+
 namespace otc
 {
 using ReadableTaxonomy = std::pair<const RichTaxonomy &,
@@ -17,7 +19,7 @@ class TreesToServe {
     std::map<std::string, const SummaryTree_t *> id_to_tree;
     std::map<std::string, const SummaryTreeAnnotation *> id_to_annotations;
     std::string default_synth_id;
-    RichTaxonomy * taxonomy_ptr = nullptr;
+    PatchableTaxonomy * taxonomy_ptr = nullptr;
     std::map<std::string, const std::string *> stored_strings;
     std::list<std::string> stored_strings_list;
     const RichTaxTree * taxonomy_tree = nullptr;
@@ -35,10 +37,10 @@ public:
 
     const std::string * get_stored_string(const std::string & k);
 
-    void set_taxonomy(RichTaxonomy &taxonomy);
+    void set_taxonomy(PatchableTaxonomy &taxonomy);
 
-    using ReadableTaxonomy = std::pair<const RichTaxonomy &, std::unique_ptr<ReadMutexWrapper> >;
-    using WritableTaxonomy = std::pair<RichTaxonomy &, std::unique_ptr<WriteMutexWrapper> >;
+    using ReadableTaxonomy = std::pair<const PatchableTaxonomy &, std::unique_ptr<ReadMutexWrapper> >;
+    using WritableTaxonomy = std::pair<PatchableTaxonomy &, std::unique_ptr<WriteMutexWrapper> >;
     ReadableTaxonomy get_readable_taxonomy() const;
 
     WritableTaxonomy get_writable_taxonomy();
