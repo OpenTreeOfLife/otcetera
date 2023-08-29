@@ -16,6 +16,7 @@
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
 #include "otc/supertree_util.h"
+#include "otc/taxonomy/patching.h"
 #include "config.h"
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -831,7 +832,7 @@ int run_server(const po::variables_map & args) {
 
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
-    RichTaxonomy taxonomy = load_rich_taxonomy(args);
+    PatchableTaxonomy taxonomy = load_patchable_taxonomy(args);
     
     auto nc = Context::cull_contexts_to_taxonomy(taxonomy);
     LOG(INFO) << nc << " taxonomy contexts retained...";

@@ -43,20 +43,20 @@ const string * TreesToServe::get_stored_string(const string & k) {
     return v;
 }
 
-void TreesToServe::set_taxonomy(RichTaxonomy &taxonomy) {
+void TreesToServe::set_taxonomy(PatchableTaxonomy &taxonomy) {
     assert(taxonomy_ptr == nullptr);
     taxonomy_ptr = &taxonomy;
     taxonomy_tree = &(taxonomy.get_tax_tree());
 }
 
 
-ReadableTaxonomy TreesToServe::get_readable_taxonomy() const {
+TreesToServe::ReadableTaxonomy TreesToServe::get_readable_taxonomy() const {
     assert(taxonomy_ptr != nullptr);
     return {*taxonomy_ptr,
             std::make_unique<ReadMutexWrapper>(taxonomy_thread_safety)};
 }
 
-WritableTaxonomy TreesToServe::get_writable_taxonomy() {
+TreesToServe::WritableTaxonomy TreesToServe::get_writable_taxonomy() {
     assert(taxonomy_ptr != nullptr);
     return {*taxonomy_ptr,
             std::make_unique<WriteMutexWrapper>(taxonomy_thread_safety)};
@@ -197,7 +197,7 @@ void TreesToServe::final_tree_added() {
         const auto & sft = annot.suppressed_from_tree;
         assert(taxonomy_ptr != nullptr);
         // TODO: make taxonomy_ptr non-const or make the relevant field mutable. Probably the former.
-        auto nct = const_cast<RichTaxonomy *>(taxonomy_ptr);
+        auto nct = const_cast<PatchableTaxonomy *>(taxonomy_ptr);
         nct->set_ids_suppressed_from_summary_tree_alias(&sft);
     }
 
