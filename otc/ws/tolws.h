@@ -17,6 +17,7 @@
 #include "otc/tree.h"
 #include "otc/error.h"
 #include "otc/taxonomy/taxonomy.h"
+#include "otc/taxonomy/patching.h"
 #include "otc/taxonomy/flags.h"
 #include "otc/ws/parallelreadserialwrite.h"
 #include "otc/ws/otc_web_error.h"
@@ -312,6 +313,13 @@ std::string taxon_subtree_ws_method(const TreesToServe & tts,
                                     const RichTaxonomy & taxonomy,
                                     const RTRichTaxNode * taxon_node,
                                     NodeNameStyle label_format);
+
+std::string taxon_addition_ws_method(const TreesToServe & tts,
+				     PatchableTaxonomy & taxonomy,
+				     OttId ottid,
+				     OttId parent_id,
+				     const std::string& name,
+				     const std::string& rank);
 
 std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
                                        const std::optional<std::string>& context_name,

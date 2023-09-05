@@ -242,4 +242,22 @@ string taxon_subtree_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
+std::string taxon_addition_ws_method(const TreesToServe & tts,
+				     PatchableTaxonomy & taxonomy,
+				     OttId ott_id,
+				     OttId parent_id,
+				     const string& name,
+				     const string& rank)
+{
+    const auto & taxonomy_tree = taxonomy.get_tax_tree();
+
+    auto parent_node = taxonomy.included_taxon_from_id(parent_id);
+    if (parent_node == nullptr) {
+	throw OTCBadRequest() << "Unrecognized OTT ID: " << parent_id;
+    }
+    json response;
+    taxonomy.add_new_taxon(ott_id, parent_id, name, rank, "", "", {});
+    return response.dump(1);
+}
+
 } // namespace otc
