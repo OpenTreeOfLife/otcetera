@@ -954,6 +954,7 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_taxon_flags );
     service.publish( v3_r_taxon_mrca );
     service.publish( v3_r_taxon_subtree );
+    service.publish( v3_r_taxon_addition );
     service.publish( v3_r_tnrs_match_names );
     service.publish( v3_r_tnrs_autocomplete_name );
     service.publish( v3_r_tnrs_contexts );
@@ -972,6 +973,7 @@ int run_server(const po::variables_map & args) {
     service.publish( v4_r_taxon_flags );
     service.publish( v4_r_taxon_mrca );
     service.publish( v4_r_taxon_subtree );
+    service.publish( v4_r_taxon_addition );
     service.publish( v4_r_tnrs_match_names );
     service.publish( v4_r_tnrs_autocomplete_name );
     service.publish( v4_r_tnrs_contexts );
