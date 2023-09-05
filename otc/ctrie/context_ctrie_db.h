@@ -45,9 +45,11 @@ class ContextAwareCTrieBasedDB {
                                      const RichTaxonomy & taxonomy,
                                      bool include_suppressed) const;
 
+    void add_key(const std::string& s, OttId id, const RichTaxonomy&);
+
 private:
     const Context & context;
-    std::vector<const ContextAwareCTrieBasedDB *> children;
+    std::vector<ContextAwareCTrieBasedDB *> children;
     CompressedTrieBasedDB trie;
     std::uint32_t filter_trav_enter = 0;
     std::uint32_t trav_exit = UINT32_MAX;
