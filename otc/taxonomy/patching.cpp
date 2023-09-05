@@ -288,6 +288,8 @@ bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
                                             OttId * homonym_of) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
+
+    // 1. Check if the new taxon is a homonym of an existing taxon.
     auto nm_nd_it = rt_data.name_to_node.find(name);
     if (nm_nd_it == rt_data.name_to_node.end()) {
         if (homonym_of != nullptr) {
@@ -298,6 +300,8 @@ bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
         expl += " is a homonym of " + std::to_string(nm_nd_it->second->get_ott_id());
         return bool_str_t{false, expl};
     }
+
+    // 2. Check if the OTT ID is already used.
     auto itnit = included_taxon_from_id(oid);
     auto itrit = rt_data.id_to_record.find(oid);
     if (itnit != nullptr || itrit != rt_data.id_to_record.end()) {
@@ -305,6 +309,8 @@ bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
         expl += " is already used.";
         return bool_str_t{false, expl};
     }
+
+    // 3. Find the parent taxon by its OTT ID.
     RTRichTaxNode * par_ptr = const_cast<RTRichTaxNode *>(included_taxon_from_id(parent_id));
     if (par_ptr == nullptr) {
         itrit = rt_data.id_to_record.find(parent_id);
@@ -316,13 +322,18 @@ bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
         }
         return bool_str_t{false, expl};
     }
+
+    // 4. Complain if the new taxon has a uniqname
     if (uniqname.length() > 0) {
         return bool_str_t{false, "handling of uniqname not supported"};
     }
 
+    // 5. Create the new taxon record.
     const auto & tr = get_new_tax_rec(oid, parent_id,
                                       name, rank, sourceinfo,
                                       uniqname, flags);
+
+    // 6. Create the new tree node
     auto nnd = tree.create_child(par_ptr);
     reg_or_rereg_nd(nnd, tr, tree);
     return bool_str_t{true, ""};
