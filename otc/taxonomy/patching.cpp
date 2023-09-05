@@ -210,13 +210,13 @@ bool_str_t PatchableTaxonomy::add_forward(OttId former_id, OttId redirect_to_id)
     return bool_str_t{true, ""};
 }
 
-bool_str_t PatchableTaxonomy::delete_forward(OttId former_id, OttId redirect_to_id) {
+bool_str_t PatchableTaxonomy::delete_forward(OttId /* former_id */, OttId /*redirect_to_id*/) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
     throw OTCError() << "delete_forward not implemented";
 }
 
-bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
+bool_str_t PatchableTaxonomy::delete_taxon(OttId /* ott_id */) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
     throw OTCError() << "delete_taxon not implemented";
@@ -230,7 +230,7 @@ bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
                                          const std::string & uniqname,
                                          const std::string & flags,
                                          bool flags_edited,
-                                         OttId * homonym_of) {
+                                         OttId * /* homonym_of */) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
     auto nd_ptr = const_cast<RTRichTaxNode * >(included_taxon_from_id(oid));

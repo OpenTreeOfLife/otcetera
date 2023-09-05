@@ -115,7 +115,7 @@ std::pair<bool, const json *> get_array_property(const json & j,
     return std::pair<bool, const json *>(false, nullptr);
 }
 
-const unsigned parse_as_unsigned(const json & j) {
+unsigned parse_as_unsigned(const json & j) {
     if (!j.is_number_unsigned()) {
         throw OTCError() << "Expecting a non negative integer";
     }
