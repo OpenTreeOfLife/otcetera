@@ -456,6 +456,19 @@ string taxon_subtree_method_handler( const json& parsedargs ) {
     return taxon_subtree_ws_method(tts, taxonomy, taxon_node, nns);
 }
 
+string taxon_addition_method_handler( const json& parsedargs )
+{
+    // Actually, I think the amendments handle multiple operations.
+    // But this just handles one addition.
+
+    auto [locked_taxonomy,lock] = tts.get_writable_taxonomy();
+    auto name = extract_required_argument<string>(parsedargs, "name");
+    auto ott_id = extract_required_argument<OttId>(parsedargs, "ott_id");
+    auto parent_id = extract_required_argument<OttId>(parsedargs, "parent");
+    auto rank = extract_required_argument<string>(parsedargs, "rank");
+    return taxon_addition_ws_method(tts, locked_taxonomy, ott_id, parent_id, name, rank);
+}
+
 // See taxomachine/src/main/java/org/opentree/taxonomy/plugins/tnrs_v3.java
 
 // 10,000 queries at .0016 second per query = 16 seconds
@@ -875,6 +888,8 @@ int run_server(const po::variables_map & args) {
     auto v3_r_taxon_mrca       = path_handler(v3_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v3_r_taxon_subtree    = path_handler(v3_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
+    auto v3_r_taxon_addition   = path_handler(v3_prefix + "/taxonomy/process_additions", taxon_addition_method_handler );
+
     // tnrs
     auto v3_r_tnrs_match_names       = path_handler(v3_prefix + "/tnrs/match_names", tnrs_match_names_handler );
     auto v3_r_tnrs_autocomplete_name = path_handler(v3_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
@@ -909,6 +924,8 @@ int run_server(const po::variables_map & args) {
     auto v4_r_taxon_flags      = path_handler(v4_prefix + "/taxonomy/flags", taxon_flags_method_handler );
     auto v4_r_taxon_mrca       = path_handler(v4_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v4_r_taxon_subtree    = path_handler(v4_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
+
+    auto v4_r_taxon_addition   = path_handler(v4_prefix + "/taxonomy/process_additions", taxon_addition_method_handler );
 
     // tnrs
     auto v4_r_tnrs_match_names       = path_handler(v4_prefix + "/tnrs/match_names", tnrs_match_names_handler );
