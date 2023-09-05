@@ -256,7 +256,10 @@ std::string taxon_addition_ws_method(const TreesToServe & tts,
 	throw OTCBadRequest() << "Unrecognized OTT ID: " << parent_id;
     }
     json response;
-    taxonomy.add_new_taxon(ott_id, parent_id, name, rank, "", "", {});
+    auto [ok,error] = taxonomy.add_new_taxon(ott_id, parent_id, name, rank, "", "", {});
+    if (not ok)
+	throw OTCBadRequest() << error;
+    response["ok"] = true;
     return response.dump(1);
 }
 
