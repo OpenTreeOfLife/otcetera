@@ -3,6 +3,7 @@
 namespace fs = std::filesystem;
 #include "otc/taxonomy/patching.h"
 #include "otc/otc_base_includes.h"
+#include "otc/ctrie/context_ctrie_db.h"
 
 using namespace otc;
 
@@ -336,6 +337,15 @@ bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
     // 6. Create the new tree node
     auto nnd = tree.create_child(par_ptr);
     reg_or_rereg_nd(nnd, tr, tree);
+
+    // 7. Update the fuzzy match databases
+    if (auto f = get_fuzzy_matcher())
+	f->add_key(name, oid, *this);
+
+    // TODO: fix trav_enter, etc.
+    // TODO: fix allocation of names between contexts
+    // TODO: read amendment blob
+
     return bool_str_t{true, ""};
 }
 

@@ -405,12 +405,16 @@ class RichTaxonomy: public BaseTaxonomy {
     const std::list<TaxonomicJuniorSynonym> & get_synonyms_list() const {
         return synonyms;
     }
-    
+
     const ContextAwareCTrieBasedDB * get_fuzzy_matcher() const {
         return fuzzy_match_db;
     }
 
-    void set_fuzzy_matcher(const ContextAwareCTrieBasedDB * match_db) {
+    ContextAwareCTrieBasedDB * get_fuzzy_matcher() {
+        return fuzzy_match_db;
+    }
+
+    void set_fuzzy_matcher(ContextAwareCTrieBasedDB * match_db) {
         fuzzy_match_db = match_db;
     }
     
@@ -433,7 +437,7 @@ class RichTaxonomy: public BaseTaxonomy {
     //    can pass a non-nullptr pointer in using the setter. This
     //    will allow the services to report "is_suppressed_from_synth" option.
     const OttIdSet * is_suppressed_from_synth = nullptr;
-    const ContextAwareCTrieBasedDB * fuzzy_match_db = nullptr;
+    ContextAwareCTrieBasedDB * fuzzy_match_db = nullptr;
     RichTaxonomy(const RichTaxonomy &) = delete;
     private:
     void read_input_synonyms_stream(std::istream & synonyms_file);
