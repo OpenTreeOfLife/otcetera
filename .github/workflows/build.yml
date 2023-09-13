@@ -12,12 +12,12 @@ jobs:
   build:
     strategy:
       matrix:
-        name: [ubuntu-gcc-9,
-               ubuntu-gcc-10,
+        name: [ubuntu-gcc-10,
                ubuntu-gcc-11,
 #               ubuntu-gcc-11-sanitize,
-               ubuntu-gcc-11-debugoptimized,
-               ubuntu-clang-11,
+               ubuntu-gcc-12,
+               ubuntu-gcc-12-debugoptimized,
+               ubuntu-clang-13,
 #               macos-xcode-12.5
                ]
 
@@ -40,6 +40,12 @@ jobs:
             version: "11"
             buildtype: "release"
 
+          - name: ubuntu-gcc-12
+            os: ubuntu-latest
+            compiler: gcc
+            version: "12"
+            buildtype: "release"
+
 # To enable this, we'd probably need to add `export ASAN_OPTIONS=detect_odr_violation=0`.
 #
 #          - name: ubuntu-gcc-11-sanitize
@@ -50,16 +56,16 @@ jobs:
 #            sanitize: "address"
 #
 
-          - name: ubuntu-gcc-11-debugoptimized
+          - name: ubuntu-gcc-12-debugoptimized
             os: ubuntu-latest
             compiler: gcc
-            version: "11"
+            version: "12"
             buildtype: "debugoptimized"
 
-          - name: ubuntu-clang-11
+          - name: ubuntu-clang-13
             os: ubuntu-latest
             compiler: clang
-            version: "11"
+            version: "13"
             buildtype: "release"
 
 # Currently we get "dyld: Library not loaded: @rpath/librestbed.4.dylib"
