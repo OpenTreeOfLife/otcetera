@@ -117,7 +117,7 @@ void CompressedTrieBasedDB::rebuild_new_trie()
         LOG(INFO)<<"  "<<count<<" : \n";
         for(auto letter : letters)
         {
-            LOG(INFO)<<"    "<<to_char_str(letter)<<" ("<<letter<<")";
+            LOG(INFO)<<"    "<<to_char_str(letter)<<" ("<<(uint32_t)(letter)<<")";
             if (new_letters.size() < 64)
                 new_letters.push_back(letter);
             else
@@ -199,7 +199,7 @@ void CompressedTrieBasedDB::initialize(const std::set<std::string> & keys) {
         std::cerr<<"  "<<count<<" : \n";
         for(auto letter : letters)
         {
-            std::cerr<<"    "<<to_char_str(letter)<<" ("<<letter<<")";
+            std::cerr<<"    "<<to_char_str(letter)<<" ("<<(uint32_t)(letter)<<")";
             if (wide_letters.size() < 64)
                 wide_letters.push_back(letter);
             else
