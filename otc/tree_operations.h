@@ -321,6 +321,53 @@ void compute_depth(T& tree) {
     }
 }
 
+template <typename N>
+inline int depth(const N* node) {
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
+}
+
+
+template <typename N>
+inline int& depth(N* node) {
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
+}
+
+template <typename N>
+N* mrca_from_depth(N* node1, N* node2) {
+    assert(node1 or node2);
+    if (not node1) {
+        return node2;
+    }
+    if (not node2) {
+        return node1;
+    }
+    assert(node1 and node2);
+    assert(get_root(node1) == get_root(node2));
+    while (depth(node1) > depth(node2)) {
+        node1 = node1->get_parent();
+    }
+    while (depth(node1) < depth(node2)) {
+        node2 = node2->get_parent();
+    }
+    assert(depth(node1) == depth(node2));
+    while (node1 != node2) {
+        assert(node1->get_parent());
+        assert(node2->get_parent());
+        node1 = node1->get_parent();
+        node2 = node2->get_parent();
+    }
+    assert(node1 == node2);
+    return node1;
+}
+
+template <typename N>
+bool is_ancestor_of_using_depth(N* node1, N* node2)
+{
+    return mrca_from_depth(node1, node2) == node1;
+}
+
 // uses ottID->node mapping, but not the split sets of the nodes
 template<typename T>
 typename T::node_type * find_mrca_from_id_set(T & tree, const OttIdSet & idSet, OttId trigger) {
