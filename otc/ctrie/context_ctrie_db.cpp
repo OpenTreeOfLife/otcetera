@@ -83,12 +83,6 @@ std::set<FuzzyQueryResult, SortQueryResByNearness> ContextAwareCTrieBasedDB::fuz
     if (context.name_matcher != nullptr) {
         sorted = context.name_matcher->fuzzy_query(query_str);
     }
-    for (auto c :children) {
-        if (c->context.name_matcher) {
-            auto csorted = c->context.name_matcher->fuzzy_query(query_str);
-            sorted.insert(std::begin(csorted), std::end(csorted));
-        }
-    }
     return sorted;
 }
 
@@ -277,16 +271,11 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
 
 void ContextAwareCTrieBasedDB::add_key(const std::string& s, OttId id, const RichTaxonomy& taxonomy)
 {
-    // how are names split between this context and its children?
-
     auto node = taxonomy.included_taxon_from_id(id);
     if (not node)
 	throw OTCError()<<"add_key: id "<<id<<" not found in taxonomy";
 
     trie.add_key(s);
-
-    for(auto& c: children)
-	c->add_key(s, id, taxonomy);
 }
 
 } // namespace otc

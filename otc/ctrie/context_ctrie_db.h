@@ -49,7 +49,6 @@ class ContextAwareCTrieBasedDB {
 
 private:
     const Context & context;
-    std::vector<ContextAwareCTrieBasedDB *> children;
     CompressedTrieBasedDB trie;
     std::uint32_t filter_trav_enter = 0;
     std::uint32_t trav_exit = UINT32_MAX;
