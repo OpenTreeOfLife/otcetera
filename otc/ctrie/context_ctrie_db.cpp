@@ -121,19 +121,19 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::to_taxa(const set<FuzzyQueryResult, SortQu
     for (auto fqr : sorted) {
         const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(fqr.match());
         LOG(DEBUG) << "FuzzyQueryResult(match=\"" << fqr.match() << "\", score = " << fqr.score << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
-        for (auto & tax_and_syn_pair : vec_taxon_and_syn_ptrs) {
-            auto tax_ptr = tax_and_syn_pair.first;
+        for (auto & [tax_ptr, tax_thing] : vec_taxon_and_syn_ptrs)
+        {
             if (tax_ptr == nullptr) {
                 LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
                 if (include_suppressed) {
-                    const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_and_syn_pair.second);
+                    const TaxonomyRecord * tr = (const TaxonomyRecord *)(tax_thing);
                     results.push_back(FuzzyQueryResultWithTaxon(fqr, tr));
                 }
             } else {
                 const auto & res_tax_data = tax_ptr->get_data();
                 LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
                 if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter) {
-                    const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_and_syn_pair.second);
+                    const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_thing);
                     if (syn_ptr == nullptr) {
                         LOG(DEBUG) << "pushing non-syn";
                         results.push_back(FuzzyQueryResultWithTaxon(fqr, tax_ptr));
