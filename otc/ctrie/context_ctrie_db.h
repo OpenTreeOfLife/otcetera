@@ -50,8 +50,6 @@ class ContextAwareCTrieBasedDB {
 private:
     const Context & context;
     CompressedTrieBasedDB trie;
-    std::uint32_t filter_trav_enter = 0;
-    std::uint32_t trav_exit = UINT32_MAX;
     std::map<std::string,  vec_taxon_and_syn_ptrs> match_name_to_taxon;
 
 };

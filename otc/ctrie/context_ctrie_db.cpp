@@ -131,8 +131,9 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::to_taxa(const set<FuzzyQueryResult, SortQu
                 }
             } else {
                 const auto & res_tax_data = tax_ptr->get_data();
-                LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
-                if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter) {
+
+                if (is_ancestor_of_using_depth(context_root, tax_ptr))
+                {
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_thing);
                     if (syn_ptr == nullptr) {
                         LOG(DEBUG) << "pushing non-syn";
