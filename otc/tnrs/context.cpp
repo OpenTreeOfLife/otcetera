@@ -177,15 +177,15 @@ std::vector<trav_range_t> _fill_and_sort_ranges(const RichTaxonomy & taxonomy, c
     const auto & tree = taxonomy.get_tax_tree();
     const auto & tax_tree_data = tree.get_data();
     std::vector<trav_range_t> ret;
-    for (auto & p : vec_ids_names) {
+    for (auto & [id,name] : vec_ids_names) {
         const RTRichTaxNode * nd;
         try {
-             nd = tax_tree_data.id_to_node.at(p.first);
+             nd = tax_tree_data.id_to_node.at(id);
         } catch (...) {
-            throw OTCError() << "Barrier taxon with id=" << p.first << " not found";
+            throw OTCError() << "Barrier taxon with id=" << id << " not found";
         }
-        if (nd->get_name() != p.second) {
-            throw OTCError() << "Barrier taxon with id=" << p.first << " had name \"" << nd->get_name() << "\", but we expected \"" << p.second << "\".";
+        if (nd->get_name() != name) {
+            throw OTCError() << "Barrier taxon with id=" << id << " had name \"" << nd->get_name() << "\", but we expected \"" << name << "\".";
         }
         const auto & ndd = nd->get_data();
         ret.push_back(trav_range_t{ndd.trav_enter, ndd.trav_exit});
