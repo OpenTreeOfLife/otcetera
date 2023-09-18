@@ -39,7 +39,7 @@ get_induced_trees2(Tree1& T1,
                    Tree2& T2,
                    std::function<const typename Tree2::node_type*(const typename Tree2::node_type*,const typename Tree2::node_type*)> MRCA_of_pair2)
 {
-    LOG(WARNING)<<"T1 = "<<newick_string(T1);
+    LOG(DEBUG)<<"T1 = "<<newick_string(T1);
     LOG(WARNING)<<"n_leaves(T1) = "<<n_leaves(T1);
     LOG(WARNING)<<"n_leaves(T2) = "<<n_leaves(T2);
 
@@ -57,15 +57,25 @@ get_induced_trees2(Tree1& T1,
     //     It might have fewer leaves than in T2_nodes_from_T1_leaves, if some of the nodes are ancestral to others.
     auto induced_tree2 = get_induced_tree<Tree_Out_t>(T2_nodes_from_T1_leaves, MRCA_of_pair2);
     LOG(WARNING)<<"n_leaves(induced_tree2) = "<<n_leaves(*induced_tree2);
-    LOG(WARNING)<<"induced-tree2a = "<<newick_string(*induced_tree2);
+    LOG(DEBUG)<<"induced-tree2a = "<<newick_string(*induced_tree2);
 
     // 1c. Rename internal nodes of synth/taxonomy to ottXXX instead of taxon name
     for(auto node: iter_post(*induced_tree2)) {
-        if (node->has_ott_id()) {
-            node->set_name("ott"+std::to_string(node->get_ott_id()));
+        // ott: Parietobalaena palmeri -> ott3615461
+        // synth: "" -> ott494235
+        // newick: "_node41 ott3612189" -> ott3612189
+
+        // Its only newick trees from phylesystem that have source node names, so we
+        // can safely use the source node name if its present.
+        if (auto source_name = get_source_node_name(node->get_name()))
+            node->set_name(*source_name);
+        else if (node->has_ott_id()) {
+            string new_name = "ott"+std::to_string(node->get_ott_id());
+            LOG(DEBUG)<<"Renaming "<<node->get_name()<<" to "<<new_name;
+            node->set_name(new_name);
         }
     }
-    LOG(WARNING)<<"induced_tree2 = "<<newick_string(*induced_tree2);
+    LOG(DEBUG)<<"induced_tree2 = "<<newick_string(*induced_tree2);
 
     //FIXME - handle cases like (Homo sapiens, Homo) by deleting monotypic nodes at the root.
 
@@ -76,7 +86,7 @@ get_induced_trees2(Tree1& T1,
     {
         if (not leaf->has_ott_id())
         {
-            LOG(WARNING)<<"Dropping tip: no ott id";
+            LOG(DEBUG)<<"Dropping tip: no ott id";
             continue;
         }
 
@@ -84,7 +94,7 @@ get_induced_trees2(Tree1& T1,
         if (it == ottid_to_induced_tree2_node.end()) {
             LOG(DEBUG)<<"Dropping query tip "<<leaf->get_ott_id()<<": not found in induced tree2.";
         } else if (not it->second->is_tip()) {
-            LOG(WARNING)<<"Dropping higher taxon tip "<<leaf->get_ott_id();
+            LOG(DEBUG)<<"Dropping higher taxon tip "<<leaf->get_ott_id();
         } else {
             induced_leaves1.push_back(leaf);
         }
@@ -94,7 +104,7 @@ get_induced_trees2(Tree1& T1,
     // 3. Construct the induced tree for T1
     auto induced_tree1 = get_induced_tree<Tree_Out_t>(induced_leaves1, MRCA_of_pair1);
     LOG(WARNING) << "n_leaves(induced_tree1) = " << n_leaves(*induced_tree1);
-    LOG(WARNING) << "induced_tree1 = " << newick_string(*induced_tree1);
+    LOG(DEBUG) << "induced_tree1 = " << newick_string(*induced_tree1);
     assert(n_leaves(*induced_tree1) == n_leaves(*induced_tree2));
     return {std::move(induced_tree1), std::move(induced_tree2)};
 }
@@ -768,9 +778,9 @@ string conflict_ws_method(const SummaryTree_t& summary,
             auto c = extra_children_for_node(leaf_id, summary, taxonomy);
             if (not c.empty()) {
                 children_to_add.insert({leaf,c});
-                LOG(WARNING)<<"ottid "<<leaf->get_ott_id()<<" has frontier ";
+                LOG(DEBUG)<<"ottid "<<leaf->get_ott_id()<<" has frontier ";
                 for(auto id: c) {
-                    LOG(WARNING)<<"   "<<id;
+                    LOG(DEBUG)<<"   "<<id;
                 }
             }
         }
@@ -854,7 +864,7 @@ string phylesystem_conflict_ws_method(const SummaryTree_t& summary,
                                       const string& tree2s) {
     LOG(WARNING)<<"phylesystem conflict:";
     LOG(DEBUG)  <<"  tree1s = "<<tree1s;
-    LOG(WARNING)<<"  tree2s = "<<tree2s;
+    LOG(DEBUG)<<"  tree2s = "<<tree2s;
     auto query_tree = get_phylesystem_tree<ConflictTree>(tree1s);
     return conflict_ws_method(summary, taxonomy, query_tree, tree2s);
 }

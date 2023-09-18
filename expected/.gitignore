@@ -4,5 +4,5 @@
 */*/obtained-*
 */*/*.dot
 */*/*.svg
-*/*/*.log.txt
-*/*/*/*.log.txt
+*/*/otc-*.log.txt
+*/*/*/otc-*.log.txt

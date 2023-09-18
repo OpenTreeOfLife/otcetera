@@ -28,7 +28,7 @@ Otcetera requires a C++17 compiler.  You can use
 
 ### Build tools: meson, cmake, and ninja
 To build otcetera, we need the build tools
-* [meson](http://mesonbuild.com).
+* [meson](http://mesonbuild.com)
 * ninja
 * cmake (to build the restbed library)
 
@@ -42,7 +42,7 @@ Otcetera now requires the logging library g3log.
 
 ### Testing: requests
 
-The python requests package is need for running the `make check` target because it runs tests in the `ws` subdirectory.
+The python requests package is need for running the `ninja test` target because it runs tests in the `ws` subdirectory.
 
 ## prerequisites: quick start
 
