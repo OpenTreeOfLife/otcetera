@@ -357,6 +357,9 @@ void PatchableTaxonomy::reg_or_rereg_nd(RTRichTaxNode * nnd,
     auto & rt_data = tree.get_data();
     rt_data.name_to_node[tr.name] = nnd;
     rt_data.id_to_node[nnd->get_ott_id()] = nnd;
+
+    // Fill out depth field for node.
+    nnd->get_data().depth = nnd->get_parent()->get_data().depth + 1;
 }
 
 TaxonomyRecord & PatchableTaxonomy::get_new_tax_rec(OttId oid,
