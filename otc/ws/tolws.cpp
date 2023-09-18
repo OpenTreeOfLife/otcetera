@@ -502,7 +502,7 @@ const SumTreeNode_t * mrca(const T & nodes) {
             first = false;
             focal = n;
         } else {
-            focal = find_mrca_via_traversal_indices(focal, n);
+            focal = mrca_from_depth(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -515,16 +515,16 @@ const SumTreeNode_t * mrca(const T & nodes) {
 // Check if the excluded node is inside the include group, and update the MRCA of the exclude group if not.
 bool check_node_and_update_excluded_ancestor(const SumTreeNode_t* mrca_included, const SumTreeNode_t* excluded_node, const SumTreeNode_t* &closest_excluded_ancestor)
 {
-    auto mrca = find_mrca_via_traversal_indices(mrca_included, excluded_node);
+    auto mrca = mrca_from_depth(mrca_included, excluded_node);
 
     // Return false if the excluded node is actually inside the include group.
     if (mrca == mrca_included)
         return false;
 
-    assert(not closest_excluded_ancestor or is_ancestor_of(closest_excluded_ancestor, mrca_included) or is_ancestor_of(mrca_included, closest_excluded_ancestor));
+    assert(not closest_excluded_ancestor or is_ancestor_of_using_depth(closest_excluded_ancestor, mrca_included) or is_ancestor_of_using_depth(mrca_included, closest_excluded_ancestor));
 
     // If this is the first excluded taxon OR the mrca is closer, the update the closest excluded ancestor
-    if (not closest_excluded_ancestor or is_ancestor_of(closest_excluded_ancestor, mrca))
+    if (not closest_excluded_ancestor or is_ancestor_of_using_depth(closest_excluded_ancestor, mrca))
         closest_excluded_ancestor = mrca;
 
     return true;
@@ -577,7 +577,7 @@ string mrca_ws_method(const TreesToServe & tts,
     // 4. Do the phylo-ref response here, if we had any excluded ids.
     if (not excluded_node_ids.empty())
     {
-        assert(is_ancestor_of(closest_excluded_ancestor, mrca_included));
+        assert(is_ancestor_of_using_depth(closest_excluded_ancestor, mrca_included));
         json nodes;
         for(auto node = mrca_included; node != closest_excluded_ancestor; node = node->get_parent())
             nodes.push_back(node_id_for_summary_tree_node(*node));
@@ -709,7 +709,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca_via_traversal_indices(focal, n);
+            focal = mrca_from_depth(focal, n);
             if (focal == nullptr) {
                 break;
             }

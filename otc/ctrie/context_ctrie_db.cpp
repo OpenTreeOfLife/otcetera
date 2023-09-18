@@ -120,7 +120,7 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::to_taxa(const set<FuzzyQueryResult, SortQu
     }
     for (auto fqr : sorted) {
         const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(fqr.match());
-        LOG(DEBUG) << "FuzzyQueryResult(match=\"" << fqr.match() << "\", score = " << fqr.score << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
+//        LOG(DEBUG) << "FuzzyQueryResult(match=\"" << fqr.match() << "\", score = " << fqr.score << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
         for (auto & [tax_ptr, tax_thing] : vec_taxon_and_syn_ptrs)
         {
             if (tax_ptr == nullptr) {
@@ -182,8 +182,8 @@ ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
         else
         {
             const auto & res_tax_data = tax_ptr->get_data();
-            LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
-            if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter)
+//            LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
+            if (is_ancestor_of_using_depth(context_root, tax_ptr))
             {
                 const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
                 if (syn_ptr == nullptr)
@@ -238,8 +238,8 @@ ContextAwareCTrieBasedDB::to_taxa(const vector<string>& n_queries,
             else
             {
                 const auto & res_tax_data = tax_ptr->get_data();
-                LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
-                if (res_tax_data.trav_exit <= filter_trav_exit && res_tax_data.trav_enter >= filter_trav_enter)
+//                LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
+                if (is_ancestor_of_using_depth(context_root, tax_ptr))
                 {
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
                     if (syn_ptr == nullptr)

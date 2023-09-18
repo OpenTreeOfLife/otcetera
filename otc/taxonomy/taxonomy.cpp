@@ -1098,7 +1098,7 @@ const RTRichTaxNode* taxonomy_mrca(const std::vector<const RTRichTaxNode*>& node
     }
     auto focal = nodes[0];
     for(auto& node: nodes) {
-        focal = find_mrca_via_traversal_indices(focal, node);
+        focal = mrca_from_depth(focal, node);
         if (not focal) {
             throw OTCError() << "MRCA of taxa was not found. Please report this bug!\n";
         }
