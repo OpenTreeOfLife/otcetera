@@ -210,7 +210,7 @@ string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca_via_traversal_indices(focal, n);
+            focal = mrca_from_depth(focal, n);
             if (focal == nullptr) {
                 break;
             }

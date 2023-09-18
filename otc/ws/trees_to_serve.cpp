@@ -97,6 +97,7 @@ TreesToServe::SumTreeInitPair TreesToServe::get_new_tree_and_annotations(const s
     unique_ptr<SummaryTree_t> nt = first_newick_tree_from_file<SummaryTree_t>(filename, parsingRules);
 
     index_by_name_or_id(*nt);
+    compute_depth(*nt);
     set_traversal_entry_exit_and_num_tips(*nt);
     tree_list.push_back(move(nt));
     annotation_list.emplace(annotation_list.end());

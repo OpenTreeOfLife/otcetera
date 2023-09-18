@@ -113,7 +113,7 @@ MRCANameToSynth find_node_by_mrca_str(const SummaryTree_t & tree, const RichTaxo
 
     const SumTreeNode_t* mrca = nullptr;
     if (result1.node() and result2.node())
-        mrca = find_mrca_via_traversal_indices(result1.node(), result2.node());
+        mrca = mrca_from_depth(result1.node(), result2.node());
 
     return MRCANameToSynth{result1, result2, mrca};
 }

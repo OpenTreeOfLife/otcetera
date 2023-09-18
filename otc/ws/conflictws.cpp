@@ -529,7 +529,7 @@ json conflict_with_summary(const ConflictTree& query_tree,
         return mrca_from_depth(n1,n2);
     };
     std::function<const snode_type*(const snode_type*,const snode_type*)> summary_mrca = [](const snode_type* n1, const snode_type* n2) {
-        return find_mrca_via_traversal_indices(n1,n2);
+        return mrca_from_depth(n1,n2);
     };
     witness_namer_t witness_namer = [&](const string& w) {return synth_witness_namer(w,summary,Tax);};
     return conflict_with_tree_impl(query_tree, summary, query_mrca, summary_mrca, witness_namer);
