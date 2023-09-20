@@ -55,8 +55,6 @@ typedef RTRichTaxNode Taxon;
 class SumTreeNodeData {
     public:
     int depth = 0;
-    std::uint32_t trav_enter = UINT32_MAX;
-    std::uint32_t trav_exit = UINT32_MAX;
 #   if defined(JOINT_MAPPING_VEC)
         vec_src_node_ids source_edge_mappings;
 #   else
