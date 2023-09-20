@@ -14,7 +14,7 @@ namespace otc {
 ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
                                                    const RichTaxonomy &taxonomy)
     :context(context_arg) {
-    Context::init_nom_codes_to_traversal(taxonomy);
+    Context::init_nom_codes_boundaries(taxonomy);
     if (context_arg.name_matcher != nullptr) {
         return; // already initialized
     }
@@ -73,7 +73,7 @@ ContextAwareCTrieBasedDB::ContextAwareCTrieBasedDB(const Context &context_arg,
                          const RichTaxonomy & taxonomy,
                          const std::set<std::string_view> &)
     :context(context_arg) {
-    Context::init_nom_codes_to_traversal(taxonomy);
+    Context::init_nom_codes_boundaries(taxonomy);
     throw OTCError() << "partitioning by context is not implemented yet...";
 }
 
