@@ -112,8 +112,6 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::to_taxa(const set<FuzzyQueryResult, SortQu
     LOG(DEBUG) << "to_taxa(context_id = " << context_root->get_ott_id() << ", ... , included_suppressed ="  << include_suppressed << ")";
     vec_fqr_w_t results;
     const auto & tax_data = context_root->get_data();
-    const auto filter_trav_enter = tax_data.trav_enter;
-    const auto filter_trav_exit = tax_data.trav_exit;
 
     if (sorted.empty()) {
         LOG(DEBUG) << "no matches";
@@ -163,8 +161,6 @@ ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
 
     vector<TaxonResult> results;
     const auto & tax_data = context_root->get_data();
-    const auto filter_trav_enter = tax_data.trav_enter;
-    const auto filter_trav_exit = tax_data.trav_exit;
 
     const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(*n_query);
     LOG(DEBUG) << "exact_query(match=\"" << *n_query << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
@@ -182,7 +178,6 @@ ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
         else
         {
             const auto & res_tax_data = tax_ptr->get_data();
-//            LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
             if (is_ancestor_of_using_depth(context_root, tax_ptr))
             {
                 const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
@@ -217,8 +212,6 @@ ContextAwareCTrieBasedDB::to_taxa(const vector<string>& n_queries,
     vector<TaxonResult> results;
 
     const auto & tax_data = context_root->get_data();
-    const auto filter_trav_enter = tax_data.trav_enter;
-    const auto filter_trav_exit = tax_data.trav_exit;
 
     for(auto& n_query: n_queries)
     {
@@ -238,7 +231,6 @@ ContextAwareCTrieBasedDB::to_taxa(const vector<string>& n_queries,
             else
             {
                 const auto & res_tax_data = tax_ptr->get_data();
-//                LOG(DEBUG) << "matched taxon trav = (" << res_tax_data.trav_enter <<  ", " << res_tax_data.trav_exit << "). filter.trav = (" << filter_trav_enter << ", " << filter_trav_exit << ")";
                 if (is_ancestor_of_using_depth(context_root, tax_ptr))
                 {
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
@@ -266,9 +258,6 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::fuzzy_query_to_taxa(const std::string & qu
     LOG(DEBUG) << "fuzzy_query_to_taxa(" << query_str << ", context_id = " << context_root->get_ott_id() << ", ... , included_suppressed ="  << include_suppressed << ")";
     return to_taxa(fuzzy_query(query_str),  context_root, taxonomy, include_suppressed);
 }
-
-// how do trav_enter and such things work?
-// what are they used for?
 
 void ContextAwareCTrieBasedDB::add_key(const std::string& s, OttId id, const RichTaxonomy& taxonomy)
 {

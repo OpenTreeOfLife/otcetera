@@ -98,7 +98,7 @@ TreesToServe::SumTreeInitPair TreesToServe::get_new_tree_and_annotations(const s
 
     index_by_name_or_id(*nt);
     compute_depth(*nt);
-    set_traversal_entry_exit_and_num_tips(*nt);
+    set_num_tips(*nt);
     tree_list.push_back(move(nt));
     annotation_list.emplace(annotation_list.end());
     auto & sta = annotation_list.back();

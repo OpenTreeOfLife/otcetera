@@ -1535,36 +1535,14 @@ void index_nodes_by_name(T & tree) {
 }
 
 template<typename T>
-void set_traversal_entry_exit(T & tree) {
+void set_num_tips(T & tree) {
     std::uint32_t ind = 0;
-    for (auto nd : iter_pre(tree)) {
-        nd->get_data().trav_enter = ind++;
-    }
     for (auto pnd : iter_post(tree)) {
         auto fc = pnd->get_last_child();
         auto & d = pnd->get_data();
         if (fc == nullptr) {
-            d.trav_exit = d.trav_enter;
-        } else {
-            d.trav_exit = fc->get_data().trav_exit;
-        }
-    }
-}
-
-template<typename T>
-void set_traversal_entry_exit_and_num_tips(T & tree) {
-    std::uint32_t ind = 0;
-    for (auto nd : iter_pre(tree)) {
-        nd->get_data().trav_enter = ind++;
-    }
-    for (auto pnd : iter_post(tree)) {
-        auto fc = pnd->get_last_child();
-        auto & d = pnd->get_data();
-        if (fc == nullptr) {
-            d.trav_exit = d.trav_enter;
             d.num_tips = 1;
         } else {
-            d.trav_exit = fc->get_data().trav_exit;
             d.num_tips = 0;
             for (auto c : iter_child_const(*pnd)) {
                 d.num_tips += c->get_data().num_tips;

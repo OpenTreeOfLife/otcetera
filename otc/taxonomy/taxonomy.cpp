@@ -692,7 +692,6 @@ RichTaxonomy::RichTaxonomy(const std::string& dir,
         }
     }
     compute_depth(*tree);
-    set_traversal_entry_exit(*tree);
     _fill_ids_to_suppress_set();
     this->read_synonyms();
     const auto & td = tree->get_data();
