@@ -267,7 +267,8 @@ def launch_server(exe_dir, taxonomy_dir, synth_par, server_threads=4):
                   "-D" + synth_par,
                   "-p{}".format(pidfile_path),
                   "-P{}".format(SERVER_PORT), 
-                  "--num-threads={}".format(server_threads)]
+                  "--num-threads={}".format(server_threads),
+                  "-v"]
     _LOG.debug('Launching with: "{}"'.format('" "'.join(invocation)))
     with open(server_std_out, 'w') as sstdoe:
         RUNNING_SERVER = subprocess.Popen(invocation,
