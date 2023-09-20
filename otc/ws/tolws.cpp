@@ -276,17 +276,6 @@ void add_node_support_info(const TreesToServe & tts,
     }
 }
 
-
-template<typename N>
-bool is_ancestor_of(N* f, N* s)
-{
-    assert(f);
-    assert(s);
-    const auto * fdata = &(f->get_data());
-    const auto sec_ind = s->get_data().trav_enter;
-    return (sec_ind >= fdata->trav_enter and sec_ind <= fdata->trav_exit);
-}
-
 // See API docs at https://github.com/OpenTreeOfLife/germinator/wiki/Synthetic-tree-API-v3
 
 string available_trees_ws_method(const TreesToServe &tts) {

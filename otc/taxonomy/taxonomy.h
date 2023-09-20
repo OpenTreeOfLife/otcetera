@@ -272,8 +272,6 @@ class RTRichTaxNodeData {
     //TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
     //nlohmann::json sources;
     std::vector<const TaxonomicJuniorSynonym *> junior_synonyms;
-    std::uint32_t trav_enter = UINT32_MAX;
-    std::uint32_t trav_exit = UINT32_MAX;
     TaxonomicRank rank = TaxonomicRank::RANK_NO_RANK;
     std::bitset<32> flags;
     std::string source_info;
@@ -660,26 +658,6 @@ std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy
                                                     const RTRichTaxNode* context_root,
                                                     const std::string& query,
                                                     std::function<bool(const RTRichTaxNode*)> ok = [](const RTRichTaxNode*){return true;});
-
-
-template<typename N>
-N * find_mrca_via_traversal_indices(N *f, N *s);
-
-template<typename N>
-inline N * find_mrca_via_traversal_indices(N *f, N *s) {
-    const auto * fdata = &(f->get_data());
-    const auto sec_ind = s->get_data().trav_enter;
-    while (sec_ind < fdata->trav_enter || sec_ind > fdata->trav_exit) {
-        f = f->get_parent();
-        if (f == nullptr) {
-            assert(false); 
-            return nullptr;
-        }
-        fdata = &(f->get_data());
-    }
-    return f;
-}
-
 
 } // namespace
 #endif
