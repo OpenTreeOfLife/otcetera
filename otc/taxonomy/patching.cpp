@@ -342,7 +342,6 @@ bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
     if (auto f = get_fuzzy_matcher())
 	f->add_key(name, oid, *this);
 
-    // TODO: fix trav_enter, etc.
     // TODO: fix allocation of names between contexts
     // TODO: read amendment blob
 
