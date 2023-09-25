@@ -1028,44 +1028,41 @@ fp_set checked_dirs;
 fp_set known_tree_dirs;
 
 bool read_trees(const fs::path & dirname, TreesToServe & tts) {
-    auto sdr = get_subdirs(dirname);
-    if (!sdr.first) {
+    auto [is_dir, subdir_set] = get_subdirs(dirname);
+    if (not is_dir) {
         return false;
     }
-    const auto & subdir_set = sdr.second;
     for (auto p : subdir_set) {
         if (!contains(checked_dirs, p)) {
             checked_dirs.insert(p);
-            fs::path configpath = p;
-            configpath /= "config";
-            fs::path treepath = p;
-            treepath /= "labelled_supertree";
-            treepath /= "labelled_supertree.tre";
-            fs::path brokentaxapath = p;
-            brokentaxapath /= "labelled_supertree";
-            brokentaxapath /= "broken_taxa.json";
-            fs::path annotationspath = p;
-            annotationspath /= "annotated_supertree";
-            annotationspath /= "annotations.json";
+            fs::path configpath = p / "config";
 
+            fs::path treepath = p / "labelled_supertree" / "labelled_supertree.tre";
+            fs::path brokentaxapath = p / "labelled_supertree" / "broken_taxa.json";
+            fs::path annotationspath = p / "annotated_supertree" / "annotations.json";
             fs::path contestingtrees_path = p / "subproblems" / "contesting-trees.json";
 
-            bool was_tree_par = false;
-            try {
-                if (fs::is_regular_file(treepath)
-                    && fs::is_regular_file(annotationspath)
-                    && fs::is_regular_file(configpath)) {
-                    if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, contestingtrees_path, tts)) {
-                        known_tree_dirs.insert(p);
-                        was_tree_par = true;
-                    }
-                }
-            } catch (const std::exception & x) {
-                LOG(WARNING) << "Exception while reading summary tree directory:\n   ";
-                LOG(WARNING) << x.what() << '\n';
+	    bool missing_files = false;
+	    for(auto& path: {treepath, annotationspath, configpath})
+	    {
+		if (not fs::is_regular_file(treepath))
+		{
+		    LOG(WARNING) << "Rejected \"" << p << "\" due to lack of " << treepath << ".";
+		    missing_files = true;
+		}
+		else
+		    LOG(DEBUG) <<"In "<<p<<", found "<<path<<".";
+	    }
+	    if (missing_files) continue;
+
+            try
+	    {
+                if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, contestingtrees_path, tts))
+		    known_tree_dirs.insert(p);
             }
-            if (!was_tree_par) {
-                LOG(WARNING) << "Rejected \"" << p << "\" due to lack of " << treepath << " or lack of " << annotationspath << " or parsing error.\n";
+	    catch (const std::exception & x)
+	    {
+                LOG(WARNING) << "Exception while reading summary tree directory:\n   "<<x.what();
             }
         }
     }
