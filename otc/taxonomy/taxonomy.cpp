@@ -721,7 +721,6 @@ void Taxonomy::read_forwards_file(string filepath)
             }
             const char* temp2 = temp+1;
             long new_id = std::strtoul(temp2, &temp, 10);
-            cerr << i++ << ": " << old_id << " -> " << new_id << '\n';
             forwards[check_ott_id_size(old_id)] = check_ott_id_size(new_id);
         }
     }
