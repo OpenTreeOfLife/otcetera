@@ -3,7 +3,7 @@ project('otcetera', ['cpp'],
 	default_options: [
 	  'buildtype=release',
           'b_ndebug=if-release',
-	  'cpp_std=c++17',
+	  'cpp_std=c++20',
           'warning_level=3'
 	],
 	meson_version: '>=0.60')
