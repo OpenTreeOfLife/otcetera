@@ -848,7 +848,8 @@ int run_server(const po::variables_map & args) {
     tts.set_taxonomy(taxonomy);
 
     // Now load trees
-    if (!read_trees(topdir, tts)) {
+    auto tax_version_check = args.at("tax-version-check").as<string>();
+    if (!read_trees(topdir, tts, tax_version_check)) {
         return 2;
     }
     time_t post_trees_time;
@@ -997,6 +998,7 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
         ("pidfile,p",value<string>(),"filepath for PID")
         ("num-threads,n",value<int>(),"number of threads")
         ("ignore-broken-syn","If passed in, the presence of a synonym mapping to a non-existent ID will just be ignored.")
+	("tax-version-check",value<string>()->default_value("exact"),"Should we load synth trees built with an older taxonomy: 'exact' or 'no-check'.")
         ;
 
     options_description visible;
@@ -1021,13 +1023,14 @@ bool read_tree_and_annotations(const fs::path & configpath,
                                const fs::path & annotationspath,
                                const fs::path & brokentaxapath,
                                const fs::path & contestingtrees_path,
-                               TreesToServe & tts);
+                               TreesToServe & tts,
+			       const string& tax_version_check);
 
 // Globals. TODO: lock if we read twice
 fp_set checked_dirs;
 fp_set known_tree_dirs;
 
-bool read_trees(const fs::path & dirname, TreesToServe & tts) {
+bool read_trees(const fs::path & dirname, TreesToServe & tts, const string& tax_version_check) {
     auto [is_dir, subdir_set] = get_subdirs(dirname);
     if (not is_dir) {
         return false;
@@ -1057,7 +1060,7 @@ bool read_trees(const fs::path & dirname, TreesToServe & tts) {
 
             try
 	    {
-                if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, contestingtrees_path, tts))
+                if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, contestingtrees_path, tts, tax_version_check))
 		    known_tree_dirs.insert(p);
             }
 	    catch (const std::exception & x)
@@ -1191,7 +1194,8 @@ bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & annotations_path,
                                const fs::path & brokentaxa_path,
                                const fs::path & contestingtrees_path,
-                               TreesToServe & tts)
+                               TreesToServe & tts,
+			       const string& tax_version_check)
 {
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
@@ -1215,7 +1219,9 @@ bool read_tree_and_annotations(const fs::path & config_path,
         //  So, MTH is relaxing the checking of the OTT verstion string to allow version + "modified" as a prefix to count as a match
         auto taxv = taxonomy.get_version();
         auto ttaxvm = tree_tax_version + "modified";
-        if (!lcase_match_prefix(taxv, ttaxvm)) {
+
+	// FIXME! We should really have an "or-newer" option, but that requires parsing and comparing versions.
+	if (!lcase_match_prefix(taxv, ttaxvm) and tax_version_check == "exact") {
             LOG(WARNING) << "Read \"" << annotations_path << "\" as JSON.\n";
             throw OTCError()<<"Tree with <synth_id='"<<synth_id<<"',taxonomy_version='"<<tree_tax_version<<"'> does not match taxonomy version '"<<taxonomy.get_version()<<"' (= or modified)";
         }

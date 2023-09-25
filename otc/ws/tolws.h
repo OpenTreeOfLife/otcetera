@@ -338,7 +338,7 @@ std::string phylesystem_conflict_ws_method(const SummaryTree_t & summary,
                                            const std::string& tree1s,
                                            const std::string& tree2s);
 
-bool read_trees(const std::filesystem::path & dirname, TreesToServe & tts);
+bool read_trees(const std::filesystem::path & dirname, TreesToServe & tts, const std::string& tax_version_check);
 
 void from_json(const nlohmann::json &j, SourceTreeId & sti);
 void to_json(nlohmann::json &j, const SourceTreeId & sti);
