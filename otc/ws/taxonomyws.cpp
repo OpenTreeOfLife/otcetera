@@ -8,6 +8,7 @@
 #include "otc/ws/nexson/nexson.h"
 #include <optional>
 #include <string_view>
+#include "otc/ws/extract.h"
 
 
 using std::vector;
@@ -242,24 +243,39 @@ string taxon_subtree_ws_method(const TreesToServe & tts,
     return response.dump(1);
 }
 
+// How do we handle a situation where we add 3 taxa, and the 2nd one fails?
+// Right now, re-adding the first taxa will fail.
+
 std::string taxon_addition_ws_method(const TreesToServe & tts,
 				     PatchableTaxonomy & taxonomy,
-				     OttId ott_id,
-				     OttId parent_id,
-				     const string& name,
-				     const string& rank)
+                                     const json& taxa)
 {
     const auto & taxonomy_tree = taxonomy.get_tax_tree();
 
-    auto parent_node = taxonomy.included_taxon_from_id(parent_id);
-    if (parent_node == nullptr) {
-	throw OTCBadRequest() << "Unrecognized OTT ID: " << parent_id;
+    int added = 0;
+    for(auto& taxon: taxa)
+    {
+        auto name = extract_required_argument<string>(taxon, "name");
+        auto ott_id = extract_required_argument<OttId>(taxon, "ott_id");
+        auto parent_id = extract_required_argument<OttId>(taxon, "parent");
+        auto rank = extract_required_argument<string>(taxon, "rank");
+
+        auto [ok,error] = taxonomy.add_new_taxon(ott_id, parent_id, name, rank, "", "", {});
+
+        if (not ok)
+        {
+            json j;
+            j["ott_id"] = ott_id;
+            j["error"] = error;
+            j["added"] = added;
+
+            throw OTCWebError()<<"Error adding taxon '"<<name<<"' with ott_id "<<ott_id<<j;
+        }
+        else
+            added++;
     }
-    json response;
-    auto [ok,error] = taxonomy.add_new_taxon(ott_id, parent_id, name, rank, "", "", {});
-    if (not ok)
-	throw OTCBadRequest() << error;
-    response["ok"] = true;
+
+    json response = {"added", added};
     return response.dump(1);
 }
 

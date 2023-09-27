@@ -315,10 +315,7 @@ std::string taxon_subtree_ws_method(const TreesToServe & tts,
 
 std::string taxon_addition_ws_method(const TreesToServe & tts,
 				     PatchableTaxonomy & taxonomy,
-				     OttId ottid,
-				     OttId parent_id,
-				     const std::string& name,
-				     const std::string& rank);
+                                     const nlohmann::json& taxa);
 
 std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
                                        const std::optional<std::string>& context_name,
