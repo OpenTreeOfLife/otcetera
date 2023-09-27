@@ -22,6 +22,7 @@
 #include <sys/resource.h>
 #endif
 
+#include "otc/ws/extract.h"
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
 
@@ -46,124 +47,6 @@ using json = nlohmann::json;
 using namespace restbed;
 namespace chrono = std::chrono;
 using std::pair;
-
-template<typename T>
-optional<T> convert_to(const json & j);
-
-template <>
-optional<bool> convert_to(const json & j) {
-    if (j.is_boolean()) {
-        return j.get<bool>();
-    }
-    return {};
-}
-
-template <>
-optional<string> convert_to(const json & j) {
-    if (j.is_string()) {
-        return j.get<string>();
-    }
-    return {};
-}
-
-template <>
-optional<int> convert_to(const json & j) {
-    if (j.is_number()) {
-        return j.get<int>();
-    }
-    return {};
-}
-
-template <>
-optional<vector<string>> convert_to(const json & j) {
-    if (not j.is_array()) {
-        return {};
-    }
-    vector<string> v;
-    for(auto& xj: j) {
-        auto x = convert_to<string>(xj);
-        if (not x) return {};
-        v.push_back(*x);
-    }
-    return v;
-}
-
-#if defined(LONG_OTT_ID)
-template <>
-optional<OttId> convert_to(const json & j) {
-    return (j.is_number() ? j.get<OttId>() : {});
-}
-#endif
-
-template <>
-optional<OttIdSet> convert_to(const json & j) {
-    if (not j.is_array()) {
-        return {};
-    }
-    OttIdSet ids;
-    for(auto& jid: j) {
-        auto id = convert_to<OttId>(jid);
-        if (not id) return {};
-        ids.insert(*id);
-    }
-    return ids;
-}
-
-
-
-template <typename T>
-constexpr const char* type_name_with_article();
-
-template <> constexpr const char* type_name_with_article<bool>() {
-    return "a boolean";
-}
-template <> constexpr const char* type_name_with_article<int>() {
-    return "an integer";
-}
-template <> constexpr const char* type_name_with_article<string>() {
-    return "a string";
-}
-#if defined(LONG_OTT_ID)
-template <> constexpr const char* type_name_with_article<OttId>() {
-    return "an OttId";
-}
-#endif
-template <> constexpr const char* type_name_with_article<vector<string>>() {
-    return "an array of strings";
-}
-template <> constexpr const char* type_name_with_article<OttIdSet>() {
-    return "an array of integers";
-}
-
-template<typename T>
-optional<T> extract_argument(const json & j, const std::string& opt_name, bool required=false) {
-    auto opt = j.find(opt_name);
-    if (opt == j.end()) {
-        if (required) {
-            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called '" << opt_name << "'\n";
-        }
-        return {};
-    }
-    auto arg = convert_to<T>(*opt);
-    if (not arg) {
-        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found '" << opt->dump() << "'\n";
-    }
-    return arg;
-}
-
-template<typename T>
-T extract_argument_or_default(const json & j, const std::string& opt_name, const T& _default_) {
-    auto arg = extract_argument<T>(j, opt_name);
-    return (arg ? *arg : _default_);
-}
-
-template<typename T>
-T extract_required_argument(const json & j, const std::string& opt_name) {
-    auto arg = extract_argument<T>(j, opt_name, true);
-    assert(arg);
-    return *arg;
-}
-
 
 namespace otc {
 // global
@@ -462,11 +345,12 @@ string taxon_addition_method_handler( const json& parsedargs )
     // But this just handles one addition.
 
     auto [locked_taxonomy,lock] = tts.get_writable_taxonomy();
-    auto name = extract_required_argument<string>(parsedargs, "name");
-    auto ott_id = extract_required_argument<OttId>(parsedargs, "ott_id");
-    auto parent_id = extract_required_argument<OttId>(parsedargs, "parent");
-    auto rank = extract_required_argument<string>(parsedargs, "rank");
-    return taxon_addition_ws_method(tts, locked_taxonomy, ott_id, parent_id, name, rank);
+    auto taxa = parsedargs["taxa"];
+    int num_new_ottids = extract_required_argument<int>(parsedargs, "new_ottids_required");
+    if (taxa.size() != num_new_ottids)
+        throw OTCBadRequest() << "Amendment mentions "<<taxa.size()<<" taxa, but "<<num_new_ottids<<" new OTT IDs.";
+    
+    return taxon_addition_ws_method(tts, locked_taxonomy, taxa);
 }
 
 // See taxomachine/src/main/java/org/opentree/taxonomy/plugins/tnrs_v3.java
