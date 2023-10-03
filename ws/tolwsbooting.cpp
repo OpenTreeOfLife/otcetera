@@ -347,7 +347,7 @@ string taxon_addition_method_handler( const json& parsedargs )
     auto [locked_taxonomy,lock] = tts.get_writable_taxonomy();
     auto taxa = parsedargs["taxa"];
     int num_new_ottids = extract_required_argument<int>(parsedargs, "new_ottids_required");
-    if (taxa.size() != num_new_ottids)
+    if (taxa.size() > num_new_ottids)
         throw OTCBadRequest() << "Amendment mentions "<<taxa.size()<<" taxa, but "<<num_new_ottids<<" new OTT IDs.";
     
     return taxon_addition_ws_method(tts, locked_taxonomy, taxa);
