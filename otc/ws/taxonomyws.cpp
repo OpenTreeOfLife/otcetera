@@ -275,7 +275,7 @@ std::string taxon_addition_ws_method(const TreesToServe & tts,
             added++;
     }
 
-    json response = {"added", added};
+    json response = {{"added", added}};
     return response.dump(1);
 }
 
