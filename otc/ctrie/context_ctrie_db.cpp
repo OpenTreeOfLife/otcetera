@@ -265,6 +265,10 @@ void ContextAwareCTrieBasedDB::add_key(const std::string& s, OttId id, const Ric
     if (not node)
 	throw OTCError()<<"add_key: id "<<id<<" not found in taxonomy";
 
+    auto nn = normalize_query(s);
+
+    match_name_to_taxon[nn].push_back({node,nullptr});
+
     trie.add_key(s);
 }
 
