@@ -269,7 +269,7 @@ void ContextAwareCTrieBasedDB::add_key(const std::string& s, OttId id, const Ric
 
     match_name_to_taxon[nn].push_back({node,nullptr});
 
-    trie.add_key(s);
+    trie.add_key(nn);
 }
 
 } // namespace otc
