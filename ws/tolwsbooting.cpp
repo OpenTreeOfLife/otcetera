@@ -345,7 +345,9 @@ string taxon_addition_method_handler( const json& parsedargs )
     // But this just handles one addition.
 
     auto [locked_taxonomy,lock] = tts.get_writable_taxonomy();
-    auto taxa = extract_required_argument<string>(parsedargs, "taxa");
+    if (not parsedargs.count("taxa"))
+	throw OTCBadRequest()<< "expected a field called 'taxa'";
+    auto taxa = parsedargs["taxa"];
     int num_new_ottids = extract_required_argument<int>(parsedargs, "new_ottids_required");
     if (taxa.size() > num_new_ottids)
         throw OTCBadRequest() << "Amendment mentions "<<taxa.size()<<" taxa, but "<<num_new_ottids<<" new OTT IDs.";
