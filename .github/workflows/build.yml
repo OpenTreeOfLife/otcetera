@@ -17,7 +17,7 @@ jobs:
 #               ubuntu-gcc-11-sanitize,
                ubuntu-gcc-12,
                ubuntu-gcc-12-debugoptimized,
-               ubuntu-clang-13,
+               ubuntu-clang-15,
 #               macos-xcode-12.5
                ]
 
@@ -62,10 +62,10 @@ jobs:
             version: "12"
             buildtype: "debugoptimized"
 
-          - name: ubuntu-clang-13
+          - name: ubuntu-clang-15
             os: ubuntu-latest
             compiler: clang
-            version: "13"
+            version: "15"
             buildtype: "release"
 
 # Currently we get "dyld: Library not loaded: @rpath/librestbed.4.dylib"
