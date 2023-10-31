@@ -54,15 +54,16 @@ std::vector<N*> leaf_nodes_below(N* node) {
 }
 
 template <typename N>
-std::vector<N*> map_to_summary(const std::vector<const N*>& nodes) {
+auto map_to_summary(const std::vector<const N*>& nodes)
+{
     std::vector<N*> nodes2(nodes.size(),nullptr);
-    for(int i=0;i<(int)nodes2.size();i++) {
+    for(int i=0;i<(int)nodes2.size();i++)
         nodes2[i] = summary_node(nodes[i]);
-    }
     return nodes2;
 }
 
-struct ConflictNode {
+struct ConflictNode
+{
     int depth = 0; // depth = number of nodes to the root of the tree including the  endpoints (so depth of root = 1)
     int n_tips = 0;
     int n_include_tips = 0;
@@ -73,31 +74,22 @@ using ConflictTree = otc::RootedTree<ConflictNode, otc::RTreeNoData>;
 
 using node_logger_t = std::function<void(const ConflictTree::node_type* node2, const ConflictTree::node_type* node1)>;
 
-inline ConflictTree::node_type* summary_node(const ConflictTree::node_type* node) {
+inline ConflictTree::node_type* summary_node(const ConflictTree::node_type* node)
+{
     return node->get_data().summary_node;
 }
 
-inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node) {
+inline ConflictTree::node_type*& summary_node(ConflictTree::node_type* node)
+{
     return node->get_data().summary_node;
 }
 
 template <typename T>
-std::vector<typename T::node_type*> all_nodes_postorder(T& tree)
+auto all_nodes_postorder(T& tree)
 {
-    std::vector<typename T::node_type*> tree_nodes;
-    for(auto nd: iter_post(tree)) {
+    std::vector<node_type<T>*> tree_nodes;
+    for(auto nd: iter_post(tree))
         tree_nodes.push_back(nd);
-    }
-    return tree_nodes;
-}
-
-template <typename T>
-std::vector<const typename T::node_type*> all_nodes_postorder(const T& tree)
-{
-    std::vector<const typename T::node_type*> tree_nodes;
-    for(auto nd: iter_post_const(tree)) {
-        tree_nodes.push_back(nd);
-    }
     return tree_nodes;
 }
 
@@ -240,6 +232,9 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
                 log_supported_by(MRCA, nd1);
             } else {
                 for(auto nd2 = MRCA; nd2 and nd2->get_data().n_tips == MRCA->get_data().n_tips; nd2 = nd2->get_parent()) {
+                    // The name of nd1 is used as a key to insert into std::map<string,string>.
+                    // std::map ignores inserts if the kep already exists, and so later (and more parental) nodes are not retained.
+                    // RESULT: This means that we report as a "witness" only the most tip-ward node in the sequence of nodes nd2 from tree2 that map to nd1 from tree1.
                     log_partial_path_of(nd2, nd1);
                 }
             }
@@ -281,27 +276,27 @@ inline void perform_conflict_analysis(ConflictTree& induced_tree1,
 }
 
 template <typename Tree1_t, typename Tree2_t>
-void perform_conflict_analysis(const Tree1_t& tree1,
-                               const std::unordered_map<OttId, const typename Tree1_t::node_type*>& ottid_to_node1,
-                               std::function<const typename Tree1_t::node_type*(const typename Tree1_t::node_type*,const typename Tree1_t::node_type*)> MRCA_of_pair1,
-                               const Tree2_t& tree2,
-                               const std::unordered_map<OttId, const typename Tree2_t::node_type*>& ottid_to_node2,
-                               std::function<const typename Tree2_t::node_type*(const typename Tree2_t::node_type*,const typename Tree2_t::node_type*)> MRCA_of_pair2,
+void perform_conflict_analysis(Tree1_t& tree1,
+                               const std::unordered_map<OttId, node_type<Tree1_t>*>& ottid_to_node1,
+                               std::function<node_type<Tree1_t>*(node_type<Tree1_t>*,node_type<Tree1_t>*)> MRCA_of_pair1,
+                               Tree2_t& tree2,
+                               const std::unordered_map<OttId, node_type<Tree2_t>*>& ottid_to_node2,
+                               std::function<node_type<Tree2_t>*(node_type<Tree2_t>*,node_type<Tree2_t>*)> MRCA_of_pair2,
                                node_logger_t log_supported_by,
                                node_logger_t log_partial_path_of,
                                node_logger_t log_conflicts_with,
                                node_logger_t log_resolved_by,
                                node_logger_t log_terminal) {
-    auto induced_tree1 = get_induced_tree<Tree1_t,Tree2_t,ConflictTree>(tree1,
-                                                                        ottid_to_node1,
-                                                                        MRCA_of_pair1,
-                                                                        tree2,
-                                                                        ottid_to_node2);
-    auto induced_tree2 = get_induced_tree<Tree2_t,Tree1_t,ConflictTree>(tree2,
-                                                                        ottid_to_node2,
-                                                                        MRCA_of_pair2,
-                                                                        tree1,
-                                                                        ottid_to_node1);
+    auto induced_tree1 = get_induced_tree<ConflictTree>(tree1,
+                                                        ottid_to_node1,
+                                                        MRCA_of_pair1,
+                                                        tree2,
+                                                        ottid_to_node2);
+    auto induced_tree2 = get_induced_tree<ConflictTree>(tree2,
+                                                        ottid_to_node2,
+                                                        MRCA_of_pair2,
+                                                        tree1,
+                                                        ottid_to_node1);
 
     return perform_conflict_analysis(*induced_tree1, *induced_tree2, log_supported_by, log_partial_path_of, log_conflicts_with, log_resolved_by, log_terminal);
 }

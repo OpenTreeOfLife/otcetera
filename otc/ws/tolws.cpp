@@ -6,12 +6,9 @@
 #include "otc/tree_operations.h"
 #include "otc/supertree_util.h"
 #include "otc/node_naming.h"       // for make_name(prefix,OttId)
-#include <optional>
-#include <string_view>
 #include "otc/tnrs/context.h"
-
 #include "otc/ctrie/str_utils.h"
-
+#include "otc/ws/find_node.h"
 
 using std::vector;
 using std::map;
@@ -40,7 +37,7 @@ string get_synth_node_label(const SumTreeNode_t* node)
         return node->get_name();
 }
 
-string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
     if (not nd.has_ott_id())
         throw OTCError()<<"Node "<<nd.get_name()<<" has no OTT id";
@@ -48,7 +45,7 @@ string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_
     auto id = nd.get_ott_id();
     auto nd_taxon = taxonomy.included_taxon_from_id(id);
     auto& taxon_data = nd_taxon->get_data();
-    return taxon_data.get_nonuniqname();
+    return string(taxon_data.get_nonuniqname());
 }
 
 // Corresponds to getNamesOfRepresentativeDescendants( ) in treemachine/src/main/java/opentree/GraphExplorer.java
@@ -56,9 +53,9 @@ string_view taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_
 // FIXME - Looking at more names on each level seems better because it would find higher-ranking descendant names
 //       - is there a reason we weren't doing this?  e.g. scanning all children could go too slow?
 // FIXME - We could cache representative descendants (which takes memory) if too slow.
-json get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
+vector<string> get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd)
 {
-    json names = json::array();
+    vector<string> names;
     if (nd.has_children())
     {
         auto first = nd.get_first_child();
@@ -96,6 +93,9 @@ void add_basic_node_info(const RichTaxonomy & taxonomy, const SumTreeNode_t & nd
         noderepr["num_tips"] = 0;
     else
         noderepr["num_tips"] = nd.get_data().num_tips;
+
+    if (is_arguson)
+        noderepr["extinct"] = nd.get_data().is_extinct();
 
     if (nd.has_ott_id()) {
         auto nd_id = nd.get_ott_id();
@@ -276,104 +276,6 @@ void add_node_support_info(const TreesToServe & tts,
     }
 }
 
-
-const std::regex ott_id_pattern("^ott(\\d+)$");
-
-optional<OttId> is_ott_id(const string& node_id)
-{
-    std::smatch matches;
-    if (std::regex_match(node_id, matches, ott_id_pattern))
-    {
-        long raw_ott_id = long_ott_id_from_name(node_id);
-        if (raw_ott_id >= 0)
-            return to_OttId(raw_ott_id);
-    }
-    return {};
-}
-
-const std::regex mrca_id_pattern("^mrca(ott\\d+)(ott\\d+)$");
-
-node_lookup_t broken_taxon(const SumTreeNode_t* n)
-{
-    node_lookup_t result(n);
-    result.was_broken = true;
-    return result;
-}
-
-template<typename N>
-bool is_ancestor_of(N* f, N* s)
-{
-    assert(f);
-    assert(s);
-    const auto * fdata = &(f->get_data());
-    const auto sec_ind = s->get_data().trav_enter;
-    return (sec_ind >= fdata->trav_enter and sec_ind <= fdata->trav_exit);
-}
-
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const string & node_id)
-{
-    const auto & tree_data = tree.get_data();
-
-    std::smatch matches;
-    if (std::regex_match(node_id, matches, ott_id_pattern))
-    {
-        // Get the OTT ID
-        long raw_ott_id = long_ott_id_from_name(node_id);
-
-        // Try to find the OTT ID in the summary tree.
-        if (raw_ott_id >= 0) {
-            OttId ott_id = check_ott_id_size(raw_ott_id);
-            auto i2nit = tree_data.id_to_node.find(ott_id);
-            if (i2nit != tree_data.id_to_node.end()) {
-                return {i2nit->second};
-            }
-            LOG(WARNING) << "not finding " << ott_id << " extracted from " << node_id;
-        }
-
-        // We didn't find a summary tree node for this OTT ID.  Is this node listed as broken?
-        if (auto bt_it = tree_data.broken_taxa.find(node_id); bt_it != tree_data.broken_taxa.end())
-        {
-            // if found we return the MRCA pointer in the first slot of the pair.
-            return broken_taxon(bt_it->second.first);
-        }
-        else
-            return {};
-    }
-
-    if (std::regex_match(node_id, matches, mrca_id_pattern))
-    {
-        // Does this match a canonical mrcaottXottY name?
-        auto n2nit = tree_data.broken_name_to_node.find(node_id);
-        if (n2nit != tree_data.broken_name_to_node.end()) {
-            return {n2nit->second};
-        }
-
-        // If it does not match a canonical name, then lookup ottX and ottY
-        assert(matches.size() >= 2);
-        std::string first_id = matches[1];
-        std::string second_id = matches[2];
-        auto result1 = find_node_by_id_str(tree, first_id);
-        if (result1.node == nullptr) {
-            return result1;
-        }
-        auto result2 = find_node_by_id_str(tree, second_id);
-        if (result2.node == nullptr) {
-            return result2;
-        }
-        return {find_mrca_via_traversal_indices(result1.node, result2.node)};
-    }
-    return {};
-}
-
-node_lookup_t find_required_node_by_id_str(const SummaryTree_t & tree, const string & node_id)
-{
-    auto result = find_node_by_id_str(tree, node_id);
-    if (not result.node) {
-        throw OTCBadRequest() << "node_id '" << node_id << "' was not found!";
-    }
-    return result;
-}
-
 // See API docs at https://github.com/OpenTreeOfLife/germinator/wiki/Synthetic-tree-API-v3
 
 string available_trees_ws_method(const TreesToServe &tts) {
@@ -466,8 +368,12 @@ inline void add_source_id_map(json & j,
         if (srcTag == string("ott")+taxonomy.get_version()) {
             jt["taxonomy"] = string("ott")+taxonomy.get_version();
         } else {
-            const auto & simentry = sta->source_id_map.at(srcTag);
-            jt = simentry;
+            try {
+                const auto & simentry = sta->source_id_map.at(srcTag);
+                jt = simentry;
+            } catch (...) {
+                throw OTCWebError() << "sta->source_id_map.at(" << srcTag << ") exception.";
+            }
         }
         sim[srcTag] = jt;   
     }
@@ -507,67 +413,49 @@ string node_info_ws_method(const TreesToServe & tts,
                            const SummaryTreeAnnotation * sta,
                            const string & node_id,
                            bool include_lineage) {
-    LOG(DEBUG)<<"Got to node_info_ws_method( )";
+    LOG(DEBUG)<<"node_info_ws_method( ):";
 
-    auto result = find_required_node_by_id_str(*tree_ptr, node_id);
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    auto result = find_required_node_by_id_str(*tree_ptr, taxonomy, node_id);
 
-    auto response = node_info_json(tts, sta, result.node, include_lineage);
+    auto response = node_info_json(tts, sta, result.node(), include_lineage);
     response["query"] = node_id;
-    return response.dump(1);
-}
+    if (result.broken())
+        response["broken"] = true;
 
-pair<vector<const SumTreeNode_t*>,json> find_nodes_for_id_strings(const RichTaxonomy& taxonomy,
-                                                                  const SummaryTree_t* tree_ptr,
-                                                                  const vector<string>& node_ids,
-                                                                  bool fail_broken = false) {
-    vector<const SumTreeNode_t *> nodes;
-    json unknown;
-    json broken = json::object();
-    optional<string> bad_node_id;
-    for (auto node_id : node_ids) {
-        auto result = find_node_by_id_str(*tree_ptr, node_id);
-        if (not result.node or (result.was_broken and fail_broken)) {
-            // Possible statuses:
-            //  - invalid    (never minted id)
-            //  - pruned     (valid but not in synth)
-            //  - deprecated (previously valid, not forwarded)
-            string reason = "unknown_id";
-            if (result.node and result.was_broken) {
-                reason = "broken";
-            } else if (auto id = is_ott_id(node_id)) {
-                auto taxon = taxonomy.included_taxon_from_id(*id);
-                // Not currently implemented...
-                // if (id == -2)
-                //  reason = "deprecated";
-                reason = (not taxon ? "invalid_ott_id": "pruned_ott_id");
-            }
-            unknown[node_id] = reason;
-            bad_node_id = node_id;
-        }
-        if (result.was_broken) {
-            broken[node_id] = node_id_for_summary_tree_node(*result.node);
-        }
-        // Current default strategy means that we include MRCAs for broken taxa.
-        nodes.push_back(result.node);
-    }
-    if (unknown.size()) {
-        throw OTCBadRequest()<<"node_id '"<< *bad_node_id << "' was not found!"<<json{ {"unknown", unknown} };
-    }
-    return {nodes, broken};
+    return response.dump(1);
 }
 
 string nodes_info_ws_method(const TreesToServe & tts,
                             const SummaryTree_t * tree_ptr,
                             const SummaryTreeAnnotation * sta,
                             const vector<string> & node_ids,
-                            bool include_lineage) {
+                            bool include_lineage)
+{
+    LOG(DEBUG)<<"nodes_info_ws_method( ):";
+
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    auto [nodes, broken] = find_nodes_for_id_strings(taxonomy, tree_ptr, node_ids);
-    json response;
-    for(auto i = 0U; i < nodes.size(); i++) {
-        auto j = node_info_json(tts, sta, nodes[i], include_lineage);
-        j["query"] = node_ids[i];
+
+    json response = json::array();
+    for(auto& node_id: node_ids)
+    {
+        json j;
+
+        auto result = find_node_by_id_str(*tree_ptr, taxonomy, node_id);
+
+        if (result.node())
+        {
+            j = node_info_json(tts, sta, result.node(), include_lineage);
+            if (result.broken())
+                j["broken"] = true;
+        }
+        else
+            j["error"] = find_node_failure_reason(result);
+
+        j["query"] = node_id;
+
         response.push_back(j);
     }
     return response.dump(1);
@@ -603,7 +491,7 @@ const SumTreeNode_t * mrca(const T & nodes) {
             first = false;
             focal = n;
         } else {
-            focal = find_mrca_via_traversal_indices(focal, n);
+            focal = mrca_from_depth(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -616,16 +504,16 @@ const SumTreeNode_t * mrca(const T & nodes) {
 // Check if the excluded node is inside the include group, and update the MRCA of the exclude group if not.
 bool check_node_and_update_excluded_ancestor(const SumTreeNode_t* mrca_included, const SumTreeNode_t* excluded_node, const SumTreeNode_t* &closest_excluded_ancestor)
 {
-    auto mrca = find_mrca_via_traversal_indices(mrca_included, excluded_node);
+    auto mrca = mrca_from_depth(mrca_included, excluded_node);
 
     // Return false if the excluded node is actually inside the include group.
     if (mrca == mrca_included)
         return false;
 
-    assert(not closest_excluded_ancestor or is_ancestor_of(closest_excluded_ancestor, mrca_included) or is_ancestor_of(mrca_included, closest_excluded_ancestor));
+    assert(not closest_excluded_ancestor or is_ancestor_of_using_depth(closest_excluded_ancestor, mrca_included) or is_ancestor_of_using_depth(mrca_included, closest_excluded_ancestor));
 
     // If this is the first excluded taxon OR the mrca is closer, the update the closest excluded ancestor
-    if (not closest_excluded_ancestor or is_ancestor_of(closest_excluded_ancestor, mrca))
+    if (not closest_excluded_ancestor or is_ancestor_of_using_depth(closest_excluded_ancestor, mrca))
         closest_excluded_ancestor = mrca;
 
     return true;
@@ -678,7 +566,7 @@ string mrca_ws_method(const TreesToServe & tts,
     // 4. Do the phylo-ref response here, if we had any excluded ids.
     if (not excluded_node_ids.empty())
     {
-        assert(is_ancestor_of(closest_excluded_ancestor, mrca_included));
+        assert(is_ancestor_of_using_depth(closest_excluded_ancestor, mrca_included));
         json nodes;
         for(auto node = mrca_included; node != closest_excluded_ancestor; node = node->get_parent())
             nodes.push_back(node_id_for_summary_tree_node(*node));
@@ -715,15 +603,16 @@ auto lookup(const Map& m, const Key& k)
 
 
 const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
-                                           const string & node_id, 
+                                           const string & node_id,
+                                           const RichTaxonomy& taxonomy,
                                            int height_limit,
                                            uint32_t tip_limit)
 {
     assert(tree_ptr != nullptr);
-    auto result = find_required_node_by_id_str(*tree_ptr, node_id);
-    if (result.was_broken) {
+    auto result = find_required_node_by_id_str(*tree_ptr, taxonomy, node_id);
+    if (result.broken()) {
         json broken;
-        broken["mrca"] = get_synth_node_label(result.node);
+        broken["mrca"] = get_synth_node_label(result.node());
 
         auto& contesting_trees_for_taxon = tree_ptr->get_data().contesting_trees_for_taxon;
 
@@ -741,10 +630,10 @@ const SumTreeNode_t * get_node_for_subtree(const SummaryTree_t * tree_ptr,
         j["broken"] = broken;
         throw OTCBadRequest("node_id was not found (broken taxon).\n")<<j;
     }
-    if (result.node->get_data().num_tips > tip_limit && height_limit < 0) {
+    if (result.node()->get_data().num_tips > tip_limit && height_limit < 0) {
         throw OTCBadRequest() << "The requested subtree is too large to be returned via the API. (Tip limit = " << tip_limit << ".) Download the entire tree.\n";
     }
-    return result.node;
+    return result.node();
 }
 
 
@@ -809,7 +698,7 @@ string induced_subtree_ws_method(const TreesToServe & tts,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca_via_traversal_indices(focal, n);
+            focal = mrca_from_depth(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -845,10 +734,10 @@ string newick_subtree_ws_method(const TreesToServe & tts,
                                 bool include_all_node_labels,
                                 int height_limit)
 {
-    const uint32_t NEWICK_TIP_LIMIT = 25000;
-    auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
+    const uint32_t NEWICK_TIP_LIMIT = 100000;
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
+    auto focal = get_node_for_subtree(tree_ptr, node_id, taxonomy, height_limit, NEWICK_TIP_LIMIT);
     NodeNamerSupportedByStasher nnsbs(label_format, taxonomy, tts);
     ostringstream out;
     write_newick_generic<const SumTreeNode_t *, NodeNamerSupportedByStasher>(out, focal, nnsbs, include_all_node_labels, height_limit);
@@ -888,7 +777,9 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
                                  const string & node_id,
                                  int height_limit) {
     const uint32_t NEWICK_TIP_LIMIT = 25000;
-    auto focal = get_node_for_subtree(tree_ptr, node_id, height_limit, NEWICK_TIP_LIMIT);
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
+    auto focal = get_node_for_subtree(tree_ptr, node_id, taxonomy, height_limit, NEWICK_TIP_LIMIT);
     json response;
     response["synth_id"] = sta->synth_id;
     set<string> usedSrcIds;
@@ -896,7 +787,12 @@ string arguson_subtree_ws_method(const TreesToServe & tts,
     {
         auto locked_taxonomy = tts.get_readable_taxonomy();
         const auto & taxonomy = locked_taxonomy.first;
-        write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+        try {
+            write_arguson(a, tts, sta, taxonomy, focal, height_limit, usedSrcIds);
+        } catch (...) {
+            LOG(DEBUG) << "Exception in arguson_subtree_ws_method";
+            throw;
+        }
         add_lineage(tts, a, focal, taxonomy, usedSrcIds, true);
         add_source_id_map(a, usedSrcIds, taxonomy, sta);
     }
@@ -913,6 +809,59 @@ void delete_subtree_and_monotypic_ancestors(Tree& tree, typename Tree::node_type
         delete_tip_and_monotypic_ancestors(tree, parent);
     }
 }
+
+void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta) {
+    sta.date_completed = extract_string(j, "date_completed");
+    sta.filtered_flags = extract_string(j, "filtered_flags");
+    auto splitff = split_string(sta.filtered_flags, ',');
+    sta.filtered_flags_vec.assign(splitff.begin(), splitff.end());
+    // generated_by gets converted back to a string
+    auto gb_el = j.find("generated_by");
+    if (gb_el == j.end()) {
+        throw OTCError() << "Missing generated_by field.\n";
+    }
+    sta.generated_by = gb_el->dump();
+    sta.num_leaves_in_exemplified_taxonomy = extract_unsigned_long(j, "num_leaves_in_exemplified_taxonomy");
+    sta.num_source_studies = extract_unsigned_long(j, "num_source_studies");
+    sta.num_source_trees = extract_unsigned_long(j, "num_source_trees");
+    sta.num_tips = extract_unsigned_long(j, "num_tips");
+    sta.root_ott_id = extract_ott_id(j, "root_ott_id");
+    sta.root_taxon_name = extract_string(j, "root_taxon_name");
+    sta.synth_id = extract_string(j, "synth_id");
+    sta.taxonomy_version = extract_string(j, "taxonomy_version");
+    sta.tree_id = extract_string(j, "tree_id");
+    auto sim_el = j.find("source_id_map");
+    if (sim_el == j.end()) {
+        throw OTCError() << "Missing source_id_map field.\n";
+    }
+    if (!sim_el->is_object()) {
+        throw OTCError() << "Expected \"source_id_map\" field to be an object.\n";
+    }
+    try {
+        for (nlohmann::json::const_iterator sim_it = sim_el->begin(); sim_it != sim_el->end(); ++sim_it) {
+            sta.source_id_map[sim_it.key()] = sim_it.value(); 
+        }
+    } catch (OTCError & x) {
+        throw OTCError() << "Error reading source_id_map field: " << x.what();
+    }
+    sta.full_source_id_map_json = *sim_el;
+    auto s_el = j.find("sources");
+    if (s_el == j.end()) {
+        throw OTCError() << "Missing sources field.\n";
+    }
+    if (!s_el->is_array()) {
+        throw OTCError() << "Expected \"sources\" field to be an array.\n";
+    }
+    sta.sources.resize(s_el->size());
+    for (auto i = 0U; i < s_el->size(); ++i) {
+        try {
+            sta.sources[i] = s_el->at(i).get<std::string>();
+        } catch (OTCError & x) {
+            throw OTCError() << "Error expected each element of the sources array to be a string: " << x.what();
+        }
+    }
+}
+
 
 
 } //namespace otc

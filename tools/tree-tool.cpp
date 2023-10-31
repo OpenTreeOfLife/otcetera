@@ -12,14 +12,11 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
+#include "otc/node_naming.h"
 
 #include <boost/range/adaptor/reversed.hpp>
 
-#include <boost/filesystem/operations.hpp>
-
-namespace fs = boost::filesystem;
-
-INITIALIZE_EASYLOGGINGPP
+namespace fs = std::filesystem;
 
 using namespace otc;
 
@@ -33,7 +30,7 @@ using std::unique_ptr;
 using boost::spirit::qi::symbols;
 using namespace boost::spirit;
 
-using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
+using Tree_t = RootedTree<RTNodeSmallestChild, RTreeNoData>;
 
 namespace po = boost::program_options;
 using po::variables_map;
@@ -65,12 +62,14 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("degree-of",value<OttId>(), "Show the degree of node <arg>")
         ("children-of",value<OttId>(), "List the children of node <arg>")
         ("parent-of",value<OttId>(), "List the parent of node <arg>")
+        ("ancestors-of",value<OttId>(), "List the all ancestor (parent to root order) of node <arg>")
         ("count-nodes","Show the number of nodes")
         ("count-leaves","Show the number of leaves")
         ("show-leaves","Show the number of leaves")
         ("show-internal","Show the number of leaves")
         ("write-taxonomy",value<string>(),"Write as taxonomy in directory <arg>")
         ("lost-taxa-vs",value<string>(),"Taxonomy tree to compare for lost taxa.")
+        ("standardize","Perform a rotation to a standard form.")
         ("indented-table","print number of leaves for each internal node")
         ;
 
@@ -269,10 +268,9 @@ std::string remove_ott_suffix(std::string name) {
 
 void writeTreeAsTaxonomy(const string& dirname, const Tree_t& tree) {
     fs::path new_dir = dirname;
-    if (fs::exists(new_dir)) {
-        throw OTCError() << "File '" << dirname << "' already exists!";
+    if (! fs::exists(new_dir)) {
+        fs::create_directories(new_dir);
     }
-    fs::create_directories(new_dir);
     // Create empty files
     for(const auto& name: {"conflicts.tsv", "deprecated.tsv", "log.tsv", "otu_differences.tsv", "weaklog.csv"}) {
         create_file(new_dir / name, "");
@@ -337,7 +335,14 @@ void show_lost_taxa(const Tree_t& tree, const string& tax_tre_filename, const st
 }
 
 
-int main(int argc, char* argv[]) {
+void standardize(Tree_t& tree)
+{
+    calculate_smallest_child(tree);
+    sort_by_smallest_child(tree);
+}
+
+int main(int argc, char* argv[])
+{
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);
@@ -386,6 +391,18 @@ int main(int argc, char* argv[]) {
             } else {
                 std::cout << "No parent: that node is the root.\n";
             }
+        } else if (args.count("ancestors-of")) {
+            OttId n = args["ancestors-of"].as<OttId>();
+            auto nd = find_node_by_ott_id(*tree, n);
+            auto ancnd = nd->get_parent();
+            if (ancnd) {
+                while (ancnd) {
+                    std::cout << ancnd->get_name() << "\n";
+                    ancnd = ancnd->get_parent();
+                }
+            } else {
+                std::cout << "No parent: that node is the root.\n";
+            }
         } else if (args.count("count-nodes")) {
             std::cout << n_nodes(*tree) << std::endl;
         } else if (args.count("show-nodes")) {
@@ -406,6 +423,8 @@ int main(int argc, char* argv[]) {
             string tax_tax_filename = args["taxonomy"].as<string>();
             show_lost_taxa(*tree, tax_tre_filename, tax_tax_filename);
         } else {
+            if (args.count("standardize"))
+                standardize(*tree);
             write_tree_as_newick(std::cout, *tree);
             std::cout << std::endl;
         }

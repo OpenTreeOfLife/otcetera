@@ -1,0 +1,6 @@
+{
+  "message": "[/v3/tree_of_life/induced_subtree] Error: node_id 'asdf' was not found!",
+  "unknown": {
+    "asdf": "unknown_id"
+  }
+}

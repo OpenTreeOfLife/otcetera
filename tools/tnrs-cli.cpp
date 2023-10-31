@@ -29,8 +29,6 @@
 #include "otc/tnrs/context.h"
 #include "otc/ws/tolws.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;
@@ -80,8 +78,8 @@ OttIdSet diagnose_name(const RTRichTaxTreeData & rt_data,
             if (out != nullptr) {*out << "node in taxonomy: ott_id = " << nd->get_ott_id() << " name = \"" << nd->get_name() << "\"\n";}
         }
     }
-    auto n2hit = rt_data.homonym_to_node.find(name);
-    if (n2hit != rt_data.homonym_to_node.end()) {
+    auto n2hit = rt_data.homonym_to_nodes.find(name);
+    if (n2hit != rt_data.homonym_to_nodes.end()) {
         const auto & ndv = n2hit->second;
         for (auto nd : ndv) {
             if (nd != nullptr) {
@@ -139,55 +137,10 @@ void analyze_case_sensitivity(const RTRichTaxTreeData & rt_data,
     return;
 }
 
-void interactive_tests() {
-    const CTrie3_t testtrie{"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
-    const std::string p1 = "Enter a query:\n";
-    const std::string p2 = "Enter a trie:\n";
-    const std::string p3 = "max distance:\n";
-    auto & out = std::cerr;
-    std::string trash;
-    for (;;) {
-        std::string query, trie;
-        out << p1;
-        if (!std::getline(std::cin, query)) {
-            break;
-        }
-        out << p2;
-        if (!std::getline(std::cin, trie)) {
-            break;
-        }
-        out << p3;
-        unsigned int dist_threshold;
-        std::cin >> dist_threshold;
-        std::getline(std::cin, trash);
-        std::ofstream lastinteractive("lastinteractivetests.txt");
-        lastinteractive << query << '\n';
-        lastinteractive << trie << '\n';
-        lastinteractive << dist_threshold << '\n';
-        lastinteractive.close();
-        auto wq = to_u32string(query);
-        auto wqi = testtrie.using_letter_order_to_encode(wq);
-        auto wt = to_u32string(trie);
-        auto wti = testtrie.using_letter_order_to_encode(wt);
-        out << "query \"" << query << "\"\n";
-        out << "       "; for(auto q : wqi) {out << (unsigned int) q << ", ";}; out << "\n";
-        out << "trie  \"" << trie << "\"\n";
-        out << "       "; for (auto q : wti) {out << (unsigned int) q << ", ";}; out << "\n";
-        out << "max_dist = " << dist_threshold << '\n';
-
-        auto resdist = testtrie._calc_dist_prim_impl(NO_MATCHING_CHAR_CODE,
-                                                     &(wqi[0]),
-                                                     wqi.size(),
-                                                     &(wti[0]),
-                                                     wti.size(),
-                                                     dist_threshold,
-                                                     NO_MATCHING_CHAR_CODE);
-        out << "result dist = " << resdist << "\n";
-    }
-    out << "EOF\n";
-}
-
 void process_taxonomy(const RichTaxonomy & taxonomy) {
+    auto nc = Context::cull_contexts_to_taxonomy(taxonomy);
+    //LOG(INFO) << nc << " taxonomy contexts retained...";
+
     const Context * c = determine_context({});
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";
@@ -226,15 +179,12 @@ void process_taxonomy(const RichTaxonomy & taxonomy) {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     if (set_global_conv_facet() != 0) {
         return 1;
     }
     std::ios::sync_with_stdio(false);
-    if (argc == 1) {
-        interactive_tests();
-        return 0;
-    }
     try {
         auto args = parse_cmd_line(argc, argv);
         auto taxonomy = load_rich_taxonomy(args);

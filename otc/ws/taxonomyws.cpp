@@ -8,6 +8,7 @@
 #include "otc/ws/nexson/nexson.h"
 #include <optional>
 #include <string_view>
+#include "otc/ws/extract.h"
 
 
 using std::vector;
@@ -62,11 +63,12 @@ void tax_service_add_suppressed_taxon_info(const RichTaxonomy & taxonomy,
 }
 
 
-string taxon_info_ws_method(const RichTaxonomy & taxonomy,
+json taxon_info_ws_method_j(const RichTaxonomy & taxonomy,
                             const RTRichTaxNode * taxon_node,
                             bool include_lineage,
                             bool include_children,
-                            bool include_terminal_descendants) {
+                            bool include_terminal_descendants)
+{
     assert(taxon_node != nullptr);
     json response;
     tax_service_add_taxon_info(taxonomy, *taxon_node, response);
@@ -95,8 +97,42 @@ string taxon_info_ws_method(const RichTaxonomy & taxonomy,
         }
         response["terminal_descendants"] = td_array;
     }
+    return response;
+}
+
+string taxon_info_ws_method(const RichTaxonomy & taxonomy,
+                            const RTRichTaxNode * taxon_node,
+                            bool include_lineage,
+                            bool include_children,
+                            bool include_terminal_descendants)
+{
+    auto response = taxon_info_ws_method_j(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
     return response.dump(1);
 }
+
+string taxon_infos_ws_method(const RichTaxonomy & taxonomy,
+                             const OttIdSet& ott_ids,
+                             bool include_lineage,
+                             bool include_children,
+                             bool include_terminal_descendants)
+{
+    json response = json::array();
+    for(auto ott_id: ott_ids)
+    {
+        json j;
+        if (auto taxon_node = taxonomy.included_taxon_from_id(ott_id))
+            j = taxon_info_ws_method_j(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+        else
+        {
+            j["error"] = "unrecognized";
+        }
+        
+        j["query"] = ott_id;
+        response.push_back(j);
+    }
+    return response.dump(1);
+}
+
 
 // flags: not_otu, environmental, environmental_inherited, viral, hidden, hidden_inherited, was_container
 //    are excluded from being returned in TNRS results.
@@ -175,7 +211,7 @@ string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
             first = false;
             focal = n;
         } else {
-            focal = find_mrca_via_traversal_indices(focal, n);
+            focal = mrca_from_depth(focal, n);
             if (focal == nullptr) {
                 break;
             }
@@ -204,6 +240,42 @@ string taxon_subtree_ws_method(const TreesToServe & tts,
     bool include_all_node_labels = true; // ??
     write_newick_generic<const RTRichTaxNode *, NodeNamerSupportedByStasher>(out, taxon_node, nnsbs, include_all_node_labels, height_limit);
     response["newick"] = out.str();
+    return response.dump(1);
+}
+
+// How do we handle a situation where we add 3 taxa, and the 2nd one fails?
+// Right now, re-adding the first taxa will fail.
+
+std::string taxon_addition_ws_method(const TreesToServe & tts,
+				     PatchableTaxonomy & taxonomy,
+                                     const json& taxa)
+{
+    const auto & taxonomy_tree = taxonomy.get_tax_tree();
+
+    int added = 0;
+    for(auto& taxon: taxa)
+    {
+        auto name = extract_required_argument<string>(taxon, "name");
+        auto ott_id = extract_required_argument<OttId>(taxon, "ott_id");
+        auto parent_id = extract_required_argument<OttId>(taxon, "parent");
+        auto rank = extract_required_argument<string>(taxon, "rank");
+
+        auto [ok,error] = taxonomy.add_new_taxon(ott_id, parent_id, name, rank, "", "", {});
+
+        if (not ok)
+        {
+            json j;
+            j["ott_id"] = ott_id;
+            j["error"] = error;
+            j["added"] = added;
+
+            throw OTCWebError()<<"Error adding taxon '"<<name<<"' with ott_id "<<ott_id<<j;
+        }
+        else
+            added++;
+    }
+
+    json response = {{"added", added}};
     return response.dump(1);
 }
 

@@ -11,13 +11,18 @@
 #include <fstream>
 #include <cstdlib>
 #include "otc/ws/tolwsadaptors.h"
+#include "otc/ws/find_node.h"
 #include "otc/otcli.h"
 #include "otc/ctrie/context_ctrie_db.h"
 #include "otc/tnrs/context.h"
 #include "otc/supertree_util.h"
+#include "otc/taxonomy/patching.h"
+#include "config.h"
+#ifdef HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
 
-INITIALIZE_EASYLOGGINGPP
-
+#include "otc/ws/extract.h"
 // unlike most headers, we'll go ahead an use namespaces
 //    because this is an implementation file
 
@@ -37,129 +42,11 @@ using std::to_string;
 
 namespace po = boost::program_options;
 using namespace otc;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using json = nlohmann::json;
 using namespace restbed;
 namespace chrono = std::chrono;
 using std::pair;
-
-template<typename T>
-optional<T> convert_to(const json & j);
-
-template <>
-optional<bool> convert_to(const json & j) {
-    if (j.is_boolean()) {
-        return j.get<bool>();
-    }
-    return {};
-}
-
-template <>
-optional<string> convert_to(const json & j) {
-    if (j.is_string()) {
-        return j.get<string>();
-    }
-    return {};
-}
-
-template <>
-optional<int> convert_to(const json & j) {
-    if (j.is_number()) {
-        return j.get<int>();
-    }
-    return {};
-}
-
-template <>
-optional<vector<string>> convert_to(const json & j) {
-    if (not j.is_array()) {
-        return {};
-    }
-    vector<string> v;
-    for(auto& xj: j) {
-        auto x = convert_to<string>(xj);
-        if (not x) return {};
-        v.push_back(*x);
-    }
-    return v;
-}
-
-#if defined(LONG_OTT_ID)
-template <>
-optional<OttId> convert_to(const json & j) {
-    return (j.is_number() ? j.get<OttId>() : {});
-}
-#endif
-
-template <>
-optional<OttIdSet> convert_to(const json & j) {
-    if (not j.is_array()) {
-        return {};
-    }
-    OttIdSet ids;
-    for(auto& jid: j) {
-        auto id = convert_to<OttId>(jid);
-        if (not id) return {};
-        ids.insert(*id);
-    }
-    return ids;
-}
-
-
-
-template <typename T>
-constexpr const char* type_name_with_article();
-
-template <> constexpr const char* type_name_with_article<bool>() {
-    return "a boolean";
-}
-template <> constexpr const char* type_name_with_article<int>() {
-    return "an integer";
-}
-template <> constexpr const char* type_name_with_article<string>() {
-    return "a string";
-}
-#if defined(LONG_OTT_ID)
-template <> constexpr const char* type_name_with_article<OttId>() {
-    return "an OttId";
-}
-#endif
-template <> constexpr const char* type_name_with_article<vector<string>>() {
-    return "an array of strings";
-}
-template <> constexpr const char* type_name_with_article<OttIdSet>() {
-    return "an array of integers";
-}
-
-template<typename T>
-optional<T> extract_argument(const json & j, const std::string& opt_name, bool required=false) {
-    auto opt = j.find(opt_name);
-    if (opt == j.end()) {
-        if (required) {
-            throw OTCBadRequest("expecting ") << type_name_with_article<T>() << " argument called '" << opt_name << "'\n";
-        }
-        return {};
-    }
-    auto arg = convert_to<T>(*opt);
-    if (not arg) {
-        throw OTCBadRequest("expecting argument '") << opt_name << "' to be " << type_name_with_article<T>() <<"! Found '" << opt->dump() << "'\n";
-    }
-    return arg;
-}
-
-template<typename T>
-T extract_argument_or_default(const json & j, const std::string& opt_name, const T& _default_) {
-    auto arg = extract_argument<T>(j, opt_name);
-    return (arg ? *arg : _default_);
-}
-
-template<typename T>
-T extract_required_argument(const json & j, const std::string& opt_name) {
-    auto arg = extract_argument<T>(j, opt_name, true);
-    assert(arg);
-    return *arg;
-}
-
 
 namespace otc {
 // global
@@ -297,6 +184,8 @@ const RTRichTaxNode* taxon_from_source_id(const string& source_id, const RichTax
         }
 #   endif
 }
+// Maximum number of ids to allow at once for node_info/node_ids and taxon_info/ott_ids
+constexpr int max_ids = 10000;
 
 string node_info_method_handler(const json& parsed_args) {
     string synth_id = extract_argument_or_default<string>(parsed_args, "synth_id", "");
@@ -322,6 +211,8 @@ string node_info_method_handler(const json& parsed_args) {
     if (node_id) {
         return node_info_ws_method(tts, treeptr, sta, *node_id, include_lineage);
     } else {
+        if (node_ids->size() > max_ids)
+            throw OTCWebError(413)<<"Too many node IDs.  This call is limited to "<<max_ids<<" IDs per request, but got "<<node_ids->size()<<" IDs.";
         return nodes_info_ws_method(tts, treeptr, sta, *node_ids, include_lineage);
     }
 }
@@ -393,14 +284,38 @@ const RTRichTaxNode * extract_taxon_node_from_args(const json & parsedargs, cons
     }
 }
 
-string taxon_info_method_handler( const json& parsedargs ) {
+
+string taxon_info_method_handler( const json& parsedargs )
+{
     auto include_lineage = extract_argument_or_default<bool>(parsedargs, "include_lineage", false);
     auto include_children = extract_argument_or_default<bool>(parsedargs, "include_children", false);
     auto include_terminal_descendants = extract_argument_or_default<bool>(parsedargs, "include_terminal_descendants", false);       
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
-    const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
-    return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+
+    auto ott_id = extract_argument<OttId>(parsedargs, "ott_id");
+    auto source_id = extract_argument<string>(parsedargs, "source_id");
+    auto ott_ids = extract_argument<OttIdSet>(parsedargs, "ott_ids");
+
+    if (ott_ids)
+    {
+        // Complain about conflicting operations.
+        if (ott_id)
+            throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'ott_id'";
+        if (source_id)
+            throw OTCBadRequest()<<"Cannot supply both 'ott_ids' and 'source_id'";
+
+        // Complain about too much work per requestion.
+        if (ott_ids->size() > max_ids)
+            throw OTCWebError(413)<<"Too many OTT IDs.  This call is limited to "<<max_ids<<" IDs per request, but got "<<ott_ids->size()<<" different IDs.";
+
+        return taxon_infos_ws_method(taxonomy, *ott_ids, include_lineage, include_children, include_terminal_descendants);
+    }
+    else
+    {
+        const RTRichTaxNode * taxon_node = extract_taxon_node_from_args(parsedargs, taxonomy);
+        return taxon_info_ws_method(taxonomy, taxon_node, include_lineage, include_children, include_terminal_descendants);
+    }
 }
 
 string taxon_flags_method_handler( const json& ) {
@@ -424,6 +339,22 @@ string taxon_subtree_method_handler( const json& parsedargs ) {
     return taxon_subtree_ws_method(tts, taxonomy, taxon_node, nns);
 }
 
+string taxon_addition_method_handler( const json& parsedargs )
+{
+    // Actually, I think the amendments handle multiple operations.
+    // But this just handles one addition.
+
+    auto [locked_taxonomy,lock] = tts.get_writable_taxonomy();
+    if (not parsedargs.count("taxa"))
+	throw OTCBadRequest()<< "expected a field called 'taxa'";
+    auto taxa = parsedargs["taxa"];
+    int num_new_ottids = extract_required_argument<int>(parsedargs, "new_ottids_required");
+    if (taxa.size() > num_new_ottids)
+        throw OTCBadRequest() << "Amendment mentions "<<taxa.size()<<" taxa, but "<<num_new_ottids<<" new OTT IDs.";
+    
+    return taxon_addition_ws_method(tts, locked_taxonomy, taxa);
+}
+
 // See taxomachine/src/main/java/org/opentree/taxonomy/plugins/tnrs_v3.java
 
 // 10,000 queries at .0016 second per query = 16 seconds
@@ -432,6 +363,7 @@ const int MAX_NONFUZZY_QUERY_STRINGS = 10000;
 const int MAX_FUZZY_QUERY_STRINGS = 250;
 
 static string LIFE_NODE_NAME = "life";
+static string LIFE_CONTEXT_NAME = "All life";
 
 string tnrs_match_names_handler( const json& parsedargs ) {
     // 1. Requred argument: "names"
@@ -454,7 +386,7 @@ string tnrs_match_names_handler( const json& parsedargs ) {
 
 string tnrs_autocomplete_name_handler( const json& parsedargs ) {
     string name              = extract_required_argument<string>(parsedargs, "name");
-    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_NODE_NAME);
+    string context_name      = extract_argument_or_default(parsedargs, "context_name",            LIFE_CONTEXT_NAME);
     bool include_suppressed  = extract_argument_or_default(parsedargs, "include_suppressed",      false);
     auto locked_taxonomy = tts.get_readable_taxonomy();
     const auto & taxonomy = locked_taxonomy.first;
@@ -498,7 +430,6 @@ string conflict_status_method_handler( const json& parsed_args ) {
 #include "otc/ctrie/str_utils.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
 using json = nlohmann::json;
 typedef std::set<fs::path> fp_set;
 typedef std::pair<bool, fp_set > bool_fp_set; 
@@ -615,10 +546,21 @@ void ready_handler( Service& ) {
 // this is a hack.  Also it doesn't include the time zone
 string ctime(const chrono::system_clock::time_point& t) {
     time_t t2 = chrono::system_clock::to_time_t(t);
-    char* c = ctime(&t2);
-    string tt = c;
-    tt.pop_back(); // remove newline
-    return tt;
+    char buffer[100];
+    if (char* c = ctime_r(&t2, buffer))
+    {
+        string tt = c;
+        if (tt.size())
+            tt.pop_back(); // remove newline
+        else
+            LOG(INFO)<<"ctime_r returned an empty string!";
+        return tt;
+    }
+    else
+    {
+        LOG(INFO)<<"ctime_r returned NULL!";
+        return "";
+    }
 }
 
 multimap<string,string> request_headers(const string& rbody) {
@@ -700,11 +642,16 @@ create_method_handler(const string& path, const std::function<std::string(const 
                     LOG(DEBUG)<<"request: DONE";
                     session->close( OK, rbody, request_headers(rbody) );
                 } catch (OTCWebError& e) {
+                    LOG(DEBUG) << "OTCWebError: " << e.what();
                     string rbody = error_response(path,e);
                     session->close( e.status_code(), rbody, request_headers(rbody) );
                 } catch (OTCError& e) {
+                    LOG(DEBUG) << "OTCError: " << e.what();
                     string rbody = error_response(path,e);
                     session->close( 500, rbody, request_headers(rbody) );
+                } catch (std::exception& e) {
+                    LOG(DEBUG) << "std::exception: " << e.what();
+                    throw;
                 }
             });
     };
@@ -771,7 +718,9 @@ int run_server(const po::variables_map & args) {
     if (args.count("pidfile")) {
         pidfile = args["pidfile"].as<string>();
     }
-
+    if (args.count("ignore-broken-syn")) {
+        Taxonomy::tolerate_synonyms_to_unknown_id = true;
+    }
 
 
     if (!args.count("tree-dir")) {
@@ -782,9 +731,11 @@ int run_server(const po::variables_map & args) {
 
     // Must load taxonomy before trees
     LOG(INFO) << "reading taxonomy...";
-    RichTaxonomy taxonomy = load_rich_taxonomy(args);
-
-
+    PatchableTaxonomy taxonomy = load_patchable_taxonomy(args);
+    
+    auto nc = Context::cull_contexts_to_taxonomy(taxonomy);
+    LOG(INFO) << nc << " taxonomy contexts retained...";
+    
     const Context * c = determine_context({});
     if (c == nullptr) {
         throw OTCError() << "no context found for entire taxonomy";
@@ -797,7 +748,8 @@ int run_server(const po::variables_map & args) {
     tts.set_taxonomy(taxonomy);
 
     // Now load trees
-    if (!read_trees(topdir, tts)) {
+    auto tax_version_check = args.at("tax-version-check").as<string>();
+    if (!read_trees(topdir, tts, tax_version_check)) {
         return 2;
     }
     time_t post_trees_time;
@@ -821,6 +773,8 @@ int run_server(const po::variables_map & args) {
     auto v3_r_taxon_flags      = path_handler(v3_prefix + "/taxonomy/flags", taxon_flags_method_handler );
     auto v3_r_taxon_mrca       = path_handler(v3_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v3_r_taxon_subtree    = path_handler(v3_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
+
+    auto v3_r_taxon_addition   = path_handler(v3_prefix + "/taxonomy/process_additions", taxon_addition_method_handler );
 
     // tnrs
     auto v3_r_tnrs_match_names       = path_handler(v3_prefix + "/tnrs/match_names", tnrs_match_names_handler );
@@ -857,6 +811,8 @@ int run_server(const po::variables_map & args) {
     auto v4_r_taxon_mrca       = path_handler(v4_prefix + "/taxonomy/mrca", taxon_mrca_method_handler );
     auto v4_r_taxon_subtree    = path_handler(v4_prefix + "/taxonomy/subtree", taxon_subtree_method_handler );
 
+    auto v4_r_taxon_addition   = path_handler(v4_prefix + "/taxonomy/process_additions", taxon_addition_method_handler );
+
     // tnrs
     auto v4_r_tnrs_match_names       = path_handler(v4_prefix + "/tnrs/match_names", tnrs_match_names_handler );
     auto v4_r_tnrs_autocomplete_name = path_handler(v4_prefix + "/tnrs/autocomplete_name", tnrs_autocomplete_name_handler );
@@ -885,6 +841,7 @@ int run_server(const po::variables_map & args) {
     service.publish( v3_r_taxon_flags );
     service.publish( v3_r_taxon_mrca );
     service.publish( v3_r_taxon_subtree );
+    service.publish( v3_r_taxon_addition );
     service.publish( v3_r_tnrs_match_names );
     service.publish( v3_r_tnrs_autocomplete_name );
     service.publish( v3_r_tnrs_contexts );
@@ -903,6 +860,7 @@ int run_server(const po::variables_map & args) {
     service.publish( v4_r_taxon_flags );
     service.publish( v4_r_taxon_mrca );
     service.publish( v4_r_taxon_subtree );
+    service.publish( v4_r_taxon_addition );
     service.publish( v4_r_tnrs_match_names );
     service.publish( v4_r_tnrs_autocomplete_name );
     service.publish( v4_r_tnrs_contexts );
@@ -942,8 +900,11 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
     output.add_options()
         ("tree-dir,D",value<string>(),"Filepath to directory that will hold synthetic tree output")
         ("port,P",value<int>(),"Port to bind to.")
+        ("crash,C","Intentionally SEGFAULT.")
         ("pidfile,p",value<string>(),"filepath for PID")
         ("num-threads,n",value<int>(),"number of threads")
+        ("ignore-broken-syn","If passed in, the presence of a synonym mapping to a non-existent ID will just be ignored.")
+	("tax-version-check",value<string>()->default_value("exact"),"Should we load synth trees built with an older taxonomy: 'exact' or 'no-check'.")
         ;
 
     options_description visible;
@@ -962,111 +923,55 @@ po::variables_map parse_cmd_line(int argc, char* argv[]) {
 }
 
 /// end formerly tolwsadaptors.cpp
-
 namespace otc {
-void from_json(const nlohmann::json &j, SummaryTreeAnnotation & sta) {
-    sta.date_completed = extract_string(j, "date_completed");
-    sta.filtered_flags = extract_string(j, "filtered_flags");
-    auto splitff = split_string(sta.filtered_flags, ',');
-    sta.filtered_flags_vec.assign(splitff.begin(), splitff.end());
-    // generated_by gets converted back to a string
-    auto gb_el = j.find("generated_by");
-    if (gb_el == j.end()) {
-        throw OTCError() << "Missing generated_by field.\n";
-    }
-    sta.generated_by = gb_el->dump();
-    sta.num_leaves_in_exemplified_taxonomy = extract_unsigned_long(j, "num_leaves_in_exemplified_taxonomy");
-    sta.num_source_studies = extract_unsigned_long(j, "num_source_studies");
-    sta.num_source_trees = extract_unsigned_long(j, "num_source_trees");
-    sta.num_tips = extract_unsigned_long(j, "num_tips");
-    sta.root_ott_id = extract_ott_id(j, "root_ott_id");
-    sta.root_taxon_name = extract_string(j, "root_taxon_name");
-    sta.synth_id = extract_string(j, "synth_id");
-    sta.taxonomy_version = extract_string(j, "taxonomy_version");
-    sta.tree_id = extract_string(j, "tree_id");
-    auto sim_el = j.find("source_id_map");
-    if (sim_el == j.end()) {
-        throw OTCError() << "Missing source_id_map field.\n";
-    }
-    if (!sim_el->is_object()) {
-        throw OTCError() << "Expected \"source_id_map\" field to be an object.\n";
-    }
-    try {
-        for (nlohmann::json::const_iterator sim_it = sim_el->begin(); sim_it != sim_el->end(); ++sim_it) {
-            sta.source_id_map[sim_it.key()] = sim_it.value(); 
-        }
-    } catch (OTCError & x) {
-        throw OTCError() << "Error reading source_id_map field: " << x.what();
-    }
-    sta.full_source_id_map_json = *sim_el;
-    auto s_el = j.find("sources");
-    if (s_el == j.end()) {
-        throw OTCError() << "Missing sources field.\n";
-    }
-    if (!s_el->is_array()) {
-        throw OTCError() << "Expected \"sources\" field to be an array.\n";
-    }
-    sta.sources.resize(s_el->size());
-    for (auto i = 0U; i < s_el->size(); ++i) {
-        try {
-            sta.sources[i] = s_el->at(i).get<std::string>();
-        } catch (OTCError & x) {
-            throw OTCError() << "Error expected each element of the sources array to be a string: " << x.what();
-        }
-    }
-}
-
-
 bool read_tree_and_annotations(const fs::path & configpath,
                                const fs::path & treepath,
                                const fs::path & annotationspath,
                                const fs::path & brokentaxapath,
                                const fs::path & contestingtrees_path,
-                               TreesToServe & tts);
+                               TreesToServe & tts,
+			       const string& tax_version_check);
 
 // Globals. TODO: lock if we read twice
 fp_set checked_dirs;
 fp_set known_tree_dirs;
 
-bool read_trees(const fs::path & dirname, TreesToServe & tts) {
-    auto sdr = get_subdirs(dirname);
-    if (!sdr.first) {
+bool read_trees(const fs::path & dirname, TreesToServe & tts, const string& tax_version_check) {
+    auto [is_dir, subdir_set] = get_subdirs(dirname);
+    if (not is_dir) {
         return false;
     }
-    const auto & subdir_set = sdr.second;
     for (auto p : subdir_set) {
         if (!contains(checked_dirs, p)) {
             checked_dirs.insert(p);
-            fs::path configpath = p;
-            configpath /= "config";
-            fs::path treepath = p;
-            treepath /= "labelled_supertree";
-            treepath /= "labelled_supertree.tre";
-            fs::path brokentaxapath = p;
-            brokentaxapath /= "labelled_supertree";
-            brokentaxapath /= "broken_taxa.json";
-            fs::path annotationspath = p;
-            annotationspath /= "annotated_supertree";
-            annotationspath /= "annotations.json";
+            fs::path configpath = p / "config";
 
+            fs::path treepath = p / "labelled_supertree" / "labelled_supertree.tre";
+            fs::path brokentaxapath = p / "labelled_supertree" / "broken_taxa.json";
+            fs::path annotationspath = p / "annotated_supertree" / "annotations.json";
             fs::path contestingtrees_path = p / "subproblems" / "contesting-trees.json";
 
-            bool was_tree_par = false;
-            try {
-                if (fs::is_regular_file(treepath)
-                    && fs::is_regular_file(annotationspath)
-                    && fs::is_regular_file(configpath)) {
-                    if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, contestingtrees_path, tts)) {
-                        known_tree_dirs.insert(p);
-                        was_tree_par = true;
-                    }
-                }
-            } catch (const std::exception & x) {
-                LOG(WARNING) << "Exception while reading summary tree directory:\n   ";
-                LOG(WARNING) << x.what() << '\n';
+	    bool missing_files = false;
+	    for(auto& path: {treepath, annotationspath, configpath})
+	    {
+		if (not fs::is_regular_file(treepath))
+		{
+		    LOG(WARNING) << "Rejected \"" << p << "\" due to lack of " << treepath << ".";
+		    missing_files = true;
+		}
+		else
+		    LOG(DEBUG) <<"In "<<p<<", found "<<path<<".";
+	    }
+	    if (missing_files) continue;
+
+            try
+	    {
+                if (read_tree_and_annotations(configpath, treepath, annotationspath, brokentaxapath, contestingtrees_path, tts, tax_version_check))
+		    known_tree_dirs.insert(p);
             }
-            if (!was_tree_par) {
-                LOG(WARNING) << "Rejected \"" << p << "\" due to lack of " << treepath << " or lack of " << annotationspath << " or parsing error.\n";
+	    catch (const std::exception & x)
+	    {
+                LOG(WARNING) << "Exception while reading summary tree directory:\n   "<<x.what();
             }
         }
     }
@@ -1089,7 +994,7 @@ inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper
     std::size_t nn_sz = calc_memory_used_by_map_simple(d.name_to_node, mb);
     std::size_t nutn_sz = calc_memory_used_by_map_simple(d.non_unique_taxon_names, mb);
     std::size_t htn_sz = 0;
-    for (auto el : d.homonym_to_node) {
+    for (auto el : d.homonym_to_nodes) {
         htn_sz += sizeof(std::string_view);
         htn_sz += calc_memory_used_by_vector_eqsize(el.second, sizeof(const RTRichTaxNode *), mb);
     }
@@ -1102,7 +1007,7 @@ inline std::size_t calc_memory_used(const RTRichTaxTreeData &d, MemoryBookkeeper
     mb["taxonomy data id_to_node"] += in_sz;
     mb["taxonomy data name_to_node"] += nn_sz;
     mb["taxonomy data non_unique_taxon_names"] += nutn_sz;
-    mb["taxonomy data homonym_to_node"] += htn_sz;
+    mb["taxonomy data homonym_to_nodes"] += htn_sz;
     return nm_sz + gm_sz + wm_sz + fm_sz + im_sz + f2j_sz + in_sz + nn_sz + nutn_sz + htn_sz;
 }
 
@@ -1153,23 +1058,53 @@ inline std::size_t calc_memory_used(const RichTaxonomy &rt, MemoryBookkeeper &mb
 
 #endif
 
+void mark_summary_tree_nodes_extinct(SummaryTree_t& tree, const RichTaxonomy& taxonomy)
+{
+    // compute extinctness for each node.  Post means that a node is only visited after all its children.
+    for (auto node: iter_post(tree)) {
+        auto& node_data = node->get_data();
+        if (node->is_tip()) {
+            auto id = node->get_ott_id();
+            auto& taxon = taxonomy.included_taxon_from_id(id)->get_data();
+            node_data.extinct_mark = taxon.is_extinct();
+        } else {
+            // If any child is not extinct, then this node is not extinct either.
+            node_data.extinct_mark = true;
+            for (auto c : iter_child_const(*node)) {
+                if (not c->get_data().is_extinct()) {
+                    node_data.extinct_mark = false;
+                }
+            }
 
+            // Complain about higher taxa with extinctness that doesn't match the computed extinctness.
+            if (node->has_ott_id()) {
+                auto id = node->get_ott_id();
+                auto& taxon = taxonomy.included_taxon_from_id(id)->get_data();
+                if (node_data.is_extinct() != taxon.is_extinct()) {
+                    LOG(WARNING)<<"Higher taxon "<<taxon.possibly_nonunique_name<<" is extinct="<<taxon.is_extinct()<<"  but the computed extinctness is extinct="<<node_data.is_extinct();
+                    for (auto c : iter_child_const(*node)) {
+                        if (not c->get_data().is_extinct()) {
+                            LOG(WARNING)<<"    Child "<<c->get_name()<<" is NOT extinct!";
+                        } else {
+                            LOG(WARNING)<<"    Child "<<c->get_name()<<" is EXTINCT!";
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 bool read_tree_and_annotations(const fs::path & config_path,
                                const fs::path & tree_path,
                                const fs::path & annotations_path,
                                const fs::path & brokentaxa_path,
                                const fs::path & contestingtrees_path,
-                               TreesToServe & tts)
+                               TreesToServe & tts,
+			       const string& tax_version_check)
 {
-    std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
-    json contestingtrees_obj;
-    try {
-        contestingtrees_stream >> contestingtrees_obj;
-    } catch (...) {
-        LOG(WARNING) << "Could not read \"" << contestingtrees_path << "\" as JSON.\n";
-        throw;
-    }
+    auto locked_taxonomy = tts.get_readable_taxonomy();
+    const auto & taxonomy = locked_taxonomy.first;
 
     std::string annot_str = annotations_path.native();
     std::ifstream annotations_stream(annot_str.c_str());
@@ -1180,6 +1115,33 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << annotations_path << "\" as JSON.\n";
         throw;
     }
+
+    // Check that the tree was built against the correct taxonomy.
+    string tree_tax_version = annotations_obj["taxonomy_version"];
+    string synth_id = annotations_obj["synth_id"];
+    if (tree_tax_version != taxonomy.get_version()) {
+        // propinquity now tags ott versions with "modified: root id" in custom synth
+        //  but the tree still reflects the unmodified OTT version string. 
+        //  So, MTH is relaxing the checking of the OTT verstion string to allow version + "modified" as a prefix to count as a match
+        auto taxv = taxonomy.get_version();
+        auto ttaxvm = tree_tax_version + "modified";
+
+	// FIXME! We should really have an "or-newer" option, but that requires parsing and comparing versions.
+	if (!lcase_match_prefix(taxv, ttaxvm) and tax_version_check == "exact") {
+            LOG(WARNING) << "Read \"" << annotations_path << "\" as JSON.\n";
+            throw OTCError()<<"Tree with <synth_id='"<<synth_id<<"',taxonomy_version='"<<tree_tax_version<<"'> does not match taxonomy version '"<<taxonomy.get_version()<<"' (= or modified)";
+        }
+    }
+
+    std::ifstream contestingtrees_stream(contestingtrees_path.native().c_str());
+    json contestingtrees_obj;
+    try {
+        contestingtrees_stream >> contestingtrees_obj;
+    } catch (...) {
+        LOG(WARNING) << "Could not read \"" << contestingtrees_path << "\" as JSON.\n";
+        throw;
+    }
+
     std::string bt_str = brokentaxa_path.native();
     std::ifstream brokentaxa_stream(bt_str.c_str());
     json brokentaxa_obj;
@@ -1189,18 +1151,17 @@ bool read_tree_and_annotations(const fs::path & config_path,
         LOG(WARNING) << "Could not read \"" << brokentaxa_path << "\" as JSON.\n";
         throw;
     }
-    auto locked_taxonomy = tts.get_readable_taxonomy();
-    const auto & taxonomy = locked_taxonomy.first;
 #   if defined(REPORT_MEMORY_USAGE)
         MemoryBookkeeper tax_mem_b;
         std::size_t tree_mem = 0;
         auto tax_mem = calc_memory_used(taxonomy, tax_mem_b);
-        write_memory_bookkeeping(LOG(INFO), tax_mem_b, "taxonomy", tax_mem);
+        write_memory_bookkeeping(INTERNAL_LOG_MESSAGE(INFO).stream(), tax_mem_b, "taxonomy", tax_mem);
 #   endif
-    auto tree_and_ann = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
+    auto [tree,sta] = tts.get_new_tree_and_annotations(config_path.native(), tree_path.native());
     try {
-        SummaryTree_t & tree = tree_and_ann.first;
-        SummaryTreeAnnotation & sta = tree_and_ann.second;
+
+        mark_summary_tree_nodes_extinct(tree, taxonomy);
+
         sta = annotations_obj;
         json tref;
         tref["taxonomy"] = taxonomy.get_version();
@@ -1212,13 +1173,13 @@ bool read_tree_and_annotations(const fs::path & config_path,
         //const auto & n2n = sum_tree_data.name_to_node;
         for (json::const_iterator nit = node_obj.begin(); nit != node_obj.end(); ++nit) {
             string k = nit.key();
-            auto result = find_node_by_id_str(tree, k);
+            auto result = find_node_by_id_str(tree, taxonomy, k);
             //auto stnit = n2n.find(k);
-            if (result.node == nullptr) {
+            if (result.node() == nullptr) {
                 throw OTCError() << "Node " << k << " from annotations not found in tree.";
             }
             //const SumTreeNode_t * stn = stnit->second;
-            SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(result.node);
+            SumTreeNode_t * mstn = const_cast<SumTreeNode_t *>(result.node());
             SumTreeNodeData & mstnd = mstn->get_data();
             const auto & supportj = nit.value();
 #           if defined(JOINT_MAPPING_VEC)
@@ -1331,15 +1292,15 @@ bool read_tree_and_annotations(const fs::path & config_path,
                 for (json::const_iterator ai_it = attach_obj.begin(); ai_it != attach_obj.end(); ++ai_it) {
                     attach_id_list.push_back(ai_it.key());
                 }
-                auto mrca_result = find_node_by_id_str(tree, mrca_id);
+                auto mrca_result = find_node_by_id_str(tree, taxonomy, mrca_id);
                 vector<const SumTreeNode_t *> avec;
                 avec.reserve(attach_id_list.size());
                 for (auto attach_id : attach_id_list) {
-                    auto [anptr, _] = find_node_by_id_str(tree, attach_id);
+                    auto anptr = find_node_by_id_str(tree, taxonomy, attach_id).node();
                     assert(anptr != nullptr);
                     avec.push_back(anptr);
                 }
-                tree_broken_taxa[broken_ott] = BrokenMRCAAttachVec(mrca_result.node, avec);
+                tree_broken_taxa[broken_ott] = BrokenMRCAAttachVec(mrca_result.node(), avec);
             }
         }
         sta.initialized = true;
@@ -1347,7 +1308,7 @@ bool read_tree_and_annotations(const fs::path & config_path,
 #       if defined(REPORT_MEMORY_USAGE)
             MemoryBookkeeper tree_mem_b;
             tree_mem += calc_memory_used_by_tree(tree, tree_mem_b);
-            write_memory_bookkeeping(LOG(INFO), tree_mem_b, "tree", tree_mem);
+            write_memory_bookkeeping(INTERNAL_LOG_MESSAGE(INFO).stream(), tree_mem_b, "tree", tree_mem);
             LOG(INFO) << "tax + tree memory = " << tax_mem << " + " << tree_mem << " = " << tax_mem + tree_mem;
 #       endif
     } catch (...) {
@@ -1359,14 +1320,63 @@ bool read_tree_and_annotations(const fs::path & config_path,
 
 }// namespace otc
 
+#ifdef HAVE_SYS_RESOURCE_H
+string show_rlimit(rlim_t lim)
+{
+    if (lim == RLIM_INFINITY)
+        return "unlimited";
+    else
+        return std::to_string(lim);
+}
+
+void allow_dumping_core()
+{
+    rlimit limits;
+
+    getrlimit(RLIMIT_CORE,&limits);
+
+    LOG(INFO)<<"OLD core limits = "<<show_rlimit(limits.rlim_cur)<<endl;
+
+    limits.rlim_cur = RLIM_INFINITY;
+
+    setrlimit(RLIMIT_CORE,&limits);
+    getrlimit(RLIMIT_CORE,&limits);
+
+    LOG(INFO)<<"NEW core limits = "<<show_rlimit(limits.rlim_cur)<<endl;
+}
+#else
+void allow_dumping_core()
+{
+    LOG(INFO)<<"Not modifying core limits - not built with <sys/rlimit.H>";
+}
+#endif
+
+
+int (*f)(int) = nullptr;
+
 int main( const int argc, char** argv) {
-    if (otc::set_global_conv_facet() != 0) {
+
+   g3::overrideSetupSignals({ {SIGFPE, "SIGFPE"},
+                              {SIGILL, "SIGILL"},
+       });
+
+   if (otc::set_global_conv_facet() != 0) {
         return 1;
     }
     
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc,argv);
+
+        allow_dumping_core();
+
+        // Intentially crash.  Used for testing core dumps.
+        int x = 0;
+        if (args.count("crash"))
+        {
+            x = f(x);
+        }
+
         return run_server(args);
     } catch (std::exception& e) {
         LOG(ERROR) <<"otc-tol-ws: Error! " << e.what() << std::endl;

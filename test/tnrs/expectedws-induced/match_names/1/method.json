@@ -1,0 +1,8 @@
+{
+    "url_fragment": "v3/tnrs/match_names",
+    "verb": "POST",
+    "arguments": {
+      "names": ["Bacteria"]
+    }
+}
+  

@@ -4,6 +4,7 @@ import requests
 import json
 import time
 import logging
+import sys
 try:
     from Queue import Queue
 except:
@@ -14,6 +15,8 @@ _LOG.setLevel(logging.DEBUG)
 _lh = logging.StreamHandler()
 _lh.setFormatter(logging.Formatter("[%(asctime)s] %(filename)s (%(lineno)3d): %(levelname) 8s: %(message)s"))
 _LOG.addHandler(_lh)
+
+g_interactive = '--interactive' in sys.argv
 
 NUM_TESTS = 0
 FAILED_TESTS = []
@@ -139,7 +142,7 @@ API_HEADERS = {'content-type' : 'application/json',
                'accept' : 'application/json',
               }
 class WebServiceTestJob(object):
-    def __init__(self, test_description, service_prefix):
+    def __init__(self, test_par, test_description, service_prefix):
         self.url_fragment = test_description["url_fragment"]
         self.arguments = test_description["arguments"]
         v = test_description.get("verb", "GET").upper()
@@ -152,8 +155,9 @@ class WebServiceTestJob(object):
         self.passed = False
         self.failed = False
         self.erred = False
+        self.test_par = test_par
         self.test_dir = test_description.get("test_dir")
-        self.test_subdir = os.path.split(self.test_dir)[-1]
+        self.test_subdir = os.path.relpath(self.test_dir, self.test_par)
         self.name = test_description.get("name", self.test_subdir or self.url_fragment)
         self.stat_lock = RLock()
     
@@ -200,10 +204,9 @@ class WebServiceTestJob(object):
             elif response.status_code != self.expected_status:
                 self.failed = True
                 try:
-                    self.status_str = "Expected status {} but got {}.  response body = {}\n".format(self.expected_status, response.status_code, response.text)
+                    self.status_str = "Expected status {} but got {}.  response body = \n{}\n".format(self.expected_status, response.status_code, response.text)
                 except:
                     pass
-                return
 
             # 3. Check JSON body
             _LOG.debug('name: {}  Expected: {}'.format(self.name, self.expected))
@@ -226,10 +229,13 @@ class WebServiceTestJob(object):
                             m = 'Response written to {}'.format(dbout_observed)
                         else:
                             m = ''
-                        self.status_str = "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
-                        return
-            self.passed = True
-            self.status_str = "Completed"
+                        self.status_str += "Wrong response:\n{}\n{}".format('\n'.join(dd), m)
+
+            if self.failed:
+                return
+            else:
+                self.passed = True
+                self.status_str = "Completed"
         except Exception as x:
             self.erred = True
             _LOG.exception('writing exception to status string')
@@ -241,6 +247,8 @@ class WebServiceTestJob(object):
 
     def get_results(self):
         """:return self.status_str"""
+        if g_interactive:
+            input("{} passed = {}:\n{}\nHit any key to proceed\n".format(self.name, self.passed, self.status_str))
         return self.status_str
 #########################################################################################
 
@@ -259,7 +267,8 @@ def launch_server(exe_dir, taxonomy_dir, synth_par, server_threads=4):
                   "-D" + synth_par,
                   "-p{}".format(pidfile_path),
                   "-P{}".format(SERVER_PORT), 
-                  "--num-threads={}".format(server_threads)]
+                  "--num-threads={}".format(server_threads),
+                  "-v"]
     _LOG.debug('Launching with: "{}"'.format('" "'.join(invocation)))
     with open(server_std_out, 'w') as sstdoe:
         RUNNING_SERVER = subprocess.Popen(invocation,
@@ -296,7 +305,7 @@ def kill_server(exe_dir):
 
 FAILED_TESTS, ERRORED_TESTS = [], []
 
-def run_tests(dirs_to_run, test_threads):
+def run_tests(test_par, dirs_to_run, test_threads):
     assert test_threads > 0
     td_list = []
     for test_dir in dirs_to_run:
@@ -316,9 +325,9 @@ def run_tests(dirs_to_run, test_threads):
         td["test_dir"] = test_dir
         td_list.append(td)
 
-    start_worker(test_threads)
+    start_worker(1 if g_interactive else test_threads)
     service_prefix = "http://127.0.0.1:{}/".format(SERVER_PORT)
-    all_jobs = [WebServiceTestJob(test_description=td, service_prefix=service_prefix) for td in td_list]
+    all_jobs = [WebServiceTestJob(test_par=test_par, test_description=td, service_prefix=service_prefix) for td in td_list]
     running_jobs = list(all_jobs)
     for j in all_jobs:
         _jobq.put(j)
@@ -355,6 +364,16 @@ def run_tests(dirs_to_run, test_threads):
         time.sleep(0.1)
     return num_passed, num_failed, num_errors
 
+
+def get_test_dirs_under(top_test_dir):
+    test_dirs = []
+    for root, dirs, files in os.walk(top_test_dir):
+        if "method.json" in files:
+            path = os.path.relpath(root, top_test_dir)
+            test_dirs.insert(0,path)
+    return test_dirs
+
+
 if __name__ == '__main__':
     import argparse
     import codecs
@@ -370,6 +389,7 @@ if __name__ == '__main__':
     parser.add_argument('--server-threads', default=4, type=int, required=False, help='Number of threads for the server')
     parser.add_argument('--test-threads', default=8, type=int, required=False, help='Number of threads launched for running tests.')
     parser.add_argument('--secs-to-recheck-pid-file', default=0, type=int, required=False, help='If the pid file exists, the process will enter a loop sleeping and rechecking for this number of seconds.')
+    parser.add_argument('--interactive', default=False, action="store_true", help='If true, run 1 thread and prompt for each next test')
     
     args = parser.parse_args()
     if args.server_threads < 1 or args.test_threads < 1:
@@ -389,10 +409,11 @@ if __name__ == '__main__':
     if args.test_name is not None:
         e_dir_list = [args.test_name]
     else:
-        e_dir_list = os.listdir(test_par)
+        e_dir_list = get_test_dirs_under(test_par)
         e_dir_list.sort()
     SERVER_PORT = args.server_port
 
+    # Get test paths
     to_run = []
     for e_subdir_name in e_dir_list:
         e_path = os.path.join(test_par, e_subdir_name)
@@ -406,23 +427,28 @@ if __name__ == '__main__':
         to_run.append(e_path)
     if not to_run:
         sys.exit("No test were found!")
+
+    # Check that there are no PIDfiles in the way
     pidfile_path = os.path.join(exe_dir, PIDFILE_NAME)
     if os.path.exists(pidfile_path):
         recheck = 0
         checks_per_sec = 3
         while recheck < checks_per_sec*args.secs_to_recheck_pid_file:
+            recheck += 1
             time.sleep(1.0/checks_per_sec)
             if not os.path.exists(pidfile_path):
                 break
         if os.path.exists(pidfile_path):
             sys.exit("{} is in the way!\n".format(pidfile_path))
+
+    # try launching otc-tol-ws and running the tests against it.
     for i in range(2):
         if launch_server(exe_dir=exe_dir,
                         taxonomy_dir=taxonomy_dir,
                         synth_par=synth_par_path,
                         server_threads=args.server_threads):
             try:
-                num_passed, nf, ne = run_tests(to_run, args.test_threads)
+                num_passed, nf, ne = run_tests(test_par, to_run, args.test_threads)
             finally:
                 kill_server(exe_dir)
             NUM_TESTS = nf + ne + num_passed

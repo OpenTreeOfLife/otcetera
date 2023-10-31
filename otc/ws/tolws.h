@@ -5,9 +5,11 @@
 #include <list>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
+#include <optional>
 #include <unordered_map>
-#include <boost/filesystem/operations.hpp>
+#include <filesystem>
 #include <stdexcept>
 #include <memory>
 #include "otc/newick_tokenizer.h"
@@ -15,6 +17,7 @@
 #include "otc/tree.h"
 #include "otc/error.h"
 #include "otc/taxonomy/taxonomy.h"
+#include "otc/taxonomy/patching.h"
 #include "otc/taxonomy/flags.h"
 #include "otc/ws/parallelreadserialwrite.h"
 #include "otc/ws/otc_web_error.h"
@@ -51,8 +54,7 @@ typedef RTRichTaxNode Taxon;
 
 class SumTreeNodeData {
     public:
-    std::uint32_t trav_enter = UINT32_MAX;
-    std::uint32_t trav_exit = UINT32_MAX;
+    int depth = 0;
 #   if defined(JOINT_MAPPING_VEC)
         vec_src_node_ids source_edge_mappings;
 #   else
@@ -63,6 +65,8 @@ class SumTreeNodeData {
         vec_src_node_ids terminal;
 #   endif
     bool was_uncontested = false;
+    bool extinct_mark = false;  // extinctness means that the node has >= 1 descendant (including itself), and all descendants are extinct.
+    bool is_extinct() const {return extinct_mark;}
     uint32_t num_tips = 0;
 };
 
@@ -236,26 +240,8 @@ void index_by_name_or_id(T & tree) {
     }
 }
 
-/// The complete taxonomy of looking up is like:
-///    ottX -> {too large, _ -> {never valid, _ -> {deprecated (previously valid), _ -> {pruned, _ -> {broken, OK!}}}}}
-///     mrcaottXottY -> OK | BadOTT (ReasonOTTMissing) | BadMRCA (ReasonOTTMissing)
-///       In this case if X or Y has a "broken" result, then we needn't fail.
-
-struct node_lookup_t
-{
-    const SumTreeNode_t* node = nullptr;
-    bool was_broken = false;
-
-    bool broken() const {return was_broken;}
-    bool present() const {return node and not was_broken;}
-    // technically, this includes: {too large, never valid, deprecated (once valid), and PRUNED}
-    bool invalid() const {return node == nullptr and not was_broken;}
-
-    node_lookup_t() {};
-    node_lookup_t(const SumTreeNode_t* n):node(n) {}
-};
-
-node_lookup_t find_node_by_id_str(const SummaryTree_t & tree, const std::string & node_id);
+std::string taxon_nonuniquename(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd);
+std::vector<std::string> get_descendant_names(const RichTaxonomy& taxonomy, const SumTreeNode_t& nd);
 
 class TreesToServe;
 
@@ -311,6 +297,12 @@ std::string taxon_info_ws_method(const RichTaxonomy & taxonomy,
                                  bool include_children,
                                  bool include_terminal_descendants);
 
+std::string taxon_infos_ws_method(const RichTaxonomy & taxonomy,
+                                  const OttIdSet& ottids,
+                                  bool include_lineage,
+                                  bool include_children,
+                                  bool include_terminal_descendants);
+
 std::string taxonomy_flags_ws_method(const RichTaxonomy & taxonomy);
 
 std::string taxonomy_mrca_ws_method(const RichTaxonomy & taxonomy,
@@ -320,6 +312,10 @@ std::string taxon_subtree_ws_method(const TreesToServe & tts,
                                     const RichTaxonomy & taxonomy,
                                     const RTRichTaxNode * taxon_node,
                                     NodeNameStyle label_format);
+
+std::string taxon_addition_ws_method(const TreesToServe & tts,
+				     PatchableTaxonomy & taxonomy,
+                                     const nlohmann::json& taxa);
 
 std::string tnrs_match_names_ws_method(const std::vector<std::string>& names,
                                        const std::optional<std::string>& context_name,
@@ -346,7 +342,7 @@ std::string phylesystem_conflict_ws_method(const SummaryTree_t & summary,
                                            const std::string& tree1s,
                                            const std::string& tree2s);
 
-bool read_trees(const boost::filesystem::path & dirname, TreesToServe & tts);
+bool read_trees(const std::filesystem::path & dirname, TreesToServe & tts, const std::string& tax_version_check);
 
 void from_json(const nlohmann::json &j, SourceTreeId & sti);
 void to_json(nlohmann::json &j, const SourceTreeId & sti);
@@ -422,51 +418,6 @@ inline void add_taxon_record_info(const RichTaxonomy & ,
     taxonrepr["rank"] = std::string{record.rank};
     taxonrepr["ott_id"] = record.id;    
 }
-
-template <typename Tree_t>
-inline std::size_t n_leaves(const Tree_t& T) {
-#pragma clang diagnostic ignored  "-Wunused-variable"
-#pragma GCC diagnostic ignored  "-Wunused-variable"
-    std::size_t count = 0;
-    for(auto nd: iter_leaf_const(T)){
-        count++;
-    }
-    return count;
-}
-
-
-// Get a list of nodes in T2 that are leaves in T1.
-// The nodes in T2 do NOT need to be leaves of T2.
-
-template <typename Tree1_t, typename Tree2_t>
-auto get_induced_nodes(const Tree1_t& T1, const Tree2_t& T2) {
-    auto& ott_to_nodes2 = T2.get_data().id_to_node;
-    std::vector<const typename Tree2_t::node_type*> nodes;
-    for(auto leaf: iter_leaf_const(T1)) {
-        auto id = leaf->get_ott_id();
-        auto it = ott_to_nodes2.find(id);
-        if (it != ott_to_nodes2.end()) {
-            nodes.push_back(it->second);
-        }
-    }
-    return nodes;
-}
-
-template <typename T>
-void delete_tip_and_monotypic_ancestors(T& tree, typename T::node_type* node) {
-    assert(node->is_tip());
-    while (node and node->is_tip()) {
-        auto parent = node->get_parent();
-        if (not parent) {
-            tree._set_root(nullptr);
-        } else {
-            node->detach_this_node();
-        }
-        delete node;
-        node = parent;
-    }
-}
-
 
 } // namespace otc
 #endif

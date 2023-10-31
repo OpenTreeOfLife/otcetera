@@ -18,7 +18,7 @@ public:
     int status_code() const {return status_code_;}
 
     const char * what() const noexcept {
-        return data["message"].get<std::string>().c_str();
+        return data["message"].get_ref<const std::string&>().c_str();
     }
 
     template <typename T> OTCWebError& operator<<(const T&);

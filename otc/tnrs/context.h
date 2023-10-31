@@ -21,7 +21,6 @@ struct Context
     std::string lica_node_name;
     OttId ott_id;
     const Nomenclature::Code & code;
-    std::vector<std::size_t> subcontext_indices;
     mutable const CompressedTrieBasedDB * name_matcher; // for fuzzy matching
 
     Context(std::string name_arg,
@@ -39,16 +38,16 @@ struct Context
      name_matcher(nullptr)
      {}
 
-    static void init_nom_codes_to_traversal(const RichTaxonomy &);
+    static void init_nom_codes_boundaries(const RichTaxonomy &);
     static const std::string & get_code_name(const RichTaxonomy & taxonomy, const RTRichTaxNode * taxon);
     static const std::string & get_code_name(const RichTaxonomy & taxonomy, const TaxonomyRecord * record);
+    // MUST CALL this FIRST. IMPORTANT GLOBAL SIDE EFFECTS
+    static int cull_contexts_to_taxonomy(const RichTaxonomy &); 
 };
 
-extern const std::vector<Context> all_contexts;
-
-extern std::map<OttId, const Context*> ottid_to_context;
-
+extern std::vector<Context> all_contexts;
 extern std::map<std::string, const Context*> name_to_context;
+
 
 const Context * determine_context(const std::optional<std::string> & context_name);
 const Context * get_context_by_name(const std::string & context_name);

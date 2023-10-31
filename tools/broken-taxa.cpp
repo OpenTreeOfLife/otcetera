@@ -11,7 +11,6 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/tokenizer.hpp>
 #include <bitset>
 #include <set>
@@ -24,10 +23,9 @@
 #include "otc/tree_operations.h"
 #include "otc/taxonomy/taxonomy.h"
 #include "otc/taxonomy/flags.h"
-INITIALIZE_EASYLOGGINGPP
 
 using namespace otc;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
@@ -105,7 +103,8 @@ void add_name_and_rank(json& broken_taxa, const Taxonomy& taxonomy)
     }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     std::ios::sync_with_stdio(false);
     try {
         variables_map args = parse_cmd_line(argc,argv);

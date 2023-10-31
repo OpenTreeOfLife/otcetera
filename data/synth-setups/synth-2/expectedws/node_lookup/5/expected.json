@@ -1,0 +1,9 @@
+{
+  "broken": {
+    "ott1007062": "ott304358"
+  },
+  "newick": "((((((((((((((Streptophyta_ott916750)Embryophyta_ott56610)Tracheophyta_ott10210)Euphyllophyta_ott1007992)Spermatophyta_ott10218)Magnoliophyta_ott99252)Mesangiospermae_ott5298374)Liliopsida_ott1058517)Petrosaviidae_ott5308424)Asparagales_ott557124)Amaryllidaceae_ott258473)Amaryllidoideae_ott267867)Archaeplastida_ott5268475)mrcaott56601ott4671788,(((((((((((((((((((Aves_ott81461)Coelurosauria_ott664351)Theropoda_ott664350)Saurischia_ott90223)Dinosauria_ott90215)Archosauria_ott335588)Archelosauria_ott4947372)'Sauria (order in Opisthokonta) ott329823')Sauropsida_ott639642)Amniota_ott229560)Tetrapoda_ott229562)Dipnotetrapodomorpha_ott4940726)Sarcopterygii_ott458402)Euteleostomi_ott114654)Teleostomi_ott114656)'Gnathostomata (superclass in phylum Chordata) ott278114')'Vertebrata (subphylum in Opisthokonta) ott801601')'Craniata (subphylum in Deuterostomia) ott947318')Chordata_ott125642)Deuterostomia_ott147604)Eukaryota_ott304358;",
+  "supporting_studies": [
+    "xx_2@Tree1"
+  ]
+}

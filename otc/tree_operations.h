@@ -20,6 +20,8 @@ int count_children_in_set(T nd, const CONTAINER & ancestral);
 template<typename T, typename CONTAINER>
 bool is_monotypic_in_set(T nd, const CONTAINER & ancestral);
 template<typename T>
+void collapse_split_dont_del_node(T* nd);
+template<typename T>
 void collapse_split_and_del_node(T* nd);
 template<typename T>
 std::size_t n_internal_with_ott_id(const T& tree);
@@ -35,6 +37,17 @@ template<typename T>
 std::string newick(const T &t);
 template <typename T>
 T* bisect_branch_with_new_child(T* x);
+
+template <typename Tree>
+inline std::size_t n_leaves(const Tree& T) {
+#pragma clang diagnostic ignored  "-Wunused-variable"
+#pragma GCC diagnostic ignored  "-Wunused-variable"
+    std::size_t count = 0;
+    for(auto nd: iter_leaf_const(T)){
+        count++;
+    }
+    return count;
+}
 
 
 template<typename T>
@@ -132,6 +145,16 @@ inline bool is_monotypic_in_set(T nd, const CONTAINER & ancestral) {
 }
 
 template<typename T>
+void collapse_split_dont_del_node(T* nd) {
+    while (nd->get_first_child()) {
+        auto nd2 = nd->get_first_child();
+        nd2->detach_this_node();
+        nd->add_sib_on_left(nd2);
+    }
+    nd->detach_this_node();
+}
+
+template<typename T>
 void collapse_split_and_del_node(T* nd) {
     while (nd->get_first_child()) {
         auto nd2 = nd->get_first_child();
@@ -141,6 +164,8 @@ void collapse_split_and_del_node(T* nd) {
     nd->detach_this_node();
     delete nd;
 }
+
+
 
 template<typename T>
 inline std::size_t n_internal_with_ott_id(const T& tree) {
@@ -294,6 +319,53 @@ void compute_depth(T& tree) {
             nd->get_data().depth = nd->get_parent()->get_data().depth + 1;
         }
     }
+}
+
+template <typename N>
+inline int depth(const N* node) {
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
+}
+
+
+template <typename N>
+inline int& depth(N* node) {
+    assert(node->get_data().depth > 0);
+    return node->get_data().depth;
+}
+
+template <typename N>
+N* mrca_from_depth(N* node1, N* node2) {
+    assert(node1 or node2);
+    if (not node1) {
+        return node2;
+    }
+    if (not node2) {
+        return node1;
+    }
+    assert(node1 and node2);
+    assert(get_root(node1) == get_root(node2));
+    while (depth(node1) > depth(node2)) {
+        node1 = node1->get_parent();
+    }
+    while (depth(node1) < depth(node2)) {
+        node2 = node2->get_parent();
+    }
+    assert(depth(node1) == depth(node2));
+    while (node1 != node2) {
+        assert(node1->get_parent());
+        assert(node2->get_parent());
+        node1 = node1->get_parent();
+        node2 = node2->get_parent();
+    }
+    assert(node1 == node2);
+    return node1;
+}
+
+template <typename N>
+bool is_ancestor_of_using_depth(N* node1, N* node2)
+{
+    return mrca_from_depth(node1, node2) == node1;
 }
 
 // uses ottID->node mapping, but not the split sets of the nodes
@@ -1402,8 +1474,8 @@ std::unordered_map<OttId, const typename Tree_t::node_type*> get_ottid_to_const_
 }
 
 template <typename Tree_t>
-std::unordered_map<OttId, typename Tree_t::node_type*> get_ottid_to_node_map(Tree_t& T) {
-    std::unordered_map<OttId, typename Tree_t::node_type*> ottid;
+std::unordered_map<OttId, node_type<Tree_t>*> get_ottid_to_node_map(Tree_t& T) {
+    std::unordered_map<OttId, node_type<Tree_t>*> ottid;
     for(auto nd: iter_pre(T)) {
         if (nd->has_ott_id()) {
             ottid[nd->get_ott_id()] = nd;
@@ -1463,36 +1535,14 @@ void index_nodes_by_name(T & tree) {
 }
 
 template<typename T>
-void set_traversal_entry_exit(T & tree) {
+void set_num_tips(T & tree) {
     std::uint32_t ind = 0;
-    for (auto nd : iter_pre(tree)) {
-        nd->get_data().trav_enter = ind++;
-    }
     for (auto pnd : iter_post(tree)) {
         auto fc = pnd->get_last_child();
         auto & d = pnd->get_data();
         if (fc == nullptr) {
-            d.trav_exit = d.trav_enter;
-        } else {
-            d.trav_exit = fc->get_data().trav_exit;
-        }
-    }
-}
-
-template<typename T>
-void set_traversal_entry_exit_and_num_tips(T & tree) {
-    std::uint32_t ind = 0;
-    for (auto nd : iter_pre(tree)) {
-        nd->get_data().trav_enter = ind++;
-    }
-    for (auto pnd : iter_post(tree)) {
-        auto fc = pnd->get_last_child();
-        auto & d = pnd->get_data();
-        if (fc == nullptr) {
-            d.trav_exit = d.trav_enter;
             d.num_tips = 1;
         } else {
-            d.trav_exit = fc->get_data().trav_exit;
             d.num_tips = 0;
             for (auto c : iter_child_const(*pnd)) {
                 d.num_tips += c->get_data().num_tips;
@@ -1510,6 +1560,48 @@ inline void set_name_and_maybe_ott_id(const T & src_node, T & dest_node) {
     }
 }
 
- 
+template <typename T>
+void delete_tip_and_monotypic_ancestors(T& tree, typename T::node_type* node) {
+    assert(node->is_tip());
+    while (node and node->is_tip()) {
+        auto parent = node->get_parent();
+        if (not parent) {
+            tree._set_root(nullptr);
+        } else {
+            node->detach_this_node();
+        }
+        delete node;
+        node = parent;
+    }
+}
+
+template<typename T>
+inline void writeDegDist(std::ostream & outstr, std::ostream * errstr, const T &tree);
+
+template<typename T>
+inline void writeDegDist(std::ostream & outstr, std::ostream * errstr, const T &tree) {
+    std::map<unsigned long, unsigned long> degreeDistribution;
+    for (auto nd : iter_pre_const(tree)) {
+        auto od = nd->get_out_degree();
+        degreeDistribution[od] += 1;
+    }
+    outstr << "Out-degree\tCount\n";
+    std::size_t numNodes = 0U;
+    for (auto p: degreeDistribution) {
+        outstr << p.first << "\t" << p.second << "\n";
+        numNodes += p.second;
+    }
+    if (errstr == nullptr) {
+        return;
+    }
+    const auto numLeaves = degreeDistribution[0UL];
+    const auto numElbows = (contains(degreeDistribution, 1UL) ? degreeDistribution[1UL]: 0UL);
+    *errstr << numLeaves << " leaves\n";
+    *errstr << numNodes - numLeaves << " non-leaf nodes (internals including the root)\n";
+    *errstr << numNodes - numLeaves - numElbows<< " non-leaf nodes with out-degree > 1 (internals including the root)\n";
+    *errstr << numNodes << " total nodes\n";
+
+}
+
 }// namespace otc
 #endif

@@ -1,0 +1,12 @@
+[
+  {
+    "action": "add",
+    "taxon": {
+      "ott_id": 24,
+      "sourceinfo": "additions-6520246-6520246:6520246",
+      "name": "Strigops habroptila",
+      "parent": 100,
+      "rank": "species"
+    }
+  }
+]

@@ -1,0 +1,38 @@
+[
+ {
+  "is_higher": true,
+  "is_suppressed": false,
+  "ott_id": 4671782,
+  "unique_name": "Amaryllis (genus in Opisthokonta)"
+ },
+ {
+  "is_higher": false,
+  "is_suppressed": false,
+  "ott_id": 4671788,
+  "unique_name": "Amaryllis carrascoi"
+ },
+ {
+  "is_higher": true,
+  "is_suppressed": false,
+  "ott_id": 655592,
+  "unique_name": "Amaryllis (genus in kingdom Archaeplastida)"
+ },
+ {
+  "is_higher": false,
+  "is_suppressed": false,
+  "ott_id": 200683,
+  "unique_name": "Amaryllis paradisicola"
+ },
+ {
+  "is_higher": false,
+  "is_suppressed": false,
+  "ott_id": 6013112,
+  "unique_name": "Amaryllis brevipodis"
+ },
+ {
+  "is_higher": false,
+  "is_suppressed": false,
+  "ott_id": 4671798,
+  "unique_name": "Amaryllis brevicornis"
+ }
+]

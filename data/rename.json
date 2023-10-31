@@ -1,0 +1,26 @@
+[
+  {
+    "action": "delete",
+    "synonym": {
+      "name": "Camaryllis major",
+      "ott_id": 21,
+      "sourceinfo": "ota:100"
+    }
+  }, 
+  {
+    "action": "edit",
+    "taxon": {
+      "name": "Camaryllis major",
+      "ott_id": 21,
+      "sourceinfo": "ota:100"
+    }
+  },
+  {
+    "action": "add",
+    "synonym": {
+      "name": "Amaryllis Amaryllis major",
+      "ott_id": 21,
+      "sourceinfo": "ota:100"
+    }
+  }
+]

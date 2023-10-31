@@ -16,8 +16,6 @@
 #include "otc/taxonomy/flags.h"
 #include "otc/config_file.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;
@@ -133,7 +131,8 @@ OttIdSet prune_if_flagged_and_not_anc(const Taxonomy & taxonomy,
     return prune_ids;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc,argv);

@@ -2,6 +2,10 @@ libotcetera_sources = [
   'config_file.cpp',
   'ctrie/context_ctrie_db.cpp',
   'ctrie/str_utils.cpp',
+  'ctrie/ctrie_db.cpp',
+  'ctrie/ctrie_node.cpp',
+  'ctrie/ctrie.cpp',
+  'ctrie/search_impl.cpp',
   'embedded_tree.cpp',
   'forest.cpp',
   'ftree.cpp',
@@ -11,8 +15,10 @@ libotcetera_sources = [
   'otcetera.cpp',
   'otcli.cpp',
   'supertree_util.cpp',
-  'taxonomy/taxonomy.cpp',
+  'taxonomy/diff_maker.cpp',
   'taxonomy/flags.cpp',
+  'taxonomy/patching.cpp',
+  'taxonomy/taxonomy.cpp',
   'test_harness.cpp',
   'tnrs/nomenclature.cpp',
   'tnrs/context.cpp',
@@ -26,6 +32,7 @@ libotcetera_ws_sources = [
   'ws/taxonomyws.cpp',
   'ws/tnrsws.cpp',
   'ws/tolws.cpp',
+  'ws/find_node.cpp',
   'ws/trees_to_serve.cpp', 
   'ws/nexson/nexson.cpp',
 ]
@@ -38,8 +45,8 @@ otc_inc = include_directories('..')
 otc_lib = shared_library('otcetera',
                          libotcetera_sources,
                          include_directories: otc_inc,
-                         dependencies: [boost, restbed],
+                         dependencies: [boost, restbed, logging],
                          install: true)
 
-libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib)
+libotcetera = declare_dependency(include_directories: otc_inc, link_with: otc_lib, dependencies: [restbed, logging])
 

@@ -16,8 +16,6 @@
 #include "otc/taxonomy/flags.h"
 #include "otc/config_file.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace otc;
 
 using std::string;
@@ -51,6 +49,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("config,c",value<string>(),"Config file containing flags to filter")
         ("clean",value<string>(),"Comma-separated string of flags to filter")
         ("root,r", value<OttId>(), "OTT id of root node of subtree to keep")
+        ("xroot,x", value<OttId>(), "OTT id of root node of subtree to keep and detach from parent by writing empty parent id (this is only relevant when the --write-taxonomy option in effect)")
         ;
 
     options_description selection("Selection options");
@@ -285,13 +284,19 @@ std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     std::ios::sync_with_stdio(false);
     try {
-        auto args = parse_cmd_line(argc,argv);
+        auto args = parse_cmd_line(argc, argv);
         auto format = args["format"].as<string>();
         auto flags_match = get_flags_match(args);
         auto taxonomy = load_taxonomy(args);
+        const bool root_changed = args.count("root") || args.count("xroot");
+        const bool detach_root = bool(args.count("xroot"));
+        if (detach_root) {
+            taxonomy[0].parent_id = 0;
+        }
         if (args.count("extinct-to-incert")) {
             flag_extinct_clade_as_incertae_sedis(taxonomy);
         }
@@ -369,7 +374,7 @@ int main(int argc, char* argv[]) {
             std::cout << std::endl;
         }
         if (args.count("write-taxonomy")) {
-            taxonomy.write(args["write-taxonomy"].as<string>(), false);
+            taxonomy.write(args["write-taxonomy"].as<string>(), false, !root_changed);
         }
         if (args.count("name")) {
             OttId id = args["name"].as<OttId>();

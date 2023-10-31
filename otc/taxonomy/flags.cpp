@@ -178,4 +178,11 @@ std::vector<std::string> flags_to_string_vec(const std::bitset<32> flags)
     return f;
 }
 
+bool is_extinct(tax_flags flags)
+{
+    static int extinct_bit = flag_from_string("extinct");
+    static int extinct_inherited_bit = flag_from_string("extinct_inherited");
+    return flags.test(extinct_bit) or flags.test(extinct_inherited_bit);
+}
+
 } // namespace otc

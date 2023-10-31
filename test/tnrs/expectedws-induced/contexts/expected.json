@@ -1,0 +1,58 @@
+{
+  "ANIMALS": [
+    "Animals",
+    "Birds",
+    "Tetrapods",
+    "Mammals",
+    "Amphibians",
+    "Vertebrates",
+    "Arthropods",
+    "Molluscs",
+    "Nematodes",
+    "Platyhelminthes",
+    "Annelids",
+    "Cnidarians",
+    "Arachnids",
+    "Insects"
+  ],
+  "FUNGI": [
+    "Fungi",
+    "Basidiomycetes",
+    "Ascomycetes"
+  ],
+  "LIFE": [
+    "All life"
+  ],
+  "MICROBES": [
+    "Bacteria",
+    "SAR group",
+    "Archaea",
+    "Excavata",
+    "Amoebozoa",
+    "Centrohelida",
+    "Haptophyta",
+    "Apusozoa",
+    "Diatoms",
+    "Ciliates",
+    "Forams"
+  ],
+  "PLANTS": [
+    "Hornworts",
+    "Mosses",
+    "Liverworts",
+    "Vascular plants",
+    "Ferns",
+    "Seed plants",
+    "Flowering plants",
+    "Monocots",
+    "Eudicots",
+    "Rosids",
+    "Asterids",
+    "Asterales",
+    "Asteraceae",
+    "Aster",
+    "Symphyotrichum",
+    "Campanulaceae",
+    "Lobelia"
+  ]
+}

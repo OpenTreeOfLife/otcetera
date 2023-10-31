@@ -1,0 +1,38 @@
+[
+  {
+    "is_higher": true,
+    "is_suppressed": false,
+    "ott_id": 5092163,
+    "unique_name": "Amaryllididae"
+  },
+  {
+    "is_higher": true,
+    "is_suppressed": false,
+    "ott_id": 5764812,
+    "unique_name": "Amaryllidinae"
+  },
+  {
+    "is_higher": true,
+    "is_suppressed": false,
+    "ott_id": 4671782,
+    "unique_name": "Amaryllis (genus in Opisthokonta)"
+  },
+  {
+    "is_higher": true,
+    "is_suppressed": false,
+    "ott_id": 258473,
+    "unique_name": "Amaryllidaceae"
+  },
+  {
+    "is_higher": true,
+    "is_suppressed": false,
+    "ott_id": 267867,
+    "unique_name": "Amaryllidoideae"
+  },
+  {
+    "is_higher": true,
+    "is_suppressed": false,
+    "ott_id": 655592,
+    "unique_name": "Amaryllis (genus in kingdom Archaeplastida)"
+  }
+]
