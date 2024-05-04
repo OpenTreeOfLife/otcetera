@@ -1,0 +1,9 @@
+[
+  {
+    "action": "sink",
+    "taxon": {
+      "ott_id_to_be_jr_syn": 12,
+      "ott_id_of_sr_syn": 11
+    }
+  }
+]

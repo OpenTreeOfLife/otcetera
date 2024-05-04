@@ -1,6 +1,11 @@
 [
   {
     "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
+    "infile_list": ["sink.json", "patch-taxonomy"],
+    "expected": "sink"
+  },
+  {
+    "invocation" : ["otc-taxonomy-patcher", "--amend-status-to-stdout", "--write-to-stdout", "--edits", "<INFILELIST>"],
     "infile_list": ["unmarked-homonym.json", "tnrs-taxonomy"],
     "expected": "unmarked-homonym"
   },

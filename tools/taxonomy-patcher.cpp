@@ -221,7 +221,7 @@ class BaseTaxonAmendment: public TaxonomyAmendment {
 class TaxonAdditionAmendment: public BaseTaxonAmendment {
     public:
     TaxonAdditionAmendment(const json & taxon_obj)
-        :BaseTaxonAmendment(taxon_obj,true) {
+        :BaseTaxonAmendment(taxon_obj, true) {
     }
     
     virtual ~TaxonAdditionAmendment(){
@@ -233,6 +233,27 @@ class TaxonAdditionAmendment: public BaseTaxonAmendment {
         auto rank_str = rank_enum_to_name.at(rank);
         return t.add_new_taxon(taxon_id, parent_id, name, rank_str, source_info, empty, fs);
     }
+};
+
+class TaxonSinkAmendment: public TaxonomyAmendment {
+    public:
+    TaxonSinkAmendment(const json & taxon_obj)
+        :TaxonomyAmendment() {
+        this->ott_id_to_be_jr_syn = get_unsigned_property(taxon_obj, "ott_id_to_be_jr_syn", true).second;
+        this->ott_id_of_sr_syn = get_unsigned_property(taxon_obj, "ott_id_of_sr_syn", true).second;
+        
+    }
+    
+    virtual ~TaxonSinkAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        throw OTCError("Sink action not implemented yet")  ; 
+    }
+
+    protected:
+        OttId ott_id_to_be_jr_syn;
+        OttId ott_id_of_sr_syn;
 };
 
 class TaxonEditAmendment: public BaseTaxonAmendment {
@@ -367,6 +388,12 @@ TaxonomyAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
         auto taxon_j = get_object_property(edit_obj, "taxon", false);
         if (taxon_j.first) {
             return std::make_shared<TaxonEditAmendment>(*(taxon_j.second));
+        }
+        throw OTCError() << "Expecting edit action to contain taxon object.";
+    } else if (action == "sink") {
+        auto taxon_j = get_object_property(edit_obj, "taxon", false);
+        if (taxon_j.first) {
+            return std::make_shared<TaxonSinkAmendment>(*(taxon_j.second));
         }
         throw OTCError() << "Expecting edit action to contain taxon object.";
     } else {
