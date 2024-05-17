@@ -4,6 +4,7 @@ namespace fs = std::filesystem;
 #include "otc/taxonomy/patching.h"
 #include "otc/otc_base_includes.h"
 #include "otc/ctrie/context_ctrie_db.h"
+#include <boost/algorithm/string/join.hpp>
 
 using namespace otc;
 
@@ -22,8 +23,6 @@ using std::ifstream;
 using std::unordered_set;
 using std::string_view;
 using Tree_t = RootedTree<RTNodeNoData, RTreeNoData>;
-// namespace po = boost::program_options;
-// using po::variables_map;
 
 namespace otc
 {
@@ -218,6 +217,22 @@ bool_str_t PatchableTaxonomy::delete_forward(OttId /* former_id */, OttId /*redi
     throw OTCError() << "delete_forward not implemented";
 }
 
+void possible_add_barren_flag_to_anc(RTRichTaxNode * nd_ptr) {
+    if (nd_ptr == nullptr) {
+        return;
+    }
+    int barren_bit = flag_from_string("barren");
+    for (auto c : iter_child(*nd_ptr)) {
+        RTRichTaxNodeData & c_data = c->get_data();
+        if (!c_data.flags.test(barren_bit)) {
+            return;
+        }
+    }
+    RTRichTaxNodeData & nd_data = nd_ptr->get_data();
+    nd_data.flags.set(barren_bit, true);
+    possible_add_barren_flag_to_anc(nd_ptr->get_parent());
+}
+
 bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
@@ -233,6 +248,18 @@ bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
         return bool_str_t{false, expl};
     }
     old_par->remove_child(nd_ptr);
+    rt_data.id_to_record.erase(ott_id);
+    rt_data.id_to_node.erase(ott_id);
+    if (!old_par->has_children()) {
+        RTRichTaxNodeData & par_data = old_par->get_data();
+        par_data.add_flags_from_string("barren");
+        auto further_anc = old_par->get_parent();
+        if (further_anc != nullptr) {
+            possible_add_barren_flag_to_anc(further_anc);
+        }
+    } else {
+        possible_add_barren_flag_to_anc(old_par);
+    }
     return bool_str_t{true, ""};
 }
 
@@ -252,9 +279,10 @@ bool_str_t PatchableTaxonomy::sink_taxon(OttId jr_oid, OttId sr_id) {
     
     RTRichTaxNodeData & jr_nd_data = jr_nd_ptr->get_data();
     auto old_jr_par = jr_nd_ptr->get_parent();
-    auto old_jr_flags = jr_nd_data.get_flags();
     std::string jr_name = std::string{jr_nd_data.get_nonuniqname()};
     auto jr_src_vec = jr_nd_data.sourceinfoAsVec();
+    std::set<std::string> jr_src_set{jr_src_vec.begin(), jr_src_vec.end()};
+
     auto jr_src_str = jr_nd_data.get_sources_as_fmt_str();
     auto dr = this->delete_taxon(jr_oid);
     if (!dr.first) {
@@ -263,6 +291,13 @@ bool_str_t PatchableTaxonomy::sink_taxon(OttId jr_oid, OttId sr_id) {
     auto asr = this->add_synonym(jr_name, sr_id, jr_src_str);
     if (!asr.first) {
         return asr;
+    }
+    RTRichTaxNodeData & sr_nd_data = sr_nd_ptr->get_data();
+    auto sr_src_vec = sr_nd_data.sourceinfoAsVec();
+    std::set<std::string> sr_src_set{sr_src_vec.begin(), sr_src_vec.end()};
+    std::set<std::string> all_src = set_union_as_set(sr_src_set, jr_src_set);
+    if (all_src != sr_src_set) {
+        sr_nd_data.source_info = boost::algorithm::join(all_src, ",");
     }
     return this->add_forward(jr_oid, sr_id);
 }

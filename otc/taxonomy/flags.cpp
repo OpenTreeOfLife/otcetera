@@ -185,4 +185,6 @@ bool is_extinct(tax_flags flags)
     return flags.test(extinct_bit) or flags.test(extinct_inherited_bit);
 }
 
+
+
 } // namespace otc

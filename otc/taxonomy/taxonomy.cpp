@@ -845,6 +845,12 @@ bool RTRichTaxNodeData::is_extinct() const {
 }
 
 
+void RTRichTaxNodeData::add_flags_from_string(const std::string &inp_flags) {
+    auto nf_as_bs = flags_from_string(inp_flags);
+    this->flags |=  nf_as_bs; 
+}
+
+
 void RichTaxonomy::read_synonyms() {
     string filename = path + "/synonyms.tsv";
     ifstream synonyms_file(filename);

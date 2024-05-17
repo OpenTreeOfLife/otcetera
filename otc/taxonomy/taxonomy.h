@@ -286,6 +286,8 @@ class RTRichTaxNodeData {
     const std::bitset<32> get_flags() const {
         return flags;
     }
+    void add_flags_from_string(const std::string &inp_flags);
+    
     std::vector<std::string> sourceinfoAsVec() const {
         return comma_separated_as_vec(source_info);
     }
