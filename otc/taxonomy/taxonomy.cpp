@@ -663,7 +663,7 @@ RichTaxonomy::RichTaxonomy(const std::string& dir,
     { //braced to reduce scope of light_taxonomy to reduced memory
         Taxonomy light_taxonomy(dir, cf, kr); 
         auto nodeNamer = [](const auto&){return string();};
-        cerr << "light_taxonomy.get_tree<RichTaxTree>(nodeNamer)..." << std::endl;
+        //cerr << "light_taxonomy.get_tree<RichTaxTree>(nodeNamer)..." << std::endl;
         tree = light_taxonomy.get_tree<RichTaxTree>(nodeNamer, !read_syn_type_as_src);
         LOG(DEBUG)<<"got taxonomy tree" << std::endl;
         auto & tree_data = tree->get_data();

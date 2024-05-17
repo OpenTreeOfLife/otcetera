@@ -255,13 +255,16 @@ bool_str_t PatchableTaxonomy::sink_taxon(OttId jr_oid, OttId sr_id) {
     auto old_jr_flags = jr_nd_data.get_flags();
     std::string jr_name = std::string{jr_nd_data.get_nonuniqname()};
     auto jr_src_vec = jr_nd_data.sourceinfoAsVec();
+    auto jr_src_str = jr_nd_data.get_sources_as_fmt_str();
     auto dr = this->delete_taxon(jr_oid);
     if (!dr.first) {
         return dr;
     }
-
-
-    throw OTCError("PatchableTaxonomy::sink_taxon not implemented yet")  ; 
+    auto asr = this->add_synonym(jr_name, sr_id, jr_src_str);
+    if (!asr.first) {
+        return asr;
+    }
+    return this->add_forward(jr_oid, sr_id);
 }
 
 bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
