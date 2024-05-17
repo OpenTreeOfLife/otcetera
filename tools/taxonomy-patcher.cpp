@@ -248,7 +248,7 @@ class TaxonSinkAmendment: public TaxonomyAmendment {
     }
 
     virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
-        throw OTCError("Sink action not implemented yet")  ; 
+        return t.sink_taxon(ott_id_to_be_jr_syn, ott_id_of_sr_syn);
     }
 
     protected:

@@ -44,6 +44,7 @@ class PatchableTaxonomy: public RichTaxonomy {
                           const std::string & flags,
                           bool flags_edited,
                           OttId * homonym_of=nullptr) ;
+    bool_str_t sink_taxon(OttId jr_oid, OttId sr_id) ;
     bool_str_t delete_taxon(OttId oid) ;
     bool_str_t add_forward(OttId former_id, OttId redirect_to_id);
     bool_str_t delete_forward(OttId former_id, OttId redirect_to_id);

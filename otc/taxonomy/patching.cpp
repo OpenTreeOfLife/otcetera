@@ -214,13 +214,54 @@ bool_str_t PatchableTaxonomy::add_forward(OttId former_id, OttId redirect_to_id)
 bool_str_t PatchableTaxonomy::delete_forward(OttId /* former_id */, OttId /*redirect_to_id*/) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
+
     throw OTCError() << "delete_forward not implemented";
 }
 
-bool_str_t PatchableTaxonomy::delete_taxon(OttId /* ott_id */) {
+bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
-    throw OTCError() << "delete_taxon not implemented";
+    auto nd_ptr = const_cast<RTRichTaxNode * >(included_taxon_from_id(ott_id));
+    if (nd_ptr == nullptr) {
+        std::string expl = "OTT ID " + std::to_string(ott_id) + " is not an included taxon.";
+        return bool_str_t{false, expl};
+    }
+    RTRichTaxNodeData & nd_data = nd_ptr->get_data();
+    auto old_par = nd_ptr->get_parent();
+    if (nd_ptr->has_children()) {
+        std::string expl = "OTT ID " + std::to_string(ott_id) + " has at least 1 child. Deletion of internal nodes is not currently supported.";
+        return bool_str_t{false, expl};
+    }
+    old_par->remove_child(nd_ptr);
+    return bool_str_t{true, ""};
+}
+
+bool_str_t PatchableTaxonomy::sink_taxon(OttId jr_oid, OttId sr_id) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    auto jr_nd_ptr = const_cast<RTRichTaxNode * >(included_taxon_from_id(jr_oid));
+    if (jr_nd_ptr == nullptr) {
+        std::string expl = "Junior OTT ID " + std::to_string(jr_oid) + " is not an included taxon.";
+        return bool_str_t{false, expl};
+    }
+    auto sr_nd_ptr = const_cast<RTRichTaxNode * >(included_taxon_from_id(sr_id));
+    if (sr_nd_ptr == nullptr) {
+        std::string expl = "Senior OTT ID " + std::to_string(sr_id) + " is not an included taxon.";
+        return bool_str_t{false, expl};
+    }
+    
+    RTRichTaxNodeData & jr_nd_data = jr_nd_ptr->get_data();
+    auto old_jr_par = jr_nd_ptr->get_parent();
+    auto old_jr_flags = jr_nd_data.get_flags();
+    std::string jr_name = std::string{jr_nd_data.get_nonuniqname()};
+    auto jr_src_vec = jr_nd_data.sourceinfoAsVec();
+    auto dr = this->delete_taxon(jr_oid);
+    if (!dr.first) {
+        return dr;
+    }
+
+
+    throw OTCError("PatchableTaxonomy::sink_taxon not implemented yet")  ; 
 }
 
 bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
