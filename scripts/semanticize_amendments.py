@@ -17,7 +17,7 @@ except ImportError:
 _SCRIPT_NAME = 'semanticize_amendments'
 
 def warn(msg):
-    sys.stderr.write('{} WARNING: {}\n'.format(SCRIPT_NAME, msg))
+    sys.stderr.write(f'{_SCRIPT_NAME} WARNING: {msg}\n')
 
 def processs_addition(amend_id, taxon):
     ott_id = taxon["ott_id"]
@@ -37,7 +37,7 @@ def processs_addition(amend_id, taxon):
 
 def processs_amendment(fp, content):
     if not content:
-        return
+        return 
     try:
         blob = json.loads(content)
     except:
@@ -61,7 +61,8 @@ def main(repo_top, last_handled_sha):
                 sys.stderr.write(f"processing {fp} ...\n")
                 content = repo.get_file_contents(oid)
                 tb = processs_amendment(fp, content)
-                all_terse_blobs.extend(tb)
+                if tb is not None:
+                    all_terse_blobs.extend(tb)
             else:
                 sys.stderr.write(f"skipping {fp} ...\n")
     print(json.dumps(all_terse_blobs, indent=2))
