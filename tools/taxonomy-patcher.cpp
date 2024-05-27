@@ -83,7 +83,7 @@ const json * find_object_ptr(const json & j,
     auto aIt = j.find(prop_name);
     if (aIt == j.end()) {
         if (required) {
-            throw OTCError() << "Expecting a \"" << prop_name << "\" property in JSON object";
+            throw OTCError() << "Expecting a \"" << prop_name << "\" property in JSON object: " << j;
         }
         return nullptr;
     }
