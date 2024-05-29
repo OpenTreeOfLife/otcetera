@@ -1,0 +1,9 @@
+[
+  {
+    "action": "append-set",
+    "taxa": {
+      "ott_ids": [1,2,3],
+      "flags": "extinct"
+    }
+  }
+]

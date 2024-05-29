@@ -133,6 +133,30 @@ std::pair<bool, unsigned> get_unsigned_property(const json & j,
     return std::pair<bool, unsigned>(false, UINT_MAX);
 }
 
+std::pair<bool, OttIdSet> get_unsigned_set_property(const json & j,
+                                                const std::string & prop_name,
+                                                bool required) {
+    OttIdSet ret;
+    auto jp = find_object_ptr(j, prop_name, required);
+    if (jp != nullptr) {
+        if (!jp->is_array()) {
+            throw OTCError() << "Expecting \"" << prop_name << "\" property to be a list of non negative integer";
+        }
+        unsigned obj_num = 0;
+        for (auto eo : *jp) {
+            if (!eo.is_number_unsigned()) {
+               throw OTCError() << "Expecting non negative integer, but element " << obj_num << " of array was not an object.";
+            }
+            ++obj_num;
+            unsigned uint_form = eo.get<unsigned>();
+            ret.insert(uint_form);
+        }
+        return std::pair<bool, OttIdSet>(false, ret);
+    }
+    return std::pair<bool, OttIdSet>(false, OttIdSet());
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // end possible content for a JSON parsing helpers
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,13 +203,12 @@ class BaseSynonymAmendment : public TaxonomyAmendment {
         std::string source_info;
 };
 
-class BaseTaxonAmendment: public TaxonomyAmendment {
+class TaxonPropAmendment: public TaxonomyAmendment {
     public:
-    BaseTaxonAmendment(const json & taxon_obj, bool all_req)
+    TaxonPropAmendment(const json & taxon_obj, bool all_req)
         :parent_id(UINT_MAX),
         rank(TaxonomicRank::RANK_NO_RANK),
         flags_set(false) {
-        this->taxon_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
         this->parent_id = get_unsigned_property(taxon_obj, "parent", all_req).second;
         this->name = get_string_property(taxon_obj, "name", all_req).second;
         auto si = get_string_property(taxon_obj, "sourceinfo", false);
@@ -203,18 +226,30 @@ class BaseTaxonAmendment: public TaxonomyAmendment {
         }
     }
     
-    virtual ~BaseTaxonAmendment(){
+    virtual ~TaxonPropAmendment(){
     }
 
-    
     protected:
-    OttId taxon_id;
     OttId parent_id;
     std::string source_info;
     TaxonomicRank rank;
     std::string name;
     tax_flags flags;
     bool flags_set;
+};
+
+class BaseTaxonAmendment: public TaxonPropAmendment {
+    public:
+    BaseTaxonAmendment(const json & taxon_obj, bool all_req)
+        :TaxonPropAmendment(taxon_obj, all_req) {
+        this->taxon_id = get_unsigned_property(taxon_obj, "ott_id", true).second;
+    }
+    
+    virtual ~BaseTaxonAmendment(){
+    }
+
+    protected:
+    OttId taxon_id;
 };
 
 
@@ -254,6 +289,27 @@ class TaxonSinkAmendment: public TaxonomyAmendment {
     protected:
         OttId ott_id_to_be_jr_syn;
         OttId ott_id_of_sr_syn;
+};
+
+class TaxaAppendSetAmendment: public TaxonPropAmendment {
+    public:
+    TaxaAppendSetAmendment(const json & taxa_obj)
+        :TaxonPropAmendment(taxa_obj, false) {
+        this->ott_ids = get_unsigned_set_property(taxa_obj, "ott_ids", true).second;
+    }
+    
+    virtual ~TaxaAppendSetAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        return t.append_prop_for_set(ott_ids,
+                                     parent_id,
+                                     source_info,
+                                     flags);
+    }
+
+    protected:
+        OttIdSet ott_ids;
 };
 
 class TaxonEditAmendment: public BaseTaxonAmendment {
@@ -396,6 +452,12 @@ TaxonomyAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
             return std::make_shared<TaxonSinkAmendment>(*(taxon_j.second));
         }
         throw OTCError() << "Expecting edit action to contain taxon object.";
+    } else if (action == "append-set") {
+        auto taxon_j = get_object_property(edit_obj, "taxa", false);
+        if (taxon_j.first) {
+            return std::make_shared<TaxaAppendSetAmendment>(*(taxon_j.second));
+        }
+        throw OTCError() << "Expecting edit action to contain taxa object.";
     } else {
         throw OTCError() << "Taxon amendment with action \"" << action << "\" not implemented.";
     }

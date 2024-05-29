@@ -233,6 +233,46 @@ void possible_add_barren_flag_to_anc(RTRichTaxNode * nd_ptr) {
     possible_add_barren_flag_to_anc(nd_ptr->get_parent());
 }
 
+void possible_add_extinct_flag_to_anc(RTRichTaxNode * nd_ptr) {
+    if (nd_ptr == nullptr) {
+        return;
+    }
+    int ex_bit = flag_from_string("extinct");
+    int ex_in_bit = flag_from_string("extinct_inherited");
+    for (auto c : iter_child(*nd_ptr)) {
+        RTRichTaxNodeData & c_data = c->get_data();
+        if (! (c_data.flags.test(ex_bit) || c_data.flags.test(ex_in_bit))) {
+            return;
+        }
+    }
+    RTRichTaxNodeData & nd_data = nd_ptr->get_data();
+    nd_data.flags.set(ex_in_bit, true);
+    possible_add_extinct_flag_to_anc(nd_ptr->get_parent());
+}
+
+void detach_from_par_helper(RTRichTaxNode * nd_ptr, RTRichTaxNode * old_par) {
+    old_par->remove_child(nd_ptr);
+    if (!old_par->has_children()) {
+        RTRichTaxNodeData & par_data = old_par->get_data();
+        par_data.add_flags_from_string("barren");
+        auto further_anc = old_par->get_parent();
+        if (further_anc != nullptr) {
+            possible_add_barren_flag_to_anc(further_anc);
+        }
+    } else {
+        possible_add_barren_flag_to_anc(old_par);
+    }
+}
+
+void flag_par_extinct_helper(RTRichTaxNode * par_nd) {
+    if (!par_nd->has_children()) {
+        throw OTCError() << "Expecting parent " << std::to_string(par_nd->get_ott_id()) << " to have children.";
+
+    } else {
+        possible_add_extinct_flag_to_anc(par_nd);
+    }
+}
+
 bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
@@ -247,19 +287,9 @@ bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
         std::string expl = "OTT ID " + std::to_string(ott_id) + " has at least 1 child. Deletion of internal nodes is not currently supported.";
         return bool_str_t{false, expl};
     }
-    old_par->remove_child(nd_ptr);
     rt_data.id_to_record.erase(ott_id);
     rt_data.id_to_node.erase(ott_id);
-    if (!old_par->has_children()) {
-        RTRichTaxNodeData & par_data = old_par->get_data();
-        par_data.add_flags_from_string("barren");
-        auto further_anc = old_par->get_parent();
-        if (further_anc != nullptr) {
-            possible_add_barren_flag_to_anc(further_anc);
-        }
-    } else {
-        possible_add_barren_flag_to_anc(old_par);
-    }
+    detach_from_par_helper(nd_ptr, old_par);
     return bool_str_t{true, ""};
 }
 
@@ -302,6 +332,49 @@ bool_str_t PatchableTaxonomy::sink_taxon(OttId jr_oid, OttId sr_id) {
     return this->add_forward(jr_oid, sr_id);
 }
 
+bool_str_t PatchableTaxonomy::append_prop_for_set(const OttIdSet & oids,
+                                                  OttId parent,
+                                                  const std::string & sourceinfo,
+                                                  const tax_flags & flags) {
+    auto & tree = this->get_mutable_tax_tree();
+    auto & rt_data = tree.get_data();
+    RTRichTaxNode * new_par_ptr = nullptr;
+    if (parent != UINT_MAX && parent != 0) {
+        new_par_ptr = const_cast<RTRichTaxNode * >(included_taxon_from_id(parent));
+        if (new_par_ptr == nullptr) {
+            std::string expl = "OTT ID for new parent" + std::to_string(parent) + " is not an included taxon.";
+            return bool_str_t{false, expl};
+        }
+    }
+    for (auto ott_id : oids) {
+        auto nd_ptr = const_cast<RTRichTaxNode * >(included_taxon_from_id(ott_id));
+        if (nd_ptr == nullptr) {
+            std::string expl = "OTT ID " + std::to_string(ott_id) + " is not an included taxon.";
+            return bool_str_t{false, expl};
+        }
+        if (new_par_ptr != nullptr) {
+            auto old_par = nd_ptr->get_parent();
+            if (new_par_ptr != old_par) {
+                detach_from_par_helper(nd_ptr, old_par);
+                new_par_ptr->add_child(nd_ptr);
+            }
+        }
+        if (!sourceinfo.empty()) {
+            throw OTCError() << "Bulk additions of sources not supported yet";
+        }
+        if (flags.any()) {
+            RTRichTaxNodeData & nd_data = nd_ptr->get_data();
+            nd_data.flags |=  flags;
+            int extinct_bit = flag_from_string("extinct");
+            if (flags.test(extinct_bit)) {
+                auto old_par = nd_ptr->get_parent();
+                flag_par_extinct_helper(old_par);
+            }
+        }
+    }
+    return bool_str_t{true, ""};
+}
+
 bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
                                          OttId parent_id,
                                          const std::string & name,
@@ -327,7 +400,7 @@ bool_str_t PatchableTaxonomy::edit_taxon(OttId oid,
             return bool_str_t{false, expl};
         }
         if (new_par != old_par) {
-            old_par->remove_child(nd_ptr);
+            detach_from_par_helper(nd_ptr, old_par);
             new_par->add_child(nd_ptr);
         }
     } else if (old_par != nullptr) {
