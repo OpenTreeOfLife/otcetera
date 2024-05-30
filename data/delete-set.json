@@ -1,0 +1,8 @@
+[
+  {
+    "action": "delete-set",
+    "taxa": {
+      "ott_ids": [1,2,3]
+    }
+  }
+]
