@@ -1,0 +1,26 @@
+loading taxonomy
+loaded
+1 amendments to be processed.
+1/1 amendments applied.
+version.txt
+0.0draft0
+taxonomy.tsv
+uid	|	parent_uid	|	name	|	rank	|	sourceinfo	|	uniqname	|	flags	|	
+1000000	|		|	Exampleroot	|	no rank	|	ncbi:10239,gbif:8	|		|		|	
+999999	|	1000000	|	Nototuexample	|	no rank	|		|		|	not_otu	|	
+1001	|	1000000	|	Amaryllidaceae	|	no rank	|		|		|		|	
+100	|	1001	|	Amaryllis	|	no rank	|		|		|	barren	|	
+200	|	1001	|	Bamaryllis	|	no rank	|		|		|		|	
+11	|	200	|	Bamaryllis belladonna	|	no rank	|	ncbi:1,gbif:3	|		|		|	
+12	|	200	|	Bamaryllis major	|	no rank	|	ncbi:2,irmng:5	|		|		|	
+13	|	200	|	Bamarylis minor	|	no rank	|		|		|		|	
+300	|	1001	|	Amaryllis Amaryllis	|	no rank	|		|	Amaryllis (subgenus Amaryllis)	|		|	
+21	|	300	|	Amaryllis Amaryllis major	|	no rank	|		|		|		|	
+22	|	300	|	Amaryllis Amaryllis minor	|	no rank	|		|		|		|	
+23	|	300	|	Amaryllis somelodd	|	no rank	|		|		|		|	
+synonyms.tsv
+name	|	uid	|	type	|	uniqname	|	sourceinfo	|	
+Camaryllis major	|	21	|		|		|		|	
+forwards.tsv
+id	replacement
+2002	1001

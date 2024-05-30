@@ -50,6 +50,7 @@ class PatchableTaxonomy: public RichTaxonomy {
                                    const std::string & sourceinfo,
                                    const tax_flags & flags);
     bool_str_t delete_taxon(OttId oid) ;
+    bool_str_t delete_id_set(const OttIdSet & ott_id_set);
     bool_str_t add_forward(OttId former_id, OttId redirect_to_id);
     bool_str_t delete_forward(OttId former_id, OttId redirect_to_id);
     bool_str_t add_synonym(const std::string & name, OttId ott_id, const std::string & sourceinfo);

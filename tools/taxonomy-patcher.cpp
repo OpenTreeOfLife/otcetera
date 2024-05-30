@@ -312,6 +312,24 @@ class TaxaAppendSetAmendment: public TaxonPropAmendment {
         OttIdSet ott_ids;
 };
 
+class TaxaDeleteSetAmendment: public TaxonomyAmendment {
+    public:
+    TaxaDeleteSetAmendment(const json & taxa_obj)
+        :TaxonomyAmendment() {
+        this->ott_ids = get_unsigned_set_property(taxa_obj, "ott_ids", true).second;
+    }
+    
+    virtual ~TaxaDeleteSetAmendment(){
+    }
+
+    virtual std::pair<bool, std::string> patch(PatchableTaxonomy &t) {
+        return t.delete_id_set(ott_ids);
+    }
+
+    protected:
+        OttIdSet ott_ids;
+};
+
 class TaxonEditAmendment: public BaseTaxonAmendment {
     public:
     TaxonEditAmendment(const json & taxon_obj)
@@ -456,6 +474,12 @@ TaxonomyAmendmentPtr parse_taxon_amendment_obj(const json & edit_obj) {
         auto taxon_j = get_object_property(edit_obj, "taxa", false);
         if (taxon_j.first) {
             return std::make_shared<TaxaAppendSetAmendment>(*(taxon_j.second));
+        }
+        throw OTCError() << "Expecting edit action to contain taxa object.";
+    } else if (action == "delete-set") {
+        auto taxon_j = get_object_property(edit_obj, "taxa", false);
+        if (taxon_j.first) {
+            return std::make_shared<TaxaDeleteSetAmendment>(*(taxon_j.second));
         }
         throw OTCError() << "Expecting edit action to contain taxa object.";
     } else {

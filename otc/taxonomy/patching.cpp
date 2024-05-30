@@ -293,6 +293,16 @@ bool_str_t PatchableTaxonomy::delete_taxon(OttId ott_id) {
     return bool_str_t{true, ""};
 }
 
+bool_str_t PatchableTaxonomy::delete_id_set(const OttIdSet & ott_id_set) {
+    for (auto oid : ott_id_set) {
+        auto sret = delete_taxon(oid);
+        if (!sret.first) {
+            return sret;
+        }
+    }
+    return bool_str_t{true, ""};
+}
+
 bool_str_t PatchableTaxonomy::sink_taxon(OttId jr_oid, OttId sr_id) {
     auto & tree = this->get_mutable_tax_tree();
     auto & rt_data = tree.get_data();
