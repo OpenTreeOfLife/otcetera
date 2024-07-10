@@ -936,6 +936,8 @@ void RichTaxonomy::read_ott_synonyms_stream(std::istream & synonyms_file) {
             if (!Taxonomy::tolerate_synonyms_to_unknown_id) {
                 throw;
             }
+            LOG(WARNING) << "skipping synonym \"" << name << "\" to unknown ID " << ott_id;
+            continue;
         }
         if (primary == nullptr) {
             num_syn_skipped++;
