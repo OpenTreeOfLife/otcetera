@@ -21,10 +21,7 @@ The instructions below contain all of the gory detail. There are a few quirks wi
 ## prerequisites: overview
 
 ### Compiler
-Otcetera requires a C++17 compiler.  You can use
-* g++ version 9 (or higer)
-* clang++ version 11 (or higher)
-* XCode version 13 (or higher)
+Otcetera requires a C++20 compiler.
 
 ### Build tools: meson, cmake, and ninja
 To build otcetera, we need the build tools
