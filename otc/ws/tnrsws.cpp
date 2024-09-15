@@ -192,13 +192,14 @@ vector<const Taxon*> exact_name_search_species(const RichTaxonomy& taxonomy,
                                               const Taxon* context_root,
                                               string query,
                                               bool include_suppressed) {
+    // LOG(TRACE) << "exact_name_search_species";
     tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
         return taxon_is_specific(taxon);
     };
-    return exact_name_search(taxonomy, context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, 0.1, ok);
     
 }
 
@@ -206,26 +207,28 @@ vector<const Taxon*> exact_name_search_genus(const RichTaxonomy& taxonomy,
                                              const Taxon* context_root,
                                              string query,
                                              bool include_suppressed) {
+    // LOG(TRACE) << "exact_name_search_genus";
     tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
         return taxon_is_genus(taxon);
     };
-    return exact_name_search(taxonomy, context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, .5, ok);
 }
 
 vector<const Taxon*> exact_name_search_higher(const RichTaxonomy& taxonomy,
                                               const Taxon* context_root,
                                               string query,
                                               bool include_suppressed) {
+    // LOG(TRACE) << "exact_name_search_higher";
     tax_pred_t ok = [&](const Taxon* taxon) {
         if (not include_suppressed and taxonomy.node_is_suppressed_from_tnrs(taxon)) {
             return false;
         }
         return taxon_is_higher(taxon);
     };
-    return exact_name_search(taxonomy, context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, 1.5, ok);
 }
 
 vector<const Taxon*> prefix_name_search_slow(const Taxon* context_root,
@@ -373,8 +376,10 @@ inline json ContextSearcher::_base_name_match_json(const string& query,
                                                    const Taxon * taxon) const {
     json result;
     result["taxon"] = get_taxon_json(taxonomy, *taxon);
+    // LOG(TRACE) << "ContextSearcher::exact_name_match_json get_taxon_json returned w/o error";
     result["search_string"] = query;
     result["nomenclature_code"] = Context::get_code_name(taxonomy, taxon);
+
     return result;
 }
 
@@ -406,6 +411,8 @@ inline json ContextSearcher::fuzzy_name_match_json(const string& query,
 inline json ContextSearcher::exact_name_match_json(const string& query,
                                             const Taxon* taxon) const {
     auto result = _base_name_match_json(query, taxon);
+    // LOG(TRACE) << "ContextSearcher::exact_name_match_json _base_name_match_json returned w/o error";
+    
     result["score"] = 1.0;
     result["is_approximate_match"] = false;
     result["is_synonym"] = false;
@@ -428,14 +435,17 @@ inline json ContextSearcher::exact_synonym_match_json(const string& query,
 pair<json,match_status> ContextSearcher::match_name(const string & raw_query,
                                                     bool do_approximate_matching,
                                                     bool include_suppressed) {
+    // LOG(TRACE) << "ContextSearcher::match_name(" << raw_query << ", " << do_approximate_matching << ", " << include_suppressed <<")";
     auto query = normalize_query(raw_query);
     json results = json::array();
     match_status status = unmatched;
     // 1. See if we can find an exact name match
     auto exact_name_matches = exact_name_search(taxonomy, context_root, query, include_suppressed);
+    // LOG(TRACE) << "ContextSearcher::match_name exact_name_search returned " << exact_name_matches.size();
     for(auto taxon: exact_name_matches) {
         results.push_back(exact_name_match_json(query, taxon));
     }
+    // LOG(TRACE) << "ContextSearcher::match_name results JSON size" << results.size();
     if (exact_name_matches.size() == 1) {
         status = unambiguous_match;
     }
@@ -477,9 +487,21 @@ const Context* determine_context_for_names(const vector<string>& names,
                                            const optional<string>& context_name,
                                            const RichTaxonomy& taxonomy) {
     if (not context_name) {
-        return infer_context_and_ambiguous_names(taxonomy, names).first;
+        auto inferred = infer_context_and_ambiguous_names(taxonomy, names).first;
+        if (inferred) {
+           //  LOG(TRACE) << "inferred Context " << inferred->name;
+        } else {
+            // LOG(TRACE) << "inferred Context => nullptr";
+        }
+        return inferred;
     }
-    return get_context_by_name(*context_name);
+    auto requested = get_context_by_name(*context_name);
+    if (requested) {
+       // LOG(TRACE) << "requested Context " << requested->name;
+    } else {
+        // LOG(TRACE) << "requested Context => nullptr";
+    }
+    return requested;
 }
 
 

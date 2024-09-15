@@ -111,8 +111,6 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::to_taxa(const set<FuzzyQueryResult, SortQu
                                               bool include_suppressed) const {
     LOG(DEBUG) << "to_taxa(context_id = " << context_root->get_ott_id() << ", ... , included_suppressed ="  << include_suppressed << ")";
     vec_fqr_w_t results;
-    const auto & tax_data = context_root->get_data();
-
     if (sorted.empty()) {
         LOG(DEBUG) << "no matches";
     }
@@ -128,8 +126,6 @@ vec_fqr_w_t ContextAwareCTrieBasedDB::to_taxa(const set<FuzzyQueryResult, SortQu
                     results.push_back(FuzzyQueryResultWithTaxon(fqr, tr));
                 }
             } else {
-                const auto & res_tax_data = tax_ptr->get_data();
-
                 if (is_ancestor_of_using_depth(context_root, tax_ptr))
                 {
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *)(tax_thing);
@@ -157,10 +153,10 @@ ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
         LOG(DEBUG) << "no matches";
         return {};
     }
+    // LOG(TRACE ) << "to_taxa( optional<string>" << *n_query << "..., include_suppressed=" << include_suppressed << ")";
     vector<TaxonResult> results;
-    const auto & tax_data = context_root->get_data();
     const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(*n_query);
-    LOG(DEBUG) << "exact_query(match=\"" << *n_query << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
+    // LOG(TRACE) << "exact_query(match=\"" << *n_query << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
     for (auto & [tax_ptr, rec_or_syn_ptr] : vec_taxon_and_syn_ptrs) {
         if (tax_ptr == nullptr) {
             LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
@@ -169,7 +165,6 @@ ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
                 results.push_back(TaxonResult(tr));
             }
         } else {
-            const auto & res_tax_data = tax_ptr->get_data();
             if (is_ancestor_of_using_depth(context_root, tax_ptr)) {
                 const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
                 if (syn_ptr == nullptr) {
@@ -182,6 +177,7 @@ ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
             }
         }
     }
+    // LOG(TRACE) << "returning results size=" << results.size();
     return results;
 }
 
@@ -195,8 +191,8 @@ ContextAwareCTrieBasedDB::to_taxa(const vector<string>& n_queries,
         LOG(DEBUG) << "no matches";
         return {};
     }
+    // LOG(DEBUG) << "to_taxa( vector<string>" << *n_query << "..., include_suppressed=" << include_suppressed << "\n";
     vector<TaxonResult> results;
-    const auto & tax_data = context_root->get_data();
     for(auto& n_query: n_queries) {
         const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(n_query);
         LOG(DEBUG) << "prefix_query(match=\"" << n_query << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
@@ -208,7 +204,6 @@ ContextAwareCTrieBasedDB::to_taxa(const vector<string>& n_queries,
                     results.push_back(TaxonResult(tr));
                 }
             } else {
-                const auto & res_tax_data = tax_ptr->get_data();
                 if (is_ancestor_of_using_depth(context_root, tax_ptr)) {
                     const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
                     if (syn_ptr == nullptr) {

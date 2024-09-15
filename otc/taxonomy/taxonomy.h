@@ -651,12 +651,16 @@ std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy
 
 std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
                                                     const RTRichTaxNode* context_root,
+                                                    const std::string& query);
+
+std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
                                                     const std::string& query,
                                                     bool include_suppressed);
 
 std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy,
                                                     const RTRichTaxNode* context_root,
                                                     const std::string& query,
+                                                    float bogus,
                                                     std::function<bool(const RTRichTaxNode*)> ok = [](const RTRichTaxNode*){return true;});
 
 } // namespace

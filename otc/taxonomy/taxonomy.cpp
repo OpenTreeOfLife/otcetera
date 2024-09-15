@@ -522,8 +522,8 @@ Taxonomy::Taxonomy(const string& dir,
     } else {
         count = read_ott_taxonomy_stream(taxonomy_stream);
     }
-    LOG(TRACE) << "records read = " << count;
-    LOG(TRACE) << "records kept = " << size();
+    // LOG(TRACE) << "records read = " << count;
+    // LOG(TRACE) << "records kept = " << size();
     taxonomy_stream.close();
     /*
     if (read_deprecated) {
@@ -1112,13 +1112,14 @@ std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy
                                                     const std::string& query,
                                                     bool include_suppressed)
 {
+    // LOG(TRACE) << "exact_name_search(taxonomy, context, " << query << ", " << include_suppressed << ")";
     if (include_suppressed) {
         return exact_name_search(taxonomy, context_root, query);
     }
     std::function<bool(const RTRichTaxNode*)> ok = [&](const RTRichTaxNode* taxon) {
         return not taxonomy.node_is_suppressed_from_tnrs(taxon);
     };
-    return exact_name_search(taxonomy, context_root, query, ok);
+    return exact_name_search(taxonomy, context_root, query, 3.5, ok);
 }
 
 
@@ -1126,6 +1127,7 @@ std::vector<const RTRichTaxNode*> exact_name_search(const RichTaxonomy& taxonomy
                                                     const std::string& query,
                                                     bool include_suppressed)
 {
+    // LOG(TRACE) << "exact_name_search(taxonomy, NO CONTEXT, " << query << ", " << include_suppressed << ")";
     const RTRichTaxNode* context_root = taxonomy.get_tax_tree().get_root();
     return exact_name_search(taxonomy, context_root, query, include_suppressed);
 }
@@ -1154,21 +1156,48 @@ vector<const RTRichTaxNode *> exact_name_search_slow(const RichTaxonomy& /*taxon
 
 vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
                                                 const RTRichTaxNode* context_root,
-                                                const std::string&  query_ref,
-                                                std::function<bool(const RTRichTaxNode*)> ok)
+                                                const std::string&  query_ref)
 {
+    // LOG(TRACE) << "exact_name_search new(taxonomy, context, " << query_ref << ", OK functin)";
     auto ctp = taxonomy.get_fuzzy_matcher();
     assert(ctp);
-
     auto results = ctp->to_taxa(ctp->exact_query(query_ref), context_root, taxonomy, true);
+    // LOG(TRACE) << "exact_name_search new ctp->to_taxa returned results size=" << results.size();
     vector<const RTRichTaxNode*> hits;
-    for(auto& result: results)
-    {
-        if (not result.is_synonym())
-        {
+    for(auto& result: results) {
+        if (not result.is_synonym()) {
             auto t = result.get_taxon();
-            if (ok(t))
+            hits.push_back(t);
+        } else {
+            // LOG(TRACE) << "not pushing back result becuase it is a synonym" ;
+        }
+    }
+    return hits;
+}
+
+
+vector<const RTRichTaxNode *> exact_name_search(const RichTaxonomy& taxonomy,
+                                                const RTRichTaxNode* context_root,
+                                                const std::string&  query_ref,
+                                                float , // bogus
+                                                std::function<bool(const RTRichTaxNode*)> ok)
+{
+    // LOG(TRACE) << "exact_name_search(taxonomy, context, " << query_ref << ", OK functin)";
+    auto ctp = taxonomy.get_fuzzy_matcher();
+    assert(ctp);
+    auto results = ctp->to_taxa(ctp->exact_query(query_ref), context_root, taxonomy, true);
+    // LOG(TRACE) << "exact_name_search ctp->to_taxa returned results size=" << results.size();
+    vector<const RTRichTaxNode*> hits;
+    for(auto& result: results) {
+        if (not result.is_synonym()) {
+            auto t = result.get_taxon();
+            if (ok(t)) {
                 hits.push_back(t);
+            } else {
+                // LOG(TRACE) << "not pushing back result becuase it is just not OK";
+            }
+        } else {
+            // LOG(TRACE) << "not pushing back result becuase it is a synonym" ;
         }
     }
 
