@@ -153,41 +153,29 @@ ContextAwareCTrieBasedDB::to_taxa(const optional<string>& n_query,
                                   const RichTaxonomy & /*taxonomy*/, 
                                   bool include_suppressed) const
 {
-    if (not n_query)
-    {
+    if (not n_query) {
         LOG(DEBUG) << "no matches";
         return {};
     }
-
     vector<TaxonResult> results;
     const auto & tax_data = context_root->get_data();
-
     const auto & vec_taxon_and_syn_ptrs = match_name_to_taxon.at(*n_query);
     LOG(DEBUG) << "exact_query(match=\"" << *n_query << ") -> vec size = " << vec_taxon_and_syn_ptrs.size();
-    for (auto & [tax_ptr, rec_or_syn_ptr] : vec_taxon_and_syn_ptrs)
-    {
-        if (tax_ptr == nullptr)
-        {
+    for (auto & [tax_ptr, rec_or_syn_ptr] : vec_taxon_and_syn_ptrs) {
+        if (tax_ptr == nullptr) {
             LOG(DEBUG) << "matched suppressed and include_suppressed = " << include_suppressed;
-            if (include_suppressed)
-            {
+            if (include_suppressed) {
                 const TaxonomyRecord * tr = (const TaxonomyRecord *) rec_or_syn_ptr;
                 results.push_back(TaxonResult(tr));
             }
-        }
-        else
-        {
+        } else {
             const auto & res_tax_data = tax_ptr->get_data();
-            if (is_ancestor_of_using_depth(context_root, tax_ptr))
-            {
+            if (is_ancestor_of_using_depth(context_root, tax_ptr)) {
                 const TaxonomicJuniorSynonym * syn_ptr = (const TaxonomicJuniorSynonym *) rec_or_syn_ptr;
-                if (syn_ptr == nullptr)
-                {
+                if (syn_ptr == nullptr) {
                     LOG(DEBUG) << "pushing non-syn";
                     results.push_back(TaxonResult(tax_ptr));
-                }
-                else
-                {
+                } else {
                     LOG(DEBUG) << "pushing synonym";
                     results.push_back(TaxonResult(tax_ptr,  syn_ptr));
                 }
