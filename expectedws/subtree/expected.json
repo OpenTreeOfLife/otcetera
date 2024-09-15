@@ -1,5 +1,5 @@
 {
-  "newick": "((A1_ott1,A2_ott2,A3_ott3)A_ott100,(B1_ott11,B2_ott12,B3_ott13)B_ott200);",
+  "newick": "((A1_ott1,A2_ott2,A3_ott3)A_ott100,(B1_ott11,B2_ott12,B3_ott13)B_ott200)mrcaott1ott11;",
   "supporting_studies": [
     "xx_1@t1"
   ]
