@@ -241,7 +241,7 @@ std::string process_subtree(const json& parsedargs) {
     int height_limit = extract_argument_or_default<int>(parsedargs, "height_limit", (format == "arguson")? 3 : -1);
     const SummaryTreeAnnotation * sta = get_annotations(tts, synth_id);
     const SummaryTree_t * treeptr = get_summary_tree(tts, synth_id);
-    bool all_node_labels = extract_argument_or_default<bool>(parsedargs, "include_all_node_labels", false);
+    bool all_node_labels = extract_argument_or_default<bool>(parsedargs, "include_all_node_labels", true);
     if (format == "newick") {
         return newick_subtree_ws_method(tts, treeptr, node_id, nns, all_node_labels, height_limit);
     } else {
