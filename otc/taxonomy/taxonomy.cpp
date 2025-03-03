@@ -332,6 +332,7 @@ void copy_file_two_tries(const fs::path & old_path, const fs::path & new_path) {
     }
 }
 
+
 void Taxonomy::write(const std::string& newdirname,
                      bool copy_taxonomy_tsv_lines_raw,
                      bool copy_synonyms_tsv_raw
@@ -341,11 +342,10 @@ void Taxonomy::write(const std::string& newdirname,
     if (! fs::exists(new_dir)) {
         fs::create_directories(new_dir);
     }
-    
-    // Copy the other files.
+        // Copy the other files.
     for(const auto& name: {"about.json", "conflicts.tsv", "deprecated.tsv",
                 "log.tsv", "otu_differences.tsv", "weaklog.csv"}) {
-        copy_file_two_tries(old_dir/name,new_dir/name);
+        copy_file_two_tries(old_dir/name, new_dir/name);
     }
 
     const auto fname = "synonyms.tsv";

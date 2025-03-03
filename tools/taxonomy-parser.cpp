@@ -7,6 +7,8 @@
 #include <boost/program_options.hpp>
 #include <bitset>
 #include <regex>
+#include <filesystem>
+#include <ostream>
 
 #include "otc/error.h"
 #include "otc/tree.h"
@@ -17,6 +19,7 @@
 #include "otc/config_file.h"
 
 using namespace otc;
+namespace fs = std::filesystem;
 
 using std::string;
 using std::vector;
@@ -72,6 +75,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("high-degree-nodes",value<int>(),"Show the top <arg> high-degree nodes")
         ("write-tree,T","Write out the result as a tree")
         ("write-taxonomy",value<string>(),"Write out the result as a taxonomy to directory 'arg'")
+        ("write-dwca",value<string>(),"Write out the result as a taxonomy to directory 'arg' as a Darwin Core Archive")
         ("name,N", value<OttId>(), "Return name of the given ID")
         ("uniqname,U", value<OttId>(), "Return unique name for the given ID")
         ("report-lost-taxa",value<string>(), "A tree to report missing taxa for")
@@ -283,6 +287,93 @@ std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
     }
 }
 
+void write_eml_xml(const std::string ofn) {
+    string content = "<?xml version=\"1.0\"?>"
+"<eml:eml xmlns:eml=\"eml://ecoinformatics.org/eml-2.1.1\" xmlns:md=\"eml://ecoinformatics.org/methods-2.1.1\" xmlns:proj=\"eml://ecoinformatics.org/project-2.1.1\" xmlns:d\"=\"eml://ecoinformatics.org/dataset-2.1.1\" xmlns:res=\"eml://ecoinformatics.org/resource-2.1.1\" xmlns:dc=\"http://purl.org/dc/terms/\" xmlns:xsi=\"http://www.w3.org/\"2001/XMLSchema-instance\" packageId=\"/2020-5-30::0:53:12\" system=\"http://globalnames.org\" xml:lang=\"en\" xsi:schemaLocation=\"eml://ecoinformatics.org/eml-2.1.1 \"http://rs.gbif.org/schema/eml-gbif-profile/1.0.1/eml.xsd\">\n"
+"  <dataset id=\"\">\n"
+"    <title>Open Tree of Life Taxonomy</title>\n"
+"    <license/>\n"
+"    <metadataProvider>\n"
+"      <individualName>\n"
+"        <givenName>Mark</givenName>\n"
+"        <surName>Holder</surName>\n"
+"      </individualName>\n"
+"      <electronicMailAddress>mtholder@gmail.com</electronicMailAddress>\n"
+"    </metadataProvider>\n"
+"    <pubDate></pubDate>\n"
+"    <abstract>\n"
+"      <para></para>\n"
+"    </abstract>\n"
+"    <contact>\n"
+"      <references>1</references>\n"
+"    </contact>\n"
+"  </dataset>\n"
+"  <additionalMetadata>\n"
+"    <metadata>\n"
+"      <citation/>\n"
+"    </metadata>\n"
+"  </additionalMetadata>\n"
+"</eml:eml>\n";
+    std::ofstream tf (ofn);
+    tf << content;
+    tf.close();
+}
+
+void write_meta_xml(const std::string ofn) {
+    string content = "<?xml version=\"1.0\"?>\n"
+"<archive xmlns=\"http://rs.tdwg.org/dwc/text/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://rs.tdwg.org/dwc/terms/xsd/archive/ http://darwincore.googlecode.com/svn/trunk/text/tdwg_dwc_text.xsd\">\n"
+"  <core encoding=\"UTF-8\" fieldsTerminatedBy=\",\" fieldsEnclosedBy=\"&quot;\" linesTerminatedBy=\"&#10;\" rowType=\"http://rs.tdwg.org/dwc/terms/Taxon\" ignoreHeaderLines=\"1\">\n"
+"    <files>\n"
+"      <location>taxa.txt</location>\n"
+"    </files>\n"
+"    <id index=\"0\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/scientificName\" index=\"1\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/kingdom\" index=\"2\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/phylum\" index=\"3\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/class\" index=\"4\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/order\" index=\"5\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/family\" index=\"6\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/genus\" index=\"7\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/nomenclaturalCode\" index=\"8\"/>\n"
+"  </core>\n"
+"</archive>\n";
+    std::ofstream tf (ofn);
+    tf << content;
+    tf.close();
+}
+
+void write_taxa_txt(const std::string ofn,
+        const Taxonomy & taxonomy,
+        const Tree_t & the_tree ){
+    // <id index="0"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/scientificName" index="1"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/kingdom" index="2"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/phylum" index="3"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/class" index="4"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/order" index="5"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/family" index="6"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/genus" index="7"/>
+    // <field term="http://rs.tdwg.org/dwc/terms/nomenclaturalCode" index="8"/>
+    std::ofstream tf (ofn);
+    for (auto nd : iter_pre_const(the_tree)) {
+        if (nd->has_ott_id()) {
+            cout << nd->get_ott_id() << "\n";
+        }
+    }
+    tf.close();
+}
+
+void write_taxonomy_as_dwca(const std::string & dir,
+        const Taxonomy & taxonomy,
+        const Tree_t & the_tree ) {
+    fs::path new_dir = dir;
+    if (! fs::exists(new_dir)) {
+        fs::create_directories(new_dir);
+    }
+    write_eml_xml((new_dir/"eml.xml").string());
+    write_meta_xml((new_dir/"meta.xml").string());
+    write_taxa_txt((new_dir/"taxa.txt").string(), taxonomy, the_tree);
+}
 
 int main(int argc, char* argv[])
 {
@@ -375,6 +466,13 @@ int main(int argc, char* argv[])
         }
         if (args.count("write-taxonomy")) {
             taxonomy.write(args["write-taxonomy"].as<string>(), false, !root_changed);
+        }
+        if (args.count("write-dwca")) {
+            //taxonID,scientificName,kingdom,phylum,class,order,family,genus,nomenclaturalCode
+            auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};
+            const auto the_tree_ptr = taxonomy.get_tree<Tree_t>(nodeNamer);
+            const Tree_t & the_tree = *the_tree_ptr;
+            write_taxonomy_as_dwca(args["write-dwca"].as<string>(), taxonomy, the_tree );
         }
         if (args.count("name")) {
             OttId id = args["name"].as<OttId>();

@@ -262,6 +262,7 @@ public:
     private:
     unsigned int read_input_taxonomy_stream(std::istream & taxonomy_stream);
     unsigned int read_ott_taxonomy_stream(std::istream & taxonomy_stream);
+
     friend class RichTaxonomy;
 };
 
