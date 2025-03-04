@@ -288,8 +288,8 @@ std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
 }
 
 void write_eml_xml(const std::string ofn) {
-    string content = "<?xml version=\"1.0\"?>"
-"<eml:eml xmlns:eml=\"eml://ecoinformatics.org/eml-2.1.1\" xmlns:md=\"eml://ecoinformatics.org/methods-2.1.1\" xmlns:proj=\"eml://ecoinformatics.org/project-2.1.1\" xmlns:d\"=\"eml://ecoinformatics.org/dataset-2.1.1\" xmlns:res=\"eml://ecoinformatics.org/resource-2.1.1\" xmlns:dc=\"http://purl.org/dc/terms/\" xmlns:xsi=\"http://www.w3.org/\"2001/XMLSchema-instance\" packageId=\"/2020-5-30::0:53:12\" system=\"http://globalnames.org\" xml:lang=\"en\" xsi:schemaLocation=\"eml://ecoinformatics.org/eml-2.1.1 \"http://rs.gbif.org/schema/eml-gbif-profile/1.0.1/eml.xsd\">\n"
+    string content = "<?xml version=\"1.0\"?>\n"
+"<eml:eml xmlns:eml=\"eml://ecoinformatics.org/eml-2.1.1\" xmlns:md=\"eml://ecoinformatics.org/methods-2.1.1\" xmlns:proj=\"eml://ecoinformatics.org/project-2.1.1\" xmlns:d=\"eml://ecoinformatics.org/dataset-2.1.1\" xmlns:res=\"eml://ecoinformatics.org/resource-2.1.1\" xmlns:dc=\"http://purl.org/dc/terms/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" packageId=\"/2020-5-30::0:53:12\" system=\"http://globalnames.org\" xml:lang=\"en\" xsi:schemaLocation=\"eml://ecoinformatics.org/eml-2.1.1 http://rs.gbif.org/schema/eml-gbif-profile/1.0.1/eml.xsd\">\n"
 "  <dataset id=\"\">\n"
 "    <title>Open Tree of Life Taxonomy</title>\n"
 "    <license/>\n"
@@ -346,14 +346,34 @@ void write_meta_xml(const std::string ofn) {
 
 std::unordered_map<TaxonomicRank, int> g_rank2num;
 const char dwca_sep = ',';
-string escape_for_dwca(const string & ins) {
-    if (ins.find(dwca_sep) == string::npos) {
+
+inline string escape_double_quotes(const string & ins) {
+    std::string escaped;
+    unsigned len = static_cast<unsigned>(ins.length());
+    escaped.reserve(len + 4);
+    for (const auto & c : ins) {
+        if (c == '\"') {
+            escaped.append(1,'\"');
+        }
+        escaped.append(1, c);
+
+    }
+    return escaped;
+}
+
+inline string escape_for_dwca(const string & ins) {
+    if (ins.find(dwca_sep) == string::npos
+        && ins.find('\"') == string::npos) {
         return ins;
     }
     string estr;
     estr.reserve(2 + ins.length());
     estr.append(1, '\"');
-    estr.append(ins);
+    if (ins.find('\"') == string::npos) {
+        estr.append(ins);
+    } else {
+        estr.append(escape_double_quotes(ins));
+    }
     estr.append(1, '\"');
     return estr;
 }
