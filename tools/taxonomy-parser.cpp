@@ -327,14 +327,15 @@ void write_meta_xml(const std::string ofn) {
 "      <location>taxa.txt</location>\n"
 "    </files>\n"
 "    <id index=\"0\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/scientificName\" index=\"1\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/kingdom\" index=\"2\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/phylum\" index=\"3\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/class\" index=\"4\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/order\" index=\"5\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/family\" index=\"6\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/genus\" index=\"7\"/>\n"
-"    <field term=\"http://rs.tdwg.org/dwc/terms/nomenclaturalCode\" index=\"8\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/parentNameUsageID\" index=\"1\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/scientificName\" index=\"2\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/taxonRank\" index=\"3\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/kingdom\" index=\"4\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/phylum\" index=\"5\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/class\" index=\"6\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/order\" index=\"7\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/family\" index=\"8\"/>\n"
+"    <field term=\"http://rs.tdwg.org/dwc/terms/genus\" index=\"8\"/>\n"
 "  </core>\n"
 "</archive>\n";
     std::ofstream tf (ofn);
@@ -342,23 +343,60 @@ void write_meta_xml(const std::string ofn) {
     tf.close();
 }
 
+std::unordered_map<TaxonomicRank, int> g_rank2num;
+
+void ini_global_rank_num() {
+    g_rank2num[TaxonomicRank::RANK_SPECIES] = 5;
+    g_rank2num[TaxonomicRank::RANK_GENUS] = 4;
+    g_rank2num[TaxonomicRank::RANK_FAMILY] = 3;
+    g_rank2num[TaxonomicRank::RANK_ORDER] = 2;
+    g_rank2num[TaxonomicRank::RANK_CLASS] = 1;
+    g_rank2num[TaxonomicRank::RANK_PHYLUM] = 0;
+    g_rank2num[TaxonomicRank::RANK_KINGDOM] = -1;
+}
+
+void write_ranks(std::ostream & out,
+    const Tree_t::node_type & node,
+    const TaxonomyRecord & rec 
+    ) {
+    string kingdom_s; // 0
+    string phylum_s;  // 1
+    string class_s;   // 2
+    string order_s;   // 3
+    string family_s;  // 4
+    string genus_s;   // 5
+    string species_s; // 6
+    int ini_looking_for = 6;
+    int looking_for = ini_looking_for;
+    std::vector<std::string> n_rank_names;
+    n_rank_names.resize(1 + looking_for);
+    auto tr = string_to_rank(rec.rank, true);
+    if (tr == TaxonomicRank::RANK_NO_RANK
+        || tr == TaxonomicRank::RANK_NO_RANK_TERMINAL) {
+        // pass
+    } else {
+        auto to_num_it = g_rank2num.find(tr);
+        if (to_num_it != g_rank2num.end()) {
+            looking_for = to_num_it->second;
+            n_rank_names.at(1 + looking_for) = rec.name;
+        }
+    }
+}
+
 void write_taxa_txt(const std::string ofn,
         const Taxonomy & taxonomy,
-        const Tree_t & the_tree ){
-    // <id index="0"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/scientificName" index="1"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/kingdom" index="2"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/phylum" index="3"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/class" index="4"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/order" index="5"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/family" index="6"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/genus" index="7"/>
-    // <field term="http://rs.tdwg.org/dwc/terms/nomenclaturalCode" index="8"/>
+        const Tree_t & the_tree ) {
     std::ofstream tf (ofn);
+    std::ostream * osp = &cout;
     for (auto nd : iter_pre_const(the_tree)) {
-        if (nd->has_ott_id()) {
-            cout << nd->get_ott_id() << "\n";
-        }
+        assert(nd->has_ott_id());
+        auto ott_id = nd->get_ott_id();
+        const auto & rec = taxonomy.record_from_id(ott_id);
+        *osp << ott_id
+        << '\t' << rec.name 
+        << '\t' << rec.rank;
+        write_ranks(*osp, *nd, rec);
+        *osp << "\n";
     }
     tf.close();
 }
@@ -370,13 +408,13 @@ void write_taxonomy_as_dwca(const std::string & dir,
     if (! fs::exists(new_dir)) {
         fs::create_directories(new_dir);
     }
+    ini_global_rank_num();
     write_eml_xml((new_dir/"eml.xml").string());
     write_meta_xml((new_dir/"meta.xml").string());
     write_taxa_txt((new_dir/"taxa.txt").string(), taxonomy, the_tree);
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
     try {
         auto args = parse_cmd_line(argc, argv);
