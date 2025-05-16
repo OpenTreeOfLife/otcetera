@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ConstGitRepo is a base class containing methods that specify
 repo-specific information, but no methods that alter the state
