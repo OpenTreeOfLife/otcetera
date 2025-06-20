@@ -5,7 +5,7 @@ import os
 from peyutil import read_as_json, write_as_json
 
 no_app_pat = re.compile(r"^amende?ment [#](\d+) not applied:")
-homonym_pat = re.compile(r"^amende?ment [#](\d+) not applied: ([A-Za-z][-A-Za-z0-9 ]+[A-Za-z0-9]) is a homonym of (\d+)")
+homonym_pat = re.compile(r"^amende?ment [#](\d+) not applied: ([A-Za-z][)(.-A-Za-z0-9 ]+[)A-Za-z0-9.]) is a homonym of (\d+)")
 
 src_fn_pat = re.compile(r"^(additions\-\d+\-\d+):(\d+)$")
 by_study_id = {}
@@ -73,15 +73,15 @@ def main(edott_fp,
                             sys.stderr.write(f"PROBLEM {amend_num} does not match: {edott[amend_num -1]}\n")
                         else:
                             assert(prob == "first")
-                            sys.stderr.write(f"Atypical homonym. First in amendments {amend_num} is bad: {edott[amend_num -1]}\n")
+                            sys.stderr.write(f"Atypical homonym. First in amendments {amend_num} is bad: {edott[amend_num -1]}\nprob={prob}\n")
                 else:
-                    sys.stderr.write(m.group(1) + " not a homonym")
+                    sys.stderr.write(m.group(1) + " not a homonym\n")
     sk = list(by_study_id.keys())
     sk.sort()
     for study_id in sk:
         name_set = by_study_id[study_id]
         if len(name_set) == 1:
-            name = next(name_set)
+            name = next(iter(name_set))
             sys.stderr.write(f"In https://tree.opentreeoflife.org/curator/study/view/{study_id} need to remap 1 taxon: \"{name}\"\n") 
         else:
             sys.stderr.write(f"In https://tree.opentreeoflife.org/curator/study/view/{study_id} need to remap {len(name_set)} taxa:\n")
