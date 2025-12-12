@@ -76,6 +76,7 @@ variables_map parse_cmd_line(int argc,char* argv[]) {
         ("uniqname,U", value<OttId>(), "Return unique name for the given ID")
         ("report-lost-taxa",value<string>(), "A tree to report missing taxa for")
         ("version,V","Taxonomy version")
+        ("descendants","Write a tab-separated list of OTT ID<tab># of tip descendants for each internal taxon")
         ;
 
     options_description formatting("Formatting options");
@@ -283,6 +284,25 @@ std::function<bool(tax_flags)> get_flags_match(variables_map& args) {
     }
 }
 
+void write_num_descendants(std::ostream & out, const Taxonomy& taxonomy) {
+    auto nodeNamer = [](const auto& record){return string(record.name)+"_ott"+std::to_string(record.id);};
+    auto taxtree = taxonomy.get_tree<Tree_t>(nodeNamer);
+    std::map<const Tree_t::node_type *, long> nd2numLeaves;
+    for(auto nd: iter_post_const(*taxtree)) {
+        auto par = nd->get_parent();
+        if (nd->is_tip()) {
+            if (par) {
+                nd2numLeaves[par] += 1;
+            }
+        } else {
+            const auto num_leaves = nd2numLeaves[nd];
+            out << nd->get_ott_id() << '\t' << num_leaves << '\n';
+            if (par) {
+                nd2numLeaves[par] += num_leaves;
+            }
+        }
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -390,6 +410,9 @@ int main(int argc, char* argv[])
         }
         if (args.count("version")) {
             std::cout << taxonomy.get_version() << std::endl;
+        }
+        if (args.count("descendants")) {
+            write_num_descendants(std::cout, taxonomy);
         }
     } catch (std::exception& e) {
         cerr << "otc-taxonomy-parser: Error! " << e.what() << std::endl;
