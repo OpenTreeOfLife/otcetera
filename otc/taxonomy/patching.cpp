@@ -339,9 +339,9 @@ bool_str_t PatchableTaxonomy::add_new_taxon(OttId oid,
     reg_or_rereg_nd(nnd, tr, tree);
 
     // 7. Update the fuzzy match databases
-    if (auto f = get_fuzzy_matcher())
-	f->add_key(name, oid, *this);
-
+    if (auto f = get_fuzzy_matcher()){
+    	f->add_key(name, oid, *this);
+    }
     return bool_str_t{true, ""};
 }
 

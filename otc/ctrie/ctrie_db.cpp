@@ -76,8 +76,7 @@ void CompressedTrieBasedDB::add_key(const std::string& s)
     rebuild_new_trie();
 }
 
-void CompressedTrieBasedDB::rebuild_new_trie()
-{
+void CompressedTrieBasedDB::rebuild_new_trie() {
     LOG(INFO)<<"Rebuilding ctree for additions";
     LOG(INFO)<< new_keys.size() << " keys\n";
 
@@ -85,43 +84,39 @@ void CompressedTrieBasedDB::rebuild_new_trie()
     std::map<stored_char_t, unsigned int> letter_counts;
     std::set<stored_char_t> new_letter_set;
     // unsigned mem_str = 0;
-    for (auto i : new_keys)
-    {
+    for (auto i : new_keys) {
         // mem_str += i.length();
         auto widestr = to_u32string(i);
-
-	for_new.insert(widestr);
-
-	for (auto letter : widestr) {
-	    new_letter_set.insert(letter);
-	}
+        for_new.insert(widestr);
+        for (auto letter : widestr) {
+            new_letter_set.insert(letter);
+        }
         //LOG(INFO) << glob_conv8.to_bytes(widestr) << '\n';
     }
-    LOG(INFO)<<for_new.size()<<" keys for new ctrie\n";
+    LOG(INFO) << for_new.size() <<" keys for new ctrie\n";
 
     stored_str_t new_letters;
     new_letters.insert(std::begin(new_letters), std::begin(new_letter_set), std::end(new_letter_set));
     std::map<unsigned int, stored_str_t,std::greater<int>> by_count;
 
     LOG(INFO)<<"new letters: "<<new_letters.size()<<"\n";
-    for (auto letter : new_letters)
+    for (auto letter : new_letters) {
         LOG(INFO)<<"  "<<to_char_str(letter)<<"\n";
+    }
     LOG(INFO)<<"done\n";
 
-    for (auto [letter,count] : letter_counts)
+    for (auto [letter,count] : letter_counts) {
         by_count[count].push_back(letter);
+    }
 
     int n_dropped_letters = 0;
-    for(auto [count,letters]: by_count)
-    {
+    for(auto [count,letters]: by_count) {
         LOG(INFO)<<"  "<<count<<" : \n";
-        for(auto letter : letters)
-        {
+        for(auto letter : letters) {
             LOG(INFO)<<"    "<<to_char_str(letter)<<" ("<<(uint32_t)(letter)<<")";
-            if (new_letters.size() < 64)
+            if (new_letters.size() < 64) {
                 new_letters.push_back(letter);
-            else
-            {
+            } else {
                 n_dropped_letters++;
                 LOG(INFO)<<"  DROPPED!";
             }
@@ -130,8 +125,7 @@ void CompressedTrieBasedDB::rebuild_new_trie()
     }
     LOG(INFO)<<"done\n";
 
-    if (n_dropped_letters)
-    {
+    if (n_dropped_letters) {
         LOG(INFO)<<"dropped "<<n_dropped_letters<<" letters.\n";
     }
 
