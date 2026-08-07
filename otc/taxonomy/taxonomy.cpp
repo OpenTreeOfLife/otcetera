@@ -927,6 +927,7 @@ void RichTaxonomy::read_ott_synonyms_stream(std::istream & synonyms_file) {
         try {
             primary = tree_data.id_to_node.at(ott_id);
         } catch (std::out_of_range &) {
+            std::cerr << "synonym id " << ott_id << " not found." << std::endl;
             if (!Taxonomy::tolerate_synonyms_to_unknown_id) {
                 throw;
             }
